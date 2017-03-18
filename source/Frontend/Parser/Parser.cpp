@@ -2565,6 +2565,9 @@ namespace Parser
 			// parse the thing. takes the form of this: foo<|T: i64, K: i64, ... |>(...)
 			ps.eat();
 
+			if(ps.front().type == TType::RAnglePipe)
+				parserMessage(Err::Warn, "Empty type parameter lists are redundant");
+
 			while(ps.front().type != TType::RAnglePipe)
 			{
 				if(ps.front().type != TType::Identifier)

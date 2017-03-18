@@ -12,39 +12,6 @@ using namespace Ast;
 
 namespace Codegen
 {
-	static std::string _makeErrorString(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
-	static std::string _makeErrorString(const char* fmt, ...)
-	{
-		va_list ap;
-		va_list ap2;
-
-		va_start(ap, fmt);
-		va_copy(ap2, ap);
-
-		ssize_t size = vsnprintf(0, 0, fmt, ap2);
-
-		va_end(ap2);
-
-
-		// return -1 to be compliant if
-		// size is less than 0
-		iceAssert(size >= 0);
-
-		// alloc with size plus 1 for `\0'
-		char* str = new char[size + 1];
-
-		// format string with original
-		// variadic arguments and set new size
-		vsprintf(str, fmt, ap);
-
-		std::string ret = str;
-		delete[] str;
-
-		return ret;
-	}
-
-
-
 	static void _getAllGenericTypesContainedWithinRecursively(pts::Type* t, const std::map<std::string, TypeConstraints_t>& gt,
 		std::set<std::string>* list)
 	{
@@ -165,7 +132,7 @@ namespace Codegen
 		{
 			if(errorString && failedExpr)
 			{
-				*errorString = _makeErrorString("Incompatible types in solution for argument %zu of function parameter"
+				*errorString = strprintf("Incompatible types in solution for argument %zu of function parameter"
 					" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
 					argIndex + 1, ix + 1, expt->str().c_str(), _baseArg->str().c_str());
 
@@ -265,7 +232,7 @@ namespace Codegen
 							// check these two are the same
 							if(unifyTypeSolutions(sln, givensln) == 0)
 							{
-								*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', but solution for child parametric type '%s' was '%s'",
+								*errorString = strprintf("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', but solution for child parametric type '%s' was '%s'",
 									argIndex + 1, ix + 1, expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str(),
 									givensln->str().c_str());
 
@@ -285,7 +252,7 @@ namespace Codegen
 					{
 						if(unifyTypeSolutions(sln, givent) == 0)
 						{
-							*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', given expression had type '%s'", argIndex + 1, ix + 1,
+							*errorString = strprintf("Conflicting solutions for argument %zu (in argument %zu of parent function); solution for parent parametric type '%s' was '%s', given expression had type '%s'", argIndex + 1, ix + 1,
 								expt->toNamedType()->name.c_str(), sln->str().c_str(), givent->str().c_str());
 
 							if(candidate) *failedExpr = candidate->params[ix];
@@ -337,7 +304,7 @@ namespace Codegen
 
 						if(unifyTypeSolutions(givensln, exptype) == 0)
 						{
-							*errorString = _makeErrorString("Conflicting solutions for argument %zu (in argument %zu of parent function); parent type was concrete '%s', given expression (for parameter '%s') had type '%s'", argIndex + 1, ix + 1,
+							*errorString = strprintf("Conflicting solutions for argument %zu (in argument %zu of parent function); parent type was concrete '%s', given expression (for parameter '%s') had type '%s'", argIndex + 1, ix + 1,
 								exptype->str().c_str(), givent->toParametricType()->getName().c_str(), givensln->str().c_str());
 
 							if(candidate) *failedExpr = candidate->params[ix];
@@ -355,7 +322,7 @@ namespace Codegen
 					// check if they match up
 					if(unifyTypeSolutions(exptype, givent) == 0)
 					{
-						*errorString = _makeErrorString("Conflicting types for argument %zu (in argument %zu of parent function); have '%s', found '%s'", argIndex + 1, ix + 1, exptype->str().c_str(), givent->str().c_str());
+						*errorString = strprintf("Conflicting types for argument %zu (in argument %zu of parent function); have '%s', found '%s'", argIndex + 1, ix + 1, exptype->str().c_str(), givent->str().c_str());
 
 						if(candidate) *failedExpr = candidate->params[ix];
 						return false;
@@ -492,7 +459,7 @@ namespace Codegen
 		{
 			if(errorString && failedExpr)
 			{
-				*errorString = _makeErrorString("Incompatible types in argument %zu: expected '%s', have '%s' (No valid transformations)",
+				*errorString = strprintf("Incompatible types in argument %zu: expected '%s', have '%s' (No valid transformations)",
 					ix + 1, prm->str().c_str(), arg->str().c_str());
 
 				if(candidate) *failedExpr = candidate->params[ix];
@@ -505,7 +472,7 @@ namespace Codegen
 		{
 			if(errorString && failedExpr)
 			{
-				*errorString = _makeErrorString("Incompatible types in solution for argument %zu:"
+				*errorString = strprintf("Incompatible types in solution for argument %zu:"
 					" expected %s type '%s', have '%s'", ix + 1, dpt->isFunctionType() ? "function" : "tuple",
 					prm->str().c_str(), arg->str().c_str());
 
@@ -545,7 +512,7 @@ namespace Codegen
 		{
 			if(errorString && failedExpr)
 			{
-				*errorString = _makeErrorString("Incompatible (function or tuple) type lists in argument %zu:"
+				*errorString = strprintf("Incompatible (function or tuple) type lists in argument %zu:"
 					" Size mismatch, have %zu, expected %zu", ix + 1, ftlist.size(), ptlist.size());
 
 				if(candidate) *failedExpr = candidate->params[ix];
@@ -662,7 +629,7 @@ namespace Codegen
 				{
 					if(errorString && failedExpr)
 					{
-						*errorString = _makeErrorString("Incompatible types in solution for return type of function parameter"
+						*errorString = strprintf("Incompatible types in solution for return type of function parameter"
 							" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
 							ix + 1, prt->str().c_str(), frt->str().c_str());
 
@@ -729,7 +696,7 @@ namespace Codegen
 								{
 									if(errorString && failedExpr)
 									{
-										*errorString = _makeErrorString("Conflicting types in solution for type parameter '%s', in return type of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", prt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), found->str().c_str());
+										*errorString = strprintf("Conflicting types in solution for type parameter '%s', in return type of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", prt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), found->str().c_str());
 
 										if(candidate) *failedExpr = candidate->params[ix];
 									}
@@ -806,7 +773,7 @@ namespace Codegen
 						std::string solvedstr; // = "\nSolutions found so far: ";
 
 						for(auto t : cursln)
-							solvedstr += _makeErrorString("    %s = '%s'\n", t.first.c_str(), t.second->str().c_str());
+							solvedstr += strprintf("    %s = '%s'\n", t.first.c_str(), t.second->str().c_str());
 
 						if(solvedstr.empty())
 						{
@@ -821,13 +788,13 @@ namespace Codegen
 							for(auto s : toSolve)
 							{
 								if(cursln.find(s) == cursln.end())
-									missingstr += _makeErrorString("    '%s'\n", s.c_str());
+									missingstr += strprintf("    '%s'\n", s.c_str());
 							}
 
 							solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
 						}
 
-						*errorString = _makeErrorString("Failed to find solution for function parameter %zu in parent function using"
+						*errorString = strprintf("Failed to find solution for function parameter %zu in parent function using"
 							" provided type '%s' to solve '%s'; made no progress after %zu iteration%s, and terminated.%s",
 							ix, arg->str().c_str(), prm->str().c_str(), cnt + 1, cnt == 0 ? "" : "s", solvedstr.c_str());
 
@@ -899,7 +866,7 @@ namespace Codegen
 			{
 				if(errorString && failedExpr)
 				{
-					*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu",
+					*errorString = strprintf("Mismatched argument count; expected %zu, have %zu",
 						candidate->params.size(), args.size());
 
 					*failedExpr = candidate;
@@ -913,7 +880,7 @@ namespace Codegen
 				{
 					if(errorString && failedExpr)
 					{
-						*errorString = _makeErrorString("Mismatched argument count; expected %zu, have %zu",
+						*errorString = strprintf("Mismatched argument count; expected %zu, have %zu",
 							candidate->params.size(), args.size());
 
 						*failedExpr = candidate;
@@ -939,7 +906,7 @@ namespace Codegen
 			{
 				if(errorString && failedExpr)
 				{
-					*errorString = _makeErrorString("Mismatched argument count; expected at least %zu, have %zu",
+					*errorString = strprintf("Mismatched argument count; expected at least %zu, have %zu",
 						candidate->params.size() - 1, args.size());
 
 					*failedExpr = candidate;
@@ -1000,7 +967,7 @@ namespace Codegen
 				{
 					if(errorString && failedExpr)
 					{
-						*errorString = _makeErrorString("Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
+						*errorString = strprintf("Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
 							cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
 
 						*failedExpr = candidate;
