@@ -539,6 +539,16 @@ namespace pts
 							sizes.push_back(0);
 							arr = arr.substr(1);
 						}
+						else if(arr.find(":") == 0)
+						{
+							// array slice
+							// x: int[:]
+							sizes.push_back(-2);
+							arr = arr.substr(1);
+
+							iceAssert(arr.find("]") == 0);
+							arr = arr.substr(1);
+						}
 						else if(arr.find("...") == 0)
 						{
 							sizes.push_back(-1);
@@ -569,6 +579,10 @@ namespace pts
 						if(i > 0)
 						{
 							base = new pts::FixedArrayType(base, i);
+						}
+						else if(i == -2)
+						{
+							base = new pts::ArraySliceType(base);
 						}
 						else if(i == -1)
 						{
@@ -664,6 +678,11 @@ namespace pts
 		return dynamic_cast<FunctionType*>(this);
 	}
 
+	ArraySliceType* Type::toArraySliceType()
+	{
+		return dynamic_cast<ArraySliceType*>(this);
+	}
+
 
 	bool Type::isNamedType()
 	{
@@ -698,6 +717,11 @@ namespace pts
 	bool Type::isFunctionType()
 	{
 		return dynamic_cast<FunctionType*>(this) != 0;
+	}
+
+	bool Type::isArraySliceType()
+	{
+		return dynamic_cast<ArraySliceType*>(this) != 0;
 	}
 
 
@@ -768,6 +792,11 @@ namespace pts
 	std::string VariadicArrayType::str()
 	{
 		return this->base->str() + "[...]";
+	}
+
+	std::string ArraySliceType::str()
+	{
+		return this->base->str() + "[:]";
 	}
 
 	std::string FunctionType::str()

@@ -30,6 +30,7 @@ namespace pts
 	struct NamedType;
 	struct PointerType;
 	struct TupleType;
+	struct ArraySliceType;
 	struct FixedArrayType;
 	struct DynamicArrayType;
 	struct VariadicArrayType;
@@ -77,21 +78,22 @@ namespace pts
 
 
 		NamedType* toNamedType();
-		PointerType* toPointerType();
 		TupleType* toTupleType();
+		PointerType* toPointerType();
+		FunctionType* toFunctionType();
 		FixedArrayType* toFixedArrayType();
+		ArraySliceType* toArraySliceType();
 		DynamicArrayType* toDynamicArrayType();
 		VariadicArrayType* toVariadicArrayType();
-		FunctionType* toFunctionType();
-
 
 		bool isNamedType();
-		bool isPointerType();
 		bool isTupleType();
+		bool isPointerType();
+		bool isFunctionType();
+		bool isArraySliceType();
 		bool isFixedArrayType();
 		bool isDynamicArrayType();
 		bool isVariadicArrayType();
-		bool isFunctionType();
 
 		protected:
 			Type() { }
@@ -172,6 +174,16 @@ namespace pts
 	{
 		virtual ~VariadicArrayType() { }
 		explicit VariadicArrayType(pts::Type* b) : base(b) { }
+		virtual std::string str() override;
+
+		pts::Type* base = 0;
+	};
+
+
+	struct ArraySliceType : Type
+	{
+		virtual ~ArraySliceType() { }
+		explicit ArraySliceType(pts::Type* b) : base(b) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;

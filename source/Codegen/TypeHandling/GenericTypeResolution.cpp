@@ -84,6 +84,10 @@ namespace Codegen
 		{
 			_getAllGenericTypesContainedWithinRecursively(t->toVariadicArrayType()->base, gt, list);
 		}
+		else if(t->isArraySliceType())
+		{
+			_getAllGenericTypesContainedWithinRecursively(t->toArraySliceType()->base, gt, list);
+		}
 		else
 		{
 			iceAssert("??" && 0);
