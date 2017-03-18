@@ -6,9 +6,27 @@ ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
 
 
+struct List<T>
+{
+	var k: i64
+}
+
+func add<T>(a: T, b: T) -> T
+{
+	a + b
+}
+
+func bar(a: i64, b: i64) -> i64 { a * b }
+
 public func main() -> int
 {
+	let list = List<|T: i64, K: i64|>(30)
+	let c = add<|T: i64|>(30, 40)
 
+	// let c = bar<|T: string|>(30, 40)
+	printf("c = %d\n", c)
+
+	return 0
 }
 
 
