@@ -84,6 +84,10 @@ namespace Codegen
 		{
 			_getAllGenericTypesContainedWithinRecursively(t->toVariadicArrayType()->base, gt, list);
 		}
+		else if(t->isArraySliceType())
+		{
+			_getAllGenericTypesContainedWithinRecursively(t->toArraySliceType()->base, gt, list);
+		}
 		else
 		{
 			iceAssert("??" && 0);
@@ -127,17 +131,10 @@ namespace Codegen
 
 
 
-	/*
-		notes:
-
-		for tuple variadics, first unify each tuple type, disregarding the parametric type.
-		then do the existing solution check, and/or attempt unification.
-	*/
 
 
 
-
-
+	// twelve arguments wtf
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved, std::map<std::string, fir::Type*>* fnSoln,
 		std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete);
@@ -149,6 +146,10 @@ namespace Codegen
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr)
 	{
 		using TrfList = std::vector<pts::TypeTransformer>;
+
+		if(toSolve.empty())
+			return true;
+
 
 		// check the given with the expected
 		fir::Type* givent = 0; TrfList giventrfs;
@@ -475,6 +476,9 @@ namespace Codegen
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete)
 	{
 		typedef std::vector<pts::TypeTransformer> TrfList;
+
+		if(toSolve.empty())
+			return true;
 
 		// decompose each type fully
 		pts::Type* dpt = 0; TrfList ptrfs;
@@ -882,6 +886,11 @@ namespace Codegen
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::vector<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
+		auto prof = prof::Profile("generics");
+
+		iceAssert(gtm);
+		iceAssert(candidate);
+
 		if(candidate->params.size() != args.size())
 		{
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,

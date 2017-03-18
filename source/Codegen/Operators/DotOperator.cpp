@@ -114,7 +114,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				iceAssert(ptr);
 				return Result_t(cgi->irb.CreateGetDynamicArrayCapacity(ptr), 0);
 			}
-			else if(vr->name == "pointer")
+			else if(vr->name == "data")
 			{
 				if(!actual)
 				{
@@ -317,7 +317,7 @@ static Result_t attemptDotOperatorOnBuiltinTypeOrFail(CodegenInstance* cgi, fir:
 				iceAssert(ptr);
 				return Result_t(cgi->irb.CreateGetArraySliceLength(ptr), 0);
 			}
-			else if(vr->name == "pointer")
+			else if(vr->name == "data")
 			{
 				if(!actual)
 				{

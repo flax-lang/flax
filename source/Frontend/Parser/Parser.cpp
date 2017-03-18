@@ -786,6 +786,9 @@ namespace Parser
 				case TType::Typeid:
 					return parseTypeid(ps);
 
+				case TType::Sizeof:
+					return parseSizeof(ps);
+
 				case TType::StringLiteral:
 					return parseStringLiteral(ps);
 
@@ -1275,10 +1278,14 @@ namespace Parser
 			{
 				dims = "[]";
 			}
+			else if(n.type == TType::Colon)
+			{
+				dims += "[:]";
+			}
 			else
 			{
-				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for "
-					"a variadic function argument.");
+				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, ':' for an array slice, "
+					"or an ellipsis for a variadic function argument.");
 			}
 
 			bool isVarArray = false;
@@ -3550,6 +3557,24 @@ namespace Parser
 			parserError("Expected closing ')'");
 
 		return CreateAST(Typeid, t, inside);
+	}
+
+
+	Sizeof* parseSizeof(ParserState& ps)
+	{
+		Token t;
+		iceAssert((t = ps.eat()).type == TType::Sizeof);
+
+		// require parens
+		if(ps.eat().type != TType::LParen)
+			parserError("sizeof() requires parentheses");
+
+		Expr* inside = parseExpr(ps);
+
+		if(ps.eat().type != TType::RParen)
+			parserError("Expected closing ')'");
+
+		return CreateAST(Sizeof, t, inside);
 	}
 
 	ArrayLiteral* parseArrayLiteral(ParserState& ps)

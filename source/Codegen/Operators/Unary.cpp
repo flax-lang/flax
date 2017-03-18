@@ -24,6 +24,9 @@ fir::Type* UnaryOp::getType(CodegenInstance* cgi, fir::Type* extratype, bool all
 		if(!ltype->isPointerType())
 			error(expr, "Attempted to dereference a non-pointer type '%s'", ltype->str().c_str());
 
+		if(ltype->isPointerTo(fir::Type::getVoid()))
+			error(expr, "Cannot dereference a pointer-to-void ('%s')", ltype->str().c_str());
+
 		return ltype->getPointerElementType();
 	}
 	else if(this->op == ArithmeticOp::AddrOf)

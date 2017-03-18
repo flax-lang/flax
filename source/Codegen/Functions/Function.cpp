@@ -194,7 +194,7 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* t
 	std::tie(value, pointer, vkind) = this->block->codegen(cgi);
 
 	// verify again, this type checking the types
-	cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
+	bool needImplicit = cgi->verifyAllPathsReturn(this, nullptr, true, func->getReturnType());
 
 	if(doRetVoid)
 	{
@@ -218,6 +218,13 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* t
 			cgi->incrementRefCount(value);
 
 		cgi->irb.CreateReturn(value);
+	}
+	else if(needImplicit)
+	{
+		error(this->block->statements.size() > 0 ? this->block->statements.back() : this->decl,
+			"Function '%s' has a return type of '%s', but did not return anything; implicit return only valid if function body contains exactly "
+			"1 expression, found %zu here", this->decl->ident.name.c_str(), func->getReturnType()->str().c_str(),
+			this->block->statements.size());
 	}
 
 
