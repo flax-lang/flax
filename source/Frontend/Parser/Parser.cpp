@@ -33,6 +33,7 @@ namespace Parser
 	#define ATTR_STR_STRONG				"strong"
 	#define ATTR_STR_RAW				"raw"
 	#define ATTR_STR_OPERATOR			"operator"
+	#define ATTR_STR_NORETURN			"noreturn"
 
 	static ParserState* staticState = 0;
 
@@ -1033,7 +1034,7 @@ namespace Parser
 
 		FuncDecl* f = CreateAST(FuncDecl, func_id, id, params, ret);
 		f->attribs = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate |
-			Attr_NoMangle | Attr_ForceMangle | Attr_Override);
+			Attr_NoMangle | Attr_ForceMangle | Attr_Override | Attr_NoReturn);
 
 		f->isCStyleVarArg = isCVA;
 		f->isVariadic = isVariableArg;
@@ -3325,6 +3326,7 @@ namespace Parser
 		else if(id.text == ATTR_STR_PACKEDSTRUCT)	attr |= Attr_PackedStruct;
 		else if(id.text == ATTR_STR_STRONG)			attr |= Attr_StrongTypeAlias;
 		else if(id.text == ATTR_STR_RAW)			attr |= Attr_RawString;
+		else if(id.text == ATTR_STR_NORETURN)		attr |= Attr_NoReturn;
 		else if(id.text == "operator")
 		{
 			// all handled.
@@ -4134,4 +4136,5 @@ namespace Ast
 	uint64_t Attr_RawString			= 0x100;
 	uint64_t Attr_Override			= 0x200;
 	uint64_t Attr_CommutativeOp		= 0x400;
+	uint64_t Attr_NoReturn			= 0x800;
 }

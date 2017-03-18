@@ -849,6 +849,18 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 							return c->getType(cgi);
 					}
 				}
+
+				auto maybefn = cgi->tryGetMemberFunctionOfClass(maybeCls, memberVr, memberVr->name, extratype);
+				if(!maybefn.isEmpty())
+				{
+					iceAssert(maybefn.firFunc);
+
+					if(actual)
+						return Result_t(maybefn.firFunc, 0);
+
+					else
+						return maybefn.firFunc->getType();
+				}
 			}
 
 			auto exts = cgi->getExtensionsForType(sb);
@@ -867,21 +879,6 @@ static variant resolveLeftNonStaticMA(CodegenInstance* cgi, MemberAccess* ma, fi
 								return cp->getType(cgi);
 						}
 					}
-				}
-			}
-
-			if(maybeCls)
-			{
-				auto ret = cgi->tryGetMemberFunctionOfClass(maybeCls, memberVr, memberVr->name, extratype);
-				if(!ret.isEmpty())
-				{
-					iceAssert(ret.firFunc);
-
-					if(actual)
-						return Result_t(ret.firFunc, 0);
-
-					else
-						return ret.firFunc->getType();
 				}
 			}
 

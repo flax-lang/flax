@@ -219,7 +219,7 @@ namespace Compiler
 		}
 		else
 		{
-			error("ICE: Unimplememented type '%s'", type->str().c_str());
+			error("Unimplememented type '%s' for LLVM backend", type->str().c_str());
 		}
 	}
 
@@ -395,24 +395,25 @@ namespace Compiler
 
 
 
-	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* fmod)
+	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
-		llvm::Module* module = new llvm::Module(fmod->getModuleName(), Compiler::LLVMBackend::getLLVMContext());
+		llvm::Module* module = new llvm::Module(firmod->getModuleName(), Compiler::LLVMBackend::getLLVMContext());
 
 		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
 		llvm::IRBuilder<> builder(Compiler::LLVMBackend::getLLVMContext());
 
 		createdTypes.clear();
+		cachedConstants.clear();
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		auto getValue = [&valueMap, &module, &builder, fmod](fir::Value* fv) -> llvm::Value* {
+		auto getValue = [&valueMap, &module, &builder, firmod](fir::Value* fv) -> llvm::Value* {
 
 			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("failed to find var %zu in mod %s\n", gv->id, fmod->getModuleName().c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName().c_str());
 
 				iceAssert(lgv);
 				return lgv;
@@ -462,7 +463,7 @@ namespace Compiler
 
 
 		static size_t strn = 0;
-		for(auto string : fmod->_getGlobalStrings())
+		for(auto string : firmod->_getGlobalStrings())
 		{
 			std::string id = "_FV_STR" + std::to_string(strn);
 
@@ -480,7 +481,7 @@ namespace Compiler
 			strn++;
 		}
 
-		for(auto global : fmod->_getGlobals())
+		for(auto global : firmod->_getGlobals())
 		{
 			llvm::Constant* initval = 0;
 			if(global.second->getInitialValue() != 0)
@@ -492,13 +493,13 @@ namespace Compiler
 			valueMap[global.second->id] = gv;
 		}
 
-		for(auto type : fmod->_getNamedTypes())
+		for(auto type : firmod->_getNamedTypes())
 		{
 			// should just automatically create it.
 			typeToLlvm(type.second, module);
 		}
 
-		for(auto intr : fmod->_getIntrinsicFunctions())
+		for(auto intr : firmod->_getIntrinsicFunctions())
 		{
 			auto& gc = Compiler::LLVMBackend::getLLVMContext();
 			llvm::Constant* fn = 0;
@@ -687,26 +688,36 @@ namespace Compiler
 			}
 			else
 			{
-				error("unknown intrinsic %s", intr.first.str().c_str());
+				error("unknown intrinsic '%s'", intr.first.str().c_str());
 			}
 
 			valueMap[intr.second->id] = fn;
 		}
 
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
-		for(auto f : fmod->_getFunctions())
+		for(auto f : firmod->_getFunctions())
 		{
 			fir::Function* ffn = f.second;
 
 			llvm::GlobalValue::LinkageTypes link;
-			if(ffn->linkageType == fir::LinkageType::External)
-				link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+			switch(ffn->linkageType)
+			{
+				case fir::LinkageType::External:
+					link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+					break;
 
-			else if(ffn->linkageType == fir::LinkageType::Internal)
-				link = llvm::GlobalValue::LinkageTypes::InternalLinkage;
+				case fir::LinkageType::Internal:
+					link = llvm::GlobalValue::LinkageTypes::InternalLinkage;
+					break;
 
-			else
-				error("enotsup");
+				case fir::LinkageType::ExternalWeak:
+					link = llvm::GlobalValue::LinkageTypes::ExternalWeakLinkage;
+					break;
+
+				default:
+					error("enotsup");
+			}
+
 
 			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
 			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
@@ -744,7 +755,7 @@ namespace Compiler
 		#endif
 
 
-		for(auto fp : fmod->_getFunctions())
+		for(auto fp : firmod->_getFunctions())
 		{
 			fir::Function* ffn = fp.second;
 

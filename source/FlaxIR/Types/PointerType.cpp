@@ -14,53 +14,53 @@ namespace fir
 
 	PointerType* PointerType::getInt8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getInt8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt8(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getInt16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getInt16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt16(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getInt32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getInt32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt32(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getInt64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getInt64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt64(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getInt128Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getInt128(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getInt128(tc)->getPointerTo(tc));
 	}
 
 
 	PointerType* PointerType::getUint8Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getUint8(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint8(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getUint16Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getUint16(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint16(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getUint32Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getUint32(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint32(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getUint64Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getUint64(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint64(tc)->getPointerTo(tc));
 	}
 
 	PointerType* PointerType::getUint128Ptr(FTContext* tc)
 	{
-		return dynamic_cast<PointerType*>(Type::getUint128(tc)->getPointerTo());
+		return dynamic_cast<PointerType*>(Type::getUint128(tc)->getPointerTo(tc));
 	}
 
 
@@ -97,7 +97,7 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		return dynamic_cast<PointerType*>(this->baseType->reify(reals)->getPointerTo());
+		return dynamic_cast<PointerType*>(this->baseType->reify(reals)->getPointerTo(tc));
 	}
 }
 

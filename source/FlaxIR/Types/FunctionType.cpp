@@ -110,7 +110,7 @@ namespace fir
 		if(ret.length() > 0)
 			ret = ret.substr(0, ret.length() - 2); // remove extra comma
 
-		return "[(" + ret + ") -> " + this->functionRetType->str() + "]";
+		return "(" + ret + ") -> " + this->functionRetType->str();
 	}
 
 	std::string FunctionType::encodedStr()
