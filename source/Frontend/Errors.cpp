@@ -18,6 +18,11 @@ using namespace Codegen;
 
 namespace GenError
 {
+	static std::string _convertTab()
+	{
+		return std::string(TAB_WIDTH, ' ');
+	}
+
 	static void printContext(HighlightOptions ops)
 	{
 		auto lines = Compiler::getFileLines(ops.caret.fileID);
@@ -31,8 +36,7 @@ namespace GenError
 			{
 				if(c == '\t')
 				{
-					for(size_t i = 0; i < TAB_WIDTH; i++)
-						ln << " ";
+					ln << _convertTab();
 				}
 				else if(c != '\n')
 				{
@@ -51,15 +55,12 @@ namespace GenError
 				{
 					if(ln.str()[i - 1] == '\t')
 					{
-						for(size_t j = 0; j < TAB_WIDTH; j++)
-						{
-							fprintf(stderr, " ");
-							cursorX++;
-						}
+						fputs(_convertTab().c_str(), stderr);
+						cursorX += TAB_WIDTH;
 					}
 					else
 					{
-						fprintf(stderr, " ");
+						fputs(" ", stderr);
 						cursorX++;
 					}
 				}
@@ -67,7 +68,7 @@ namespace GenError
 				// move the caret to the "middle" or average of the entire token
 				for(size_t i = 0; i < ops.caret.len / 2; i++)
 				{
-					fprintf(stderr, " ");
+					fputs(" ", stderr);
 					cursorX++;
 				}
 
@@ -92,7 +93,7 @@ namespace GenError
 				while(ul.col > cursorX)
 				{
 					cursorX++;
-					fprintf(stderr, " ");
+					fputs(" ", stderr);
 				}
 
 
@@ -165,7 +166,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 			GenError::printContext(ops);
 	}
 
-	fprintf(stderr, "\n");
+	fputs("\n", stderr);
 
 	va_end(ap);
 	// free(alloc);
@@ -461,8 +462,11 @@ namespace GenError
 		std::string candstr = std::get<1>(tup);
 		HighlightOptions ops = std::get<2>(tup);
 
-		error(expr, ops, "No such function '%s' taking parameters (%s)\nPossible candidates (%zu):\n%s",
-			name.c_str(), paramstr.c_str(), cands.size(), candstr.c_str());
+		exitless_error(expr, ops, "No such function '%s' taking parameters (%s)",
+			name.c_str(), paramstr.c_str());
+
+		info("%zu possible candidate%s:\n%s", cands.size(), cands.size() == 1 ? "" : "s", candstr.c_str());
+		doTheExit();
 	}
 
 
@@ -497,8 +501,8 @@ namespace GenError
 
 		for(auto fs : cands)
 		{
-			if(fs.funcDef)
-				candidates += cgi->printAst(fs.funcDecl) + "\n";
+			if(fs.funcDecl)
+				candidates += _convertTab() + cgi->printAst(fs.funcDecl) + "\n";
 		}
 
 		return std::make_tuple(argstr, candidates, ops);
