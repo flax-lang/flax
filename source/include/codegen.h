@@ -285,12 +285,17 @@ namespace Codegen
 
 
 		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
-		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::vector<Ast::Func*> cands, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::vector<Ast::Func*> cands, std::map<Ast::Func*,
+			std::pair<std::string, Ast::Expr*>>* errs);
+
 		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::vector<Ast::Func*> candidates,
 			fir::FunctionType* ft, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
-		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
-			Ast::Func* func, std::vector<fir::Type*> params, std::string* err, Ast::Expr** ex);
+		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, Ast::Func* func, std::vector<fir::Type*> params,
+			std::string* err, Ast::Expr** ex);
+
+		FuncDefPair instantiateGenericFunctionUsingMapping(Ast::Expr* user, std::map<std::string, fir::Type*> gtm, Ast::Func* func,
+			std::string* err, Ast::Expr** ex);
 
 		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);

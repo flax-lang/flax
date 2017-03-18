@@ -64,7 +64,7 @@
 		<key>arithmetic-operator</key>
 		<dict>
 			<key>match</key>
-			<string>(?&lt;![/=\-+!*%&lt;&gt;&amp;|\^~.])(\+|\-|\*|\/|≠|÷|≥|≤|#)(?![/=\-+!*%&lt;&gt;&amp;|\^~.])</string>
+			<string>(?&lt;![/=\-+!*%&lt;&gt;&amp;|\^~.])(\+|\-|\*|\/|≠|÷|≥|≤|#|&lt;\||\|&gt;)(?![/=\-+!*%&lt;&gt;&amp;|\^~.])</string>
 			<key>name</key>
 			<string>keyword.operator.arithmetic.flax</string>
 		</dict>

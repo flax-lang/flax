@@ -441,6 +441,8 @@ namespace Ast
 		std::string name;
 		std::vector<Expr*> params;
 
+		std::unordered_map<std::string, pts::Type*> genericMapping;
+
 		Codegen::Resolved_t cachedResolveTarget;
 	};
 
@@ -707,7 +709,23 @@ namespace Ast
 		fir::Function* defaultInitialiser;
 
 		std::vector<std::pair<StructBase*, fir::Type*>> nestedTypes;
+		std::map<std::string, TypeConstraints_t> genericTypes;
 	};
+
+	struct StructDef : StructBase
+	{
+		using Expr::codegen;
+
+		~StructDef();
+		StructDef(const Parser::Pin& pos, std::string name) : StructBase(pos, name) { }
+
+		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
+		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
+		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+
+		bool packed = false;
+	};
+
 
 	struct ClassDef : StructBase
 	{
@@ -778,21 +796,6 @@ namespace Ast
 		std::vector<SubscriptOpOverload*> subscriptOverloads;
 	};
 
-
-
-	struct StructDef : StructBase
-	{
-		using Expr::codegen;
-
-		~StructDef();
-		StructDef(const Parser::Pin& pos, std::string name) : StructBase(pos, name) { }
-
-		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
-		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
-
-		bool packed = false;
-	};
 
 	struct EnumDef : StructBase
 	{

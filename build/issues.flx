@@ -54,6 +54,12 @@ fn();
 
 
 
+// 18. things defined inside functions may or may not leak into their overloaded colleagues.
+// this is a side-effect of the namespace simply being the common name of the top function.
+// needs more testing.
+
+
+
 
 //
 // FIXED

@@ -1021,38 +1021,23 @@ namespace Codegen
 
 
 
-
-
-	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, std::map<std::string, fir::Type*> _gtm,
-		Func* func, std::vector<fir::Type*> params, std::string* err, Ast::Expr** ex)
+	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingMapping(Expr* user, std::map<std::string, fir::Type*> gtm,
+		Func* func, std::string* err, Expr** ex)
 	{
 		iceAssert(func);
 		iceAssert(func->decl);
 
 		FuncDecl* fnDecl = func->decl;
 
-		std::map<std::string, fir::Type*> gtm = _gtm;
-		if(gtm.empty())
-		{
-			bool res = checkGenericFunction(this, &gtm, func->decl, params, err, ex);
-			if(!res) return FuncDefPair::empty();
-		}
-
-
 		bool needToCodegen = true;
 		if(this->reifiedGenericFunctions.find({ func, gtm }) != this->reifiedGenericFunctions.end())
 			needToCodegen = false;
-
-
-
 
 		// we need to push a new "generic type stack", and add the types that we resolved into it.
 		// todo: might be inefficient.
 		// todo: look into creating a version of pushGenericTypeStack that accepts a std::map<string, fir::Type*>
 		// so we don't have to iterate etc etc.
 		// I don't want to access cgi->instantiatedGenericTypeStack directly.
-
-
 
 		fir::Function* ffunc = nullptr;
 		if(needToCodegen)
@@ -1087,6 +1072,22 @@ namespace Codegen
 
 		return FuncDefPair(ffunc, func->decl, func);
 	}
+
+	FuncDefPair CodegenInstance::instantiateGenericFunctionUsingParameters(Expr* user, Func* func, std::vector<fir::Type*> params,
+		std::string* err, Ast::Expr** ex)
+	{
+		iceAssert(func);
+		iceAssert(func->decl);
+
+		std::map<std::string, fir::Type*> gtm;
+		{
+			bool res = checkGenericFunction(this, &gtm, func->decl, params, err, ex);
+			if(!res) return FuncDefPair::empty();
+		}
+
+		return this->instantiateGenericFunctionUsingMapping(user, gtm, func, err, ex);
+	}
+
 
 
 	FuncDefPair CodegenInstance::tryResolveGenericFunctionCallUsingCandidates(FuncCall* fc, std::vector<Func*> candidates,
@@ -1138,7 +1139,7 @@ namespace Codegen
 		// we know gtm isn't empty, and we only set the errors if we need to verify
 		// so we can safely ignore them here.
 		std::string _; Expr* __ = 0;
-		return this->instantiateGenericFunctionUsingParameters(fc, gtm, candidates[0], fargs, &_, &__);
+		return this->instantiateGenericFunctionUsingMapping(fc, gtm, candidates[0], &_, &__);
 	}
 
 	FuncDefPair CodegenInstance::tryResolveGenericFunctionCall(FuncCall* fc, std::map<Func*, std::pair<std::string, Expr*>>* errs)
@@ -1155,8 +1156,7 @@ namespace Codegen
 		for(auto fn : candidates)
 		{
 			std::string s; Expr* e = 0;
-			auto fp = this->instantiateGenericFunctionUsingParameters(user, std::map<std::string, fir::Type*>(), fn,
-				ft->getArgumentTypes(), &s, &e);
+			auto fp = this->instantiateGenericFunctionUsingParameters(user, fn, ft->getArgumentTypes(), &s, &e);
 
 			if(fp.firFunc && fp.funcDef)
 				ret.push_back(fp);

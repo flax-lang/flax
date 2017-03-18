@@ -61,8 +61,7 @@ Result_t OpOverload::codegenOp(CodegenInstance* cgi, std::vector<fir::Type*> arg
 			if(args.size() > 0)
 			{
 				std::string err; Expr* e = 0;
-				FuncDefPair res = cgi->instantiateGenericFunctionUsingParameters(this, std::map<std::string, fir::Type*>(),
-					this->func, args, &err, &e);
+				FuncDefPair res = cgi->instantiateGenericFunctionUsingParameters(this, this->func, args, &err, &e);
 
 				this->lfunc = res.firFunc;
 				return Result_t(res.firFunc, 0);
