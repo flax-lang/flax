@@ -608,8 +608,8 @@ namespace Operators
 
 		if(lhs->getType() != rhs->getType())
 		{
-			error(user, "Invalid assignment from value of type '%s' to one of type '%s'", lhs->getType()->str().c_str(),
-				rhs->getType()->str().c_str());
+			error(user, "Invalid assignment from value of type '%s' to one of type '%s'", rhs->getType()->str().c_str(),
+				lhs->getType()->str().c_str());
 		}
 
 		if(cgi->isRefCountedType(lhs->getType()))

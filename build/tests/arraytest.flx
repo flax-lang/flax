@@ -84,7 +84,7 @@ func dynamicArrays()
 		let k = x
 		var z = k.clone()
 
-		printf("k = %p, x = %p\n", k.pointer, x.pointer)
+		printf("k = %p, x = %p\n", k.data, x.data)
 
 		z[9] = "LAST ELEMENT"
 

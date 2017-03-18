@@ -46,6 +46,7 @@ public func main() -> int
 	var z: int[:]
 	// qux([ ])
 
+
 	test(30, one)
 
 	struct Test
