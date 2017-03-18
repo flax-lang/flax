@@ -19,6 +19,7 @@ func test(a: int, b: [(int, int) -> int])
 
 func one(a: int, b: int) -> int
 {
+
 	3
 }
 
@@ -41,6 +42,7 @@ public func main() -> int
 	bar(10, [ ])
 	foo([ ], 20)
 
+	let z = ()
 	// let z = [ ]
 	// qux([ ])
 
