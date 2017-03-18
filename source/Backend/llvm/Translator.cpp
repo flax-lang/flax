@@ -688,7 +688,7 @@ namespace Compiler
 			}
 			else
 			{
-				error("unknown intrinsic %s", intr.first.str().c_str());
+				error("unknown intrinsic '%s'", intr.first.str().c_str());
 			}
 
 			valueMap[intr.second->id] = fn;
