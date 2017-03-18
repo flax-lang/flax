@@ -257,6 +257,96 @@ static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fi
 }
 
 
+static Resolved_t tryResolveGenericFunctionUsingMappingsOrFail(CodegenInstance* cgi, FuncCall* fc)
+{
+	// ok, try some shit
+	std::map<std::string, fir::Type*> mappings;
+	for(auto m : fc->genericMapping)
+		mappings[m.first] = cgi->getTypeFromParserType(fc, m.second);
+
+	std::vector<FuncDefPair> cands;
+	auto fns = cgi->findGenericFunctions(fc->name);
+
+	std::map<Func*, std::string> errors;
+
+	for(auto fn : fns)
+	{
+		bool fail = false;
+		std::string es; Expr* ee = 0;
+
+		std::map<std::string, int> needed;
+		for(auto m : fn->decl->genericTypes)
+			needed[m.first] = 1;
+
+		std::string failReason;
+		for(auto m : mappings)
+		{
+			if(needed.find(m.first) != needed.end())
+			{
+				needed[m.first] = 2;
+			}
+			else
+			{
+				fail = true;
+				failReason = strprintf("Type '%s' was not in the type parameter list in the callee", m.first.c_str());
+				break;
+			}
+		}
+
+		if(!fail)
+		{
+			for(auto n : needed)
+			{
+				if(n.second == 1)
+				{
+					fail = true;
+					failReason = strprintf("Type '%s' was not mapped in the caller", n.first.c_str());
+					break;
+				}
+			}
+		}
+
+		if(fail)
+		{
+			errors[fn] = failReason;
+			continue;
+		}
+
+		auto inst = cgi->instantiateGenericFunctionUsingMapping(fc, mappings, fn, &es, &ee);
+
+		if(inst.firFunc)
+			cands.push_back(inst);
+
+		else
+			errors[fn] = es;
+	}
+
+	auto ret = cgi->resolveFunctionFromList(fc, cands, fc->name, fc->params);
+	if(!ret.resolved)
+	{
+		auto tup = GenError::getPrettyNoSuchFunctionError(cgi, fc->params, cands);
+
+		std::string paramstr = std::get<0>(tup);
+		std::string candstr = std::get<1>(tup);
+		HighlightOptions ops = std::get<2>(tup);
+
+		exitless_error(fc, ops, "No such function '%s' taking parameters (%s)", fc->name.c_str(), paramstr.c_str());
+
+		for(auto p : errors)
+			info(p.first->decl, "Candidate not suitable: %s", p.second.c_str());
+
+		doTheExit();
+	}
+
+	return ret;
+}
+
+
+
+
+
+
+
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* extratgt)
 {
@@ -469,53 +559,7 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		{
 			if(this->genericMapping.size() > 0)
 			{
-				// ok, try some shit
-				std::map<std::string, fir::Type*> mappings;
-				for(auto m : this->genericMapping)
-					mappings[m.first] = cgi->getTypeFromParserType(this, m.second);
-
-				std::vector<FuncDefPair> cands;
-				auto fns = cgi->findGenericFunctions(this->name);
-				for(auto fn : fns)
-				{
-					bool fail = false;
-					std::string es; Expr* ee = 0;
-
-					std::map<std::string, int> needed;
-					for(auto m : fn->decl->genericTypes)
-						needed[m.first] = 1;
-
-					for(auto m : mappings)
-					{
-						if(needed.find(m.first) != needed.end())
-						{
-							needed[m.first] = 2;
-						}
-						else
-						{
-							fail = true;
-							break;
-						}
-					}
-
-					for(auto n : needed)
-					{
-						if(n.second == 1)
-						{
-							fail = true;
-							break;
-						}
-					}
-
-					if(fail) continue;
-
-					auto inst = cgi->instantiateGenericFunctionUsingMapping(this, mappings, fn, &es, &ee);
-
-					if(inst.firFunc)
-						cands.push_back(inst);
-				}
-
-				rt = cgi->resolveFunctionFromList(this, cands, this->name, this->params);
+				rt = tryResolveGenericFunctionUsingMappingsOrFail(cgi, this);
 			}
 			else
 			{
@@ -625,53 +669,7 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 			std::map<Func*, std::pair<std::string, Expr*>> errs;
 			if(this->genericMapping.size() > 0)
 			{
-				// ok, try some shit
-				std::map<std::string, fir::Type*> mappings;
-				for(auto m : this->genericMapping)
-					mappings[m.first] = cgi->getTypeFromParserType(this, m.second);
-
-				std::vector<FuncDefPair> cands;
-				auto fns = cgi->findGenericFunctions(this->name);
-				for(auto fn : fns)
-				{
-					bool fail = false;
-					std::string es; Expr* ee = 0;
-
-					std::map<std::string, int> needed;
-					for(auto m : fn->decl->genericTypes)
-						needed[m.first] = 1;
-
-					for(auto m : mappings)
-					{
-						if(needed.find(m.first) != needed.end())
-						{
-							needed[m.first] = 2;
-						}
-						else
-						{
-							fail = true;
-							break;
-						}
-					}
-
-					for(auto n : needed)
-					{
-						if(n.second == 1)
-						{
-							fail = true;
-							break;
-						}
-					}
-
-					if(fail) continue;
-
-					auto inst = cgi->instantiateGenericFunctionUsingMapping(this, mappings, fn, &es, &ee);
-
-					if(inst.firFunc)
-						cands.push_back(inst);
-				}
-
-				rt = cgi->resolveFunctionFromList(this, cands, this->name, this->params);
+				rt = tryResolveGenericFunctionUsingMappingsOrFail(cgi, this);
 				if(rt.resolved && rt.t.firFunc)
 				{
 					this->cachedResolveTarget = rt;
