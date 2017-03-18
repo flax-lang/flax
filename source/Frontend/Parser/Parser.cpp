@@ -1278,10 +1278,14 @@ namespace Parser
 			{
 				dims = "[]";
 			}
+			else if(n.type == TType::Colon)
+			{
+				dims += "[:]";
+			}
 			else
 			{
-				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, or ellipsis for "
-					"a variadic function argument.");
+				parserError("Expected integer size for fixed-length array, closing ']' for variable-sized array, ':' for an array slice, "
+					"or an ellipsis for a variadic function argument.");
 			}
 
 			bool isVarArray = false;

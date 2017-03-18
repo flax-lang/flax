@@ -148,6 +148,11 @@ namespace Codegen
 			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toDynamicArrayType()->base);
 			return fir::DynamicArrayType::get(base);
 		}
+		else if(pt->isArraySliceType())
+		{
+			fir::Type* base = _recursivelyConvertType(cgi, allowFail, user, pt->toArraySliceType()->base);
+			return fir::ArraySliceType::get(base);
+		}
 		else if(pt->isTupleType())
 		{
 			std::vector<fir::Type*> types;
