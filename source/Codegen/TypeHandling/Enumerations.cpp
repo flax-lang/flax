@@ -39,17 +39,17 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	if(this->ptype != 0)
 		prev = cgi->getTypeFromParserType(this, this->ptype);
 
-	for(auto pair : this->cases)
-	{
-		if(!prev) prev = pair.second->getType(cgi);
+	// for(auto pair : this->cases)
+	// {
+	// 	if(!prev) prev = pair.second->getType(cgi);
 
-		fir::Type* t = pair.second->getType(cgi);
-		if(t != prev && cgi->getAutoCastDistance(t, prev) == -1)
-		{
-			error(pair.second, "Enumeration values must have the same type, have conflicting types '%s' and '%s'",
-				t->str().c_str(), prev->str().c_str());
-		}
-	}
+	// 	fir::Type* t = pair.second->getType(cgi);
+	// 	if(t != prev && cgi->getAutoCastDistance(t, prev) == -1)
+	// 	{
+	// 		error(pair.second, "Enumeration values must have the same type, have conflicting types '%s' and '%s'",
+	// 			t->str().c_str(), prev->str().c_str());
+	// 	}
+	// }
 
 	std::vector<std::string> fullScope = cgi->getFullScope();
 
@@ -58,11 +58,19 @@ fir::Type* EnumDef::createType(CodegenInstance* cgi)
 	for(auto p : this->cases)
 	{
 		fir::Value* v = p.second->codegen(cgi).value;
+		if(!prev) prev = v->getType();
+
 		fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(v);
 		if(!cv) error(p.second, "Enumeration cases have to be constant");
 
 		if(cv->getType() != prev && (prev->isIntegerType() || prev->isFloatingPointType()))
 			cv = fir::createConstantValueCast(cv, prev);
+
+		else if(cv->getType() != prev)
+		{
+			error(p.second, "Enumeration values must have the same type, have conflicting types '%s' and '%s'",
+				cv->getType()->str().c_str(), prev->str().c_str());
+		}
 
 		casevals[p.first] = cv;
 	}
