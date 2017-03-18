@@ -414,13 +414,34 @@ Result_t ArrayLiteral::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 	{
 		tp = this->values.front()->getType(cgi);
 
+		fir::Type* targetType = 0;
+		if(extratype)
+		{
+			if(extratype->isArrayType())
+				targetType = extratype->toArrayType()->getElementType();
+
+			else if(extratype->isDynamicArrayType())
+				targetType = extratype->toDynamicArrayType()->getElementType();
+		}
+		else if(target)
+		{
+			if(target->getType()->isPointerType() && target->getType()->getPointerElementType()->isArrayType())
+				targetType = target->getType()->getPointerElementType()->toArrayType()->getElementType();
+
+			else if(target->getType()->isPointerType() && target->getType()->getPointerElementType()->isDynamicArrayType())
+				targetType = target->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
+		}
+
+		if(targetType)
+			tp = targetType;
+
+
 		for(Expr* e : this->values)
 		{
 			fir::Value* v = e->codegen(cgi).value;
 			if(dynamic_cast<fir::ConstantValue*>(v))
 			{
 				fir::ConstantValue* c = dynamic_cast<fir::ConstantValue*>(v);
-				// c = _makeReal(c);
 
 				// attempt to make a proper thing if we're int literals
 				if(c->getType()->isIntegerType() && tp->isIntegerType())

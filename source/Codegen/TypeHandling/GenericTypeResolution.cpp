@@ -131,17 +131,10 @@ namespace Codegen
 
 
 
-	/*
-		notes:
-
-		for tuple variadics, first unify each tuple type, disregarding the parametric type.
-		then do the existing solution check, and/or attempt unification.
-	*/
 
 
 
-
-
+	// twelve arguments wtf
 	static bool checkFunctionOrTupleArgumentToGenericFunction(CodegenInstance* cgi, FuncDecl* candidate, std::set<std::string> toSolve,
 		size_t ix, pts::Type* prm, fir::Type* arg, std::map<std::string, fir::Type*>* resolved, std::map<std::string, fir::Type*>* fnSoln,
 		std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete);
