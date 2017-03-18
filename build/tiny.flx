@@ -5,6 +5,7 @@
 ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
 
+
 func foo<T>(a: T[], b: T)
 {
 }
@@ -20,12 +21,12 @@ func test(a: int, b: [(int, int) -> int])
 func one(a: int, b: int) -> int
 {
 	printf("called one\n")
-	return 3
+	return 1
 }
 
 func one(a: f64, b: f64) -> f64
 {
-	3.1415
+	1.0
 }
 
 func voidTest(a: void*)

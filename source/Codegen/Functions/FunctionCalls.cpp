@@ -114,8 +114,11 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 			if(ft->getArgumentN(i) != args[i]->getType())
 			{
-				error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+				exitless_error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 					ft->getArgumentN(i)->str().c_str(), args[i]->getType()->str().c_str());
+
+				info("Expected signature: %s", ft->str().c_str());
+				doTheExit();
 			}
 		}
 
@@ -153,8 +156,11 @@ std::vector<fir::Value*> CodegenInstance::checkAndCodegenFunctionCallParameters(
 
 			if(ft->getArgumentN(i) != arg->getType())
 			{
-				error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
+				exitless_error(arguments[i], "Argument %zu of function call is mismatched; expected '%s', got '%s'", i + 1,
 					ft->getArgumentN(i)->str().c_str(), arg->getType()->str().c_str());
+
+				info("Expected signature: %s", ft->str().c_str());
+				doTheExit();
 			}
 
 			args.push_back(arg);

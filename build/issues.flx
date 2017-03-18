@@ -38,6 +38,8 @@ func foo() -> int { abort() }
 // 14. class instance method access should capture the instance
 // the call to fn() should not require explicit passing of the instance, but rather it should refer to the 'f' instance.
 // Foo.method would continue to work, but would require an instance.
+
+// note: we should probably wait until we have closure capabilities in the compiler, which we can leverage to implement this.
 class Foo { func method() { /* ... */ } }
 Foo f;
 let fn = f.method;
