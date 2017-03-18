@@ -235,6 +235,15 @@ namespace Operators
 				return operatorAssignToOverloadedSubscript(cgi, op, user, args[0], rhs ? rhs : args[1]->codegen(cgi).value, args[1]);
 			}
 		}
+		else if(VarRef* vr = dynamic_cast<VarRef*>(args[0]))
+		{
+			if(vr->name == "_")
+			{
+				// don't do the assign, just gen the rhs
+				args[1]->codegen(cgi);
+				return Result_t(0, 0);
+			}
+		}
 
 
 
