@@ -42,8 +42,8 @@ public func main() -> int
 	bar(10, [ ])
 	foo([ ], 20)
 
-	let z = ()
-	// let z = [ ]
+
+	var z: int[:]
 	// qux([ ])
 
 	test(30, one)
@@ -56,6 +56,8 @@ public func main() -> int
 
 	let ta = Test(10, 10)
 	let tb = Test(10, 10)
+
+	printf("> %d / %d / %d <\n", sizeof(Test), sizeof(ta), sizeof(&ta))
 
 	printf("ta == tb: %d\n", ta == tb)
 
