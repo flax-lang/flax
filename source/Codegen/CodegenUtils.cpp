@@ -2355,16 +2355,13 @@ namespace Codegen
 
 
 
-	// static void _errorNoReturn(Expr* e)
-	// {
-	// 	error(e, "Not all code paths return a value");
-	// }
 
-	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, fir::Type* retType)
+	static bool verifyReturnType(CodegenInstance* cgi, Func* f, BracedBlock* bb, Return* r, fir::Type* retType, bool errorOnFail)
 	{
+		fir::Type* expected = (retType ? retType : f->decl->getType(cgi));
+
 		if(r)
 		{
-			fir::Type* expected = 0;
 			fir::Type* have = 0;
 
 			if(r->actualReturnValue)
@@ -2404,10 +2401,13 @@ namespace Codegen
 
 			return true;
 		}
-		else
+		else if(errorOnFail)
 		{
-			return false;
+			error(f->decl, "Function has return type '%s', but not all code paths returned a value",
+				expected->str().c_str());
 		}
+
+		return false;
 	}
 
 	static Return* recursiveVerifyBranch(CodegenInstance* cgi, Func* f, IfStmt* ifbranch, bool checkType, fir::Type* retType);
@@ -2419,13 +2419,24 @@ namespace Codegen
 			return 0;
 		}
 
-		Return* r = nullptr;
+		Return* r = 0;
 		for(Expr* e : bb->statements)
 		{
-			IfStmt* i = nullptr;
+			IfStmt* i = 0;
+			BreakableBracedBlock* bbb = 0;
+
 			if((i = dynamic_cast<IfStmt*>(e)))
 			{
 				Return* tmp = recursiveVerifyBranch(cgi, f, i, checkType, retType);
+				if(tmp)
+				{
+					r = tmp;
+					break;
+				}
+			}
+			else if((bbb = dynamic_cast<BreakableBracedBlock*>(e)))
+			{
+				Return* tmp = recursiveVerifyBlock(cgi, f, bbb->body, checkType, retType);
 				if(tmp)
 				{
 					r = tmp;
@@ -2440,7 +2451,7 @@ namespace Codegen
 
 		if(checkType)
 		{
-			verifyReturnType(cgi, f, bb, r, retType);
+			verifyReturnType(cgi, f, bb, r, retType, false);
 		}
 
 		return r;
@@ -2451,7 +2462,7 @@ namespace Codegen
 		Return* r = 0;
 		bool first = true;
 
-		for(auto pair : ib->cases)	// use the preserved one
+		for(auto pair : ib->cases)
 		{
 			Return* tmp = recursiveVerifyBlock(cgi, f, std::get<1>(pair), checkType, retType);
 			if(first)
@@ -2502,15 +2513,8 @@ namespace Codegen
 			Expr* ex = func->block->statements.front();
 			if(!dynamic_cast<BreakableBracedBlock*>(ex) && !dynamic_cast<IfStmt*>(ex))
 			{
-				Return* ret = 0;
-				if(IfStmt* i = dynamic_cast<IfStmt*>(ex))
-					ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
-
-				else if(BreakableBracedBlock* bbb = dynamic_cast<BreakableBracedBlock*>(ex))
-					ret = recursiveVerifyBlock(this, func, bbb->body, !isVoid && checkType, retType);
-
 				// get the type
-				fir::Type* t = (ret ? ret->getType(this) : ex->getType(this));
+				fir::Type* t = ex->getType(this);
 
 				if(checkType)
 				{
@@ -2533,14 +2537,11 @@ namespace Codegen
 
 		// now loop through all exprs in the block
 		Return* ret = 0;
-		Expr* final = 0;
 		bool stopCounting = false;
 		for(Expr* e : func->block->statements)
 		{
 			if(stmtCounter && !stopCounting)
 				(*stmtCounter)++;
-
-			final = e;
 
 			if(IfStmt* i = dynamic_cast<IfStmt*>(e))
 				ret = recursiveVerifyBranch(this, func, i, !isVoid && checkType, retType);
@@ -2564,7 +2565,7 @@ namespace Codegen
 		}
 
 		if(checkType && !isVoid)
-			verifyReturnType(this, func, func->block, ret, retType);
+			verifyReturnType(this, func, func->block, ret, retType, true);
 
 		return false;
 	}
