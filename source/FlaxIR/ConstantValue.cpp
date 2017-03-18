@@ -15,7 +15,7 @@ namespace fir
 		// nothing.
 	}
 
-	ConstantValue* ConstantValue::getNullValue(Type* type)
+	ConstantValue* ConstantValue::getZeroValue(Type* type)
 	{
 		iceAssert(!type->isVoidType() && "cannot make void constant");
 
@@ -419,16 +419,50 @@ namespace fir
 				}
 			}
 		}
-		// else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(cv))
-		// {
-		// }
-		// else if(ConstantArray* ca = dynamic_cast<ConstantArray*>(cv))
-		// {
-		// }
-		else
+		// see if we can do anything about it
+		else if(ConstantDynamicArray* cda = dynamic_cast<ConstantDynamicArray*>(cv))
 		{
-			error("not supported");
+			if(type->isArrayType())
+			{
+				std::function<ConstantArray*(ConstantDynamicArray* dyn)> recursivelyConvertArray
+					= [&recursivelyConvertArray](ConstantDynamicArray* dyn) -> ConstantArray* {
+
+					std::vector<ConstantValue*> values;
+					if(!dyn->getArray())
+						error("Failed to convert array literal to fixed array");
+
+					for(auto v : dyn->getArray()->getValues())
+					{
+						if(auto nested = dynamic_cast<ConstantDynamicArray*>(v))
+							values.push_back(recursivelyConvertArray(nested));
+
+						else
+							values.push_back(v);
+					}
+
+					iceAssert(values.size() > 0);
+					auto type = ArrayType::get(values[0]->getType(), values.size());
+
+					return ConstantArray::get(type, values);
+				};
+
+				ConstantArray* arr = recursivelyConvertArray(cda);
+				iceAssert(arr);
+
+				// ok, check the type
+
+				if(arr->getType() != type)
+				{
+					error("Cannot assign array literal with type '%s' to type '%s'", arr->getType()->str().c_str(),
+						type->str().c_str());
+				}
+
+				return arr;
+			}
 		}
+
+
+		error("not supported");
 	}
 
 

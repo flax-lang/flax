@@ -430,7 +430,7 @@ namespace Operators
 			iceAssert(restype);
 
 			fir::Value* retval = cgi->irb.CreateStackAlloc(restype);
-			cgi->irb.CreateStore(fir::ConstantValue::getNullValue(restype), retval);
+			cgi->irb.CreateStore(fir::ConstantValue::getZeroValue(restype), retval);
 
 			if(!lhsptr)	lhsptr = cgi->irb.CreateImmutStackAlloc(lhs->getType(), lhs);
 			if(!rhsptr)	rhsptr = cgi->irb.CreateImmutStackAlloc(rhs->getType(), rhs);

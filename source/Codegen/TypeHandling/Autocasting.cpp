@@ -244,9 +244,14 @@ namespace Codegen
 			// int-to-float is 10.
 			return 10;
 		}
-		else if(to->isVoidPointer() && to->isPointerType())
+		else if(to->isVoidPointer() && from->isPointerType())
 		{
 			return 15;
+		}
+		else if(to->isPointerType() && from->isNullType())
+		{
+			// special case, i guess
+			return 10;
 		}
 		else if(to->isAnyType())
 		{
@@ -401,10 +406,13 @@ namespace Codegen
 		}
 		else if(target->isVoidPointer() && from->getType()->isPointerType())
 		{
-			// retval = fir::ConstantValue::getNullValue(target);
+			// retval = fir::ConstantValue::getZeroValue(target);
 			retval = this->irb.CreatePointerTypeCast(from, target);
 		}
-
+		else if(target->isPointerType() && from->getType()->isNullType())
+		{
+			retval = fir::ConstantValue::getZeroValue(target);
+		}
 		else if(from->getType()->isTupleType() && target->isTupleType()
 			&& from->getType()->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
@@ -428,7 +436,7 @@ namespace Codegen
 				this->irb.CreateStore(casted, gep);
 			}
 
-			retval = this->irb.CreateLoad(fromPtr);
+			retval = this->irb.CreateLoad(tuplePtr);
 		}
 
 

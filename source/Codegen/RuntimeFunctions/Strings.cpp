@@ -485,7 +485,7 @@ namespace String
 			// if ptr is 0, we exit early.
 			{
 				fir::Value* ptr = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = cgi->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+				fir::Value* cond = cgi->irb.CreateICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 
 				cgi->irb.CreateCondBranch(cond, merge, getref);
 			}
@@ -562,7 +562,7 @@ namespace String
 			cgi->irb.setCurrentBlock(entry);
 			{
 				fir::Value* ptr = cgi->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = cgi->irb.CreateICmpEQ(ptr, fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+				fir::Value* cond = cgi->irb.CreateICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 
 				cgi->irb.CreateCondBranch(cond, merge, checkneg);
 			}
@@ -617,7 +617,7 @@ namespace String
 
 				cgi->irb.CreateCall1(freefn, cgi->irb.CreatePointerSub(bufp, fir::ConstantInt::getInt64(8)));
 
-				// cgi->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getNullValue(fir::Type::getInt8Ptr()));
+				// cgi->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 				cgi->irb.CreateUnCondBranch(merge);
 			}
 

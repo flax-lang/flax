@@ -21,6 +21,7 @@ namespace fir
 	struct Type;
 	struct Module;
 	struct AnyType;
+	struct NullType;
 	struct VoidType;
 	struct CharType;
 	struct EnumType;
@@ -52,6 +53,9 @@ namespace fir
 
 		// special little thing.
 		VoidType* voidType = 0;
+
+		// special thing #2
+		NullType* nullType = 0;
 
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
@@ -107,6 +111,7 @@ namespace fir
 		ArrayType* toArrayType();
 		CharType* toCharType();
 		EnumType* toEnumType();
+		NullType* toNullType();
 		AnyType* toAnyType();
 
 		bool isPointerTo(Type* other);
@@ -138,6 +143,7 @@ namespace fir
 		bool isPrimitiveType();
 		bool isPointerType();
 		bool isVoidType();
+		bool isNullType();
 
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
@@ -146,6 +152,8 @@ namespace fir
 
 		// convenience
 		static VoidType* getVoid(FTContext* tc = 0);
+		static NullType* getNull(FTContext* tc = 0);
+
 		static Type* getVoidPtr(FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
@@ -248,6 +256,26 @@ namespace fir
 
 		public:
 		static VoidType* get(FTContext* tc = 0);
+	};
+
+
+	struct NullType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		virtual Type* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
+		// protected constructor
+		NullType();
+		protected:
+		virtual ~NullType() override { }
+
+		public:
+		static NullType* get(FTContext* tc = 0);
 	};
 
 	struct PrimitiveType : Type

@@ -25,7 +25,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 
 	// uint64_t typesize = cgi->execTarget->getTypeSizeInBits(type) / 8;
 
-	// fir::Value* allocsize = cgi->irb.CreateGEP2(fir::ConstantValue::getNullValue(type->getPointerTo()), zeroValue, oneValue);
+	// fir::Value* allocsize = cgi->irb.CreateGEP2(fir::ConstantValue::getZeroValue(type->getPointerTo()), zeroValue, oneValue);
 	// allocsize = cgi->irb.CreatePointerToIntCast(allocsize, fir::Type::getInt64());
 
 	fir::Value* allocsize = cgi->irb.CreateSizeof(type);
@@ -118,7 +118,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 		}
 		else
 		{
-			cgi->irb.CreateStore(fir::ConstantValue::getNullValue(type), pointer);
+			cgi->irb.CreateStore(fir::ConstantValue::getZeroValue(type), pointer);
 		}
 
 
@@ -137,7 +137,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 	// in zeroBlock, set the pointer to 0 and branch to merge
 	cgi->irb.setCurrentBlock(allocZeroCase);
 	{
-		cgi->irb.CreateStore(fir::ConstantValue::getNullValue(type->getPointerTo()), allocmemptr);
+		cgi->irb.CreateStore(fir::ConstantValue::getZeroValue(type->getPointerTo()), allocmemptr);
 		cgi->irb.CreateUnCondBranch(loopMerge);
 	}
 
@@ -351,7 +351,7 @@ static fir::Function* makeRecursiveDeallocFunction(CodegenInstance* cgi, fir::Ty
 			// set the length and data to 0
 			auto zc = fir::ConstantInt::getInt64(0);
 
-			cgi->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getNullValue(dptr->getType()));
+			cgi->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(dptr->getType()));
 			cgi->irb.CreateSetDynamicArrayLength(arr, zc);
 			cgi->irb.CreateSetDynamicArrayCapacity(arr, zc);
 
@@ -440,7 +440,7 @@ static void recursivelyDeallocate(CodegenInstance* cgi, fir::Value* val, fir::Va
 		// set to 0
 		auto zc = fir::ConstantInt::getInt64(0);
 
-		cgi->irb.CreateSetDynamicArrayData(ptr, fir::ConstantValue::getNullValue(data->getType()));
+		cgi->irb.CreateSetDynamicArrayData(ptr, fir::ConstantValue::getZeroValue(data->getType()));
 		cgi->irb.CreateSetDynamicArrayLength(ptr, zc);
 		cgi->irb.CreateSetDynamicArrayCapacity(ptr, zc);
 	}

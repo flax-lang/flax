@@ -775,7 +775,7 @@ namespace Codegen
 
 		if(needsNot)
 		{
-			ret = this->irb.CreateICmpEQ(ret, fir::ConstantInt::getNullValue(ret->getType()));
+			ret = this->irb.CreateICmpEQ(ret, fir::ConstantInt::getZeroValue(ret->getType()));
 		}
 
 		return Result_t(ret, 0);

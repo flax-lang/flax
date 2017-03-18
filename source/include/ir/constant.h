@@ -30,7 +30,7 @@ namespace fir
 		friend struct IRBuilder;
 
 		// static stuff
-		static ConstantValue* getNullValue(Type* type);
+		static ConstantValue* getZeroValue(Type* type);
 		static ConstantValue* getNull();
 
 

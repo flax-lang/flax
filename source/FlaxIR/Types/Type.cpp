@@ -17,6 +17,9 @@ namespace fir
 		if(Type::areTypesEqual(type, this->voidType))
 			return this->voidType;
 
+		if(Type::areTypesEqual(type, this->nullType))
+			return this->nullType;
+
 		// pointer types are guaranteed to be unique due to internal caching
 		// see getPointerTo
 		if(type->isPointerType())
@@ -61,39 +64,6 @@ namespace fir
 		return defaultFTContext;
 	}
 
-	std::string VoidType::str()
-	{
-		return "void";
-	}
-
-	std::string VoidType::encodedStr()
-	{
-		return "void";
-	}
-
-	bool VoidType::isTypeEqual(Type* other)
-	{
-		return other && other->isVoidType();
-	}
-
-	Type* VoidType::reify(std::map<std::string, Type*> names, FTContext* tc)
-	{
-		// do nothing
-		return this;
-	}
-
-	VoidType::VoidType()
-	{
-		// nothing
-	}
-
-	VoidType* VoidType::get(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->voidType;
-	}
 
 	FTContext* createFTContext()
 	{
@@ -101,8 +71,9 @@ namespace fir
 
 		// fill in primitives
 
-		// void.
+		// special things
 		tc->voidType = new VoidType();
+		tc->nullType = new NullType();
 
 		// bool
 		{
@@ -532,6 +503,13 @@ namespace fir
 		return t;
 	}
 
+	NullType* Type::toNullType()
+	{
+		auto t = dynamic_cast<NullType*>(this);
+		if(t == 0) error("not null type");
+		return t;
+	}
+
 
 
 
@@ -656,6 +634,11 @@ namespace fir
 		return dynamic_cast<AnyType*>(this) != 0;
 	}
 
+	bool Type::isNullType()
+	{
+		return dynamic_cast<NullType*>(this) != 0;
+	}
+
 
 
 
@@ -671,6 +654,11 @@ namespace fir
 	VoidType* Type::getVoid(FTContext* tc)
 	{
 		return VoidType::get(tc);
+	}
+
+	NullType* Type::getNull(FTContext* tc)
+	{
+		return NullType::get(tc);
 	}
 
 	Type* Type::getVoidPtr(FTContext* tc)
@@ -822,6 +810,96 @@ namespace fir
 	AnyType* Type::getAnyType(FTContext* tc)
 	{
 		return AnyType::get(tc);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::string VoidType::str()
+	{
+		return "void";
+	}
+
+	std::string VoidType::encodedStr()
+	{
+		return "void";
+	}
+
+	bool VoidType::isTypeEqual(Type* other)
+	{
+		return other && other->isVoidType();
+	}
+
+	Type* VoidType::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		// do nothing
+		return this;
+	}
+
+	VoidType::VoidType()
+	{
+		// nothing
+	}
+
+	VoidType* VoidType::get(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->voidType;
+	}
+
+
+
+
+
+
+	std::string NullType::str()
+	{
+		return "nulltype";
+	}
+
+	std::string NullType::encodedStr()
+	{
+		return "nulltype";
+	}
+
+	bool NullType::isTypeEqual(Type* other)
+	{
+		return other && other->isNullType();
+	}
+
+	Type* NullType::reify(std::map<std::string, Type*> names, FTContext* tc)
+	{
+		// do nothing
+		return this;
+	}
+
+	NullType::NullType()
+	{
+		// nothing
+	}
+
+	NullType* NullType::get(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->nullType;
 	}
 }
 

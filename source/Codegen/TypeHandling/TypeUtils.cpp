@@ -74,7 +74,7 @@ namespace Codegen
 		else if(t->isDynamicArrayType())
 			return this->createEmptyDynamicArray(t->toDynamicArrayType()->getElementType()).value;
 
-		return fir::ConstantValue::getNullValue(t);
+		return fir::ConstantValue::getZeroValue(t);
 	}
 
 	fir::Function* CodegenInstance::getDefaultConstructor(Expr* user, fir::Type* ptrType, StructBase* sb)

@@ -36,7 +36,7 @@ static void codeGenRecursiveIf(CodegenInstance* cgi, fir::Function* func, CondTu
 			cond->getType()->str().c_str());
 	}
 
-	cond = cgi->irb.CreateICmpNEQ(cond, fir::ConstantValue::getNullValue(cond->getType()));
+	cond = cgi->irb.CreateICmpNEQ(cond, fir::ConstantValue::getZeroValue(cond->getType()));
 
 
 	cgi->irb.CreateCondBranch(cond, t, f);
@@ -100,7 +100,7 @@ Result_t IfStmt::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value*
 			firstCond->getType()->str().c_str());
 	}
 
-	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getNullValue(firstCond->getType()));
+	firstCond = cgi->irb.CreateICmpNEQ(firstCond, fir::ConstantValue::getZeroValue(firstCond->getType()));
 
 
 	// create the first conditional
