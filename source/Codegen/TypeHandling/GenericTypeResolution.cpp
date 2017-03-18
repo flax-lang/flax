@@ -150,6 +150,10 @@ namespace Codegen
 	{
 		using TrfList = std::vector<pts::TypeTransformer>;
 
+		if(toSolve.empty())
+			return true;
+
+
 		// check the given with the expected
 		fir::Type* givent = 0; TrfList giventrfs;
 		std::tie(givent, giventrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(_given);
@@ -475,6 +479,9 @@ namespace Codegen
 		std::map<std::string, fir::Type*>* fnSoln, std::string* errorString, Expr** failedExpr, bool isVariadic, bool returnIncomplete)
 	{
 		typedef std::vector<pts::TypeTransformer> TrfList;
+
+		if(toSolve.empty())
+			return true;
 
 		// decompose each type fully
 		pts::Type* dpt = 0; TrfList ptrfs;
@@ -882,6 +889,11 @@ namespace Codegen
 	static bool checkGenericFunction(CodegenInstance* cgi, std::map<std::string, fir::Type*>* gtm,
 		FuncDecl* candidate, std::vector<fir::Type*> args, std::string* errorString, Expr** failedExpr)
 	{
+		auto prof = prof::Profile("generics");
+
+		iceAssert(gtm);
+		iceAssert(candidate);
+
 		if(candidate->params.size() != args.size())
 		{
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
