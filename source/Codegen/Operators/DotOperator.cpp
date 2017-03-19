@@ -1067,17 +1067,26 @@ static variant resolveLeftNamespaceMA(CodegenInstance* cgi, MemberAccess* ma, Fu
 				fir::Type* ltype = pair->first;
 				iceAssert(ltype);
 
+				std::map<std::string, fir::Type*> tm;
+
+				if(fc->genericMapping.size() > 0)
+				{
+					for(auto m : fc->genericMapping)
+						tm[m.first] = cgi->getTypeFromParserType(fc, m.second);
+				}
+
 				if(actual)
 				{
 					std::vector<fir::Value*> args;
 					for(Expr* e : fc->params)
 						args.push_back(e->codegen(cgi).value);
 
-					return cgi->callTypeInitialiser(pair, ma, args);
+
+					return cgi->callTypeInitialiser(pair, ma, args, tm);
 				}
 				else
 				{
-					return ltype;
+					return ltype->reify(tm);
 				}
 			}
 			else
@@ -1257,17 +1266,26 @@ static variant resolveLeftTypenameMA(CodegenInstance* cgi, MemberAccess* ma, Typ
 							fir::Type* ltype = nest.second;
 							iceAssert(ltype);
 
+							std::map<std::string, fir::Type*> tm;
+
+							if(fc->genericMapping.size() > 0)
+							{
+								for(auto m : fc->genericMapping)
+									tm[m.first] = cgi->getTypeFromParserType(fc, m.second);
+							}
+
+
 							if(actual)
 							{
 								std::vector<fir::Value*> args;
 								for(Expr* e : fc->params)
 									args.push_back(e->codegen(cgi).value);
 
-								return cgi->callTypeInitialiser(&pair, ma, args);
+								return cgi->callTypeInitialiser(&pair, ma, args, tm);
 							}
 							else
 							{
-								return ltype;
+								return ltype->reify(tm);
 							}
 						}
 					}
@@ -1492,13 +1510,25 @@ variant CodegenInstance::resolveTypeOfMA(MemberAccess* ma, fir::Type* extratype,
 				fir::Type* type = pair->first;
 				iceAssert(type);
 
+				std::map<std::string, fir::Type*> tm;
+
+				if(fc->genericMapping.size() > 0)
+				{
+					for(auto m : fc->genericMapping)
+						tm[m.first] = this->getTypeFromParserType(fc, m.second);
+				}
+
 				if(actual)
 				{
 					std::vector<fir::Value*> args;
 					for(Expr* e : fc->params)
 						args.push_back(e->codegen(this).value);
 
-					result =  this->callTypeInitialiser(pair, ma, args);
+					result =  this->callTypeInitialiser(pair, ma, args, tm);
+				}
+				else
+				{
+					type = type->reify(tm);
 				}
 			}
 		}

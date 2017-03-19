@@ -17,14 +17,19 @@ namespace Codegen
 {
 	struct CodegenInstance;
 
-	void doCodegenForMemberFunctions(CodegenInstance* cgi, Ast::ClassDef* cls);
-	void doCodegenForComputedProperties(CodegenInstance* cgi, Ast::ClassDef* cls);
+	std::map<Ast::Func*, fir::Function*> doCodegenForMemberFunctions(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType,
+		std::map<std::string, fir::Type*> tm);
 
-	void generateDeclForOperators(CodegenInstance* cgi, Ast::ClassDef* cls);
+	void doCodegenForComputedProperties(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType,
+		std::map<std::string, fir::Type*> tm);
 
-	void doCodegenForGeneralOperators(CodegenInstance* cgi, Ast::ClassDef* cls);
-	void doCodegenForSubscriptOperators(CodegenInstance* cgi, Ast::ClassDef* cls);
-	void doCodegenForAssignmentOperators(CodegenInstance* cgi, Ast::ClassDef* cls);
+	void generateDeclForOperators(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType,
+		std::map<std::string, fir::Type*> tm);
 
-	void generateMemberFunctionBody(CodegenInstance* cgi, Ast::ClassDef* cls, Ast::Func* fn, fir::Function* defaultInitFunc);
+	void doCodegenForGeneralOperators(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm);
+	void doCodegenForSubscriptOperators(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm);
+	void doCodegenForAssignmentOperators(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm);
+
+	void generateMemberFunctionBody(CodegenInstance* cgi, Ast::ClassDef* cls, fir::Type* clsType, Ast::Func* fn,
+		fir::Function* defaultInitFunc, fir::Function* firdecl, std::map<std::string, fir::Type*> tm);
 }
