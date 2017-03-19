@@ -52,7 +52,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(names.find(this->name) == names.end())
-			_error_and_exit("Failed to reify, no type found for '%s'\n", this->name.c_str());
+			_error_and_exit("Failed to reify type '%s', no mapping found\n", this->str().c_str());
 
 		return tc->normaliseType(names[this->name]);
 	}

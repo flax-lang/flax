@@ -33,14 +33,6 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 	}
 
 
-	for(Func* func : this->funcs)
-	{
-		// only override if we don't have one.
-		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
-			func->decl->attribs |= Attr_VisPublic;
-
-		func->decl->parentClass = this;
-	}
 
 
 	FunctionTree* ft = cgi->getCurrentFuncTree();
@@ -53,7 +45,6 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 	if(cgi->getExprTypeOfBuiltin(this->ident.str()))
 	{
 		this->createdType = cgi->getExprTypeOfBuiltin(this->ident.str());
-		return this->createdType;
 	}
 	else
 	{
@@ -66,8 +57,19 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 		iceAssert(tp->first);
 
 		this->createdType = tp->first;
-		return tp->first;
 	}
+
+
+	for(Func* func : this->funcs)
+	{
+		// only override if we don't have one.
+		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
+			func->decl->attribs |= Attr_VisPublic;
+
+		func->decl->parentClass = { this, this->createdType };
+	}
+
+	return this->createdType;
 }
 
 
@@ -236,8 +238,8 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 
 
 
-	doCodegenForMemberFunctions(cgi, this);
-	doCodegenForComputedProperties(cgi, this);
+	auto fmap = doCodegenForMemberFunctions(cgi, this, fstr, { });
+	doCodegenForComputedProperties(cgi, this, fstr, { });
 
 
 	// only allow these funny shennanigans if we're extending a class
@@ -369,11 +371,11 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
 			astr->defaultInitialiser->linkageType);
 
-		generateDeclForOperators(cgi, this);
+		generateDeclForOperators(cgi, this, fstr, { });
 
-		doCodegenForGeneralOperators(cgi, this);
-		doCodegenForAssignmentOperators(cgi, this);
-		doCodegenForSubscriptOperators(cgi, this);
+		doCodegenForGeneralOperators(cgi, this, fstr, { });
+		doCodegenForAssignmentOperators(cgi, this, fstr, { });
+		doCodegenForSubscriptOperators(cgi, this, fstr, { });
 	}
 
 
@@ -382,7 +384,7 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 		if(!fstr->isClassType() && f->decl->ident.name == "init")
 			error(f->decl, "Extended initialisers can only be declared on class types");
 
-		generateMemberFunctionBody(cgi, this, f, defaultInit);
+		generateMemberFunctionBody(cgi, this, fstr, f, defaultInit, fmap[f], { });
 	}
 
 

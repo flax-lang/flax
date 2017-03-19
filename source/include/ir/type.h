@@ -432,10 +432,21 @@ namespace fir
 
 		void setBody(std::vector<std::pair<std::string, Type*>> members);
 
+		std::vector<ParametricType*> getTypeParameters();
+		void addTypeParameter(ParametricType* t);
+		void addTypeParameters(std::vector<ParametricType*> ts);
+
+		bool isGenericType();
+		bool isGenericInstantiation();
+		void setGenericInstantiation();
+
+
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 		virtual StructType* reify(std::map<std::string, Type*> names, FTContext* tc = 0) override;
+
 
 		// protected constructor
 		protected:
@@ -448,6 +459,9 @@ namespace fir
 		std::vector<Type*> typeList;
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> structMembers;
+
+		bool isGenericInst = false;
+		std::vector<ParametricType*> typeParameters;
 
 		// static funcs
 		public:
@@ -480,6 +494,15 @@ namespace fir
 		void setMembers(std::vector<std::pair<std::string, Type*>> members);
 		void setMethods(std::vector<Function*> methods);
 
+
+		std::vector<ParametricType*> getTypeParameters();
+		void addTypeParameter(ParametricType* t);
+		void addTypeParameters(std::vector<ParametricType*> ts);
+
+		bool isGenericType();
+		bool isGenericInstantiation();
+		void setGenericInstantiation();
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
@@ -494,6 +517,9 @@ namespace fir
 		Identifier className;
 		std::vector<Type*> typeList;
 		std::vector<Function*> methodList;
+
+		bool isGenericInst = false;
+		std::vector<ParametricType*> typeParameters;
 
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> classMembers;

@@ -111,10 +111,12 @@ Result_t Func::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* t
 	if(this->decl->params.size() + 1 == func->getArgumentCount())
 	{
 		// we need to add the self param.
-		iceAssert(this->decl->parentClass && this->decl->parentClass->createdType);
+		iceAssert(this->decl->parentClass.first);
+		if(!this->decl->parentClass.second)
+			this->decl->parentClass.second = this->decl->parentClass.first->createType(cgi);
 
 		VarDecl* fake = new VarDecl(this->decl->pin, "self", "");
-		fake->ptype = new pts::Type(this->decl->parentClass->createdType->getPointerTo());
+		fake->ptype = new pts::Type(this->decl->parentClass.second->getPointerTo());
 
 		vprs.insert(vprs.begin(), fake);
 	}

@@ -10,16 +10,20 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args)
+Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args, std::map<std::string, fir::Type*> tm)
 {
 	iceAssert(tp);
-	fir::Value* ai = this->getStackAlloc(tp->first, "tmp");
+	fir::Value* ai = this->getStackAlloc(tp->first->reify(tm), "tmp");
 
 	args.insert(args.begin(), ai);
 
-	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
+	fir::Function* initfunc = this->getStructInitialiser(user, tp, args, tm);
 
-	this->irb.CreateCall(initfunc, args);
+	std::vector<fir::Value*> args1;
+	for(size_t i = 0; i < args.size(); i++)
+		args1.push_back(this->autoCastType(initfunc->getType()->getArgumentN(i), args[i]));
+
+	this->irb.CreateCall(initfunc, args1);
 	fir::Value* val = this->irb.CreateLoad(ai);
 
 	return Result_t(val, ai);
@@ -369,7 +373,11 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).value);
 
-		return cgi->callTypeInitialiser(tp, this, args);
+		std::map<std::string, fir::Type*> mapping;
+		for(auto m : this->genericMapping)
+			mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
+
+		return cgi->callTypeInitialiser(tp, this, args, mapping);
 	}
 	else if(fir::PrimitiveType::fromBuiltin(this->name))
 	{
@@ -647,7 +655,11 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 		TypePair_t* tp = cgi->getTypeByString(this->name);
 		if(tp)
 		{
-			return tp->first;
+			std::map<std::string, fir::Type*> mapping;
+			for(auto m : this->genericMapping)
+				mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
+
+			return tp->first->reify(mapping);
 		}
 		else if(fir::PrimitiveType::fromBuiltin(this->name))
 		{

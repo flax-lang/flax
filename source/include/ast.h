@@ -381,15 +381,13 @@ namespace Ast
 		bool isFFI = false;
 		bool isStatic = false;
 
-		StructBase* parentClass = 0;
+		std::pair<StructBase*, fir::Type*> parentClass;
 		FFIType ffiType = FFIType::C;
 
 		Identifier ident;
 
 		std::vector<VarDecl*> params;
 		std::map<std::string, TypeConstraints_t> genericTypes;
-
-
 	};
 
 
@@ -698,6 +696,8 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) = 0;
+
 		bool didCreateType = false;
 		fir::Type* createdType = 0;
 
@@ -723,6 +723,8 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
+
 		bool packed = false;
 	};
 
@@ -737,6 +739,8 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
 
 		std::vector<Func*> funcs;
 		std::vector<fir::Function*> lfuncs;
@@ -808,25 +812,26 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
+
 		std::vector<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
 	};
 
-	struct Tuple : StructBase
+	struct Tuple : Expr
 	{
 		using Expr::codegen;
 
 		~Tuple();
-		Tuple(const Parser::Pin& pos, std::vector<Expr*> _values) : StructBase(pos, ""), values(_values) { }
+		Tuple(const Parser::Pin& pos, std::vector<Expr*> _values) : Expr(pos), values(_values) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::TupleType* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+		// virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
+
+		// virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
 
 		std::vector<Expr*> values;
-		std::vector<fir::Type*> ltypes;
-
-		fir::TupleType* createdType = 0;
 	};
 
 
@@ -960,17 +965,17 @@ namespace Ast
 		std::vector<Expr*> values;
 	};
 
-	struct TypeAlias : StructBase
+	struct TypeAlias : Expr
 	{
 		using Expr::codegen;
 
 		~TypeAlias();
-		TypeAlias(const Parser::Pin& pos, std::string _alias, pts::Type* _origType) : StructBase(pos, _alias), origType(_origType) { }
+		TypeAlias(const Parser::Pin& pos, std::string _alias, pts::Type* _origType) : Expr(pos), ident(_alias, IdKind::Struct), origType(_origType) { }
 
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
-		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
+		Identifier ident;
 		bool isStrong = false;
 		pts::Type* origType;
 	};

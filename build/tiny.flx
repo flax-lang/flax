@@ -5,10 +5,23 @@
 ffi func malloc(size: i64) -> i8*
 ffi func printf(fmt: i8*, ...) -> i32
 
-
-struct List<T>
+namespace NS
 {
-	var k: i64
+	class Array<T>
+	{
+		var data: T*
+
+		init(ptr: T*)
+		{
+			self.data = ptr
+		}
+
+		operator [] (index: i64) -> T
+		{
+			get { self.data[index] }
+			set { printf("setting\n") }
+		}
+	}
 }
 
 func add<T>(a: T, b: T) -> T
@@ -20,7 +33,25 @@ func bar(a: i64, b: i64) -> i64 { a * b }
 
 public func main() -> int
 {
-	let list = List<|T: i64, K: i64|>(30)
+	do {
+		let ptr = (alloc[60] i64).data
+		defer dealloc ptr
+
+		var list = NS.Array<|T: i64|>(ptr)
+		var list2 = NS.Array<|T: string|>(null)
+
+		// ptr[0] = 37
+
+		// printf("x = %d\n", list[0])
+		// list[1] = 401
+	}
+
+	do {
+		// let ptr = (alloc[60] string).data
+		// defer dealloc ptr
+
+	}
+
 	// let c = add<|T: i64|>(30, 40)
 
 	let c = add<|T: i64|>(30, 40)
@@ -30,6 +61,21 @@ public func main() -> int
 }
 
 
+// notes for next week and/or tomorrow:
+/*
+	fix createType to respect the generic types.
+	do some reification bullshit, either implicitly or explicitly.
+
+	we'll do it explicitly first, but probably add some implicit facilities via the init() call, if available
+	obviously, if there's some other type parameter inside that isn't visible in the init() signature, we can't
+	infer it (since we only look at declarations to infer), and so we'll complain. Simple as that.
+
+	also: look into *possibly* changing the explicit syntax. <| ... |> seems a bit clunky.
+	parser changes would possibly be large, although it might simply entail a "tryParseTypeParamList()" and "refundTokens()"
+	kind of deal, who knows.
+
+	Low-ish priority as of now, the syntax is just so we can have something to work with.
+*/
 
 
 
