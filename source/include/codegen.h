@@ -102,7 +102,9 @@ namespace Codegen
 
 		// generic stuff
 		std::vector<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
+
 		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
+		std::map<std::pair<Ast::StructBase*, std::map<std::string, fir::Type*>>, fir::Type*> reifiedGenericTypes;
 
 
 		TypeMap_t typeMap;
@@ -250,9 +252,6 @@ namespace Codegen
 
 		bool isDuplicateType(const Identifier& id);
 
-		std::string mangleGenericParameters(std::vector<Ast::VarDecl*> args);
-
-
 		void performComplexValueStore(Ast::Expr* user, fir::Type* type, fir::Value* srcptr, fir::Value* dstptr, std::string name,
 			Parser::Pin pos, Ast::ValueKind rhsvk);
 
@@ -336,8 +335,13 @@ namespace Codegen
 		fir::Type* getExprTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
-		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
-		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
+
+		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args,
+			std::map<std::string, fir::Type*> tm);
+
+		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args,
+			std::map<std::string, fir::Type*> tm);
+
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

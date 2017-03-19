@@ -862,7 +862,7 @@ namespace Codegen
 		{
 			// if it's not variadic, and it's either a normal function (no parent class) or is a static method,
 			// then there's no reason for the parameters to mismatch.
-			if(!candidate->isVariadic && (!candidate->parentClass || candidate->isStatic))
+			if(!candidate->isVariadic && (!candidate->parentClass.first || candidate->isStatic))
 			{
 				if(errorString && failedExpr)
 				{
@@ -873,7 +873,7 @@ namespace Codegen
 				}
 				return false;
 			}
-			else if(candidate->parentClass && !candidate->isStatic)
+			else if(candidate->parentClass.first && !candidate->isStatic)
 			{
 				// make sure it's only one off
 				if(args.size() < candidate->params.size() || args.size() - candidate->params.size() > 1)
@@ -1207,92 +1207,19 @@ namespace Codegen
 	}
 
 
+}
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	std::string CodegenInstance::mangleGenericParameters(std::vector<VarDecl*> args)
+namespace fir
+{
+	std::string mangleGenericTypes(std::map<std::string, fir::Type*> tm)
 	{
 		std::vector<std::string> strs;
-		std::map<std::string, int> uniqueGenericTypes;	// only a map because it's easier to .find().
 
-		// TODO: this is very suboptimal
-		int runningTypeIndex = 0;
-		for(auto arg : args)
-		{
-			fir::Type* atype = arg->getType(this, 0, true);	// same as mangleFunctionName, but allow failures.
-
-			// if there is no proper type, go ahead with the raw type: T or U or something.
-			if(!atype)
-			{
-				std::string st = arg->ptype->str();
-				if(uniqueGenericTypes.find(st) == uniqueGenericTypes.end())
-				{
-					uniqueGenericTypes[st] = runningTypeIndex;
-					runningTypeIndex++;
-				}
-			}
-		}
-
-		// very very suboptimal.
-
-		for(auto arg : args)
-		{
-			fir::Type* atype = arg->getType(this, 0, true);	// same as mangleFunctionName, but allow failures.
-
-			// if there is no proper type, go ahead with the raw type: T or U or something.
-			if(!atype)
-			{
-				std::string st = arg->ptype->str();
-				iceAssert(uniqueGenericTypes.find(st) != uniqueGenericTypes.end());
-
-				std::string s = "GT" + std::to_string(uniqueGenericTypes[st]);
-				strs.push_back(std::to_string(s.length()) + s);
-			}
-			else
-			{
-				std::string mangled = atype->encodedStr();
-
-				if(atype->isDynamicArrayType() && atype->toDynamicArrayType()->isFunctionVariadic())
-					mangled = "V" + atype->toDynamicArrayType()->encodedStr();
-
-				while(atype->isPointerType())
-					mangled += "P", atype = atype->getPointerElementType();
-
-				strs.push_back(mangled);
-			}
-		}
+		for(auto arg : tm)
+			strs.push_back(arg.first + ":" + arg.second->encodedStr());
 
 		std::string ret;
 		for(auto s : strs)
@@ -1301,3 +1228,7 @@ namespace Codegen
 		return ret;
 	}
 }
+
+
+
+

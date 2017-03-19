@@ -114,7 +114,10 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(this->blocks.size() > 0)
-			error("cannot reify already-generated function");
+			error("cannot reify already-generated function ('%s')", this->getName().str().c_str());
+
+		if(!this->isGeneric())
+			return this;
 
 		FunctionType* newft = this->getType()->reify(names, tc);
 		Function* nf = new Function(this->ident, newft, this->parentModule, this->linkageType);
