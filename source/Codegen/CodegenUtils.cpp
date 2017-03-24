@@ -1977,29 +1977,7 @@ namespace Codegen
 			}
 
 			// check if the protocols are conformed to
-			// todo(copypasta): un-copypasta this
-			for(auto cst : tm)
-			{
-				TypeConstraints_t constr = sb->genericTypes[cst.first];
-
-				for(auto protstr : constr.protocols)
-				{
-					ProtocolDef* prot = this->resolveProtocolName(sb, protstr);
-					iceAssert(prot);
-
-					bool doesConform = prot->checkTypeConformity(this, cst.second);
-
-					if(!doesConform)
-					{
-						exitless_error(user, "Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
-							cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
-
-						// show what's missing as well.
-						prot->assertTypeConformity(this, cst.second);
-						doTheExit();
-					}
-				}
-			}
+			this->checkProtocolConformance(user, tm, sb->genericTypes);
 
 
 			// use function overload operator for this.

@@ -320,30 +320,8 @@ static Resolved_t tryResolveGenericFunctionUsingMappingsOrFail(CodegenInstance* 
 		iceAssert(fn);
 		iceAssert(fn->decl);
 
-		// todo(copypasta): un-copypasta this
 		// last phase: ensure the type constraints are met
-		for(auto cst : mappings)
-		{
-			TypeConstraints_t constr = fn->decl->genericTypes[cst.first];
-
-			for(auto protstr : constr.protocols)
-			{
-				ProtocolDef* prot = cgi->resolveProtocolName(fn->decl, protstr);
-				iceAssert(prot);
-
-				bool doesConform = prot->checkTypeConformity(cgi, cst.second);
-
-				if(!doesConform)
-				{
-					exitless_error(fc, "Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
-						cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
-
-					// show what's missing as well.
-					prot->assertTypeConformity(cgi, cst.second);
-					doTheExit();
-				}
-			}
-		}
+		cgi->checkProtocolConformance(fc, mappings, fn->decl->genericTypes);
 
 		auto inst = cgi->instantiateGenericFunctionUsingMapping(fc, mappings, fn, &es, &ee);
 
