@@ -29,6 +29,15 @@ protocol SomeProt
 	func foo() -> int
 }
 
+extension i64 : SomeProt
+{
+	func foo() -> int { printf("lol") }
+}
+extension string : SomeProt
+{
+	func foo() -> int { printf("lol") }
+}
+
 func add<T>(a: T, b: T) -> T
 {
 	a + b

@@ -394,7 +394,10 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
 		iceAssert(prot);
 
-		prot->assertTypeConformity(cgi, fstr);
+		prot->assertTypeConformityWithErrorMessage(cgi, this, fstr,
+			strprintf("Extension to type '%s' declared conformity to protocol '%s', but does not conform to it", this->ident.name.c_str(),
+			protstr.c_str()));
+
 		this->conformedProtocols.push_back(prot);
 	}
 

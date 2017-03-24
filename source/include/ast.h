@@ -10,7 +10,7 @@
 
 #include "ir/type.h"
 
-
+#include <algorithm>
 
 
 namespace pts
@@ -788,7 +788,7 @@ namespace Ast
 		virtual Result_t codegen(Codegen::CodegenInstance* cgi, fir::Type* extratype, fir::Value* target) override;
 
 		bool checkTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
-		void assertTypeConformity(Codegen::CodegenInstance* cgi, fir::Type* type);
+		void assertTypeConformityWithErrorMessage(Codegen::CodegenInstance* cgi, Expr* user, fir::Type* type, std::string message);
 
 		Identifier ident;
 
