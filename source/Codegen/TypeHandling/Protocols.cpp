@@ -238,28 +238,29 @@ bool ProtocolDef::checkTypeConformity(CodegenInstance* cgi, fir::Type* type)
 	return _checkConform(cgi, this, type, &_, &__, &___);
 }
 
-void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
+void ProtocolDef::assertTypeConformityWithErrorMessage(CodegenInstance* cgi, Expr* user, fir::Type* type, std::string message)
 {
 	std::string name;
-	Expr* user = 0;
 	std::vector<FuncDecl*> missing;
-	_checkConform(cgi, this, type, &missing, &user, &name);
+	Expr* _ = 0;
+	bool res = _checkConform(cgi, this, type, &missing, &_, &name);
 
-	if(missing.size() > 0)
+	if(!res)
 	{
-		exitless_error(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
+		exitless_error(user, "%s", message.c_str());
 
-		std::string list;
-		for(auto d : missing)
-			list += std::string(TAB_WIDTH, ' ') + cgi->printAst(d) + "\n";
+		if(missing.size() > 0)
+		{
+			std::string list;
+			for(auto d : missing)
+				list += std::string(TAB_WIDTH, ' ') + cgi->printAst(d) + "\n";
 
-		info("Missing function%s:\n%s", missing.size() == 1 ? "" : "s", list.c_str());
+			info("Missing function%s:\n%s", missing.size() == 1 ? "" : "s", list.c_str());
 
-		doTheExit();
+			doTheExit();
+		}
 	}
 }
-
-
 
 
 
