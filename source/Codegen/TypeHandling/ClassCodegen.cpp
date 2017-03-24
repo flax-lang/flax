@@ -189,7 +189,8 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
 		iceAssert(prot);
 
-		prot->assertTypeConformity(cgi, cls);
+		prot->assertTypeConformityWithErrorMessage(cgi, this, cls, strprintf("Class '%s' declared conformity to protocol '%s', but does not conform to it", this->ident.name.c_str(), protstr.c_str()));
+
 		this->conformedProtocols.push_back(prot);
 	}
 
