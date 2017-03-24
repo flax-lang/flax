@@ -7,7 +7,7 @@ ffi func printf(fmt: i8*, ...) -> i32
 
 namespace NS
 {
-	class Array<T>
+	class Array<T: SomeProt>
 	{
 		var data: T*
 
@@ -22,6 +22,11 @@ namespace NS
 			set { printf("setting\n"); self.data[index] = value }
 		}
 	}
+}
+
+protocol SomeProt
+{
+	func foo() -> int
 }
 
 func add<T>(a: T, b: T) -> T

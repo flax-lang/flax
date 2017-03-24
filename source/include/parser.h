@@ -154,10 +154,6 @@ namespace Parser
 		HalfOpenEllipsis,	// ..<
 		DoubleColon,
 
-		// for generics
-		LAnglePipe,			// <|
-		RAnglePipe,			// |>
-
 		// other stuff.
 		Identifier,
 		UnicodeSymbol,
