@@ -247,7 +247,32 @@ namespace Codegen
 	}
 
 
+	void CodegenInstance::checkProtocolConformance(Expr* user, const std::map<std::string, fir::Type*>& mappings, std::map<std::string, TypeConstraints_t> tm)
+	{
+		for(auto cst : mappings)
+		{
+			TypeConstraints_t constr = tm[cst.first];
 
+			for(auto protstr : constr.protocols)
+			{
+				ProtocolDef* prot = this->resolveProtocolName(user, protstr);
+				iceAssert(prot);
+
+				bool doesConform = prot->checkTypeConformity(this, cst.second);
+
+				if(!doesConform)
+				{
+					exitless_error(user, "Solution for parametric type '%s' ('%s') does not conform to protocol '%s'",
+						cst.first.c_str(), cst.second->str().c_str(), protstr.c_str());
+
+					// show what's missing as well.
+					prot->assertTypeConformity(this, cst.second);
+					doTheExit();
+				}
+			}
+		}
+
+	}
 
 
 
