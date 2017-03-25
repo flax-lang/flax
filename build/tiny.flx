@@ -32,7 +32,7 @@ fn bar(a: i64, b: i64) -> i64 { a * b }
 
 fn test<K>(a: Array<T: K>)
 {
-	printf("typeid(T) = %d / %d / %d\n", typeid(K), typeid(a), typeid(string))
+	printf("typeid(T) = %d / %d / %d / %d\n", typeid(K), typeid(a), typeid(string), typeid(i64))
 }
 
 public fn main() -> int
@@ -42,19 +42,19 @@ public fn main() -> int
 	// 	printf("c = %d\n", c)
 	// }
 
-	// do {
-	// 	let ptr = (alloc[60] i64).data
-	// 	defer dealloc ptr
+	do {
+		let ptr = (alloc[60] i64).data
+		defer dealloc ptr
 
-	// 	var list = Array<T: i64>(ptr)
+		var list = Array<T: i64>(ptr)
 
-	// 	ptr[0] = 37
+		ptr[0] = 37
 
-	// 	// printf("x = %d\n", list[0])
-	// 	list[1] = 401
+		// printf("x = %d\n", list[0])
+		list[1] = 401
 
-	// 	// test(list)
-	// }
+		test(list)
+	}
 
 	do {
 		// let ptr = (alloc[60] string).data
@@ -67,12 +67,6 @@ public fn main() -> int
 
 		test(list)
 	}
-
-	// 0x000000010260f110
-	// 0x0000000103a00480
-	// 0x000000010260fba0
-	// 0x000000010261cec0
-	// 0x000000010261cec0
 
 	do {
 		// var list: Array<T: string>
