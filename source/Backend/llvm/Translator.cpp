@@ -71,8 +71,8 @@ namespace Compiler
 			for(auto p : type->toClassType()->getElements())
 				ret = ret || isGenericInAnyWay(p);
 
-			for(auto p : type->toClassType()->getMethods())
-				ret = ret || isGenericInAnyWay(p->getType());
+			// for(auto p : type->toClassType()->getMethods())
+			// 	ret = ret || isGenericInAnyWay(p->getType());
 
 			retval = ret;
 		}
