@@ -327,7 +327,7 @@ namespace Codegen
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
-		void checkProtocolConformance(Ast::Expr* user, const std::map<std::string, fir::Type*>& mappings,
+		void checkProtocolConformanceOfGenericSolutions(Ast::Expr* user, const std::map<std::string, fir::Type*>& mappings,
 			std::map<std::string, TypeConstraints_t> tm);
 
 		fir::FTContext* getContext();

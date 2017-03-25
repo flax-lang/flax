@@ -247,7 +247,7 @@ namespace Codegen
 	}
 
 
-	void CodegenInstance::checkProtocolConformance(Expr* user, const std::map<std::string, fir::Type*>& mappings, std::map<std::string, TypeConstraints_t> tm)
+	void CodegenInstance::checkProtocolConformanceOfGenericSolutions(Expr* user, const std::map<std::string, fir::Type*>& mappings, std::map<std::string, TypeConstraints_t> tm)
 	{
 		for(auto cst : mappings)
 		{

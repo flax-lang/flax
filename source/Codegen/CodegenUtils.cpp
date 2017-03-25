@@ -1977,7 +1977,7 @@ namespace Codegen
 			}
 
 			// check if the protocols are conformed to
-			this->checkProtocolConformance(user, tm, sb->genericTypes);
+			this->checkProtocolConformanceOfGenericSolutions(user, tm, sb->genericTypes);
 
 
 			// use function overload operator for this.
