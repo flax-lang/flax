@@ -13,7 +13,7 @@ using namespace Codegen;
 
 namespace Codegen
 {
-	static fir::Function* generateMemberFunctionDecl(CodegenInstance* cgi, ClassDef* cls, Func* fn)
+	static fir::Function* generateMemberFunctionDecl(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, Func* fn, std::map<std::string, fir::Type*> tm)
 	{
 		fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
@@ -21,26 +21,46 @@ namespace Codegen
 		fn->decl->ident.scope = cls->ident.scope;
 		fn->decl->ident.scope.push_back(cls->ident.name);
 
-		fir::Function* lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).value);
+		fir::Function* lfunc = 0;
+		// if(cls->genericTypes.size() > 0)
+		// {
+		// 	lfunc = dynamic_cast<fir::Function*>(fn->decl->generateDeclForGenericFunction(cgi, tm).value);
+		// }
+		// else
+		{
+			lfunc = dynamic_cast<fir::Function*>(fn->decl->codegen(cgi).value);
+			if(cls->genericTypes.size() > 0)
+				fn->decl->didCodegen = false;
+		}
+
 		iceAssert(lfunc);
 
 		cgi->irb.setCurrentBlock(ob);
-		if(fn->decl->attribs & Attr_VisPublic)
-		{
-			// cgi->addPublicFunc(FuncDefPair(lfunc, fn->decl, fn));
-		}
-
 		return lfunc;
 	}
 
 
-	void generateMemberFunctionBody(CodegenInstance* cgi, ClassDef* cls, Func* fn, fir::Function* defaultInitFunc)
+	void generateMemberFunctionBody(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, Func* fn, fir::Function* defaultInitFunc,
+		fir::Function* fdecl, std::map<std::string, fir::Type*> tm)
 	{
 		if(fn->decl->genericTypes.size() == 0)
 		{
 			fir::IRBlock* ob = cgi->irb.getCurrentBlock();
 
-			fir::Function* ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi).value);
+			iceAssert(fdecl);
+
+			fir::Function* ffn = 0;
+			if(cls->genericTypes.size() > 0)
+			{
+				// ffn = cgi->instantiateGenericFunctionUsingMapping(fn->decl, tm, fn, 0, 0).firFunc;
+				// iceAssert(ffn && "failed to instantiate function");
+			}
+			// else
+			{
+				// fdecl = dynamic_cast<fir::Function*>(fn->decl->generateDeclForGenericFunction(cgi, tm).value);
+				ffn = dynamic_cast<fir::Function*>(fn->codegen(cgi, fdecl).value);
+			}
+
 			iceAssert(ffn);
 
 
@@ -76,8 +96,11 @@ namespace Codegen
 
 
 
-	void doCodegenForMemberFunctions(CodegenInstance* cgi, ClassDef* cls)
+	std::map<Ast::Func*, fir::Function*> doCodegenForMemberFunctions(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType,
+		std::map<std::string, fir::Type*> tm)
 	{
+		std::map<Ast::Func*, fir::Function*> ret;
+
 		// pass 1
 		for(Func* f : cls->funcs)
 		{
@@ -126,20 +149,25 @@ namespace Codegen
 
 
 
-			f->decl->parentClass = cls;
-			fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, f);
+			f->decl->parentClass = { cls, clsType };
+			fir::Function* ffn = generateMemberFunctionDecl(cgi, cls, clsType, f, tm);
 
 			if(f->decl->ident.name == "init")
 				cls->initFuncs.push_back(ffn);
 
 			cls->lfuncs.push_back(ffn);
 			cls->functionMap[f] = ffn;
+
+
+			ret[f] = ffn;
 		}
+
+		return ret;
 	}
 
 
 
-	void doCodegenForComputedProperties(CodegenInstance* cgi, ClassDef* cls)
+	void doCodegenForComputedProperties(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm)
 	{
 		for(ComputedProperty* c : cls->cprops)
 		{
@@ -177,14 +205,14 @@ namespace Codegen
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->getter);
 
 				fakeDecl->isStatic = c->isStatic;
-				fakeDecl->parentClass = cls;
+				fakeDecl->parentClass = { cls, clsType };
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 					fakeDecl->attribs |= Attr_VisPublic;
 
 				c->getterFunc = fakeDecl;
-				c->getterFFn = generateMemberFunctionDecl(cgi, cls, fakeFunc);
-				generateMemberFunctionBody(cgi, cls, fakeFunc, 0);
+				c->getterFFn = generateMemberFunctionDecl(cgi, cls, clsType, fakeFunc, tm);
+				generateMemberFunctionBody(cgi, cls, clsType, fakeFunc, 0, c->getterFFn, tm);
 			}
 			if(c->setter)
 			{
@@ -196,20 +224,20 @@ namespace Codegen
 				Func* fakeFunc = new Func(c->pin, fakeDecl, c->setter);
 
 				fakeDecl->isStatic = c->isStatic;
-				fakeDecl->parentClass = cls;
+				fakeDecl->parentClass = { cls, clsType };
 
 				if((cls->attribs & Attr_VisPublic) /*&& !(c->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic))*/)
 					fakeDecl->attribs |= Attr_VisPublic;
 
 				c->setterFunc = fakeDecl;
-				c->setterFFn = generateMemberFunctionDecl(cgi, cls, fakeFunc);
-				generateMemberFunctionBody(cgi, cls, fakeFunc, 0);
+				c->setterFFn = generateMemberFunctionDecl(cgi, cls, clsType, fakeFunc, tm);
+				generateMemberFunctionBody(cgi, cls, clsType, fakeFunc, 0, c->setterFFn, tm);
 			}
 		}
 	}
 
 
-	void generateDeclForOperators(CodegenInstance* cgi, ClassDef* cls)
+	void generateDeclForOperators(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm)
 	{
 		for(OpOverload* overl : cls->operatorOverloads)
 		{
@@ -239,7 +267,7 @@ namespace Codegen
 			overl->func->decl->ident.kind = IdKind::Operator;
 			overl->func->decl->ident.scope = cls->ident.scope;
 			overl->func->decl->ident.scope.push_back(cls->ident.name);
-			overl->func->decl->parentClass = cls;
+			overl->func->decl->parentClass = { cls, clsType };
 
 			if(cls->attribs & Attr_VisPublic && !(overl->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
 				overl->func->decl->attribs |= Attr_VisPublic;
@@ -277,7 +305,7 @@ namespace Codegen
 			aoo->func->decl->ident.kind = IdKind::Operator;
 			aoo->func->decl->ident.scope = cls->ident.scope;
 			aoo->func->decl->ident.scope.push_back(cls->ident.name);
-			aoo->func->decl->parentClass = cls;
+			aoo->func->decl->parentClass = { cls, clsType };
 
 			if(cls->attribs & Attr_VisPublic && !(aoo->func->decl->attribs & (Attr_VisPublic | Attr_VisPrivate | Attr_VisInternal)))
 				aoo->func->decl->attribs |= Attr_VisPublic;
@@ -339,7 +367,7 @@ namespace Codegen
 				FuncDecl* decl = new FuncDecl(body->pin, "_get" + std::to_string(opString.length()) + opString,
 					soo->decl->params, soo->decl->ptype);
 
-				decl->parentClass = cls;
+				decl->parentClass = { cls, clsType };
 				decl->ident.kind = IdKind::Operator;
 				decl->ident.scope = cls->ident.scope;
 				decl->ident.scope.push_back(cls->ident.name);
@@ -371,7 +399,7 @@ namespace Codegen
 				FuncDecl* decl = new FuncDecl(body->pin, "_set" + std::to_string(opString.length()) + opString, params,
 					pts::NamedType::create(VOID_TYPE_STRING));
 
-				decl->parentClass = cls;
+				decl->parentClass = { cls, clsType };
 				decl->ident.kind = IdKind::Operator;
 				decl->ident.scope = cls->ident.scope;
 
@@ -402,7 +430,7 @@ namespace Codegen
 
 
 
-	void doCodegenForGeneralOperators(CodegenInstance* cgi, ClassDef* cls)
+	void doCodegenForGeneralOperators(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm)
 	{
 		for(OpOverload* overl : cls->operatorOverloads)
 		{
@@ -411,7 +439,7 @@ namespace Codegen
 	}
 
 
-	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls)
+	void doCodegenForAssignmentOperators(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm)
 	{
 		for(AssignOpOverload* aoo : cls->assignmentOverloads)
 		{
@@ -422,7 +450,7 @@ namespace Codegen
 		}
 	}
 
-	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls)
+	void doCodegenForSubscriptOperators(CodegenInstance* cgi, ClassDef* cls, fir::Type* clsType, std::map<std::string, fir::Type*> tm)
 	{
 		for(SubscriptOpOverload* soo : cls->subscriptOverloads)
 		{

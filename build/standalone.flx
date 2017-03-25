@@ -5,9 +5,9 @@
 
 // import LibCInterface
 
-ffi func printf(fmt: i8*, ...) -> i32
+ffi fn printf(fmt: i8*, ...) -> i32
 
-func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
+fn map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
@@ -20,7 +20,7 @@ func map<T, R>(arr: T[], f: [(T) -> R]) -> R[]
 	return ret
 }
 
-func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
+fn map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
@@ -33,7 +33,7 @@ func map<T, R>(arr: T[], f: [(T, int) -> R]) -> R[]
 	return ret
 }
 
-func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
+fn map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
@@ -47,11 +47,11 @@ func map2<T, K, R>(arr: (T, K)[], f: [(T, K) -> R]) -> R[]
 }
 
 
-func incr(x: int) -> int { x + 1 }
-func gmult<Q>(x: Q, m: Q) -> Q { x * m }
-// func gmult<T>(x: (T, T)) -> T { x.0 * x.1 }
+fn incr(x: int) -> int { x + 1 }
+fn gmult<Q>(x: Q, m: Q) -> Q { x * m }
+// fn gmult<T>(x: (T, T)) -> T { x.0 * x.1 }
 
-func add2<A, B>(x: A, y: B) -> A { x + y }
+fn add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 
@@ -90,12 +90,12 @@ func add2<A, B>(x: A, y: B) -> A { x + y }
 
 
 
-func tmpf<T>(x: T, y: T) -> T
+fn tmpf<T>(x: T, y: T) -> T
 {
 	return x + y
 }
 
-func vartup<T, K, U>(f: [(T, T) -> K], y: (T, U)[...]) -> K[]
+fn vartup<T, K, U>(f: [(T, T) -> K], y: (T, U)[...]) -> K[]
 {
 	var ret = alloc[y.length] K
 
@@ -122,7 +122,7 @@ class Str
 }
 
 
-public func main()
+public fn main()
 {
 	generictest()
 
@@ -141,7 +141,7 @@ public func main()
 }
 
 
-func generictest()
+fn generictest()
 {
 	var arr = alloc[5] (int, int)
 	var i = 0
@@ -176,16 +176,16 @@ func generictest()
 }
 
 
-func apply<U, V>(x: U, f: [(U) -> V]) -> V { f(x) }
+fn apply<U, V>(x: U, f: [(U) -> V]) -> V { f(x) }
 
-func gincr<T>(x: T) -> T { x + 1 }
-func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[]
+fn gincr<T>(x: T) -> T { x + 1 }
+fn mapstupid<T, K, R>(arr: T[], f: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) -> R[]
 {
 	var i = 0
 	var ret = alloc[arr.length] R
 	while i < arr.length
 	{
-		ret[i] = fa(arr[i], fn)
+		ret[i] = fa(arr[i], f)
 		i += 1
 	}
 
@@ -195,7 +195,7 @@ func mapstupid<T, K, R>(arr: T[], fn: [(T) -> K], fa: [(T, [(T) -> K]) -> R]) ->
 
 
 
-// func mapint(arr: int[], f: [(int) -> int]) -> int[]
+// fn mapint(arr: int[], f: [(int) -> int]) -> int[]
 // {
 // 	var i = 0
 // 	var ret = alloc[arr.length] int

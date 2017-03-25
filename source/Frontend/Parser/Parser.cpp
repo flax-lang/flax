@@ -1099,6 +1099,8 @@ namespace Parser
 				parserError("Expected ')'");
 		}
 
+		if(ps.front().type != TType::Func)
+			parserError(ps.front().pin, "Expected function declaration after 'ffi'");
 
 
 		FuncDecl* decl = parseFuncDecl(ps);
@@ -1566,7 +1568,7 @@ namespace Parser
 				didSetter = true;
 
 				ps.eat();
-				std::string setValName = "newValue";
+				std::string setValName = "value";
 
 				// see if we have parentheses
 				if(ps.front().type == TType::LParen)
@@ -2471,25 +2473,6 @@ namespace Parser
 		}
 	}
 
-	Expr* parseIdExpr(ParserState& ps)
-	{
-		Token tok_id = ps.eat();
-		std::string id = tok_id.text.to_string();
-		VarRef* idvr = CreateAST(VarRef, tok_id, id);
-
-		if(ps.front().type == TType::LParen)
-		{
-			auto ret = parseFuncCall(ps, id, idvr->pin);
-			delete idvr;
-
-			return ret;
-		}
-		else
-		{
-			return idvr;
-		}
-	}
-
 	Alloc* parseAlloc(ParserState& ps)
 	{
 		Token tok_alloc = ps.eat();
@@ -2557,8 +2540,148 @@ namespace Parser
 		return CreateAST(Number, t, t.text.to_string());
 	}
 
+	// pair.0 indicates success
+	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail)
+	{
+		iceAssert(ps.front().type == TType::LAngle);
+		std::unordered_map<std::string, pts::Type*> genericMappings;
+
+		{
+			// parse the thing. takes the form of this: foo<|T: i64, K: i64, ... |>(...)
+			ps.eat();
+
+			if(ps.front().type == TType::RAngle)
+				parserMessage(Err::Warn, "Empty type parameter lists are redundant");
+
+			while(ps.front().type != TType::RAngle)
+			{
+				if(ps.front().type != TType::Identifier)
+				{
+					if(allowFail)
+						return { false, { } };
+
+					parserError("Expected identifier in type parameter specification, got '%s'", ps.front().text.to_string().c_str());
+				}
+
+				std::string name = ps.eat().text.to_string();
+				if(genericMappings.find(name) != genericMappings.end())
+				{
+					if(allowFail)
+						return { false, { } };
+
+					parserError("Mapping for '%s' already exists in the type parameter list ('%s')", name.c_str(),
+						genericMappings[name]->str().c_str());
+				}
+
+				if(ps.front().type != TType::Colon)
+				{
+					if(allowFail)
+						return { false, { } };
+
+					parserError("Expected ':' after type parameter name to specify actual parameter, got '%s'",
+						ps.front().text.to_string().c_str());
+				}
+
+				ps.eat();
+
+				pts::Type* type = parseType(ps);
+				iceAssert(type);
+
+				genericMappings[name] = type;
+
+				ps.skipNewline();
+				if(ps.front().type == TType::Comma)
+				{
+					ps.eat();
+					continue;
+				}
+				else if(ps.front().type == TType::RAngle)
+				{
+					break;
+				}
+				else
+				{
+					if(allowFail)
+						return { false, { } };
+
+					parserError("Expected either ',' or '>' in type parameter list, got '%s'", ps.front().text.to_string().c_str());
+				}
+			}
+
+			if(ps.front().type != TType::RAngle)
+			{
+				if(allowFail)
+					return { false, { } };
+
+				parserError("Expected either closing '>' in type parameter list, got '%s'", ps.front().text.to_string().c_str());
+			}
+
+			ps.eat();
+
+			if(ps.front().type != TType::LParen)
+			{
+				if(allowFail)
+					return { false, { } };
+
+				parserError("Expected '(' after type parameter list, got '%s'", ps.front().text.to_string().c_str());
+			}
+		}
+
+		return { true, genericMappings };
+	}
+
+
+	Expr* parseIdExpr(ParserState& ps)
+	{
+		Token tok_id = ps.eat();
+		std::string id = tok_id.text.to_string();
+		VarRef* idvr = CreateAST(VarRef, tok_id, id);
+
+		if(ps.front().type == TType::LParen)
+		{
+			auto ret = parseFuncCall(ps, id, idvr->pin);
+			delete idvr;
+
+			return ret;
+		}
+		else if(ps.front().type == TType::LAngle)
+		{
+			// try a generic function call
+			size_t restore = ps.index;
+
+			auto p = tryParseGenericMapping(ps, true);
+			ps.refundToPosition(restore);
+
+			if(p.first)
+			{
+				auto ret = parseFuncCall(ps, id, idvr->pin);
+				delete idvr;
+
+				return ret;
+			}
+			else
+			{
+				return idvr;
+			}
+		}
+		else
+		{
+			return idvr;
+		}
+	}
+
+
 	FuncCall* parseFuncCall(ParserState& ps, std::string id, Pin id_pos)
 	{
+		std::unordered_map<std::string, pts::Type*> genericMappings;
+		if(ps.front().type == TType::LAngle)
+		{
+			auto p = tryParseGenericMapping(ps, false);
+			iceAssert(p.first);
+
+			genericMappings = p.second;
+		}
+
 		Token tk = ps.eat();
 		iceAssert(tk.type == TType::LParen);
 
@@ -2566,7 +2689,6 @@ namespace Parser
 
 		int save = ps.leftParenNestLevel;
 		ps.leftParenNestLevel = 0;
-
 
 		if(ps.front().type != TType::RParen)
 		{
@@ -2598,6 +2720,7 @@ namespace Parser
 		ps.leftParenNestLevel = save;
 
 		auto ret = CreateAST_Pin(FuncCall, id_pos, id, args);
+		ret->genericMapping = genericMappings;
 
 		return ret;
 	}
@@ -2881,6 +3004,18 @@ namespace Parser
 
 		str->attribs = attr;
 
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			if(ps.lookaheadUntilNonNewline().type == TType::RAngle)
+				parserError("Empty type parameter list");
+
+			str->genericTypes = parseGenericTypeList(ps);
+
+			if(ps.lookaheadUntilNonNewline().type != TType::LBrace)
+				parserError("Expected '{' to begin a block, found '%s'", ps.front().text.to_string().c_str());
+		}
+
 
 		// parse a block.
 		BracedBlock* body = parseBracedBlock(ps);
@@ -2955,6 +3090,21 @@ namespace Parser
 
 		uint64_t attr = checkAndApplyAttributes(ps, Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate);
 		cls->attribs = attr;
+
+
+		if(ps.front().type == TType::LAngle)
+		{
+			ps.eat();
+			if(ps.lookaheadUntilNonNewline().type == TType::RAngle)
+				parserError("Empty type parameter list");
+
+			cls->genericTypes = parseGenericTypeList(ps);
+
+			if(ps.lookaheadUntilNonNewline().type != TType::LBrace && ps.lookaheadUntilNonNewline().type != TType::Colon)
+				parserError("Expected '{' to begin a block, found '%s'", ps.front().text.to_string().c_str());
+		}
+
+
 
 		// check for a colon.
 		if(ps.lookaheadUntilNonNewline().type == TType::Colon)

@@ -216,7 +216,7 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 				{
 					std::vector<fir::Value*> args { ai };
 
-					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args);
+					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args, { });
 					iceAssert(initfunc);
 
 					val = cgi->irb.CreateCall(initfunc, args);

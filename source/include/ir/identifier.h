@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include "iceassert.h"
@@ -11,6 +12,8 @@
 namespace fir
 {
 	struct Type;
+
+	std::string mangleGenericTypes(std::map<std::string, fir::Type*> tm);
 }
 
 enum class IdKind

@@ -63,6 +63,72 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 #### Language Syntax ####
 - See https://flax-lang.github.io (incomplete)
 
+-----------------------------------------------
+
+
+
+#### Code Sample ####
+
+```
+ffi fn malloc(size: i64) -> i8*
+ffi fn printf(fmt: i8*, ...) -> i32
+
+namespace NS
+{
+	class Array<T: SomeProt>
+	{
+		var data: T*
+
+		init(ptr: T*)
+		{
+			self.data = ptr
+		}
+
+		operator [] (index: i64) -> T
+		{
+			get { self.data[index] }
+			set { self.data[index] = value }
+		}
+	}
+}
+
+fn add<T>(a: T, b: T) -> T
+{
+	a + b
+}
+
+public fn main() -> int
+{
+	do {
+		let ptr = (alloc[60] i64).data
+		defer dealloc ptr
+
+		var list = NS.Array<T: i64>(ptr)
+
+		ptr[0] = 37
+
+		printf("x = %d\n", list[0])
+		list[1] = 401
+	}
+
+	do {
+		let ptr = (alloc[60] string).data
+		defer dealloc ptr
+
+
+		var list = NS.Array<T: string>(ptr)
+		list[3] = "foobar"
+
+		printf("0 = '%s', 3 = '%s'\n", list[0], list[3])
+	}
+
+	let c = add<T: i64>(30, 40)
+	let d = add(100, 200)
+	printf("c = %d, d = %d\n", c, d)
+
+	return 0
+}
+```
 
 -----------------------------------------------
 

@@ -150,7 +150,42 @@ namespace fir
 
 
 
+	bool StructType::isGenericType()
+	{
+		return this->typeParameters.size() > 0;
+	}
 
+	std::vector<ParametricType*> StructType::getTypeParameters()
+	{
+		return this->typeParameters;
+	}
+
+	void StructType::addTypeParameter(ParametricType* t)
+	{
+		for(auto p : this->typeParameters)
+		{
+			if(p->getName() == t->getName())
+				error("Type parameter '%s' already exists", p->getName().c_str());
+		}
+
+		this->typeParameters.push_back(t);
+	}
+
+	void StructType::addTypeParameters(std::vector<ParametricType*> ts)
+	{
+		for(auto t : ts)
+			this->addTypeParameter(t);
+	}
+
+	bool StructType::isGenericInstantiation()
+	{
+		return this->isGenericInst;
+	}
+
+	void StructType::setGenericInstantiation()
+	{
+		this->isGenericInst = true;
+	}
 
 
 
@@ -159,18 +194,32 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		std::vector<std::pair<std::string, Type*>> reified;
-		for(auto mem : this->structMembers)
+		if(this->isGenericType())
 		{
-			auto rfd = mem.second->reify(reals);
-			if(rfd->isParametricType())
-				_error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
+			std::vector<std::pair<std::string, Type*>> reified;
+			for(auto mem : this->structMembers)
+			{
+				auto rfd = mem.second->reify(reals);
+				if(rfd->isParametricType())
+				{
+					_error_and_exit("Failed to reify type '%s', no type found for '%s'", this->str().c_str(),
+						mem.second->toParametricType()->getName().c_str());
+				}
 
-			reified.push_back({ mem.first, rfd });
+				reified.push_back({ mem.first, rfd });
+			}
+
+			iceAssert(reified.size() == this->structMembers.size());
+
+			auto ret = StructType::create(Identifier(this->structName.str() + fir::mangleGenericTypes(reals), IdKind::Struct), reified);
+			ret->setGenericInstantiation();
+
+			return ret;
 		}
-
-		iceAssert(reified.size() == this->structMembers.size());
-		return StructType::create(this->structName, reified);
+		else
+		{
+			return this;
+		}
 	}
 }
 

@@ -544,7 +544,6 @@ fir::Type* ArrayLiteral::getType(CodegenInstance* cgi, fir::Type* extratype, boo
 
 
 
-static size_t _counter = 0;
 fir::TupleType* Tuple::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
 	// todo: handle named tuples.
@@ -552,29 +551,12 @@ fir::TupleType* Tuple::getType(CodegenInstance* cgi, fir::Type* extratype, bool 
 	// (randomly generated name or something), with appropriate code to handle
 	// assignment to and from.
 
-	if(this->ltypes.size() == 0)
-	{
-		iceAssert(!this->didCreateType);
+	std::vector<fir::Type*> types;
 
-		for(Expr* e : this->values)
-			this->ltypes.push_back(e->getType(cgi));
+	for(Expr* e : this->values)
+		types.push_back(e->getType(cgi));
 
-		this->ident.name = "__anonymoustuple_" + std::to_string(_counter++);
-		this->createdType = fir::TupleType::get(this->ltypes, cgi->getContext());
-		this->didCreateType = true;
-
-		// todo: debate, should we add this?
-		// edit: no.
-		// cgi->addNewType(this->createdType, this, TypeKind::Tuple);
-	}
-
-	return this->createdType;
-}
-
-fir::Type* Tuple::createType(CodegenInstance* cgi)
-{
-	(void) cgi;
-	return 0;
+	return fir::TupleType::get(types, cgi->getContext());
 }
 
 Result_t Tuple::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)

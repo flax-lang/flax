@@ -19,13 +19,6 @@ fir::Type* TypeAlias::getType(CodegenInstance* cgi, fir::Type* extratype, bool a
 	return 0;
 }
 
-fir::Type* TypeAlias::createType(CodegenInstance* cgi)
-{
-	iceAssert(0);
-}
-
-
-
 
 
 

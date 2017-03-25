@@ -35,10 +35,10 @@ public namespace MD5
 	]
 
 
-	func leftRotate(x: u32, c: u32) -> u32 { return (x << c) | (x >> (32 - c)) }
+	fn leftRotate(x: u32, c: u32) -> u32 { return (x << c) | (x >> (32 - c)) }
 
 
-	func toBytes(v: u32, b: u8*)
+	fn toBytes(v: u32, b: u8*)
 	{
 		b[0] = v as u8
 		b[1] = (v >> 8) as u8
@@ -46,11 +46,11 @@ public namespace MD5
 		b[3] = (v >> 24) as u8
 	}
 
-	func toInt32(b: u8*) -> u32 { return (b[0]) | (b[1] as u32 << 8) | (b[2] as u32 << 16) | (b[3] as u32 << 24) }
+	fn toInt32(b: u8*) -> u32 { return (b[0]) | (b[1] as u32 << 8) | (b[2] as u32 << 16) | (b[3] as u32 << 24) }
 
 
 
-	func getHash(bytes: u8*, bytesLen: int) -> u8[]
+	fn getHash(bytes: u8*, bytesLen: int) -> u8[]
 	{
 		var h0: u32 = 0x67452301
 		var h1: u32 = 0xefcdab89
@@ -174,19 +174,19 @@ public namespace MD5
 
 
 
-	public func getHash(bytes: u8[]) -> u8[]
+	public fn getHash(bytes: u8[]) -> u8[]
 	{
 		return getHash(bytes.data, bytes.length)
 	}
 
-	public func hashString(s: string) -> u8[]
+	public fn hashString(s: string) -> u8[]
 	{
 		let rs = s.raw
 		return MD5.getHash(rs as u8*, s.length)
 	}
 
 
-	public func hashToString(h: u8[]) -> string
+	public fn hashToString(h: u8[]) -> string
 	{
 		var arr = malloc(64)
 
@@ -198,7 +198,7 @@ public namespace MD5
 		return s
 	}
 
-	public func stringHashOfString(s: string) -> string
+	public fn stringHashOfString(s: string) -> string
 	{
 		let x = MD5.hashString(s)
 		let y = MD5.hashToString(x)

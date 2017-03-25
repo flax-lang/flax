@@ -15,7 +15,7 @@ class Something
 	static var Or: Orr
 	var oor = 400
 
-	ƒ somefoo() -> Orr
+	fn somefoo() -> Orr
 	{
 		return Orr()
 	}
@@ -24,12 +24,12 @@ class Something
 	{
 		static var Another = 511
 
-		ƒ insideFoo() -> int
+		fn insideFoo() -> int
 		{
 			return 10
 		}
 
-		static func staticInside() -> int
+		static fn staticInside() -> int
 		{
 			return 23
 		}
@@ -79,7 +79,7 @@ namespace n1
 		var m: Sheep
 
 		var tup: (string, int)
-		func nest() -> (string, int)
+		fn nest() -> (string, int)
 		{
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
@@ -89,13 +89,13 @@ namespace n1
 		{
 			class DeeperClass
 			{
-				static func deepStatic() -> int { 23 }
+				static fn deepStatic() -> int { 23 }
 			}
 		}
 	}
 }
 
-public ƒ doScopeTest(argv: string)
+public fn doScopeTest(argv: string)
 {
 	var x = argv.raw + 1
 
