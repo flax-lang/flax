@@ -3,37 +3,37 @@
 // Licensed under the Apache License Version 2.0.
 
 // printing
-public ffi func puts(x: i8*) -> i32
-public ffi func printf(x: i8*, ...) -> i32
-public ffi func sprintf(x: i8*, y: i8*, ...) -> i32
-public ffi func snprintf(x: i8* l: u64, y: i8*, ...) -> i32
+public ffi fn puts(x: i8*) -> i32
+public ffi fn printf(x: i8*, ...) -> i32
+public ffi fn sprintf(x: i8*, y: i8*, ...) -> i32
+public ffi fn snprintf(x: i8* l: u64, y: i8*, ...) -> i32
 
-public ffi func fprintf(stream: void*, y: i8*, ...) -> i32
+public ffi fn fprintf(stream: void*, y: i8*, ...) -> i32
 
 // memcpy/set/move
-public ffi func memcpy(dest: i8*, source: i8*, length: u64) -> i8*
-public ffi func memmove(dest: i8*, source: i8*, length: u64) -> i8*
-public ffi func memset(dest: i8*, value: i32, length: u64) -> i8*
+public ffi fn memcpy(dest: i8*, source: i8*, length: u64) -> i8*
+public ffi fn memmove(dest: i8*, source: i8*, length: u64) -> i8*
+public ffi fn memset(dest: i8*, value: i32, length: u64) -> i8*
 
 // heap
-public ffi func malloc(size: i64) -> i8*
-public ffi func free(pointer: i8*)
+public ffi fn malloc(size: i64) -> i8*
+public ffi fn free(pointer: i8*)
 
 // strings
-public ffi func strlen(str: i8*) -> i64
-public ffi func strcmp(str1: i8*, str2: i8*) -> i32
-public ffi func strncmp(str1: i8*, str2: i8*, length: i64) -> i32
+public ffi fn strlen(str: i8*) -> i64
+public ffi fn strcmp(str1: i8*, str2: i8*) -> i32
+public ffi fn strncmp(str1: i8*, str2: i8*, length: i64) -> i32
 
 // random things
-public ffi func usleep(usec: u32) -> i32
-public ffi func sleep(sec: u32) -> u32
-public ffi func abort()
+public ffi fn usleep(usec: u32) -> i32
+public ffi fn sleep(sec: u32) -> u32
+public ffi fn abort()
 
 
 // file stuff
-public ffi func fsync(fd: i32) -> i32
-public ffi func fflush(fd: void*) -> i32
-public ffi func ioctl(fd: i32, cmd: u64, ...) -> i32
+public ffi fn fsync(fd: i32) -> i32
+public ffi fn fflush(fd: void*) -> i32
+public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
 
-public ffi func fdopen(fd: i32, mode: i8*) -> void*
+public ffi fn fdopen(fd: i32, mode: i8*) -> void*
 

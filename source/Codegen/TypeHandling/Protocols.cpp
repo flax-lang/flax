@@ -256,9 +256,9 @@ void ProtocolDef::assertTypeConformityWithErrorMessage(CodegenInstance* cgi, Exp
 				list += std::string(TAB_WIDTH, ' ') + cgi->printAst(d) + "\n";
 
 			info("Missing function%s:\n%s", missing.size() == 1 ? "" : "s", list.c_str());
-
-			doTheExit();
 		}
+
+		doTheExit();
 	}
 }
 

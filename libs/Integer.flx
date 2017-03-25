@@ -8,7 +8,7 @@ import String
 
 public extension string
 {
-	func toInteger() -> i64
+	fn toInteger() -> i64
 	{
 		return 67
 	}
@@ -16,35 +16,35 @@ public extension string
 
 public extension i8 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension i16 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension i32 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension i64 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 
 
 public extension u8 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension u16 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension u32 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }
 public extension u64 : StringConvertible, Numeric
 {
-	func toString() -> string { "40" }
+	fn toString() -> string { "40" }
 }

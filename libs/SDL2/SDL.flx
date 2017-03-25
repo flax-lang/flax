@@ -135,15 +135,15 @@ public namespace SDL
 	}
 }
 
-public ffi func SDL_Init(flags: u32) -> i32
-public ffi func SDL_CreateWindow(title: i8*, xpos: i32, ypos: i32, width: i32, height: i32, flags: u32) -> void*
+public ffi fn SDL_Init(flags: u32) -> i32
+public ffi fn SDL_CreateWindow(title: i8*, xpos: i32, ypos: i32, width: i32, height: i32, flags: u32) -> void*
 
 
-public ffi func SDL_GL_SetAttribute(attr: i32, value: i32)
+public ffi fn SDL_GL_SetAttribute(attr: i32, value: i32)
 
-public ffi func SDL_PollEvent(event: SDL.Event*) -> i32
+public ffi fn SDL_PollEvent(event: SDL.Event*) -> i32
 
 // opengl stuff
 
-public ffi func SDL_GL_CreateContext(window: void*) -> void*
-public ffi func SDL_GL_SwapWindow(window: void*) -> void
+public ffi fn SDL_GL_CreateContext(window: void*) -> void*
+public ffi fn SDL_GL_SwapWindow(window: void*) -> void

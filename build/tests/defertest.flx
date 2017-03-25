@@ -5,20 +5,20 @@
 import Foundation
 
 
-public func doDeferTest()
+public fn doDeferTest()
 {
 	bar()
 }
 
 
-func foo(x: int) -> int
+fn foo(x: int) -> int
 {
 	printf("calling foo %d\n", x)
 	return 2 * x
 }
 
 
-func bar() -> int
+fn bar() -> int
 {
 	// numbered by *correct* order of appearance.
 	// defer should execute after the return.
