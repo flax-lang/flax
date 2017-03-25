@@ -25,7 +25,7 @@ static fir::LinkageType getFunctionDeclLinkage(FuncDecl* fd)
 	{
 		linkageType = fir::LinkageType::External;
 	}
-	else if(fd->parentClass && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
+	else if(fd->parentClass.first && (fd->attribs & (Attr_VisPublic | Attr_VisInternal | Attr_VisPrivate)) == 0)
 	{
 		// default.
 		linkageType = fd->attribs & Attr_VisPrivate ? fir::LinkageType::Internal : fir::LinkageType::Internal;
@@ -67,6 +67,9 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 
 	auto linkageType = getFunctionDeclLinkage(fd);
 
+	if(fd->genericTypes.empty())
+		fd->ident.functionArguments = ft->getArgumentTypes();
+
 	// check for redef
 	fir::Function* func = nullptr;
 	if(fd->genericTypes.size() == 0 && (/*cgi->isDuplicateFuncDecl(fd) || */cgi->module->getFunction(fd->ident) != 0))
@@ -77,8 +80,6 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 	{
 		if(fd->genericTypes.size() == 0)
 		{
-			fd->ident.functionArguments = ft->getArgumentTypes();
-
 			if(mangle)
 			{
 				iceAssert(!(fd->attribs & Attr_NoMangle) && !fd->isFFI);
@@ -99,7 +100,7 @@ static Result_t generateActualFuncDecl(CodegenInstance* cgi, FuncDecl* fd, std::
 		// if(fd->attribs & Attr_VisPublic)
 		// 	cgi->addPublicFunc(FuncDefPair(func, fd, 0));
 
-		if(fd->parentClass == 0)
+		if(fd->parentClass.first == 0)
 		{
 			// if(fd->ident.name == "variadicTest")
 			// {
@@ -177,7 +178,7 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 	// printf("gen func: %s\n", this->ident.str().c_str());
 
 	// check if empty and if it's an extern. mangle the name to include type info if possible.
-	bool isMemberFunction = (this->parentClass != nullptr);
+	bool isMemberFunction = (this->parentClass.first != nullptr);
 
 
 	if(isMemberFunction)
@@ -218,9 +219,9 @@ Result_t FuncDecl::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 	if(isMemberFunction && !this->isStatic)
 	{
-		fir::Type* st = this->parentClass->createdType;
+		fir::Type* st = this->parentClass.second;
 		if(st == 0)
-			st = this->parentClass->createType(cgi);
+			st = this->parentClass.first->createType(cgi);
 
 		argtypes.insert(argtypes.begin(), st->getPointerTo());
 	}

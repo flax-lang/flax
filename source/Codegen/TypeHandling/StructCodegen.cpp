@@ -13,32 +13,20 @@ using namespace Codegen;
 
 fir::Type* StructDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool allowFail)
 {
-	if(this->createdType == 0)
-		return this->createType(cgi);
-
-	else return this->createdType;
+	return this->createType(cgi);
 }
 
-Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::string, fir::Type*> tm)
 {
-	this->createType(cgi);
+	if(cgi->reifiedGenericTypes.find({ this, tm }) != cgi->reifiedGenericTypes.end())
+		return cgi->reifiedGenericTypes[{ this, tm }];
 
-	iceAssert(this->didCreateType);
+	cgi->pushGenericTypeMap(tm);
+
 	TypePair_t* _type = cgi->getType(this->ident);
 
 	if(!_type)
 		GenError::unknownSymbol(cgi, this, this->ident.str(), SymbolType::Type);
-
-
-	// if we're already done, don't.
-	if(this->didCodegen)
-		return Result_t(0, 0);
-
-	this->didCodegen = true;
-
-
-
-
 
 	fir::LinkageType linkageType;
 	if(this->attribs & Attr_VisPublic)
@@ -49,8 +37,6 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 	{
 		linkageType = fir::LinkageType::Internal;
 	}
-
-
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
@@ -65,9 +51,14 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 	}
 
 
-
 	fir::StructType* str = this->createdType->toStructType();
+	str = str->reify(tm);
+
 	cgi->module->addNamedType(str->getStructName(), str);
+
+	// add the concrete type to the mapping as well.
+	if(this->genericTypes.size() > 0)
+		cgi->addNewType(str, this, TypeKind::Struct);
 
 
 	fir::IRBlock* curblock = cgi->irb.getCurrentBlock();
@@ -84,7 +75,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 
 		this->initFuncs.push_back(this->defaultInitialiser);
 
-		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, defaultInitialiser);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("init_" + this->ident.name, this->defaultInitialiser);
 		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
@@ -147,7 +138,19 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 	}
 
 	cgi->irb.setCurrentBlock(curblock);
+	cgi->popGenericTypeStack();
 
+	cgi->reifiedGenericTypes[{ this, tm }] = str;
+	return str;
+}
+
+Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+{
+	if(!this->createdType)
+		this->createType(cgi);
+
+	if(this->genericTypes.size() == 0)
+		this->reifyTypeUsingMapping(cgi, { });
 
 	return Result_t(0, 0);
 }
@@ -161,15 +164,30 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 
 fir::Type* StructDef::createType(CodegenInstance* cgi)
 {
-	if(this->didCreateType)
+	if(this->didCreateType && this->genericTypes.empty())
 		return this->createdType;
+
+	cgi->pushGenericTypeStack();
+	std::vector<fir::ParametricType*> typeParams;
+	if(this->genericTypes.size() > 0)
+	{
+		for(auto t : this->genericTypes)
+		{
+			auto pt = fir::ParametricType::get(t.first);
+			cgi->pushGenericType(t.first, pt);
+			typeParams.push_back(pt);
+		}
+	}
+
 
 	// see if we have nested types
 	for(auto nested : this->nestedTypes)
 	{
 		cgi->pushNestedTypeScope(this);
 		cgi->pushNamespaceScope(this->ident.name);
+
 		nested.second = nested.first->createType(cgi);
+
 		cgi->popNamespaceScope();
 		cgi->popNestedTypeScope();
 	}
@@ -186,19 +204,18 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 
 	// create a bodyless struct so we can use it
 	fir::StructType* str = fir::StructType::createWithoutBody(this->ident, cgi->getContext(), this->packed);
+	str->addTypeParameters(typeParams);
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(str, this, TypeKind::Struct);
-
 
 	for(VarDecl* var : this->members)
 	{
 		var->inferType(cgi);
 		fir::Type* type = var->getType(cgi);
+
 		if(type == str)
-		{
 			error(this, "Cannot have non-pointer member of type self");
-		}
 
 		if(!var->isStatic)
 		{
@@ -206,16 +223,13 @@ fir::Type* StructDef::createType(CodegenInstance* cgi)
 		}
 	}
 
-
-
-
-
 	str->setBody(types);
 
 	this->didCreateType = true;
-
 	this->createdType = str;
 
+
+	cgi->popGenericTypeStack();
 	return str;
 }
 

@@ -38,7 +38,6 @@ namespace Codegen
 		iceAssert(cgi->module->getExecutionTarget());
 		cgi->pushScope();
 
-		// cgi->rootNode->rootFuncStack->nsName = "__#root_" + cgi->module->getModuleName();
 		cgi->currentFuncTree = cgi->rootNode->rootFuncStack;
 
 		// rootFuncStack should really be empty, except we know that there should be
@@ -233,32 +232,39 @@ namespace Codegen
 
 	void CodegenInstance::addNewType(fir::Type* ltype, StructBase* atype, TypeKind e)
 	{
+		iceAssert(ltype);
 		TypePair_t tpair(ltype, TypedExpr_t(atype, e));
-
-		// FunctionTree* ftree = this->currentFuncTree;
-		// iceAssert(ftree);
 
 		FunctionTree* ftree = this->getFuncTreeFromNS(atype->ident.scope);
 		iceAssert(ftree);
 
-		if(ftree->types.find(atype->ident.name) != ftree->types.end())
+		std::string name = atype->ident.name;
+		std::string fullname = atype->ident.str();
+
+		if((ltype->isStructType() && ltype->toStructType()->isGenericInstantiation())
+			|| (ltype->isClassType() && ltype->toClassType()->isGenericInstantiation()))
+		{
+			name = (ltype->isStructType() ? ltype->toStructType()->getStructName().str() : ltype->toClassType()->getClassName().str());
+			fullname = name;
+		}
+
+		if(ftree->types.find(name) != ftree->types.end())
 		{
 			// only if there's an actual, fir::Type* there.
-			if(ftree->types[atype->ident.name].first)
-				error(atype, "Duplicate type %s (in ftree %s:%zu)", atype->ident.name.c_str(), ftree->nsName.c_str(), ftree->id);
+			if(ftree->types[name].first)
+				error(atype, "Duplicate type %s (in ftree %s:%zu)", name.c_str(), ftree->nsName.c_str(), ftree->id);
 		}
 
 		// if there isn't one, add it.
-		ftree->types[atype->ident.name] = tpair;
+		ftree->types[name] = tpair;
 
-
-		if(this->typeMap.find(atype->ident.str()) == this->typeMap.end())
+		if(this->typeMap.find(fullname) == this->typeMap.end())
 		{
-			this->typeMap[atype->ident.str()] = tpair;
+			this->typeMap[fullname] = tpair;
 		}
 		else
 		{
-			error(atype, "Duplicate type %s (full: %s)", atype->ident.name.c_str(), atype->ident.str().c_str());
+			error(atype, "Duplicate type '%s' (full: '%s')", name.c_str(), fullname.c_str());
 		}
 
 		TypeInfo::addNewType(this, ltype, atype, e);
@@ -440,6 +446,13 @@ namespace Codegen
 		}
 
 		this->instantiatedGenericTypeStack.back()[id] = type;
+	}
+
+	void CodegenInstance::pushGenericTypeMap(std::map<std::string, fir::Type*> tm)
+	{
+		this->pushGenericTypeStack();
+		for(auto t : tm)
+			this->pushGenericType(t.first, t.second);
 	}
 
 	fir::Type* CodegenInstance::resolveGenericType(std::string id)
@@ -1817,7 +1830,8 @@ namespace Codegen
 
 
 
-	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals)
+	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals,
+		std::map<std::string, fir::Type*> tm)
 	{
 		// check if this is a builtin type.
 		// allow constructor syntax for that
@@ -1827,6 +1841,9 @@ namespace Codegen
 
 		if(this->isBuiltinType(pair->first))
 		{
+			if(!tm.empty())
+				error(user, "Type parameter list should be empty for builtin types");
+
 			iceAssert(pair->second.first == 0);
 
 			if(vals.size() == 1)
@@ -1948,6 +1965,21 @@ namespace Codegen
 			StructBase* sb = dynamic_cast<StructBase*>(pair->second.first);
 			iceAssert(sb);
 
+			if(sb->genericTypes.empty() && tm.size() > 0)
+				error(user, "Cannot provide type parameter list to non-generic type '%s'", sb->ident.name.c_str());
+
+			if(sb->genericTypes.size() > 0)
+			{
+				if(tm.empty())
+					error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
+
+				sb->reifyTypeUsingMapping(this, tm);
+			}
+
+			// check if the protocols are conformed to
+			this->checkProtocolConformanceOfGenericSolutions(user, tm, sb->genericTypes);
+
+
 			// use function overload operator for this.
 
 			std::vector<FuncDefPair> fns;
@@ -1976,9 +2008,17 @@ namespace Codegen
 				}
 			}
 
+			this->pushGenericTypeMap(tm);
+
 			std::vector<fir::Type*> argTypes;
 			for(auto v : vals)
-				argTypes.push_back(v->getType());
+				argTypes.push_back(v->getType()->reify(tm));
+
+			for(size_t i = 0; i < fns.size(); i++)
+			{
+				if(fns[i].firFunc->isGeneric())
+					fns[i].firFunc = fns[i].firFunc->reify(tm);
+			}
 
 			Resolved_t res = this->resolveFunctionFromList(user, fns, "init", argTypes);
 
@@ -1997,6 +2037,7 @@ namespace Codegen
 			auto ret = this->module->getFunction(res.t.firFunc->getName());
 			iceAssert(ret);
 
+			this->popGenericTypeStack();
 			return ret;
 		}
 		else

@@ -8,9 +8,9 @@ import SDL2.SDL
 
 import LibCInterface
 
-ffi func rand() -> i32
+ffi fn rand() -> i32
 
-func frand(a: f64, b: f64) -> f64
+fn frand(a: f64, b: f64) -> f64
 {
     let r = (rand() as f64) / 2147483647.0
     let diff = b - a
@@ -19,14 +19,14 @@ func frand(a: f64, b: f64) -> f64
     return a + x
 }
 
-ffi func log(a: f64) -> f64
-ffi func sin(a: f64) -> f64
-ffi func fabs(a: f64) -> f64
-ffi func fmin(a: f64, b: f64) -> f64
-ffi func fmax(a: f64, b: f64) -> f64
-ffi func sqrt(a: f64) -> f64
+ffi fn log(a: f64) -> f64
+ffi fn sin(a: f64) -> f64
+ffi fn fabs(a: f64) -> f64
+ffi fn fmin(a: f64, b: f64) -> f64
+ffi fn fmax(a: f64, b: f64) -> f64
+ffi fn sqrt(a: f64) -> f64
 
-func clamp(x: f64, lower: f64, upper: f64) -> f64
+fn clamp(x: f64, lower: f64, upper: f64) -> f64
 {
     return fmin(upper, fmax(x, lower))
 }
@@ -35,7 +35,7 @@ func clamp(x: f64, lower: f64, upper: f64) -> f64
 
 
 
-public func main(argc: i32, argv: i8**) -> int
+public fn main(argc: i32, argv: i8**) -> int
 {
 	SDL_Init(SDL.INIT_EVERYTHING)
 	let mw = SDL_CreateWindow("test", 805240832, 805240832, 640, 480, 2)

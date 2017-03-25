@@ -102,7 +102,9 @@ namespace Codegen
 
 		// generic stuff
 		std::vector<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
+
 		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
+		std::map<std::pair<Ast::StructBase*, std::map<std::string, fir::Type*>>, fir::Type*> reifiedGenericTypes;
 
 
 		TypeMap_t typeMap;
@@ -250,9 +252,6 @@ namespace Codegen
 
 		bool isDuplicateType(const Identifier& id);
 
-		std::string mangleGenericParameters(std::vector<Ast::VarDecl*> args);
-
-
 		void performComplexValueStore(Ast::Expr* user, fir::Type* type, fir::Value* srcptr, fir::Value* dstptr, std::string name,
 			Parser::Pin pos, Ast::ValueKind rhsvk);
 
@@ -285,12 +284,17 @@ namespace Codegen
 
 
 		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
-		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::vector<Ast::Func*> cands, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
+		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::vector<Ast::Func*> cands, std::map<Ast::Func*,
+			std::pair<std::string, Ast::Expr*>>* errs);
+
 		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::vector<Ast::Func*> candidates,
 			fir::FunctionType* ft, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
 
-		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, std::map<std::string, fir::Type*> gtm,
-			Ast::Func* func, std::vector<fir::Type*> params, std::string* err, Ast::Expr** ex);
+		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, Ast::Func* func, std::vector<fir::Type*> params,
+			std::string* err, Ast::Expr** ex);
+
+		FuncDefPair instantiateGenericFunctionUsingMapping(Ast::Expr* user, std::map<std::string, fir::Type*> gtm, Ast::Func* func,
+			std::string* err, Ast::Expr** ex);
 
 		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
 			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
@@ -323,6 +327,8 @@ namespace Codegen
 
 		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 
+		void checkProtocolConformanceOfGenericSolutions(Ast::Expr* user, const std::map<std::string, fir::Type*>& mappings,
+			std::map<std::string, TypeConstraints_t> tm);
 
 		fir::FTContext* getContext();
 		fir::Value* getDefaultValue(fir::Type* t);
@@ -331,8 +337,13 @@ namespace Codegen
 		fir::Type* getExprTypeOfBuiltin(std::string type);
 		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
-		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args);
-		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args);
+
+		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args,
+			std::map<std::string, fir::Type*> tm);
+
+		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args,
+			std::map<std::string, fir::Type*> tm);
+
 
 		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
 

@@ -81,7 +81,7 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 				args.push_back(e->codegen(cgi).value);
 
 			typePair = cgi->getType(type);
-			fir::Function* initfunc = cgi->getStructInitialiser(user, typePair, args);
+			fir::Function* initfunc = cgi->getStructInitialiser(user, typePair, args, { });
 			iceAssert(initfunc);
 
 			cgi->irb.CreateCall(initfunc, args);

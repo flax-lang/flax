@@ -21,21 +21,16 @@ fir::Type* ClassDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 	else return this->createdType;
 }
 
-Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::string, fir::Type*> tm)
 {
-	this->createType(cgi);
+	if(cgi->reifiedGenericTypes.find({ this, tm }) != cgi->reifiedGenericTypes.end())
+		return cgi->reifiedGenericTypes[{ this, tm }];
+
+	cgi->pushGenericTypeMap(tm);
 
 	TypePair_t* _type = cgi->getType(this->ident);
 	if(!_type) error(this, "how? generating class (%s) without type", this->ident.name.c_str());
 
-
-
-
-	// if we're already done, don't.
-	if(this->didCodegen)
-		return Result_t(0, 0);
-
-	this->didCodegen = true;
 
 	fir::LinkageType linkageType;
 	if(this->attribs & Attr_VisPublic)
@@ -66,6 +61,14 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 
 	fir::ClassType* cls = this->createdType->toClassType();
+	cls = cls->reify(tm);
+
+	cgi->module->addNamedType(cls->getClassName(), cls);
+
+	// add the concrete type to the mapping as well.
+	if(this->genericTypes.size() > 0)
+		cgi->addNewType(cls, this, TypeKind::Class);
+
 
 	// generate initialiser
 	{
@@ -116,7 +119,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 					TypePair_t* cmplxtype = cgi->getType(var->concretisedType);
 					iceAssert(cmplxtype);
 
-					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv });
+					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv }, { });
 					cgi->addGlobalConstructor(vid, init);
 				}
 				else
@@ -141,16 +144,12 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 
 
-
-
-
-
 	// generate the decls before the bodies, so we can (a) call recursively, and (b) call other member functions independent of
 	// order of declaration.
 
 
 	// pass 1
-	doCodegenForMemberFunctions(cgi, this);
+	auto fmap = doCodegenForMemberFunctions(cgi, this, cls, tm);
 	{
 		cls->setMethods(this->lfuncs);
 	}
@@ -161,20 +160,20 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 	// 2. we need to *get* the fir::Function* to store somewhere to retrieve later
 	// 3. we need the rest of the member decls to be in place, so we can call member functions
 	// from the getters/setters.
-	doCodegenForComputedProperties(cgi, this);
+	doCodegenForComputedProperties(cgi, this, cls, tm);
 
 	// same reasoning for operators -- we need to 1. be able to call methods in the operator, and 2. call operators from the methods
-	generateDeclForOperators(cgi, this);
+	generateDeclForOperators(cgi, this, cls, tm);
 
-	doCodegenForGeneralOperators(cgi, this);
-	doCodegenForAssignmentOperators(cgi, this);
-	doCodegenForSubscriptOperators(cgi, this);
+	doCodegenForGeneralOperators(cgi, this, cls, tm);
+	doCodegenForAssignmentOperators(cgi, this, cls, tm);
+	doCodegenForSubscriptOperators(cgi, this, cls, tm);
 
 
 	// pass 2
 	for(Func* f : this->funcs)
 	{
-		generateMemberFunctionBody(cgi, this, f, this->defaultInitialiser);
+		generateMemberFunctionBody(cgi, this, cls, f, this->defaultInitialiser, fmap[f], tm);
 	}
 
 
@@ -190,22 +189,10 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		ProtocolDef* prot = cgi->resolveProtocolName(this, protstr);
 		iceAssert(prot);
 
-		prot->assertTypeConformity(cgi, cls);
+		prot->assertTypeConformityWithErrorMessage(cgi, this, cls, strprintf("Class '%s' declared conformity to protocol '%s', but does not conform to it", this->ident.name.c_str(), protstr.c_str()));
+
 		this->conformedProtocols.push_back(prot);
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -235,7 +222,19 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 			this->initFuncs.push_back(this->defaultInitialiser);
 	}
 
-	// cgi->addPublicFunc(FuncDefPair(this->defaultInitialiser, 0, 0));
+	cgi->popGenericTypeStack();
+	cgi->reifiedGenericTypes[{ this, tm }] = cls;
+
+	return cls;
+}
+
+Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* target)
+{
+	if(!this->createdType)
+		this->createType(cgi);
+
+	if(this->genericTypes.size() == 0)
+		this->reifyTypeUsingMapping(cgi, { });
 
 	return Result_t(0, 0);
 }
@@ -272,11 +271,22 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 fir::Type* ClassDef::createType(CodegenInstance* cgi)
 {
-	if(this->didCreateType)
+	if(this->didCreateType && this->genericTypes.empty())
 		return this->createdType;
 
 
-	// this->ident.scope = cgi->getFullScope();
+	cgi->pushGenericTypeStack();
+	std::vector<fir::ParametricType*> typeParams;
+	if(this->genericTypes.size() > 0)
+	{
+		for(auto t : this->genericTypes)
+		{
+			auto pt = fir::ParametricType::get(t.first);
+			cgi->pushGenericType(t.first, pt);
+			typeParams.push_back(pt);
+		}
+	}
+
 
 
 	// see if we have nested types
@@ -303,6 +313,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 		GenError::duplicateSymbol(cgi, this, this->ident.str(), SymbolType::Type);
 
 	fir::ClassType* cls = fir::ClassType::createWithoutBody(this->ident, cgi->getContext());
+	cls->addTypeParameters(typeParams);
 
 	iceAssert(this->createdType == 0);
 	cgi->addNewType(cls, this, TypeKind::Class);
@@ -317,7 +328,7 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 		if(this->attribs & Attr_VisPublic && !(func->decl->attribs & (Attr_VisInternal | Attr_VisPrivate | Attr_VisPublic)))
 			func->decl->attribs |= Attr_VisPublic;
 
-		func->decl->parentClass = this;
+		func->decl->parentClass = { this, cls };
 	}
 
 	for(VarDecl* var : this->members)
@@ -339,11 +350,11 @@ fir::Type* ClassDef::createType(CodegenInstance* cgi)
 	}
 
 	cls->setMembers(types);
+
 	this->didCreateType = true;
-
 	this->createdType = cls;
-	cgi->module->addNamedType(cls->getClassName(), cls);
 
+	cgi->popGenericTypeStack();
 	return cls;
 }
 

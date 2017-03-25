@@ -450,7 +450,7 @@ namespace Lexer
 			// check for keywords
 			if(compare(tok.text, "class"))				tok.type = TType::Class;
 			else if(compare(tok.text, "struct"))		tok.type = TType::Struct;
-			else if(compare(tok.text, "func"))			tok.type = TType::Func;
+			else if(compare(tok.text, "fn"))			tok.type = TType::Func;
 			else if(compare(tok.text, "import"))		tok.type = TType::Import;
 			else if(compare(tok.text, "var"))			tok.type = TType::Var;
 			else if(compare(tok.text, "val"))			tok.type = TType::Val;

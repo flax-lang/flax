@@ -4,7 +4,7 @@
 
 import LibCInterface
 
-public ƒ doArrayTest()
+public fn doArrayTest()
 {
 	do {
 		var arr: int[2][2] = [ [ 1, 2 ], [ 5, 6 ] ]
@@ -38,18 +38,18 @@ public ƒ doArrayTest()
 	dynamicArrays()
 }
 
-public func foldl(first: int, arr: int[], fn: [(int, int) -> int]) -> int
+public fn foldl(first: int, arr: int[], f: [(int, int) -> int]) -> int
 {
 	if arr.length == 0 { return first }
-	return foldl(fn(first, arr.popBack()), arr, fn)
+	return foldl(f(first, arr.popBack()), arr, f)
 }
 
-func f(a: int, b: int) -> int
+fn f(a: int, b: int) -> int
 {
 	return a * b
 }
 
-func setup(max: int) -> int[]
+fn setup(max: int) -> int[]
 {
 	var arr: int[]
 
@@ -63,7 +63,7 @@ func setup(max: int) -> int[]
 	return arr
 }
 
-func dynamicArrays()
+fn dynamicArrays()
 {
 	do {
 		printf("PRE X\n")

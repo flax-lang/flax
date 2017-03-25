@@ -162,6 +162,8 @@ struct TypeConstraints_t
 };
 
 
+std::string strprintf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 

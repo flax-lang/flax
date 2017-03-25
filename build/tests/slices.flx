@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-public func doSlicesTest()
+public fn doSlicesTest()
 {
 	do {
 		var arr = [ 2, 3, 5, 7, 11, 13, 17 ]

@@ -190,6 +190,46 @@ namespace fir
 
 
 
+	bool ClassType::isGenericType()
+	{
+		return this->typeParameters.size() > 0;
+	}
+
+	std::vector<ParametricType*> ClassType::getTypeParameters()
+	{
+		return this->typeParameters;
+	}
+
+	void ClassType::addTypeParameter(ParametricType* t)
+	{
+		for(auto p : this->typeParameters)
+		{
+			if(p->getName() == t->getName())
+				error("Type parameter '%s' already exists", p->getName().c_str());
+		}
+
+		this->typeParameters.push_back(t);
+	}
+
+	void ClassType::addTypeParameters(std::vector<ParametricType*> ts)
+	{
+		for(auto t : ts)
+			this->addTypeParameter(t);
+	}
+
+	bool ClassType::isGenericInstantiation()
+	{
+		return this->isGenericInst;
+	}
+
+	void ClassType::setGenericInstantiation()
+	{
+		this->isGenericInst = true;
+	}
+
+
+
+
 
 
 	ClassType* ClassType::reify(std::map<std::string, Type*> reals, FTContext* tc)
@@ -197,28 +237,40 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		ClassType* ret = ClassType::createWithoutBody(this->className);
-
-		std::vector<std::pair<std::string, Type*>> reifiedMems;
-		std::vector<Function*> reifiedMethods;
-
-		for(auto mem : this->classMembers)
+		if(this->isGenericType())
 		{
-			auto rfd = mem.second->reify(reals);
-			if(rfd->isParametricType())
-				_error_and_exit("Failed to reify, no type found for '%s'", mem.second->toParametricType()->getName().c_str());
+			// ClassType* ret = ClassType::createWithoutBody(this->className);
 
-			reifiedMems.push_back({ mem.first, rfd });
+			std::vector<std::pair<std::string, Type*>> reifiedMems;
+			std::vector<Function*> reifiedMethods;
+
+			for(auto mem : this->classMembers)
+			{
+				auto rfd = mem.second->reify(reals);
+				if(rfd->isParametricType())
+				{
+					_error_and_exit("Failed to reify type '%s', no type found for '%s'", this->str().c_str(),
+						mem.second->toParametricType()->getName().c_str());
+				}
+
+				reifiedMems.push_back({ mem.first, rfd });
+			}
+
+			iceAssert(reifiedMems.size() == this->classMembers.size());
+
+			// do the methods
+			// uh... not yet.
+
+			auto ret = ClassType::create(Identifier(this->className.str() + fir::mangleGenericTypes(reals), IdKind::Struct), reifiedMems,
+				{ });
+
+			ret->setGenericInstantiation();
+			return ret;
 		}
-
-		iceAssert(reifiedMems.size() == this->classMembers.size());
-
-
-		// do the methods
-		// uh... not yet.
-
-
-		return ret;
+		else
+		{
+			return this;
+		}
 	}
 }
 

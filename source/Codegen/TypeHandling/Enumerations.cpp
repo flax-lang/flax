@@ -23,6 +23,11 @@ fir::Type* EnumDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool all
 	else return this->createdType;
 }
 
+fir::Type* EnumDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::string, fir::Type*> tm)
+{
+	return 0;
+}
+
 fir::Type* EnumDef::createType(CodegenInstance* cgi)
 {
 	// make sure all types are the same
