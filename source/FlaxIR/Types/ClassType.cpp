@@ -273,11 +273,8 @@ namespace fir
 
 			iceAssert(reifiedMems.size() == this->classMembers.size());
 
-			// do the methods
-			// uh... not yet.
-
 			auto ret = ClassType::create(Identifier(this->className.str() + fir::mangleGenericTypes(reals), IdKind::Struct), reifiedMems,
-				{ });
+				reifiedMethods);
 
 			if(ret->getTypeParameters().empty())
 				ret->addTypeParameters(this->getTypeParameters());
