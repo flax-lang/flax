@@ -17,7 +17,7 @@ Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::v
 
 	args.insert(args.begin(), ai);
 
-	fir::Function* initfunc = this->getStructInitialiser(user, tp, args, tm);
+	fir::Function* initfunc = this->getStructInitialiser(user, tp, args, tm, 0);
 
 	std::vector<fir::Value*> args1;
 	for(size_t i = 0; i < args.size(); i++)

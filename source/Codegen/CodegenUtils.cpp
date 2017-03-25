@@ -1831,7 +1831,7 @@ namespace Codegen
 
 
 	fir::Function* CodegenInstance::getStructInitialiser(Expr* user, TypePair_t* pair, std::vector<fir::Value*> vals,
-		std::map<std::string, fir::Type*> tm)
+		std::map<std::string, fir::Type*> tm, pts::Type* ptypeForMap)
 	{
 		// check if this is a builtin type.
 		// allow constructor syntax for that
@@ -1970,10 +1970,22 @@ namespace Codegen
 
 			if(sb->genericTypes.size() > 0)
 			{
+				if(tm.empty() && ptypeForMap != 0)
+				{
+					iceAssert(ptypeForMap->isNamedType());
+					auto pt = ptypeForMap->toNamedType();
+
+					if(pt->genericMapping.empty())
+						error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
+
+					for(auto p : pt->genericMapping)
+						tm[p.first] = this->getTypeFromParserType(user, p.second);
+				}
+
 				if(tm.empty())
 					error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
 
-				sb->reifyTypeUsingMapping(this, tm);
+				sb->reifyTypeUsingMapping(this, user, tm);
 			}
 
 			// check if the protocols are conformed to

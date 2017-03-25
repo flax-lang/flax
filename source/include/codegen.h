@@ -339,7 +339,7 @@ namespace Codegen
 		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
 
 		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args,
-			std::map<std::string, fir::Type*> tm);
+			std::map<std::string, fir::Type*> tm, pts::Type* ptypeForMap);
 
 		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args,
 			std::map<std::string, fir::Type*> tm);

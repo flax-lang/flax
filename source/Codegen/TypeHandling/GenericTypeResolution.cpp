@@ -19,6 +19,9 @@ namespace Codegen
 		{
 			if(gt.find(t->toNamedType()->name) != gt.end())
 				list->insert(t->toNamedType()->name);
+
+			for(auto m : t->toNamedType()->genericMapping)
+				_getAllGenericTypesContainedWithinRecursively(m.second, gt, list);
 		}
 		else if(t->isFunctionType())
 		{
@@ -158,6 +161,82 @@ namespace Codegen
 
 			return true;
 		};
+
+
+		// see if we need to use extra lube
+		if(expt->isNamedType() && expt->toNamedType()->genericMapping.size() > 0)
+		{
+			// oh no.
+			if(!givent->isStructType() && !givent->isClassType())
+			{
+				*errorString = strprintf("Expected class or struct type (to match required parameter type '%s'), found '%s'",
+					expt->str().c_str(), givent->str().c_str());
+				if(candidate) *failedExpr = candidate->params[argIndex];
+
+
+				return false;
+			}
+
+			// if((givent->isStructType() && givent->toStructType()->isGenericType()) || (givent->isClassType() && givent->toClassType()->isGenericType()))
+			// {
+			// 	*errorString = strprintf("Concrete (instantiated) type expected in parameter %zu (to solve type '%s'), found '%s'",
+			// 		argIndex, expt->str().c_str(), givent->str().c_str());
+
+			// 	if(candidate) *failedExpr = candidate->params[argIndex];
+
+			// 	return false;
+			// }
+
+			// finally -- check if you're really trying to fuck yourself
+			if(checkNeedsSolving(expt->toNamedType()->name))
+			{
+				// what the fuck? T<K> or whatever is like
+				// terribad
+
+				*errorString = strprintf("Stop doing bad things.");
+				if(candidate) *failedExpr = candidate->params[argIndex];
+
+				return false;
+			}
+
+			// we should be good now?
+			auto givenMapping = givent->isStructType() ? givent->toStructType()->getGenericInstantiationMapping() : givent->toClassType()->getGenericInstantiationMapping();
+
+			// i believe that givenMapping should be 'correct', given that it came from the reification.
+			for(auto m : expt->toNamedType()->genericMapping)
+			{
+				pts::Type* pty = 0; TrfList ptrfs;
+				std::tie(pty, ptrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(m.second);
+
+				iceAssert(givenMapping.find(m.first) != givenMapping.end());
+
+				fir::Type* fty = 0; TrfList ftrfs;
+				std::tie(fty, ftrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(givenMapping[m.first]);
+
+				if(!pts::areTransformationsCompatible(ptrfs, ftrfs))
+				{
+					*errorString = strprintf("Incompatible types in type parameter list to generic struct '%s' (in mapping for generic type '%s'): expected '%s', have '%s' (No valid transformations)",
+						expt->toNamedType()->name.c_str(), m.first.c_str(), m.second->str().c_str(), givenMapping[m.first]->str().c_str());
+
+					if(candidate) *failedExpr = candidate->params[ix];
+
+					return false;
+				}
+
+				fir::Type* soln = pts::reduceMaximallyWithSubset(fty, ptrfs, ftrfs);
+
+				// wow, i did not expect this to work, but it does.
+				bool res = solveSingleArgument(cgi, candidate, ix, toSolve, _baseArg, argIndex, pty, soln, topLevelSolution, fnSoln, errorString, failedExpr);
+
+				if(!res) return false;
+			}
+
+			// all should be good now.
+			return true;
+		}
+
+
+
 
 
 		auto& cursln = *topLevelSolution;
@@ -618,6 +697,13 @@ namespace Codegen
 			{
 				iceAssert(dpt->isFunctionType());
 
+				auto argToSolve = getAllGenericTypesContainedWithin(dpt->toFunctionType()->returnType, candidate->genericTypes);
+				bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, 0, dpt->toFunctionType()->returnType,
+					dft->toFunctionType()->getReturnType(), &cursln, &genericfnsoln, errorString, failedExpr);
+
+				if(!res) return false;
+
+				#if 0
 				// check the given with the expected
 				fir::Type* frt = 0; TrfList fttrfs;
 				std::tie(frt, fttrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(dft->toFunctionType()->getReturnType());
@@ -732,6 +818,8 @@ namespace Codegen
 							returnIncomplete);
 					}
 				}
+
+				#endif
 			}
 
 
@@ -1076,9 +1164,9 @@ namespace Codegen
 		while(it != candidates.end())
 		{
 			std::string s; Expr* e = 0;
-			bool result = checkGenericFunction(this, &gtm, (*it)->decl, fargs, &s, &e);
+			bool res = checkGenericFunction(this, &gtm, (*it)->decl, fargs, &s, &e);
 
-			if(!result)
+			if(!res)
 			{
 				if(errs) (*errs)[*it] = { s, e };
 				it = candidates.erase(it);

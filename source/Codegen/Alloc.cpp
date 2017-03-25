@@ -10,7 +10,7 @@ using namespace Ast;
 using namespace Codegen;
 
 
-static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* type, fir::Value* size, std::vector<Expr*> params,
+static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Alloc* user, fir::Type* type, fir::Value* size, std::vector<Expr*> params,
 	std::vector<fir::Value*>& sizes)
 {
 	fir::Function* mallocf = cgi->getOrDeclareLibCFunc(ALLOCATE_MEMORY_FUNC);
@@ -73,15 +73,14 @@ static Result_t recursivelyDoAlloc(CodegenInstance* cgi, Expr* user, fir::Type* 
 		if(type->isStructType() || type->isClassType())
 		{
 			// call the init func
-			TypePair_t* typePair = 0;
+			TypePair_t* typePair = cgi->getType(type);
 
 			std::vector<fir::Value*> args;
 			args.push_back(pointer);
 			for(Expr* e : params)
 				args.push_back(e->codegen(cgi).value);
 
-			typePair = cgi->getType(type);
-			fir::Function* initfunc = cgi->getStructInitialiser(user, typePair, args, { });
+			fir::Function* initfunc = cgi->getStructInitialiser(user, typePair, args, { }, user->ptype);
 			iceAssert(initfunc);
 
 			cgi->irb.CreateCall(initfunc, args);

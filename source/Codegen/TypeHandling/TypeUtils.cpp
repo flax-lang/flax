@@ -178,6 +178,21 @@ namespace Codegen
 			if(TypePair_t* test = cgi->getType(Identifier(atype, ns, IdKind::Struct)))
 			{
 				iceAssert(test->first);
+
+				auto sb = dynamic_cast<StructBase*>(test->second.first);
+				if(sb && sb->genericTypes.size() > 0)
+				{
+					if(pt->toNamedType()->genericMapping.empty())
+						error(user, "Generic type '%s' requires type parameters, but none were provided", sb->ident.name.c_str());
+
+					// ok, instantiate it
+					std::map<std::string, fir::Type*> map;
+					for(auto p : pt->toNamedType()->genericMapping)
+						map[p.first] = cgi->getTypeFromParserType(user, p.second);
+
+					return sb->reifyTypeUsingMapping(cgi, user, map);
+				}
+
 				return test->first;
 			}
 
@@ -199,11 +214,6 @@ namespace Codegen
 				// try generic.
 				fir::Type* ret = cgi->resolveGenericType(atype);
 				if(ret) return ret;
-
-				if(atype.find("<") != std::string::npos)
-				{
-					error("enotsup (generic structs)");
-				}
 
 				std::string nsstr;
 				for(auto n : ns)

@@ -21,10 +21,34 @@ fir::Type* ClassDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 	else return this->createdType;
 }
 
-fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::string, fir::Type*> tm)
+fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm)
 {
 	if(cgi->reifiedGenericTypes.find({ this, tm }) != cgi->reifiedGenericTypes.end())
 		return cgi->reifiedGenericTypes[{ this, tm }];
+
+	{
+		std::vector<std::string> needed;
+		for(auto t : this->genericTypes)
+			needed.push_back(t.first);
+
+		for(auto n : needed)
+		{
+			if(tm.find(n) == tm.end())
+			{
+				error(user, "Missing type parameter for generic type '%s' in instantiation of class '%s'",
+					n.c_str(), this->ident.name.c_str());
+			}
+		}
+
+		for(auto t : tm)
+		{
+			if(std::find(needed.begin(), needed.end(), t.first) == needed.end())
+				error(user, "Extraneous type parameter '%s' that does not exist in class '%s'", t.first.c_str(), this->ident.name.c_str());
+		}
+	}
+
+
+
 
 	cgi->pushGenericTypeMap(tm);
 
@@ -70,6 +94,8 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 		cgi->addNewType(cls, this, TypeKind::Class);
 
 
+	fir::Function* initFunction = 0;
+
 	// generate initialiser
 	{
 		auto defaultInitId = this->ident;
@@ -77,17 +103,17 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 		defaultInitId.name = "init_" + defaultInitId.name;
 		defaultInitId.functionArguments = { cls->getPointerTo() };
 
-		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
+		initFunction = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ cls->getPointerTo() },
 			fir::Type::getVoid(cgi->getContext()), false), linkageType);
 
 
 		fir::IRBlock* currentblock = cgi->irb.getCurrentBlock();
 
-		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, this->defaultInitialiser);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("initialiser_" + this->ident.name, initFunction);
 		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
-		fir::Value* self = this->defaultInitialiser->getArguments().front();
+		fir::Value* self = initFunction->getArguments().front();
 
 		for(VarDecl* var : this->members)
 		{
@@ -119,7 +145,7 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 					TypePair_t* cmplxtype = cgi->getType(var->concretisedType);
 					iceAssert(cmplxtype);
 
-					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv }, { });
+					fir::Function* init = cgi->getStructInitialiser(var, cmplxtype, { gv }, { }, var->ptype);
 					cgi->addGlobalConstructor(vid, init);
 				}
 				else
@@ -141,8 +167,6 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 		cgi->irb.CreateReturnVoid();
 		cgi->irb.setCurrentBlock(currentblock);
 	}
-
-
 
 	// generate the decls before the bodies, so we can (a) call recursively, and (b) call other member functions independent of
 	// order of declaration.
@@ -173,7 +197,7 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 	// pass 2
 	for(Func* f : this->funcs)
 	{
-		generateMemberFunctionBody(cgi, this, cls, f, this->defaultInitialiser, fmap[f], tm);
+		generateMemberFunctionBody(cgi, this, cls, f, initFunction, fmap[f], tm);
 	}
 
 
@@ -200,27 +224,26 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::s
 
 
 
-	if(initFuncs.size() == 0)
-	{
-		this->initFuncs.push_back(this->defaultInitialiser);
-	}
-	else
-	{
-		// handles generic types making more default initialisers
+	// if(initFuncs.size() == 0 && initFunction != 0)
+	// {
+	// 	this->initFuncs.push_back(initFunction);
+	// }
+	// else
+	// {
+	// 	// handles generic types making more default initialisers
 
 		bool found = false;
 		for(auto f : initFuncs)
 		{
-			if(f->getType() == this->defaultInitialiser->getType())
+			if(f->getType() == initFunction->getType())
 			{
 				found = true;
 				break;
 			}
 		}
 
-		if(!found)
-			this->initFuncs.push_back(this->defaultInitialiser);
-	}
+		if(!found) this->initFuncs.push_back(initFunction);
+	// }
 
 	cgi->popGenericTypeStack();
 	cgi->reifiedGenericTypes[{ this, tm }] = cls;
@@ -234,7 +257,7 @@ Result_t ClassDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		this->createType(cgi);
 
 	if(this->genericTypes.size() == 0)
-		this->reifyTypeUsingMapping(cgi, { });
+		this->reifyTypeUsingMapping(cgi, this, { });
 
 	return Result_t(0, 0);
 }
