@@ -10,7 +10,7 @@ import LibCInterface
 
 import Crypto.MD5
 
-public func min(a: int, b: int) -> int
+public fn min(a: int, b: int) -> int
 {
 	if a < b
 	{
@@ -20,7 +20,7 @@ public func min(a: int, b: int) -> int
 	return b
 }
 
-public func max(a: int, b: int) -> int
+public fn max(a: int, b: int) -> int
 {
 	if a > b
 	{

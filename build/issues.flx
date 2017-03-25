@@ -25,7 +25,7 @@
 // 8. abort(), exit(), etc. should be allowed as the last expression in a function
 // 	and allow the compiler to just ignore the fact that there's no return value
 // 	ie. __attribute__((noreturn))
-func foo() -> int { abort() }
+fn foo() -> int { abort() }
 
 
 
@@ -40,10 +40,10 @@ func foo() -> int { abort() }
 // Foo.method would continue to work, but would require an instance.
 
 // note: we should probably wait until we have closure capabilities in the compiler, which we can leverage to implement this.
-class Foo { func method() { /* ... */ } }
-Foo f;
-let fn = f.method;
-fn();
+class Foo { fn method() { /* ... */ } }
+Foo foo
+let f = foo.method
+f()
 
 
 

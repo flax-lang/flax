@@ -25,7 +25,7 @@ import tests.functions
 
 
 
-ƒ runTests()
+fn runTests()
 {
 	// fib
 	let fibTitle		= "       *** FIBONACII SEQUENCE ***       \n"
@@ -158,7 +158,7 @@ import tests.functions
 
 
 
-public func main(argc: i32, argv: i8**) -> int
+public fn main(argc: i32, argv: i8**) -> int
 {
 	runTests()
 
@@ -380,7 +380,7 @@ namespace thing
 
 var yyy = 30
 
-func parseFormatOptions(str: string) -> FormatOptions
+fn parseFormatOptions(str: string) -> FormatOptions
 {
 	let colon: char		= ":"
 	let lbrace: char	= "{"

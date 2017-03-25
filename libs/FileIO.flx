@@ -55,11 +55,11 @@ namespace _UNIX
 	let O_CLOEXEC: i32		= 0x1000000
 }
 
-ffi func open(f: i8*, flags: i32) -> i32
-ffi func write(fd: i32, buf: i8*, count: u64) -> i64
-ffi func read(fd: i32, buf: i8*, count: u64) -> i64
+ffi fn open(f: i8*, flags: i32) -> i32
+ffi fn write(fd: i32, buf: i8*, count: u64) -> i64
+ffi fn read(fd: i32, buf: i8*, count: u64) -> i64
 
-public func openFile(name: string, mode: FileMode) -> Stream
+public fn openFile(name: string, mode: FileMode) -> Stream
 {
 	var om: i32
 	if mode & (FileMode.Read | FileMode.Write) != FileMode.None

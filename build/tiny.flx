@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-ffi func malloc(size: i64) -> i8*
-ffi func printf(fmt: i8*, ...) -> i32
+ffi fn malloc(size: i64) -> i8*
+ffi fn printf(fmt: i8*, ...) -> i32
 
 namespace NS
 {
@@ -26,26 +26,26 @@ namespace NS
 
 protocol SomeProt
 {
-	func foo() -> int
+	fn foo() -> int
 }
 
 extension i64 : SomeProt
 {
-	func foo() -> int { printf("lol") }
+	fn foo() -> int { printf("lol") }
 }
 extension string : SomeProt
 {
-	func foo() -> int { printf("lol") }
+	fn foo() -> int { printf("lol") }
 }
 
-func add<T>(a: T, b: T) -> T
+fn add<T>(a: T, b: T) -> T
 {
 	a + b
 }
 
-func bar(a: i64, b: i64) -> i64 { a * b }
+fn bar(a: i64, b: i64) -> i64 { a * b }
 
-public func main() -> int
+public fn main() -> int
 {
 	do {
 		let ptr = (alloc[60] i64).data

@@ -7,7 +7,7 @@ import LibCInterface
 
 public extension char
 {
-	func isDigit() -> bool
+	fn isDigit() -> bool
 	{
 		let zero: char = "0"
 		let nine: char = "9"
@@ -18,7 +18,7 @@ public extension char
 
 public extension string
 {
-	func find(s: string) -> int
+	fn find(s: string) -> int
 	{
 		// this is nonsensical
 		if s.length > self.length { return -1 }
@@ -38,7 +38,7 @@ public extension string
 		return -1
 	}
 
-	func splitAtIndex(i: int) -> (string, string)
+	fn splitAtIndex(i: int) -> (string, string)
 	{
 		if i <= 0 { return ("", *self) }
 		else if i > self.length { return (*self, "") }
@@ -50,7 +50,7 @@ public extension string
 		return (a, b)
 	}
 
-	func substring(start: int, l: int) -> string
+	fn substring(start: int, l: int) -> string
 	{
 		var len = l
 		if start > self.length { return "" }
@@ -62,7 +62,7 @@ public extension string
 		return string(self.raw + start, len)
 	}
 
-	func substringInRange(start: int, end: int) -> string
+	fn substringInRange(start: int, end: int) -> string
 	{
 		if end == -1
 		{

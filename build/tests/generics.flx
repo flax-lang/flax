@@ -9,14 +9,14 @@ class Outer
 {
 	class SomeClass
 	{
-		func gen<T, K>(a: T, b: K) -> K
+		fn gen<T, K>(a: T, b: K) -> K
 		{
 			let m = alloc K
 			printf("instance generic\n")
 			return *m;
 		}
 
-		static func sgen<T, K>(a: T, b: K) -> T
+		static fn sgen<T, K>(a: T, b: K) -> T
 		{
 			let m = alloc T
 			printf("static generic\n")
@@ -29,13 +29,13 @@ extension Outer
 {
 	extension SomeClass
 	{
-		func egen<T>(a: T)
+		fn egen<T>(a: T)
 		{
 			let m = alloc T
 			printf("extension generic\n")
 		}
 
-		static func segen()
+		static fn segen()
 		{
 			// let m = alloc T
 			printf("static extension generic\n")
@@ -45,7 +45,7 @@ extension Outer
 
 namespace SomeNS
 {
-	func ngen<T>(a: T) -> T
+	fn ngen<T>(a: T) -> T
 	{
 		let m = alloc T
 		printf("namespace generic\n")
@@ -56,19 +56,19 @@ namespace SomeNS
 
 
 
-func foo_generic<T>(a: T, b: T, c: T)
+fn foo_generic<T>(a: T, b: T, c: T)
 {
 	printf("foo: triple T\n")
 	(a, b, c)
 }
 
-func foo_generic<T>(a: T, b: T)
+fn foo_generic<T>(a: T, b: T)
 {
 	printf("foo: double T\n")
 	(a, b)
 }
 
-func foo_generic<T, K>(a: T, b: K)
+fn foo_generic<T, K>(a: T, b: K)
 {
 	// let ta = typeof(a)
 	// let tb = typeof(b)
@@ -120,18 +120,18 @@ func foo_generic<T, K>(a: T, b: K)
 	// }
 }
 
-func arrtest<T>(b: T, x: T[]) -> T
+fn arrtest<T>(b: T, x: T[]) -> T
 {
 	return b
 }
 
-func foo(a: f64*, b: f64*[])
+fn foo(a: f64*, b: f64*[])
 {
 	arrtest(a, b)
 }
 
 
-public func doGenericsTest()
+public fn doGenericsTest()
 {
 	foo_generic(7, 6 as i8)
 	foo_generic(7, 6 as i16)
