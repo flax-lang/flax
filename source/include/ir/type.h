@@ -438,7 +438,10 @@ namespace fir
 
 		bool isGenericType();
 		bool isGenericInstantiation();
+		bool needsFurtherReification();
 		void setGenericInstantiation();
+		void setNotGenericInstantiation();
+		std::map<std::string, Type*> getGenericInstantiationMapping();
 
 
 
@@ -460,8 +463,11 @@ namespace fir
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> structMembers;
 
+		StructType* genericParent = 0;
 		bool isGenericInst = false;
+		bool needsMoreReification = false;
 		std::vector<ParametricType*> typeParameters;
+		std::map<std::string, Type*> genericInstMapping;
 
 		// static funcs
 		public:
@@ -501,7 +507,10 @@ namespace fir
 
 		bool isGenericType();
 		bool isGenericInstantiation();
+		bool needsFurtherReification();
 		void setGenericInstantiation();
+		void setNotGenericInstantiation();
+		std::map<std::string, Type*> getGenericInstantiationMapping();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -518,8 +527,12 @@ namespace fir
 		std::vector<Type*> typeList;
 		std::vector<Function*> methodList;
 
+		ClassType* genericParent = 0;
+
 		bool isGenericInst = false;
+		bool needsMoreReification = false;
 		std::vector<ParametricType*> typeParameters;
+		std::map<std::string, Type*> genericInstMapping;
 
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> classMembers;

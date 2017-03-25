@@ -6,6 +6,8 @@
 #include "ir/type.h"
 #include "ir/function.h"
 
+#include "pts.h"
+
 namespace fir
 {
 	// structs
@@ -88,6 +90,8 @@ namespace fir
 		ClassType* os = dynamic_cast<ClassType*>(other);
 		if(!os) return false;
 		if(this->className != os->className) return false;
+		if(this->isGenericInst != os->isGenericInst) return false;
+		if(this->genericInstMapping != os->genericInstMapping) return false;
 
 		return true;
 	}
@@ -192,7 +196,7 @@ namespace fir
 
 	bool ClassType::isGenericType()
 	{
-		return this->typeParameters.size() > 0;
+		return this->typeParameters.size() > 0;// && !this->isGenericInstantiation();
 	}
 
 	std::vector<ParametricType*> ClassType::getTypeParameters()
@@ -227,6 +231,21 @@ namespace fir
 		this->isGenericInst = true;
 	}
 
+	void ClassType::setNotGenericInstantiation()
+	{
+		this->isGenericInst = false;
+	}
+
+	bool ClassType::needsFurtherReification()
+	{
+		return this->needsMoreReification;
+	}
+
+	std::map<std::string, Type*> ClassType::getGenericInstantiationMapping()
+	{
+		return this->genericInstMapping;
+	}
+
 
 
 
@@ -237,21 +256,17 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		if(this->isGenericType())
+		if(this->isGenericType() && !this->isGenericInstantiation())
 		{
-			// ClassType* ret = ClassType::createWithoutBody(this->className);
-
 			std::vector<std::pair<std::string, Type*>> reifiedMems;
 			std::vector<Function*> reifiedMethods;
 
+			bool needsMore = false;
 			for(auto mem : this->classMembers)
 			{
 				auto rfd = mem.second->reify(reals);
-				if(rfd->isParametricType())
-				{
-					_error_and_exit("Failed to reify type '%s', no type found for '%s'", this->str().c_str(),
-						mem.second->toParametricType()->getName().c_str());
-				}
+				if(pts::decomposeFIRTypeIntoBaseTypeWithTransformations(rfd).first->isParametricType())
+					needsMore = true;
 
 				reifiedMems.push_back({ mem.first, rfd });
 			}
@@ -264,8 +279,24 @@ namespace fir
 			auto ret = ClassType::create(Identifier(this->className.str() + fir::mangleGenericTypes(reals), IdKind::Struct), reifiedMems,
 				{ });
 
+			if(ret->getTypeParameters().empty())
+				ret->addTypeParameters(this->getTypeParameters());
+
+			ret->genericParent = this;
+			ret->genericInstMapping = reals;
 			ret->setGenericInstantiation();
-			return ret;
+			ret->needsMoreReification = needsMore;
+
+			return dynamic_cast<ClassType*>(tc->normaliseType(ret));
+		}
+		else if(this->isGenericType() && this->needsFurtherReification())
+		{
+			std::map<std::string, fir::Type*> newmap;
+			for(auto map : this->genericInstMapping)
+				newmap[map.first] = map.second->reify(reals);
+
+			iceAssert(this->genericParent);
+			return this->genericParent->reify(newmap);
 		}
 		else
 		{

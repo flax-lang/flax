@@ -696,7 +696,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override = 0;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) = 0;
 
-		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) = 0;
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm) = 0;
 
 		bool didCreateType = false;
 		fir::Type* createdType = 0;
@@ -705,8 +705,6 @@ namespace Ast
 
 		std::vector<VarDecl*> members;
 		std::vector<fir::Function*> initFuncs;
-
-		fir::Function* defaultInitialiser;
 
 		std::vector<std::pair<StructBase*, fir::Type*>> nestedTypes;
 		std::map<std::string, TypeConstraints_t> genericTypes;
@@ -723,7 +721,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm) override;
 
 		bool packed = false;
 	};
@@ -740,7 +738,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm) override;
 
 		std::vector<Func*> funcs;
 		std::vector<fir::Function*> lfuncs;
@@ -812,7 +810,7 @@ namespace Ast
 		virtual fir::Type* getType(Codegen::CodegenInstance* cgi, fir::Type* extratype = 0, bool allowFail = false) override;
 		virtual fir::Type* createType(Codegen::CodegenInstance* cgi) override;
 
-		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, std::map<std::string, fir::Type*> tm) override;
+		virtual fir::Type* reifyTypeUsingMapping(Codegen::CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm) override;
 
 		std::vector<std::pair<std::string, Expr*>> cases;
 		bool isStrong = false;
