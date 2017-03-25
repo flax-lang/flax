@@ -321,7 +321,7 @@ static Resolved_t tryResolveGenericFunctionUsingMappingsOrFail(CodegenInstance* 
 		iceAssert(fn->decl);
 
 		// last phase: ensure the type constraints are met
-		cgi->checkProtocolConformance(fc, mappings, fn->decl->genericTypes);
+		cgi->checkProtocolConformanceOfGenericSolutions(fc, mappings, fn->decl->genericTypes);
 
 		auto inst = cgi->instantiateGenericFunctionUsingMapping(fc, mappings, fn, &es, &ee);
 
