@@ -14,7 +14,7 @@ import String
 
 
 
-func anyToString(any: Any, options: string) -> string
+fn anyToString(any: Any, options: string) -> string
 {
 	var buffer: i8* = alloc[64] i8
 	defer dealloc buffer
@@ -58,7 +58,7 @@ func anyToString(any: Any, options: string) -> string
 // the padding char is specified with ' ' because *we* can look at it and parse, since we don't have compiler help (yet).
 
 
-public func format(fmt: string, args: Any[...]) -> string
+public fn format(fmt: string, args: Any[...]) -> string
 {
 	var output: String
 	var argNum: uint64 = 0

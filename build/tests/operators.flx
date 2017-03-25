@@ -19,7 +19,7 @@ class CPTest
 
 
 
-public func doOperatorTupleTest()
+public fn doOperatorTupleTest()
 {
 	do {
 		let g: i8 = 100
@@ -85,7 +85,7 @@ public func doOperatorTupleTest()
 
 
 
-func fa() -> Math.Vector3
+fn fa() -> Math.Vector3
 {
 	var ret: Math.Vector3
 	ret.x = 1
@@ -95,7 +95,7 @@ func fa() -> Math.Vector3
 	return ret
 }
 
-func fb() -> Math.Vector3
+fn fb() -> Math.Vector3
 {
 	var ret: Math.Vector3
 	ret.x = 4

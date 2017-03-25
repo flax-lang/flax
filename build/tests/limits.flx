@@ -4,7 +4,7 @@
 
 import Foundation
 
-public func printIntegerLimits()
+public fn printIntegerLimits()
 {
 	printf("i8.min   = %hhd\t\t\t\ti8.max   = %hhd\n", i8.min, i8.max);
 	printf("i16.min  = %hd\t\t\ti16.max  = %hd\n", i16.min, i16.max);

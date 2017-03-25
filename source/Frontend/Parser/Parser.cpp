@@ -1099,6 +1099,8 @@ namespace Parser
 				parserError("Expected ')'");
 		}
 
+		if(ps.front().type != TType::Func)
+			parserError(ps.front().pin, "Expected function declaration after 'ffi'");
 
 
 		FuncDecl* decl = parseFuncDecl(ps);

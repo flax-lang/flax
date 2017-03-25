@@ -456,7 +456,7 @@
 		<key>function-declaration</key>
 		<dict>
 			<key>begin</key>
-			<string>\b(func|ƒ)\s+(\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+)\s*(?=\(|&lt;)</string>
+			<string>\b(fn|ƒ)\s+(\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+)\s*(?=\(|&lt;)</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>1</key>
@@ -597,7 +597,7 @@
 			<key>comment</key>
 			<string>import-declaration</string>
 			<key>match</key>
-			<string>\b(import)\s+(?:(typealias|struct|class|namespace|enum|protocol|var|func)\s+)?((?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+)(?:\.(?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+))*)</string>
+			<string>\b(import)\s+(?:(typealias|struct|class|namespace|enum|protocol|var|fn)\s+)?((?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+)(?:\.(?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%&lt;&gt;&amp;|\^~.]+))*)</string>
 			<key>name</key>
 			<string>meta.import.flax</string>
 		</dict>
@@ -685,7 +685,7 @@
 					<key>comment</key>
 					<string>declaration keyword</string>
 					<key>match</key>
-					<string>\b(class|deinit|enum|extension|func|import|init|let|protocol|static|struct|subscript|typealias|var|typeof|typeid|sizeof|val)\b</string>
+					<string>\b(class|deinit|enum|extension|fn|import|init|let|protocol|static|struct|subscript|typealias|var|typeof|typeid|sizeof|val)\b</string>
 					<key>name</key>
 					<string>keyword.declaration.flax</string>
 				</dict>
@@ -981,7 +981,7 @@
 		<key>storage-type</key>
 		<dict>
 			<key>match</key>
-			<string>\b(var|val|let|func|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace|ƒ|func)\b</string>
+			<string>\b(var|val|let|fn|ƒ|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace)\b</string>
 			<key>name</key>
 			<string>storage.type.flax</string>
 		</dict>
