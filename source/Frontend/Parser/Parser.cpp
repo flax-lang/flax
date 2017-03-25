@@ -1315,6 +1315,7 @@ namespace Parser
 		return ret;
 	}
 
+	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail, bool isFunc);
 
 	// todo(ugly): this is quite stupid
 	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
@@ -1349,6 +1350,33 @@ namespace Parser
 				else
 				{
 					break;
+				}
+			}
+
+
+			// check for generic types
+			size_t restore = ps.index;
+			if(ps.front().type == TType::LAngle)
+			{
+				auto res = tryParseGenericMapping(ps, true, false);
+				if(res.first)
+				{
+					std::string str;
+					for(auto p : res.second)
+					{
+						str += p.first + ":" + p.second->str() + ",";
+					}
+
+					// remove the comma
+					if(str.size() > 0)
+						str.pop_back();
+
+					if(!str.empty())
+						ret += "<" + str + ">";
+				}
+				else
+				{
+					ps.refundToPosition(restore);
 				}
 			}
 
@@ -2541,7 +2569,7 @@ namespace Parser
 	}
 
 	// pair.0 indicates success
-	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail)
+	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail, bool isFunc)
 	{
 		iceAssert(ps.front().type == TType::LAngle);
 		std::unordered_map<std::string, pts::Type*> genericMappings;
@@ -2618,7 +2646,7 @@ namespace Parser
 
 			ps.eat();
 
-			if(ps.front().type != TType::LParen)
+			if(ps.front().type != TType::LParen && isFunc)
 			{
 				if(allowFail)
 					return { false, { } };
@@ -2649,7 +2677,7 @@ namespace Parser
 			// try a generic function call
 			size_t restore = ps.index;
 
-			auto p = tryParseGenericMapping(ps, true);
+			auto p = tryParseGenericMapping(ps, true, true);
 			ps.refundToPosition(restore);
 
 			if(p.first)
@@ -2676,7 +2704,7 @@ namespace Parser
 		std::unordered_map<std::string, pts::Type*> genericMappings;
 		if(ps.front().type == TType::LAngle)
 		{
-			auto p = tryParseGenericMapping(ps, false);
+			auto p = tryParseGenericMapping(ps, false, true);
 			iceAssert(p.first);
 
 			genericMappings = p.second;

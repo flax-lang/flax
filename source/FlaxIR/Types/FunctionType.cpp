@@ -110,6 +110,7 @@ namespace fir
 		if(ret.length() > 0)
 			ret = ret.substr(0, ret.length() - 2); // remove extra comma
 
+		iceAssert(this->functionRetType);
 		return "(" + ret + ") -> " + this->functionRetType->str();
 	}
 
@@ -218,13 +219,7 @@ namespace fir
 
 		for(auto mem : this->functionParams)
 		{
-			auto rfd = mem->reify(reals);
-			if(rfd->isParametricType())
-			{
-				_error_and_exit("Failed to reify type '%s', no type found for '%s'", this->str().c_str(),
-					mem->toParametricType()->getName().c_str());
-			}
-
+			fir::Type* rfd = mem->reify(reals);
 			reified.push_back(rfd);
 		}
 

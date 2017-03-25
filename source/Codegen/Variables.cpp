@@ -214,9 +214,29 @@ fir::Value* VarDecl::doInitialValue(CodegenInstance* cgi, TypePair_t* cmplxtype,
 				// call init()
 				if(!this->disableAutoInit && cmplxtype->second.second != TypeKind::Enum)
 				{
+					// check if we're allowed to call the default initialiser
+					auto clsd = dynamic_cast<ClassDef*>(cmplxtype->second.first);
+					if(clsd)
+					{
+						bool found = false;
+						for(auto fn : clsd->initFuncs)
+						{
+							if(fn->getArgumentCount() > 1)
+							{
+								found = true;
+								break;
+							}
+						}
+
+						if(found)
+						{
+							error(this, "Class '%s' does not have an initialiser taking 0 parameters; an initial value is hence required for this variable declaration", clsd->ident.name.c_str());
+						}
+					}
+
 					std::vector<fir::Value*> args { ai };
 
-					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args, { });
+					fir::Function* initfunc = cgi->getStructInitialiser(this, cmplxtype, args, { }, this->ptype);
 					iceAssert(initfunc);
 
 					val = cgi->irb.CreateCall(initfunc, args);
@@ -274,7 +294,7 @@ void VarDecl::inferType(CodegenInstance* cgi)
 	else
 	{
 		this->concretisedType = cgi->getTypeFromParserType(this, this->ptype);
-		if(!this->concretisedType) error(this, "invalid type %s", this->ptype->str().c_str());
+		if(!this->concretisedType) error(this, "Invalid type '%s'", this->ptype->str().c_str());
 
 		iceAssert(this->concretisedType);
 	}

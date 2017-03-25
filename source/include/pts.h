@@ -119,6 +119,7 @@ namespace pts
 		virtual std::string str() override;
 		std::string name;
 
+		std::map<std::string, Type*> genericMapping;
 
 		static NamedType* create(std::string s);
 
