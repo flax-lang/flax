@@ -465,7 +465,9 @@ namespace GenError
 		exitless_error(expr, ops, "No such function '%s' taking parameters (%s)",
 			name.c_str(), paramstr.c_str());
 
-		info("%zu possible candidate%s:\n%s", cands.size(), cands.size() == 1 ? "" : "s", candstr.c_str());
+		if(cands.size() > 0)
+			info("%zu possible candidate%s:\n%s", cands.size(), cands.size() == 1 ? "" : "s", candstr.c_str());
+
 		doTheExit();
 	}
 

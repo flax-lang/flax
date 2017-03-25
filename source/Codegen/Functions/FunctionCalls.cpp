@@ -10,16 +10,20 @@
 using namespace Ast;
 using namespace Codegen;
 
-Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args)
+Result_t CodegenInstance::callTypeInitialiser(TypePair_t* tp, Expr* user, std::vector<fir::Value*> args, std::map<std::string, fir::Type*> tm)
 {
 	iceAssert(tp);
-	fir::Value* ai = this->getStackAlloc(tp->first, "tmp");
+	fir::Value* ai = this->getStackAlloc(tp->first->reify(tm), "tmp");
 
 	args.insert(args.begin(), ai);
 
-	fir::Function* initfunc = this->getStructInitialiser(user, tp, args);
+	fir::Function* initfunc = this->getStructInitialiser(user, tp, args, tm);
 
-	this->irb.CreateCall(initfunc, args);
+	std::vector<fir::Value*> args1;
+	for(size_t i = 0; i < args.size(); i++)
+		args1.push_back(this->autoCastType(initfunc->getType()->getArgumentN(i), args[i]));
+
+	this->irb.CreateCall(initfunc, args1);
 	fir::Value* val = this->irb.CreateLoad(ai);
 
 	return Result_t(val, ai);
@@ -257,6 +261,103 @@ static inline fir::Value* handleRefcountedThingIfNeeded(CodegenInstance* cgi, fi
 }
 
 
+static Resolved_t tryResolveGenericFunctionUsingMappingsOrFail(CodegenInstance* cgi, FuncCall* fc)
+{
+	// ok, try some shit
+	std::map<std::string, fir::Type*> mappings;
+	for(auto m : fc->genericMapping)
+		mappings[m.first] = cgi->getTypeFromParserType(fc, m.second);
+
+	std::vector<FuncDefPair> cands;
+	auto fns = cgi->findGenericFunctions(fc->name);
+
+	std::map<Func*, std::string> errors;
+
+	for(auto fn : fns)
+	{
+		bool fail = false;
+		std::string es; Expr* ee = 0;
+
+		std::map<std::string, int> needed;
+		for(auto m : fn->decl->genericTypes)
+			needed[m.first] = 1;
+
+		std::string failReason;
+		for(auto m : mappings)
+		{
+			if(needed.find(m.first) != needed.end())
+			{
+				needed[m.first] = 2;
+			}
+			else
+			{
+				fail = true;
+				failReason = strprintf("Type '%s' was not in the type parameter list in the callee", m.first.c_str());
+				break;
+			}
+		}
+
+		if(!fail)
+		{
+			for(auto n : needed)
+			{
+				if(n.second == 1)
+				{
+					fail = true;
+					failReason = strprintf("Type '%s' was not mapped in the caller", n.first.c_str());
+					break;
+				}
+			}
+		}
+
+		if(fail)
+		{
+			errors[fn] = failReason;
+			continue;
+		}
+
+
+		iceAssert(fn);
+		iceAssert(fn->decl);
+
+		// last phase: ensure the type constraints are met
+		cgi->checkProtocolConformanceOfGenericSolutions(fc, mappings, fn->decl->genericTypes);
+
+		auto inst = cgi->instantiateGenericFunctionUsingMapping(fc, mappings, fn, &es, &ee);
+
+		if(inst.firFunc)
+			cands.push_back(inst);
+
+		else
+			errors[fn] = es;
+	}
+
+	auto ret = cgi->resolveFunctionFromList(fc, cands, fc->name, fc->params);
+	if(!ret.resolved)
+	{
+		auto tup = GenError::getPrettyNoSuchFunctionError(cgi, fc->params, cands);
+
+		std::string paramstr = std::get<0>(tup);
+		std::string candstr = std::get<1>(tup);
+		HighlightOptions ops = std::get<2>(tup);
+
+		exitless_error(fc, ops, "No such function '%s' taking parameters (%s)", fc->name.c_str(), paramstr.c_str());
+
+		for(auto p : errors)
+			info(p.first->decl, "Candidate not suitable: %s", p.second.c_str());
+
+		doTheExit();
+	}
+
+	return ret;
+}
+
+
+
+
+
+
+
 
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* extratgt)
 {
@@ -279,10 +380,17 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		for(Expr* e : this->params)
 			args.push_back(e->codegen(cgi).value);
 
-		return cgi->callTypeInitialiser(tp, this, args);
+		std::map<std::string, fir::Type*> mapping;
+		for(auto m : this->genericMapping)
+			mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
+
+		return cgi->callTypeInitialiser(tp, this, args, mapping);
 	}
 	else if(fir::PrimitiveType::fromBuiltin(this->name))
 	{
+		if(!this->genericMapping.empty())
+			error(this, "Type parameter lists are not supported for initialiser-syntax on builtin types");
+
 		fir::Type* type = fir::PrimitiveType::fromBuiltin(this->name);
 
 		// get our parameters.
@@ -429,6 +537,9 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 	}
 	else if(fir::Value* fv = cgi->getSymInst(this, this->name))
 	{
+		if(!this->genericMapping.empty())
+			error(this, "Type parameter lists are not supported for calls to function pointers");
+
 		this->cachedResolveTarget.resolved = true;
 
 		if(!fv->getType()->getPointerElementType()->isFunctionType())
@@ -461,12 +572,23 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 		std::map<Func*, std::pair<std::string, Expr*>> errs;
 		if(!rt.resolved)
 		{
-			auto pair = cgi->tryResolveGenericFunctionCall(this, &errs);
-			if(pair.firFunc || pair.funcDef)
-				rt = Resolved_t(pair);
-
+			if(this->genericMapping.size() > 0)
+			{
+				rt = tryResolveGenericFunctionUsingMappingsOrFail(cgi, this);
+			}
 			else
-				rt = Resolved_t();
+			{
+				auto pair = cgi->tryResolveGenericFunctionCall(this, &errs);
+				if(pair.firFunc || pair.funcDef)
+					rt = Resolved_t(pair);
+
+				else
+					rt = Resolved_t();
+			}
+		}
+		else if(!this->genericMapping.empty())
+		{
+			error(this, "Unsupported use of type parameter list in call to non-generic function");
 		}
 
 
@@ -540,7 +662,11 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 		TypePair_t* tp = cgi->getTypeByString(this->name);
 		if(tp)
 		{
-			return tp->first;
+			std::map<std::string, fir::Type*> mapping;
+			for(auto m : this->genericMapping)
+				mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
+
+			return tp->first->reify(mapping);
 		}
 		else if(fir::PrimitiveType::fromBuiltin(this->name))
 		{
@@ -560,11 +686,27 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 		else
 		{
 			std::map<Func*, std::pair<std::string, Expr*>> errs;
-			auto genericMaybe = cgi->tryResolveGenericFunctionCall(this, &errs);
-			if(genericMaybe.firFunc)
+			if(this->genericMapping.size() > 0)
 			{
-				this->cachedResolveTarget = Resolved_t(genericMaybe);
-				return genericMaybe.firFunc->getReturnType();
+				rt = tryResolveGenericFunctionUsingMappingsOrFail(cgi, this);
+				if(rt.resolved && rt.t.firFunc)
+				{
+					this->cachedResolveTarget = rt;
+					return this->cachedResolveTarget.t.firFunc->getReturnType();
+				}
+				else
+				{
+					// todo: make a better error message -- maybe the types were wrong, maybe there weren't any candidates at all, etc.
+				}
+			}
+			else
+			{
+				auto genericMaybe = cgi->tryResolveGenericFunctionCall(this, &errs);
+				if(genericMaybe.firFunc)
+				{
+					this->cachedResolveTarget = Resolved_t(genericMaybe);
+					return genericMaybe.firFunc->getReturnType();
+				}
 			}
 
 			GenError::prettyNoSuchFunctionError(cgi, this, this->name, this->params, errs);

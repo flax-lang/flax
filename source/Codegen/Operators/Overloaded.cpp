@@ -361,7 +361,7 @@ namespace Codegen
 				attr.isBinOp		= oo->kind == OpOverload::OperatorKind::CommBinary || oo->kind == OpOverload::OperatorKind::NonCommBinary;
 				attr.isCommutative	= oo->kind == OpOverload::OperatorKind::CommBinary;
 				attr.isPrefixUnary	= oo->kind == OpOverload::OperatorKind::PrefixUnary;
-				attr.isMember		= oo->func->decl->parentClass != 0;
+				attr.isMember		= oo->func->decl->parentClass.first != 0;
 
 				attr.needsSwap		= false;
 

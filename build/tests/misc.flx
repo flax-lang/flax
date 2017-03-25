@@ -16,7 +16,7 @@ class TestingClass
 
 extension TestingClass : StringConvertible, Equatable
 {
-	func toString() -> string { "hello" }
+	fn toString() -> string { "hello" }
 
 	operator == (a: TestingClass) -> bool
 	{
@@ -25,17 +25,17 @@ extension TestingClass : StringConvertible, Equatable
 }
 
 
-func cts<T : StringConvertible>(thing: T) -> string
+fn cts<T : StringConvertible>(thing: T) -> string
 {
 	return thing.toString()
 }
 
-func pt<T>(a: T, b: T*) -> T
+fn pt<T>(a: T, b: T*) -> T
 {
 	return a
 }
 
-func vt<T>(b: T[...])
+fn vt<T>(b: T[...])
 {
 	var i = 0
 
@@ -46,14 +46,14 @@ func vt<T>(b: T[...])
 	}
 }
 
-func vt2<T>(a: T, b: int[...])
+fn vt2<T>(a: T, b: int[...])
 {
 	// do something.
 	variadicTest(a, b)
 }
 
 
-@nomangle func mtest(k: int, g: int)
+@nomangle fn mtest(k: int, g: int)
 {
 	printf("(%d, %d)\n", k, g)
 
@@ -84,7 +84,7 @@ func vt2<T>(a: T, b: int[...])
 // imho it's not worth it to have the compiler do the same thing as with String, because 1. String is not generic, and 2. varargs isn't
 // a "core" language feature, so to speak.
 
-public func variadicTest(a: string, b: int[...])
+public fn variadicTest(a: string, b: int[...])
 {
 	printf("%s: [", a)
 	var i = 0
@@ -101,7 +101,7 @@ public func variadicTest(a: string, b: int[...])
 
 extension string
 {
-	// static func withRaw(r: int8*) -> string
+	// static fn withRaw(r: int8*) -> string
 	// {
 	// 	var s: string
 
@@ -112,7 +112,7 @@ extension string
 
 
 
-public func miscellaneousTests()
+public fn miscellaneousTests()
 {
 	mtest(10, 41)
 
@@ -148,7 +148,7 @@ public func miscellaneousTests()
 	}
 
 	do {
-		func test() -> string
+		fn test() -> string
 		{
 			return "hello!"
 		}
@@ -190,7 +190,7 @@ public func miscellaneousTests()
 				get { 30 }
 			}
 
-			func foo() -> f64
+			fn foo() -> f64
 			{
 				43.1
 			}
@@ -216,6 +216,31 @@ public func miscellaneousTests()
 		printf("s = %s\n", s)
 
 		printf("%d, %.7lf\n", k, +3.000141);
+	}
+
+
+	do {
+
+		fn foo<T>(a: T[], b: T) { }
+		fn bar<T>(a: T, b: T[]) { }
+
+		bar(10, [ ])
+		foo([ ], 20)
+
+		var z: int[:]
+
+		struct Test
+		{
+			var a: int
+			var b: int
+		}
+
+		let ta = Test(10, 10)
+		let tb = Test(10, 10)
+
+		printf("> %d / %d / %d <\n", sizeof(Test), sizeof(ta), sizeof(&ta))
+
+		printf("ta == tb: %d\n", ta == tb)
 	}
 
 

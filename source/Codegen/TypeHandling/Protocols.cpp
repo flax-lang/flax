@@ -169,59 +169,56 @@ static bool _checkConform(CodegenInstance* cgi, ProtocolDef* prot, fir::Type* ty
 		std::vector<ExtensionDef*> exts = cgi->getExtensionsForBuiltinType(type);
 		*name = type->str();
 
-		if(exts.size() > 0)
+		for(Func* f : prot->funcs)
 		{
-			for(Func* f : prot->funcs)
+			FuncDecl* fn = f->decl;
+
+			bool found = false;
+
+			for(auto ext : exts)
 			{
-				FuncDecl* fn = f->decl;
-
-				bool found = false;
-
-				for(auto ext : exts)
+				for(auto cf : ext->funcs)
 				{
-					for(auto cf : ext->funcs)
-					{
-						fir::Function* fcf = ext->functionMap[cf];
+					fir::Function* fcf = ext->functionMap[cf];
 
-						if(testFunc(fn, cf, fcf, ext->createdType))
-						{
-							found = true;
-							goto out3;
-						}
+					if(testFunc(fn, cf, fcf, ext->createdType))
+					{
+						found = true;
+						goto out3;
 					}
 				}
-
-				out3:
-				if(!found) (*missing).push_back(fn);
 			}
 
+			out3:
+			if(!found) (*missing).push_back(fn);
+		}
 
-			for(auto ovl : prot->operatorOverloads)
+
+		for(auto ovl : prot->operatorOverloads)
+		{
+			if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
 			{
-				if(ovl->kind == OpOverload::OperatorKind::CommBinary || ovl->kind == OpOverload::OperatorKind::NonCommBinary)
+				// lol
+				cgi->pushGenericTypeStack();
+				cgi->pushGenericType("Self", type);
+
+				fir::Type* pt = ovl->func->decl->params.front()->getType(cgi);
+
+				bool res = cgi->isValidOperatorForBuiltinTypes(ovl->op, type, pt);
+
+				if(!res)
 				{
-					// lol
-					cgi->pushGenericTypeStack();
-					cgi->pushGenericType("Self", type);
+					auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, type, pt);
 
-					fir::Type* pt = ovl->func->decl->params.front()->getType(cgi);
-
-					bool res = cgi->isValidOperatorForBuiltinTypes(ovl->op, type, pt);
-
-					if(!res)
-					{
-						auto dat = cgi->getBinaryOperatorOverload(prot, ovl->op, type, pt);
-
-						if(!dat.found)
-							(*missing).push_back(ovl->func->decl);
-					}
-
-					cgi->popGenericTypeStack();
+					if(!dat.found)
+						(*missing).push_back(ovl->func->decl);
 				}
-				else
-				{
-					error("??");
-				}
+
+				cgi->popGenericTypeStack();
+			}
+			else
+			{
+				error("??");
 			}
 		}
 
@@ -241,28 +238,29 @@ bool ProtocolDef::checkTypeConformity(CodegenInstance* cgi, fir::Type* type)
 	return _checkConform(cgi, this, type, &_, &__, &___);
 }
 
-void ProtocolDef::assertTypeConformity(CodegenInstance* cgi, fir::Type* type)
+void ProtocolDef::assertTypeConformityWithErrorMessage(CodegenInstance* cgi, Expr* user, fir::Type* type, std::string message)
 {
 	std::string name;
-	Expr* user = 0;
 	std::vector<FuncDecl*> missing;
-	_checkConform(cgi, this, type, &missing, &user, &name);
+	Expr* _ = 0;
+	bool res = _checkConform(cgi, this, type, &missing, &_, &name);
 
-	if(missing.size() > 0)
+	if(!res)
 	{
-		exitless_error(user, "Type '%s' does not conform to protocol '%s'", name.c_str(), this->ident.name.c_str());
+		exitless_error(user, "%s", message.c_str());
 
-		std::string list;
-		for(auto d : missing)
-			list += "\t" + cgi->printAst(d) + "\n";
+		if(missing.size() > 0)
+		{
+			std::string list;
+			for(auto d : missing)
+				list += std::string(TAB_WIDTH, ' ') + cgi->printAst(d) + "\n";
 
-		info("Missing function%s:\n%s", missing.size() == 1 ? "" : "s", list.c_str());
+			info("Missing function%s:\n%s", missing.size() == 1 ? "" : "s", list.c_str());
+		}
 
 		doTheExit();
 	}
 }
-
-
 
 
 

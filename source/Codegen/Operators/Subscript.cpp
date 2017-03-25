@@ -112,11 +112,10 @@ namespace Operators
 
 
 		// todo: MULIPLE SUBSCRIPTS
-		std::vector<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi) };
-		std::vector<Expr*> eparams = { ari->index };
+		std::vector<fir::Type*> fparams = { ftype->getPointerTo(), ari->index->getType(cgi), rhs->getType() };
+		std::vector<Expr*> eparams = { ari->index, rhsExpr };
 
 		Resolved_t res = cgi->resolveFunctionFromList(user, cands, basename, fparams, false);
-
 
 
 		if(!res.resolved)
@@ -124,7 +123,7 @@ namespace Operators
 			std::string argstr; std::string candstr; HighlightOptions opts;
 			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 
-			error(user, opts, "Class %s has no subscript operator taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class %s has no subscript operator setter taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
@@ -142,7 +141,7 @@ namespace Operators
 			iceAssert(lhsPtr);
 
 			if(lhsPtr->isImmutable())
-				GenError::assignToImmutable(cgi, user, rhsExpr);
+				GenError::assignToImmutable(cgi, user, lhs);
 
 			fargs.push_back(lhsPtr);
 
@@ -185,7 +184,7 @@ namespace Operators
 		ClassDef* cls = dynamic_cast<ClassDef*>(tp->second.first);
 		if(!cls) { return 0; }
 
-		fir::Type* ftype = cls->createdType;
+		fir::Type* ftype = fcls;
 		if(!ftype) cls->createType(cgi);
 
 		iceAssert(ftype);

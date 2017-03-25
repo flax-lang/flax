@@ -7,35 +7,35 @@
 import LibCInterface
 
 
-func foo(a: int) { printf("foo: %d\n", a) }
-func bar(a: int) { printf("bar: %d\n", a) }
-func qux() { ("qux\n") }
+fn foo(a: int) { printf("foo: %d\n", a) }
+fn bar(a: int) { printf("bar: %d\n", a) }
+fn qux() { ("qux\n") }
 
 class SomeClass
 {
-	func foo(a: int) { printf("foo in class: %p // %d\n", self, a) }
-	static func bar(a: int) { printf("static bar in class: %d\n", a) }
+	fn foo(a: int) { printf("foo in class: %p // %d\n", self, a) }
+	static fn bar(a: int) { printf("static bar in class: %d\n", a) }
 }
 
 namespace SomeNS
 {
-	func foo(a: int) { printf("foo in namespace: %d\n", a) }
+	fn foo(a: int) { printf("foo in namespace: %d\n", a) }
 
 	class NestedClass
 	{
-		func foo(a: int) { printf("foo in nested class: %p // %d\n", self, a) }
-		static func bar(a: int) { printf("static bar in nested class: %d\n", a) }
+		fn foo(a: int) { printf("foo in nested class: %p // %d\n", self, a) }
+		static fn bar(a: int) { printf("static bar in nested class: %d\n", a) }
 
-		func mgen<T>(a: T) -> T { printf("method generic: %p // %d\n", self, a) }
-		static func smgen<T>(a: T) -> T { printf("static generic: %d\n", a) }
+		fn mgen<T>(a: T) -> T { printf("method generic: %p // %d\n", self, a) }
+		static fn smgen<T>(a: T) -> T { printf("static generic: %d\n", a) }
 	}
 
-	func ngen<T>(a: T) -> T { printf("namespace generic: %p // %d\n", a) }
+	fn ngen<T>(a: T) -> T { printf("namespace generic: %p // %d\n", a) }
 }
 
 
 
-func gen<T>(a: T) -> T
+fn gen<T>(a: T) -> T
 {
 	// if(typeof(a) == typeof(int))
 	// {
@@ -49,12 +49,12 @@ func gen<T>(a: T) -> T
 	return a + 1
 }
 
-func et(a: int)
+fn et(a: int)
 {
 	printf(" %d", a)
 }
 
-func et1(a: int) -> int
+fn et1(a: int) -> int
 {
 	printf(" %d", a)
 	return a
@@ -63,14 +63,14 @@ func et1(a: int) -> int
 
 class SomeStruct
 {
-	var fn: [(SomeStruct*, int) -> int]
-	func fun(a: string) -> int
+	var f: [(SomeStruct*, int) -> int]
+	fn fun(a: string) -> int
 	{
 		printf("method: %s\n", a)
 		return 40
 	}
 
-	static func sfn(self: SomeStruct*, a: int) -> int
+	static fn sfn(self: SomeStruct*, a: int) -> int
 	{
 		printf("static: %p, %d\n", self, a);
 		return a;
@@ -78,7 +78,7 @@ class SomeStruct
 }
 
 
-public func doFunctionTest()
+public fn doFunctionTest()
 {
 	var f = qux
 	f()
@@ -151,8 +151,8 @@ public func doFunctionTest()
 			let gf3 = SomeStruct.sfn
 			gf3(&s, 500)
 
-			s.fn = gf3
-			let gf4 = s.fn
+			s.f = gf3
+			let gf4 = s.f
 			gf4(&s, 600)
 
 			printf("\ngeneric member test\n")
@@ -168,14 +168,14 @@ public func doFunctionTest()
 
 
 			printf("\ndirect field calling\n")
-			let res1 = s.fn(&s, 10)
+			let res1 = s.f(&s, 10)
 		}
 	}
 }
 
 
 
-func each(arr: int*, length: int, f: [(int) -> void])
+fn each(arr: int*, length: int, f: [(int) -> void])
 {
 	var i = 0
 
