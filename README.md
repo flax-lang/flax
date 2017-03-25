@@ -69,13 +69,13 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Code Sample ####
 
-```
+```swift
 ffi fn malloc(size: i64) -> i8*
 ffi fn printf(fmt: i8*, ...) -> i32
 
 namespace NS
 {
-	class Array<T: SomeProt>
+	class Array<T>
 	{
 		var data: T*
 
