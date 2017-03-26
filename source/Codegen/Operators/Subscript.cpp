@@ -123,14 +123,14 @@ namespace Operators
 			std::string argstr; std::string candstr; HighlightOptions opts;
 			std::tie(argstr, candstr, opts) = GenError::getPrettyNoSuchFunctionError(cgi, { ari->index }, cands);
 
-			error(user, opts, "Class %s has no subscript operator setter taking parameters (%s)\nPossible candidates (%zu):\n%s",
+			error(user, opts, "Class '%s' has no subscript operator setter taking parameters (%s)\nPossible candidates (%zu):\n%s",
 				ftype->str().c_str(), argstr.c_str(), cands.size(), candstr.c_str());
 		}
 		else
 		{
 			if(res.t.firFunc == 0)
 			{
-				error(user, "Class %s does not have a subscript operator with a setter", ftype->str().c_str());
+				error(user, "Class '%s' does not have a subscript operator with a setter", ftype->str().c_str());
 			}
 
 
