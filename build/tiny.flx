@@ -28,8 +28,6 @@ fn add<T>(a: T, b: T) -> T
 	a + b
 }
 
-fn bar(a: i64, b: i64) -> i64 { a * b }
-
 fn test<A, B>(a: Array<T: A>, b: Array<T: B>)
 {
 	printf("typeid(T) = %d / %d / %d / %d\n", typeid(A), typeid(B), typeid(a), typeid(b))
