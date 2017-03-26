@@ -30,9 +30,9 @@ fn add<T>(a: T, b: T) -> T
 
 fn bar(a: i64, b: i64) -> i64 { a * b }
 
-fn test<K>(a: Array<T: K>)
+fn test<A, B>(a: Array<T: A>, b: Array<T: B>)
 {
-	printf("typeid(T) = %d / %d / %d / %d\n", typeid(K), typeid(a), typeid(string), typeid(i64))
+	printf("typeid(T) = %d / %d / %d / %d\n", typeid(A), typeid(B), typeid(a), typeid(b))
 }
 
 public fn main() -> int
@@ -53,19 +53,20 @@ public fn main() -> int
 		// printf("x = %d\n", list[0])
 		list[1] = 401
 
-		test(list)
+		// test(list, list)
 	}
 
 	do {
 		// let ptr = (alloc[60] string).data
 		// defer dealloc ptr
 
-		var list = Array<T: string>(null)
+		var list1 = Array<T: string>(null)
+		var list2 = Array<T: char>(null)
 		// list[3] = "foobar"
 
 		// printf("0 = '%s', 3 = '%s'\n", list[0], list[3])
 
-		test(list)
+		test(list1, list2)
 	}
 
 	do {
