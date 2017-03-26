@@ -603,6 +603,53 @@ namespace pts
 
 					ret = base;
 				}
+				else if(actualType.find("<") != std::string::npos)
+				{
+					// do the generic shit
+					size_t k = actualType.find("<");
+					std::string bstr = actualType.substr(0, k);
+					std::string gstr = actualType.substr(k);
+
+					// make the base first
+
+					iceAssert(gstr.front() == '<');
+					iceAssert(gstr.back() == '>');
+
+					gstr = gstr.substr(1);
+
+					std::map<std::string, pts::Type*> mapping;
+
+					// we can guarantee this is in the correct form, pretty much
+					while(true)
+					{
+						std::string tp;
+						while(gstr[0] != ':')
+							tp += gstr[0], gstr = gstr.substr(1);
+
+						iceAssert(gstr.front() == ':');
+						gstr = gstr.substr(1);
+
+						std::string ty;
+						while(gstr.front() != ',' && gstr.front() != '>')
+							ty += gstr[0], gstr = gstr.substr(1);
+
+						if(mapping.find(tp) != mapping.end())
+						{
+							_error_and_exit("Mapping for type parameter '%s' already exists (previously mapped as '%s')",
+								tp.c_str(), mapping[tp]->str().c_str());
+						}
+
+						mapping[tp] = parseType(ty);
+						if(gstr.front() == '>')
+							break;
+
+						gstr = gstr.substr(1);
+					}
+
+					iceAssert(gstr.front() == '>');
+
+					ret = pts::NamedType::create(bstr, mapping);
+				}
 				else
 				{
 					ret = pts::NamedType::create(actualType);
@@ -742,21 +789,43 @@ namespace pts
 		return (it = new InferredType());
 	}
 
-
-	std::string NamedType::str()
+	static std::map<std::pair<std::string, std::map<std::string, Type*>>, NamedType*> map;
+	NamedType* NamedType::create(std::string s)
 	{
-		return this->name;
+		return NamedType::create(s, { });
+	}
+
+	NamedType* NamedType::create(std::string s, std::map<std::string, Type*> tm)
+	{
+		if(map.find({ s, tm }) != map.end())
+			return map[{ s, tm }];
+
+		auto ret = new NamedType(s);
+		ret->genericMapping = tm;
+
+		return (map[{ s, tm }] = ret);
 	}
 
 
-	static std::unordered_map<std::string, NamedType*> map;
-	NamedType* NamedType::create(std::string s)
-	{
-		if(map.find(s) != map.end())
-			return map[s];
 
-		map[s] = new NamedType(s);
-		return map[s];
+	// these shits are supposed to be reversibly-parse-able, so omit any "beautification" spaces and whatnot.
+	std::string NamedType::str()
+	{
+		auto ret = this->name;
+
+		if(!this->genericMapping.empty())
+		{
+			std::string m;
+			for(auto p : this->genericMapping)
+				m += p.first + ":" + p.second->str() + ",";
+
+			if(!m.empty())
+				m.pop_back();
+
+			ret += "<" + m + ">";
+		}
+
+		return ret;
 	}
 
 	std::string PointerType::str()
@@ -768,13 +837,10 @@ namespace pts
 	{
 		std::string ret = "(";
 		for(auto t : this->types)
-			ret += t->str() + ", ";
+			ret += t->str() + ",";
 
 		if(ret.size() > 1)
-		{
 			ret.pop_back();
-			ret.pop_back();
-		}
 
 		return ret + ")";
 	}
@@ -820,17 +886,13 @@ namespace pts
 		if(ret.back() == ',')
 			ret.pop_back();
 
-
 		for(auto t : this->argTypes)
-			ret += t->str() + ", ";
+			ret += t->str() + ",";
 
-		if(ret.size() > 2)
-		{
+		if(ret.back() == ',')
 			ret.pop_back();
-			ret.pop_back();
-		}
 
-		return ret + ") -> " + this->returnType->str();
+		return ret + ")->" + this->returnType->str();
 	}
 }
 

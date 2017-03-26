@@ -959,7 +959,7 @@ namespace Parser
 		// get the parameter list
 		// expect an identifer, colon, type
 		std::vector<VarDecl*> params;
-		std::map<std::string, VarDecl*> nameCheck;
+		std::set<std::string> nameCheck;
 
 		while(ps.hasTokens() && ps.front().type != TType::RParen)
 		{
@@ -989,7 +989,6 @@ namespace Parser
 
 			v->ptype = parseType(ps);
 
-
 			// NOTE(ghetto): FUCKING. GHETTO.
 			if(isVariableArg && v->ptype->isVariadicArrayType())
 				parserError("Vararg must be last in the function declaration");
@@ -997,16 +996,14 @@ namespace Parser
 			else if(v->ptype->isVariadicArrayType())
 				isVariableArg = true;
 
-
-
-			if(!nameCheck[v->ident.name])
+			if(nameCheck.find(v->ident.name) == nameCheck.end())
 			{
 				params.push_back(v);
-				nameCheck[v->ident.name] = v;
+				nameCheck.insert(v->ident.name);
 			}
 			else
 			{
-				parserError("Redeclared variable '%s' in argument list", v->ident.name.c_str());
+				parserError("Duplicate argument '%s'", v->ident.name.c_str());
 			}
 
 
@@ -1315,6 +1312,7 @@ namespace Parser
 		return ret;
 	}
 
+	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail, bool isFunc);
 
 	// todo(ugly): this is quite stupid
 	// it's basically a token-based duplication of the thing we have in ParserTypeSystem.cpp
@@ -1349,6 +1347,33 @@ namespace Parser
 				else
 				{
 					break;
+				}
+			}
+
+
+			// check for generic types
+			size_t restore = ps.index;
+			if(ps.front().type == TType::LAngle)
+			{
+				auto res = tryParseGenericMapping(ps, true, false);
+				if(res.first)
+				{
+					std::string str;
+					for(auto p : res.second)
+					{
+						str += p.first + ":" + p.second->str() + ",";
+					}
+
+					// remove the comma
+					if(str.size() > 0)
+						str.pop_back();
+
+					if(!str.empty())
+						ret += "<" + str + ">";
+				}
+				else
+				{
+					ps.refundToPosition(restore);
 				}
 			}
 
@@ -2541,7 +2566,7 @@ namespace Parser
 	}
 
 	// pair.0 indicates success
-	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail)
+	static std::pair<bool, std::unordered_map<std::string, pts::Type*>> tryParseGenericMapping(ParserState& ps, bool allowFail, bool isFunc)
 	{
 		iceAssert(ps.front().type == TType::LAngle);
 		std::unordered_map<std::string, pts::Type*> genericMappings;
@@ -2618,7 +2643,7 @@ namespace Parser
 
 			ps.eat();
 
-			if(ps.front().type != TType::LParen)
+			if(ps.front().type != TType::LParen && isFunc)
 			{
 				if(allowFail)
 					return { false, { } };
@@ -2649,7 +2674,7 @@ namespace Parser
 			// try a generic function call
 			size_t restore = ps.index;
 
-			auto p = tryParseGenericMapping(ps, true);
+			auto p = tryParseGenericMapping(ps, true, true);
 			ps.refundToPosition(restore);
 
 			if(p.first)
@@ -2676,7 +2701,7 @@ namespace Parser
 		std::unordered_map<std::string, pts::Type*> genericMappings;
 		if(ps.front().type == TType::LAngle)
 		{
-			auto p = tryParseGenericMapping(ps, false);
+			auto p = tryParseGenericMapping(ps, false, true);
 			iceAssert(p.first);
 
 			genericMappings = p.second;

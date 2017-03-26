@@ -5,6 +5,8 @@
 #include "errors.h"
 #include "ir/type.h"
 
+#include "pts.h"
+
 namespace fir
 {
 	// structs
@@ -83,8 +85,10 @@ namespace fir
 	{
 		StructType* os = dynamic_cast<StructType*>(other);
 		if(!os) return false;
-		if(this->isTypePacked != os->isTypePacked) return false;
 		if(this->structName != os->structName) return false;
+		if(this->isTypePacked != os->isTypePacked) return false;
+		if(this->isGenericInst != os->isGenericInst) return false;
+		if(this->genericInstMapping != os->genericInstMapping) return false;
 
 		// return areTypeListsEqual(this->typeList, os->typeList);
 		return true;
@@ -152,7 +156,7 @@ namespace fir
 
 	bool StructType::isGenericType()
 	{
-		return this->typeParameters.size() > 0;
+		return this->typeParameters.size() > 0 && !this->isGenericInstantiation();
 	}
 
 	std::vector<ParametricType*> StructType::getTypeParameters()
@@ -187,6 +191,21 @@ namespace fir
 		this->isGenericInst = true;
 	}
 
+	void StructType::setNotGenericInstantiation()
+	{
+		this->isGenericInst = false;
+	}
+
+	bool StructType::needsFurtherReification()
+	{
+		return this->needsMoreReification;
+	}
+
+	std::map<std::string, Type*> StructType::getGenericInstantiationMapping()
+	{
+		return this->genericInstMapping;
+	}
+
 
 
 	StructType* StructType::reify(std::map<std::string, Type*> reals, FTContext* tc)
@@ -194,17 +213,15 @@ namespace fir
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		if(this->isGenericType())
+		if(this->isGenericType() && !this->isGenericInstantiation())
 		{
+			bool needsMore = false;
 			std::vector<std::pair<std::string, Type*>> reified;
 			for(auto mem : this->structMembers)
 			{
 				auto rfd = mem.second->reify(reals);
-				if(rfd->isParametricType())
-				{
-					_error_and_exit("Failed to reify type '%s', no type found for '%s'", this->str().c_str(),
-						mem.second->toParametricType()->getName().c_str());
-				}
+				if(pts::decomposeFIRTypeIntoBaseTypeWithTransformations(rfd).first->isParametricType())
+					needsMore = true;
 
 				reified.push_back({ mem.first, rfd });
 			}
@@ -212,9 +229,25 @@ namespace fir
 			iceAssert(reified.size() == this->structMembers.size());
 
 			auto ret = StructType::create(Identifier(this->structName.str() + fir::mangleGenericTypes(reals), IdKind::Struct), reified);
-			ret->setGenericInstantiation();
 
-			return ret;
+			if(ret->typeParameters.empty())
+				ret->addTypeParameters(this->getTypeParameters());
+
+			ret->genericParent = this;
+			ret->genericInstMapping = reals;
+			ret->setGenericInstantiation();
+			ret->needsMoreReification = needsMore;
+
+			return dynamic_cast<StructType*>(tc->normaliseType(ret));
+		}
+		else if(this->isGenericType() && this->needsFurtherReification())
+		{
+			std::map<std::string, fir::Type*> newmap;
+			for(auto map : this->genericInstMapping)
+				newmap[map.first] = map.second->reify(reals);
+
+			iceAssert(this->genericParent);
+			return this->genericParent->reify(newmap);
 		}
 		else
 		{
