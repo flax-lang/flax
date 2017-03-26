@@ -959,7 +959,7 @@ namespace Parser
 		// get the parameter list
 		// expect an identifer, colon, type
 		std::vector<VarDecl*> params;
-		std::map<std::string, VarDecl*> nameCheck;
+		std::set<std::string> nameCheck;
 
 		while(ps.hasTokens() && ps.front().type != TType::RParen)
 		{
@@ -989,7 +989,6 @@ namespace Parser
 
 			v->ptype = parseType(ps);
 
-
 			// NOTE(ghetto): FUCKING. GHETTO.
 			if(isVariableArg && v->ptype->isVariadicArrayType())
 				parserError("Vararg must be last in the function declaration");
@@ -997,16 +996,14 @@ namespace Parser
 			else if(v->ptype->isVariadicArrayType())
 				isVariableArg = true;
 
-
-
-			if(!nameCheck[v->ident.name])
+			if(nameCheck.find(v->ident.name) == nameCheck.end())
 			{
 				params.push_back(v);
-				nameCheck[v->ident.name] = v;
+				nameCheck.insert(v->ident.name);
 			}
 			else
 			{
-				parserError("Redeclared variable '%s' in argument list", v->ident.name.c_str());
+				parserError("Duplicate argument '%s'", v->ident.name.c_str());
 			}
 
 
