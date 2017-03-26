@@ -4,44 +4,44 @@
 
 public namespace i8
 {
-	val min: i8 = -128
-	val max: i8 = +127
+	let min: i8 = -128
+	let max: i8 = +127
 }
 public namespace i16
 {
-	val min: i16 = -32768
-	val max: i16 = +32767
+	let min: i16 = -32768
+	let max: i16 = +32767
 }
 public namespace i32
 {
-	val min: i32 = -2147483648
-	val max: i32 = +2147483647
+	let min: i32 = -2147483648
+	let max: i32 = +2147483647
 }
 public namespace i64
 {
-	val min: i64 = -9223372036854775808
-	val max: i64 = +9223372036854775807
+	let min: i64 = -9223372036854775808
+	let max: i64 = +9223372036854775807
 }
 
 public namespace u8
 {
-	val min: u8 = 0
-	val max: u8 = 255
+	let min: u8 = 0
+	let max: u8 = 255
 }
 public namespace u16
 {
-	val min: u16 = 0
-	val max: u16 = 65535
+	let min: u16 = 0
+	let max: u16 = 65535
 }
 public namespace u32
 {
-	val min: u32 = 0
-	val max: u32 = 4294967295
+	let min: u32 = 0
+	let max: u32 = 4294967295
 }
 public namespace u64
 {
-	val min: u64 = 0
-	val max: u64 = 18446744073709551615
+	let min: u64 = 0
+	let max: u64 = 18446744073709551615
 }
 
 
