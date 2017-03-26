@@ -666,6 +666,35 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 			for(auto m : this->genericMapping)
 				mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
 
+			auto sb = dynamic_cast<StructBase*>(tp->second.first);
+			if(sb)
+			{
+				if(sb->genericTypes.empty() && !mapping.empty())
+					error(this, "Cannot pass type parameters to non-generic type '%s'", sb->ident.name.c_str());
+
+				std::vector<std::string> needed;
+				for(auto t : sb->genericTypes)
+					needed.push_back(t.first);
+
+				for(auto n : needed)
+				{
+					if(mapping.find(n) == mapping.end())
+					{
+						error(this, "Missing type parameter for generic type '%s' in instantiation of type '%s'",
+							n.c_str(), sb->ident.name.c_str());
+					}
+				}
+
+				for(auto t : mapping)
+				{
+					if(std::find(needed.begin(), needed.end(), t.first) == needed.end())
+					{
+						error(this, "Extraneous type parameter '%s' that does not exist in type '%s'",
+							t.first.c_str(), sb->ident.name.c_str());
+					}
+				}
+			}
+
 			return tp->first->reify(mapping);
 		}
 		else if(fir::PrimitiveType::fromBuiltin(this->name))
