@@ -177,16 +177,6 @@ namespace Codegen
 				return false;
 			}
 
-			// if((givent->isStructType() && givent->toStructType()->isGenericType()) || (givent->isClassType() && givent->toClassType()->isGenericType()))
-			// {
-			// 	*errorString = strprintf("Concrete (instantiated) type expected in parameter %zu (to solve type '%s'), found '%s'",
-			// 		argIndex, expt->str().c_str(), givent->str().c_str());
-
-			// 	if(candidate) *failedExpr = candidate->params[argIndex];
-
-			// 	return false;
-			// }
-
 			// finally -- check if you're really trying to fuck yourself
 			if(checkNeedsSolving(expt->toNamedType()->name))
 			{
@@ -643,6 +633,7 @@ namespace Codegen
 			for(size_t i = 0; i < maxArg; i++)
 			{
 				auto argToSolve = getAllGenericTypesContainedWithin(ptlist[i], candidate->genericTypes);
+
 				bool res = solveSingleArgument(cgi, candidate, ix, argToSolve, arg, i, ptlist[i], ftlist[i],
 					&cursln, &genericfnsoln, errorString, failedExpr);
 
@@ -702,124 +693,6 @@ namespace Codegen
 					dft->toFunctionType()->getReturnType(), &cursln, &genericfnsoln, errorString, failedExpr);
 
 				if(!res) return false;
-
-				#if 0
-				// check the given with the expected
-				fir::Type* frt = 0; TrfList fttrfs;
-				std::tie(frt, fttrfs) = pts::decomposeFIRTypeIntoBaseTypeWithTransformations(dft->toFunctionType()->getReturnType());
-
-				pts::Type* prt = 0; TrfList pttrfs;
-				std::tie(prt, pttrfs) = pts::decomposeTypeIntoBaseTypeWithTransformations(dpt->toFunctionType()->returnType);
-
-				if(!pts::areTransformationsCompatible(pttrfs, fttrfs))
-				{
-					if(errorString && failedExpr)
-					{
-						*errorString = strprintf("Incompatible types in solution for return type of function parameter"
-							" (which is argument %zu of parent function): expected '%s', have '%s' (No valid transformations)",
-							ix + 1, prt->str().c_str(), frt->str().c_str());
-
-						if(candidate) *failedExpr = candidate->params[ix];
-					}
-					return false;
-				}
-
-				// fix it
-				frt = pts::reduceMaximallyWithSubset(dft->toFunctionType()->getReturnType(), pttrfs, fttrfs);
-
-
-				// check if we don't already have a solution for 'prt'.
-				if(prt->isNamedType())
-				{
-					// no solution for 'prt'
-					bool needsolve = checkNeedsSolving(prt->toNamedType()->name);
-
-					if(needsolve)
-					{
-						if(cursln.find(prt->toNamedType()->name) == cursln.end())
-						{
-							if(frt->isParametricType())
-							{
-								if(genericfnsoln.find(frt->toParametricType()->getName()) != genericfnsoln.end())
-								{
-									fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
-									cursln[prt->toNamedType()->name] = found;
-
-									// debuglog("add soln (4) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
-									// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
-								}
-								else
-								{
-									// can't do anything.
-								}
-							}
-							else if(frt->isTupleType() || frt->isFunctionType())
-							{
-								// again should not be the case, since the transformations matched and 'prt' is a named type
-								error("somehow transformations matched? (3) (%s / %s)", frt->str().c_str(), prt->str().c_str());
-							}
-							else
-							{
-								cursln[prt->toNamedType()->name] = frt;
-
-								// debuglog("add soln (5) %s -> %s\n", prt->toNamedType()->name.c_str(),
-								// 	frt->str().c_str());
-							}
-						}
-						else if(frt->isParametricType())
-						{
-							// we have a solution
-							// update the generic function thing
-
-							fir::Type* rest = cursln[prt->toNamedType()->name];
-							iceAssert(rest);
-
-							if(genericfnsoln.find(frt->toParametricType()->getName()) != genericfnsoln.end())
-							{
-								fir::Type* found = genericfnsoln[frt->toParametricType()->getName()];
-
-								if(unifyTypeSolutions(rest, found) == 0)
-								{
-									if(errorString && failedExpr)
-									{
-										*errorString = strprintf("Conflicting types in solution for type parameter '%s', in return type of function parameter (which is argument %zu of parent function): have existing solution '%s', found '%s'", prt->toNamedType()->name.c_str(), ix + 1, rest->str().c_str(), found->str().c_str());
-
-										if(candidate) *failedExpr = candidate->params[ix];
-									}
-
-									return false;
-								}
-
-								iceAssert(unifyTypeSolutions(cursln[prt->toNamedType()->name], found));
-
-								// debuglog("add soln (6) %s = %s -> %s\n", prt->toNamedType()->name.c_str(),
-								// 	frt->toParametricType()->getName().c_str(), found->str().c_str());
-							}
-							else
-							{
-								genericfnsoln[frt->toParametricType()->getName()] = rest;
-								// debuglog("add soln (7) %s -> %s\n", frt->toParametricType()->getName().c_str(), rest->str().c_str());
-							}
-						}
-					}
-				}
-				else
-				{
-					iceAssert(prt->isFunctionType() || prt->isTupleType());
-					iceAssert(frt->isFunctionType() || frt->isTupleType());
-
-					// same as the one above
-
-					// if we're done solving, don't bother
-					if(!checkFinishedSolving(cursln))
-					{
-						checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, toSolve, ix, prt, frt, &cursln, &genericfnsoln,
-							errorString, failedExpr, frt->isFunctionType() ? frt->toFunctionType()->isVariadicFunc() : false,
-							returnIncomplete);
-					}
-				}
-
-				#endif
 			}
 
 
@@ -869,17 +742,24 @@ namespace Codegen
 						}
 						else
 						{
-							solvedstr = COLOUR_BLACK_BOLD "\n\nPartial solutions:\n" COLOUR_RESET + solvedstr;
+							solvedstr = strprintf("%s\n\nPartial solution%s found:\n%s%s", COLOUR_BLACK_BOLD,
+								cursln.size() == 1 ? "" : "s", COLOUR_RESET, solvedstr.c_str());
+
+							// solvedstr = COLOUR_BLACK_BOLD "\n\nPartial solutions:\n" COLOUR_RESET + solvedstr;
 
 							// get missing
 							std::string missingstr;
+							size_t missingcnt = 0;
 							for(auto s : toSolve)
 							{
 								if(cursln.find(s) == cursln.end())
-									missingstr += strprintf("    '%s'\n", s.c_str());
+									missingstr += strprintf("    %s\n", s.c_str()), missingcnt++;
 							}
 
-							solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
+							solvedstr += strprintf("\n%sMissing solution%s for type%s:\n%s%s", COLOUR_BLACK_BOLD, missingcnt == 1 ? "" : "s",
+								missingcnt == 1 ? "" : "s", COLOUR_RESET, missingstr.c_str());
+
+							// solvedstr += "\n" COLOUR_BLACK_BOLD "Missing solutions:\n" COLOUR_RESET + missingstr;
 						}
 
 						*errorString = strprintf("Failed to find solution for function parameter %zu in parent function using"
@@ -1022,7 +902,10 @@ namespace Codegen
 			pts::TupleType* pFnType = new pts::TupleType(pFunctionParamTypes);
 			fir::TupleType* fFnType = fir::TupleType::get(args);
 
-			auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
+			// auto tosolve = getAllGenericTypesContainedWithin(pFnType, candidate->genericTypes);
+			std::set<std::string> tosolve;
+			for(auto t : candidate->genericTypes)
+				tosolve.insert(t.first);
 
 			bool res = checkFunctionOrTupleArgumentToGenericFunction(cgi, candidate, tosolve, 0, pFnType,
 				fFnType, &solns, &empty, &es, &fe, candidate->isVariadic, false);

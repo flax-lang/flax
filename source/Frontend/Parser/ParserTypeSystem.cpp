@@ -611,7 +611,6 @@ namespace pts
 					std::string gstr = actualType.substr(k);
 
 					// make the base first
-					ret = pts::NamedType::create(bstr);
 
 					iceAssert(gstr.front() == '<');
 					iceAssert(gstr.back() == '>');
@@ -649,7 +648,7 @@ namespace pts
 
 					iceAssert(gstr.front() == '>');
 
-					ret->toNamedType()->genericMapping = mapping;
+					ret = pts::NamedType::create(bstr, mapping);
 				}
 				else
 				{
@@ -790,14 +789,21 @@ namespace pts
 		return (it = new InferredType());
 	}
 
-	static std::unordered_map<std::string, NamedType*> map;
+	static std::map<std::pair<std::string, std::map<std::string, Type*>>, NamedType*> map;
 	NamedType* NamedType::create(std::string s)
 	{
-		if(map.find(s) != map.end())
-			return map[s];
+		return NamedType::create(s, { });
+	}
 
-		map[s] = new NamedType(s);
-		return map[s];
+	NamedType* NamedType::create(std::string s, std::map<std::string, Type*> tm)
+	{
+		if(map.find({ s, tm }) != map.end())
+			return map[{ s, tm }];
+
+		auto ret = new NamedType(s);
+		ret->genericMapping = tm;
+
+		return (map[{ s, tm }] = ret);
 	}
 
 
