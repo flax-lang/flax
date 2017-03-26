@@ -6,10 +6,9 @@ ffi fn malloc(size: i64) -> i8*
 ffi fn printf(fmt: i8*, ...) -> i32
 
 
-class Array<T, K>
+class Array<T>
 {
 	var data: T*
-	var data2: K*
 
 	init(ptr: T*)
 	{
@@ -21,71 +20,114 @@ class Array<T, K>
 		get { self.data[index] }
 		set { printf("setting\n"); self.data[index] = value }
 	}
+
+	fn method(x: Array<T: T>*)
+	{
+	}
 }
 
+/*fn test2<T>(a: Array<T: T>)
+{
+	printf("typeid(T) = %d\n", typeid(T))
+}
 
-// fn add<T>(a: T, b: T) -> T
-// {
-// 	a + b
-// }
+fn test<A, B>(a: Array<T: A>, b: Array<T: B>)
+{
+	printf("typeid(T) = %d / %d / %d / %d\n", typeid(A), typeid(B), typeid(a), typeid(b))
+	let x = Array<T: A>(null)
 
-// fn test2<T>(a: Array<T: T>)
-// {
-// 	printf("typeid(T) = %d\n", typeid(T))
-// }
+	test2(x)
+}*/
 
-// fn test<A, B>(a: Array<T: A>, b: Array<T: B>)
-// {
-// 	printf("typeid(T) = %d / %d / %d / %d\n", typeid(A), typeid(B), typeid(a), typeid(b))
-// 	let x = Array<T: A>(null)
+fn test<A, B>(a: A, b: B)
+{
+	let x = A()
+	// test2(x)
+}
 
-// 	test2(x)
-// }
+fn test2<T>(x: T)
+{
+	printf("typeid(T) = %d\n", typeid(T))
+}
 
 public fn main() -> int
 {
-	// do {
-	// 	let c = add<T: i64>(30, 40)
-	// 	printf("c = %d\n", c)
-	// }
+	/*do {
+		// let ptr = (alloc[60] i64).data
+		// defer dealloc ptr
 
-	// do {
-	// 	let ptr = (alloc[60] i64).data
-	// 	defer dealloc ptr
+		// var list = Array<T: i64>(ptr)
+		var list = Array<T: i64>(null)
 
-	// 	var list = Array<T: i64>(ptr)
+		// ptr[0] = 37
 
-	// 	ptr[0] = 37
+		// printf("x = %d\n", list[0])
+		// list[1] = 401
 
-	// 	// printf("x = %d\n", list[0])
-	// 	list[1] = 401
+		test(list, list)
+	}*/
 
-	// 	// test(list, list)
-	// }
-
-	// do {
-	// 	// let ptr = (alloc[60] string).data
-	// 	// defer dealloc ptr
-
-	// 	var list1 = Array<T: string>(null)
-	// 	var list2 = Array<T: char>(null)
-	// 	// list[3] = "foobar"
-
-	// 	// printf("0 = '%s', 3 = '%s'\n", list[0], list[3])
-
-	// 	test(list1, list2)
-	// }
 
 	do {
-		var list = Array<T: string>(null)
-		// list[0] = "hello"
+		let ptr = (alloc[60] string).data
+		defer dealloc ptr
 
-		// printf("0 = %s\n", list[0])
+		var list1 = Array<T: string>(ptr)
+		var list2 = Array<T: char>(null)
+
+		// HAHAHAH THIS IS COMPLETLY FUCKED AS WELL
+
+		/*
+			list1.method(&list1)
+			list2.method(&list2)
+		*/
+
+		// list1[3] = "foobar"
+
+		// printf("0 = '%s', 3 = '%s'\n", list1[0], list1[3])
+
+		// test(list1, list2)
 	}
 
 
+
+
+
+
+
+
+
+
+	// it is at this point that i solemnly declare:
+	// generics are COMPLETELY FUCKED
+
+	// completely and utterly fucked.
+	// why wasn't this discovered earlier????
+
+	// postulations:
+	/*
+		1. possibly something related to the cachedResolveTarget in the FuncCall AST
+
+		2. for the operators, it's probably completely fucked.
+			I'd imagine normal methods and such are also completely fucked if they take Self as an argument.
+			fucked, fucked, fucked.
+
+		3. lol, methods are completely and utterly fucked as well. what even, type already exists? fuck me
+	*/
+
+	test("foo", 10)
+	test(char("A"), 3.0)
+
 	return 0
 }
+
+
+
+
+
+
+
+
 
 
 // notes for next week and/or tomorrow:
