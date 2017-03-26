@@ -24,11 +24,82 @@
 
 #include "backend.h"
 
+#include <set>
+
 
 namespace Compiler
 {
 	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
+
+	static std::map<fir::Type*, bool> searched;
+	static bool isGenericInAnyWay(fir::Type* type)
+	{
+		if(searched.find(type) != searched.end())
+			return searched[type];
+
+		bool retval = false;
+		if(type->isPointerType())			retval = isGenericInAnyWay(type->getPointerElementType());
+		else if(type->isArrayType())		retval = isGenericInAnyWay(type->toArrayType()->getElementType());
+		else if(type->isArraySliceType())	retval = isGenericInAnyWay(type->toArraySliceType()->getElementType());
+		else if(type->isDynamicArrayType())	retval = isGenericInAnyWay(type->toDynamicArrayType()->getElementType());
+		else if(type->isFunctionType())
+		{
+			bool ret = false;
+			for(auto p : type->toFunctionType()->getArgumentTypes())
+				ret = ret || isGenericInAnyWay(p);
+
+			retval = ret || isGenericInAnyWay(type->toFunctionType()->getReturnType());
+		}
+		else if(type->isStructType())
+		{
+			// prevent recursive spiral of death
+			searched[type] = false;
+
+			bool ret = false;
+			for(auto p : type->toStructType()->getElements())
+				ret = ret || isGenericInAnyWay(p);
+
+			retval = ret;
+		}
+		else if(type->isClassType())
+		{
+			// prevent recursive spiral of death
+			searched[type] = false;
+
+			bool ret = false;
+			for(auto p : type->toClassType()->getElements())
+				ret = ret || isGenericInAnyWay(p);
+
+			// for(auto p : type->toClassType()->getMethods())
+			// 	ret = ret || isGenericInAnyWay(p->getType());
+
+			retval = ret;
+		}
+		else if(type->isTupleType())
+		{
+			bool ret = false;
+			for(auto p : type->toTupleType()->getElements())
+				ret = ret || isGenericInAnyWay(p);
+
+			retval = ret;
+		}
+		else if(type->isEnumType())
+		{
+			retval = isGenericInAnyWay(type->toEnumType()->getCaseType());
+		}
+		else if(type->isParametricType())
+		{
+			retval = true;
+		}
+		else
+		{
+			retval = false;
+		}
+
+		return (searched[type] = retval);
+	}
+
 
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
 	{
@@ -496,7 +567,8 @@ namespace Compiler
 		for(auto type : firmod->_getNamedTypes())
 		{
 			// should just automatically create it.
-			typeToLlvm(type.second, module);
+			if(!isGenericInAnyWay(type.second))
+				typeToLlvm(type.second, module);
 		}
 
 		for(auto intr : firmod->_getIntrinsicFunctions())
@@ -699,6 +771,9 @@ namespace Compiler
 		{
 			fir::Function* ffn = f.second;
 
+			if(isGenericInAnyWay(ffn->getType()))
+				continue;
+
 			llvm::GlobalValue::LinkageTypes link;
 			switch(ffn->linkageType)
 			{
@@ -759,8 +834,12 @@ namespace Compiler
 		{
 			fir::Function* ffn = fp.second;
 
+			if(isGenericInAnyWay(ffn->getType()))
+				continue;
+
 			llvm::Function* func = module->getFunction(fp.second->getName().mangled());
 			iceAssert(func);
+
 
 			DUMP_INSTR("%s%s", ffn->getBlockList().size() == 0 ? "declare " : "", ffn->getName().c_str());
 

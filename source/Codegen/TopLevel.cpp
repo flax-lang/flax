@@ -9,7 +9,6 @@
 using namespace Ast;
 using namespace Codegen;
 
-
 static FunctionTree* getFuncTree(CodegenInstance* cgi)
 {
 	FunctionTree* ftree = cgi->getCurrentFuncTree();
