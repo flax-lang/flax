@@ -16,10 +16,33 @@ fir::Type* StructDef::getType(CodegenInstance* cgi, fir::Type* extratype, bool a
 	return this->createType(cgi);
 }
 
-fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::string, fir::Type*> tm)
+fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, std::map<std::string, fir::Type*> tm)
 {
 	if(cgi->reifiedGenericTypes.find({ this, tm }) != cgi->reifiedGenericTypes.end())
 		return cgi->reifiedGenericTypes[{ this, tm }];
+
+
+	{
+		std::vector<std::string> needed;
+		for(auto t : this->genericTypes)
+			needed.push_back(t.first);
+
+		for(auto n : needed)
+		{
+			if(tm.find(n) == tm.end())
+			{
+				error(user, "Missing type parameter for generic type '%s' in instantiation of struct '%s'",
+					n.c_str(), this->ident.name.c_str());
+			}
+		}
+
+		for(auto t : tm)
+		{
+			if(std::find(needed.begin(), needed.end(), t.first) == needed.end())
+				error(user, "Extraneous type parameter '%s' that does not exist in struct '%s'", t.first.c_str(), this->ident.name.c_str());
+		}
+	}
+
 
 	cgi->pushGenericTypeMap(tm);
 
@@ -64,22 +87,23 @@ fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, std::map<std::
 	fir::IRBlock* curblock = cgi->irb.getCurrentBlock();
 
 	// generate initialiser
+	fir::Function* initFunction = 0;
 	{
 		auto defaultInitId = this->ident;
 		defaultInitId.kind = IdKind::AutoGenFunc;
 		defaultInitId.name = "init_" + defaultInitId.name;
 		defaultInitId.functionArguments = { str->getPointerTo() };
 
-		this->defaultInitialiser = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
+		initFunction = cgi->module->getOrCreateFunction(defaultInitId, fir::FunctionType::get({ str->getPointerTo() },
 			fir::Type::getVoid(), false), linkageType);
 
-		this->initFuncs.push_back(this->defaultInitialiser);
+		this->initFuncs.push_back(initFunction);
 
-		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("init_" + this->ident.name, this->defaultInitialiser);
+		fir::IRBlock* iblock = cgi->irb.addNewBlockInFunction("init_" + this->ident.name, initFunction);
 		cgi->irb.setCurrentBlock(iblock);
 
 		// create the local instance of reference to self
-		fir::Value* self = this->defaultInitialiser->getArguments().front();
+		fir::Value* self = initFunction->getArguments().front();
 
 		for(VarDecl* var : this->members)
 		{
@@ -150,7 +174,7 @@ Result_t StructDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Val
 		this->createType(cgi);
 
 	if(this->genericTypes.size() == 0)
-		this->reifyTypeUsingMapping(cgi, { });
+		this->reifyTypeUsingMapping(cgi, this, { });
 
 	return Result_t(0, 0);
 }

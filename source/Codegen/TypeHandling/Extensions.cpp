@@ -358,18 +358,19 @@ Result_t ExtensionDef::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::
 
 
 
+		// iceAssert(astr->defaultInitialiser);
+		fir::Function* emptyInitFunc = 0;
+		for(auto fn : astr->initFuncs)
+		{
+			if(fn->getArgumentCount() == 1)
+				emptyInitFunc = fn;
+		}
 
+		// todo(generics): fix this for generics
 
-
-
-
-
-
-
-
-		iceAssert(astr->defaultInitialiser);
-		defaultInit = cgi->module->getOrCreateFunction(astr->defaultInitialiser->getName(), astr->defaultInitialiser->getType(),
-			astr->defaultInitialiser->linkageType);
+		iceAssert(emptyInitFunc);
+		defaultInit = cgi->module->getOrCreateFunction(emptyInitFunc->getName(), emptyInitFunc->getType(),
+			emptyInitFunc->linkageType);
 
 		generateDeclForOperators(cgi, this, fstr, { });
 

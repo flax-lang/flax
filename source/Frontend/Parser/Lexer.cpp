@@ -453,7 +453,6 @@ namespace Lexer
 			else if(compare(tok.text, "fn"))			tok.type = TType::Func;
 			else if(compare(tok.text, "import"))		tok.type = TType::Import;
 			else if(compare(tok.text, "var"))			tok.type = TType::Var;
-			else if(compare(tok.text, "val"))			tok.type = TType::Val;
 			else if(compare(tok.text, "let"))			tok.type = TType::Val;
 			else if(compare(tok.text, "for"))			tok.type = TType::For;
 			else if(compare(tok.text, "while"))			tok.type = TType::While;
