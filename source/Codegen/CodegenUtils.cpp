@@ -1970,22 +1970,48 @@ namespace Codegen
 
 			if(sb->genericTypes.size() > 0)
 			{
-				if(tm.empty() && ptypeForMap != 0)
+				bool isAlreadyReal = false;
+				if(pair->first && (pair->first->isClassType() || pair->first->isStructType()))
 				{
-					iceAssert(ptypeForMap->isNamedType());
-					auto pt = ptypeForMap->toNamedType();
-
-					if(pt->genericMapping.empty())
-						error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
-
-					for(auto p : pt->genericMapping)
-						tm[p.first] = this->getTypeFromParserType(user, p.second);
+					if((pair->first->isStructType() && pair->first->toStructType()->isGenericInstantiation()
+						&& !pair->first->toStructType()->needsFurtherReification())
+						||
+						(pair->first->isClassType() && pair->first->toClassType()->isGenericInstantiation()
+						&& !pair->first->toClassType()->needsFurtherReification()))
+					{
+						isAlreadyReal = true;
+					}
 				}
 
-				if(tm.empty())
-					error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
+				if(isAlreadyReal)
+				{
+					if(!tm.empty())
+						error(user, "Conflicting type parameter lists");
 
-				sb->reifyTypeUsingMapping(this, user, tm);
+					tm = pair->first->isClassType() ? pair->first->toClassType()->getGenericInstantiationMapping()
+						: pair->first->toStructType()->getGenericInstantiationMapping();
+
+					iceAssert(!tm.empty());
+				}
+				else
+				{
+					if(tm.empty() && ptypeForMap != 0)
+					{
+						iceAssert(ptypeForMap->isNamedType());
+						auto pt = ptypeForMap->toNamedType();
+
+						if(pt->genericMapping.empty())
+							error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
+
+						for(auto p : pt->genericMapping)
+							tm[p.first] = this->getTypeFromParserType(user, p.second);
+					}
+
+					if(tm.empty())
+						error(user, "Type parameter list required to instantiate generic type '%s'", sb->ident.name.c_str());
+
+					sb->reifyTypeUsingMapping(this, user, tm);
+				}
 			}
 
 			// check if the protocols are conformed to

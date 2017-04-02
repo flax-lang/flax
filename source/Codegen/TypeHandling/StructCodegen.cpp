@@ -78,6 +78,7 @@ fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, st
 	str = str->reify(tm);
 
 	cgi->module->addNamedType(str->getStructName(), str);
+	cgi->reifiedGenericTypes[{ this, tm }] = str;
 
 	// add the concrete type to the mapping as well.
 	if(this->genericTypes.size() > 0)
@@ -164,7 +165,6 @@ fir::Type* StructDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, st
 	cgi->irb.setCurrentBlock(curblock);
 	cgi->popGenericTypeStack();
 
-	cgi->reifiedGenericTypes[{ this, tm }] = str;
 	return str;
 }
 

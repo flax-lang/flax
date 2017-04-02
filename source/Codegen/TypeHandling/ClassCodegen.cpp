@@ -88,6 +88,8 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, std
 	cls = cls->reify(tm);
 
 	cgi->module->addNamedType(cls->getClassName(), cls);
+	cgi->reifiedGenericTypes[{ this, tm }] = cls;
+
 
 	// add the concrete type to the mapping as well.
 	if(this->genericTypes.size() > 0)
@@ -246,7 +248,6 @@ fir::Type* ClassDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, std
 	// }
 
 	cgi->popGenericTypeStack();
-	cgi->reifiedGenericTypes[{ this, tm }] = cls;
 
 	return cls;
 }
