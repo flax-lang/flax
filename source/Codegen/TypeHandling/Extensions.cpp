@@ -55,6 +55,8 @@ fir::Type* ExtensionDef::createType(CodegenInstance* cgi)
 			error(this, "Extensions can only be applied to classes or structs");
 
 		iceAssert(tp->first);
+		if(!dynamic_cast<StructBase*>(tp->second.first)->genericTypes.empty())
+			error(this, "Cannot extend generic types (yet!)");
 
 		this->createdType = tp->first;
 	}

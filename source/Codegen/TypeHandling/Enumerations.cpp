@@ -30,6 +30,10 @@ fir::Type* EnumDef::reifyTypeUsingMapping(CodegenInstance* cgi, Expr* user, std:
 
 fir::Type* EnumDef::createType(CodegenInstance* cgi)
 {
+	if(!this->genericTypes.empty())
+		error(this, "Enumerations cannot be generic");
+
+
 	// make sure all types are the same
 	// todo: remove this limitation maybe?
 	if(this->didCreateType)

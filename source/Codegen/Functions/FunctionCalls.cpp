@@ -359,6 +359,14 @@ static Resolved_t tryResolveGenericFunctionUsingMappingsOrFail(CodegenInstance* 
 
 
 
+
+
+
+
+
+
+
+
 Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Value* extratgt)
 {
 	if(extratgt && extratgt->getType()->isFunctionType())
@@ -563,6 +571,12 @@ Result_t FuncCall::codegen(CodegenInstance* cgi, fir::Type* extratype, fir::Valu
 
 	fir::Function* target = 0;
 
+	// note/todo(generics): this is sub-optimal. due to generics, we can't always set the cached target, since it will change
+	// eg. function call inside a generic function to another generic function -- types will change and shit, rendering this
+	// thing useless.
+
+	// this causes a *noticeable* degradation in compilation speeds ):
+	this->cachedResolveTarget.resolved = false;
 
 	// we're not a generic function.
 	if(!this->cachedResolveTarget.resolved)
@@ -665,6 +679,22 @@ fir::Type* FuncCall::getType(CodegenInstance* cgi, fir::Type* extratype, bool al
 			std::map<std::string, fir::Type*> mapping;
 			for(auto m : this->genericMapping)
 				mapping[m.first] = cgi->getTypeFromParserType(this, m.second);
+
+			bool isAlreadyReal = false;
+			if(tp->first && (tp->first->isClassType() || tp->first->isStructType()))
+			{
+				if((tp->first->isStructType() && tp->first->toStructType()->isGenericInstantiation()
+					&& !tp->first->toStructType()->needsFurtherReification())
+					||
+					(tp->first->isClassType() && tp->first->toClassType()->isGenericInstantiation()
+					&& !tp->first->toClassType()->needsFurtherReification()))
+				{
+					isAlreadyReal = true;
+				}
+			}
+
+			if(isAlreadyReal)
+				return tp->first;
 
 			auto sb = dynamic_cast<StructBase*>(tp->second.first);
 			if(sb)

@@ -64,3 +64,8 @@ CMakeLists.txt
 
 release.fish
 macosx.zip
+flax.config
+flax.creator
+flax.creator.user
+flax.files
+flax.includes
