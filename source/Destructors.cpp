@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "cst.h"
 #include "codegen.h"
 
 using namespace Codegen;
@@ -97,6 +98,49 @@ Codegen::CodegenInstance::~CodegenInstance()
 
 
 
+
+namespace Cst
+{
+	DotOp::~DotOp() { }
+	Block::~Block() { }
+	StmtIf::~StmtIf() { }
+	UnaryOp::~UnaryOp() { }
+	SliceOp::~SliceOp() { }
+	LitBool::~LitBool() { }
+	LitNull::~LitNull() { }
+	LoopFor::~LoopFor() { }
+	BinaryOp::~BinaryOp() { }
+	LitTuple::~LitTuple() { }
+	LitArray::~LitArray() { }
+	DefnEnum::~DefnEnum() { }
+	LitInteger::~LitInteger() { }
+	LitDecimal::~LitDecimal() { }
+	LitString::~LitString() { }
+	ExprRange::~ExprRange() { }
+	DefnClass::~DefnClass() { }
+	StmtAlloc::~StmtAlloc() { }
+	LoopWhile::~LoopWhile() { }
+	LoopForIn::~LoopForIn() { }
+	ExprTypeof::~ExprTypeof() { }
+	ExprTypeid::~ExprTypeid() { }
+	ExprSizeof::~ExprSizeof() { }
+	DefnStruct::~DefnStruct() { }
+	SubscriptOp::~SubscriptOp() { }
+	StmtDealloc::~StmtDealloc() { }
+	ExprVariable::~ExprVariable() { }
+	DeclVariable::~DeclVariable() { }
+	DeclFunction::~DeclFunction() { }
+	DefnProtocol::~DefnProtocol() { }
+	DefnExtension::~DefnExtension() { }
+	DeclTupleDecomp::~DeclTupleDecomp() { }
+	DeclArrayDecomp::~DeclArrayDecomp() { }
+
+	StmtBreak::~StmtBreak() { }
+	StmtContinue::~StmtContinue() { }
+	StmtReturn::~StmtReturn() { }
+
+	ExprFuncCall::~ExprFuncCall() { }
+}
 
 
 
