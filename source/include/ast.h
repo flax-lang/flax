@@ -20,64 +20,6 @@ namespace pts
 
 namespace Ast
 {
-	enum class ArithmeticOp
-	{
-		Invalid,
-		Add,
-		Subtract,
-		Multiply,
-		Divide,
-		Modulo,
-		ShiftLeft,
-		ShiftRight,
-		Assign,
-
-		CmpLT,
-		CmpGT,
-		CmpLEq,
-		CmpGEq,
-		CmpEq,
-		CmpNEq,
-
-		LogicalNot,
-		Plus,
-		Minus,
-
-		AddrOf,
-		Deref,
-
-		BitwiseAnd,
-		BitwiseOr,
-		BitwiseXor,
-		BitwiseNot,
-
-		LogicalAnd,
-		LogicalOr,
-
-		Cast,
-		ForcedCast,
-
-		PlusEquals,
-		MinusEquals,
-		MultiplyEquals,
-		DivideEquals,
-		ModEquals,
-		ShiftLeftEquals,
-		ShiftRightEquals,
-		BitwiseAndEquals,
-		BitwiseOrEquals,
-		BitwiseXorEquals,
-
-		MemberAccess,
-		ScopeResolution,
-		TupleSeparator,
-
-		Subscript,
-		Slice,
-
-		UserDefined
-	};
-
 	enum class FFIType
 	{
 		C
