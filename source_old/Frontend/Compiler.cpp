@@ -108,30 +108,19 @@ namespace Compiler
 	{
 		using namespace Codegen;
 
-
 		// todo: deprecate this shit
 		for(auto v : from->typeList)
 		{
-			bool skip = false;
 			for(auto k : to->typeList)
 			{
 				if(std::get<0>(k) == std::get<0>(v))
-				{
-					skip = true;
-					break;
-				}
+					goto skip;
 			}
 
-			if(skip)
-				continue;
-
 			to->typeList.push_back(v);
-		}
 
-
-		if(doClone)
-		{
-			// cgi->cloneFunctionTree(from->rootFuncStack, to->rootFuncStack, false);
+			skip:
+			;
 		}
 	}
 

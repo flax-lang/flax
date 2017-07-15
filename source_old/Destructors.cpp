@@ -101,45 +101,52 @@ Codegen::CodegenInstance::~CodegenInstance()
 
 namespace Cst
 {
-	DotOp::~DotOp() { }
 	Block::~Block() { }
-	StmtIf::~StmtIf() { }
-	UnaryOp::~UnaryOp() { }
-	SliceOp::~SliceOp() { }
+
 	LitBool::~LitBool() { }
 	LitNull::~LitNull() { }
-	LoopFor::~LoopFor() { }
-	BinaryOp::~BinaryOp() { }
 	LitTuple::~LitTuple() { }
 	LitArray::~LitArray() { }
-	DefnEnum::~DefnEnum() { }
+	LitString::~LitString() { }
 	LitInteger::~LitInteger() { }
 	LitDecimal::~LitDecimal() { }
-	LitString::~LitString() { }
-	ExprRange::~ExprRange() { }
-	DefnClass::~DefnClass() { }
-	StmtAlloc::~StmtAlloc() { }
+
+
+	LoopFor::~LoopFor() { }
 	LoopWhile::~LoopWhile() { }
 	LoopForIn::~LoopForIn() { }
-	ExprTypeof::~ExprTypeof() { }
-	ExprTypeid::~ExprTypeid() { }
-	ExprSizeof::~ExprSizeof() { }
-	DefnStruct::~DefnStruct() { }
-	SubscriptOp::~SubscriptOp() { }
-	StmtDealloc::~StmtDealloc() { }
-	ExprVariable::~ExprVariable() { }
+
 	DeclVariable::~DeclVariable() { }
 	DeclFunction::~DeclFunction() { }
-	DefnProtocol::~DefnProtocol() { }
-	DefnExtension::~DefnExtension() { }
 	DeclTupleDecomp::~DeclTupleDecomp() { }
 	DeclArrayDecomp::~DeclArrayDecomp() { }
 
-	StmtBreak::~StmtBreak() { }
-	StmtContinue::~StmtContinue() { }
-	StmtReturn::~StmtReturn() { }
+	DefnType::~DefnType() { }
+	DefnEnum::~DefnEnum() { }
+	DefnClass::~DefnClass() { }
+	DefnStruct::~DefnStruct() { }
+	DefnProtocol::~DefnProtocol() { }
+	DefnExtension::~DefnExtension() { }
 
+	DotOp::~DotOp() { }
+	UnaryOp::~UnaryOp() { }
+	SliceOp::~SliceOp() { }
+	BinaryOp::~BinaryOp() { }
+	SubscriptOp::~SubscriptOp() { }
+
+	ExprRange::~ExprRange() { }
+	ExprTypeof::~ExprTypeof() { }
+	ExprTypeid::~ExprTypeid() { }
+	ExprSizeof::~ExprSizeof() { }
+	ExprVariable::~ExprVariable() { }
 	ExprFuncCall::~ExprFuncCall() { }
+
+	StmtIf::~StmtIf() { }
+	StmtBreak::~StmtBreak() { }
+	StmtAlloc::~StmtAlloc() { }
+	StmtReturn::~StmtReturn() { }
+	StmtDealloc::~StmtDealloc() { }
+	StmtContinue::~StmtContinue() { }
 }
 
 
