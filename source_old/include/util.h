@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
+
 namespace util
 {
 	template <typename T>

@@ -35,9 +35,10 @@ namespace Cst
 	{
 		virtual ~Unit() { }
 		explicit Unit(Parser::Pin p) : position(p) { }
+		virtual fir::Type* getResultType() { return this->_resultType; }
 
 		Parser::Pin position;
-		fir::Type* resultType = 0;
+		fir::Type* _resultType = 0;
 	};
 
 	struct BinaryOp : Unit

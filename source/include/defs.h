@@ -1,225 +1,154 @@
 // defs.h
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
-#include <map>
-#include <deque>
 #include <string>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
+#include <experimental/string_view>
 
-#include <sys/types.h>
+#define TAB_WIDTH 4
 
-#define TAB_WIDTH	4
-
-#include "iceassert.h"
-#include "ir/identifier.h"
-
-// forward declarations.
-namespace fir
+namespace stx
 {
-	struct Value;
-	struct Type;
-	struct Function;
-	struct IRBlock;
+	using string_view = std::experimental::string_view;
 }
 
-namespace Ast
+struct Identifier
 {
-	struct Expr;
-	struct Func;
-	struct VarDecl;
-	struct FuncDecl;
-	struct OpOverload;
-	struct ProtocolDef;
-	struct ExtensionDef;
-	struct BreakableBracedBlock;
+	std::string name;
+};
 
-
-	enum class ArithmeticOp
-	{
-		Invalid,
-		Add,
-		Subtract,
-		Multiply,
-		Divide,
-		Modulo,
-		ShiftLeft,
-		ShiftRight,
-		Assign,
-
-		CmpLT,
-		CmpGT,
-		CmpLEq,
-		CmpGEq,
-		CmpEq,
-		CmpNEq,
-
-		LogicalNot,
-		Plus,
-		Minus,
-
-		AddrOf,
-		Deref,
-
-		BitwiseAnd,
-		BitwiseOr,
-		BitwiseXor,
-		BitwiseNot,
-
-		LogicalAnd,
-		LogicalOr,
-
-		Cast,
-		ForcedCast,
-
-		PlusEquals,
-		MinusEquals,
-		MultiplyEquals,
-		DivideEquals,
-		ModEquals,
-		ShiftLeftEquals,
-		ShiftRightEquals,
-		BitwiseAndEquals,
-		BitwiseOrEquals,
-		BitwiseXorEquals,
-
-		MemberAccess,
-		ScopeResolution,
-		TupleSeparator,
-
-		Subscript,
-		Slice,
-
-		UserDefined
-	};
-
-}
-
-namespace Parser
+struct Location
 {
-	struct Pin
-	{
-		Pin() : fileID(0), line(1), col(1), len(0) { }
-		Pin(int32_t f, int32_t l, int32_t c, int32_t ln) : fileID(f), line(l), col(c), len(ln) { }
+	size_t fileID = 0;
+	size_t line = 0;
+	size_t col = 0;
+	size_t len = 0;
+};
 
-		int32_t fileID;
-		int32_t line;
-		int32_t col;
-		int32_t len;
-	};
 
-	struct Token;
-}
 
-namespace Codegen
+namespace util
 {
-	enum class TypeKind
+	template <typename T>
+	class FastVector
 	{
-		Invalid,
-		Struct,
-		Class,
-		Enum,
-		TypeAlias,
-		Extension,
-		Func,
-		BuiltinType,
-		Tuple,
-		Protocol,
-		Parametric,
-		Array
-	};
-
-	typedef std::pair<fir::Value*, Ast::VarDecl*> SymbolPair_t;
-	typedef std::map<std::string, SymbolPair_t> SymTab_t;
-
-	typedef std::pair<Ast::Expr*, TypeKind> TypedExpr_t;
-	typedef std::pair<fir::Type*, TypedExpr_t> TypePair_t;
-	typedef std::map<std::string, TypePair_t> TypeMap_t;
-
-	typedef std::pair<Ast::BreakableBracedBlock*, std::pair<fir::IRBlock*, fir::IRBlock*>> BracedBlockScope;
-
-	struct CodegenInstance;
-	struct FunctionTree;
-
-
-	struct FuncDefPair
-	{
-		explicit FuncDefPair(fir::Function* ffn, Ast::FuncDecl* fdecl, Ast::Func* afn) : firFunc(ffn), funcDecl(fdecl), funcDef(afn) { }
-
-		static FuncDefPair empty() { return FuncDefPair(0, 0, 0); }
-
-		bool isEmpty() { return this->firFunc == 0 && this->funcDef == 0; }
-		bool operator == (const FuncDefPair& other) const { return this->firFunc == other.firFunc && this->funcDef == other.funcDef; }
-
-		fir::Function* firFunc = 0;
-		Ast::FuncDecl* funcDecl = 0;
-		Ast::Func* funcDef = 0;
-	};
-
-
-	struct FunctionTree
-	{
-		FunctionTree(FunctionTree* p) : parent(p) { this->id = __getnewid(); }
-		explicit FunctionTree(std::string n, FunctionTree* p) : nsName(n), parent(p) { this->id = __getnewid(); }
-
-		static size_t __getnewid()
+		public:
+		FastVector()
 		{
-			static size_t curid = 0;
-			return curid++;
+			this->array = 0;
+			this->length = 0;
+			this->capacity = 0;
+		}
+		FastVector(size_t initSize)
+		{
+			this->array = (T*) malloc(initSize * sizeof(T));
+			this->capacity = initSize;
+			this->length = 0;
 		}
 
-		size_t id;
+		FastVector(const FastVector& other)
+		{
+			this->array = (T*) malloc(other.capacity * sizeof(T));
+			memmove(this->array, other.array, other.length * sizeof(T));
 
-		std::string nsName;
-		FunctionTree* parent;
+			this->capacity = other.capacity;
+			this->length = other.length;
+		}
 
-		std::vector<FunctionTree*> subs;
-		std::unordered_map<std::string, FunctionTree*> subMap;	// purely for fast duplicate checking
+		FastVector& operator = (const FastVector& other)
+		{
+			this->array = (T*) malloc(other.capacity * sizeof(T));
+			memmove(this->array, other.array, other.length * sizeof(T));
 
-		// things within.
-		std::vector<FuncDefPair> funcs;
-		std::unordered_set<Identifier> funcSet;		// purely for fast duplicate checking during import
+			this->capacity = other.capacity;
+			this->length = other.length;
 
+			return *this;
+		}
 
-		std::vector<Ast::OpOverload*> operators;
-		std::vector<std::pair<Ast::FuncDecl*, Ast::Func*>> genericFunctions;
+		FastVector(FastVector&& other)
+		{
+			// move.
+			this->array = other.array;
+			this->length = other.length;
+			this->capacity = other.capacity;
 
-		std::unordered_map<std::string, TypePair_t> types;
-		std::unordered_map<std::string, SymbolPair_t> vars;
-		std::multimap<std::string, Ast::ExtensionDef*> extensions;
-		std::map<std::string, Ast::ProtocolDef*> protocols;
+			other.array = 0;
+			other.length = 0;
+			other.capacity = 0;
+		}
+
+		FastVector& operator = (FastVector&& other)
+		{
+			if(this != &other)
+			{
+				if(this->array)
+					free(this->array);
+
+				// move.
+				this->array = other.array;
+				this->length = other.length;
+				this->capacity = other.capacity;
+
+				other.array = 0;
+				other.length = 0;
+				other.capacity = 0;
+			}
+
+			return *this;
+		}
+
+		~FastVector()
+		{
+			if(this->array != 0)
+				free(this->array);
+		}
+
+		size_t size() const
+		{
+			return this->length;
+		}
+
+		T& operator[] (size_t index) const
+		{
+			return this->array[index];
+		}
+
+		T* getEmptySlotPtrAndAppend()
+		{
+			this->autoResize();
+
+			this->length++;
+			return &this->array[this->length - 1];
+		}
+
+		void autoResize()
+		{
+			if(this->length == this->capacity)
+			{
+				if(this->capacity == 0)
+					this->capacity = 64;
+
+				this->array = (T*) realloc(this->array, this->capacity * 2 * sizeof(T));
+
+				iceAssert(this->array);
+				this->capacity *= 2;
+			}
+		}
+
+		private:
+		T* array = 0;
+		size_t capacity;
+		size_t length;
 	};
-
-	struct Resolved_t
-	{
-		explicit Resolved_t(const FuncDefPair& fp) : t(fp), resolved(true) { }
-		Resolved_t() : t(FuncDefPair::empty()), resolved(false) { }
-
-		FuncDefPair t;
-		bool resolved;
-	};
-
-	std::string unwrapPointerType(std::string type, int* indirections);
 }
 
 
-struct TypeConstraints_t
-{
-	std::vector<std::string> protocols;
-	int pointerDegree = 0;
-
-	bool operator == (const TypeConstraints_t& other) const
-	{
-		return this->protocols == other.protocols && this->pointerDegree == other.pointerDegree;
-	}
-};
 
 
 std::string strprintf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
@@ -246,14 +175,5 @@ std::string strprintf(const char* fmt, ...) __attribute__((format(printf, 1, 2))
 #define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
 #define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
 #define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
-
-
-
-
-
-
-
-
-
 
 
