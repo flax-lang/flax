@@ -10,5 +10,8 @@ int main(int argc, char** argv)
 {
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
 
+	frontend::collectFiles(input_file);
+
+
 	return 0;
 }

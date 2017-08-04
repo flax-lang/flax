@@ -24,7 +24,6 @@ import tests.functions
 
 
 
-
 fn runTests()
 {
 	// fib
