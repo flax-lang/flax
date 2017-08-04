@@ -5,20 +5,63 @@
 #pragma once
 #include "defs.h"
 
+#include <vector>
+
 namespace ast
 {
-	struct Expr
+	struct Stmt
 	{
-		Expr(const Location& l) : loc(l) { }
-		virtual ~Expr();
+		Stmt(const Location& l) : loc(l) { }
+		virtual ~Stmt();
 
 		Location loc;
 	};
 
+	struct Expr : Stmt
+	{
+		Expr(const Location& l) : Stmt(l) { }
+		~Expr();
+	};
+
+	struct ImportStmt : Stmt
+	{
+		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { }
+		~ImportStmt();
+
+		std::string path;
+	};
+
+
+
+
+
+
+
+
 	struct Ident : Expr
 	{
-		Ident(const Location& l, std::string n);
+		Ident(const Location& l, std::string n) : Expr(l), name(n) { }
+		~Ident();
 
 		std::string name;
 	};
+
+
+
+
+
+	struct TopLevelBlock : Expr
+	{
+		TopLevelBlock(const Location& l, std::string n) : Expr(l), name(n) { }
+		~TopLevelBlock();
+
+		std::string name;
+		std::vector<Stmt*> statements;
+	};
 }
+
+
+
+
+
+

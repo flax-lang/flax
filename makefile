@@ -39,7 +39,7 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++14 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
 CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
 
 LDFLAGS			+= $(SANITISE)
@@ -50,7 +50,7 @@ FLXFLAGS		+= -sysroot $(SYSROOT)
 TESTBIN			:= build/test
 GLTESTBIN		:= build/gltest
 
-TESTSRC			:= build/test.flx
+TESTSRC			:= build/supertiny.flx
 GLTESTSRC		:= build/gltest.flx
 
 

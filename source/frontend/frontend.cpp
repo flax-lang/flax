@@ -161,10 +161,32 @@ namespace frontend
 	std::string _mcModel;
 	std::string _targetArch;
 	std::string _sysrootPath;
+	const std::string _prefixPath = "/usr/local/";
 
 	ProgOutputMode _outputMode = ProgOutputMode::Invalid;
 	BackendOption _backendCodegen = BackendOption::Invalid;
 	OptimisationLevel _optLevel = OptimisationLevel::Invalid;
+
+
+	std::string getParameter(std::string name)
+	{
+		if(name == "mcmodel")
+			return _mcModel;
+
+		else if(name == "targetarch")
+			return _targetArch;
+
+		else if(name == "sysroot")
+			return _sysrootPath;
+
+		else if(name == "prefix")
+			return _prefixPath;
+
+		else
+			iceAssert("invalid");
+
+		return "";
+	}
 
 
 	std::pair<std::string, std::string> parseCmdLineOpts(int argc, char** argv)

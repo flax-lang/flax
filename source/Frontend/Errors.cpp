@@ -14,6 +14,36 @@ static std::string _convertTab()
 	return std::string(TAB_WIDTH, ' ');
 }
 
+std::string strprintf(const char* fmt, ...)
+{
+	va_list ap;
+	va_list ap2;
+
+	va_start(ap, fmt);
+	va_copy(ap2, ap);
+
+	ssize_t size = vsnprintf(0, 0, fmt, ap2);
+
+	va_end(ap2);
+
+
+	// return -1 to be compliant if
+	// size is less than 0
+	iceAssert(size >= 0);
+
+	// alloc with size plus 1 for `\0'
+	char* str = new char[size + 1];
+
+	// format string with original
+	// variadic arguments and set new size
+	vsprintf(str, fmt, ap);
+
+	std::string ret = str;
+	delete[] str;
+
+	return ret;
+}
+
 static void printContext(HighlightOptions ops)
 {
 	// auto lines = Compiler::getFileLines(ops.caret.fileID);
@@ -141,7 +171,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// we're doing it now, might want to change (or use a flag)
 
 	// std::string filename = Compiler::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)" : Compiler::getFilenameFromID(ops.caret.fileID));
-	std::string filename = "TOOD: filename";
+	std::string filename = "TODO: filename";
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
