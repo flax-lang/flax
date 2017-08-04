@@ -12,25 +12,6 @@
 
 #include "defs.h"
 
-inline void _error_and_exit(const char* s, ...) __attribute__((noreturn));
-inline void _error_and_exit(const char* s, ...)
-{
-	va_list ap;
-	va_start(ap, s);
-
-	// char* alloc = nullptr;
-	// vasprintf(&alloc, s, ap);
-
-	fprintf(stderr, "%s%s%s%s: \n", "\033[1m\033[31m", "Error", "\033[0m", "\033[1m");
-	vfprintf(stderr, s, ap);
-	fprintf(stderr, "%s\n", "\033[0m");
-
-	// free(alloc);
-
-	va_end(ap);
-	abort();
-}
-
 inline void debuglog(const char* s, ...) __attribute__((format(printf, 1, 2)));
 inline void debuglog(const char* s, ...)
 {
@@ -40,10 +21,6 @@ inline void debuglog(const char* s, ...)
 	va_end(ap);
 }
 
-
-
-#define __nothing
-#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 
 
 #define INTUNSPEC_TYPE_STRING			"int"

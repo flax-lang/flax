@@ -4,7 +4,23 @@
 
 #pragma once
 #include "defs.h"
+#include "lexer.h"
+
+namespace ast
+{
+	struct TopLevelBlock;
+}
 
 namespace parser
 {
+	struct ParsedFile
+	{
+		std::string name;
+
+		ast::TopLevelBlock* root = 0;
+	};
+
+
+	std::vector<std::pair<std::string, Location>> parseImports(const std::string& filename, const lexer::TokenList& tokens);
+	ParsedFile parseFile(std::string filename, const lexer::TokenList& tokens);
 }
