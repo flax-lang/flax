@@ -12,10 +12,11 @@
 namespace frontend
 {
 	static std::string resolveImport(std::string imp, const Location& loc, std::string fullPath);
+	static std::vector<std::string> checkForCycles(std::string topmod, frontend::DependencyGraph* graph);
 
 
-
-	static void _buildGraph(frontend::DependencyGraph* graph, std::string full, std::unordered_map<std::string, bool>& visited)
+	static frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, std::string full,
+		std::unordered_map<std::string, bool>& visited)
 	{
 		auto tokens = frontend::getFileTokens(full);
 		auto imports = parser::parseImports(full, tokens);
@@ -30,9 +31,11 @@ namespace frontend
 			if(!visited[tovisit])
 			{
 				visited[tovisit] = true;
-				_buildGraph(graph, tovisit, visited);
+				buildDependencyGraph(graph, tovisit, visited);
 			}
 		}
+
+		return graph;
 	}
 
 	void collectFiles(std::string filename)
@@ -43,9 +46,67 @@ namespace frontend
 		DependencyGraph* graph = new DependencyGraph();
 
 		std::unordered_map<std::string, bool> visited;
-		_buildGraph(graph, full, visited);
+		auto files = checkForCycles(full, buildDependencyGraph(graph, full, visited));
+
+		std::vector<parser::ParsedFile> parsed;
+		for(auto file : files)
+		{
+			// parse it all
+			parsed.push_back(parser::parseFile(file));
+		}
+	}
 
 
+
+
+
+
+
+
+	static std::string resolveImport(std::string imp, const Location& loc, std::string fullPath)
+	{
+		std::string ext = ".flx";
+		if(imp.find(".flx") == imp.size() - 4)
+			ext = "";
+
+		std::string curpath = getPathFromFile(fullPath);
+		std::string fullname = curpath + "/" + imp + ext;
+		char* fname = realpath(fullname.c_str(), 0);
+
+		if(fullname == fullPath)
+			error(loc, "Cannot import module from within itself");
+
+		// a file here
+		if(fname != NULL)
+		{
+			auto ret = std::string(fname);
+			free(fname);
+
+			return getFullPathOfFile(ret);
+		}
+		else
+		{
+			free(fname);
+			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ext;
+
+			struct stat buffer;
+			if(stat(builtinlib.c_str(), &buffer) == 0)
+			{
+				return getFullPathOfFile(builtinlib);
+			}
+			else
+			{
+				exitless_error(loc, "No module or library at the path '%s' could be found", imp.c_str());
+				info("'%s' does not exist", fullname.c_str());
+				info("'%s' does not exist", builtinlib.c_str());
+
+				doTheExit();
+			}
+		}
+	}
+
+	static std::vector<std::string> checkForCycles(std::string topmod, frontend::DependencyGraph* graph)
+	{
 		auto groups = graph->findCyclicDependencies();
 		for(auto grp : groups)
 		{
@@ -80,48 +141,26 @@ namespace frontend
 				error("Cyclic dependencies found, cannot continue");
 			}
 		}
-	}
 
 
 
-
-
-
-
-
-	static std::string resolveImport(std::string imp, const Location& loc, std::string fullPath)
-	{
-		std::string curpath = getPathFromFile(fullPath);
-		std::string fullname = curpath + "/" + imp + ".flx";
-		char* fname = realpath(fullname.c_str(), 0);
-
-		// a file here
-		if(fname != NULL)
+		if(groups.size() == 0)
 		{
-			auto ret = std::string(fname);
-			free(fname);
-
-			return getFullPathOfFile(ret);
+			frontend::DepNode* dn = new frontend::DepNode();
+			dn->name = topmod;
+			groups.insert(groups.begin(), { dn });
 		}
-		else
+
+		std::vector<std::string> fulls;
+		for(auto grp : groups)
 		{
-			free(fname);
-			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ".flx";
+			// make sure it's 1
+			iceAssert(grp.size() == 1);
 
-			struct stat buffer;
-			if(stat(builtinlib.c_str(), &buffer) == 0)
-			{
-				return getFullPathOfFile(builtinlib);
-			}
-			else
-			{
-				exitless_error(loc, "No module or library at the path '%s' could be found", imp.c_str());
-				info("'%s' does not exist", fullname.c_str());
-				info("'%s' does not exist", builtinlib.c_str());
-
-				doTheExit();
-			}
+			fulls.push_back(frontend::getFullPathOfFile(grp[0]->name));
 		}
+
+		return fulls;
 	}
 }
 
@@ -174,9 +213,9 @@ namespace parser
 					// i hope this works.
 					imports.push_back({ name, tok.loc });
 				}
-				else if(tokens[i].type != TokenType::StringLiteral)
+				else if(tokens[i].type == TokenType::StringLiteral)
 				{
-					imports.push_back({ tok.text.to_string(), tok.loc });
+					imports.push_back({ tokens[i].text.to_string(), tokens[i].loc });
 					i++;
 				}
 				else
