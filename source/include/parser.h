@@ -22,5 +22,5 @@ namespace parser
 
 
 	std::vector<std::pair<std::string, Location>> parseImports(const std::string& filename, const lexer::TokenList& tokens);
-	ParsedFile parseFile(std::string filename, const lexer::TokenList& tokens);
+	ParsedFile parseFile(std::string filename);
 }

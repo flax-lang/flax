@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include <string>
+#include <vector>
 #include <experimental/string_view>
 
 
@@ -55,6 +56,24 @@ struct Location
 	size_t len = 0;
 };
 
+enum class PrivacyLevel
+{
+	Invalid,
+
+	Public,
+	Private,
+};
+
+struct TypeConstraints_t
+{
+	std::vector<std::string> protocols;
+	int pointerDegree = 0;
+
+	bool operator == (const TypeConstraints_t& other) const
+	{
+		return this->protocols == other.protocols && this->pointerDegree == other.pointerDegree;
+	}
+};
 
 
 namespace util
