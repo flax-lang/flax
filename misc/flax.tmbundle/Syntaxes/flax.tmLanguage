@@ -392,7 +392,11 @@
 				</dict>
 				<dict>
 					<key>include</key>
-					<string>#function-result</string>
+					<string>#function-result-arrow</string>
+				</dict>
+				<dict>
+					<key>include</key>
+					<string>#function-result-type</string>
 				</dict>
 				<dict>
 					<key>include</key>
@@ -400,10 +404,17 @@
 				</dict>
 			</array>
 		</dict>
-		<key>function-result</key>
+		<key>function-result-arrow</key>
 		<dict>
-			<key>begin</key>
+			<key>comment</key>
+			<string>function-result</string>
+			<key>match</key>
+			<string>(\-&gt;)</string>
+			<key>name</key>
+			<string>keyword.operator.function-result.flax</string>
+			<!-- <key>begin</key>
 			<string>(?&lt;![/=\-+!*%&lt;&gt;&amp;|\^~.])(\-&gt;)(?![/=\-+!*%&lt;&gt;&amp;|\^~.])\s*</string>
+			<string>(\-&gt;)</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>1</key>
@@ -414,8 +425,25 @@
 			</dict>
 			<key>comment</key>
 			<string>function-result</string>
+
 			<key>end</key>
-			<string>\s*(\{|\n)</string>
+			<string>\s*(\{|\n|\-&gt;)</string>
+			<key>name</key>
+			<string>meta.function-result.flax</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>#type</string>
+				</dict>
+			</array> -->
+		</dict>
+		<key>function-result-type</key>
+		<dict>
+			<key>comment</key>
+			<string>function-result-type</string>
+			<!-- <key>match</key>
+			<string>\s*(\{|\n|\-&gt;)</string> -->
 			<key>name</key>
 			<string>meta.function-result.flax</string>
 			<key>patterns</key>
