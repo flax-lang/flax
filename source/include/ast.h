@@ -23,6 +23,11 @@ namespace ast
 		~Expr();
 	};
 
+
+
+
+
+
 	struct ImportStmt : Stmt
 	{
 		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { }
@@ -31,7 +36,31 @@ namespace ast
 		std::string path;
 	};
 
+	struct Block : Stmt
+	{
+		Block(const Location& l) : Stmt(l) { }
 
+		std::vector<Stmt*> statements;
+		std::vector<Stmt*> deferredStatements;
+	};
+
+	struct FuncDefn : Stmt
+	{
+		FuncDefn(const Location& l) : Stmt(l) { }
+
+		std::string name;
+
+
+
+		Block* body = 0;
+
+		PrivacyLevel privacy = PrivacyLevel::Invalid;
+	};
+
+	struct ForeignFuncDefn : Stmt
+	{
+
+	};
 
 
 
