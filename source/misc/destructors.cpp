@@ -9,6 +9,30 @@ namespace ast
 	Stmt::~Stmt() { }
 	Expr::~Expr() { }
 	ImportStmt::~ImportStmt() { }
+	Block::~Block () { }
+	FuncDefn::~FuncDefn() { }
+	// ForeignFuncDefn::~ForeignFuncDefn () { }
+	VarDefn::~VarDefn() { }
+	TupleDecompVarDefn::~TupleDecompVarDefn() { }
+	ArrayDecompVarDefn::~ArrayDecompVarDefn() { }
+	TypeExpr::~TypeExpr() { }
 	Ident::~Ident() { }
+	BinaryOp::~BinaryOp() { }
+	UnaryOp::~UnaryOp() { }
+	// FunctionCall::~FunctionCall() { }
+	DotOperator::~DotOperator() { }
+	LitNumber::~LitNumber() { }
+	LitBool::~LitBool() { }
+	// LitString::~LitString() { }
+	LitNull::~LitNull() { }
 	TopLevelBlock::~TopLevelBlock() { }
 }
+
+
+
+
+
+
+
+
+
