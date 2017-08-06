@@ -193,6 +193,58 @@ namespace util
 }
 
 
+enum class Operator
+{
+	Invalid,
+
+	Add,
+	Subtract,
+	Multiply,
+	Divide,
+	Modulo,
+
+	Assign,
+
+	BitwiseOr,
+	BitwiseAnd,
+	BitwiseXor,
+
+	LogicalOr,
+	LogicalAnd,
+	LogicalNot,
+
+	ShiftLeft,
+	ShiftRight,
+
+	CompareEq,
+	CompareNotEq,
+	CompareGreater,
+	CompareGreaterEq,
+	CompareLess,
+	CompareLessEq,
+
+	Cast,
+	DotOperator,
+
+	BitwiseNot,
+	Minus,
+	Plus,
+
+	AddressOf,
+	Dereference,
+
+	PlusEquals,
+	MinusEquals,
+	MultiplyEquals,
+	DivideEquals,
+	ModuloEquals,
+	ShiftLeftEquals,
+	ShiftRightEquals,
+	BitwiseAndEquals,
+	BitwiseOrEquals,
+	BitwiseXorEquals,
+};
+
 
 std::string strprintf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
