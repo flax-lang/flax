@@ -5,7 +5,13 @@
 #pragma once
 #include "defs.h"
 
+#include <map>
 #include <vector>
+
+namespace pts
+{
+	struct Type;
+}
 
 namespace ast
 {
@@ -39,6 +45,7 @@ namespace ast
 	struct Block : Stmt
 	{
 		Block(const Location& l) : Stmt(l) { }
+		~Block();
 
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferredStatements;
@@ -47,6 +54,7 @@ namespace ast
 	struct FuncDefn : Stmt
 	{
 		FuncDefn(const Location& l) : Stmt(l) { }
+		~FuncDefn();
 
 		std::string name;
 
@@ -62,10 +70,57 @@ namespace ast
 
 	};
 
+	struct VarDefn : Stmt
+	{
+		VarDefn(const Location& l, std::string name) : Stmt(l) { }
+		~VarDefn();
+
+		std::string name;
+		pts::Type* type = 0;
+
+		bool immut = false;
+		Expr* initialiser = 0;
+	};
+
+	struct TupleDecompVarDefn : Stmt
+	{
+		TupleDecompVarDefn(const Location& l) : Stmt(l) { }
+		~TupleDecompVarDefn();
+
+		struct Mapping
+		{
+			Location loc;
+			std::string name;
+			bool ref = false;
+
+			std::vector<Mapping> inner;
+		};
+
+		bool immut = false;
+		Expr* initialiser = 0;
+		std::vector<Mapping> mappings;
+	};
+
+	struct ArrayDecompVarDefn : Stmt
+	{
+		ArrayDecompVarDefn(const Location& l) : Stmt(l) { }
+		~ArrayDecompVarDefn();
+
+		bool immut = false;
+		Expr* initialiser = 0;
+
+		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
+	};
 
 
 
+	struct TypeExpr : Expr
+	{
+		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { }
+		~TypeExpr();
 
+		pts::Type* type = 0;
+	};
 
 	struct Ident : Expr
 	{
@@ -73,6 +128,69 @@ namespace ast
 		~Ident();
 
 		std::string name;
+	};
+
+	struct BinaryOp : Expr
+	{
+		BinaryOp(const Location& loc, Operator o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
+		~BinaryOp();
+
+		Operator op = Operator::Invalid;
+
+		Expr* left = 0;
+		Expr* right = 0;
+	};
+
+	struct UnaryOp : Expr
+	{
+		UnaryOp(const Location& l) : Expr(l) { }
+		~UnaryOp();
+
+		Operator op = Operator::Invalid;
+
+		Expr* expr = 0;
+	};
+
+	struct FunctionCall : Expr
+	{
+	};
+
+	struct DotOperator : Expr
+	{
+		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { }
+		~DotOperator();
+
+		Expr* left = 0;
+		Expr* right = 0;
+	};
+
+
+
+
+	struct LitNumber : Expr
+	{
+		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { }
+		~LitNumber();
+
+		std::string num;
+	};
+
+	struct LitBool : Expr
+	{
+		LitBool(const Location& l, bool val) : Expr(l), value(val) { }
+		~LitBool();
+
+		bool value = false;
+	};
+
+	struct LitString : Expr
+	{
+	};
+
+	struct LitNull : Expr
+	{
+		LitNull(const Location& l) : Expr(l) { }
+		~LitNull();
 	};
 
 

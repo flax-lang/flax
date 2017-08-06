@@ -14,5 +14,5 @@ namespace Foo
 	// {
 	// }
 
-	// var ((i64, i64) -> (i64) -> i64)[3]
+	var k: i64 = 40
 }

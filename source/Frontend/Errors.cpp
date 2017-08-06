@@ -6,6 +6,7 @@
 #include "errors.h"
 
 #include "ast.h"
+#include "frontend.h"
 
 #include <sstream>
 
@@ -46,11 +47,10 @@ std::string strprintf(const char* fmt, ...)
 
 static void printContext(HighlightOptions ops)
 {
-	// auto lines = Compiler::getFileLines(ops.caret.fileID);
-	auto lines = std::vector<stx::string_view>();
-	if(lines.size() > ops.caret.line - 1)
+	auto lines = frontend::getFileLines(ops.caret.fileID);
+	if(lines.size() > ops.caret.line)
 	{
-		std::string orig = lines[ops.caret.line - 1].to_string();
+		std::string orig = lines[ops.caret.line].to_string();
 
 		std::stringstream ln;
 
@@ -170,8 +170,10 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	// std::string filename = Compiler::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)" : Compiler::getFilenameFromID(ops.caret.fileID));
-	std::string filename = "TODO: filename";
+	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
+		: frontend::getFilenameFromID(ops.caret.fileID));
+
+	// std::string filename = "TODO: filename";
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
 		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
