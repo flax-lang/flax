@@ -47,8 +47,37 @@ namespace parser
 		}
 		else
 		{
-			error(st, "Expected either string literal or identifer after 'import' for module specifier, found '%s' instead",
-				st.frontAfterWS().str().c_str());
+			expected(st, "either string literal or identifer after 'import' for module specifier", st.frontAfterWS().str());
 		}
 	}
+
+
+
+
+
+
+
+	void expected(const Location& loc, std::string a, std::string b)
+	{
+		error(loc, "Expected %s, found '%s' instead", a.c_str(), b.c_str());
+	}
+
+	void expectedAfter(const Location& loc, std::string a, std::string b, std::string c)
+	{
+		error(loc, "Expected %s after %s, found '%s' instead", a.c_str(), b.c_str(), c.c_str());
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

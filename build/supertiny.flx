@@ -14,5 +14,5 @@ namespace Foo
 	// {
 	// }
 
-	var k: i64 = 40
+	var k: i64 = (40 + 30)
 }

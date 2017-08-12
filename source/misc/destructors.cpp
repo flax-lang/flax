@@ -23,8 +23,9 @@ namespace ast
 	DotOperator::~DotOperator() { }
 	LitNumber::~LitNumber() { }
 	LitBool::~LitBool() { }
-	// LitString::~LitString() { }
+	LitString::~LitString() { }
 	LitNull::~LitNull() { }
+	LitTuple::~LitTuple() { }
 	TopLevelBlock::~TopLevelBlock() { }
 }
 

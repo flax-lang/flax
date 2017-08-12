@@ -25,7 +25,7 @@ namespace parser
 			// expect "namespace FOO { ... }"
 			iceAssert(st.eat() == TT::Identifier);
 			if(st.eat() != TT::LBrace)
-				error(st.ploc(), "Expected '{' to start namespace declaration, found '%s'", st.lookahead(-1).str().c_str());
+				expected(st.ploc(), "'{' to start namespace declaration", st.prev().str());
 		}
 
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
@@ -42,14 +42,14 @@ namespace parser
 					st.eat();
 					Token tok;
 					if((tok = st.front()) != TT::Identifier)
-						error(st, "Expected identifier after 'namespace'");
+						expectedAfter(st, "identifier", "'namespace'", st.front().str());
 
 					root->statements.push_back(parseTopLevel(st, tok.str()));
 
 				} break;
 
 				case TT::Func: {
-
+					root->statements.push_back(parseFunction(st));
 				} break;
 
 				case TT::Var:
@@ -76,7 +76,7 @@ namespace parser
 		if(name != "")
 		{
 			if(st.front() != TT::RBrace)
-				error(st, "Expected '}' to close namespace declaration, found '%d' instead", st.front().type);
+				expected(st, "'}' to close namespace declaration", st.front().str());
 
 			st.eat();
 		}
