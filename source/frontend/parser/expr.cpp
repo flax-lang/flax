@@ -306,9 +306,61 @@ namespace parser
 
 
 
+	static Expr* parseTuple(State& st, Expr* lhs)
+	{
+		iceAssert(lhs);
+
+		Token first = st.front();
+		std::vector<Expr*> values { lhs };
+
+		Token t = st.front();
+		while(true)
+		{
+			values.push_back(parseExpr(st));
+			if(st.front().type == TT::RParen)
+				break;
+
+			if(st.front().type != TT::Comma)
+				expected(st, "either ')' or ',' in tuple", st.front().str());
+
+			st.eat();
+			t = st.front();
+		}
+
+		// leave the last rparen
+		iceAssert(st.front().type == TT::RParen);
+
+		// return CreateAST(Tuple, first, values);
+		return new LitTuple(first.loc, values);
+	}
 
 
+	static Expr* parseParenthesised(State& st)
+	{
+		Token opening = st.eat();
+		iceAssert(opening.type == TT::LParen);
 
+		Expr* within = parseExpr(st);
+
+		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
+			error(opening.loc, "Expected closing ')' to match opening parenthesis here, or ',' to begin a tuple");
+
+		// if we're a tuple, get ready for this shit.
+		if(st.front().type == TT::Comma)
+		{
+			// remove the comma
+			st.eat();
+
+			// parse a tuple
+			Expr* tup = parseTuple(st, within);
+			within = tup;
+		}
+
+		iceAssert(st.front().type == TT::RParen);
+		st.eat();
+
+		return within;
+	}
 
 	static Expr* parseUnary(State& st)
 	{
@@ -423,8 +475,8 @@ namespace parser
 
 
 
-				// case TT::LParen:
-				// 	return parseParenthesised(ps);
+				case TT::LParen:
+					return parseParenthesised(st);
 
 				// case TT::Identifier:
 				// case TT::UnicodeSymbol:

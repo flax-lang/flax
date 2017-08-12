@@ -55,7 +55,7 @@ namespace parser
 						ref = true;
 						st.pop();
 						if(st.front() != TT::Identifier || st.front().str() == "_")
-							error("Expected identifier after '&' in binding, found '%s' instead", st.front().str().c_str());
+							expectedAfter(st, "identifier", "'&' in binding", st.front().str());
 					}
 
 					iceAssert(st.front() == TT::Identifier);
@@ -88,7 +88,7 @@ namespace parser
 		st.eat();
 
 		if(st.front() != TT::Equal)
-			error(st, "Expected '=' for assignment to decomposition, found '%s' instead", st.front().str().c_str());
+			expected(st, "'=' for assignment to decomposition", st.front().str());
 
 		st.pop();
 		decomp->initialiser = parseExpr(st);
@@ -118,8 +118,7 @@ namespace parser
 		}
 		else if(st.front() != TT::Identifier)
 		{
-			error(st, "Expected identifier after '%s', found '%s' instead",
-				isImmut ? "val" : "var", st.front().str().c_str());
+			expectedAfter(st, "identifier", "'" + std::string(isImmut ? "val" : "var") + "'", st.front().str());
 		}
 
 		std::string name = st.eat().str();

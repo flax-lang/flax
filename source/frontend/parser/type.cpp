@@ -31,7 +31,7 @@ namespace parser
 			{
 				st.pop();
 				if(st.eat() != TT::RSquare)
-					error(st, "Expected closing ']' after variadic array type, found '%s' instead", st.prev().str().c_str());
+					expectedAfter(st, "closing ']'", "variadic array type", st.prev().str());
 
 				ret = new pts::VariadicArrayType(ret);
 			}
@@ -39,11 +39,11 @@ namespace parser
 			{
 				long sz = std::stol(st.front().str());
 				if(sz <= 0)
-					error(st, "Expected positive, non-zero size for fixed array, found '%s' instead", st.front().str().c_str());
+					expected(st, "positive, non-zero size for fixed array", st.front().str());
 
 				st.pop();
 				if(st.eat() != TT::RSquare)
-					error(st, "Expected closing ']' after array type, found '%s' instead", st.front().str().c_str());
+					expectedAfter(st, "closing ']'", "array type", st.front().str());
 
 				ret = new pts::FixedArrayType(ret, sz);
 			}
@@ -51,7 +51,7 @@ namespace parser
 			{
 				st.pop();
 				if(st.eat() != TT::RSquare)
-					error(st, "Expected closing ']' after slice type, found '%s' instead", st.prev().str().c_str());
+					expectedAfter(st, "closing ']'", "slice type", st.prev().str());
 
 				ret = new pts::ArraySliceType(ret);
 			}
@@ -109,10 +109,7 @@ namespace parser
 					{
 						std::string ty = st.eat().str();
 						if(st.eat() != TT::Colon)
-						{
-							error(st, "Expected ':' to specify type mapping in parametric type instantiation; found '%s' instead",
-								st.prev().str().c_str());
-						}
+							expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
 
 						pts::Type* mapped = parseType(st);
 						nt->genericMapping[ty] = mapped;
@@ -129,8 +126,7 @@ namespace parser
 						}
 						else
 						{
-							error(st, "Expected either ',' or '>' to continue or terminate parametric type instantiation, found '%s' instead",
-								st.front().str().c_str());
+							expected(st, "either ',' or '>' to continue or terminate parametric type instantiation", st.front().str());
 						}
 					}
 					else if(st.front() == TT::RAngle)
@@ -145,7 +141,7 @@ namespace parser
 				}
 
 				if(st.front() != TT::RAngle)
-					error(st, "Expected '>' to end type mapping, found '%s' instead", st.front().str().c_str());
+					expected(st, "'>' to end type mapping", st.front().str());
 
 				st.pop();
 			}
@@ -167,7 +163,7 @@ namespace parser
 				auto ty = parseType(st);
 
 				if(st.front() != TT::Comma && st.front() != TT::RParen)
-					error("Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str().c_str());
+					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str().c_str());
 
 				else if(st.front() == TT::Comma)
 					st.eat();
@@ -176,12 +172,11 @@ namespace parser
 			}
 
 			if(types.size() == 0)
-				error("Empty tuples '()' are not supported");
+				error(st, "Empty tuples '()' are not supported");
 
 			if(st.eat().type != TT::RParen)
 			{
-				error("Expected ')' to end tuple type specifier, found '%s' instead",
-					st.prev().str().c_str());
+				expected(st, "')' to end tuple type specifier", st.prev().str());
 			}
 
 			// check if it's actually a function type

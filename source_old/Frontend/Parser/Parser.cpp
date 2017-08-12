@@ -2951,58 +2951,6 @@ namespace Parser
 		return ret;
 	}
 
-	static std::map<std::string, TypeConstraints_t> parseGenericTypeList(ParserState& ps)
-	{
-		std::map<std::string, TypeConstraints_t> ret;
-
-		while(ps.front().type != TType::RAngle)
-		{
-			if(ps.front().type == TType::Identifier)
-			{
-				std::string gt = ps.eat().text.to_string();
-				TypeConstraints_t constrs;
-
-				if(ps.front().type == TType::Colon)
-				{
-					ps.eat();
-					if(ps.front().type != TType::Identifier)
-						parserError("Expected identifier after beginning of type constraint list");
-
-					while(ps.front().type == TType::Identifier)
-					{
-						constrs.protocols.push_back(ps.eat().text.to_string());
-
-						if(ps.front().type == TType::Ampersand)
-						{
-							ps.eat();
-						}
-						else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-						{
-							parserError("Expected ',' or '>' to end type parameter list (1)");
-						}
-					}
-				}
-				else if(ps.front().type != TType::Comma && ps.front().type != TType::RAngle)
-				{
-					parserError("Expected ',' or '>' to end type parameter list (2)");
-				}
-
-				ret[gt] = constrs;
-			}
-			else if(ps.front().type == TType::Comma)
-			{
-				ps.eat();
-			}
-			else if(ps.front().type != TType::RAngle)
-			{
-				parserError("Expected '>' to end type parameter list");
-			}
-		}
-
-		iceAssert(ps.eat().type == TType::RAngle);
-
-		return ret;
-	}
 
 
 

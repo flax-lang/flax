@@ -126,12 +126,26 @@ namespace parser
 
 	ast::Stmt* parseVariable(State& st);
 	ast::ImportStmt* parseImport(State& st);
+	ast::FuncDefn* parseFunction(State& st);
 
 	ast::Block* parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
+
+
+	std::map<std::string, TypeConstraints_t> parseGenericTypeList(State& st);
+
+
+
+	// error shortcuts
+
+	// Expected $, found '$' instead
+	void expected(const Location& loc, std::string, std::string) __attribute__((noreturn));
+
+	// Expected $ after $, found '$' instead
+	void expectedAfter(const Location& loc, std::string, std::string, std::string) __attribute__((noreturn));
 }
 
 

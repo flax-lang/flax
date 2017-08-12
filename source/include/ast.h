@@ -56,9 +56,17 @@ namespace ast
 		FuncDefn(const Location& l) : Stmt(l) { }
 		~FuncDefn();
 
+		struct Arg
+		{
+			std::string name;
+			pts::Type* type = 0;
+		};
+
 		std::string name;
+		std::map<std::string, TypeConstraints_t> generics;
 
-
+		std::vector<Arg> args;
+		pts::Type* returnType = 0;
 
 		Block* body = 0;
 
@@ -185,6 +193,10 @@ namespace ast
 
 	struct LitString : Expr
 	{
+		LitString(const Location& l, std::string s) : Expr(l), str(s) { }
+		~LitString();
+
+		std::string str;
 	};
 
 	struct LitNull : Expr
@@ -193,7 +205,13 @@ namespace ast
 		~LitNull();
 	};
 
+	struct LitTuple : Expr
+	{
+		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
+		~LitTuple();
 
+		std::vector<Expr*> values;
+	};
 
 
 
