@@ -29,7 +29,11 @@ namespace ast
 		~Expr();
 	};
 
-
+	struct DeferredStmt : Stmt
+	{
+		DeferredStmt(const Location& l) : Stmt(l) { }
+		~DeferredStmt();
+	};
 
 
 

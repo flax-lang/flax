@@ -10,9 +10,10 @@ namespace Foo
 {
 	namespace Bar { }
 
-	// fn func<T>(a: i64, x: T, f: (i64, i64) -> (i64) -> i64) -> T
-	// {
-	// }
+	fn func<T>(a: i64, x: T, f: (i64, i64) -> (i64) -> i64) -> T
+	{
+		var k: i64
+	}
 
 	var k: i64 = (40 + 30)
 }
