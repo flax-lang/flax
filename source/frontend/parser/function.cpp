@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
+#include "pts.h"
 #include "parser_internal.h"
 
 using namespace ast;
@@ -34,8 +35,50 @@ namespace parser
 		if(st.front() != TT::LParen)
 			expectedAfter(st, "'('", "function declaration to begin argument list", st.front().str());
 
+		st.eat();
+		while(st.front() != TT::RParen)
+		{
+			if(st.front() != TT::Identifier)
+				expected(st, "identifier in function parameter list", st.front().str());
 
-		return 0;
+			std::string name = st.front().str();
+			st.eat();
+
+			if(st.front() != TT::Colon)
+				expected(st, "':' after identifier to specify type", st.front().str());
+
+			st.eat();
+			auto type = parseType(st);
+
+			defn->args.push_back(FuncDefn::Arg { .name = name, .type = type });
+
+			if(st.front() == TT::Comma)
+				st.eat();
+
+			else if(st.front() != TT::RParen)
+				expected(st, "')' or ',' in function parameter list", st.front().str());
+		}
+
+		iceAssert(st.front() == TT::RParen);
+		st.eat();
+
+		if(st.front() == TT::Arrow)
+		{
+			st.eat();
+			defn->returnType = parseType(st);
+		}
+		else
+		{
+			defn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+		}
+
+		st.skipWS();
+		if(st.front() != TT::LBrace)
+			expected(st, "'{' to begin function body", st.front().str());
+
+		defn->body = parseBracedBlock(st);
+		debuglog("parsed function '%s'\n", defn->name.c_str());
+		return defn;
 	}
 
 
@@ -100,4 +143,51 @@ namespace parser
 
 		return ret;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Block* parseBracedBlock(State& st)
+	{
+		iceAssert(st.eat() == TT::LBrace);
+		Block* ret = new Block(st.ploc());
+
+		st.skipWS();
+		while(st.front() != TT::RBrace)
+		{
+			auto stmt = parseStmt(st);
+			if(dynamic_cast<DeferredStmt*>(stmt))
+				ret->deferredStatements.push_back(stmt);
+
+			else
+				ret->statements.push_back(stmt);
+
+			if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
+				st.pop();
+
+			else
+				expected(st, "newline or semicolon to terminate a statement", st.front().str());
+		}
+
+		iceAssert(st.eat() == TT::RBrace);
+		st.skipWS();
+
+		return ret;
+	}
 }
+
+
+
+
+
+
+

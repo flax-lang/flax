@@ -539,6 +539,65 @@ namespace parser
 		return 0;
 	}
 
+
+	ast::Stmt* parseStmt(State& st)
+	{
+		if(!st.hasTokens())
+			error(st, "Unexpected end of file");
+
+		st.skipWS();
+
+		auto tok = st.front();
+		if(tok != TT::EndOfFile)
+		{
+			switch(tok.type)
+			{
+				case TT::Var:
+				case TT::Val:
+					return parseVariable(st);
+
+				case TT::Func:
+					return parseFunction(st);
+
+				case TT::Enum:
+				case TT::Class:
+				case TT::Static:
+				case TT::Struct:
+				case TT::Public:
+				case TT::Private:
+				case TT::Operator:
+				case TT::Protocol:
+				case TT::Internal:
+				case TT::Override:
+				case TT::Extension:
+				case TT::TypeAlias:
+				case TT::ForeignFunc:
+				case TT::Dealloc:
+				case TT::Defer:
+				case TT::Return:
+				case TT::Break:
+				case TT::Continue:
+				case TT::If:
+				case TT::Do:
+				case TT::While:
+				case TT::Loop:
+				case TT::For:
+					error(st, "notsup");
+
+				case TT::Namespace:
+					error(st, "Namespaces can only be defined at the top-level scope");
+
+				case TT::Import:
+					error(st, "All imports must happen at the top-level scope");
+
+				default:
+					return parseExpr(st);
+			}
+		}
+
+		iceAssert(0);
+		return 0;
+	}
 }
 
 

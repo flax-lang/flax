@@ -123,6 +123,7 @@ namespace parser
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
+	ast::Stmt* parseStmt(State& st);
 
 	ast::Stmt* parseVariable(State& st);
 	ast::ImportStmt* parseImport(State& st);
