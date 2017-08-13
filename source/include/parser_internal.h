@@ -128,10 +128,13 @@ namespace parser
 	ast::Stmt* parseVariable(State& st);
 	ast::ImportStmt* parseImport(State& st);
 	ast::FuncDefn* parseFunction(State& st);
+	ast::Stmt* parseStmtWithAccessSpec(State& st);
+	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 
 	ast::Block* parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);
+	ast::LitString* parseString(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 

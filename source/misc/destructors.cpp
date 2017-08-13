@@ -12,7 +12,7 @@ namespace ast
 	Block::~Block () { }
 	FuncDefn::~FuncDefn() { }
 	DeferredStmt::~DeferredStmt() { }
-	// ForeignFuncDefn::~ForeignFuncDefn () { }
+	ForeignFuncDefn::~ForeignFuncDefn () { }
 	VarDefn::~VarDefn() { }
 	TupleDecompVarDefn::~TupleDecompVarDefn() { }
 	ArrayDecompVarDefn::~ArrayDecompVarDefn() { }
@@ -20,7 +20,7 @@ namespace ast
 	Ident::~Ident() { }
 	BinaryOp::~BinaryOp() { }
 	UnaryOp::~UnaryOp() { }
-	// FunctionCall::~FunctionCall() { }
+	FunctionCall::~FunctionCall() { }
 	DotOperator::~DotOperator() { }
 	LitNumber::~LitNumber() { }
 	LitBool::~LitBool() { }

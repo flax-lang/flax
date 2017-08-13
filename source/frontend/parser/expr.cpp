@@ -14,6 +14,95 @@ namespace parser
 {
 	using TT = TokenType;
 
+	ast::Stmt* parseStmtWithAccessSpec(State& st)
+	{
+		iceAssert(st.front() == TT::Public || st.front() == TT::Private || st.front() == TT::Internal);
+		auto vis = PrivacyLevel::Invalid;
+		switch(st.front())
+		{
+			case TT::Public:		vis = PrivacyLevel::Public; break;
+			case TT::Private:		vis = PrivacyLevel::Private; break;
+			case TT::Internal:		vis = PrivacyLevel::Internal; break;
+			default: iceAssert(0);
+		}
+
+		st.pop();
+		auto stmt = parseStmt(st);
+		if(auto defn = dynamic_cast<FuncDefn*>(stmt))
+			defn->privacy = vis;
+
+		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
+			defn->privacy = vis;
+
+		else
+			error(st, "Access specifier cannot be applied to this statement");
+
+		return stmt;
+	}
+
+	ast::Stmt* parseStmt(State& st)
+	{
+		if(!st.hasTokens())
+			error(st, "Unexpected end of file");
+
+		st.skipWS();
+
+		auto tok = st.front();
+		if(tok != TT::EndOfFile)
+		{
+			switch(tok.type)
+			{
+				case TT::Var:
+				case TT::Val:
+					return parseVariable(st);
+
+				case TT::Func:
+					return parseFunction(st);
+
+				case TT::ForeignFunc:
+					return parseForeignFunction(st);
+
+				case TT::Public:
+				case TT::Private:
+				case TT::Internal:
+					return parseStmtWithAccessSpec(st);
+
+				case TT::Enum:
+				case TT::Class:
+				case TT::Static:
+				case TT::Struct:
+				case TT::Operator:
+				case TT::Protocol:
+				case TT::Override:
+				case TT::Extension:
+				case TT::TypeAlias:
+				case TT::Dealloc:
+				case TT::Defer:
+				case TT::Return:
+				case TT::Break:
+				case TT::Continue:
+				case TT::If:
+				case TT::Do:
+				case TT::While:
+				case TT::Loop:
+				case TT::For:
+					error(st, "notsup");
+
+				case TT::Namespace:
+					error(st, "Namespaces can only be defined at the top-level scope");
+
+				case TT::Import:
+					error(st, "All imports must happen at the top-level scope");
+
+				default:
+					return parseExpr(st);
+			}
+		}
+
+		iceAssert(0);
+	}
+
+
 	static bool isRightAssociative(TT tt)
 	{
 		return false;
@@ -290,22 +379,6 @@ namespace parser
 	}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	static Expr* parseTuple(State& st, Expr* lhs)
 	{
 		iceAssert(lhs);
@@ -405,11 +478,46 @@ namespace parser
 
 
 
+	static FunctionCall* parseFunctionCall(State& st, std::string name)
+	{
+		iceAssert(st.front() == TT::LParen);
+		auto ret = new FunctionCall(st.loc(), name);
 
+		st.pop();
+		st.skipWS();
+		while(st.front() != TT::RParen)
+		{
+			ret->args.push_back(parseExpr(st));
+			st.skipWS();
 
+			if(st.front() == TT::Comma)
+				st.pop();
 
+			else if(st.front() != TT::RParen)
+				expected(st, "',' or '(' in function call argument list", st.front().str());
+		}
 
+		iceAssert(st.front() == TT::RParen);
+		st.pop();
 
+		return ret;
+	}
+
+	static Expr* parseIdentifier(State& st)
+	{
+		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
+		std::string name = st.front().str();
+		st.pop();
+
+		if(st.front() == TT::LParen)
+		{
+			return parseFunctionCall(st, name);
+		}
+		else
+		{
+			return new Ident(st.ploc(), name);
+		}
+	}
 
 
 
@@ -478,12 +586,9 @@ namespace parser
 				case TT::LParen:
 					return parseParenthesised(st);
 
-				// case TT::Identifier:
-				// case TT::UnicodeSymbol:
-				// 	if(tok.text == "init")
-				// 		return parseInitFunc(ps);
-
-				// 	return parseIdExpr(ps);
+				case TT::Identifier:
+				case TT::UnicodeSymbol:
+					return parseIdentifier(st);
 
 				// case TT::Alloc:
 				// 	return parseAlloc(ps);
@@ -497,18 +602,14 @@ namespace parser
 				// case TT::Sizeof:
 				// 	return parseSizeof(ps);
 
-				// case TT::StringLiteral:
-				// 	return parseStringLiteral(ps);
+				case TT::StringLiteral:
+					return parseString(st);
 
 				case TT::Number:
 					return parseNumber(st);
 
 				// case TT::LSquare:
 				// 	return parseArrayLiteral(ps);
-
-				// case TT::At:
-				// 	parseAttribute(ps);
-				// 	return parsePrimary(ps);
 
 				// no point creating separate functions for these
 				case TT::True:
@@ -540,64 +641,17 @@ namespace parser
 	}
 
 
-	ast::Stmt* parseStmt(State& st)
-	{
-		if(!st.hasTokens())
-			error(st, "Unexpected end of file");
 
-		st.skipWS();
 
-		auto tok = st.front();
-		if(tok != TT::EndOfFile)
-		{
-			switch(tok.type)
-			{
-				case TT::Var:
-				case TT::Val:
-					return parseVariable(st);
 
-				case TT::Func:
-					return parseFunction(st);
 
-				case TT::Enum:
-				case TT::Class:
-				case TT::Static:
-				case TT::Struct:
-				case TT::Public:
-				case TT::Private:
-				case TT::Operator:
-				case TT::Protocol:
-				case TT::Internal:
-				case TT::Override:
-				case TT::Extension:
-				case TT::TypeAlias:
-				case TT::ForeignFunc:
-				case TT::Dealloc:
-				case TT::Defer:
-				case TT::Return:
-				case TT::Break:
-				case TT::Continue:
-				case TT::If:
-				case TT::Do:
-				case TT::While:
-				case TT::Loop:
-				case TT::For:
-					error(st, "notsup");
 
-				case TT::Namespace:
-					error(st, "Namespaces can only be defined at the top-level scope");
 
-				case TT::Import:
-					error(st, "All imports must happen at the top-level scope");
 
-				default:
-					return parseExpr(st);
-			}
-		}
 
-		iceAssert(0);
-		return 0;
-	}
+
+
+
 }
 
 

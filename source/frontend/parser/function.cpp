@@ -12,7 +12,7 @@ using namespace lexer;
 using TT = TokenType;
 namespace parser
 {
-	FuncDefn* parseFunction(State& st)
+	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
 	{
 		iceAssert(st.eat() == TT::Func);
 		if(st.front() != TT::Identifier)
@@ -36,8 +36,13 @@ namespace parser
 			expectedAfter(st, "'('", "function declaration to begin argument list", st.front().str());
 
 		st.eat();
+		bool isvar = false;
+		Location varloc;
 		while(st.front() != TT::RParen)
 		{
+			if(isvar)
+				error(st, "Variadic arguments must be the last in the function parameter list");
+
 			if(st.front() != TT::Identifier)
 				expected(st, "identifier in function parameter list", st.front().str());
 
@@ -57,6 +62,13 @@ namespace parser
 
 			else if(st.front() != TT::RParen)
 				expected(st, "')' or ',' in function parameter list", st.front().str());
+
+			if(st.front() == TT::Ellipsis)
+			{
+				isvar = true;
+				varloc = st.loc();
+				st.pop();
+			}
 		}
 
 		iceAssert(st.front() == TT::RParen);
@@ -72,6 +84,18 @@ namespace parser
 			defn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
 		}
 
+		return std::make_tuple(defn, isvar, varloc);
+	}
+
+
+
+
+	FuncDefn* parseFunction(State& st)
+	{
+		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
+		if(isvar)
+			error(st, "C-style variadic arguments are not supported on non-foreign functions");
+
 		st.skipWS();
 		if(st.front() != TT::LBrace)
 			expected(st, "'{' to begin function body", st.front().str());
@@ -80,6 +104,32 @@ namespace parser
 		debuglog("parsed function '%s'\n", defn->name.c_str());
 		return defn;
 	}
+
+
+
+
+
+	ast::ForeignFuncDefn* parseForeignFunction(State& st)
+	{
+		iceAssert(st.front() == TT::ForeignFunc);
+		st.pop();
+
+		auto ffn = new ForeignFuncDefn(st.ploc());
+
+		// copy the things over
+		auto [ defn, isvar, _ ] = parseFunctionDecl(st);
+
+		ffn->isVarArg = isvar;
+		ffn->args = defn->args;
+		ffn->name = defn->name;
+		ffn->privacy = defn->privacy;
+		ffn->returnType = defn->returnType;
+
+		return ffn;
+	}
+
+
+
 
 
 

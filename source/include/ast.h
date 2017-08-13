@@ -74,12 +74,23 @@ namespace ast
 
 		Block* body = 0;
 
-		PrivacyLevel privacy = PrivacyLevel::Invalid;
+		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 
 	struct ForeignFuncDefn : Stmt
 	{
+		ForeignFuncDefn(const Location& l) : Stmt(l) { }
+		~ForeignFuncDefn();
 
+		using Arg = FuncDefn::Arg;
+
+		std::string name;
+
+		std::vector<Arg> args;
+		pts::Type* returnType = 0;
+
+		bool isVarArg = false;
+		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 
 	struct VarDefn : Stmt
@@ -92,6 +103,8 @@ namespace ast
 
 		bool immut = false;
 		Expr* initialiser = 0;
+
+		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 
 	struct TupleDecompVarDefn : Stmt
@@ -165,6 +178,11 @@ namespace ast
 
 	struct FunctionCall : Expr
 	{
+		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }
+		~FunctionCall();
+
+		std::string name;
+		std::vector<Expr*> args;
 	};
 
 	struct DotOperator : Expr

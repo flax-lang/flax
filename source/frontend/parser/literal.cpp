@@ -18,4 +18,12 @@ namespace parser
 
 		return new LitNumber(st.ploc(), t.str());
 	}
+
+	LitString* parseString(State& st)
+	{
+		iceAssert(st.front() == TT::StringLiteral);
+		auto t = st.eat();
+
+		return new LitString(st.ploc(), t.str());
+	}
 }

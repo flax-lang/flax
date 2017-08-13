@@ -6,14 +6,17 @@
 
 // import "supertiny.flx"
 
+ffi fn printf(fmt: u8*, ...) -> i32
+
+public fn main()
+{
+	printf("Hello, World\n")
+}
+
 namespace Foo
 {
 	namespace Bar { }
 
-	fn func<T>(a: i64, x: T, f: (i64, i64) -> (i64) -> i64) -> T
-	{
-		var k: i64
-	}
 
 	var k: i64 = (40 + 30)
 }
