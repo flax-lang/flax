@@ -62,6 +62,7 @@ enum class PrivacyLevel
 
 	Public,
 	Private,
+	Internal,
 };
 
 struct TypeConstraints_t

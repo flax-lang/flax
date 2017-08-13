@@ -32,11 +32,9 @@ namespace parser
 		{
 			switch(st.front())
 			{
-				case TT::Import: {
-
+				case TT::Import:
 					root->statements.push_back(parseImport(st));
-
-				} break;
+					break;
 
 				case TT::Namespace: {
 					st.eat();
@@ -48,15 +46,6 @@ namespace parser
 
 				} break;
 
-				case TT::Func: {
-					root->statements.push_back(parseFunction(st));
-				} break;
-
-				case TT::Var:
-				case TT::Val: {
-					root->statements.push_back(parseVariable(st));
-				} break;
-
 				case TT::Comment:
 				case TT::NewLine:
 					break;
@@ -64,9 +53,9 @@ namespace parser
 				case TT::RBrace:
 					goto out;
 
-				default: {
-					error(st, "Unexpected token '%s' / %d", st.front().str().c_str(), st.front().type);
-				}
+				default:
+					root->statements.push_back(parseStmt(st));
+					break;
 			}
 
 			st.skipWS();
