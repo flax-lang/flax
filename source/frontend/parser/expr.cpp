@@ -31,6 +31,9 @@ namespace parser
 		if(auto defn = dynamic_cast<FuncDefn*>(stmt))
 			defn->privacy = vis;
 
+		else if(auto defn = dynamic_cast<ForeignFuncDefn*>(stmt))
+			defn->privacy = vis;
+
 		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
 			defn->privacy = vis;
 

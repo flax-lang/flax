@@ -28,6 +28,7 @@ namespace parser
 				expected(st.ploc(), "'{' to start namespace declaration", st.prev().str());
 		}
 
+		auto [ priv, tix ] = std::make_tuple(PrivacyLevel::Invalid, -1);
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
 		{
 			switch(st.front())
@@ -38,13 +39,35 @@ namespace parser
 
 				case TT::Namespace: {
 					st.eat();
-					Token tok;
-					if((tok = st.front()) != TT::Identifier)
+					Token tok = st.front();
+					if(tok != TT::Identifier)
 						expectedAfter(st, "identifier", "'namespace'", st.front().str());
 
-					root->statements.push_back(parseTopLevel(st, tok.str()));
+					auto ns = parseTopLevel(st, tok.str());
+					if(priv != PrivacyLevel::Invalid)
+						ns->privacy = priv, priv = PrivacyLevel::Invalid, tix = -1;
+
+					root->statements.push_back(ns);
 
 				} break;
+
+				case TT::Public:
+					priv = PrivacyLevel::Public;
+					tix = st.getIndex();
+					st.pop();
+					break;
+
+				case TT::Private:
+					priv = PrivacyLevel::Private;
+					tix = st.getIndex();
+					st.pop();
+					break;
+
+				case TT::Internal:
+					priv = PrivacyLevel::Internal;
+					tix = st.getIndex();
+					st.pop();
+					break;
 
 				case TT::Comment:
 				case TT::NewLine:
@@ -54,6 +77,14 @@ namespace parser
 					goto out;
 
 				default:
+					if(priv != PrivacyLevel::Invalid)
+					{
+						st.rewindTo(tix);
+
+						tix = -1;
+						priv = PrivacyLevel::Invalid;
+					}
+
 					root->statements.push_back(parseStmt(st));
 					break;
 			}
@@ -70,7 +101,6 @@ namespace parser
 			st.eat();
 		}
 
-		debuglog("parsed namespace '%s'\n", name.c_str());
 		return root;
 	}
 
@@ -81,11 +111,10 @@ namespace parser
 
 		auto toplevel = parseTopLevel(state, "");
 
-		auto parsedFile = ParsedFile();
-		parsedFile.name = filename;
-		parsedFile.root = toplevel;
-
-		return parsedFile;
+		return ParsedFile {
+			.name = filename,
+			.root = toplevel
+		};
 	}
 
 

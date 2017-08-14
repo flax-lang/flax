@@ -1,8 +1,9 @@
-// tiny.flx
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// supertiny.flx
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-// import Foundation
+import IntegerLimits
+import LibCInterface
 
 // import "supertiny.flx"
 
@@ -13,10 +14,10 @@ public fn main()
 	printf("Hello, World\n")
 }
 
-namespace Foo
-{
-	namespace Bar { }
+// namespace Foo
+// {
+// 	namespace Bar { }
 
 
-	var k: i64 = (40 + 30)
-}
+// 	var k: i64 = (40 + 30)
+// }

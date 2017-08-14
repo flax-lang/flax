@@ -244,6 +244,7 @@ namespace ast
 
 		std::string name;
 		std::vector<Stmt*> statements;
+		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 }
 
