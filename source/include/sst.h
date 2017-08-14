@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
+#include "parser.h"
 
 namespace sst
 {
@@ -10,4 +11,6 @@ namespace sst
 	{
 
 	};
+
+	SemanticState* typecheck(const parser::ParsedFile& file);
 }

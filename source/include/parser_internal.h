@@ -30,13 +30,30 @@ namespace parser
 				error("lookahead %zu tokens > size %zu", num, this->tokens.size());
 		}
 
-		const void skip(size_t num)
+		void skip(size_t num)
 		{
 			if(this->index + num < this->tokens.size())
 				this->index += num;
 
 			else
 				error("skip %zu tokens > size %zu", num, this->tokens.size());
+		}
+
+		void rewind(size_t num)
+		{
+			if(this->index > num)
+				this->index -= num;
+
+			else
+				error("rewind %zu tokens > index %zu", num, this->index);
+		}
+
+		void rewindTo(size_t ix)
+		{
+			if(ix >= this->tokens.size())
+				error("ix %zu > size %zu", ix, this->tokens.size());
+
+			this->index = ix;
 		}
 
 		const lexer::Token& pop()
@@ -94,6 +111,11 @@ namespace parser
 		size_t remaining() const
 		{
 			return this->tokens.size() - this->index - 1;
+		}
+
+		size_t getIndex() const
+		{
+			return this->index;
 		}
 
 		bool frontIsWS() const
