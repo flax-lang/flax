@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 
+#include "sst.h"
 #include "errors.h"
 #include "frontend.h"
 
@@ -43,17 +44,19 @@ namespace frontend
 		// first, collect and parse the first file
 		std::string full = getFullPathOfFile(filename);
 
-		DependencyGraph* graph = new DependencyGraph();
+		auto graph = new DependencyGraph();
 
 		std::unordered_map<std::string, bool> visited;
 		auto files = checkForCycles(full, buildDependencyGraph(graph, full, visited));
 
-		std::vector<parser::ParsedFile> parsed;
+		std::map<std::string, parser::ParsedFile> parsed;
 		for(auto file : files)
 		{
 			// parse it all
-			parsed.push_back(parser::parseFile(file));
+			debuglog("parsed %s\n", getFilenameFromPath(file).c_str());
+			parsed[file] = parser::parseFile(file);
 		}
+
 	}
 
 

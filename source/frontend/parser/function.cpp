@@ -101,7 +101,6 @@ namespace parser
 			expected(st, "'{' to begin function body", st.front().str());
 
 		defn->body = parseBracedBlock(st);
-		debuglog("parsed function '%s'\n", defn->name.c_str());
 		return defn;
 	}
 
