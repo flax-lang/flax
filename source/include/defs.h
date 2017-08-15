@@ -45,8 +45,37 @@ namespace stx
 
 struct Identifier
 {
+	Identifier() : name("") { }
+	Identifier(std::string n) : name(n) { }
+
 	std::string name;
+	std::string str() const { return this->name; }
+
+	bool operator == (const Identifier& other) const { return other.str() == this->str(); }
+	bool operator != (const Identifier& other) const { return !(other == *this); }
 };
+
+
+namespace std
+{
+	template<>
+	struct hash<Identifier>
+	{
+		std::size_t operator()(const Identifier& k) const
+		{
+			using std::size_t;
+			using std::hash;
+			using std::string;
+
+			// Compute individual hash values for first,
+			// second and third and combine them using XOR
+			// and bit shifting:
+
+			// return ((hash<string>()(k.name) ^ (hash<std::vector<std::string>>()(k.scope) << 1)) >> 1) ^ (hash<int>()(k.third) << 1);
+			return hash<string>()(k.str());
+		}
+	};
+}
 
 struct Location
 {

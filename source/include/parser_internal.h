@@ -165,13 +165,6 @@ namespace parser
 
 
 
-	// error shortcuts
-
-	// Expected $, found '$' instead
-	void expected(const Location& loc, std::string, std::string) __attribute__((noreturn));
-
-	// Expected $ after $, found '$' instead
-	void expectedAfter(const Location& loc, std::string, std::string, std::string) __attribute__((noreturn));
 }
 
 

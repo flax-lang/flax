@@ -117,6 +117,8 @@ namespace parser
 
 		// copy the things over
 		auto [ defn, isvar, _ ] = parseFunctionDecl(st);
+		if(!defn->generics.empty())
+			error(ffn->loc, "Foreign functions cannot be generic");
 
 		ffn->isVarArg = isvar;
 		ffn->args = defn->args;
@@ -214,8 +216,8 @@ namespace parser
 		while(st.front() != TT::RBrace)
 		{
 			auto stmt = parseStmt(st);
-			if(dynamic_cast<DeferredStmt*>(stmt))
-				ret->deferredStatements.push_back(stmt);
+			if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
+				ret->deferredStatements.push_back(defer->actual);
 
 			else
 				ret->statements.push_back(stmt);

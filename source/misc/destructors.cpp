@@ -8,10 +8,10 @@ namespace ast
 {
 	Stmt::~Stmt() { }
 	Expr::~Expr() { }
+	DeferredStmt::~DeferredStmt() { }
 	ImportStmt::~ImportStmt() { }
 	Block::~Block () { }
 	FuncDefn::~FuncDefn() { }
-	DeferredStmt::~DeferredStmt() { }
 	ForeignFuncDefn::~ForeignFuncDefn () { }
 	VarDefn::~VarDefn() { }
 	TupleDecompVarDefn::~TupleDecompVarDefn() { }
