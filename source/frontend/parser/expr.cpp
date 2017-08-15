@@ -46,7 +46,7 @@ namespace parser
 	ast::Stmt* parseStmt(State& st)
 	{
 		if(!st.hasTokens())
-			error(st, "Unexpected end of file");
+			unexpected(st, "end of file");
 
 		st.skipWS();
 
@@ -528,7 +528,7 @@ namespace parser
 	static Expr* parsePrimary(State& st)
 	{
 		if(!st.hasTokens())
-			error(st, "Unexpected end of file");
+			unexpected(st, "end of file");
 
 		st.skipWS();
 
@@ -633,7 +633,7 @@ namespace parser
 					// parse it, but throw it away
 					// warn(parseBracedBlock(st)->loc, "Anonymous blocks are ignored; to run, preface with 'do'");
 					// return 0;
-					error(st, "Unexpected block; to create a nested scope, use 'do { ... }'");
+					unexpected(st, "block; to create a nested scope, use 'do { ... }'");
 
 				default:
 					error(tok.loc, "Unexpected token '%s' (id = %d)", tok.str().c_str(), tok.type);

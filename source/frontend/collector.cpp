@@ -6,9 +6,9 @@
 
 #include <unordered_map>
 
-#include "sst.h"
 #include "errors.h"
 #include "frontend.h"
+#include "typecheck.h"
 
 namespace frontend
 {
@@ -49,14 +49,18 @@ namespace frontend
 		std::unordered_map<std::string, bool> visited;
 		auto files = checkForCycles(full, buildDependencyGraph(graph, full, visited));
 
+		auto wholess = new sst::WholeSemanticState();
+
 		std::map<std::string, parser::ParsedFile> parsed;
 		for(auto file : files)
 		{
 			// parse it all
 			debuglog("parsed %s\n", getFilenameFromPath(file).c_str());
 			parsed[file] = parser::parseFile(file);
-		}
 
+			auto fss = sst::typecheck(parsed[file]);
+			sst::addFileToWhole(wholess, fss);
+		}
 	}
 
 

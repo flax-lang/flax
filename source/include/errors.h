@@ -21,6 +21,16 @@ inline void debuglog(const char* s, ...)
 	va_end(ap);
 }
 
+// error shortcuts
+
+// Expected $, found '$' instead
+void expected(const Location& loc, std::string, std::string) __attribute__((noreturn));
+
+// Expected $ after $, found '$' instead
+void expectedAfter(const Location& loc, std::string, std::string, std::string) __attribute__((noreturn));
+
+// Unexpected $
+void unexpected(const Location& loc, std::string) __attribute__((noreturn));
 
 
 #define INTUNSPEC_TYPE_STRING			"int"
