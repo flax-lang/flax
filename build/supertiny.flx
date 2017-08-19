@@ -2,22 +2,13 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import IntegerLimits
-import LibCInterface
+export supertiny
+import "IntegerLimits.flx"
+import "LibCInterface.flx"
 
-// import "supertiny.flx"
-
-ffi fn printf(fmt: u8*, ...) -> i32
+// ffi fn printf(fmt: u8*, ...) -> i32
 
 public fn main()
 {
 	printf("Hello, World\n")
 }
-
-// namespace Foo
-// {
-// 	namespace Bar { }
-
-
-// 	var k: i64 = (40 + 30)
-// }

@@ -14,6 +14,9 @@ using TCS = sst::TypecheckState;
 
 sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	if(this->num.find('.') != std::string::npos)
 	{
 		// decimal
@@ -38,6 +41,9 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
 
 sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* inference)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto ret = new sst::LiteralNull(this->loc);
 	ret->type = fir::Type::getNull();
 
@@ -46,6 +52,9 @@ sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* inference)
 
 sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* inference)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto ret = new sst::LiteralBool(this->loc);
 	ret->value = this->value;
 	ret->type = fir::Type::getBool();
@@ -55,6 +64,9 @@ sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* inference)
 
 sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* inference)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto ret = new sst::LiteralTuple(this->loc);
 
 	std::vector<fir::Type*> fts;
@@ -75,6 +87,9 @@ sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* inference)
 
 sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* inference)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto ret = new sst::LiteralString(this->loc);
 	ret->str = this->str;
 	ret->type = fir::Type::getStringType();

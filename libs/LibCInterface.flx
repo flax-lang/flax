@@ -2,6 +2,9 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export libc
+import "Empty"
+
 // printing
 public ffi fn puts(x: i8*) -> i32
 public ffi fn printf(x: i8*, ...) -> i32

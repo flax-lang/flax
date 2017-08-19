@@ -16,6 +16,7 @@ namespace parser
 	struct ParsedFile
 	{
 		std::string name;
+		std::string moduleName;
 
 		ast::TopLevelBlock* root = 0;
 	};

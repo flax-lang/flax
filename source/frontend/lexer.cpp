@@ -447,6 +447,7 @@ namespace lexer
 			else if(compare(tok.text, "struct"))		tok.type = TokenType::Struct;
 			else if(compare(tok.text, "fn"))			tok.type = TokenType::Func;
 			else if(compare(tok.text, "import"))		tok.type = TokenType::Import;
+			else if(compare(tok.text, "export"))		tok.type = TokenType::Export;
 			else if(compare(tok.text, "var"))			tok.type = TokenType::Var;
 			else if(compare(tok.text, "let"))			tok.type = TokenType::Val;
 			else if(compare(tok.text, "for"))			tok.type = TokenType::For;
@@ -478,7 +479,6 @@ namespace lexer
 			else if(compare(tok.text, "get"))			tok.type = TokenType::Get;
 			else if(compare(tok.text, "set"))			tok.type = TokenType::Set;
 			else if(compare(tok.text, "null"))			tok.type = TokenType::Null;
-			else if(compare(tok.text, "module"))		tok.type = TokenType::Module;
 			else if(compare(tok.text, "namespace"))		tok.type = TokenType::Namespace;
 			else if(compare(tok.text, "extension"))		tok.type = TokenType::Extension;
 			else if(compare(tok.text, "typealias"))		tok.type = TokenType::TypeAlias;

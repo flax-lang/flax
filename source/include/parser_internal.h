@@ -138,6 +138,8 @@ namespace parser
 			return this->loc();
 		}
 
+		std::string currentFilePath;
+
 		private:
 			size_t index = 0;
 			const lexer::TokenList& tokens;
