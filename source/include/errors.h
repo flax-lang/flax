@@ -100,23 +100,23 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type,
 	bool doExit, va_list ap);
 
 void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
-void error(ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-void error(ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
+void error(Locatable* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
+void error(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
 void error(const Location& loc, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
 
 void exitless_error(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void exitless_error(ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void exitless_error(ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void exitless_error(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void exitless_error(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 void exitless_error(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
 
 void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void warn(ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void warn(ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void warn(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void warn(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 void warn(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
 
 void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void info(ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void info(ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+void info(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+void info(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
 void info(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
 
 

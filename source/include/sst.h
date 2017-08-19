@@ -12,12 +12,10 @@ namespace fir
 
 namespace sst
 {
-	struct Stmt
+	struct Stmt : Locatable
 	{
-		Stmt(const Location& l) : loc(l) { }
+		Stmt(const Location& l) : Locatable(l) { }
 		virtual ~Stmt() { }
-
-		Location loc;
 	};
 
 	struct Expr : Stmt
@@ -54,10 +52,14 @@ namespace sst
 		~UnaryOp() { }
 	};
 
+	struct FunctionDecl;
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l) : Expr(l) { }
 		~FunctionCall() { }
+
+		FunctionDecl* target = 0;
+		std::vector<Expr*> arguments;
 	};
 
 	struct VarRef : Expr
@@ -128,35 +130,44 @@ namespace sst
 	{
 		VarDefn(const Location& l) : Stmt(l) { }
 		~VarDefn() { }
+
+		std::string name;
 	};
 
-	struct FunctionDefn : Stmt
+	struct FunctionDecl : Stmt
 	{
-		FunctionDefn(const Location& l) : Stmt(l) { }
-		~FunctionDefn() { }
-
 		struct Param
 		{
 			std::string name;
 			fir::Type* type = 0;
 		};
-	};
-
-	struct ForeignFuncDefn : Stmt
-	{
-		ForeignFuncDefn(const Location& l) : Stmt(l) { }
-		~ForeignFuncDefn() { }
-
-		using Param = FunctionDefn::Param;
-
 
 		std::string name;
 		std::vector<Param> params;
 
 		fir::Type* returnType = 0;
 
-		bool isVarArg = false;
 		PrivacyLevel privacy = PrivacyLevel::Internal;
+
+		protected:
+		FunctionDecl(const Location& l) : Stmt(l) { }
+		~FunctionDecl() { }
+	};
+
+	struct FunctionDefn : FunctionDecl
+	{
+		FunctionDefn(const Location& l) : FunctionDecl(l) { }
+		~FunctionDefn() { }
+
+		Block* body = 0;
+	};
+
+	struct ForeignFuncDefn : FunctionDecl
+	{
+		ForeignFuncDefn(const Location& l) : FunctionDecl(l) { }
+		~ForeignFuncDefn() { }
+
+		bool isVarArg = false;
 	};
 
 	struct TupleDecompDefn : Stmt

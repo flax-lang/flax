@@ -71,7 +71,7 @@ namespace fir
 		return v;
 	}
 
-	static Instruction* getBinaryOpInstruction(IRBlock* parent, Ast::ArithmeticOp ao, Value* vlhs, Value* vrhs)
+	static Instruction* getBinaryOpInstruction(IRBlock* parent, Operator ao, Value* vlhs, Value* vrhs)
 	{
 		OpKind op = OpKind::Invalid;
 
@@ -89,7 +89,7 @@ namespace fir
 		iceAssert(lpt && rpt && "not primitive types");
 
 		Type* out = 0;
-		if(ao == Ast::ArithmeticOp::Add)
+		if(ao == Operator::Add)
 		{
 			op = useFloating ? OpKind::Floating_Add : useSigned ? OpKind::Signed_Add : OpKind::Unsigned_Add;
 
@@ -117,7 +117,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Subtract)
+		else if(ao == Operator::Subtract)
 		{
 			op = useFloating ? OpKind::Floating_Sub : useSigned ? OpKind::Signed_Sub : OpKind::Unsigned_Sub;
 
@@ -145,7 +145,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Multiply)
+		else if(ao == Operator::Multiply)
 		{
 			op = useFloating ? OpKind::Floating_Mul : useSigned ? OpKind::Signed_Mul : OpKind::Unsigned_Mul;
 
@@ -173,7 +173,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Divide)
+		else if(ao == Operator::Divide)
 		{
 			op = useFloating ? OpKind::Floating_Div : useSigned ? OpKind::Signed_Div : OpKind::Unsigned_Div;
 
@@ -201,7 +201,7 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::Modulo)
+		else if(ao == Operator::Modulo)
 		{
 			op = useFloating ? OpKind::Floating_Mod : useSigned ? OpKind::Signed_Mod : OpKind::Unsigned_Mod;
 
@@ -229,42 +229,42 @@ namespace fir
 				}
 			}
 		}
-		else if(ao == Ast::ArithmeticOp::ShiftLeft)
+		else if(ao == Operator::ShiftLeft)
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = OpKind::Bitwise_Shl;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::ShiftRight)
+		else if(ao == Operator::ShiftRight)
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
 			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::BitwiseAnd)
+		else if(ao == Operator::BitwiseAnd)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_And;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::BitwiseOr)
+		else if(ao == Operator::BitwiseOr)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Or;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::BitwiseXor)
+		else if(ao == Operator::BitwiseXor)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Xor;
 
 			out = lhs;
 		}
-		else if(ao == Ast::ArithmeticOp::BitwiseNot)
+		else if(ao == Operator::BitwiseNot)
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
 			op = OpKind::Bitwise_Not;
@@ -279,7 +279,7 @@ namespace fir
 		return new Instruction(op, false, parent, out, { vlhs, vrhs });
 	}
 
-	Value* IRBuilder::CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname)
+	Value* IRBuilder::CreateBinaryOp(Operator ao, Value* a, Value* b, std::string vname)
 	{
 		Instruction* instr = getBinaryOpInstruction(this->currentBlock, ao, a, b);
 		if(instr == 0) return 0;

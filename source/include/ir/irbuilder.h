@@ -111,7 +111,7 @@ namespace fir
 		Value* CreateSizeof(Type* t, std::string vname = "");
 
 
-		Value* CreateBinaryOp(Ast::ArithmeticOp ao, Value* a, Value* b, std::string vname = "");
+		Value* CreateBinaryOp(Operator ao, Value* a, Value* b, std::string vname = "");
 
 
 		Value* CreatePointerAdd(Value* ptr, Value* num, std::string vname = "");

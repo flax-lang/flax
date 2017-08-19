@@ -54,7 +54,7 @@ namespace lexer
 		Sizeof,					// 42
 		Alloc,					// 43
 		Dealloc,				// 44
-		Module,					// 45
+		Export,					// 45
 		Namespace,				// 46
 		Override,				// 47
 		Protocol,				// 48
