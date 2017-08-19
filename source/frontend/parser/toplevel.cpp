@@ -14,6 +14,61 @@ using namespace ast;
 
 namespace parser
 {
+
+	static std::string parseModuleName(std::string fullpath)
+	{
+		using TT = TokenType;
+		auto tokens = frontend::getFileTokens(fullpath);
+
+		std::string ret;
+
+		// basically, this is how it goes:
+		// only allow comments to occur before the module name.
+		for(size_t i = 0; i < tokens.size(); i++)
+		{
+			const Token& tok = tokens[i];
+			if(tok.type == TT::Export)
+			{
+				i++;
+
+				if(tokens[i].type == TT::Identifier)
+				{
+					ret = tokens[i].str();
+					i++;
+				}
+				else
+				{
+					expectedAfter(tokens[i].loc, "identifier for export declaration", "'module'", tokens[i].str());
+				}
+
+
+				if(tokens[i].type != TT::NewLine && tokens[i].type != TT::Semicolon && tokens[i].type != TT::Comment)
+				{
+					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'",
+						tokens[i].text.to_string().c_str());
+				}
+
+				// i++ handled by loop
+			}
+			else if(tok.type == TT::Comment || tok.type == TT::NewLine)
+			{
+				// skipped
+			}
+			else
+			{
+				// stop
+				break;
+			}
+		}
+
+		if(ret == "")
+			ret = frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullpath));
+
+		return ret;
+	}
+
+
+
 	TopLevelBlock* parseTopLevel(State& st, std::string name)
 	{
 		using TT = TokenType;
@@ -28,12 +83,16 @@ namespace parser
 				expected(st.ploc(), "'{' to start namespace declaration", st.prev().str());
 		}
 
+		bool isFirst = true;
 		auto [ priv, tix ] = std::make_tuple(PrivacyLevel::Invalid, -1);
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
 		{
 			switch(st.front())
 			{
 				case TT::Import:
+					if(name != "")
+						error(st, "Import statements are not allowed here");
+
 					root->statements.push_back(parseImport(st));
 					break;
 
@@ -71,7 +130,9 @@ namespace parser
 
 				case TT::Comment:
 				case TT::NewLine:
-					break;
+					isFirst = true;
+					st.skipWS();
+					continue;
 
 				case TT::RBrace:
 					goto out;
@@ -85,10 +146,26 @@ namespace parser
 						priv = PrivacyLevel::Invalid;
 					}
 
+					if(st.front() == TT::Export)
+					{
+						if(!isFirst || name != "")
+						{
+							error(st, "Export declaration not allowed here (%s / %d)", name.c_str(), isFirst);
+						}
+						else
+						{
+							st.eat();
+							st.eat();
+
+							break;
+						}
+					}
+
 					root->statements.push_back(parseStmt(st));
 					break;
 			}
 
+			isFirst = false;
 			st.skipWS();
 		}
 
@@ -106,24 +183,44 @@ namespace parser
 
 	ParsedFile parseFile(std::string filename)
 	{
-		const TokenList& tokens = frontend::getFileTokens(filename);
+		auto full = frontend::getFullPathOfFile(filename);
+		const TokenList& tokens = frontend::getFileTokens(full);
 		auto state = State(tokens);
+		state.currentFilePath = full;
 
+		auto modname = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");
+
+		debuglog("module -> %s\n", modname.c_str());
 
 		return ParsedFile {
 			.name = filename,
-			.root = toplevel
+			.root = toplevel,
+			.moduleName = modname
 		};
 	}
-
-
-
-
-
-
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

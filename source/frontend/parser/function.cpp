@@ -43,6 +43,15 @@ namespace parser
 			if(isvar)
 				error(st, "Variadic arguments must be the last in the function parameter list");
 
+			if(st.front() == TT::Ellipsis)
+			{
+				isvar = true;
+				varloc = st.loc();
+				st.pop();
+
+				continue;
+			}
+
 			if(st.front() != TT::Identifier)
 				expected(st, "identifier in function parameter list", st.front().str());
 
@@ -62,13 +71,6 @@ namespace parser
 
 			else if(st.front() != TT::RParen)
 				expected(st, "')' or ',' in function parameter list", st.front().str());
-
-			if(st.front() == TT::Ellipsis)
-			{
-				isvar = true;
-				varloc = st.loc();
-				st.pop();
-			}
 		}
 
 		iceAssert(st.front() == TT::RParen);
@@ -113,7 +115,10 @@ namespace parser
 		iceAssert(st.front() == TT::ForeignFunc);
 		st.pop();
 
-		auto ffn = new ForeignFuncDefn(st.ploc());
+		if(st.front() != TT::Func)
+			expectedAfter(st, "'fn'", "'ffi'", st.front().str());
+
+		auto ffn = new ForeignFuncDefn(st.loc());
 
 		// copy the things over
 		auto [ defn, isvar, _ ] = parseFunctionDecl(st);

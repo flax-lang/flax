@@ -28,13 +28,11 @@ namespace sst
 
 namespace ast
 {
-	struct Stmt
+	struct Stmt : Locatable
 	{
-		Stmt(const Location& l) : loc(l) { }
+		Stmt(const Location& l) : Locatable(l) { }
 		virtual ~Stmt();
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
-
-		Location loc;
 	};
 
 	struct Expr : Stmt
@@ -69,6 +67,7 @@ namespace ast
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string path;
+		std::string resolvedModule;
 	};
 
 	struct Block : Stmt

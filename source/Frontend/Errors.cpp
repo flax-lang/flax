@@ -98,6 +98,19 @@ static void printContext(HighlightOptions ops)
 			fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 		}
 
+		// add an auto underline if the token is 5 or more chars long
+		if(ops.caret.len >= 5)
+		{
+			size_t begin = 0;
+			for(size_t i = 0; i < ops.caret.col; begin++, i++)
+			{
+				if(ln.str()[i] == '\t')
+					begin += 3;
+			}
+
+			ops.underlines.push_back(Location { .col = begin /*- (ops.caret.len / 2)*/, .len = ops.caret.len });
+		}
+
 
 		// sort in reverse order
 		// since we can use \b to move left, without actually erasing the cursor
@@ -218,7 +231,7 @@ void error(const char* msg, ...)
 	abort();
 }
 
-void error(ast::Expr* relevantast, const char* msg, ...)
+void error(Locatable* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -228,7 +241,7 @@ void error(ast::Expr* relevantast, const char* msg, ...)
 	abort();
 }
 
-void error(ast::Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -261,7 +274,7 @@ void exitless_error(const char* msg, ...)
 	va_end(ap);
 }
 
-void exitless_error(ast::Expr* relevantast, const char* msg, ...)
+void exitless_error(Locatable* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -270,7 +283,7 @@ void exitless_error(ast::Expr* relevantast, const char* msg, ...)
 	va_end(ap);
 }
 
-void exitless_error(ast::Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void exitless_error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -308,7 +321,7 @@ void warn(const char* msg, ...)
 	va_end(ap);
 }
 
-void warn(ast::Expr* relevantast, const char* msg, ...)
+void warn(Locatable* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -317,7 +330,7 @@ void warn(ast::Expr* relevantast, const char* msg, ...)
 	va_end(ap);
 }
 
-void warn(ast::Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void warn(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -351,7 +364,7 @@ void info(const char* msg, ...)
 	va_end(ap);
 }
 
-void info(ast::Expr* relevantast, const char* msg, ...)
+void info(Locatable* relevantast, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
@@ -360,7 +373,7 @@ void info(ast::Expr* relevantast, const char* msg, ...)
 	va_end(ap);
 }
 
-void info(ast::Expr* relevantast, HighlightOptions ops, const char* msg, ...)
+void info(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);

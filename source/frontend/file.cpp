@@ -285,6 +285,12 @@ namespace frontend
 
 		return ret;
 	}
+
+	std::string removeExtensionFromFilename(std::string name)
+	{
+		auto i = name.find_last_of(".");
+		return name.substr(0, i);
+	}
 }
 
 

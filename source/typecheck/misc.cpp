@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include <deque>
+
 using TCS = sst::TypecheckState;
 
 namespace sst
@@ -13,6 +15,11 @@ namespace sst
 	void TypecheckState::pushLoc(const Location& l)
 	{
 		this->locationStack.push_back(l);
+	}
+
+	void TypecheckState::pushLoc(ast::Stmt* stmt)
+	{
+		this->locationStack.push_back(stmt->loc);
 	}
 
 	Location TypecheckState::popLoc()
@@ -29,6 +36,47 @@ namespace sst
 		iceAssert(this->locationStack.size() > 0);
 		return this->locationStack.back();
 	}
+
+
+	void TypecheckState::pushTree(std::string name)
+	{
+		iceAssert(this->stree);
+
+		auto newtree = new StateTree(name, this->stree);
+		this->stree->subtrees[name] = newtree;
+		this->stree = newtree;
+	}
+
+	StateTree* TypecheckState::popTree()
+	{
+		iceAssert(this->stree);
+		auto ret = this->stree;
+		this->stree = this->stree->parent;
+
+		return ret;
+	}
+
+
+	std::string TypecheckState::serialiseCurrentScope()
+	{
+		std::deque<std::string> scope;
+		auto tree = this->stree;
+
+		while(tree)
+		{
+			scope.push_front(tree->name);
+			tree = tree->parent;
+		}
+
+		std::string ret;
+		for(auto s : scope)
+			ret += s + ".";
+
+		if(!ret.empty() && ret.back() == '.')
+			ret.pop_back();
+
+		return ret;
+	}
 }
 
 
@@ -41,6 +89,9 @@ sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 
 sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto ret = new sst::Block(this->loc);
 
 	for(auto stmt : this->statements)
@@ -83,11 +134,6 @@ sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 }
 
 sst::Stmt* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
-sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
 }

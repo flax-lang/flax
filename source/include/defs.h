@@ -85,6 +85,13 @@ struct Location
 	size_t len = 0;
 };
 
+struct Locatable
+{
+	Locatable(const Location& l) : loc(l) { }
+
+	Location loc;
+};
+
 enum class PrivacyLevel
 {
 	Invalid,
@@ -300,5 +307,42 @@ std::string strprintf(const char* fmt, ...) __attribute__((format(printf, 1, 2))
 #define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
 #define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
 #define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
+
+
+
+
+
+
+
+// defer implementation
+// credit: gingerBill
+// shamelessly stolen from http://www.gingerbill.org/article/defer-in-cpp.html
+
+namespace __dontlook
+{
+	template <typename F>
+	struct privDefer
+	{
+		F f;
+		privDefer(F f) : f(f) { }
+		~privDefer() { f(); }
+	};
+
+	template <typename F>
+	privDefer<F> defer_func(F f)
+	{
+		return privDefer<F>(f);
+	}
+}
+
+#define DEFER_1(x, y)	x##y
+#define DEFER_2(x, y)	DEFER_1(x, y)
+#define DEFER_3(x)		DEFER_2(x, __COUNTER__)
+#define defer(code)		auto DEFER_3(_defer_) = __dontlook::defer_func([&](){code;})
+
+
+
+
+
 
 

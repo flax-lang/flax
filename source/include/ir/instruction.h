@@ -10,11 +10,6 @@
 
 #include "value.h"
 
-namespace Ast
-{
-	enum class ArithmeticOp;
-}
-
 
 namespace fir
 {

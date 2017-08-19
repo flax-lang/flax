@@ -97,6 +97,9 @@ namespace parser
 				case TT::Import:
 					error(st, "All imports must happen at the top-level scope");
 
+				case TT::Export:
+					error(st, "Export declaration must be the first non-comment line in the file");
+
 				default:
 					return parseExpr(st);
 			}
@@ -484,7 +487,7 @@ namespace parser
 	static FunctionCall* parseFunctionCall(State& st, std::string name)
 	{
 		iceAssert(st.front() == TT::LParen);
-		auto ret = new FunctionCall(st.loc(), name);
+		auto ret = new FunctionCall(st.ploc(), name);
 
 		st.pop();
 		st.skipWS();

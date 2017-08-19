@@ -8,7 +8,7 @@
 namespace fir
 {
 	Value::Value(Type* t)
-		: ident("", IdKind::Name)
+		: ident("")
 	{
 		static size_t vnames = 0;
 		this->valueType = t;
@@ -42,7 +42,7 @@ namespace fir
 
 	void Value::setName(std::string name)
 	{
-		this->ident = Identifier(name, IdKind::Name);
+		this->ident = Identifier(name);
 	}
 
 	const Identifier& Value::getName()
