@@ -84,7 +84,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->params = ps;
 	defn->returnType = retty;
 	defn->privacy = this->privacy;
-	defn->isVarArg = defn->isVarArg;
+	defn->isVarArg = this->isVarArg;
 
 
 	// add the defn to the current thingy

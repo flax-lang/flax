@@ -188,7 +188,7 @@ namespace fir
 			}
 			else if(dynamic_cast<ConstantValue*>(op))
 			{
-				ops += "(null %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
+				ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
 			}
 			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
 			{

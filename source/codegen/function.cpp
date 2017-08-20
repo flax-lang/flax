@@ -7,7 +7,7 @@
 
 #include "ir/irbuilder.h"
 
-CGResult sst::FunctionDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -17,7 +17,15 @@ CGResult sst::FunctionDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
 		ptypes.push_back(p.type);
 
 	auto ft = fir::FunctionType::get(ptypes, this->returnType);
-	auto fn = cs->module->getOrCreateFunction(this->id, ft,
+
+	auto ident = this->id;
+	if(this->id.name == "main" && this->privacy == PrivacyLevel::Public && this->id.scope.size() == 1
+		&& this->id.scope[0] == cs->module->getModuleName())
+	{
+		ident = Identifier(this->id.name, IdKind::Name);
+	}
+
+	auto fn = cs->module->getOrCreateFunction(ident, ft,
 		this->privacy == PrivacyLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
 	auto restore = cs->irb.getCurrentBlock();
@@ -38,7 +46,7 @@ CGResult sst::FunctionDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
 }
 
 
-CGResult sst::ForeignFuncDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -67,7 +75,7 @@ CGResult sst::ForeignFuncDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
-CGResult sst::Block::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
