@@ -39,7 +39,7 @@ namespace cgn
 
 
 
-CGResult sst::NamespaceDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::NamespaceDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());

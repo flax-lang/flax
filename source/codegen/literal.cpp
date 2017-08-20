@@ -6,7 +6,7 @@
 #include "codegen.h"
 
 
-CGResult sst::LiteralDec::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralDec::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -14,7 +14,7 @@ CGResult sst::LiteralDec::codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-CGResult sst::LiteralInt::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralInt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -22,7 +22,7 @@ CGResult sst::LiteralInt::codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-CGResult sst::LiteralNull::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralNull::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -30,7 +30,7 @@ CGResult sst::LiteralNull::codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-CGResult sst::LiteralBool::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -38,7 +38,7 @@ CGResult sst::LiteralBool::codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-CGResult sst::LiteralTuple::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -46,7 +46,7 @@ CGResult sst::LiteralTuple::codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-CGResult sst::LiteralString::codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());

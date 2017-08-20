@@ -76,6 +76,7 @@ sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	// resolve the function call here
 	call->target = sst::resolveFunctionCall(fs, this);
 	call->type = call->target->returnType;
+	call->name = this->name;
 	iceAssert(call->type);
 
 	return call;
