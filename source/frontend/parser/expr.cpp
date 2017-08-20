@@ -608,8 +608,16 @@ namespace parser
 				// case TT::Sizeof:
 				// 	return parseSizeof(ps);
 
+
+				case TT::Attr_CString:
+					st.pop();
+					if(st.front() != TT::StringLiteral)
+						expectedAfter(st, "string literal", "@c", st.front().str());
+
+					return parseString(st, true);
+
 				case TT::StringLiteral:
-					return parseString(st);
+					return parseString(st, false);
 
 				case TT::Number:
 					return parseNumber(st);
