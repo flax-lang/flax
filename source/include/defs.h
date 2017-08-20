@@ -43,18 +43,53 @@ namespace stx
 	using string_view = std::experimental::string_view;
 }
 
+namespace fir
+{
+	struct Type;
+	struct Value;
+}
+
+enum class IdKind
+{
+	Invalid,
+	Name,
+	Function,
+
+	Type,
+};
+
 struct Identifier
 {
-	Identifier() : name("") { }
-	Identifier(std::string n) : name(n) { }
+	Identifier() : name(""), kind(IdKind::Invalid) { }
+	Identifier(std::string n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
-	std::string str() const { return this->name; }
+	std::vector<std::string> scope;
+	std::vector<fir::Type*> params;
+
+	IdKind kind;
+
+	std::string str() const;
+	std::string mangled() const;
 
 	bool operator == (const Identifier& other) const { return other.str() == this->str(); }
 	bool operator != (const Identifier& other) const { return !(other == *this); }
 };
 
+
+struct CGResult
+{
+	enum class VK { Invalid, LValue, RValue };
+
+	CGResult(fir::Value* v) : value(v), kind(VK::RValue) { }
+	CGResult(fir::Value* v, fir::Value* p) : value(v), pointer(p), kind(VK::RValue) { }
+	CGResult(fir::Value* v, fir::Value* p, VK k) : value(v), pointer(p), kind(k) { }
+
+	fir::Value* value = 0;
+	fir::Value* pointer = 0;
+
+	VK kind = VK::Invalid;
+};
 
 namespace std
 {

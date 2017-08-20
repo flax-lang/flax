@@ -77,6 +77,20 @@ namespace sst
 
 		return ret;
 	}
+
+	std::vector<std::string> TypecheckState::getCurrentScope()
+	{
+		std::deque<std::string> scope;
+		auto tree = this->stree;
+
+		while(tree)
+		{
+			scope.push_front(tree->name);
+			tree = tree->parent;
+		}
+
+		return std::vector<std::string>(scope.begin(), scope.end());
+	}
 }
 
 

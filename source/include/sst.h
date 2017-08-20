@@ -10,12 +10,19 @@ namespace fir
 	struct Type;
 }
 
+namespace cgn
+{
+	struct CodegenState;
+}
+
 namespace sst
 {
 	struct Stmt : Locatable
 	{
 		Stmt(const Location& l) : Locatable(l) { }
 		virtual ~Stmt() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) = 0;
 	};
 
 	struct Expr : Stmt
@@ -36,6 +43,8 @@ namespace sst
 		Block(const Location& l) : Expr(l) { }
 		~Block() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 	};
@@ -44,12 +53,16 @@ namespace sst
 	{
 		BinaryOp(const Location& l) : Expr(l) { }
 		~BinaryOp() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 	struct UnaryOp : Expr
 	{
 		UnaryOp(const Location& l) : Expr(l) { }
 		~UnaryOp() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 	struct FunctionDecl;
@@ -57,6 +70,8 @@ namespace sst
 	{
 		FunctionCall(const Location& l) : Expr(l) { }
 		~FunctionCall() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		FunctionDecl* target = 0;
 		std::vector<Expr*> arguments;
@@ -66,6 +81,8 @@ namespace sst
 	{
 		VarRef(const Location& l) : Expr(l) { }
 		~VarRef() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 
@@ -75,6 +92,8 @@ namespace sst
 		LiteralInt(const Location& l) : Expr(l) { }
 		~LiteralInt() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		size_t number = 0;
 	};
 
@@ -82,6 +101,8 @@ namespace sst
 	{
 		LiteralDec(const Location& l) : Expr(l) { }
 		~LiteralDec() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		long double number = 0.0;
 	};
@@ -91,19 +112,26 @@ namespace sst
 		LiteralString(const Location& l) : Expr(l) { }
 		~LiteralString() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		std::string str;
+		bool isCString = false;
 	};
 
 	struct LiteralNull : Expr
 	{
 		LiteralNull(const Location& l) : Expr(l) { }
 		~LiteralNull() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 	struct LiteralBool : Expr
 	{
 		LiteralBool(const Location& l) : Expr(l) { }
 		~LiteralBool() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		bool value = false;
 	};
@@ -112,6 +140,8 @@ namespace sst
 	{
 		LiteralTuple(const Location& l) : Expr(l) { }
 		~LiteralTuple() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::vector<Expr*> values;
 	};
@@ -123,6 +153,9 @@ namespace sst
 		NamespaceDefn(const Location& l) : Stmt(l) { }
 		~NamespaceDefn() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::string name;
 		std::vector<Stmt*> statements;
 	};
 
@@ -130,6 +163,8 @@ namespace sst
 	{
 		VarDefn(const Location& l) : Stmt(l) { }
 		~VarDefn() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::string name;
 	};
@@ -142,7 +177,7 @@ namespace sst
 			fir::Type* type = 0;
 		};
 
-		std::string name;
+		Identifier id;
 		std::vector<Param> params;
 
 		fir::Type* returnType = 0;
@@ -159,6 +194,8 @@ namespace sst
 		FunctionDefn(const Location& l) : FunctionDecl(l) { }
 		~FunctionDefn() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		Block* body = 0;
 	};
 
@@ -167,6 +204,8 @@ namespace sst
 		ForeignFuncDefn(const Location& l) : FunctionDecl(l) { }
 		~ForeignFuncDefn() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		bool isVarArg = false;
 	};
 
@@ -174,12 +213,16 @@ namespace sst
 	{
 		TupleDecompDefn(const Location& l) : Stmt(l) { }
 		~TupleDecompDefn() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 	struct ArrayDecompDefn : Stmt
 	{
 		ArrayDecompDefn(const Location& l) : Stmt(l) { }
 		~ArrayDecompDefn() { }
+
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 }
 

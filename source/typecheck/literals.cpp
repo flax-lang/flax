@@ -91,7 +91,9 @@ sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* inference)
 	defer(fs->popLoc());
 
 	auto ret = new sst::LiteralString(this->loc);
+
 	ret->str = this->str;
+	ret->isCString = this->isCString;
 	ret->type = fir::Type::getStringType();
 
 	return ret;

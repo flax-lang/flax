@@ -20,6 +20,7 @@ namespace parser
 			auto ret = new ImportStmt(st.loc(), st.frontAfterWS().str());
 			ret->resolvedModule = frontend::resolveImport(ret->path, ret->loc, st.currentFilePath);
 
+			st.eat();
 			return ret;
 		}
 		else

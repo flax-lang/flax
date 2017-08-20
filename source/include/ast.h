@@ -267,12 +267,13 @@ namespace ast
 
 	struct LitString : Expr
 	{
-		LitString(const Location& l, std::string s) : Expr(l), str(s) { }
+		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { }
 		~LitString();
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string str;
+		bool isCString = false;
 	};
 
 	struct LitNull : Expr
