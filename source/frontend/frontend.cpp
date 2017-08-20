@@ -4,6 +4,7 @@
 
 #include "defs.h"
 #include "frontend.h"
+#include "backend.h"
 
 #include <vector>
 
@@ -163,9 +164,58 @@ namespace frontend
 	std::string _sysrootPath;
 	const std::string _prefixPath = "/usr/local/";
 
-	ProgOutputMode _outputMode = ProgOutputMode::Invalid;
-	BackendOption _backendCodegen = BackendOption::Invalid;
-	OptimisationLevel _optLevel = OptimisationLevel::Invalid;
+	using ProgOutputMode	= backend::ProgOutputMode;
+	using BackendOption		= backend::BackendOption;
+	using OptimisationLevel	= backend::OptimisationLevel;
+
+	auto _outputMode		= ProgOutputMode::RunJit;
+	auto _backendCodegen	= BackendOption::LLVM;
+	auto _optLevel			= OptimisationLevel::Normal;
+
+	OptimisationLevel getOptLevel()
+	{
+		return _optLevel;
+	}
+
+	ProgOutputMode getOutputMode()
+	{
+		return _outputMode;
+	}
+
+	BackendOption getBackendOption()
+	{
+		return _backendCodegen;
+	}
+
+
+	std::vector<std::string> getFrameworksToLink()
+	{
+		return frameworksToLink;
+	}
+	std::vector<std::string> getFrameworkSearchPaths()
+	{
+		return frameworkSearchPaths;
+	}
+
+	std::vector<std::string> getLibrariesToLink()
+	{
+		return librariesToLink;
+	}
+
+	std::vector<std::string> getLibrarySearchPaths()
+	{
+		return librarySearchPaths;
+	}
+
+	bool getIsFreestanding()
+	{
+		return _isFreestanding;
+	}
+
+	bool getIsPositionIndependent()
+	{
+		return _isPIC;
+	}
 
 
 	std::string getParameter(std::string name)

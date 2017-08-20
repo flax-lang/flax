@@ -5,6 +5,8 @@
 #include "defs.h"
 #include "parser_internal.h"
 
+#include <sstream>
+
 using namespace ast;
 using namespace lexer;
 
@@ -24,6 +26,36 @@ namespace parser
 		iceAssert(st.front() == TT::StringLiteral);
 		auto t = st.eat();
 
-		return new LitString(st.ploc(), t.str(), israw);
+		// do replacement here, instead of in the lexer.
+		std::string tmp = t.str();
+		std::stringstream ss;
+
+		for(size_t i = 0; i < tmp.length(); i++)
+		{
+			if(tmp[i] == '\\')
+			{
+				i++;
+				switch(tmp[i])
+				{
+					// todo: handle hex sequences and stuff
+					case 'n':	ss << '\n';	break;
+					case 'b':	ss << '\b';	break;
+					case 'r':	ss << '\r';	break;
+					case 't':	ss << '\t';	break;
+					case '"':	ss << '\"'; break;
+					case '\\':	ss << '\\'; break;
+				}
+
+				continue;
+			}
+
+			ss << tmp[i];
+		}
+
+		return new LitString(st.ploc(), ss.str(), israw);
 	}
 }
+
+
+
+

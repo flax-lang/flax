@@ -10,5 +10,5 @@ import "LibCInterface.flx"
 
 public fn main()
 {
-	printf(@c"Hello, World")
+	printf(@c"%s\n", @c"Hello, World")
 }

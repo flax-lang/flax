@@ -26,39 +26,28 @@ namespace fir
 	struct Module;
 }
 
+namespace backend
+{
+	enum class BackendOption;
+	enum class ProgOutputMode;
+	enum class OptimisationLevel;
+}
+
 namespace frontend
 {
-	enum class OptimisationLevel
-	{
-		Invalid,
-
-		Debug,		// -Ox
-		None,		// -O0
-
-		Minimal,	// -O1
-		Normal,		// -O2
-		Aggressive	// -O3
-	};
-
-	enum class ProgOutputMode
-	{
-		Invalid,
-
-		RunJit,			// -run or -jit
-		ObjectFile,		// -c
-		LLVMBitcode,	// -emit-llvm
-		Program			// (default)
-	};
-
-	enum class BackendOption
-	{
-		Invalid,
-
-		LLVM,
-		Assembly_x64,
-	};
-
 	std::string getParameter(std::string arg);
+
+	backend::ProgOutputMode getOutputMode();
+	backend::OptimisationLevel getOptLevel();
+	backend::BackendOption getBackendOption();
+
+	bool getIsFreestanding();
+	bool getIsPositionIndependent();
+	std::vector<std::string> getFrameworksToLink();
+	std::vector<std::string> getFrameworkSearchPaths();
+	std::vector<std::string> getLibrariesToLink();
+	std::vector<std::string> getLibrarySearchPaths();
+
 
 	fir::Module* collectFiles(std::string filename);
 
