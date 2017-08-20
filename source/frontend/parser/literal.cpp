@@ -19,11 +19,11 @@ namespace parser
 		return new LitNumber(st.ploc(), t.str());
 	}
 
-	LitString* parseString(State& st)
+	LitString* parseString(State& st, bool israw)
 	{
 		iceAssert(st.front() == TT::StringLiteral);
 		auto t = st.eat();
 
-		return new LitString(st.ploc(), t.str());
+		return new LitString(st.ploc(), t.str(), israw);
 	}
 }

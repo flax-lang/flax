@@ -158,7 +158,7 @@ namespace parser
 	ast::Block* parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);
-	ast::LitString* parseString(State& st);
+	ast::LitString* parseString(State& st, bool israw);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 

@@ -88,8 +88,7 @@ namespace frontend
 			}
 		}
 
-		if(!node)
-			error("No such module with name '%s'", name.c_str());
+		if(!node) return { };
 
 		auto edges = this->edgesFrom[node];
 		std::vector<DepNode*> ret;

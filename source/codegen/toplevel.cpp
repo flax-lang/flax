@@ -9,15 +9,57 @@
 
 #include "ir/type.h"
 #include "ir/module.h"
+#include "ir/irbuilder.h"
 
 namespace cgn
 {
 	fir::Module* codegen(sst::DefinitionTree* dtr)
 	{
-		warn("codegen for %s\n", dtr->base->name.c_str());
-		return 0;
+		debuglog("codegen for %s\n", dtr->base->name.c_str());
+
+		auto mod = new fir::Module(dtr->base->name);
+		auto builder = fir::IRBuilder(fir::getDefaultFTContext());
+
+		auto cs = new CodegenState(builder);
+		cs->stree = dtr->base;
+		cs->module = mod;
+
+
+		cs->pushLoc(dtr->topLevel);
+		defer(cs->popLoc());
+
+		for(auto stmt : dtr->topLevel->statements)
+			stmt->codegen(cs);
+
+		debuglog("\n\n\n%s\n\n", cs->module->print().c_str());
+		return cs->module;
 	}
 }
+
+
+
+
+CGResult sst::NamespaceDefn::codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	cs->enterNamespace(this->name);
+
+	for(auto stmt : this->statements)
+		stmt->codegen(cs);
+
+	cs->leaveNamespace();
+	return CGResult(0);
+}
+
+
+
+
+
+
+
+
 
 
 

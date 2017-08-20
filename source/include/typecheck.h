@@ -77,6 +77,7 @@ namespace sst
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
 
 		std::string serialiseCurrentScope();
+		std::vector<std::string> getCurrentScope();
 	};
 
 	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports);

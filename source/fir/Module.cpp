@@ -213,7 +213,7 @@ namespace fir
 		if(this->globalStrings.find(str) != this->globalStrings.end())
 			return this->globalStrings[str];
 
-		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++)/*, IdKind::Name*/), this,
+		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
 			Type::getInt8(), true, LinkageType::Internal, 0);
 
 		this->globalStrings[str] = gs;
@@ -278,18 +278,12 @@ namespace fir
 
 			std::string decl;
 
-			decl += (ffn->isAlwaysInlined() ? "inline func: " : "func: ") + ffn->getName().str() + "(";
-			for(auto a : ffn->getArguments())
-			{
-				decl += "%" + std::to_string(a->id) + " :: " + a->getType()->str();
-
-				if(a != ffn->getArguments().back())
-					decl += ", ";
-			}
+			// note: .str() already gives us the parameters
+			decl += (ffn->isAlwaysInlined() ? "inline func: " : "func: ") + ffn->getName().str();
 
 			if(ffn->blocks.size() == 0)
 			{
-				decl += ") -> ";
+				decl += " -> ";
 				decl += ffn->getReturnType()->str();
 				decl += "\n";
 
@@ -299,8 +293,11 @@ namespace fir
 
 			ret += decl;
 
-			ret += ") -> ";
+			ret += " -> ";
 			ret += ffn->getReturnType()->str();
+
+			ret += "    # mangled = " + ffn->getName().mangled();
+
 			ret += "\n{";
 
 
@@ -327,21 +324,21 @@ namespace fir
 		FunctionType* ft = 0;
 		if(id == "memcpy")
 		{
-			name = Identifier("memcpy");
+			name = Identifier("memcpy", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
-			name = Identifier("memmove");
+			name = Identifier("memmove", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
-			name = Identifier("memset");
+			name = Identifier("memset", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
@@ -351,7 +348,7 @@ namespace fir
 			// note: memcmp isn't an actual llvm intrinsic, but we support it anyway
 			// at llvm-translate-time, we make a function.
 
-			name = Identifier("memcmp");
+			name = Identifier("memcmp", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getInt32());
@@ -363,7 +360,7 @@ namespace fir
 			// 1 -> 1
 			// 40 -> 64
 
-			name = Identifier("roundup_pow2");
+			name = Identifier("roundup_pow2", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt64());
 		}
 

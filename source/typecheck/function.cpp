@@ -27,18 +27,29 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	using Param = sst::FunctionDefn::Param;
 	auto defn = new sst::FunctionDefn(this->loc);
 	std::vector<Param> ps;
+	std::vector<fir::Type*> ptys;
 
 	for(auto t : this->args)
-		ps.push_back(Param { .name = t.name, .type = fs->convertParserTypeToFIR(t.type) });
+	{
+		auto p = Param { .name = t.name, .type = fs->convertParserTypeToFIR(t.type) };
+		ps.push_back(p);
+		ptys.push_back(p.type);
+	}
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
 	// todo: check overloading/duplication
 
+
+	defn->id = Identifier(this->name, IdKind::Function);
+	defn->id.scope = fs->getCurrentScope();
+	defn->id.params = ptys;
+
 	defn->params = ps;
-	defn->name = this->name;
 	defn->returnType = retty;
 	defn->privacy = this->privacy;
+
+	fs->pushTree(defn->id.mangled());
 
 	defn->body = new sst::Block(this->body->loc);
 
@@ -49,6 +60,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	for(auto stmt : this->body->deferredStatements)
 		defn->body->deferred.push_back(stmt->typecheck(fs));
 
+
+	fs->popTree();
 	return defn;
 }
 
@@ -66,15 +79,16 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
+	defn->id = Identifier(this->name, IdKind::Name);
+
 	defn->params = ps;
-	defn->name = this->name;
 	defn->returnType = retty;
 	defn->privacy = this->privacy;
 	defn->isVarArg = defn->isVarArg;
 
 
 	// add the defn to the current thingy
-	if(fs->stree->foreignFunctions.find(defn->name) != fs->stree->foreignFunctions.end())
+	if(fs->stree->foreignFunctions.find(defn->id.str()) != fs->stree->foreignFunctions.end())
 	{
 		exitless_error(this->loc, "Function '%s' already exists; foreign functions cannot be overloaded", this->name.c_str());
 		info(fs->stree->foreignFunctions[this->name]->loc, "Previously declared here:");

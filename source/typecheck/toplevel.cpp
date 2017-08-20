@@ -70,7 +70,7 @@ namespace sst
 			if(auto it = existing->foreignFunctions.find(f.first); it != existing->foreignFunctions.end())
 			{
 				auto fn = it->second;
-				exitless_error(f.second, "Function '%s' already exists; foreign functions cannot be overloaded", fn->name.c_str());
+				exitless_error(f.second, "Function '%s' already exists; foreign functions cannot be overloaded", fn->id.str().c_str());
 				info(fn, "Previously declared here:");
 
 				doTheExit();
@@ -120,6 +120,7 @@ namespace sst
 
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
 		iceAssert(tns);
+		tns->name = file.moduleName;
 
 		fs->dtree->topLevel = tns;
 		return fs->dtree;
@@ -136,7 +137,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	for(auto stmt : this->statements)
 	{
-		if(auto imp = dynamic_cast<ast::ImportStmt*>(stmt))
+		if(dynamic_cast<ast::ImportStmt*>(stmt))
 			continue;
 
 		ret->statements.push_back(stmt->typecheck(fs));
@@ -145,6 +146,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	if(this->name != "")
 		fs->popTree();
 
+	ret->name = this->name;
 	return ret;
 }
 

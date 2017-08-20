@@ -289,6 +289,14 @@ namespace lexer
 			unexpected(tok.loc, "'*/'");
 		}
 
+		// attrs
+		else if(hasPrefix(stream, "@c"))
+		{
+			tok.type = TokenType::Attr_CString;
+			tok.text = "@c";
+			read = 2;
+		}
+
 		// unicode stuff
 		else if(hasPrefix(stream, "ƒ"))
 		{
@@ -486,12 +494,12 @@ namespace lexer
 			else if(compare(tok.text, "override"))		tok.type = TokenType::Override;
 			else if(compare(tok.text, "operator"))		tok.type = TokenType::Operator;
 			else if(compare(tok.text, "as"))			{ tok.type = TokenType::As; if(isExclamation) { read++; tok.type = TokenType::AsExclamation; } }
+
 			else										tok.type = TokenType::Identifier;
 		}
 		else if(!stream.empty() && stream[0] == '"')
 		{
 			// string literal
-
 			// because we want to avoid using std::string (ie. copying) in the lexer (Token), we must send the string over verbatim.
 
 			// store the starting position
@@ -500,8 +508,8 @@ namespace lexer
 			// opening "
 			pos.col++;
 
-			size_t didRead = 0;
 			size_t i = 1;
+			size_t didRead = 0;
 			for(; stream[i] != '"'; i++)
 			{
 				if(stream[i] == '\\')
@@ -550,7 +558,7 @@ namespace lexer
 
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
-					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%zu)", i, stream.size(), didRead, stream[i], *offset);
+					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead, stream[i], stream.to_string().c_str(), *offset);
 				}
 			}
 
@@ -560,6 +568,7 @@ namespace lexer
 
 			tok.type = TokenType::StringLiteral;
 			tok.text = whole.substr(start, didRead);
+
 			stream = stream.substr(i + 1);
 			(*offset) += i + 1;
 
