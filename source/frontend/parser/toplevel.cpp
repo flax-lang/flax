@@ -110,6 +110,36 @@ namespace parser
 
 				} break;
 
+				case TT::Attr_NoMangle: {
+					st.pop();
+					auto stmt = parseStmt(st);
+					if(!dynamic_cast<FuncDefn*>(stmt) && !dynamic_cast<VarDefn*>(stmt))
+						error(st, "'@nomangle' can only be applied on function and variable declarations");
+
+					else if(dynamic_cast<ForeignFuncDefn*>(stmt))
+						warn(st, "Attribute '@nomangle' is redundant on 'ffi' functions");
+
+					else if(auto fd = dynamic_cast<FuncDefn*>(stmt))
+						fd->noMangle = true;
+
+					else if(auto vd = dynamic_cast<VarDefn*>(stmt))
+						vd->noMangle = true;
+
+					root->statements.push_back(stmt);
+				} break;
+
+				case TT::Attr_EntryFn: {
+					st.pop();
+					auto stmt = parseStmt(st);
+					if(auto fd = dynamic_cast<FuncDefn*>(stmt))
+						fd->isEntry = true;
+
+					else
+						error(st, "'@entry' attribute is only applicable to function definitions");
+
+					root->statements.push_back(stmt);
+				} break;
+
 				case TT::Public:
 					priv = PrivacyLevel::Public;
 					tix = st.getIndex();

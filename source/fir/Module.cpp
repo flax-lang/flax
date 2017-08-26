@@ -74,6 +74,16 @@ namespace fir
 
 
 
+	Function* Module::getEntryFunction()
+	{
+		return this->entryFunction;
+	}
+
+	void Module::setEntryFunction(Function* fn)
+	{
+		this->entryFunction = fn;
+	}
+
 
 
 

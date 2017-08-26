@@ -118,8 +118,11 @@ namespace lexer
 		StringLiteral,			// 106
 		NewLine,				// 107
 		Comment,				// 108
-		Attr_CString,			// 109
-		EndOfFile,				// 110
+		EndOfFile,				// 109
+
+		Attr_CString,			// 110
+		Attr_EntryFn,			// 111
+		Attr_NoMangle,			// 112
 	};
 
 	struct Token

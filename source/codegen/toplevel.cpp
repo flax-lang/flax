@@ -24,14 +24,15 @@ namespace cgn
 		cs->stree = dtr->base;
 		cs->module = mod;
 
-
 		cs->pushLoc(dtr->topLevel);
 		defer(cs->popLoc());
 
 		for(auto stmt : dtr->topLevel->statements)
 			stmt->codegen(cs);
 
-		debuglog("\n\n\n%s\n\n", cs->module->print().c_str());
+		// debuglog("\n\n\n%s\n\n", cs->module->print().c_str());
+		mod->setEntryFunction(cs->entryFunction.first);
+
 		return cs->module;
 	}
 }

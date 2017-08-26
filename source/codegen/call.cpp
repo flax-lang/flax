@@ -14,7 +14,8 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(!this->target)
 		error(this, "Failed to find target for function call to '%s'", this->name.c_str());
 
-	auto fn = dynamic_cast<fir::Function*>(this->target->codegen(cs).value);
+	auto vf = this->target->codegen(cs).value;
+	auto fn = dynamic_cast<fir::Function*>(vf);
 	iceAssert(fn);
 
 	if(!fn->isCStyleVarArg() && this->arguments.size() != fn->getArgumentCount())

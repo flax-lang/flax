@@ -31,7 +31,7 @@ namespace sst
 			else
 			{
 				this->didCodegen = true;
-				return this->_codegen(cs, inferred);
+				return (this->cachedResult = this->_codegen(cs, inferred));
 			}
 		}
 
@@ -112,6 +112,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		size_t number = 0;
+		bool negative = false;
 	};
 
 	struct LiteralDec : Expr
@@ -200,6 +201,10 @@ namespace sst
 		fir::Type* returnType = 0;
 
 		PrivacyLevel privacy = PrivacyLevel::Internal;
+
+
+		bool isEntry = false;
+		bool noMangle = false;
 
 		protected:
 		FunctionDecl(const Location& l) : Stmt(l) { }

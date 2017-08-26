@@ -19,11 +19,8 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ft = fir::FunctionType::get(ptypes, this->returnType);
 
 	auto ident = this->id;
-	if(this->id.name == "main" && this->privacy == PrivacyLevel::Public && this->id.scope.size() == 1
-		&& this->id.scope[0] == cs->module->getModuleName())
-	{
+	if(this->isEntry || this->noMangle)
 		ident = Identifier(this->id.name, IdKind::Name);
-	}
 
 	auto fn = cs->module->getOrCreateFunction(ident, ft,
 		this->privacy == PrivacyLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
@@ -39,10 +36,24 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	this->body->codegen(cs);
 
-	// todo:
+	// todo: check the return paths etc.
 	cs->irb.CreateReturnVoid();
 
-	return CGResult(0);
+	if(this->isEntry)
+	{
+		if(cs->entryFunction.first != 0)
+		{
+			exitless_error(this, "Redefinition of entry function with '@entry'");
+			info(cs->entryFunction.second, "Previous entry function marked here");
+
+			doTheExit();
+		}
+
+		cs->entryFunction = { fn, this->loc };
+	}
+
+
+	return CGResult(fn);
 }
 
 

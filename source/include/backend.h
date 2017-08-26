@@ -22,11 +22,13 @@ namespace llvm
 	class TargetMachine;
 	class ExecutionEngine;
 	class LLVMContext;
+	class Function;
 }
 
 namespace fir
 {
 	struct Module;
+	struct Function;
 }
 
 namespace backend
@@ -126,6 +128,9 @@ namespace backend
 		void finaliseGlobalConstructors();
 		void runProgramWithJIT();
 		llvm::SmallVector<char, 0> initialiseLLVMStuff();
+
+		llvm::Function* entryFunction = 0;
+
 
 		llvm::Module* linkedModule = 0;
 		llvm::TargetMachine* targetMachine = 0;
