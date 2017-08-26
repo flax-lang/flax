@@ -66,6 +66,8 @@ namespace fir
 		void setExecutionTarget(ExecutionTarget* e);
 		ExecutionTarget* getExecutionTarget();
 
+		Function* getEntryFunction();
+		void setEntryFunction(Function* fn);
 
 
 		std::unordered_map<Identifier, Function*> _getIntrinsicFunctions() { return this->intrinsicFunctions; }
@@ -85,6 +87,8 @@ namespace fir
 		std::unordered_map<Identifier, Type*> namedTypes;
 
 		std::unordered_map<Identifier, Function*> intrinsicFunctions;
+
+		Function* entryFunction = 0;
 
 		ExecutionTarget* execTarget = 0;
 	};

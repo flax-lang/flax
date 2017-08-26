@@ -29,6 +29,8 @@ namespace cgn
 
 		fir::IRBuilder irb;
 
+		std::pair<fir::Function*, Location> entryFunction = { };
+
 		std::vector<Location> locationStack;
 
 		void pushLoc(const Location& loc);
@@ -43,3 +45,10 @@ namespace cgn
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);
 }
+
+
+
+
+
+
+

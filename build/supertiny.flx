@@ -8,7 +8,12 @@ import "LibCInterface.flx"
 
 // ffi fn printf(fmt: u8*, ...) -> i32
 
-public fn main()
+@entry fn main(argc: i32, argv: i8**) -> void
 {
-	printf(@c"%s\n", @c"Hello, World")
+	printf(@c"%s, %d\n", @c"Hello, World", -340)
+}
+
+@entry fn bar()
+{
+	printf(@c"%s, %d\n", @c"Hello, World", -340)
 }

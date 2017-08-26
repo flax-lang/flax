@@ -73,6 +73,7 @@ sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 		call->arguments.push_back(expr);
 	}
 
+
 	// resolve the function call here
 	call->target = sst::resolveFunctionCall(fs, this);
 	call->type = call->target->returnType;

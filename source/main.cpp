@@ -7,6 +7,8 @@
 #include "backend.h"
 #include "frontend.h"
 
+#include "ir/module.h"
+
 int main(int argc, char** argv)
 {
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
