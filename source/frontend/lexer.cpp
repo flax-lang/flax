@@ -290,12 +290,26 @@ namespace lexer
 		}
 
 		// attrs
+		else if(hasPrefix(stream, "@nomangle"))
+		{
+			tok.type = TokenType::Attr_NoMangle;
+			tok.text = "@nomangle";
+			read = 9;
+		}
+		else if(hasPrefix(stream, "@entry"))
+		{
+			tok.type = TokenType::Attr_EntryFn;
+			tok.text = "@entry";
+			read = 6;
+		}
 		else if(hasPrefix(stream, "@c"))
 		{
 			tok.type = TokenType::Attr_CString;
 			tok.text = "@c";
 			read = 2;
 		}
+
+
 
 		// unicode stuff
 		else if(hasPrefix(stream, "ƒ"))

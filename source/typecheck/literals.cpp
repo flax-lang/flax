@@ -30,10 +30,10 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
 	{
 		auto ret = new sst::LiteralInt(this->loc);
 		if(this->num.find('-') != std::string::npos)
-		 	ret->number = std::stoll(this->num), ret->type = fir::Type::getInt64();
+		 	ret->number = -1 * std::stoll(this->num), ret->negative = true, ret->type = fir::Type::getInt64();
 
 		 else
-		 	ret->number = std::stoull(this->num), ret->type = fir::Type::getUint64();
+		 	ret->number = std::stoull(this->num), ret->negative = false, ret->type = fir::Type::getUint64();
 
 		 return ret;
 	}

@@ -27,6 +27,9 @@ CSRC			:= $(shell find source -iname "*.c")
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
 COBJ			:= $(CSRC:.c=.c.o)
 
+PRECOMP_HDRS	:= source/include/precompile.h
+PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
+
 FLXLIBLOCATION	:= $(SYSROOT)/$(PREFIX)/lib
 FLXSRC			:= $(shell find libs -iname "*.flx")
 
@@ -102,7 +105,7 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(CXXOBJ) $(COBJ)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) $(LDFLAGS)
 
@@ -110,7 +113,7 @@ $(OUTPUT): $(CXXOBJ) $(COBJ)
 %.cpp.o: %.cpp
 	@$(eval DONEFILES += "CPP")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -MF $<.m -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -MF $<.m -o $@ $<
 
 
 %.c.o: %.c
@@ -119,15 +122,21 @@ $(OUTPUT): $(CXXOBJ) $(COBJ)
 	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/utf8rewind/include/utf8rewind -MMD -MP -MF $<.m -o $@ $<
 
 
-
+%.h.gch: %.h
+	@printf "# precompiling header $<\n"
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $<
 
 
 # haha
 clena: clean
 clean:
-	@rm $(OUTPUT)
+	@rm -f $(OUTPUT)
 	@find source -name "*.o" | xargs rm -f
+	@find source -name "*.gch" | xargs rm -f
+
+	@find source -name "*.c.m" | xargs rm -f
 	@find source -name "*.c.d" | xargs rm -f
+	@find source -name "*.cpp.m" | xargs rm -f
 	@find source -name "*.cpp.d" | xargs rm -f
 
 

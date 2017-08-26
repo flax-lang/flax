@@ -189,7 +189,7 @@ void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool d
 	// std::string filename = "TODO: filename";
 
 	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
-		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line, ops.caret.col);
+		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line + 1, ops.caret.col);
 
 	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
 	vfprintf(stderr, msg, ap);

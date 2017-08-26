@@ -12,6 +12,7 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+
 #include <fstream>
 
 #include "llvm/IR/Verifier.h"
@@ -52,8 +53,6 @@
 
 
 static llvm::LLVMContext globalContext;
-
-
 
 #ifdef _WIN32
 errno_t _putenv_s(const char* name, const char* value);
@@ -96,6 +95,9 @@ namespace backend
 		auto mainModule = this->translateFIRtoLLVM(this->compiledData.module);
 		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
 
+		if(this->compiledData.module->getEntryFunction())
+			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().str());
+
 		// llvm::Module* mainModule = new llvm::Module(s, LLVMBackend::getLLVMContext());
 		// llvm::Linker linker = llvm::Linker(*mainModule);
 
@@ -117,7 +119,7 @@ namespace backend
 
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
-			exitless_error("\nLLVM Module verification failed\n");
+			exitless_error("\nLLVM Module verification failed");
 			this->linkedModule->dump();
 
 			doTheExit();
@@ -185,7 +187,7 @@ namespace backend
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_verify");
 			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-				error("\nLLVM Module verification failed");
+				_error_and_exit("\n\nLLVM Module verification failed");
 		}
 
 		std::string foldername;
@@ -214,21 +216,20 @@ namespace backend
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_compile");
 
-			if(frontend::getOutputMode() != ProgOutputMode::ObjectFile && !this->linkedModule->getFunction("main"))
+			if(frontend::getOutputMode() != ProgOutputMode::ObjectFile && !this->compiledData.module->getEntryFunction())
 			{
-				fprintf(stderr, "No main() function, a program cannot be compiled\n");
-				exit(-1);
+				_error_and_exit("No entry function marked, a program cannot be compiled");
 			}
 
 			auto buffer = this->initialiseLLVMStuff();
 
 			if(frontend::getOutputMode() == ProgOutputMode::ObjectFile)
 			{
-				if(this->linkedModule->getFunction("main") == 0)
-				{
-					fprintf(stderr, "No main() function, a program cannot be compiled\n");
-					exit(-1);
-				}
+				// if(this->linkedModule->getFunction("main") == 0)
+				// {
+				// 	fprintf(stderr, "No main() function, a program cannot be compiled\n");
+				// 	exit(-1);
+				// }
 
 				// now memoryBuffer should contain the .object file
 				std::ofstream objectOutput(oname + (wasEmpty ? ".o" : ""), std::ios::binary | std::ios::out);
@@ -437,9 +438,8 @@ namespace backend
 		const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
 		if(!theTarget)
 		{
-			fprintf(stderr, "error creating target: (wanted: '%s');\n"
+			_error_and_exit("failed in creating target: (wanted: '%s');\n"
 					"llvm error: %s\n", targetTriple.str().c_str(), err_str.c_str());
-			exit(-1);
 		}
 
 
@@ -467,10 +467,8 @@ namespace backend
 		}
 		else
 		{
-			fprintf(stderr, "Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)\n",
+			_error_and_exit("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)",
 				frontend::getParameter("mcmodel").c_str());
-
-			exit(-1);
 		}
 
 
@@ -622,10 +620,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
 			if(!dl.isValid())
-			{
-				fprintf(stderr, "Failed to load library '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
-				exit(-1);
-			}
+				_error_and_exit("Failed to load library '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
 		}
 
 
@@ -636,23 +631,20 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-			{
-				fprintf(stderr, "Failed to load framework '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
-				exit(-1);
-			}
+				_error_and_exit("Failed to load framework '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
 		}
 
 
 
-		if(this->linkedModule->getFunction("main") != 0)
+		if(this->entryFunction)
 		{
 			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
 
 			// finalise the object, which does something.
 			execEngine->finalizeObject();
 
-
-			uint64_t func = execEngine->getFunctionAddress("main");
+			// uint64_t func = execEngine->getfunct("main");
+			void* func = execEngine->getPointerToFunction(this->entryFunction);
 			iceAssert(func != 0);
 
 			auto mainfunc = (int (*)(int, const char**)) func;
@@ -663,7 +655,7 @@ namespace backend
 		}
 		else
 		{
-			_error_and_exit("No main() function, cannot JIT");
+			_error_and_exit("No entry function marked, cannot JIT");
 		}
 
 

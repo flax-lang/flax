@@ -103,6 +103,9 @@ namespace ast
 		Block* body = 0;
 
 		PrivacyLevel privacy = PrivacyLevel::Internal;
+
+		bool isEntry = false;
+		bool noMangle = false;
 	};
 
 	struct ForeignFuncDefn : Stmt
@@ -137,6 +140,7 @@ namespace ast
 		Expr* initialiser = 0;
 
 		PrivacyLevel privacy = PrivacyLevel::Internal;
+		bool noMangle = false;
 	};
 
 	struct TupleDecompVarDefn : Stmt

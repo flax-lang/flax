@@ -49,6 +49,9 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->returnType = retty;
 	defn->privacy = this->privacy;
 
+	defn->isEntry = this->isEntry;
+	defn->noMangle = this->noMangle;
+
 	fs->pushTree(defn->id.mangled());
 
 	defn->body = new sst::Block(this->body->loc);
