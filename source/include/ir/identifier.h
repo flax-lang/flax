@@ -4,10 +4,8 @@
 
 #pragma once
 
-#include <map>
-#include <vector>
-
 #include "defs.h"
+#include "precompile.h"
 
 namespace fir
 {

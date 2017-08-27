@@ -16,10 +16,6 @@ namespace llvm
 	class Module;
 }
 
-namespace Compiler
-{
-	struct Backend;
-}
 
 namespace fir
 {
@@ -27,8 +23,6 @@ namespace fir
 
 	struct Module
 	{
-		friend struct Backend;
-
 		Module(std::string nm);
 
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);

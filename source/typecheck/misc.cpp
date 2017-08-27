@@ -91,6 +91,48 @@ namespace sst
 
 		return std::vector<std::string>(scope.begin(), scope.end());
 	}
+
+
+	std::vector<FunctionDefn*> TypecheckState::getFunctionsWithName(std::string name, StateTree* tree)
+	{
+		if(tree == 0)
+			tree = this->stree;
+
+		std::vector<FunctionDefn*> ret;
+
+		iceAssert(tree);
+		while(tree)
+		{
+			auto fns = tree->functions[name];
+			ret.insert(ret.end(), fns.begin(), fns.end());
+
+			tree = tree->parent;
+		}
+
+		return ret;
+	}
+
+	std::vector<FunctionDecl*> TypecheckState::getFunctionDeclsWithName(std::string name, StateTree* tree)
+	{
+		if(tree == 0)
+			tree = this->stree;
+
+		std::vector<FunctionDecl*> ret;
+
+		iceAssert(tree);
+		while(tree)
+		{
+			auto fns = tree->functions[name];
+			auto ffn = tree->foreignFunctions[name];
+
+			ret.insert(ret.end(), fns.begin(), fns.end());
+			if(ffn) ret.push_back(ffn);
+
+			tree = tree->parent;
+		}
+
+		return ret;
+	}
 }
 
 

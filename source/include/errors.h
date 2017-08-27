@@ -4,22 +4,16 @@
 
 #pragma once
 
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <vector>
-
 #include "defs.h"
+#include "frontend.h"
+#include "precompile.h"
 
-inline void debuglog(const char* s, ...) __attribute__((format(printf, 1, 2)));
-inline void debuglog(const char* s, ...)
+template <typename... Ts>
+inline void debuglog(const char* s, Ts... ts)
 {
-	va_list ap;
-	va_start(ap, s);
-	vfprintf(stderr, s, ap);
-	va_end(ap);
+	tinyformat::format(std::cerr, s, ts...);
 }
+
 
 // error shortcuts
 
@@ -94,30 +88,146 @@ struct HighlightOptions
 
 // Location getHighlightExtent(ast::Expr* e);
 
-void doTheExit() __attribute__ ((noreturn));
+[[noreturn]] void doTheExit();
+std::string printContext(HighlightOptions ops);
 
-void __error_gen(HighlightOptions ops, const char* msg, const char* type,
-	bool doExit, va_list ap);
+template <typename... Ts>
+std::string __error_gen(HighlightOptions ops, const char* msg, const char* type, Ts... ts)
+{
+	std::string ret;
 
-void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
-void error(Locatable* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-void error(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
-void error(const Location& loc, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
+	auto colour = COLOUR_RED_BOLD;
+	if(strcmp(type, "Warning") == 0)
+		colour = COLOUR_MAGENTA_BOLD;
 
-void exitless_error(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void exitless_error(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void exitless_error(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void exitless_error(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	else if(strcmp(type, "Note") == 0)
+		colour = COLOUR_GREY_BOLD;
 
-void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void warn(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void warn(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void warn(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	bool empty = strcmp(type, "") == 0;
+	bool dobold = strcmp(type, "Note") != 0;
 
-void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void info(Locatable* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void info(Locatable* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-void info(const Location& loc, const char* msg, ...) __attribute__((format(printf, 2, 3)));
+	// todo: do we want to truncate the file path?
+	// we're doing it now, might want to change (or use a flag)
+
+	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
+		: frontend::getFilenameFromID(ops.caret.fileID));
+
+	// std::string filename = "TODO: filename";
+
+	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
+		ret += strprintf("%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename, ops.caret.line + 1, ops.caret.col);
+
+	if(empty)	ret += strprintf("%s%s%s%s", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
+	else		ret += strprintf("%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
+
+	ret += tinyformat::format(msg, ts...);
+
+	ret += strprintf("%s\n", COLOUR_RESET);
+
+	if(ops.caret.line > 0 && ops.caret.col > 0)
+	{
+		std::vector<std::string> lines;
+		if(ops.caret.fileID > 0)
+			ret += printContext(ops);
+	}
+
+	ret += "\n";
+	return ret;
+}
+
+
+#define ERROR_FUNCTION(name, type, attr, doexit)																				\
+template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)														\
+{ fputs(__error_gen(HighlightOptions(), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }							\
+																																\
+template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)											\
+{ fputs(__error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }	\
+																																\
+template <typename... Ts> [[attr]] void name (const Location& l, const char* fmt, Ts... ts)										\
+{ fputs(__error_gen(HighlightOptions(l), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }							\
+																																\
+template <typename... Ts> [[attr]] void name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)					\
+{																																\
+	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();																\
+	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);																	\
+	if(doexit) doTheExit();																										\
+}
+
+
+#define STRING_ERROR_FUNCTION(name, type)																	\
+template <typename... Ts> std::string name (const char* fmt, Ts... ts)										\
+{ return __error_gen(HighlightOptions(), fmt, type, ts...); }												\
+																											\
+template <typename... Ts> std::string name (Locatable* e, const char* fmt, Ts... ts)						\
+{ return __error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...); }						\
+																											\
+template <typename... Ts> std::string name (const Location& l, const char* fmt, Ts... ts)					\
+{ return __error_gen(HighlightOptions(l), fmt, type, ts...); }												\
+																											\
+template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)	\
+{																											\
+	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();											\
+	return __error_gen(ops, fmt, type, ts...);																\
+}
+
+
+
+ERROR_FUNCTION(error, "Error", noreturn, true);
+ERROR_FUNCTION(info, "Note", maybe_unused, false);
+ERROR_FUNCTION(warn, "Warning", maybe_unused, false);
+ERROR_FUNCTION(exitless_error, "Error", maybe_unused, false);
+
+STRING_ERROR_FUNCTION(strinfo, "Note");
+STRING_ERROR_FUNCTION(strerror, "Error");
+STRING_ERROR_FUNCTION(strwarn, "Warning");
+
+template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
+{
+	return strprintf("%s%s", COLOUR_RESET, COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + strprintf("%s", COLOUR_RESET);
+}
+
+
+
+// template <typename... Ts> [[noreturn]] void error(const char* fmt, Ts... ts)
+// {
+// 	fputs(__error_gen(HighlightOptions(), fmt, "Error", true, ts...), stderr);
+// 	abort();
+// }
+
+// template <typename... Ts> [[noreturn]] void error(Locatable* e, const char* fmt, Ts... ts)
+// {
+// 	fputs(__error_gen(HighlightOptions(e ? e->loc : Location()), fmt, "Error", true, ts...), stderr);
+// 	abort();
+// }
+
+// template <typename... Ts> [[noreturn]] void error(const Location& loc, const char* fmt, Ts... ts)
+// {
+// 	fputs(__error_gen(HighlightOptions(loc), fmt, "Error", true, ts...), stderr);
+// 	abort();
+// }
+
+// template <typename... Ts> [[noreturn]] void error(Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)
+// {
+// 	if(ops.caret.fileID == 0)
+// 		ops.caret = e ? e->loc : Location();
+
+// 	fputs(__error_gen(ops, fmt, "Error", true, ts...), stderr);
+
+// 	abort();
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

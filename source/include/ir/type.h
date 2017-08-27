@@ -4,13 +4,8 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
-#include <limits.h>
-
-#include <map>
-#include <unordered_map>
 #include "identifier.h"
+#include "precompile.h"
 
 namespace fir
 {
@@ -86,6 +81,9 @@ namespace fir
 		static std::string typeListToString(std::vector<Type*> types);
 		static std::string typeListToString(std::initializer_list<Type*> types);
 
+		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
+		static bool areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b);
+
 		// various
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
@@ -135,6 +133,7 @@ namespace fir
 		bool isVoidPointer();
 		bool isArraySliceType();
 		bool isDynamicArrayType();
+		bool isVariadicArrayType();
 
 		bool isPrimitiveType();
 		bool isPointerType();
@@ -211,9 +210,6 @@ namespace fir
 
 		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::vector<Type*> args,
 			Type* ret);
-
-		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
-		static bool areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b);
 	};
 
 

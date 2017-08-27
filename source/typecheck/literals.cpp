@@ -85,7 +85,7 @@ sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* inference)
 	return ret;
 }
 
-sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* inference)
+sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -94,7 +94,15 @@ sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* inference)
 
 	ret->str = this->str;
 	ret->isCString = this->isCString;
-	ret->type = fir::Type::getStringType();
+
+	if(this->isCString || (infer && infer == fir::Type::getInt8Ptr()))
+	{
+		ret->type = fir::Type::getInt8Ptr();
+	}
+	else
+	{
+		ret->type = fir::Type::getStringType();
+	}
 
 	return ret;
 }
