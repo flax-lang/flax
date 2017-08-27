@@ -8,81 +8,61 @@
 #include "ast.h"
 #include "frontend.h"
 
-#include <sstream>
-
 static std::string _convertTab()
 {
 	return std::string(TAB_WIDTH, ' ');
 }
 
-std::string strprintf(const char* fmt, ...)
+std::string printContext(HighlightOptions ops)
 {
-	va_list ap;
-	va_list ap2;
+	std::string ret;
 
-	va_start(ap, fmt);
-	va_copy(ap2, ap);
-
-	ssize_t size = vsnprintf(0, 0, fmt, ap2);
-
-	va_end(ap2);
-
-
-	// return -1 to be compliant if
-	// size is less than 0
-	iceAssert(size >= 0);
-
-	// alloc with size plus 1 for `\0'
-	char* str = new char[size + 1];
-
-	// format string with original
-	// variadic arguments and set new size
-	vsprintf(str, fmt, ap);
-
-	std::string ret = str;
-	delete[] str;
-
-	return ret;
-}
-
-static void printContext(HighlightOptions ops)
-{
 	auto lines = frontend::getFileLines(ops.caret.fileID);
 	if(lines.size() > ops.caret.line)
 	{
 		std::string orig = lines[ops.caret.line].to_string();
 
+		size_t adjust = 0;
+		for(auto c : orig)
+		{
+			if(c == '\t')		adjust += TAB_WIDTH;
+			else if(c == ' ')	adjust++;
+			else				break;
+		}
+
 		std::stringstream ln;
 
 		for(auto c : orig)
 		{
-			if(c == '\t')
-			{
-				ln << _convertTab();
-			}
-			else if(c != '\n')
+			if(c != '\t' && c != '\n')
 			{
 				ln << c;
 			}
 		}
 
+		ops.caret.col -= adjust;
 
-		fprintf(stderr, "%s\n", ln.str().c_str());
+		auto str = ln.str();
+		ret += strprintf("%s%s\n", _convertTab(), str.c_str());
 
 		size_t cursorX = 1;
 
 		if(ops.caret.col > 0 && ops.drawCaret)
 		{
+			// auto underline if underlines are not manually given
+			bool uline = ops.caret.len >= 5 && ops.underlines.empty();
+
+			str = str.substr(str.find_first_not_of(' '));
+			str = str.substr(str.find_first_not_of('\t'));
+
+			ret += _convertTab();
+			cursorX += TAB_WIDTH;
+
 			for(uint64_t i = 1; i <= ops.caret.col - 1; i++)
 			{
-				if(ln.str()[i - 1] == '\t')
+				if(str[i - 1] != '\t')
 				{
-					fputs(_convertTab().c_str(), stderr);
-					cursorX += TAB_WIDTH;
-				}
-				else
-				{
-					fputs(" ", stderr);
+					ret += " ";
 					cursorX++;
 				}
 			}
@@ -90,27 +70,22 @@ static void printContext(HighlightOptions ops)
 			// move the caret to the "middle" or average of the entire token
 			for(size_t i = 0; i < ops.caret.len / 2; i++)
 			{
-				fputs(" ", stderr);
+				ret += (uline ? strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET) : " ");
 				cursorX++;
 			}
 
 			cursorX++;
-			fprintf(stderr, "%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
-		}
+			ret += strprintf("%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 
-		// add an auto underline if the token is 5 or more chars long
-		if(ops.caret.len >= 5)
-		{
-			size_t begin = 0;
-			for(size_t i = 0; i < ops.caret.col; begin++, i++)
+			if(uline)
 			{
-				if(ln.str()[i] == '\t')
-					begin += 3;
+				for(size_t i = ops.caret.len / 2; i < ops.caret.len - 1; i++)
+				{
+					ret += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+					cursorX++;
+				}
 			}
-
-			ops.underlines.push_back(Location { .col = begin /*- (ops.caret.len / 2)*/, .len = ops.caret.len });
 		}
-
 
 		// sort in reverse order
 		// since we can use \b to move left, without actually erasing the cursor
@@ -122,20 +97,22 @@ static void printContext(HighlightOptions ops)
 			while(ul.col < cursorX)
 			{
 				cursorX--;
-				fprintf(stderr, "\b");
+				ret.pop_back();
+				// ret += strprintf("\b");
 			}
 
 			while(ul.col > cursorX)
 			{
 				cursorX++;
-				fputs(" ", stderr);
+				ret += " ";
 			}
 
 
 			for(size_t i = 0; i < ul.len; i++)
 			{
 				// ̅, ﹋, ̅
-				fprintf(stderr, "%s̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+				ret += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+
 				// fprintf(stderr, "%s-%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
 				cursorX++;
 			}
@@ -143,13 +120,15 @@ static void printContext(HighlightOptions ops)
 	}
 	else
 	{
-		fprintf(stderr, "(no context)");
+		ret += strprintf("(no context)");
 	}
+
+	return ret;
 }
 
 #define DEBUG 1
 
-__attribute__ ((noreturn)) void doTheExit()
+[[noreturn]] void doTheExit()
 {
 	fprintf(stderr, "There were errors, compilation cannot continue\n");
 
@@ -160,63 +139,12 @@ __attribute__ ((noreturn)) void doTheExit()
 	#endif
 }
 
-void __error_gen(HighlightOptions ops, const char* msg, const char* type, bool doExit, va_list _ap)
-{
-	// if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::NoWarnings))
-	// 	return;
-
-	va_list ap;
-	va_copy(ap, _ap);
-
-	// char* alloc = nullptr;
-	// vasprintf(&alloc, msg, ap);
-
-	auto colour = COLOUR_RED_BOLD;
-	if(strcmp(type, "Warning") == 0)
-		colour = COLOUR_MAGENTA_BOLD;
-
-	else if(strcmp(type, "Note") == 0)
-		colour = COLOUR_GREY_BOLD;
-
-	bool dobold = strcmp(type, "Note") != 0;
-
-	// todo: do we want to truncate the file path?
-	// we're doing it now, might want to change (or use a flag)
-
-	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
-		: frontend::getFilenameFromID(ops.caret.fileID));
-
-	// std::string filename = "TODO: filename";
-
-	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
-		fprintf(stderr, "%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename.c_str(), ops.caret.line + 1, ops.caret.col);
-
-	fprintf(stderr, "%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : ""); // alloc, COLOUR_RESET);
-	vfprintf(stderr, msg, ap);
-	fprintf(stderr, "%s\n", COLOUR_RESET);
 
 
-	if(ops.caret.line > 0 && ops.caret.col > 0)
-	{
-		std::vector<std::string> lines;
-		if(ops.caret.fileID > 0)
-			printContext(ops);
-	}
 
-	fputs("\n", stderr);
 
-	va_end(ap);
-	// free(alloc);
 
-	if(doExit)
-	{
-		doTheExit();
-	}
-	// else if(strcmp(type, "Warning") == 0 && Compiler::getFlag(Compiler::Flag::WarningsAsErrors))
-	// {
-	// 	error("Treating warning as error because -Werror was passed");
-	// }
-}
+
 
 
 
@@ -393,6 +321,16 @@ void info(const Location& loc, const char* msg, ...)
 	__error_gen(HighlightOptions(loc), msg, "Note", false, ap);
 	va_end(ap);
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

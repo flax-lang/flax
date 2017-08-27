@@ -135,6 +135,11 @@ namespace lexer
 		std::string str() const { return this->text.to_string(); }
 	};
 
+	inline void operator << (std::ostream& os, const TokenType& tt)
+	{
+		os << (int) tt;
+	}
+
 	using TokenList = util::FastVector<Token>;
 
 	lexer::TokenType getNextToken(const util::FastVector<stx::string_view>& lines, size_t* line, size_t* offset,

@@ -535,14 +535,14 @@
 		</dict>
 		<key>in-line-comment</key>
 		<dict>
-			<key>captures</key>
+			<!-- <key>captures</key>
 			<dict>
 				<key>1</key>
 				<dict>
 					<key>name</key>
 					<string>punctuation.definition.comment.line.double-slash.flax</string>
 				</dict>
-			</dict>
+			</dict> -->
 			<key>comment</key>
 			<string>In-line comment</string>
 			<key>match</key>

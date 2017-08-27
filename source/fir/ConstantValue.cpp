@@ -364,7 +364,7 @@ namespace fir
 			if(!type->isFloatingPointType() && !type->isIntegerType())
 			{
 				die:
-				error("Invaild constant cast from type '%s' to '%s'", cv->getType()->str().c_str(), type->str().c_str());
+				error("Invaild constant cast from type '%s' to '%s'", cv->getType()->str(), type->str());
 			}
 
 			if(ConstantFP* cf = dynamic_cast<ConstantFP*>(cv))
@@ -374,7 +374,7 @@ namespace fir
 
 				// ok, make a float constant
 				bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), cf->getValue());
-				if(!r) error("Constant value '%Lf' cannot fit into type '%s'", cf->getValue(), type->str().c_str());
+				if(!r) error("Constant value '%Lf' cannot fit into type '%s'", cf->getValue(), type->str());
 
 				return ConstantFP::get(type, cf->getValue());
 			}
@@ -388,14 +388,14 @@ namespace fir
 					if(ci->getType()->isSignedIntType())
 					{
 						bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), (long double) ci->getSignedValue());
-						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str().c_str());
+						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str());
 
 						return ConstantFP::get(type, (long double) ci->getSignedValue());
 					}
 					else
 					{
 						bool r = checkFloatingPointLiteralFitsIntoType(type->toPrimitiveType(), (long double) ci->getUnsignedValue());
-						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str().c_str());
+						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str());
 
 						return ConstantFP::get(type, (long double) ci->getUnsignedValue());
 					}
@@ -406,14 +406,14 @@ namespace fir
 					if(ci->getType()->isSignedIntType())
 					{
 						bool r = checkSignedIntLiteralFitsIntoType(type->toPrimitiveType(), ci->getSignedValue());
-						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str().c_str());
+						if(!r) error("Constant value '%zd' cannot fit into type '%s'", ci->getSignedValue(), type->str());
 
 						return ConstantInt::get(type, ci->getSignedValue());
 					}
 					else
 					{
 						bool r = checkUnsignedIntLiteralFitsIntoType(type->toPrimitiveType(), ci->getUnsignedValue());
-						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str().c_str());
+						if(!r) error("Constant value '%zu' cannot fit into type '%s'", ci->getUnsignedValue(), type->str());
 
 						return ConstantInt::get(type, ci->getUnsignedValue());
 					}
@@ -454,8 +454,7 @@ namespace fir
 
 				if(arr->getType() != type)
 				{
-					error("Cannot assign array literal with type '%s' to type '%s'", arr->getType()->str().c_str(),
-						type->str().c_str());
+					error("Cannot assign array literal with type '%s' to type '%s'", arr->getType()->str(), type->str());
 				}
 
 				return arr;

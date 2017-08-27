@@ -601,6 +601,11 @@ namespace fir
 		return dynamic_cast<DynamicArrayType*>(this) != 0;
 	}
 
+	bool Type::isVariadicArrayType()
+	{
+		return this->isDynamicArrayType() && this->toDynamicArrayType()->isFunctionVariadic();
+	}
+
 	bool Type::isArraySliceType()
 	{
 		return dynamic_cast<ArraySliceType*>(this) != 0;

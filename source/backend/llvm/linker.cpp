@@ -49,7 +49,7 @@
 #include "backend.h"
 #include "frontend.h"
 
-#include "../../tinyprocesslib/process.h"
+#include "../../external/tinyprocesslib/process.h"
 
 
 static llvm::LLVMContext globalContext;
@@ -85,24 +85,12 @@ namespace backend
 
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
 
-		// this one just does fir -> llvm, then links all the llvm modules together.
-		// std::unordered_map<std::string, llvm::Module*> modulelist;
-
-		// translate to llvm
-		// for(auto mod : this->compiledData.moduleList)
-		// 	modulelist[mod.first] = this->translateFIRtoLLVM(mod.second);
-
 		auto mainModule = this->translateFIRtoLLVM(this->compiledData.module);
 		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
 
 		if(this->compiledData.module->getEntryFunction())
 			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().str());
 
-		// llvm::Module* mainModule = new llvm::Module(s, LLVMBackend::getLLVMContext());
-		// llvm::Linker linker = llvm::Linker(*mainModule);
-
-		// for(auto mod : modulelist)
-		// 	linker.linkInModule(std::unique_ptr<llvm::Module>(mod.second));
 
 		this->linkedModule = mainModule;
 		this->finaliseGlobalConstructors();
@@ -181,7 +169,7 @@ namespace backend
 	void LLVMBackend::writeOutput()
 	{
 		// if(Compiler::getDumpLlvm())
-		// 	this->linkedModule->dump();
+		this->linkedModule->dump();
 
 		// verify the module.
 		{

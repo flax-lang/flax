@@ -6,7 +6,7 @@
 #include "defs.h"
 #include "sst.h"
 
-#include <unordered_map>
+#include "precompile.h"
 
 namespace parser
 {
@@ -74,14 +74,30 @@ namespace sst
 		void pushTree(std::string name);
 		StateTree* popTree();
 
-		fir::Type* convertParserTypeToFIR(pts::Type* pt);
-
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
+
+		std::vector<FunctionDefn*> getFunctionsWithName(std::string name, StateTree* scope = 0);
+		std::vector<FunctionDecl*> getFunctionDeclsWithName(std::string name, StateTree* scope = 0);
+
+		// things that i might want to make non-methods someday
+		fir::Type* convertParserTypeToFIR(pts::Type* pt);
+
+		struct PrettyError
+		{
+			std::string errorStr;
+			std::vector<std::pair<Location, std::string>> infoStrs;
+		};
+
+		FunctionDecl* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs);
+		FunctionDecl* resolveFunctionFromCandidates(std::vector<FunctionDecl*> fs, std::vector<FunctionDecl::Param> arguments,
+			PrettyError* errs);
 	};
 
 	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports);
 }
+
+
 
 
 

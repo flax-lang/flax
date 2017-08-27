@@ -5,7 +5,7 @@
 #include "lexer.h"
 #include "errors.h"
 
-#include "../utf8rewind/include/utf8rewind/utf8rewind.h"
+#include "../external/utf8rewind/include/utf8rewind/utf8rewind.h"
 
 using string_view = stx::string_view;
 
@@ -102,6 +102,7 @@ namespace lexer
 			stream = stream.substr(0, 0);
 			(*line)++;
 			pos.line++;
+			pos.col = 0;
 
 
 			(*offset) = 0;

@@ -119,7 +119,7 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 %.c.o: %.c
 	@$(eval DONEFILES += "C")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/utf8rewind/include/utf8rewind -MMD -MP -MF $<.m -o $@ $<
+	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/external/utf8rewind/include/utf8rewind -MMD -MP -MF $<.m -o $@ $<
 
 
 %.h.gch: %.h
