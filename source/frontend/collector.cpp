@@ -40,7 +40,7 @@ namespace frontend
 				iceAssert(stree);
 
 				imports.push_back({ d->name, stree });
-				debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
+				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
 			dtrees[file] = sst::typecheck(parsed[file], imports);

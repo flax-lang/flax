@@ -221,7 +221,7 @@ namespace parser
 		auto modname = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");
 
-		debuglog("module -> %s\n", modname.c_str());
+		// debuglog("module -> %s\n", modname.c_str());
 
 		return ParsedFile {
 			.name = filename,

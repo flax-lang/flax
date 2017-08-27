@@ -14,7 +14,6 @@ static void compile(std::string in, std::string out)
 	auto module = frontend::collectFiles(in);
 	auto cd = backend::CompiledData { .module = module };
 
-	printf("\n\n");
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
