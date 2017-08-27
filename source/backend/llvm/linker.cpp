@@ -169,7 +169,7 @@ namespace backend
 	void LLVMBackend::writeOutput()
 	{
 		// if(Compiler::getDumpLlvm())
-		this->linkedModule->dump();
+		// this->linkedModule->dump();
 
 		// verify the module.
 		{
