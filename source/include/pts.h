@@ -4,12 +4,8 @@
 
 #pragma once
 
-#include <stddef.h>
-
 #include "defs.h"
-
-#include <map>
-#include <vector>
+#include "precompile.h"
 
 namespace ast
 {

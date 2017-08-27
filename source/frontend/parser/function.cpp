@@ -56,6 +56,8 @@ namespace parser
 				expected(st, "identifier in function parameter list", st.front().str());
 
 			std::string name = st.front().str();
+			auto loc = st.loc();
+
 			st.eat();
 
 			if(st.front() != TT::Colon)
@@ -64,7 +66,7 @@ namespace parser
 			st.eat();
 			auto type = parseType(st);
 
-			defn->args.push_back(FuncDefn::Arg { .name = name, .type = type });
+			defn->args.push_back(FuncDefn::Arg { .name = name, .type = type, .loc = loc });
 
 			if(st.front() == TT::Comma)
 				st.eat();
@@ -125,12 +127,14 @@ namespace parser
 		if(!defn->generics.empty())
 			error(ffn->loc, "Foreign functions cannot be generic");
 
+		ffn->loc = defn->loc;
 		ffn->isVarArg = isvar;
 		ffn->args = defn->args;
 		ffn->name = defn->name;
 		ffn->privacy = defn->privacy;
 		ffn->returnType = defn->returnType;
 
+		delete defn;
 		return ffn;
 	}
 

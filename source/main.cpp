@@ -9,16 +9,15 @@
 
 #include "ir/module.h"
 
-int main(int argc, char** argv)
+static void compile(std::string in, std::string out)
 {
-	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
-
-	auto module = frontend::collectFiles(input_file);
+	auto module = frontend::collectFiles(in);
 	auto cd = backend::CompiledData { .module = module };
 
+	printf("\n\n");
 	{
 		using namespace backend;
-		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { input_file }, output_file);
+		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
 
 		int capsneeded = 0;
 		{
@@ -41,12 +40,33 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			fprintf(stderr, "Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str().c_str(),
-				capabilitiesToString((BackendCaps::Capabilities) capsneeded).c_str());
-
-			exit(-1);
+			error("Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str(),
+				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}
+}
 
+
+
+int main(int argc, char** argv)
+{
+	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
+	compile(input_file, output_file);
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

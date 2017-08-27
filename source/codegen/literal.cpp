@@ -59,7 +59,8 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	if(this->isCString)
+	// allow automatic coercion of string literals into i8*
+	if(this->isCString || (infer && infer == fir::Type::getInt8Ptr()))
 	{
 		// good old i8*
 		fir::Value* stringVal = cs->module->createGlobalString(this->str);

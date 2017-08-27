@@ -192,6 +192,7 @@ namespace sst
 		struct Param
 		{
 			std::string name;
+			Location loc;
 			fir::Type* type = 0;
 		};
 
@@ -202,9 +203,9 @@ namespace sst
 
 		PrivacyLevel privacy = PrivacyLevel::Internal;
 
-
 		bool isEntry = false;
 		bool noMangle = false;
+		bool isVarArg = false;
 
 		protected:
 		FunctionDecl(const Location& l) : Stmt(l) { }
@@ -227,8 +228,6 @@ namespace sst
 		~ForeignFuncDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		bool isVarArg = false;
 	};
 
 	struct TupleDecompDefn : Stmt

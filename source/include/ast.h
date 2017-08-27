@@ -4,9 +4,7 @@
 
 #pragma once
 #include "defs.h"
-
-#include <map>
-#include <vector>
+#include "precompile.h"
 
 namespace pts
 {
@@ -91,6 +89,7 @@ namespace ast
 		struct Arg
 		{
 			std::string name;
+			Location loc;
 			pts::Type* type = 0;
 		};
 

@@ -4,14 +4,7 @@
 
 #pragma once
 
-#include <stdint.h>
-
-#include <unordered_map>
-#include <algorithm>
-#include <string>
-#include <vector>
-#include <stack>
-#include <map>
+#include "precompile.h"
 
 #include "lexer.h"
 #include "parser.h"
