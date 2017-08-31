@@ -71,6 +71,10 @@ namespace sst
 		~BinaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* left = 0;
+		Expr* right = 0;
+		Operator op = Operator::Invalid;
 	};
 
 	struct UnaryOp : Expr

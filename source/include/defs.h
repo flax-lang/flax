@@ -122,6 +122,16 @@ struct Location
 	size_t line = 0;
 	size_t col = 0;
 	size_t len = 0;
+
+	bool operator == (const Location& other)
+	{
+		return this->col == other.col && this->line == other.line && this->len == other.len && this->fileID == other.fileID;
+	}
+
+	bool operator != (const Location& other)
+	{
+		return !(*this == other);
+	}
 };
 
 struct Locatable
@@ -320,6 +330,8 @@ enum class Operator
 	BitwiseOrEquals,
 	BitwiseXorEquals,
 };
+
+std::string operatorToString(const Operator& op);
 
 template <typename... Ts>
 std::string strprintf(const char* fmt, Ts... ts)
