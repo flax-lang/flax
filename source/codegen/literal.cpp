@@ -5,7 +5,6 @@
 #include "sst.h"
 #include "codegen.h"
 
-
 CGResult sst::LiteralDec::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);

@@ -184,16 +184,6 @@ sst::Stmt* ast::Ident::typecheck(TCS* fs, fir::Type* inferred)
 	return 0;
 }
 
-sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
-sst::Stmt* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
 sst::Stmt* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
