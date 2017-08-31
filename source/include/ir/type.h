@@ -140,6 +140,8 @@ namespace fir
 		bool isVoidType();
 		bool isNullType();
 
+		size_t getBitWidth();
+
 		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
 
 		size_t getID() { return this->id; }

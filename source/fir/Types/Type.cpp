@@ -517,6 +517,21 @@ namespace fir
 		return t;
 	}
 
+	size_t Type::getBitWidth()
+	{
+		if(this->isIntegerType())
+			return this->toPrimitiveType()->getIntegerBitWidth();
+
+		else if(this->isFloatingPointType())
+			return this->toPrimitiveType()->getFloatingPointBitWidth();
+
+		else if(this->isPointerType())
+			return sizeof(void*) * CHAR_BIT;
+
+		else
+			return 0;
+	}
+
 
 
 

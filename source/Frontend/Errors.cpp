@@ -23,9 +23,10 @@ std::string printContext(HighlightOptions ops)
 		std::string orig = lines[ops.caret.line].to_string();
 
 		size_t adjust = 0;
+		size_t adjust1 = 0;
 		for(auto c : orig)
 		{
-			if(c == '\t')		adjust += TAB_WIDTH;
+			if(c == '\t')		adjust += TAB_WIDTH, adjust1 += (TAB_WIDTH - 1);
 			else if(c == ' ')	adjust++;
 			else				break;
 		}
@@ -40,83 +41,68 @@ std::string printContext(HighlightOptions ops)
 			}
 		}
 
-		ops.caret.col -= adjust;
-
 		auto str = ln.str();
 		ret += strprintf("%s%s\n", _convertTab(), str.c_str());
 
 		size_t cursorX = 1;
 
-		if(ops.caret.col > 0 && ops.drawCaret)
-		{
-			// auto underline if underlines are not manually given
-			bool uline = ops.caret.len >= 5 && ops.underlines.empty();
+		bool uline = ops.caret.len >= 5 && ops.underlines.empty();
 
-			str = str.substr(str.find_first_not_of(' '));
-			str = str.substr(str.find_first_not_of('\t'));
+		std::string part2;
 
-			ret += _convertTab();
-			cursorX += TAB_WIDTH;
+		ops.caret.col -= adjust;
+		for(auto& u : ops.underlines)
+			u.col -= adjust;
 
-			for(uint64_t i = 1; i <= ops.caret.col - 1; i++)
-			{
-				if(str[i - 1] != '\t')
-				{
-					ret += " ";
-					cursorX++;
-				}
-			}
-
-			// move the caret to the "middle" or average of the entire token
-			for(size_t i = 0; i < ops.caret.len / 2; i++)
-			{
-				ret += (uline ? strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET) : " ");
-				cursorX++;
-			}
-
-			cursorX++;
-			ret += strprintf("%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
-
-			if(uline)
-			{
-				for(size_t i = ops.caret.len / 2; i < ops.caret.len - 1; i++)
-				{
-					ret += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
-					cursorX++;
-				}
-			}
-		}
-
-		// sort in reverse order
-		// since we can use \b to move left, without actually erasing the cursor
-		// but ' ' doesn't work that way
+		ops.underlines.push_back(ops.caret);
 		std::sort(ops.underlines.begin(), ops.underlines.end(), [](Location a, Location b) { return a.col < b.col; });
-		for(auto ul : ops.underlines)
+
+		for(auto& ul : ops.underlines)
 		{
-			// fprintf(stderr, "col = %d, x = %d\n", ul.col, cursorX);
-			while(ul.col < cursorX)
+			while(cursorX < ul.col)
+				part2 += " ", cursorX++;
+
+			if(ul == ops.caret)
 			{
-				cursorX--;
-				ret.pop_back();
-				// ret += strprintf("\b");
+				if(ops.drawCaret && ops.caret.col > 0)
+				{
+					// auto underline if underlines are not manually given
+					// move the caret to the "middle" or average of the entire token
+					for(size_t i = 0; i < ops.caret.len / 2; i++)
+					{
+						part2 += (uline ? strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET) : " ");
+						cursorX++;
+					}
+
+					part2 += strprintf("%s^%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+					cursorX++;
+
+					if(uline)
+					{
+						for(size_t i = ops.caret.len / 2; i < ops.caret.len - 1; i++)
+						{
+							part2 += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+							cursorX++;
+						}
+					}
+				}
+				else
+				{
+					part2 += std::string("x", ul.len);
+					cursorX += ul.len;
+				}
 			}
-
-			while(ul.col > cursorX)
+			else
 			{
-				cursorX++;
-				ret += " ";
-			}
-
-
-			for(size_t i = 0; i < ul.len; i++)
-			{
-				// ̅, ﹋, ̅
-				ret += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
-
-				// fprintf(stderr, "%s-%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
-				cursorX++;
+				for(size_t k = 0; k < ul.len; k++)
+				{
+					part2 += strprintf("%s ̅%s", COLOUR_GREEN_BOLD, COLOUR_RESET);
+					cursorX++;
+				}
 			}
 		}
+
+		ret += (_convertTab() + part2);
 	}
 	else
 	{

@@ -584,6 +584,8 @@ namespace lexer
 			tok.type = TokenType::StringLiteral;
 			tok.text = whole.substr(start, didRead);
 
+			tok.loc.len = 2 + didRead;
+
 			stream = stream.substr(i + 1);
 			(*offset) += i + 1;
 
