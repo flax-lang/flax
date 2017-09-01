@@ -93,6 +93,17 @@ struct CGResult
 	fir::Value* pointer = 0;
 
 	VK kind = VK::Invalid;
+
+	CGResult& operator = (const CGResult& other)
+	{
+		if(this == &other) return *this;
+
+		this->kind = other.kind;
+		this->value = other.value;
+		this->pointer = other.pointer;
+
+		return *this;
+	}
 };
 
 namespace std
@@ -123,12 +134,12 @@ struct Location
 	size_t col = 0;
 	size_t len = 0;
 
-	bool operator == (const Location& other)
+	bool operator == (const Location& other) const
 	{
 		return this->col == other.col && this->line == other.line && this->len == other.len && this->fileID == other.fileID;
 	}
 
-	bool operator != (const Location& other)
+	bool operator != (const Location& other) const
 	{
 		return !(*this == other);
 	}

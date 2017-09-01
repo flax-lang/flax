@@ -10,7 +10,25 @@ CGResult sst::LiteralDec::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	error(this, "not implemented");
+	// todo: do some proper thing
+	if(this->type->isConstantNumberType() && infer)
+	{
+		if(infer->isConstantNumberType())
+			error("stop playing games");
+
+		if(!infer->isFloatingPointType())
+			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer->str());
+
+		else if(!fir::checkFloatingPointLiteralFitsIntoType(infer->toPrimitiveType(), this->number))
+			error(this, "Floating-point literal cannot fit into inferred type '%s'", infer->str());
+
+		// ok
+		return CGResult(fir::ConstantFP::get(infer, this->number));
+	}
+	else
+	{
+		return CGResult(fir::ConstantFP::get(this->type, this->number));
+	}
 }
 
 CGResult sst::LiteralInt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -19,14 +37,31 @@ CGResult sst::LiteralInt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	// todo: do some proper thing
-	if(this->negative)
-		return CGResult(fir::ConstantInt::getInt64(-1 * (int64_t) this->number));
+	if(this->type->isConstantNumberType() && infer)
+	{
+		if(infer->isConstantNumberType())
+			error("stop playing games");
 
-	else if(this->number > INT64_MAX)
-		return CGResult(fir::ConstantInt::getUint64(this->number));
+		if(!infer->isIntegerType())
+			error(this, "Non integer type ('%s') inferred for integer literal", infer->str());
 
+		bool fits = false;
+		if(this->type->toPrimitiveType()->isSigned())
+			fits = fir::checkSignedIntLiteralFitsIntoType(infer->toPrimitiveType(), (ssize_t) this->number);
+
+		else
+			fits = fir::checkUnsignedIntLiteralFitsIntoType(infer->toPrimitiveType(), this->number);
+
+		if(!fits)
+			error(this, "Integer literal cannot fit into inferred type '%s'", infer->str());
+
+		// ok
+		return CGResult(fir::ConstantInt::get(infer, this->number));
+	}
 	else
-		return CGResult(fir::ConstantInt::getInt64(this->number));
+	{
+		return CGResult(fir::ConstantInt::get(this->type, this->number));
+	}
 }
 
 CGResult sst::LiteralNull::_codegen(cgn::CodegenState* cs, fir::Type* infer)

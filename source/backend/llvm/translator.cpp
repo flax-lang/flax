@@ -1577,6 +1577,7 @@ namespace backend
 
 							llvm::Value* ret = builder.CreateIntCast(a, t, ft->isSignedIntType());
 							addValueToMap(ret, inst->realOutput);
+
 							break;
 						}
 

@@ -80,6 +80,8 @@ namespace sst
 		std::vector<FunctionDefn*> getFunctionsWithName(std::string name, StateTree* scope = 0);
 		std::vector<FunctionDecl*> getFunctionDeclsWithName(std::string name, StateTree* scope = 0);
 
+		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, Operator op);
+
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
 

@@ -20,8 +20,7 @@ fn foo(a: int)
 
 @entry fn main(argc: i32, argv: i8**) -> void
 {
-			3001341 + "foo"
-	printf(@c"%s, %d\n", @c"Hello, World", -340)
+	printf(@c"%s, %d, %f\n", @c"Hello, World", 300 + 400, 1 - 4.5)
 	printf("end\n")
 
 	foo(10)
