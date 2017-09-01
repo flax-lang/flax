@@ -236,6 +236,8 @@ namespace parser
 
 			else
 				expected(st, "newline or semicolon to terminate a statement", st.front().str());
+
+			st.skipWS();
 		}
 
 		iceAssert(st.eat() == TT::RBrace);

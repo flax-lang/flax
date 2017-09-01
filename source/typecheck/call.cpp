@@ -141,7 +141,7 @@ namespace sst
 		iceAssert(errs);
 
 		using Param = FunctionDefn::Param;
-		iceAssert(cands.size() >= 0);
+		iceAssert(cands.size() > 0);
 
 		int bestDist = INT_MAX;
 		std::vector<FunctionDecl*> finals;
@@ -149,7 +149,6 @@ namespace sst
 
 		for(auto fn : cands)
 		{
-
 			auto dist = computeOverloadDistance(fn->params, arguments, fn->isVarArg, &fails[fn].first, &fails[fn].second);
 			if(dist == -1)
 				continue;
@@ -193,10 +192,40 @@ namespace sst
 	{
 		iceAssert(errs);
 
-		auto fs = this->getFunctionDeclsWithName(name);
-		if(fs.empty()) error(this->loc(), "No such function named '%s'", name.c_str());
+		// return this->resolveFunctionFromCandidates(fs, arguments, errs);
 
-		return this->resolveFunctionFromCandidates(fs, arguments, errs);
+		// we kinda need to check manually, since... we need to give a good error message
+		// when a shadowed thing is not a function
+
+		std::vector<FunctionDecl*> fns;
+		auto tree = this->stree;
+		while(tree)
+		{
+			auto defs = tree->definitions[name];
+			for(auto def : defs)
+			{
+				if(auto fn = dcast(FunctionDecl, def))
+				{
+					fns.push_back(fn);
+				}
+				else
+				{
+					exitless_error(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+						name, def->type->str());
+
+					info(def, "Previously defined here:");
+
+					doTheExit();
+				}
+			}
+
+			tree = tree->parent;
+		}
+
+		if(fns.empty())
+			error(this->loc(), "No such function named '%s'", name);
+
+		return this->resolveFunctionFromCandidates(fns, arguments, errs);
 	}
 }
 

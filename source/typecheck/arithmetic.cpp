@@ -61,6 +61,17 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 {
 	switch(op)
 	{
+		case Operator::CompareEq:
+		case Operator::CompareNotEq:
+		case Operator::CompareGreater:
+		case Operator::CompareGreaterEq:
+		case Operator::CompareLess:
+		case Operator::CompareLessEq:
+			return fir::Type::getBool();
+
+		case Operator::Cast:
+			return right;
+
 		case Operator::Add:
 		case Operator::Subtract:
 		case Operator::Multiply:
@@ -77,8 +88,8 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			{
 				return (left->isFloatingPointType() ? left : right);
 			}
-
 		} break;
+
 
 		default:
 			error("not supported");

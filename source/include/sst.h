@@ -8,6 +8,7 @@
 namespace fir
 {
 	struct Type;
+	struct FunctionType;
 }
 
 namespace cgn
@@ -49,7 +50,15 @@ namespace sst
 		fir::Type* type = 0;
 	};
 
+	struct Defn : Stmt
+	{
+		Defn(const Location& l) : Stmt(l) { }
+		~Defn() { }
 
+		fir::Type* type = 0;
+		Identifier id;
+		PrivacyLevel privacy = PrivacyLevel::Internal;
+	};
 
 
 
@@ -98,12 +107,16 @@ namespace sst
 		std::vector<Expr*> arguments;
 	};
 
+	struct VarDefn;
 	struct VarRef : Expr
 	{
 		VarRef(const Location& l) : Expr(l) { }
 		~VarRef() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::string name;
+		Stmt* def = 0;
 	};
 
 
@@ -181,17 +194,18 @@ namespace sst
 		std::vector<Stmt*> statements;
 	};
 
-	struct VarDefn : Stmt
+	struct VarDefn : Defn
 	{
-		VarDefn(const Location& l) : Stmt(l) { }
+		VarDefn(const Location& l) : Defn(l) { }
 		~VarDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::string name;
+		bool immutable = false;
+		Expr* init = 0;
 	};
 
-	struct FunctionDecl : Stmt
+	struct FunctionDecl : Defn
 	{
 		struct Param
 		{
@@ -200,19 +214,15 @@ namespace sst
 			fir::Type* type = 0;
 		};
 
-		Identifier id;
 		std::vector<Param> params;
-
 		fir::Type* returnType = 0;
-
-		PrivacyLevel privacy = PrivacyLevel::Internal;
 
 		bool isEntry = false;
 		bool noMangle = false;
 		bool isVarArg = false;
 
 		protected:
-		FunctionDecl(const Location& l) : Stmt(l) { }
+		FunctionDecl(const Location& l) : Defn(l) { }
 		~FunctionDecl() { }
 	};
 

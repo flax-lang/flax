@@ -99,17 +99,49 @@ namespace sst
 		}
 	}
 
+	static bool isCompareOp(Operator op)
+	{
+		switch(op)
+		{
+			case Operator::CompareEq:
+			case Operator::CompareNotEq:
+			case Operator::CompareGreater:
+			case Operator::CompareGreaterEq:
+			case Operator::CompareLess:
+			case Operator::CompareLessEq:
+				return true;
+
+			default:
+				return false;
+		}
+	}
+
+
+
+
+
+
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
 		// TODO: figure out a better way
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
+
 		if(isAssignOp(this->op) || this->op == Operator::Cast || this->op == Operator::LogicalAnd
 			|| this->op == Operator::LogicalNot || this->op == Operator::LogicalOr)
 		{
 			error("not supported");
 		}
+
+		// handle pointer arithmetic
+		if((_lr.value->getType()->isPointerType() && _rr.value->getType()->isIntegerType())
+			|| (_lr.value->getType()->isIntegerType() && _rr.value->getType()->isPointerType()))
+		{
+			error("not supported");
+		}
+
+
 
 		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
 		auto lt = l.value->getType();
@@ -120,6 +152,42 @@ namespace sst
 			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType()->str(),
 				_rr.value->getType()->str());
 		}
+
+
+
+		if(isCompareOp(this->op))
+		{
+			// do comparison
+			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
+			{
+				switch(this->op)
+				{
+					case Operator::CompareEq:			return CGResult(cs->irb.CreateICmpEQ(l.value, r.value));
+					case Operator::CompareNotEq:		return CGResult(cs->irb.CreateICmpNEQ(l.value, r.value));
+					case Operator::CompareGreater:		return CGResult(cs->irb.CreateICmpGT(l.value, r.value));
+					case Operator::CompareGreaterEq:	return CGResult(cs->irb.CreateICmpGEQ(l.value, r.value));
+					case Operator::CompareLess:			return CGResult(cs->irb.CreateICmpLT(l.value, r.value));
+					case Operator::CompareLessEq:		return CGResult(cs->irb.CreateICmpLEQ(l.value, r.value));
+					default: iceAssert(0);
+				}
+			}
+			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
+			{
+				switch(this->op)
+				{
+					case Operator::CompareEq:			return CGResult(cs->irb.CreateFCmpEQ_ORD(l.value, r.value));
+					case Operator::CompareNotEq:		return CGResult(cs->irb.CreateFCmpNEQ_ORD(l.value, r.value));
+					case Operator::CompareGreater:		return CGResult(cs->irb.CreateFCmpGT_ORD(l.value, r.value));
+					case Operator::CompareGreaterEq:	return CGResult(cs->irb.CreateFCmpGEQ_ORD(l.value, r.value));
+					case Operator::CompareLess:			return CGResult(cs->irb.CreateFCmpLT_ORD(l.value, r.value));
+					case Operator::CompareLessEq:		return CGResult(cs->irb.CreateFCmpLEQ_ORD(l.value, r.value));
+					default: iceAssert(0);
+				}
+			}
+		}
+
+
+
 
 		// circumvent the '1 + 2 + 3'-expression-has-no-type issue by just computing whatever
 		// since both sides are constants, all should work just fine

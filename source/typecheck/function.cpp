@@ -62,28 +62,33 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	fs->popTree();
 
-	// first, get the existing functions
-	{
-		auto fns = fs->getFunctionsWithName(this->name);
-		for(auto f : fns)
+
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {
+
+		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
-			const auto& thisArgs = ptys;
-			std::vector<fir::Type*> otherArgs;
-			std::transform(f->params.begin(), f->params.end(), std::back_inserter(otherArgs), [](Param p) { return p.type; });
+			// make sure we didn't fuck up somewhere
+			iceAssert(decl->id.name == defn->id.name);
 
-			if(fir::Type::areTypeListsEqual(thisArgs, otherArgs))
-			{
-				exitless_error(this, "Definition of function '%s' with duplicate signature:", this->name.c_str());
-				info("%s", fir::Type::typeListToString(thisArgs).c_str());
+			// check the typelists, then
+			bool ret = fir::Type::areTypeListsEqual(
+				util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
+				util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
+			);
 
-				info(f, "Previous definition was here");
-				doTheExit();
-			}
+			return ret;
 		}
+		else
+		{
+			// variables and functions always conflict if they're in the same namespace
+			return true;
+		}
+	});
 
-		fs->stree->functions[this->name].push_back(defn);
-	}
+	if(conflicts)
+		error(this, "conflicting");
 
+	fs->stree->definitions[this->name].push_back(defn);
 	return defn;
 }
 
@@ -92,7 +97,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	using Param = sst::ForeignFuncDefn::Param;
+	using Param = sst::FunctionDecl::Param;
 	auto defn = new sst::ForeignFuncDefn(this->loc);
 	std::vector<Param> ps;
 
@@ -109,16 +114,42 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->isVarArg = this->isVarArg;
 
 
-	// add the defn to the current thingy
-	if(fs->stree->foreignFunctions.find(defn->id.str()) != fs->stree->foreignFunctions.end())
-	{
-		exitless_error(this->loc, "Function '%s' already exists; foreign functions cannot be overloaded", this->name.c_str());
-		info(fs->stree->foreignFunctions[this->name]->loc, "Previously declared here:");
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {
 
-		doTheExit();
-	}
+		if(auto decl = dcast(sst::FunctionDecl, other))
+		{
+			// make sure we didn't fuck up somewhere
+			iceAssert(decl->id.name == defn->id.name);
 
-	fs->stree->foreignFunctions[this->name] = defn;
+			// check the typelists, then
+			bool ret = fir::Type::areTypeListsEqual(
+				util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
+				util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
+			);
+
+			return ret;
+		}
+		else
+		{
+			// variables and functions always conflict if they're in the same namespace
+			return true;
+		}
+	});
+
+	if(conflicts)
+		error(this, "conflicting");
+
+	// // add the defn to the current thingy
+	// if(fs->stree->definitions.find(defn->id.str()) != fs->stree->definitions.end())
+	// {
+	// 	exitless_error(this->loc, "Function '%s' already exists; foreign functions cannot be overloaded", this->name.c_str());
+	// 	info(fs->stree->definitions[this->name]->loc, "Previously declared here:");
+
+	// 	doTheExit();
+	// }
+
+	// fs->stree->foreignFunctions[this->name] = defn;
+	fs->stree->definitions[this->name].push_back(defn);
 	return defn;
 }
 

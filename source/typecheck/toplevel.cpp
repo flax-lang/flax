@@ -8,6 +8,8 @@
 #include "parser.h"
 #include "typecheck.h"
 
+#include "ir/type.h"
+
 using namespace ast;
 
 namespace sst
@@ -18,9 +20,7 @@ namespace sst
 		for(auto sub : clonee->subtrees)
 			clone->subtrees[sub.first] = cloneTree(sub.second, clone);
 
-		clone->functions = clonee->functions;
-		clone->variables = clonee->variables;
-		clone->foreignFunctions = clonee->foreignFunctions;
+		clone->definitions = clonee->definitions;
 		clone->unresolvedGenericFunctions = clonee->unresolvedGenericFunctions;
 
 		return clone;
@@ -55,50 +55,72 @@ namespace sst
 
 		// then, add all functions and shit
 		// todo: check for duplicates
-		for(auto fs : tree->functions)
+		for(auto defs : tree->definitions)
 		{
-			for(auto fn : fs.second)
+			auto name = defs.first;
+			for(auto def : defs.second)
 			{
-				if(fn->privacy == PrivacyLevel::Public)
-					existing->functions[fs.first].push_back(fn);
+				if(def->privacy == PrivacyLevel::Public)
+				{
+					// check functions
+					if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
+					{
+						auto others = existing->definitions[name];
+						for(auto ot : others)
+						{
+							if(auto v = dynamic_cast<VarDefn*>(ot))
+							{
+								exitless_error(fn, "Conflicting definition for function '%s'; was previously defined as a variable");
+								info(ot, "Conflicting definition was here:");
+
+								doTheExit();
+							}
+							else if(auto f = dynamic_cast<FunctionDecl*>(ot))
+							{
+								using Param = sst::FunctionDecl::Param;
+								if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
+									util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
+								{
+									exitless_error(fn, "Duplicate definition of function '%s' with identical signature");
+									info(ot, "Conflicting definition was here:");
+
+									doTheExit();
+								}
+							}
+							else
+							{
+								error(def, "??");
+							}
+						}
+					}
+					else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
+					{
+						auto others = existing->definitions[name];
+						if(others.size() > 0)
+						{
+							exitless_error(def, "Duplicate definition for variable '%s'");
+
+							for(auto ot : others)
+								info(ot, "Previously defined here:");
+
+							doTheExit();
+						}
+					}
+					else
+					{
+						error(def, "what is this?");
+					}
+
+					existing->definitions[name].push_back(def);
+				}
 			}
 		}
 
-
-		for(auto f : tree->foreignFunctions)
-		{
-			if(auto it = existing->foreignFunctions.find(f.first); it != existing->foreignFunctions.end())
-			{
-				auto fn = it->second;
-				exitless_error(f.second, "Function '%s' already exists; foreign functions cannot be overloaded", fn->id.str().c_str());
-				info(fn, "Previously declared here:");
-
-				doTheExit();
-			}
-
-			if(f.second->privacy == PrivacyLevel::Public)
-				existing->foreignFunctions[f.first] = f.second;
-		}
 
 		for(auto f : tree->unresolvedGenericFunctions)
 		{
 			existing->unresolvedGenericFunctions[f.first].insert(existing->unresolvedGenericFunctions[f.first].end(),
 				f.second.begin(), f.second.end());
-		}
-
-
-		for(auto f : tree->variables)
-		{
-			if(auto it = existing->variables.find(f.first); it != existing->variables.end())
-			{
-				auto fn = it->second;
-				exitless_error(f.second, "Variable '%s' already exists", fn->name.c_str());
-				info(fn, "Previously declared here:");
-
-				doTheExit();
-			}
-
-			existing->variables[f.first] = f.second;
 		}
 
 		return existing;
