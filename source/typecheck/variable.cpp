@@ -25,35 +25,49 @@ sst::Stmt* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto vs = tree->definitions[this->name];
 		if(vs.size() > 1)
 		{
-			exitless_error(this, "Ambiguous reference to '%s'", this->name);
+			if(infer == 0)
+			{
+				exitless_error(this, "Ambiguous reference to '%s'", this->name);
+				for(auto v : vs)
+					info(v, "Potential target here:");
+
+				doTheExit();
+			}
+
+
+			// ok, attempt.
+			// it's probably a function, anyway
 			for(auto v : vs)
-				info(v, "Potential target here:");
+			{
+				if(v->type == infer)
+				{
+					auto ret = new sst::VarRef(this->loc);
+					ret->name = this->name;
+					ret->type = v->type;
+					ret->def = v;
+
+					return ret;
+				}
+			}
+
+			exitless_error(this, "No definition of '%s' matching type '%s'", this->name, infer->str());
+			for(auto v : vs)
+				info(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
 
 			doTheExit();
 		}
-		else if(vs.empty())
+		else if(!vs.empty())
 		{
-			continue;
-		}
-
-		auto def = vs.front();
-		if(def)
-		{
-			auto ret = new sst::VarRef(this->loc);
-			ret->name = this->name;
-			ret->def = def;
-
-			// check what it is
-			if(auto var = dcast(sst::Defn, def))
+			auto def = vs.front();
+			iceAssert(def);
 			{
-				ret->type = var->type;
-			}
-			else
-			{
-				error(this, "what is this?");
-			}
+				auto ret = new sst::VarRef(this->loc);
+				ret->name = this->name;
+				ret->type = def->type;
+				ret->def = def;
 
-			return ret;
+				return ret;
+			}
 		}
 
 		tree = tree->parent;

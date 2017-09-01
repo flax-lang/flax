@@ -52,7 +52,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		cs->entryFunction = { fn, this->loc };
 	}
 
-
+	cs->valueMap[this] = CGResult(fn);
 	return CGResult(fn);
 }
 
@@ -78,6 +78,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 
+	cs->valueMap[this] = CGResult(fn);
 	return CGResult(fn);
 }
 

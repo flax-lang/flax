@@ -58,10 +58,18 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(it == cs->valueMap.end())
 		error("wtf?");
 
+	fir::Value* value = 0;
 	auto defn = it->second;
-	iceAssert(defn.pointer);
-
-	auto value = cs->irb.CreateLoad(defn.pointer);
+	if(!defn.value)
+	{
+		iceAssert(defn.pointer);
+		value = cs->irb.CreateLoad(defn.pointer);
+	}
+	else
+	{
+		iceAssert(defn.value);
+		value = defn.value;
+	}
 
 	// make sure types match... should we bother?
 	if(value->getType() != this->type)

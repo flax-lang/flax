@@ -52,6 +52,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->isEntry = this->isEntry;
 	defn->noMangle = this->noMangle;
 
+	defn->type = fir::FunctionType::get(ptys, retty);
+
 	defn->global = !fs->isInFunctionBody();
 
 	fs->pushTree(defn->id.mangled());
@@ -117,6 +119,12 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->returnType = retty;
 	defn->privacy = this->privacy;
 	defn->isVarArg = this->isVarArg;
+
+	if(this->isVarArg)
+		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
+
+	else
+		defn->type = fir::FunctionType::get(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
 
 
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {

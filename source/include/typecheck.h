@@ -103,8 +103,8 @@ namespace sst
 			std::vector<std::pair<Location, std::string>> infoStrs;
 		};
 
-		FunctionDecl* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs);
-		FunctionDecl* resolveFunctionFromCandidates(std::vector<FunctionDecl*> fs, std::vector<FunctionDecl::Param> arguments,
+		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs);
+		Defn* resolveFunctionFromCandidates(std::vector<Defn*> fs, std::vector<FunctionDecl::Param> arguments,
 			PrettyError* errs);
 	};
 
