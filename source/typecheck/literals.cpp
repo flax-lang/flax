@@ -12,7 +12,7 @@ using TCS = sst::TypecheckState;
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
+sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -22,7 +22,7 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
 		// decimal
 		auto ret = new sst::LiteralDec(this->loc);
 		ret->number = std::stold(this->num);
-		ret->type = fir::Type::getFloat64();
+		ret->type = fir::PrimitiveType::getConstantFloat();
 
 		return ret;
 	}
@@ -30,16 +30,16 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* inference)
 	{
 		auto ret = new sst::LiteralInt(this->loc);
 		if(this->num.find('-') != std::string::npos)
-		 	ret->number = -1 * std::stoll(this->num), ret->negative = true, ret->type = fir::Type::getInt64();
+		 	ret->number = -1 * std::stoll(this->num), ret->negative = true, ret->type = fir::PrimitiveType::getConstantSignedInt();
 
 		 else
-		 	ret->number = std::stoull(this->num), ret->negative = false, ret->type = fir::Type::getUint64();
+		 	ret->number = std::stoull(this->num), ret->negative = false, ret->type = fir::PrimitiveType::getConstantUnsignedInt();
 
 		 return ret;
 	}
 }
 
-sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* inference)
+sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -50,7 +50,7 @@ sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* inference)
 	return ret;
 }
 
-sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* inference)
+sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -62,7 +62,7 @@ sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* inference)
 	return ret;
 }
 
-sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* inference)
+sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

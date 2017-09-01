@@ -21,6 +21,9 @@ namespace sst
 
 		if(from->isIntegerType() && to->isIntegerType())
 		{
+			if(from->isConstantIntType())
+				return 0;
+
 			auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
 
 			switch(bitdiff)

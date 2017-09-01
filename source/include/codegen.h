@@ -41,6 +41,8 @@ namespace cgn
 
 		void enterNamespace(std::string name);
 		void leaveNamespace();
+
+		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

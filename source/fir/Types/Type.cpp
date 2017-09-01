@@ -75,6 +75,14 @@ namespace fir
 		tc->voidType = new VoidType();
 		tc->nullType = new NullType();
 
+		tc->constantSIntType = new PrimitiveType(0, PrimitiveType::Kind::ConstantInt);
+		tc->constantSIntType->isTypeSigned = true;
+
+		tc->constantUIntType = new PrimitiveType(0, PrimitiveType::Kind::ConstantInt);
+		tc->constantUIntType->isTypeSigned = false;
+
+		tc->constantFloatType = new PrimitiveType(0, PrimitiveType::Kind::ConstantFloat);
+
 		// bool
 		{
 			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
@@ -545,7 +553,23 @@ namespace fir
 
 
 
+	bool Type::isConstantIntType()
+	{
+		auto cn = dynamic_cast<PrimitiveType*>(this);
+		return cn && cn->primKind == PrimitiveType::Kind::ConstantInt;
+	}
 
+	bool Type::isConstantFloatType()
+	{
+		auto cn = dynamic_cast<PrimitiveType*>(this);
+		return cn && cn->primKind == PrimitiveType::Kind::ConstantFloat;
+	}
+
+	bool Type::isConstantNumberType()
+	{
+		auto cn = dynamic_cast<PrimitiveType*>(this);
+		return cn && (cn->primKind == PrimitiveType::Kind::ConstantFloat || cn->primKind == PrimitiveType::Kind::ConstantInt);
+	}
 
 	bool Type::isStructType()
 	{
@@ -576,19 +600,19 @@ namespace fir
 	bool Type::isFloatingPointType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Floating;
+		return t != 0 && (t->primKind == PrimitiveType::Kind::Floating || t->primKind == PrimitiveType::Kind::ConstantFloat);
 	}
 
 	bool Type::isIntegerType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Integer;
+		return t != 0 && (t->primKind == PrimitiveType::Kind::Integer || t->primKind == PrimitiveType::Kind::ConstantInt);
 	}
 
 	bool Type::isSignedIntType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Integer && t->isSigned();
+		return t != 0 && (t->primKind == PrimitiveType::Kind::Integer || t->primKind == PrimitiveType::Kind::ConstantInt) && t->isSigned();
 	}
 
 	bool Type::isFunctionType()
