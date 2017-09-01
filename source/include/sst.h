@@ -55,8 +55,9 @@ namespace sst
 		Defn(const Location& l) : Stmt(l) { }
 		~Defn() { }
 
-		fir::Type* type = 0;
 		Identifier id;
+		fir::Type* type = 0;
+		bool global = false;
 		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 
@@ -116,7 +117,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::string name;
-		Stmt* def = 0;
+		Defn* def = 0;
 	};
 
 
@@ -201,8 +202,8 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		bool immutable = false;
 		Expr* init = 0;
+		bool immutable = false;
 	};
 
 	struct FunctionDecl : Defn

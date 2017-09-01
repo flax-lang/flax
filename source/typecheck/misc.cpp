@@ -38,6 +38,23 @@ namespace sst
 	}
 
 
+	void TypecheckState::enterFunctionBody()
+	{
+		this->functionNestLevel++;
+	}
+
+	void TypecheckState::exitFunctionBody()
+	{
+		this->functionNestLevel--;
+	}
+
+	bool TypecheckState::isInFunctionBody()
+	{
+		return this->functionNestLevel > 0;
+	}
+
+
+
 	void TypecheckState::pushTree(std::string name)
 	{
 		iceAssert(this->stree);
@@ -128,7 +145,7 @@ namespace sst
 				if(!didWarnAboutShadow)
 				{
 					didWarnAboutShadow = true;
-					warn(defn, "Definition of %s '%s' shadows one or more previously defined things", kind, defn->id.name);
+					warn(defn, "Definition of %s '%s' shadows one or more previous definitions", kind, defn->id.name);
 				}
 
 				for(auto d : defs)
