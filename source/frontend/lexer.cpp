@@ -52,7 +52,7 @@ namespace lexer
 	{
 		// check the previous token
 		bool res = (prevType != TokenType::Invalid && prevID == pos.fileID && (prevType != TokenType::RParen && prevType != TokenType::RSquare
-			&& prevType != TokenType::Identifier && prevType != TokenType::Number));
+			&& prevType != TokenType::Identifier && prevType != TokenType::Number && prevType != TokenType::StringLiteral));
 
 		if(!res) return false;
 
@@ -368,6 +368,7 @@ namespace lexer
 		// ...] + 3
 		// ident + 3
 		// number + 3
+		// string + 3
 		// so in every other case we want unary +/-.
 		else if(!stream.empty() && (isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
