@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
@@ -77,8 +78,18 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	defn->immutable = this->immut;
 	defn->privacy = this->privacy;
-	defn->type = fs->convertParserTypeToFIR(this->type);
 
+	defn->global = !fs->isInFunctionBody();
+
+	if(this->type != pts::InferredType::get())
+	{
+		defn->type = fs->convertParserTypeToFIR(this->type);
+	}
+	else
+	{
+		if(!this->initialiser)
+			error(this, "Initialiser is required for type inference");
+	}
 
 	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [this](TCS* fs, sst::Defn* other) -> bool {
 		if(auto v = dcast(sst::Defn, other))
@@ -88,12 +99,21 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			return true;
 	});
 
-
+	// check the defn
 	if(this->initialiser)
 	{
 		defn->init = dcast(sst::Expr, this->initialiser->typecheck(fs, defn->type));
 		if(!defn->init)
 			error(this->initialiser, "Statement cannot be used as an expression");
+
+		if(defn->type == 0)
+		{
+			auto t = defn->init->type;
+			if(t->isConstantNumberType())
+				t = fs->inferCorrectTypeForLiteral(defn->init);
+
+			defn->type = t;
+		}
 	}
 
 	fs->stree->definitions[this->name].push_back(defn);

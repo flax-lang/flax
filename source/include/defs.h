@@ -85,7 +85,8 @@ struct CGResult
 {
 	enum class VK { Invalid, LValue, RValue };
 
-	CGResult(fir::Value* v) : value(v), kind(VK::RValue) { }
+	CGResult() : CGResult(0) { }
+	CGResult(fir::Value* v) : value(v), pointer(0), kind(VK::RValue) { }
 	CGResult(fir::Value* v, fir::Value* p) : value(v), pointer(p), kind(VK::RValue) { }
 	CGResult(fir::Value* v, fir::Value* p, VK k) : value(v), pointer(p), kind(k) { }
 
