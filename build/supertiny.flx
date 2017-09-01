@@ -20,9 +20,12 @@ fn foo(a: int)
 
 @entry fn main(argc: i32, argv: i8**) -> void
 {
-	printf(@c"%s, %d, %f\n", @c"Hello, World", 300 + 400, 1 - 4.5)
+	var foo: int
+	foo
+
+	printf(@c"%s, %d, %.1f\n", @c"Hello, World", 300 + 400, 1 - 4.5)
 	printf("end\n")
 
-	foo(10)
-	foo(10, 20)
+	// foo(10)
+	// foo(10, 20)
 }

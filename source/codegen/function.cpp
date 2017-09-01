@@ -44,7 +44,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(cs->entryFunction.first != 0)
 		{
 			exitless_error(this, "Redefinition of entry function with '@entry'");
-			info(cs->entryFunction.second, "Previous entry function marked here");
+			info(cs->entryFunction.second, "Previous entry function marked here:");
 
 			doTheExit();
 		}

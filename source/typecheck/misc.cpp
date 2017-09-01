@@ -92,18 +92,17 @@ namespace sst
 		return std::vector<std::string>(scope.begin(), scope.end());
 	}
 
-
-	std::vector<FunctionDefn*> TypecheckState::getFunctionsWithName(std::string name, StateTree* tree)
+	std::vector<Stmt*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
 
-		std::vector<FunctionDefn*> ret;
+		std::vector<Stmt*> ret;
 
 		iceAssert(tree);
 		while(tree)
 		{
-			auto fns = tree->functions[name];
+			auto fns = tree->definitions[name];
 			ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
@@ -112,26 +111,55 @@ namespace sst
 		return ret;
 	}
 
-	std::vector<FunctionDecl*> TypecheckState::getFunctionDeclsWithName(std::string name, StateTree* tree)
+	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::string kind,
+		std::function<bool (TypecheckState* fs, Defn* other)> doCheck, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
 
-		std::vector<FunctionDecl*> ret;
+		// first, check for shadowing
+		bool didWarnAboutShadow = false;
 
-		iceAssert(tree);
-		while(tree)
+		auto _tree = tree->parent;
+		while(_tree)
 		{
-			auto fns = tree->functions[name];
-			auto ffn = tree->foreignFunctions[name];
+			if(auto defs = _tree->definitions[defn->id.name]; defs.size() > 0)
+			{
+				if(!didWarnAboutShadow)
+				{
+					didWarnAboutShadow = true;
+					warn(defn, "Definition of %s '%s' shadows one or more previously defined things", kind, defn->id.name);
+				}
 
-			ret.insert(ret.end(), fns.begin(), fns.end());
-			if(ffn) ret.push_back(ffn);
+				for(auto d : defs)
+					info(d, "Previously defined here:");
+			}
 
-			tree = tree->parent;
+			_tree = _tree->parent;
 		}
 
-		return ret;
+		// ok, now check only the current scope
+		auto defs = tree->definitions[defn->id.name];
+
+		bool didError = false;
+		for(auto def : defs)
+		{
+			bool conflicts = doCheck(this, def);
+			if(conflicts)
+			{
+				if(!didError)
+				{
+					didError = true;
+					exitless_error(defn, "Duplicate definition of %s '%s'", kind, defn->id.name);
+				}
+				info(def, "Conflicting definition here:");
+			}
+		}
+
+		if(didError)
+			doTheExit();
+
+		return false;
 	}
 }
 
@@ -159,11 +187,6 @@ sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
 	return ret;
 }
 
-sst::Stmt* ast::VarDefn::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
 sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
@@ -177,11 +200,6 @@ sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 sst::Stmt* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
 {
 	error(this->loc, "??? no way man");
-}
-
-sst::Stmt* ast::Ident::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
 }
 
 sst::Stmt* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)

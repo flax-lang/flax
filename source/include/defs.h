@@ -175,6 +175,18 @@ struct TypeConstraints_t
 
 namespace util
 {
+	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
+	std::vector<K> map(std::vector<T> input, UnaryOp fn)
+	{
+		std::vector<K> ret;
+		for(auto i : input)
+			ret.push_back(fn(i));
+
+		return ret;
+	}
+
+
+
 	template <typename T>
 	class FastVector
 	{
