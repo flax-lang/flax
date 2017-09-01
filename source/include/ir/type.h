@@ -51,6 +51,11 @@ namespace fir
 		// special thing #2
 		NullType* nullType = 0;
 
+		// special things #3, #4, and #5
+		PrimitiveType* constantSIntType = 0;
+		PrimitiveType* constantUIntType = 0;
+		PrimitiveType* constantFloatType = 0;
+
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
 
@@ -139,6 +144,10 @@ namespace fir
 		bool isPointerType();
 		bool isVoidType();
 		bool isNullType();
+
+		bool isConstantIntType();
+		bool isConstantFloatType();
+		bool isConstantNumberType();
 
 		size_t getBitWidth();
 
@@ -292,6 +301,8 @@ namespace fir
 
 			Integer,
 			Floating,
+			ConstantInt,
+			ConstantFloat,
 		};
 
 
@@ -315,6 +326,10 @@ namespace fir
 
 
 		public:
+		static PrimitiveType* getConstantSignedInt(FTContext* tc = 0);
+		static PrimitiveType* getConstantUnsignedInt(FTContext* tc = 0);
+		static PrimitiveType* getConstantFloat(FTContext* tc = 0);
+
 		static PrimitiveType* getIntN(size_t bits, FTContext* tc = 0);
 		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
 

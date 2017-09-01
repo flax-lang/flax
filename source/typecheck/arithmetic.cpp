@@ -57,7 +57,7 @@ std::string operatorToString(const Operator& op)
 	}
 }
 
-static fir::Type* getResultType(fir::Type* left, fir::Type* right, Operator op)
+fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operator op)
 {
 	switch(op)
 	{
@@ -68,10 +68,15 @@ static fir::Type* getResultType(fir::Type* left, fir::Type* right, Operator op)
 		case Operator::Modulo: {
 
 			if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
-				return (left->getBitWidth() > right->getBitWidth()) ? left : right;
+			{
+				if(left->isConstantNumberType()) return right;
 
+				return (left->getBitWidth() > right->getBitWidth()) ? left : right;
+			}
 			else if((left->isIntegerType() && right->isFloatingPointType()) || (left->isFloatingPointType() && right->isIntegerType()))
+			{
 				return (left->isFloatingPointType() ? left : right);
+			}
 
 		} break;
 
@@ -86,6 +91,9 @@ static fir::Type* getResultType(fir::Type* left, fir::Type* right, Operator op)
 
 sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
+	// TODO: infer the types properly for literal numbers
+	// this has always been a thorn, dammit
+
 	auto l = dcast(sst::Expr, this->left->typecheck(fs, inferred));
 	auto r = dcast(sst::Expr, this->right->typecheck(fs, inferred));
 
@@ -95,7 +103,7 @@ sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	auto lt = l->type;
 	auto rt = r->type;
 
-	fir::Type* rest = getResultType(lt, rt, this->op);
+	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op);
 	if(!rest)
 	{
 		HighlightOptions ho;
@@ -108,9 +116,11 @@ sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	}
 
 	auto ret = new sst::BinaryOp(this->loc);
+
 	ret->left = dynamic_cast<sst::Expr*>(l);
 	ret->right = dynamic_cast<sst::Expr*>(r);
 	ret->op = this->op;
+	ret->type = rest;
 
 	return ret;
 }

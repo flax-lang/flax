@@ -5,6 +5,34 @@
 #include "sst.h"
 #include "codegen.h"
 
+#define dcast(t, v)		dynamic_cast<t*>(v)
+
+static fir::Type* inferCorrectTypeForLiteral(cgn::CodegenState* cs, sst::Expr* lit)
+{
+	iceAssert(lit->type->isConstantNumberType());
+
+	if(auto il = dcast(sst::LiteralInt, lit))
+	{
+		// ok.
+		if(il->number > INT64_MAX)
+			return fir::Type::getUint64();
+
+		else
+			return fir::Type::getInt64();
+	}
+	else if(auto dl = dcast(sst::LiteralDec, lit))
+	{
+		return fir::Type::getFloat64();
+	}
+	else
+	{
+		if(lit->type->isIntegerType())
+			return fir::Type::getInt64();
+
+		else
+			return fir::Type::getFloat64();
+	}
+}
 
 CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
@@ -38,7 +66,12 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(i < fn->getArgumentCount())
 			inf = fn->getArguments()[i]->getType();
 
+		else if(arg->type->isConstantNumberType())
+			inf = inferCorrectTypeForLiteral(cs, arg);
+
+		// warn(arg, "infer = %s", inf ? inf->str() : "none");
 		auto val = arg->codegen(cs, inf).value;
+		// warn(arg, "value = %s", val->getType()->str());
 
 		if(i < fn->getArgumentCount() && val->getType() != fn->getArguments()[i]->getType())
 		{

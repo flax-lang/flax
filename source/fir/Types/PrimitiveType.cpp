@@ -76,6 +76,29 @@ namespace fir
 		return 0;
 	}
 
+	PrimitiveType* PrimitiveType::getConstantSignedInt(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->constantSIntType;
+	}
+
+	PrimitiveType* PrimitiveType::getConstantUnsignedInt(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->constantUIntType;
+	}
+
+	PrimitiveType* PrimitiveType::getConstantFloat(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->constantFloatType;
+	}
 
 
 	PrimitiveType* PrimitiveType::getIntN(size_t bits, FTContext* tc)
@@ -269,7 +292,7 @@ namespace fir
 
 	bool PrimitiveType::isSigned()
 	{
-		iceAssert(this->primKind == Kind::Integer && "not integer type");
+		iceAssert((this->primKind == Kind::Integer || this->primKind == Kind::ConstantInt) && "not integer type");
 		return this->isTypeSigned;
 	}
 
