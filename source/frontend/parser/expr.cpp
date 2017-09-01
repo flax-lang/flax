@@ -259,6 +259,9 @@ namespace parser
 		while(true)
 		{
 			int prec = precedence(st);
+			debuglog("op = %s/%d, %s/%d, %d, %d\n", st.front().str(), st.front().type, st.prev().str(), st.prev().type, prec, prio);
+
+
 			if(prec < prio && !isRightAssociative(st.front()))
 				return lhs;
 
@@ -266,6 +269,7 @@ namespace parser
 
 			Token tok_op = st.eat();
 			Token next1 = st.front();
+
 
 			auto op = Operator::Invalid;
 			if(tok_op == TT::LAngle || tok_op == TT::RAngle)
@@ -470,8 +474,10 @@ namespace parser
 
 			return ret;
 		}
-
-		return parsePrimary(st);
+		else
+		{
+			return parsePrimary(st);
+		}
 	}
 
 	Expr* parseExpr(State& st)
