@@ -127,7 +127,7 @@ namespace ast
 
 	struct VarDefn : Stmt
 	{
-		VarDefn(const Location& l, std::string name) : Stmt(l) { }
+		VarDefn(const Location& l) : Stmt(l) { }
 		~VarDefn();
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;

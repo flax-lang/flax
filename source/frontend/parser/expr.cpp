@@ -259,9 +259,6 @@ namespace parser
 		while(true)
 		{
 			int prec = precedence(st);
-			debuglog("op = %s/%d, %s/%d, %d, %d\n", st.front().str(), st.front().type, st.prev().str(), st.prev().type, prec, prio);
-
-
 			if(prec < prio && !isRightAssociative(st.front()))
 				return lhs;
 

@@ -33,9 +33,11 @@ namespace sst
 		std::string name;
 		StateTree* parent = 0;
 
-		std::unordered_map<std::string, VarDefn*> variables;
-		std::unordered_map<std::string, std::vector<FunctionDefn*>> functions;
-		std::unordered_map<std::string, ForeignFuncDefn*> foreignFunctions;
+		std::unordered_map<std::string, std::vector<Defn*>> definitions;
+
+		// std::unordered_map<std::string, VarDefn*> variables;
+		// std::unordered_map<std::string, std::vector<FunctionDefn*>> functions;
+		// std::unordered_map<std::string, ForeignFuncDefn*> foreignFunctions;
 
 		std::unordered_map<std::string, std::vector<ast::FuncDefn*>> unresolvedGenericFunctions;
 
@@ -77,8 +79,12 @@ namespace sst
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
 
-		std::vector<FunctionDefn*> getFunctionsWithName(std::string name, StateTree* scope = 0);
-		std::vector<FunctionDecl*> getFunctionDeclsWithName(std::string name, StateTree* scope = 0);
+		// std::vector<FunctionDefn*> getFunctionsWithName(std::string name, StateTree* scope = 0);
+		// std::vector<FunctionDecl*> getFunctionDeclsWithName(std::string name, StateTree* scope = 0);
+
+		std::vector<Stmt*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
+		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
+			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 
 		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, Operator op);
 

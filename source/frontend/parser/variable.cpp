@@ -141,10 +141,11 @@ namespace parser
 			value = parseExpr(st);
 		}
 
-		auto ret = new VarDefn(loc, name);
+		auto ret = new VarDefn(loc);
 		ret->initialiser = value;
 		ret->immut = isImmut;
 		ret->type = type;
+		ret->name = name;
 
 		return ret;
 	}
