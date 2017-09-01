@@ -54,14 +54,14 @@ namespace sst
 	}
 
 	using Param = FunctionDecl::Param;
-	static int computeOverloadDistance(std::vector<Param> target, std::vector<Param> args, bool cvararg, Location* loc,
-		std::string* estr)
+	static int computeOverloadDistance(std::vector<fir::Type*> target, std::vector<Location> targetLocs,
+		std::vector<fir::Type*> args, bool cvararg, Location* loc, std::string* estr)
 	{
 		iceAssert(estr);
 		if(target.empty() && args.empty())
 			return 0;
 
-		bool anyvararg = cvararg || (target.size() > 0 && target.back().type->isVariadicArrayType());
+		bool anyvararg = cvararg || (target.size() > 0 && target.back()->isVariadicArrayType());
 
 		if(!anyvararg && target.size() != args.size())
 		{
@@ -77,12 +77,12 @@ namespace sst
 		int distance = 0;
 		for(size_t i = 0; i < target.size(); i++)
 		{
-			auto d = getCastDistance(args[i].type, target[i].type);
+			auto d = getCastDistance(args[i], target[i]);
 			if(d == -1)
 			{
 				*estr = strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'",
-					i, args[i].type->str(), target[i].type->str());
-				*loc = target[i].loc;
+					i, args[i]->str(), target[i]->str());
+				*loc = targetLocs[i];
 
 				return -1;
 			}
@@ -97,11 +97,11 @@ namespace sst
 		if(anyvararg && !cvararg)
 		{
 			// first, check if we can do a direct-passthrough
-			if(args.size() == target.size() && (args.back().type->isVariadicArrayType() || args.back().type->isDynamicArrayType()))
+			if(args.size() == target.size() && (args.back()->isVariadicArrayType() || args.back()->isDynamicArrayType()))
 			{
 				// yes we can
-				auto a = args.back().type->toDynamicArrayType()->getElementType();
-				auto t = target.back().type->toDynamicArrayType()->getElementType();
+				auto a = args.back()->toDynamicArrayType()->getElementType();
+				auto t = target.back()->toDynamicArrayType()->getElementType();
 
 				if(a != t)
 				{
@@ -116,10 +116,10 @@ namespace sst
 			}
 			else
 			{
-				auto elmTy = target.back().type->toDynamicArrayType()->getElementType();
+				auto elmTy = target.back()->toDynamicArrayType()->getElementType();
 				for(size_t i = target.size(); i < args.size(); i++)
 				{
-					auto ty = args[i].type;
+					auto ty = args[i];
 					auto dist = getCastDistance(ty, elmTy);
 					if(dist == -1)
 					{
@@ -135,7 +135,7 @@ namespace sst
 		return distance;
 	}
 
-	FunctionDecl* TypecheckState::resolveFunctionFromCandidates(std::vector<FunctionDecl*> cands, std::vector<Param> arguments,
+	Defn* TypecheckState::resolveFunctionFromCandidates(std::vector<Defn*> cands, std::vector<Param> arguments,
 		PrettyError* errs)
 	{
 		iceAssert(errs);
@@ -144,20 +144,37 @@ namespace sst
 		iceAssert(cands.size() > 0);
 
 		int bestDist = INT_MAX;
-		std::vector<FunctionDecl*> finals;
-		std::map<FunctionDecl*, std::pair<Location, std::string>> fails;
+		std::vector<Defn*> finals;
+		std::map<Defn*, std::pair<Location, std::string>> fails;
 
-		for(auto fn : cands)
+		for(auto cand : cands)
 		{
-			auto dist = computeOverloadDistance(fn->params, arguments, fn->isVarArg, &fails[fn].first, &fails[fn].second);
+			int dist = 0;
+
+			if(auto fn = dcast(FunctionDecl, cand))
+			{
+				dist = computeOverloadDistance(util::map(fn->params, [](Param p) { return p.type; }),
+					util::map(fn->params, [](Param p) { return p.loc; }),
+					util::map(arguments, [](Param p) { return p.type; }), fn->isVarArg, &fails[fn].first, &fails[fn].second);
+			}
+			else if(auto vr = dcast(VarDefn, cand))
+			{
+				iceAssert(vr->type->isFunctionType());
+				auto ft = vr->type->toFunctionType();
+
+				auto prms = ft->getArgumentTypes();
+				dist = computeOverloadDistance(prms, std::vector<Location>(prms.size(), vr->loc),
+					util::map(arguments, [](Param p) { return p.type; }), false, &fails[vr].first, &fails[vr].second);
+			}
+
 			if(dist == -1)
 				continue;
 
 			else if(dist < bestDist)
-				finals.clear(), finals.push_back(fn), bestDist = dist;
+				finals.clear(), finals.push_back(cand), bestDist = dist;
 
 			else if(dist == bestDist)
-				finals.push_back(fn);
+				finals.push_back(cand);
 		}
 
 		if(finals.empty())
@@ -188,7 +205,7 @@ namespace sst
 		}
 	}
 
-	FunctionDecl* TypecheckState::resolveFunction(std::string name, std::vector<Param> arguments, PrettyError* errs)
+	Defn* TypecheckState::resolveFunction(std::string name, std::vector<Param> arguments, PrettyError* errs)
 	{
 		iceAssert(errs);
 
@@ -197,19 +214,31 @@ namespace sst
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
 
-		std::vector<FunctionDecl*> fns;
+		std::vector<Defn*> fns;
 		auto tree = this->stree;
+
+		bool didVar = false;
 		while(tree)
 		{
 			auto defs = tree->definitions[name];
 			for(auto def : defs)
 			{
+				// warn(def, "%p, %s", def->type, def->type->str());
 				if(auto fn = dcast(FunctionDecl, def))
 				{
 					fns.push_back(fn);
 				}
+				else if(auto vr = dcast(VarDefn, def); vr->type->isFunctionType())
+				{
+					// ok, we'll check it later i guess.
+					if(!didVar)
+						fns.push_back(vr);
+
+					didVar = true;
+				}
 				else
 				{
+					didVar = true;
 					exitless_error(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
 						name, def->type->str());
 
@@ -272,7 +301,9 @@ sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	}
 
 	iceAssert(call->target);
-	call->type = call->target->returnType;
+	iceAssert(call->target->type->isFunctionType());
+	call->type = call->target->type->toFunctionType()->getReturnType();
+
 	call->name = this->name;
 	iceAssert(call->type);
 

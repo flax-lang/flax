@@ -43,45 +43,72 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		error(this, "Failed to find target for function call to '%s'", this->name.c_str());
 
 	auto vf = this->target->codegen(cs).value;
-	auto fn = dynamic_cast<fir::Function*>(vf);
-	iceAssert(fn);
+	fir::FunctionType* ft = 0;
 
-	if(!fn->isCStyleVarArg() && this->arguments.size() != fn->getArgumentCount())
+	if(vf->getType()->isFunctionType())
+	{
+		ft = vf->getType()->toFunctionType();
+	}
+	else
+	{
+		auto vt = vf->getType();
+		iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
+
+		ft = vt->getPointerElementType()->toFunctionType();
+	}
+
+	iceAssert(ft);
+
+	// auto fn = dynamic_cast<fir::Function*>(vf);
+	// iceAssert(fn);
+
+	size_t numArgs = ft->getArgumentTypes().size();
+	if(!ft->isCStyleVarArg() && this->arguments.size() != numArgs)
 	{
 		error(this, "Mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
-			this->name.c_str(), this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", fn->getArgumentCount(),
-			fn->getArgumentCount() == 1 ? "was" : "were");
+			this->name.c_str(), this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
+			numArgs == 1 ? "was" : "were");
 	}
-	else if(fn->isCStyleVarArg() && this->arguments.size() < fn->getArgumentCount())
+	else if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
 		error(this, "Need at least %zu arguments to call variadic function '%s', only have %zu",
-			fn->getArgumentCount(), this->name.c_str(), this->arguments.size());
+			numArgs, this->name.c_str(), this->arguments.size());
 	}
+
 
 	size_t i = 0;
 	std::vector<fir::Value*> args;
 	for(auto arg : this->arguments)
 	{
 		fir::Type* inf = 0;
-		if(i < fn->getArgumentCount())
-			inf = fn->getArguments()[i]->getType();
+		if(i < numArgs)
+			inf = ft->getArgumentN(i);
 
 		else if(arg->type->isConstantNumberType())
 			inf = inferCorrectTypeForLiteral(cs, arg);
 
 		auto val = arg->codegen(cs, inf).value;
-		if(i < fn->getArgumentCount() && val->getType() != fn->getArguments()[i]->getType())
+		if(i < numArgs && val->getType() != ft->getArgumentN(i))
 		{
 			error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
-				fn->getArguments()[i]->getType()->str().c_str(), val->getType()->str().c_str());
+				ft->getArgumentN(i)->str().c_str(), val->getType()->str().c_str());
 		}
 
 		args.push_back(val);
 		i++;
 	}
 
-	auto res = cs->irb.CreateCall(fn, args);
-	return CGResult(res);
+	if(fir::Function* func = dcast(fir::Function, vf))
+	{
+		return CGResult(cs->irb.CreateCall(func, args));
+	}
+	else
+	{
+		iceAssert(vf->getType()->getPointerElementType()->isFunctionType());
+		auto fptr = cs->irb.CreateLoad(vf);
+
+		return CGResult(cs->irb.CreateCallToFunctionPointer(fptr, ft, args));
+	}
 }
 
 

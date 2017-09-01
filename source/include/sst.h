@@ -104,7 +104,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::string name;
-		FunctionDecl* target = 0;
+		Defn* target = 0;
 		std::vector<Expr*> arguments;
 	};
 
