@@ -262,6 +262,14 @@ namespace fir
 		{
 			ret = "f" + std::to_string(this->getFloatingPointBitWidth());
 		}
+		else if(this->primKind == Kind::ConstantInt)
+		{
+			ret = "int";
+		}
+		else if(this->primKind == Kind::ConstantFloat)
+		{
+			ret = "float";
+		}
 		else
 		{
 			ret = "??";

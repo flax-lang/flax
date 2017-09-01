@@ -69,10 +69,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else if(arg->type->isConstantNumberType())
 			inf = inferCorrectTypeForLiteral(cs, arg);
 
-		// warn(arg, "infer = %s", inf ? inf->str() : "none");
 		auto val = arg->codegen(cs, inf).value;
-		// warn(arg, "value = %s", val->getType()->str());
-
 		if(i < fn->getArgumentCount() && val->getType() != fn->getArguments()[i]->getType())
 		{
 			error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
