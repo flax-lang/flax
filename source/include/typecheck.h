@@ -70,6 +70,11 @@ namespace sst
 		void pushLoc(const Location& l);
 		void pushLoc(ast::Stmt* stmt);
 
+		int functionNestLevel = 0;
+		bool isInFunctionBody();
+		void enterFunctionBody();
+		void exitFunctionBody();
+
 		Location loc();
 		Location popLoc();
 
@@ -90,6 +95,7 @@ namespace sst
 
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
+		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
 
 		struct PrettyError
 		{

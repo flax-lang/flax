@@ -16,7 +16,10 @@ using TCS = sst::TypecheckState;
 sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
+	fs->enterFunctionBody();
+
 	defer(fs->popLoc());
+	defer(fs->exitFunctionBody());
 
 	if(this->generics.size() > 0)
 	{
@@ -48,6 +51,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	defn->isEntry = this->isEntry;
 	defn->noMangle = this->noMangle;
+
+	defn->global = !fs->isInFunctionBody();
 
 	fs->pushTree(defn->id.mangled());
 
@@ -139,16 +144,6 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	if(conflicts)
 		error(this, "conflicting");
 
-	// // add the defn to the current thingy
-	// if(fs->stree->definitions.find(defn->id.str()) != fs->stree->definitions.end())
-	// {
-	// 	exitless_error(this->loc, "Function '%s' already exists; foreign functions cannot be overloaded", this->name.c_str());
-	// 	info(fs->stree->definitions[this->name]->loc, "Previously declared here:");
-
-	// 	doTheExit();
-	// }
-
-	// fs->stree->foreignFunctions[this->name] = defn;
 	fs->stree->definitions[this->name].push_back(defn);
 	return defn;
 }

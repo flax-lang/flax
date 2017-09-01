@@ -7,8 +7,38 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
+#define dcast(t, v)		dynamic_cast<t*>(v)
+
 namespace sst
 {
+	fir::Type* TypecheckState::inferCorrectTypeForLiteral(Expr* lit)
+	{
+		iceAssert(lit->type->isConstantNumberType());
+
+		if(auto il = dcast(sst::LiteralInt, lit))
+		{
+			// ok.
+			if(il->number > INT64_MAX)
+				return fir::Type::getUint64();
+
+			else
+				return fir::Type::getInt64();
+		}
+		else if(auto dl = dcast(sst::LiteralDec, lit))
+		{
+			return fir::Type::getFloat64();
+		}
+		else
+		{
+			if(lit->type->isIntegerType())
+				return fir::Type::getInt64();
+
+			else
+				return fir::Type::getFloat64();
+		}
+	}
+
+
 	fir::Type* TypecheckState::convertParserTypeToFIR(pts::Type* pt)
 	{
 		#define convert(...)	(this->convertParserTypeToFIR)(__VA_ARGS__)

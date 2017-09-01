@@ -5,12 +5,83 @@
 #include "sst.h"
 #include "codegen.h"
 
+
 CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	return CGResult(0);
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	// ok.
+	// add a new thing to the thing
+
+	if(this->global)
+	{
+		warn(this, "no");
+	}
+
+	fir::Value* val = 0;
+	fir::Value* alloc = 0;
+
+	if(this->init)
+	{
+		auto res = this->init->codegen(cs, this->type);
+		iceAssert(res.value);
+
+		val = res.value;
+	}
+
+	if(this->immutable)
+	{
+		iceAssert(val);
+		alloc = cs->irb.CreateImmutStackAlloc(this->type, val);
+	}
+	else
+	{
+		alloc = cs->irb.CreateStackAlloc(this->type);
+		if(!val)
+			val = cs->getDefaultValue(this->type);
+
+		cs->irb.CreateStore(val, alloc);
+	}
+
+	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
+	cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
+	return CGResult(alloc);
 }
 
 CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	return CGResult(0);
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto it = cs->valueMap.find(this->def);
+	if(it == cs->valueMap.end())
+		error("wtf?");
+
+	auto defn = it->second;
+	iceAssert(defn.pointer);
+
+	auto value = cs->irb.CreateLoad(defn.pointer);
+
+	// make sure types match... should we bother?
+	if(value->getType() != this->type)
+		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type->str(), value->getType()->str());
+
+	return CGResult(value);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
