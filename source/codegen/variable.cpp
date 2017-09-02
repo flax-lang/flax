@@ -33,11 +33,11 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->immutable)
 	{
 		iceAssert(val);
-		alloc = cs->irb.CreateImmutStackAlloc(this->type, val);
+		alloc = cs->irb.CreateImmutStackAlloc(this->type, val, this->id.name);
 	}
 	else
 	{
-		alloc = cs->irb.CreateStackAlloc(this->type);
+		alloc = cs->irb.CreateStackAlloc(this->type, this->id.name);
 		if(!val)
 			val = cs->getDefaultValue(this->type);
 
@@ -60,15 +60,17 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::Value* value = 0;
 	auto defn = it->second;
-	if(!defn.value)
-	{
-		iceAssert(defn.pointer);
-		value = cs->irb.CreateLoad(defn.pointer);
-	}
-	else
+
+	// warn(this, "%p, %p", defn.value, defn.pointer);
+	if(!defn.pointer)
 	{
 		iceAssert(defn.value);
 		value = defn.value;
+	}
+	else
+	{
+		iceAssert(defn.pointer);
+		value = cs->irb.CreateLoad(defn.pointer);
 	}
 
 	// make sure types match... should we bother?

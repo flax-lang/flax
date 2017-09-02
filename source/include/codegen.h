@@ -57,7 +57,10 @@ namespace cgn
 		void enterNamespace(std::string name);
 		void leaveNamespace();
 
+		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
+
 		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
+		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);
 
 		fir::Value* getDefaultValue(fir::Type* type);
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);

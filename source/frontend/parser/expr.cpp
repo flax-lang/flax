@@ -378,10 +378,22 @@ namespace parser
 			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
 
 			if(op == Operator::DotOperator)
+			{
 				lhs = new DotOperator(tok_op.loc, lhs, rhs);
+			}
+			else if(isAssignOp(op))
+			{
+				auto newlhs = new AssignOp(tok_op.loc);
+				newlhs->left = lhs;
+				newlhs->right = rhs;
+				newlhs->op = op;
 
+				lhs = newlhs;
+			}
 			else
+			{
 				lhs = new BinaryOp(tok_op.loc, op, lhs, rhs);
+			}
 		}
 	}
 

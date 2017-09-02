@@ -223,6 +223,19 @@ namespace ast
 		Expr* expr = 0;
 	};
 
+	struct AssignOp : Expr
+	{
+		AssignOp(const Location& l) : Expr(l) { }
+		~AssignOp();
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Operator op = Operator::Invalid;
+
+		Expr* left = 0;
+		Expr* right = 0;
+	};
+
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }
