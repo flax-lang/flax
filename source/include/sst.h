@@ -62,6 +62,14 @@ namespace sst
 	};
 
 
+	struct TypeExpr : Expr
+	{
+		TypeExpr(const Location& l) : Expr(l) { }
+		~TypeExpr() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
 
 
 	struct Block : Expr
@@ -93,6 +101,9 @@ namespace sst
 		~UnaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+		Operator op = Operator::Invalid;
 	};
 
 	struct FunctionDecl;

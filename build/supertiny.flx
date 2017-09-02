@@ -20,12 +20,13 @@ fn foo(a: int)
 
 @entry fn main(argc: i32, argv: i8**) -> void
 {
-	var bar = 401
+	var bar = -(401 + 72) as f64
 	var fun: (int, int) -> void = foo
 
 	fun(30, 30)
 
-	printf(@c"%s, %d, %d, %.1f\n", @c"Hello, World", bar, 300 + 400, 1 - 4.5)
+	printf("bar = %.1f\n", bar)
+	printf(@c"%s, %d, not-bar = %f\n", @c"Hello, World", -34, 1.1 - 4.5)
 	printf("end\n")
 
 	foo(10)

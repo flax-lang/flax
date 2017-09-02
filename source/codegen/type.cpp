@@ -11,6 +11,34 @@
 
 namespace cgn
 {
+	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantValue* cv)
+	{
+		if(auto ci = dcast(fir::ConstantInt, cv))
+		{
+			iceAssert(ci->getType()->isConstantIntType() && "doesn't need unwrapping you dolt");
+			auto t = ci->getType();
+
+			if(t->isSignedIntType())
+				return fir::ConstantInt::getInt64(ci->getSignedValue());
+
+			else
+				return fir::ConstantInt::getUint64(ci->getUnsignedValue());
+		}
+		else if(auto cf = dcast(fir::ConstantFP, cv))
+		{
+			iceAssert(cf->getType()->isConstantFloatType() && "doesn't need unwrapping you dolt");
+			if(cf->getValue() > __DBL_MAX__)
+				return fir::ConstantFP::getFloat80(cf->getValue());
+
+			else
+				return fir::ConstantFP::getFloat64(cf->getValue());
+		}
+		else
+		{
+			error(this->loc(), "Unsupported constant value for unwrap");
+		}
+	}
+
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)
 	{
 		auto lt = lhs.value->getType();
@@ -140,33 +168,39 @@ namespace cgn
 					error(this->loc(), "Value with constant number type was not a constant value");
 
 				bool fits = false;
-				bool iss = lt->toPrimitiveType()->isSigned();
+				bool sgn = lt->toPrimitiveType()->isSigned();
 
 				if(rt == fir::Type::getFloat32())
-					fits = (iss ? ci->getSignedValue() : ci->getUnsignedValue()) <= __FLT_MAX__;
-
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __FLT_MAX__;
+					else	fits = ci->getUnsignedValue() <= __FLT_MAX__;
+				}
 				else if(rt == fir::Type::getFloat64())
-					fits = (iss ? ci->getSignedValue() : ci->getUnsignedValue()) <= __DBL_MAX__;
-
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __DBL_MAX__;
+					else	fits = ci->getUnsignedValue() <= __DBL_MAX__;
+				}
 				else if(rt == fir::Type::getFloat80())
-					fits = (iss ? ci->getSignedValue() : ci->getUnsignedValue()) <= __LDBL_MAX__;
-
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __LDBL_MAX__;
+					else	fits = ci->getUnsignedValue() <= __LDBL_MAX__;
+				}
 				else
+				{
 					fits = true;	// TODO: probably...
+				}
+
 
 				if(!fits)
 				{
 					error(this->loc(), "Integer literal '%s' cannot fit into type '%s'",
-						iss ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()));
+						sgn ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()));
 				}
 
 				// ok, it fits
 				// make a thing
-				if(iss)
-					return { CGResult(fir::ConstantFP::get(rt, (long double) ci->getSignedValue())), rhs };
-
-				else
-					return { CGResult(fir::ConstantFP::get(rt, (long double) ci->getUnsignedValue())), rhs };
+				if(sgn)	return { CGResult(fir::ConstantFP::get(rt, (long double) ci->getSignedValue())), rhs };
+				else	return { CGResult(fir::ConstantFP::get(rt, (long double) ci->getUnsignedValue())), rhs };
 			}
 
 			// else, no.
@@ -185,3 +219,11 @@ namespace cgn
 		return { CGResult(0), CGResult(0) };
 	}
 }
+
+
+
+
+
+
+
+

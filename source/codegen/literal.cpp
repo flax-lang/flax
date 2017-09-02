@@ -46,7 +46,7 @@ CGResult sst::LiteralInt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			error(this, "Non integer type ('%s') inferred for integer literal", infer->str());
 
 		bool fits = false;
-		if(this->type->toPrimitiveType()->isSigned())
+		if(this->type->isSignedIntType())
 			fits = fir::checkSignedIntLiteralFitsIntoType(infer->toPrimitiveType(), (ssize_t) this->number);
 
 		else
