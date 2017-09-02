@@ -8,26 +8,27 @@ namespace ast
 {
 	Stmt::~Stmt() { }
 	Expr::~Expr() { }
-	DeferredStmt::~DeferredStmt() { }
-	ImportStmt::~ImportStmt() { }
+	Ident::~Ident() { }
 	Block::~Block () { }
-	FuncDefn::~FuncDefn() { }
-	ForeignFuncDefn::~ForeignFuncDefn () { }
 	VarDefn::~VarDefn() { }
+	UnaryOp::~UnaryOp() { }
+	LitBool::~LitBool() { }
+	LitNull::~LitNull() { }
+	FuncDefn::~FuncDefn() { }
+	TypeExpr::~TypeExpr() { }
+	AssignOp::~AssignOp() { }
+	BinaryOp::~BinaryOp() { }
+	LitTuple::~LitTuple() { }
+	LitNumber::~LitNumber() { }
+	LitString::~LitString() { }
+	ImportStmt::~ImportStmt() { }
+	DotOperator::~DotOperator() { }
+	DeferredStmt::~DeferredStmt() { }
+	FunctionCall::~FunctionCall() { }
+	TopLevelBlock::~TopLevelBlock() { }
+	ForeignFuncDefn::~ForeignFuncDefn () { }
 	TupleDecompVarDefn::~TupleDecompVarDefn() { }
 	ArrayDecompVarDefn::~ArrayDecompVarDefn() { }
-	TypeExpr::~TypeExpr() { }
-	Ident::~Ident() { }
-	BinaryOp::~BinaryOp() { }
-	UnaryOp::~UnaryOp() { }
-	FunctionCall::~FunctionCall() { }
-	DotOperator::~DotOperator() { }
-	LitNumber::~LitNumber() { }
-	LitBool::~LitBool() { }
-	LitString::~LitString() { }
-	LitNull::~LitNull() { }
-	LitTuple::~LitTuple() { }
-	TopLevelBlock::~TopLevelBlock() { }
 }
 
 

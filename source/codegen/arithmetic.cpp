@@ -7,6 +7,86 @@
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
+
+bool isBitwiseOp(Operator op)
+{
+	switch(op)
+	{
+		case Operator::Modulo:
+		case Operator::BitwiseOr:
+		case Operator::BitwiseAnd:
+		case Operator::BitwiseXor:
+		case Operator::ShiftLeft:
+		case Operator::ShiftRight:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+bool isAssignOp(Operator op)
+{
+	switch(op)
+	{
+		case Operator::Assign:
+		case Operator::PlusEquals:
+		case Operator::MinusEquals:
+		case Operator::MultiplyEquals:
+		case Operator::DivideEquals:
+		case Operator::ModuloEquals:
+		case Operator::ShiftLeftEquals:
+		case Operator::ShiftRightEquals:
+		case Operator::BitwiseAndEquals:
+		case Operator::BitwiseOrEquals:
+		case Operator::BitwiseXorEquals:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+bool isCompareOp(Operator op)
+{
+	switch(op)
+	{
+		case Operator::CompareEq:
+		case Operator::CompareNotEq:
+		case Operator::CompareGreater:
+		case Operator::CompareGreaterEq:
+		case Operator::CompareLess:
+		case Operator::CompareLessEq:
+			return true;
+
+		default:
+			return false;
+	}
+}
+
+
+Operator getNonAssignOp(Operator op)
+{
+	switch(op)
+	{
+		case Operator::PlusEquals:			return Operator::Add;
+		case Operator::MinusEquals:			return Operator::Subtract;
+		case Operator::MultiplyEquals:		return Operator::Multiply;
+		case Operator::DivideEquals:		return Operator::Divide;
+		case Operator::ModuloEquals:		return Operator::Modulo;
+		case Operator::ShiftLeftEquals:		return Operator::ShiftLeft;
+		case Operator::ShiftRightEquals:	return Operator::ShiftRight;
+		case Operator::BitwiseAndEquals:	return Operator::BitwiseAnd;
+		case Operator::BitwiseOrEquals:		return Operator::BitwiseOr;
+		case Operator::BitwiseXorEquals:	return Operator::BitwiseXor;
+
+		default:
+			error("no");
+	}
+}
+
+
+
 namespace sst
 {
 	template <typename T>
@@ -60,61 +140,6 @@ namespace sst
 		}
 	}
 
-	static bool isBitwiseOp(Operator op)
-	{
-		switch(op)
-		{
-			case Operator::Modulo:
-			case Operator::BitwiseOr:
-			case Operator::BitwiseAnd:
-			case Operator::BitwiseXor:
-			case Operator::ShiftLeft:
-			case Operator::ShiftRight:
-				return true;
-
-			default:
-				return false;
-		}
-	}
-
-	static bool isAssignOp(Operator op)
-	{
-		switch(op)
-		{
-			case Operator::Assign:
-			case Operator::PlusEquals:
-			case Operator::MinusEquals:
-			case Operator::MultiplyEquals:
-			case Operator::DivideEquals:
-			case Operator::ModuloEquals:
-			case Operator::ShiftLeftEquals:
-			case Operator::ShiftRightEquals:
-			case Operator::BitwiseAndEquals:
-			case Operator::BitwiseOrEquals:
-			case Operator::BitwiseXorEquals:
-				return true;
-
-			default:
-				return false;
-		}
-	}
-
-	static bool isCompareOp(Operator op)
-	{
-		switch(op)
-		{
-			case Operator::CompareEq:
-			case Operator::CompareNotEq:
-			case Operator::CompareGreater:
-			case Operator::CompareGreaterEq:
-			case Operator::CompareLess:
-			case Operator::CompareLessEq:
-				return true;
-
-			default:
-				return false;
-		}
-	}
 
 
 
@@ -123,6 +148,8 @@ namespace sst
 
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
+		iceAssert(!isAssignOp(this->op));
+
 		// TODO: figure out a better way
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
@@ -170,8 +197,17 @@ namespace sst
 			return CGResult(res);
 		}
 
+		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
+		if(!l.value || !r.value)
+		{
+			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType()->str(),
+				_rr.value->getType()->str());
+		}
 
-		if(isAssignOp(this->op) || this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
+		auto lt = l.value->getType();
+		auto rt = r.value->getType();
+
+		if(this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
 		{
 			error("not supported");
 		}
@@ -182,53 +218,6 @@ namespace sst
 		{
 			error("not supported");
 		}
-
-
-
-		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
-		auto lt = l.value->getType();
-		auto rt = r.value->getType();
-
-		if(!l.value || !r.value)
-		{
-			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType()->str(),
-				_rr.value->getType()->str());
-		}
-
-
-
-		if(isCompareOp(this->op))
-		{
-			// do comparison
-			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
-			{
-				switch(this->op)
-				{
-					case Operator::CompareEq:			return CGResult(cs->irb.CreateICmpEQ(l.value, r.value));
-					case Operator::CompareNotEq:		return CGResult(cs->irb.CreateICmpNEQ(l.value, r.value));
-					case Operator::CompareGreater:		return CGResult(cs->irb.CreateICmpGT(l.value, r.value));
-					case Operator::CompareGreaterEq:	return CGResult(cs->irb.CreateICmpGEQ(l.value, r.value));
-					case Operator::CompareLess:			return CGResult(cs->irb.CreateICmpLT(l.value, r.value));
-					case Operator::CompareLessEq:		return CGResult(cs->irb.CreateICmpLEQ(l.value, r.value));
-					default: iceAssert(0);
-				}
-			}
-			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
-			{
-				switch(this->op)
-				{
-					case Operator::CompareEq:			return CGResult(cs->irb.CreateFCmpEQ_ORD(l.value, r.value));
-					case Operator::CompareNotEq:		return CGResult(cs->irb.CreateFCmpNEQ_ORD(l.value, r.value));
-					case Operator::CompareGreater:		return CGResult(cs->irb.CreateFCmpGT_ORD(l.value, r.value));
-					case Operator::CompareGreaterEq:	return CGResult(cs->irb.CreateFCmpGEQ_ORD(l.value, r.value));
-					case Operator::CompareLess:			return CGResult(cs->irb.CreateFCmpLT_ORD(l.value, r.value));
-					case Operator::CompareLessEq:		return CGResult(cs->irb.CreateFCmpLEQ_ORD(l.value, r.value));
-					default: iceAssert(0);
-				}
-			}
-		}
-
-
 
 
 		// circumvent the '1 + 2 + 3'-expression-has-no-type issue by just computing whatever
@@ -312,15 +301,10 @@ namespace sst
 				error(this, "how?");
 			}
 		}
-
-
-		if(lt->isPrimitiveType() && rt->isPrimitiveType())
-			return CGResult(cs->irb.CreateBinaryOp(this->op, l.value, r.value));
-
 		else
-			error(this, "not supported");
-
-		return CGResult(0);
+		{
+			return cs->performBinaryOperation(this->loc, { this->left->loc, l }, { this->right->loc, r }, this->op);
+		}
 	}
 
 
@@ -341,11 +325,11 @@ namespace sst
 				if(auto c = dcast(fir::ConstantInt, val))
 				{
 					bool b = c->getSignedValue();
-					return fir::ConstantInt::getBool(!b);
+					return CGResult(fir::ConstantInt::getBool(!b));
 				}
 				else
 				{
-					return cs->irb.CreateLogicalNot(val);
+					return CGResult(cs->irb.CreateLogicalNot(val));
 				}
 			} break;
 
@@ -357,15 +341,15 @@ namespace sst
 				if(auto ci = dcast(fir::ConstantInt, val))
 				{
 					iceAssert(ci->getType()->isSignedIntType());
-					return fir::ConstantInt::get(ci->getType(), -1 * ci->getSignedValue());
+					return CGResult(fir::ConstantInt::get(ci->getType(), -1 * ci->getSignedValue()));
 				}
 				else if(auto cf = dcast(fir::ConstantFP, val))
 				{
-					return fir::ConstantFP::get(cf->getType(), -1 * cf->getValue());
+					return CGResult(fir::ConstantFP::get(cf->getType(), -1 * cf->getValue()));
 				}
 				else
 				{
-					return cs->irb.CreateNeg(val);
+					return CGResult(cs->irb.CreateNeg(val));
 				}
 			} break;
 
@@ -373,24 +357,24 @@ namespace sst
 				iceAssert(ty->isIntegerType() && !ty->isSignedIntType());
 				if(auto ci = dcast(fir::ConstantInt, val))
 				{
-					return fir::ConstantInt::get(ci->getType(), ~(ci->getUnsignedValue()));
+					return CGResult(fir::ConstantInt::get(ci->getType(), ~(ci->getUnsignedValue())));
 				}
 				else
 				{
-					return cs->irb.CreateBitwiseNOT(val);
+					return CGResult(cs->irb.CreateBitwiseNOT(val));
 				}
 			} break;
 
 			case Operator::Dereference: {
 				iceAssert(ty->isPointerType());
-				return cs->irb.CreateLoad(val);
+				return CGResult(cs->irb.CreateLoad(val), val, CGResult::VK::LValue);
 			} break;
 
 			case Operator::AddressOf: {
 				if(!ex.pointer || ex.kind != CGResult::VK::LValue)
 					error(this, "Cannot take address of an rvalue");
 
-				return ex.pointer;
+				return CGResult(ex.pointer);
 			} break;
 
 			default:
@@ -401,6 +385,61 @@ namespace sst
 
 
 
+namespace cgn
+{
+	CGResult CodegenState::performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs,
+		std::pair<Location, CGResult> rhs, Operator op)
+	{
+		auto l = lhs.second;
+		auto r = rhs.second;
+
+		auto lt = l.value->getType();
+		auto rt = r.value->getType();
+
+		if(isCompareOp(op))
+		{
+			// do comparison
+			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
+			{
+				switch(op)
+				{
+					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(l.value, r.value));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(l.value, r.value));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(l.value, r.value));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(l.value, r.value));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(l.value, r.value));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(l.value, r.value));
+					default: error("no");
+				}
+			}
+			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
+			{
+				switch(op)
+				{
+					case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(l.value, r.value));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(l.value, r.value));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(l.value, r.value));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(l.value, r.value));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(l.value, r.value));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(l.value, r.value));
+					default: error("no");
+				}
+			}
+			else
+			{
+				error("??");
+			}
+		}
+		else
+		{
+			if(lt->isPrimitiveType() && rt->isPrimitiveType())
+				return CGResult(this->irb.CreateBinaryOp(op, l.value, r.value));
+
+			else
+				error(loc, "not supported");
+		}
+	}
+}
 
 
 

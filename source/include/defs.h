@@ -357,6 +357,13 @@ enum class Operator
 
 std::string operatorToString(const Operator& op);
 
+bool isAssignOp(Operator op);
+bool isBitwiseOp(Operator op);
+bool isCompareOp(Operator op);
+Operator getNonAssignOp(Operator op);
+
+
+
 template <typename... Ts>
 std::string strprintf(const char* fmt, Ts... ts)
 {

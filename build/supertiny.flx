@@ -22,6 +22,8 @@ fn foo(a: int)
 {
 	var bar = -(401 + 72) as f64
 	var qux = 30
+	qux += 40
+
 	var fun: (int, int) -> void = foo
 
 	fun(30, 30)

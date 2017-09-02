@@ -106,6 +106,20 @@ namespace sst
 		Operator op = Operator::Invalid;
 	};
 
+	struct AssignOp : Expr
+	{
+		AssignOp(const Location& l) : Expr(l) { }
+		~AssignOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Operator op = Operator::Invalid;
+
+		Expr* left = 0;
+		Expr* right = 0;
+	};
+
+
 	struct FunctionDecl;
 	struct FunctionCall : Expr
 	{

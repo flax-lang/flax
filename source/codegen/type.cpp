@@ -39,6 +39,127 @@ namespace cgn
 		}
 	}
 
+
+	// TODO: maybe merge/refactor this and the two-way autocast into one function,
+	// there's a bunch of duplication here
+	CGResult CodegenState::oneWayAutocast(const CGResult& from, fir::Type* target)
+	{
+		auto fromType = from.value->getType();
+		if(fromType == target) return from;
+
+		if(fromType->isIntegerType() && target->isIntegerType())
+		{
+			if(fromType->isConstantIntType() && !target->isConstantIntType())
+			{
+				// make the right side the same as the left side
+				auto ci = dcast(fir::ConstantInt, from.value);
+				if(!ci)
+					error(this->loc(), "Value with constant number type was not a constant value");
+
+				bool fits = false;
+				bool sgn = fromType->toPrimitiveType()->isSigned();
+
+				if(sgn)	fits = fir::checkSignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getSignedValue());
+				else	fits = fir::checkUnsignedIntLiteralFitsIntoType(target->toPrimitiveType(), ci->getUnsignedValue());
+
+				if(!fits)
+				{
+					warn(this->loc(), "Integer literal '%s' cannot fit into type '%s'",
+						sgn ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()), target->str());
+				}
+
+				// ok, it fits
+				// make a thing
+				if(sgn)	return CGResult(fir::ConstantInt::get(target, ci->getSignedValue()));
+				else	return CGResult(fir::ConstantInt::get(target, ci->getUnsignedValue()));
+			}
+			// only autoconvert if they're the same signedness
+			else if(fromType->isSignedIntType() == target->isSignedIntType() && target->getBitWidth() >= fromType->getBitWidth())
+			{
+				return CGResult(this->irb.CreateIntSizeCast(from.value, target));
+			}
+		}
+		else if(fromType->isFloatingPointType() && target->isFloatingPointType())
+		{
+			if(fromType->isConstantFloatType() && !target->isConstantFloatType())
+			{
+				// make the left side the same as the right side
+				auto ci = dcast(fir::ConstantFP, from.value);
+				if(!ci)
+					error(this->loc(), "Value with constant number type was not a constant value");
+
+				bool fits = fir::checkFloatingPointLiteralFitsIntoType(target->toPrimitiveType(), ci->getValue());
+
+				if(!fits)
+				{
+					error(this->loc(), "Floating point literal '%s' cannot fit into type '%s'", std::to_string(ci->getValue()),
+						target->str());
+				}
+
+				// ok, it fits
+				// make a thing
+				return CGResult(fir::ConstantFP::get(target, ci->getValue()));
+			}
+			else if(target->getBitWidth() >= fromType->getBitWidth())
+			{
+				return CGResult(this->irb.CreateFExtend(from.value, target));
+			}
+		}
+		else if(fromType->isIntegerType() && target->isFloatingPointType())
+		{
+			// only if the integer is a constant
+			if(fromType->isConstantIntType())
+			{
+				// make the left side the same as the right side
+				auto ci = dcast(fir::ConstantInt, from.value);
+				if(!ci)
+					error(this->loc(), "Value with constant number type was not a constant value");
+
+				bool fits = false;
+				bool sgn = fromType->toPrimitiveType()->isSigned();
+
+				if(target == fir::Type::getFloat32())
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __FLT_MAX__;
+					else	fits = ci->getUnsignedValue() <= __FLT_MAX__;
+				}
+				else if(target == fir::Type::getFloat64())
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __DBL_MAX__;
+					else	fits = ci->getUnsignedValue() <= __DBL_MAX__;
+				}
+				else if(target == fir::Type::getFloat80())
+				{
+					if(sgn)	fits = ci->getSignedValue() <= __LDBL_MAX__;
+					else	fits = ci->getUnsignedValue() <= __LDBL_MAX__;
+				}
+				else
+				{
+					fits = true;	// TODO: probably...
+				}
+
+
+				if(!fits)
+				{
+					error(this->loc(), "Integer literal '%s' cannot fit into type '%s'",
+						sgn ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()), target->str());
+				}
+
+				// ok, it fits
+				// make a thing
+				if(sgn)	return CGResult(fir::ConstantFP::get(target, (long double) ci->getSignedValue()));
+				else	return CGResult(fir::ConstantFP::get(target, (long double) ci->getUnsignedValue()));
+			}
+
+			// else, no.
+			// this lets us pass literals into functions taking floats without explicitly
+			// (and annoyingly) specifying '1.0', while preserving some type sanity
+		}
+
+		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType->str(), target->str());
+		return CGResult(0);
+	}
+
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)
 	{
 		auto lt = lhs.value->getType();
@@ -66,7 +187,7 @@ namespace cgn
 				if(!fits)
 				{
 					error(this->loc(), "Integer literal '%s' cannot fit into type '%s'",
-						issigned ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()));
+						issigned ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()), rt->str());
 				}
 
 				// ok, it fits
@@ -88,7 +209,8 @@ namespace cgn
 				// do nothing, because we can't really do anything at this point
 				return { lhs, rhs };
 			}
-			else
+			// only autoconvert if they're the same signedness
+			else if(lt->isSignedIntType() == rt->isSignedIntType())
 			{
 				// ok, neither are constants
 				// do the normal thing
@@ -120,7 +242,7 @@ namespace cgn
 				bool fits = fir::checkFloatingPointLiteralFitsIntoType(rt->toPrimitiveType(), ci->getValue());
 
 				if(!fits)
-					error(this->loc(), "Floating point literal '%s' cannot fit into type '%s'", std::to_string(ci->getValue()));
+					error(this->loc(), "Floating point literal '%s' cannot fit into type '%s'", std::to_string(ci->getValue()), rt->str());
 
 				// ok, it fits
 				// make a thing
@@ -194,7 +316,7 @@ namespace cgn
 				if(!fits)
 				{
 					error(this->loc(), "Integer literal '%s' cannot fit into type '%s'",
-						sgn ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()));
+						sgn ? std::to_string(ci->getSignedValue()) : std::to_string(ci->getUnsignedValue()), rt->str());
 				}
 
 				// ok, it fits
