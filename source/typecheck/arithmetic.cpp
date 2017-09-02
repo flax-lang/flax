@@ -90,9 +90,8 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			}
 		} break;
 
-
 		default:
-			error("not supported");
+			error("op '%s' not supported", operatorToString(op));
 	}
 
 	return 0;
@@ -102,6 +101,8 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 
 sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
+	iceAssert(!isAssignOp(this->op));
+
 	// TODO: infer the types properly for literal numbers
 	// this has always been a thorn, dammit
 
