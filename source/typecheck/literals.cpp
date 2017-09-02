@@ -30,12 +30,28 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 	{
 		auto ret = new sst::LiteralInt(this->loc);
 		if(this->num.find('-') != std::string::npos)
-		 	ret->number = -1 * std::stoll(this->num), ret->negative = true, ret->type = fir::PrimitiveType::getConstantSignedInt();
+		{
+			ret->negative = true;
+		 	ret->number = std::stoll(this->num);
+		 	ret->type = fir::PrimitiveType::getConstantSignedInt();
+		}
+		else
+		{
+			ret->negative = false;
 
-		 else
-		 	ret->number = std::stoull(this->num), ret->negative = false, ret->type = fir::PrimitiveType::getConstantUnsignedInt();
+			try
+			{
+				ret->number = std::stoll(this->num);
+				ret->type = fir::PrimitiveType::getConstantSignedInt();
+			}
+			catch(std::out_of_range& e)
+			{
+				ret->number = std::stoull(this->num);
+				ret->type = fir::PrimitiveType::getConstantUnsignedInt();
+			}
+		}
 
-		 return ret;
+		return ret;
 	}
 }
 

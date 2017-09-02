@@ -182,27 +182,20 @@ namespace sst
 
 
 
+sst::Stmt* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
+{
+	auto ret = new sst::TypeExpr(this->loc);
+	ret->type = fs->convertParserTypeToFIR(this->type);
+
+	return ret;
+}
+
 sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 {
 	// nothing to check??
 	unexpected(this->loc, "import statement");
 }
 
-sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	auto ret = new sst::Block(this->loc);
-
-	for(auto stmt : this->statements)
-		ret->statements.push_back(stmt->typecheck(fs));
-
-	for(auto dstmt : this->deferredStatements)
-		ret->deferred.push_back(dstmt->typecheck(fs));
-
-	return ret;
-}
 
 sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
@@ -212,11 +205,6 @@ sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
-}
-
-sst::Stmt* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
-{
-	error(this->loc, "??? no way man");
 }
 
 sst::Stmt* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)

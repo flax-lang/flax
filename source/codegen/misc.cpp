@@ -77,7 +77,10 @@ namespace cgn
 
 
 
-
+CGResult sst::TypeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	return CGResult(fir::ConstantValue::getZeroValue(this->type));
+}
 
 
 

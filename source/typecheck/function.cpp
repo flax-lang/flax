@@ -160,6 +160,21 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 
 
+sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto ret = new sst::Block(this->loc);
+
+	for(auto stmt : this->statements)
+		ret->statements.push_back(stmt->typecheck(fs));
+
+	for(auto dstmt : this->deferredStatements)
+		ret->deferred.push_back(dstmt->typecheck(fs));
+
+	return ret;
+}
 
 
 

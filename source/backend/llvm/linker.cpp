@@ -169,7 +169,8 @@ namespace backend
 	void LLVMBackend::writeOutput()
 	{
 		// if(Compiler::getDumpLlvm())
-		// this->linkedModule->dump();
+		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
+		this->linkedModule->dump();
 
 		// verify the module.
 		{

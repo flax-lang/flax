@@ -691,7 +691,11 @@ namespace fir
 		// make constant result for constant operand
 		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
 		{
-			return ConstantInt::get(targetType, ci->getType()->isSignedIntType() ? ci->getSignedValue() : ci->getUnsignedValue());
+			if(ci->getType()->isSignedIntType())
+				return ConstantInt::get(targetType, ci->getSignedValue());
+
+			else
+				return ConstantInt::get(targetType, ci->getUnsignedValue());
 		}
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
@@ -730,22 +734,30 @@ namespace fir
 		// make constant result for constant operand
 		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
 		{
+			ConstantFP* ret = 0;
+			bool sgn = ci->getType()->isSignedIntType();
 			if(targetType == fir::Type::getFloat32())
 			{
-				return ConstantFP::getFloat32((float) ci->getType()->isSignedIntType() ? ci->getSignedValue()
-					: ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat32((float) ci->getSignedValue());
+				else	ret = ConstantFP::getFloat32((float) ci->getUnsignedValue());
 			}
 			else if(targetType == fir::Type::getFloat64())
 			{
-				return ConstantFP::getFloat64((double) ci->getType()->isSignedIntType() ? ci->getSignedValue()
-					: ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat64((double) ci->getSignedValue());
+				else	ret = ConstantFP::getFloat64((double) ci->getUnsignedValue());
+			}
+			else if(targetType == fir::Type::getFloat80())
+			{
+				if(sgn)	ret = ConstantFP::getFloat80((long double) ci->getSignedValue());
+				else	ret = ConstantFP::getFloat80((long double) ci->getUnsignedValue());
 			}
 			else
 			{
 				error("Unknown floating point type '%s'", targetType->str().c_str());
 			}
-		}
 
+			return ret;
+		}
 
 		Instruction* instr = new Instruction(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
@@ -804,6 +816,41 @@ namespace fir
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
+
+
+
+
+
+	Value* IRBuilder::CreateAppropriateCast(Value* v, Type* r, std::string vname)
+	{
+		auto l = v->getType();
+
+		if(l->isIntegerType() && r->isIntegerType())
+			return this->CreateIntSizeCast(v, r);
+
+		else if(l->isFloatingPointType() && r->isFloatingPointType())
+			return (l->getBitWidth() > r->getBitWidth() ? this->CreateFTruncate(v, r) : this->CreateFExtend(v, r));
+
+		else if(l->isIntegerType() && r->isFloatingPointType())
+			return this->CreateIntToFloatCast(v, r);
+
+		else if(l->isFloatingPointType() && r->isIntegerType())
+			return this->CreateFloatToIntCast(v, r);
+
+		else if(l->isIntegerType() && r->isPointerType())
+			return this->CreateIntToPointerCast(v, r);
+
+		else if(l->isPointerType() && r->isIntegerType())
+			return this->CreatePointerToIntCast(v, r);
+
+		else if(l->isPointerType() && r->isPointerType())
+			return this->CreatePointerTypeCast(v, r);
+
+		// nope.
+		return 0;
+	}
+
+
 
 
 

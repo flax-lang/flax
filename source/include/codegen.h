@@ -60,6 +60,7 @@ namespace cgn
 		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
 
 		fir::Value* getDefaultValue(fir::Type* type);
+		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);
