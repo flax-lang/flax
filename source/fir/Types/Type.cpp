@@ -75,14 +75,6 @@ namespace fir
 		tc->voidType = new VoidType();
 		tc->nullType = new NullType();
 
-		tc->constantSIntType = new PrimitiveType(0, PrimitiveType::Kind::ConstantInt);
-		tc->constantSIntType->isTypeSigned = true;
-
-		tc->constantUIntType = new PrimitiveType(0, PrimitiveType::Kind::ConstantInt);
-		tc->constantUIntType->isTypeSigned = false;
-
-		tc->constantFloatType = new PrimitiveType(0, PrimitiveType::Kind::ConstantFloat);
-
 		// bool
 		{
 			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
@@ -525,6 +517,14 @@ namespace fir
 		return t;
 	}
 
+	ConstantNumberType* Type::toConstantNumberType()
+	{
+		auto t = dynamic_cast<ConstantNumberType*>(this);
+		if(t == 0) error("not constant number type");
+		return t;
+	}
+
+
 	size_t Type::getBitWidth()
 	{
 		if(this->isIntegerType())
@@ -551,24 +551,9 @@ namespace fir
 
 
 
-
-
-	bool Type::isConstantIntType()
-	{
-		auto cn = dynamic_cast<PrimitiveType*>(this);
-		return cn && cn->primKind == PrimitiveType::Kind::ConstantInt;
-	}
-
-	bool Type::isConstantFloatType()
-	{
-		auto cn = dynamic_cast<PrimitiveType*>(this);
-		return cn && cn->primKind == PrimitiveType::Kind::ConstantFloat;
-	}
-
 	bool Type::isConstantNumberType()
 	{
-		auto cn = dynamic_cast<PrimitiveType*>(this);
-		return cn && (cn->primKind == PrimitiveType::Kind::ConstantFloat || cn->primKind == PrimitiveType::Kind::ConstantInt);
+		return dynamic_cast<ConstantNumberType*>(this) != 0;
 	}
 
 	bool Type::isStructType()
@@ -600,19 +585,19 @@ namespace fir
 	bool Type::isFloatingPointType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && (t->primKind == PrimitiveType::Kind::Floating || t->primKind == PrimitiveType::Kind::ConstantFloat);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Floating;
 	}
 
 	bool Type::isIntegerType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && (t->primKind == PrimitiveType::Kind::Integer || t->primKind == PrimitiveType::Kind::ConstantInt);
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer;
 	}
 
 	bool Type::isSignedIntType()
 	{
 		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && (t->primKind == PrimitiveType::Kind::Integer || t->primKind == PrimitiveType::Kind::ConstantInt) && t->isSigned();
+		return t != 0 && t->primKind == PrimitiveType::Kind::Integer && t->isSigned();
 	}
 
 	bool Type::isFunctionType()
@@ -695,8 +680,7 @@ namespace fir
 
 
 
-	// static conv. functions
-
+	// static getting functions
 	VoidType* Type::getVoid(FTContext* tc)
 	{
 		return VoidType::get(tc);
@@ -858,6 +842,10 @@ namespace fir
 		return AnyType::get(tc);
 	}
 
+	ConstantNumberType* Type::getConstantNumber(mpfr::mpreal n, FTContext* tc)
+	{
+		return ConstantNumberType::get(n, tc);
+	}
 
 
 

@@ -30,9 +30,8 @@ namespace fir
 	struct FunctionType;
 	struct PrimitiveType;
 	struct ArraySliceType;
-	struct UnicodeCharType;
 	struct DynamicArrayType;
-	struct UnicodeStringType;
+	struct ConstantNumberType;
 
 	struct ConstantValue;
 	struct ConstantArray;
@@ -50,11 +49,6 @@ namespace fir
 
 		// special thing #2
 		NullType* nullType = 0;
-
-		// special things #3, #4, and #5
-		PrimitiveType* constantSIntType = 0;
-		PrimitiveType* constantUIntType = 0;
-		PrimitiveType* constantFloatType = 0;
 
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
@@ -97,7 +91,7 @@ namespace fir
 		Type* getPointerTo(FTContext* tc = 0);
 		Type* getPointerElementType(FTContext* tc = 0);
 
-
+		ConstantNumberType* toConstantNumberType();
 		DynamicArrayType* toDynamicArrayType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
@@ -145,8 +139,6 @@ namespace fir
 		bool isVoidType();
 		bool isNullType();
 
-		bool isConstantIntType();
-		bool isConstantFloatType();
 		bool isConstantNumberType();
 
 		size_t getBitWidth();
@@ -161,6 +153,8 @@ namespace fir
 		static NullType* getNull(FTContext* tc = 0);
 
 		static Type* getVoidPtr(FTContext* tc = 0);
+
+		static ConstantNumberType* getConstantNumber(mpfr::mpreal n, FTContext* tc = 0);
 
 		static PrimitiveType* getBool(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
@@ -277,6 +271,27 @@ namespace fir
 		static NullType* get(FTContext* tc = 0);
 	};
 
+	// special case -- the type also needs to store the number, to know things like
+	// whether it's signed, negative, an integer, and other stuff.
+	struct ConstantNumberType : Type
+	{
+		friend struct Type;
+		friend struct FTContext;
+		friend FTContext* createFTContext();
+
+		mpfr::mpreal getValue();
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		static ConstantNumberType* get(mpfr::mpreal num, FTContext* tc = 0);
+
+		protected:
+		ConstantNumberType(mpfr::mpreal n);
+		mpfr::mpreal number;
+	};
+
 	struct PrimitiveType : Type
 	{
 		friend struct Type;
@@ -301,8 +316,6 @@ namespace fir
 
 			Integer,
 			Floating,
-			ConstantInt,
-			ConstantFloat,
 		};
 
 
@@ -326,9 +339,6 @@ namespace fir
 
 
 		public:
-		static PrimitiveType* getConstantSignedInt(FTContext* tc = 0);
-		static PrimitiveType* getConstantUnsignedInt(FTContext* tc = 0);
-		static PrimitiveType* getConstantFloat(FTContext* tc = 0);
 
 		static PrimitiveType* getIntN(size_t bits, FTContext* tc = 0);
 		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
