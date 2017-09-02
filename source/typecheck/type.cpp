@@ -18,11 +18,11 @@ namespace sst
 		if(auto il = dcast(sst::LiteralInt, lit))
 		{
 			// ok.
-			if(il->number > INT64_MAX)
-				return fir::Type::getUint64();
+			if(il->negative || il->number < INT64_MAX)
+				return fir::Type::getInt64();
 
 			else
-				return fir::Type::getInt64();
+				return fir::Type::getUint64();
 		}
 		else if(auto dl = dcast(sst::LiteralDec, lit))
 		{

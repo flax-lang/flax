@@ -7,33 +7,6 @@
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-static fir::Type* inferCorrectTypeForLiteral(cgn::CodegenState* cs, sst::Expr* lit)
-{
-	iceAssert(lit->type->isConstantNumberType());
-
-	if(auto il = dcast(sst::LiteralInt, lit))
-	{
-		// ok.
-		if(il->number > INT64_MAX)
-			return fir::Type::getUint64();
-
-		else
-			return fir::Type::getInt64();
-	}
-	else if(auto dl = dcast(sst::LiteralDec, lit))
-	{
-		return fir::Type::getFloat64();
-	}
-	else
-	{
-		if(lit->type->isIntegerType())
-			return fir::Type::getInt64();
-
-		else
-			return fir::Type::getFloat64();
-	}
-}
-
 CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -84,10 +57,17 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(i < numArgs)
 			inf = ft->getArgumentN(i);
 
-		else if(arg->type->isConstantNumberType())
-			inf = inferCorrectTypeForLiteral(cs, arg);
-
 		auto val = arg->codegen(cs, inf).value;
+		if(val->getType()->isConstantNumberType())
+		{
+			auto cv = dcast(fir::ConstantValue, val);
+			iceAssert(cv);
+
+			val = cs->unwrapConstantNumber(cv);
+			if(auto cf = dcast(fir::ConstantFP, val))
+				warn(arg, "%f", cf->getValue());
+		}
+
 		if(i < numArgs && val->getType() != ft->getArgumentN(i))
 		{
 			error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",

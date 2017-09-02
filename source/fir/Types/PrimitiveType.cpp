@@ -264,7 +264,11 @@ namespace fir
 		}
 		else if(this->primKind == Kind::ConstantInt)
 		{
-			ret = "int";
+			if(this->isSigned())
+				ret = "int";
+
+			else
+				ret = "uint";
 		}
 		else if(this->primKind == Kind::ConstantFloat)
 		{

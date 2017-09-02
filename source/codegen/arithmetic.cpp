@@ -127,9 +127,51 @@ namespace sst
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
+		if(this->op == Operator::Cast)
+		{
+			auto val = _lr.value;
+			if(val->getType()->isConstantIntType())
+			{
+				auto ci = dcast(fir::ConstantInt, val);
+				iceAssert(ci);
 
-		if(isAssignOp(this->op) || this->op == Operator::Cast || this->op == Operator::LogicalAnd
-			|| this->op == Operator::LogicalNot || this->op == Operator::LogicalOr)
+				if(val->getType()->isSignedIntType())
+				{
+					val = fir::ConstantInt::getInt64(ci->getSignedValue());
+				}
+				else
+				{
+					size_t v = ci->getUnsignedValue();
+					if(v <= INT64_MAX)
+						val = fir::ConstantInt::getInt64(v);
+
+					else
+						val = fir::ConstantInt::getUint64(v);
+				}
+			}
+			else if(val->getType()->isConstantFloatType())
+			{
+				auto cf = dcast(fir::ConstantFP, val);
+				iceAssert(cf);
+
+				val = fir::ConstantFP::getFloat80(cf->getValue());
+			}
+
+
+			auto target = _rr.value->getType();
+			auto res = cs->irb.CreateAppropriateCast(val, target);
+
+			if(!res)
+			{
+				error(this, "No appropriate cast from type '%s' to '%s'; use 'as!' to force a bitcast",
+					val->getType()->str(), target->str());
+			}
+
+			return CGResult(res);
+		}
+
+
+		if(isAssignOp(this->op) || this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
 		{
 			error("not supported");
 		}
@@ -258,6 +300,7 @@ namespace sst
 					error(this, "Bitwise operations are not supported on floating-point types");
 
 				auto ret = doConstantFPThings(a, b, this->op);
+
 				auto t = inferred;
 				if(t && !t->isFloatingPointType())
 					error(this, "Inferred non floating-point type ('%s') for floating-point expression", t->str());
@@ -279,4 +322,104 @@ namespace sst
 
 		return CGResult(0);
 	}
+
+
+
+
+
+
+	CGResult UnaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
+	{
+		CGResult ex = this->expr->codegen(cs, inferred);
+		auto ty = ex.value->getType();
+		auto val = ex.value;
+
+		switch(this->op)
+		{
+			case Operator::LogicalNot: {
+				iceAssert(ty == fir::Type::getBool());
+				if(auto c = dcast(fir::ConstantInt, val))
+				{
+					bool b = c->getSignedValue();
+					return fir::ConstantInt::getBool(!b);
+				}
+				else
+				{
+					return cs->irb.CreateLogicalNot(val);
+				}
+			} break;
+
+			case Operator::Plus:
+				return ex;
+
+			case Operator::Minus: {
+				iceAssert(ty->isIntegerType() || ty->isFloatingPointType());
+				if(auto ci = dcast(fir::ConstantInt, val))
+				{
+					iceAssert(ci->getType()->isSignedIntType());
+					return fir::ConstantInt::get(ci->getType(), -1 * ci->getSignedValue());
+				}
+				else if(auto cf = dcast(fir::ConstantFP, val))
+				{
+					return fir::ConstantFP::get(cf->getType(), -1 * cf->getValue());
+				}
+				else
+				{
+					return cs->irb.CreateNeg(val);
+				}
+			} break;
+
+			case Operator::BitwiseNot: {
+				iceAssert(ty->isIntegerType() && !ty->isSignedIntType());
+				if(auto ci = dcast(fir::ConstantInt, val))
+				{
+					return fir::ConstantInt::get(ci->getType(), ~(ci->getUnsignedValue()));
+				}
+				else
+				{
+					return cs->irb.CreateBitwiseNOT(val);
+				}
+			} break;
+
+			case Operator::Dereference: {
+				iceAssert(ty->isPointerType());
+				return cs->irb.CreateLoad(val);
+			} break;
+
+			case Operator::AddressOf: {
+				if(!ex.pointer || ex.kind != CGResult::VK::LValue)
+					error(this, "Cannot dereference non lvalue");
+
+				return cs->irb.CreateLoad(ex.pointer);
+			} break;
+
+			default:
+				error(this, "not a unary op???");
+		}
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

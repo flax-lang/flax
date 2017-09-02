@@ -65,6 +65,8 @@ namespace fir
 		Value* CreateIntToPointerCast(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateIntSignednessCast(Value* v, Type* targetType, std::string vname = "");
 
+		Value* CreateAppropriateCast(Value* v, Type* targetType, std::string vname = "");
+
 		Value* CreateIntTruncate(Value* v, Type* targetType, std::string vname = "");
 		Value* CreateIntZeroExt(Value* v, Type* targetType, std::string vname = "");
 

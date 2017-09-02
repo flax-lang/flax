@@ -138,5 +138,72 @@ sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 sst::Stmt* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
-	return 0;
+	auto v = dcast(sst::Expr, this->expr->typecheck(fs, inferred));
+	if(!v) error(v, "Statement cannot be used as an expression");
+
+	auto t = v->type;
+	fir::Type* out = 0;
+	switch(this->op)
+	{
+		case Operator::LogicalNot: {
+			// check if we're convertible to bool
+			if(t != fir::Type::getBool())
+				error(this, "Invalid use of logical-not-operator '!' on non-boolean type '%s'", t->str());
+
+			out = fir::Type::getBool();
+		} break;
+
+		case Operator::Plus:
+		case Operator::Minus: {
+			if(!t->isIntegerType() && !t->isFloatingPointType())
+				error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t->str());
+
+			if(op == Operator::Minus && t->isIntegerType() && !t->isSignedIntType())
+				error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t->str());
+
+			out = t;
+		} break;
+
+		case Operator::BitwiseNot: {
+			if(!t->isIntegerType())
+				error(this, "Invalid use of bitwise not operator '~' on non-integer type '%s'", t->str());
+
+			if(t->isSignedIntType())
+				error(this, "Invalid use of bitwise not operator '~' on signed integer type '%s'", t->str());
+
+			out = t;
+		} break;
+
+		case Operator::Dereference: {
+			if(!t->isPointerType())
+				error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t->str());
+
+			out = t->getPointerElementType();
+		} break;
+
+		case Operator::AddressOf: {
+			out = t->getPointerTo();
+		} break;
+
+		default:
+			error(this, "not a unary op???");
+	}
+
+	auto ret = new sst::UnaryOp(this->loc);
+	ret->op = this->op;
+	ret->type = out;
+	ret->expr = v;
+
+	return ret;
 }
+
+
+
+
+
+
+
+
+
+
+
