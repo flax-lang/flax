@@ -76,31 +76,6 @@ namespace fir
 		return 0;
 	}
 
-	PrimitiveType* PrimitiveType::getConstantSignedInt(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->constantSIntType;
-	}
-
-	PrimitiveType* PrimitiveType::getConstantUnsignedInt(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->constantUIntType;
-	}
-
-	PrimitiveType* PrimitiveType::getConstantFloat(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->constantFloatType;
-	}
-
-
 	PrimitiveType* PrimitiveType::getIntN(size_t bits, FTContext* tc)
 	{
 		return PrimitiveType::getIntWithBitWidthAndSignage(tc, bits, true);
@@ -262,21 +237,9 @@ namespace fir
 		{
 			ret = "f" + std::to_string(this->getFloatingPointBitWidth());
 		}
-		else if(this->primKind == Kind::ConstantInt)
-		{
-			if(this->isSigned())
-				ret = "int";
-
-			else
-				ret = "uint";
-		}
-		else if(this->primKind == Kind::ConstantFloat)
-		{
-			ret = "float";
-		}
 		else
 		{
-			ret = "??";
+			iceAssert(0);
 		}
 
 		return ret;
@@ -304,7 +267,7 @@ namespace fir
 
 	bool PrimitiveType::isSigned()
 	{
-		iceAssert((this->primKind == Kind::Integer || this->primKind == Kind::ConstantInt) && "not integer type");
+		iceAssert(this->primKind == Kind::Integer && "not integer type");
 		return this->isTypeSigned;
 	}
 

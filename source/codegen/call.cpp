@@ -64,8 +64,6 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(cv);
 
 			val = cs->unwrapConstantNumber(cv);
-			if(auto cf = dcast(fir::ConstantFP, val))
-				warn(arg, "%f", cf->getValue());
 		}
 
 		if(i < numArgs && val->getType() != ft->getArgumentN(i))

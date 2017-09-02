@@ -16,9 +16,7 @@ namespace fir
 	struct Value;
 	struct ConstantValue;
 
-	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
-	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
-	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val);
+	bool checkLiteralFitsIntoType(fir::PrimitiveType* type, mpfr::mpreal num);
 
 	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type);
 
@@ -36,6 +34,18 @@ namespace fir
 
 		protected:
 		ConstantValue(Type* type);
+	};
+
+	struct ConstantNumber : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantNumber* get(mpfr::mpreal n);
+		mpfr::mpreal getValue();
+
+		protected:
+		ConstantNumber(mpfr::mpreal n);
+		mpfr::mpreal number;
 	};
 
 	struct ConstantInt : ConstantValue

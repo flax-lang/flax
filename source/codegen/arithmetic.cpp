@@ -89,6 +89,28 @@ Operator getNonAssignOp(Operator op)
 
 namespace sst
 {
+	bool constable(Operator op)
+	{
+		switch(op)
+		{
+			case Operator::Add:
+			case Operator::Subtract:
+			case Operator::Multiply:
+			case Operator::Divide:
+			case Operator::CompareEq:
+			case Operator::CompareNotEq:
+			case Operator::CompareGreater:
+			case Operator::CompareGreaterEq:
+			case Operator::CompareLess:
+			case Operator::CompareLessEq:
+			case Operator::Modulo:
+				return true;
+
+			default:
+				return false;
+		}
+	}
+
 	template <typename T>
 	static T doConstantThings(T l, T r, Operator op)
 	{
@@ -106,96 +128,47 @@ namespace sst
 			case Operator::CompareLess:			return l < r;
 			case Operator::CompareLessEq:		return l <= r;
 
-			case Operator::Modulo:				return l % r;
-			case Operator::BitwiseOr:			return l | r;
-			case Operator::BitwiseAnd:			return l & r;
-			case Operator::BitwiseXor:			return l ^ r;
-			case Operator::ShiftLeft:			return l << r;
-			case Operator::ShiftRight:			return l >> r;
-
 			default:
 				error("not supported in const op");
 		}
 	}
-
-	template <typename T>
-	static T doConstantFPThings(T l, T r, Operator op)
-	{
-		switch(op)
-		{
-			case Operator::Invalid:				error("invalid op");
-			case Operator::Add:					return l + r;
-			case Operator::Subtract:			return l - r;
-			case Operator::Multiply:			return l * r;
-			case Operator::Divide:				return l / r;
-			case Operator::CompareEq:			return l == r;
-			case Operator::CompareNotEq:		return l != r;
-			case Operator::CompareGreater:		return l > r;
-			case Operator::CompareGreaterEq:	return l >= r;
-			case Operator::CompareLess:			return l < r;
-			case Operator::CompareLessEq:		return l <= r;
-
-			default:
-				error("not supported in const op");
-		}
-	}
-
-
-
-
-
 
 
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
 		iceAssert(!isAssignOp(this->op));
 
+		if(this->op == Operator::Cast)
+		{
+			auto target = this->right->codegen(cs).value->getType();
+			auto value = this->left->codegen(cs).value;
+			auto vt = value->getType();
+
+			if(vt->isConstantNumberType() && (target->isFloatingPointType() || target->isIntegerType()))
+			{
+				auto cn = dcast(fir::ConstantNumber, value);
+				if(!cn) error(this->left, "what");
+
+				return cs->unwrapConstantNumber(cn->getValue(), target);
+				// return _csdoConstantCast(this, cn, target);
+			}
+			else
+			{
+				auto res = cs->irb.CreateAppropriateCast(value, target);
+
+				if(!res)
+				{
+					error(this, "No appropriate cast from type '%s' to '%s'; use 'as!' to force a bitcast",
+						vt->str(), target->str());
+				}
+
+				return CGResult(res);
+			}
+		}
+
 		// TODO: figure out a better way
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
-
-		if(this->op == Operator::Cast)
-		{
-			auto val = _lr.value;
-			if(val->getType()->isConstantIntType())
-			{
-				auto ci = dcast(fir::ConstantInt, val);
-				iceAssert(ci);
-
-				if(val->getType()->isSignedIntType())
-				{
-					val = fir::ConstantInt::getInt64(ci->getSignedValue());
-				}
-				else
-				{
-					size_t v = ci->getUnsignedValue();
-					if(v <= INT64_MAX)
-						val = fir::ConstantInt::getInt64(v);
-
-					else
-						val = fir::ConstantInt::getUint64(v);
-				}
-			}
-			else if(val->getType()->isConstantFloatType())
-			{
-				auto cf = dcast(fir::ConstantFP, val);
-				iceAssert(cf);
-
-				val = fir::ConstantFP::getFloat80(cf->getValue());
-			}
-
-
-			auto target = _rr.value->getType();
-			auto res = cs->irb.CreateAppropriateCast(val, target);
-
-			if(!res)
-			{
-				error(this, "No appropriate cast from type '%s' to '%s'; use 'as!' to force a bitcast",
-					val->getType()->str(), target->str());
-			}
-
-			return CGResult(res);
-		}
 
 		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
 		if(!l.value || !r.value)
@@ -224,81 +197,22 @@ namespace sst
 		// since both sides are constants, all should work just fine
 		if(lt->isConstantNumberType() && rt->isConstantNumberType())
 		{
-			if(lt->isConstantIntType() && rt->isConstantIntType())
+			auto lcn = dcast(fir::ConstantNumber, l.value);
+			auto rcn = dcast(fir::ConstantNumber, r.value);
+
+			iceAssert(lcn && rcn);
+			auto lnum = lcn->getValue();
+			auto rnum = rcn->getValue();
+
 			{
-				// todo: is this the best way?
-				// note: convert unsigned types to signed types if one of the operands is signed
-				// then complain on overflow
-				if(lt->toPrimitiveType()->isSigned() || rt->toPrimitiveType()->isSigned())
+				if(!constable(this->op))
 				{
-					int64_t a = 0;
-					if(lt->toPrimitiveType()->isSigned())
-					{
-						a = dcast(fir::ConstantInt, l.value)->getSignedValue();
-					}
-					else
-					{
-						auto val = dcast(fir::ConstantInt, l.value)->getUnsignedValue();
-						if(val > INT64_MAX)
-							error(this, "Unsigned integer literal '%s' will overflow when converted to a signed type", std::to_string(val));
-
-						a = (int64_t) val;
-					}
-
-
-					int64_t b = 0;
-					if(rt->toPrimitiveType()->isSigned())
-					{
-						b = dcast(fir::ConstantInt, r.value)->getSignedValue();
-					}
-					else
-					{
-						auto val = dcast(fir::ConstantInt, r.value)->getUnsignedValue();
-						if(val > INT64_MAX)
-							error(this, "Unsigned integer literal '%s' will overflow when converted to a signed type", std::to_string(val));
-
-						b = (int64_t) val;
-					}
-
-					auto ret = doConstantThings(a, b, this->op);
-					auto t = inferred;
-					if(t && !t->isIntegerType())
-						error(this, "Inferred non-integer type ('%s') for integer expression", t->str());
-
-					return CGResult(fir::ConstantInt::get(t ? t : fir::PrimitiveType::getConstantSignedInt(), ret));
+					error(this, "Could not infer appropriate type for operator '%s' between literal numbers",
+						operatorToString(this->op));
 				}
-				else
-				{
-					uint64_t a = dcast(fir::ConstantInt, l.value)->getUnsignedValue();
-					uint64_t b = dcast(fir::ConstantInt, r.value)->getUnsignedValue();
 
-					auto ret = doConstantThings(a, b, this->op);
-					auto t = inferred;
-					if(t && !t->isIntegerType())
-						error(this, "Inferred non-integer type ('%s') for integer expression", t->str());
-
-					return CGResult(fir::ConstantInt::get(t ? t : fir::PrimitiveType::getConstantUnsignedInt(), ret));
-				}
-			}
-			else if(lt->isConstantFloatType() && rt->isConstantFloatType())
-			{
-				long double a = dcast(fir::ConstantFP, l.value)->getValue();
-				long double b = dcast(fir::ConstantFP, r.value)->getValue();
-
-				if(isBitwiseOp(this->op))
-					error(this, "Bitwise operations are not supported on floating-point types");
-
-				auto ret = doConstantFPThings(a, b, this->op);
-
-				auto t = inferred;
-				if(t && !t->isFloatingPointType())
-					error(this, "Inferred non floating-point type ('%s') for floating-point expression", t->str());
-
-				return CGResult(fir::ConstantFP::get(t ? t : fir::PrimitiveType::getConstantFloat(), ret));
-			}
-			else
-			{
-				error(this, "how?");
+				auto res = doConstantThings(lnum, rnum, this->op);
+				return CGResult(fir::ConstantNumber::get(res));
 			}
 		}
 		else
@@ -337,7 +251,6 @@ namespace sst
 				return ex;
 
 			case Operator::Minus: {
-				iceAssert(ty->isIntegerType() || ty->isFloatingPointType());
 				if(auto ci = dcast(fir::ConstantInt, val))
 				{
 					iceAssert(ci->getType()->isSignedIntType());
@@ -346,6 +259,10 @@ namespace sst
 				else if(auto cf = dcast(fir::ConstantFP, val))
 				{
 					return CGResult(fir::ConstantFP::get(cf->getType(), -1 * cf->getValue()));
+				}
+				else if(auto cn = dcast(fir::ConstantNumber, val))
+				{
+					return CGResult(fir::ConstantNumber::get(-1 * cn->getValue()));
 				}
 				else
 				{

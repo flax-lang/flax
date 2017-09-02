@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "ir/constant.h"
 
 using TCS = sst::TypecheckState;
 
@@ -36,7 +37,18 @@ sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 		}
 	}
 
-	if(lt != rt)
+	bool skipCheck = false;
+	if(rt->isConstantNumberType() && lt->isPrimitiveType())
+	{
+		auto num = rt->toConstantNumberType()->getValue();
+		if(fir::checkLiteralFitsIntoType(lt->toPrimitiveType(), num))
+			skipCheck = true;
+
+		else
+			warn(this, "nofit");
+	}
+
+	if(!skipCheck && lt != rt)
 	{
 		HighlightOptions hs;
 		hs.underlines.push_back(this->left->loc);

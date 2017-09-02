@@ -63,7 +63,9 @@ namespace cgn
 		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);
 
 		fir::Value* getDefaultValue(fir::Type* type);
+
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
+		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

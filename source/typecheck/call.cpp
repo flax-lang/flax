@@ -19,11 +19,20 @@ namespace sst
 	{
 		if(from == to) return 0;
 
-		if(from->isIntegerType() && to->isIntegerType())
+		if(from->isConstantNumberType())
 		{
-			if(from->isConstantIntType())
+			auto num = from->toConstantNumberType()->getValue();
+			if(mpfr::isint(num) && to->isIntegerType())
 				return 0;
 
+			else if(mpfr::isint(num) && to->isFloatingPointType())
+				return 1;
+
+			else
+				return 1;
+		}
+		else if(from->isIntegerType() && to->isIntegerType())
+		{
 			auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
 
 			switch(bitdiff)
@@ -48,7 +57,6 @@ namespace sst
 		{
 			return 4;
 		}
-
 
 		return -1;
 	}

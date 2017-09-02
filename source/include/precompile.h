@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <experimental/string_view>
 
-
+#include "../external/mpreal/mpreal.h"
 #include "../external/tinyformat/tinyformat.h"
 
 #endif

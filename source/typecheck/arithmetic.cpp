@@ -72,22 +72,46 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 		case Operator::Cast:
 			return right;
 
-		case Operator::Add:
-		case Operator::Subtract:
-		case Operator::Multiply:
-		case Operator::Divide:
+		case Operator::Add: {
+			if(left->isConstantNumberType() && right->isConstantNumberType())
+				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() + right->toConstantNumberType()->getValue());
+		}
+
+		case Operator::Subtract: {
+			if(left->isConstantNumberType() && right->isConstantNumberType())
+				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() - right->toConstantNumberType()->getValue());
+		}
+
+		case Operator::Multiply: {
+			if(left->isConstantNumberType() && right->isConstantNumberType())
+				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() * right->toConstantNumberType()->getValue());
+		}
+
+		case Operator::Divide: {
+			if(left->isConstantNumberType() && right->isConstantNumberType())
+				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() / right->toConstantNumberType()->getValue());
+		}
+
 		case Operator::Modulo: {
 
-			if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
+			if(left->isConstantNumberType() && right->isConstantNumberType())
 			{
-				if(left->isConstantNumberType()) return right;
-
+				return fir::Type::getConstantNumber( mpfr::fmod(left->toConstantNumberType()->getValue(),
+					right->toConstantNumberType()->getValue()));
+			}
+			else if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
+			{
 				return (left->getBitWidth() > right->getBitWidth()) ? left : right;
 			}
 			else if((left->isIntegerType() && right->isFloatingPointType()) || (left->isFloatingPointType() && right->isIntegerType()))
 			{
 				return (left->isFloatingPointType() ? left : right);
 			}
+			else
+			{
+				return left;
+			}
+
 		} break;
 
 		default:
@@ -156,20 +180,26 @@ sst::Stmt* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 		case Operator::Plus:
 		case Operator::Minus: {
-			if(!t->isIntegerType() && !t->isFloatingPointType())
+			if(t->isConstantNumberType())
+				out = (op == Operator::Minus ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
+
+			else if(!t->isIntegerType() && !t->isFloatingPointType())
 				error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t->str());
 
-			if(op == Operator::Minus && t->isIntegerType() && !t->isSignedIntType())
+			else if(op == Operator::Minus && t->isIntegerType() && !t->isSignedIntType())
 				error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t->str());
 
 			out = t;
 		} break;
 
 		case Operator::BitwiseNot: {
-			if(!t->isIntegerType())
+			if(t->isConstantNumberType())
+				error(this, "Bitwise operations are not supported on literal numbers");
+
+			else if(!t->isIntegerType())
 				error(this, "Invalid use of bitwise not operator '~' on non-integer type '%s'", t->str());
 
-			if(t->isSignedIntType())
+			else if(t->isSignedIntType())
 				error(this, "Invalid use of bitwise not operator '~' on signed integer type '%s'", t->str());
 
 			out = t;
