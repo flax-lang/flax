@@ -388,9 +388,9 @@ namespace sst
 
 			case Operator::AddressOf: {
 				if(!ex.pointer || ex.kind != CGResult::VK::LValue)
-					error(this, "Cannot dereference non lvalue");
+					error(this, "Cannot take address of an rvalue");
 
-				return cs->irb.CreateLoad(ex.pointer);
+				return ex.pointer;
 			} break;
 
 			default:

@@ -75,7 +75,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(value->getType() != this->type)
 		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type->str(), value->getType()->str());
 
-	return CGResult(value);
+	return CGResult(value, defn.pointer, CGResult::VK::LValue);
 }
 
 
