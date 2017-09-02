@@ -170,7 +170,7 @@ namespace backend
 	{
 		// if(Compiler::getDumpLlvm())
 		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
-		this->linkedModule->dump();
+		// this->linkedModule->dump();
 
 		// verify the module.
 		{
