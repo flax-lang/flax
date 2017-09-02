@@ -11,31 +11,48 @@
 
 namespace sst
 {
-	fir::Type* TypecheckState::inferCorrectTypeForLiteral(Expr* lit)
+	fir::Type* TypecheckState::inferCorrectTypeForLiteral(Expr* expr)
 	{
-		iceAssert(lit->type->isConstantNumberType());
+		iceAssert(expr->type->isConstantNumberType());
+		auto num = expr->type->toConstantNumberType()->getValue();
 
-		if(auto il = dcast(sst::LiteralInt, lit))
+		// if(auto lit = dcast(sst::LiteralNumber, expr))
 		{
-			// ok.
-			if(il->negative || il->number < INT64_MAX)
-				return fir::Type::getInt64();
+			// auto num = lit->number;
 
+			// check if we're an integer
+			if(mpfr::isint(num))
+			{
+				// ok, check if it fits anywhere
+				if(num <= mpfr::mpreal(INT64_MAX) && num >= mpfr::mpreal(INT64_MIN))
+					return fir::Type::getInt64();
+
+				else if(num >= 0 && num <= mpfr::mpreal(UINT64_MAX))
+					return fir::Type::getUint64();
+
+				else
+					error(expr, "Numberic literal does not fit into largest supported (64-bit) type");
+			}
 			else
-				return fir::Type::getUint64();
-		}
-		else if(auto dl = dcast(sst::LiteralDec, lit))
-		{
-			return fir::Type::getFloat64();
-		}
-		else
-		{
-			if(lit->type->isIntegerType())
-				return fir::Type::getInt64();
+			{
+				if(num >= mpfr::mpreal(__DBL_MIN__) && num <= mpfr::mpreal(__DBL_MAX__))
+					return fir::Type::getFloat64();
 
-			else
-				return fir::Type::getFloat64();
+				else if(num >= mpfr::mpreal(__LDBL_MIN__) && num <= mpfr::mpreal(__LDBL_MAX__))
+					return fir::Type::getFloat80();
+
+				else
+					error(expr, "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80()->str());
+			}
 		}
+		// else
+		// {
+		// 	if(lit->type->isIntegerType())
+		// 		return fir::Type::getInt64();
+
+		// 	else
+		// 		return fir::Type::getFloat64();
+		// }
 	}
 
 

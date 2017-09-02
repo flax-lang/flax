@@ -147,25 +147,14 @@ namespace sst
 
 
 
-	struct LiteralInt : Expr
+	struct LiteralNumber : Expr
 	{
-		LiteralInt(const Location& l) : Expr(l) { }
-		~LiteralInt() { }
+		LiteralNumber(const Location& l) : Expr(l) { }
+		~LiteralNumber() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		size_t number = 0;
-		bool negative = false;
-	};
-
-	struct LiteralDec : Expr
-	{
-		LiteralDec(const Location& l) : Expr(l) { }
-		~LiteralDec() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		long double number = 0.0;
+		mpfr::mpreal number;
 	};
 
 	struct LiteralString : Expr
