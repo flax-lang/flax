@@ -19,6 +19,13 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		error(this, hs, "Cannot assign to non-lvalue");
 	}
 
+	if(lr.pointer && lr.pointer->isImmutable())
+	{
+		HighlightOptions hs;
+		hs.underlines.push_back(this->left->loc);
+		error(this, hs, "Cannot assign to immutable expression");
+	}
+
 	// okay, i guess
 	auto rr = this->right->codegen(cs, lt);
 
