@@ -44,7 +44,7 @@ namespace ast
 	struct DeferredStmt : Stmt
 	{
 		DeferredStmt(const Location& l) : Stmt(l) { }
-		~DeferredStmt();
+		~DeferredStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override
 		{
@@ -60,7 +60,7 @@ namespace ast
 	struct ImportStmt : Stmt
 	{
 		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { }
-		~ImportStmt();
+		~ImportStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -71,7 +71,7 @@ namespace ast
 	struct Block : Stmt
 	{
 		Block(const Location& l) : Stmt(l) { }
-		~Block();
+		~Block() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -82,7 +82,7 @@ namespace ast
 	struct FuncDefn : Stmt
 	{
 		FuncDefn(const Location& l) : Stmt(l) { }
-		~FuncDefn();
+		~FuncDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -110,7 +110,7 @@ namespace ast
 	struct ForeignFuncDefn : Stmt
 	{
 		ForeignFuncDefn(const Location& l) : Stmt(l) { }
-		~ForeignFuncDefn();
+		~ForeignFuncDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -128,7 +128,7 @@ namespace ast
 	struct VarDefn : Stmt
 	{
 		VarDefn(const Location& l) : Stmt(l) { }
-		~VarDefn();
+		~VarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -145,7 +145,7 @@ namespace ast
 	struct TupleDecompVarDefn : Stmt
 	{
 		TupleDecompVarDefn(const Location& l) : Stmt(l) { }
-		~TupleDecompVarDefn();
+		~TupleDecompVarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -166,7 +166,7 @@ namespace ast
 	struct ArrayDecompVarDefn : Stmt
 	{
 		ArrayDecompVarDefn(const Location& l) : Stmt(l) { }
-		~ArrayDecompVarDefn();
+		~ArrayDecompVarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -181,7 +181,7 @@ namespace ast
 	struct TypeExpr : Expr
 	{
 		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { }
-		~TypeExpr();
+		~TypeExpr() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -191,17 +191,33 @@ namespace ast
 	struct Ident : Expr
 	{
 		Ident(const Location& l, std::string n) : Expr(l), name(n) { }
-		~Ident();
+		~Ident() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string name;
 	};
 
+
+	struct RangeExpr : Expr
+	{
+		RangeExpr(const Location& loc) : Expr(loc) { }
+		~RangeExpr() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* start = 0;
+		Expr* end = 0;
+
+		bool halfOpen = false;
+	};
+
+
+
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& loc, Operator o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
-		~BinaryOp();
+		~BinaryOp() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -214,7 +230,7 @@ namespace ast
 	struct UnaryOp : Expr
 	{
 		UnaryOp(const Location& l) : Expr(l) { }
-		~UnaryOp();
+		~UnaryOp() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -226,7 +242,7 @@ namespace ast
 	struct AssignOp : Expr
 	{
 		AssignOp(const Location& l) : Expr(l) { }
-		~AssignOp();
+		~AssignOp() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -236,10 +252,36 @@ namespace ast
 		Expr* right = 0;
 	};
 
+	struct SubscriptOp : Expr
+	{
+		SubscriptOp(const Location& l) : Expr(l) { }
+		~SubscriptOp() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+		Expr* inside = 0;
+	};
+
+	struct SliceOp : Expr
+	{
+		SliceOp(const Location& l) : Expr(l) { }
+		~SliceOp() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+
+		Expr* start = 0;
+		Expr* end = 0;
+	};
+
+
+
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }
-		~FunctionCall();
+		~FunctionCall() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -250,7 +292,7 @@ namespace ast
 	struct DotOperator : Expr
 	{
 		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { }
-		~DotOperator();
+		~DotOperator() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -264,7 +306,7 @@ namespace ast
 	struct LitNumber : Expr
 	{
 		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { }
-		~LitNumber();
+		~LitNumber() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -274,7 +316,7 @@ namespace ast
 	struct LitBool : Expr
 	{
 		LitBool(const Location& l, bool val) : Expr(l), value(val) { }
-		~LitBool();
+		~LitBool() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -284,7 +326,7 @@ namespace ast
 	struct LitString : Expr
 	{
 		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { }
-		~LitString();
+		~LitString() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -295,7 +337,7 @@ namespace ast
 	struct LitNull : Expr
 	{
 		LitNull(const Location& l) : Expr(l) { }
-		~LitNull();
+		~LitNull() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 	};
@@ -303,7 +345,7 @@ namespace ast
 	struct LitTuple : Expr
 	{
 		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
-		~LitTuple();
+		~LitTuple() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
@@ -315,7 +357,7 @@ namespace ast
 	struct TopLevelBlock : Expr
 	{
 		TopLevelBlock(const Location& l, std::string n) : Expr(l), name(n) { }
-		~TopLevelBlock();
+		~TopLevelBlock() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 

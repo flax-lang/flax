@@ -8,27 +8,6 @@ namespace ast
 {
 	Stmt::~Stmt() { }
 	Expr::~Expr() { }
-	Ident::~Ident() { }
-	Block::~Block () { }
-	VarDefn::~VarDefn() { }
-	UnaryOp::~UnaryOp() { }
-	LitBool::~LitBool() { }
-	LitNull::~LitNull() { }
-	FuncDefn::~FuncDefn() { }
-	TypeExpr::~TypeExpr() { }
-	AssignOp::~AssignOp() { }
-	BinaryOp::~BinaryOp() { }
-	LitTuple::~LitTuple() { }
-	LitNumber::~LitNumber() { }
-	LitString::~LitString() { }
-	ImportStmt::~ImportStmt() { }
-	DotOperator::~DotOperator() { }
-	DeferredStmt::~DeferredStmt() { }
-	FunctionCall::~FunctionCall() { }
-	TopLevelBlock::~TopLevelBlock() { }
-	ForeignFuncDefn::~ForeignFuncDefn () { }
-	TupleDecompVarDefn::~TupleDecompVarDefn() { }
-	ArrayDecompVarDefn::~ArrayDecompVarDefn() { }
 }
 
 

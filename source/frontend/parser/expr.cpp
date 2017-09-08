@@ -253,6 +253,7 @@ namespace parser
 
 	static Expr* parseUnary(State& st);
 	static Expr* parsePrimary(State& st);
+	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op);
 
 	static Expr* parseRhs(State& st, Expr* lhs, int prio)
 	{
@@ -305,8 +306,9 @@ namespace parser
 			}
 			else if(isPostfixUnaryOperator(tok_op))
 			{
-				// lhs = parsePostfixUnaryOp(st, tok_op, lhs);
-				error("notsup");
+				// lhs = parsePostfixUnary(st, tok_op, lhs);
+				// error("notsup");
+				lhs = parsePostfixUnary(st, lhs, tok_op);
 				continue;
 			}
 
@@ -384,6 +386,7 @@ namespace parser
 			else if(isAssignOp(op))
 			{
 				auto newlhs = new AssignOp(tok_op.loc);
+
 				newlhs->left = lhs;
 				newlhs->right = rhs;
 				newlhs->op = op;
@@ -488,6 +491,106 @@ namespace parser
 			return parsePrimary(st);
 		}
 	}
+
+
+	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op)
+	{
+		if(op.type == TT::LSquare)
+		{
+			// if we're a colon immediately, then it's a slice expr already.
+			// either [:x] or [:]
+			Expr* slcbegin = 0;
+			Expr* slcend = 0;
+
+			bool isSlice = false;
+			bool isEmptySlice = false;
+
+			if(st.front().type == TT::Colon)
+			{
+				st.eat();
+				isSlice = true;
+
+				if(st.front().type == TT::RSquare)
+				{
+					st.eat();
+					isEmptySlice = true;
+				}
+			}
+
+			// parse the inside expression
+			Expr* inside = 0;
+			if(!isEmptySlice)
+				inside = parseExpr(st);
+
+			if(!isSlice && st.front().type == TT::RSquare)
+			{
+				st.eat();
+				iceAssert(inside);
+
+				auto ret = new SubscriptOp(op.loc);
+				ret->expr = lhs;
+				ret->inside = inside;
+
+				return ret;
+			}
+			else if(isEmptySlice || (isSlice && st.front().type == TT::RSquare) || st.front().type == TT::Colon)
+			{
+				// right slice expr
+				slcbegin = inside;
+
+				if(st.front().type == TT::Colon)
+				{
+					st.eat();
+					slcend = parseExpr(st);
+				}
+
+				if(!isEmptySlice && st.front().type != TT::RSquare)
+					error(st, "Expected ']' after '[' in array slice");
+
+				if(!isEmptySlice) st.eat();
+
+				auto ret = new SliceOp(op.loc);
+				ret->expr = lhs;
+				ret->start = slcbegin;
+				ret->end = slcend;
+
+				return ret;
+			}
+			else
+			{
+				error(st, "Expected ']' after '[' for array subscript");
+			}
+		}
+		else if(op.type == TT::Ellipsis || op.type == TT::HalfOpenEllipsis)
+		{
+			Expr* start = lhs;
+			iceAssert(start);
+
+			// current token now starts the ending expression (ie. '...' or '..<' are no longer in the token stream)
+			Expr* end = parseExpr(st);
+
+			// ok
+			auto ret = new RangeExpr(op.loc);
+			ret->start = start;
+			ret->end = end;
+			ret->halfOpen = (op.type == TT::HalfOpenEllipsis);
+
+			return ret;
+			// newlhs = CreateAST_Pin(Range, curLhs->pin, start, end, );
+		}
+		else
+		{
+			// todo: ++ and --.
+			error("enotsup");
+		}
+	}
+
+
+
+
+
+
+
 
 	Expr* parseExpr(State& st)
 	{

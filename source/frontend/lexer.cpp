@@ -635,6 +635,7 @@ namespace lexer
 				}
 
 				tok.text = stream.substr(0, 1);
+				// tok.loc.col += 1;
 				read = 1;
 			}
 			else if(utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_SYMBOL_MATH | UTF8_CATEGORY_PUNCTUATION_OTHER) > 0)

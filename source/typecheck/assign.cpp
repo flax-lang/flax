@@ -51,6 +51,7 @@ sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 	if(!skipCheck && lt != rt)
 	{
 		HighlightOptions hs;
+		// hs.drawCaret = false;
 		hs.underlines.push_back(this->left->loc);
 		hs.underlines.push_back(this->right->loc);
 
