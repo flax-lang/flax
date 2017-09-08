@@ -23,6 +23,10 @@ namespace sst
 
 namespace cgn
 {
+	namespace glue
+	{
+	}
+
 	struct ValueTree
 	{
 		ValueTree(std::string n, ValueTree* p) : name(n), parent(p) { }

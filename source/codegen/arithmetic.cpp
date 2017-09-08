@@ -7,7 +7,6 @@
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-
 bool isBitwiseOp(Operator op)
 {
 	switch(op)
