@@ -13,7 +13,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(!this->target)
-		error(this, "Failed to find target for function call to '%s'", this->name.c_str());
+		error(this, "Failed to find target for function call to '%s'", this->name);
 
 	auto vf = this->target->codegen(cs).value;
 	fir::FunctionType* ft = 0;
@@ -39,13 +39,13 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(!ft->isCStyleVarArg() && this->arguments.size() != numArgs)
 	{
 		error(this, "Mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
-			this->name.c_str(), this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
+			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
 			numArgs == 1 ? "was" : "were");
 	}
 	else if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
 		error(this, "Need at least %zu arguments to call variadic function '%s', only have %zu",
-			numArgs, this->name.c_str(), this->arguments.size());
+			numArgs, this->name, this->arguments.size());
 	}
 
 
@@ -69,7 +69,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(i < numArgs && val->getType() != ft->getArgumentN(i))
 		{
 			error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
-				ft->getArgumentN(i)->str().c_str(), val->getType()->str().c_str());
+				ft->getArgumentN(i)->str(), val->getType()->str());
 		}
 
 		args.push_back(val);

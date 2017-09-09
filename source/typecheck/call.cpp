@@ -10,7 +10,6 @@
 #include "ir/type.h"
 
 using TCS = sst::TypecheckState;
-
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
 namespace sst
@@ -270,7 +269,7 @@ namespace sst
 
 
 
-sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 {
 	using Param = sst::FunctionDecl::Param;
 
@@ -280,12 +279,7 @@ sst::Stmt* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	auto call = new sst::FunctionCall(this->loc);
 	for(auto p : this->args)
 	{
-		auto st = p->typecheck(fs);
-		auto expr = dcast(sst::Expr, st);
-
-		if(!expr)
-			error(this->loc, "Statement cannot be used as an expression");
-
+		auto expr = p->typecheck(fs);
 		call->arguments.push_back(expr);
 	}
 

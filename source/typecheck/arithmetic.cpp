@@ -10,8 +10,6 @@
 
 using TCS = sst::TypecheckState;
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 std::string operatorToString(const Operator& op)
 {
 	switch(op)
@@ -123,18 +121,15 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 
 
 
-sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
 	iceAssert(!isAssignOp(this->op));
 
 	// TODO: infer the types properly for literal numbers
 	// this has always been a thorn, dammit
 
-	auto l = dcast(sst::Expr, this->left->typecheck(fs, inferred));
-	auto r = dcast(sst::Expr, this->right->typecheck(fs, inferred));
-
-	if(!l)	error(l, "Statement cannot be used as an expression");
-	if(!r)	error(r, "Statement cannot be used as an expression");
+	auto l = this->left->typecheck(fs, inferred);
+	auto r = this->right->typecheck(fs, inferred);
 
 	auto lt = l->type;
 	auto rt = r->type;
@@ -161,10 +156,9 @@ sst::Stmt* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	return ret;
 }
 
-sst::Stmt* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
-	auto v = dcast(sst::Expr, this->expr->typecheck(fs, inferred));
-	if(!v) error(v, "Statement cannot be used as an expression");
+	auto v = this->expr->typecheck(fs, inferred);
 
 	auto t = v->type;
 	fir::Type* out = 0;
