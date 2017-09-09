@@ -146,12 +146,11 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 		error(this, ho, "Unsupported operator '%s' between types '%s' and '%s'", operatorToString(this->op), lt->str(), rt->str());
 	}
 
-	auto ret = new sst::BinaryOp(this->loc);
+	auto ret = new sst::BinaryOp(this->loc, rest);
 
 	ret->left = dynamic_cast<sst::Expr*>(l);
 	ret->right = dynamic_cast<sst::Expr*>(r);
 	ret->op = this->op;
-	ret->type = rest;
 
 	return ret;
 }
@@ -214,9 +213,8 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 			error(this, "not a unary op???");
 	}
 
-	auto ret = new sst::UnaryOp(this->loc);
+	auto ret = new sst::UnaryOp(this->loc, out);
 	ret->op = this->op;
-	ret->type = out;
 	ret->expr = v;
 
 	return ret;

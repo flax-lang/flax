@@ -39,7 +39,7 @@ namespace sst
 
 	struct Expr : Stmt
 	{
-		Expr(const Location& l) : Stmt(l) { }
+		Expr(const Location& l, fir::Type* t) : Stmt(l), type(t) { }
 		~Expr() { }
 
 		fir::Type* type = 0;

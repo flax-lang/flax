@@ -28,7 +28,7 @@ fn foo(a: int)
 	fun(30, 30)
 
 	printf("bar = %.1f, &bar = %p, qux = %d\n", bar, &bar, *&qux)
-	printf(@c"%s, %d, not-bar = %f\n", @c"Hello, World", -34, 1.1 - 4.5)
+	printf(@r"%s, %d, not-bar = %f\n", @r"Hello, World", -34, 1.1 - 4.5)
 	printf("end\n")
 
 	foo(10)
@@ -38,9 +38,12 @@ fn foo(a: int)
 	var one = 40
 	let op = &one
 
-	let op0 = op[0]
+	// one = @r"foo"
 
-	printf("op[0] = %d\n", op0)
+	// let op0 = op[0]
+	// var k: int[]
+	var arr: i64[] = @r[ 1, 2, 3 ]
+	printf("arr[0] = %d\n", arr[1])
 	// od = 40
 }
 

@@ -25,6 +25,7 @@ namespace parser
 
 			if(st.front() == TT::RSquare)
 			{
+				st.eat();
 				ret = new pts::DynamicArrayType(ret);
 			}
 			else if(st.front() == TT::Ellipsis)

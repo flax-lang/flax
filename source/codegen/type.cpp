@@ -42,6 +42,10 @@ namespace cgn
 
 	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, mpfr::mpreal num, fir::Type* target, bool isAutocast)
 	{
+		if(!(target->isIntegerType() || target->isFloatingPointType()))
+			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target->str());
+
+
 		bool signConvert = false;
 		if(!mpfr::isint(num) && target->isIntegerType())
 		{

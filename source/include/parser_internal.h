@@ -159,6 +159,7 @@ namespace parser
 
 	ast::LitNumber* parseNumber(State& st);
 	ast::LitString* parseString(State& st, bool israw);
+	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 

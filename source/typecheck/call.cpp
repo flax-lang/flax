@@ -276,11 +276,13 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto call = new sst::FunctionCall(this->loc);
+	sst::Defn* target = 0;
+	std::vector<sst::Expr*> arguments;
+
 	for(auto p : this->args)
 	{
 		auto expr = p->typecheck(fs);
-		call->arguments.push_back(expr);
+		arguments.push_back(expr);
 	}
 
 
@@ -288,11 +290,11 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	sst::TypecheckState::PrettyError errs;
 
 	std::vector<Param> ts;
-	std::transform(call->arguments.begin(), call->arguments.end(), std::back_inserter(ts), [](sst::Expr* e) -> auto {
+	std::transform(arguments.begin(), arguments.end(), std::back_inserter(ts), [](sst::Expr* e) -> auto {
 		return Param { .type = e->type, .loc = e->loc };
 	});
 
-	call->target = fs->resolveFunction(this->name, ts, &errs);
+	target = fs->resolveFunction(this->name, ts, &errs);
 	if(!errs.errorStr.empty())
 	{
 		exitless_error(this, "%s", errs.errorStr);
@@ -302,15 +304,27 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 		doTheExit();
 	}
 
-	iceAssert(call->target);
-	iceAssert(call->target->type->isFunctionType());
-	call->type = call->target->type->toFunctionType()->getReturnType();
+	iceAssert(target);
+	iceAssert(target->type->isFunctionType());
 
-	call->name = this->name;
-	iceAssert(call->type);
+	auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
+	ret->name = this->name;
+	ret->target = target;
+	ret->arguments = arguments;
 
-	return call;
+	return ret;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

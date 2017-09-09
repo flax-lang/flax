@@ -38,8 +38,21 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		alloc = cs->irb.CreateStackAlloc(this->type, this->id.name);
-		if(!val)
-			val = cs->getDefaultValue(this->type);
+		if(!val) val = cs->getDefaultValue(this->type);
+
+		fir::Value* nv = val;
+		if(val->getType() != alloc->getType()->getPointerElementType())
+			nv = cs->oneWayAutocast(CGResult(val), alloc->getType()->getPointerElementType()).value;
+
+		if(!nv)
+		{
+			iceAssert(this->init);
+
+			HighlightOptions hs;
+			hs.underlines.push_back(this->init->loc);
+			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'",
+				alloc->getType()->getPointerElementType()->str(), val->getType()->str());
+		}
 
 		cs->irb.CreateStore(val, alloc);
 	}

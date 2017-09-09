@@ -107,6 +107,7 @@ namespace parser
 		bool isImmut = (st.eat() == TT::Val);
 		if(st.front() == TT::LParen)
 		{
+			error(st, "not supported");
 		}
 		else if(st.front() == TT::LSquare)
 		{
@@ -132,13 +133,17 @@ namespace parser
 		}
 		else if(st.front() != TT::Equal && type == pts::InferredType::get())
 		{
-			error(st, "Expected initial value for type inference on variable '%s'", name.c_str());
+			error(st, "Expected initial value for type inference on variable '%s'", name);
 		}
 
 		if(st.front() == TT::Equal)
 		{
 			st.pop();
 			value = parseExpr(st);
+		}
+		else if(isImmut)
+		{
+			error(st, "Expected initial value for immutable variable '%s'", name);
 		}
 
 		auto ret = new VarDefn(loc);
