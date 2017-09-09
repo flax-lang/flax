@@ -11,7 +11,7 @@
 
 using TCS = sst::TypecheckState;
 
-sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 {
 	// check the left side
 	auto l = this->left->typecheck(fs);
@@ -61,3 +61,9 @@ sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 
 	return ret;
 }
+
+
+
+
+
+

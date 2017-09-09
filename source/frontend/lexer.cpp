@@ -303,10 +303,10 @@ namespace lexer
 			tok.text = "@entry";
 			read = 6;
 		}
-		else if(hasPrefix(stream, "@c"))
+		else if(hasPrefix(stream, "@r"))
 		{
-			tok.type = TokenType::Attr_CString;
-			tok.text = "@c";
+			tok.type = TokenType::Attr_Raw;
+			tok.text = "@r";
 			read = 2;
 		}
 

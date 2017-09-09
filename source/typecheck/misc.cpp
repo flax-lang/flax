@@ -184,9 +184,7 @@ namespace sst
 
 sst::Expr* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
 {
-	auto ret = new sst::TypeExpr(this->loc);
-	ret->type = fs->convertParserTypeToFIR(this->type);
-
+	auto ret = new sst::TypeExpr(this->loc, fs->convertParserTypeToFIR(this->type));
 	return ret;
 }
 

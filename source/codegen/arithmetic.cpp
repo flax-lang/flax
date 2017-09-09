@@ -231,6 +231,10 @@ namespace sst
 		auto ty = ex.value->getType();
 		auto val = ex.value;
 
+		// HighlightOptions hs;
+		// hs.underlines.push_back(this->expr->loc);
+		// warn(this, hs, "");
+
 		switch(this->op)
 		{
 			case Operator::LogicalNot: {

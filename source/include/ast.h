@@ -237,12 +237,12 @@ namespace ast
 		Expr* expr = 0;
 	};
 
-	struct AssignOp : Stmt
+	struct AssignOp : Expr
 	{
-		AssignOp(const Location& l) : Stmt(l) { }
+		AssignOp(const Location& l) : Expr(l) { }
 		~AssignOp() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Operator op = Operator::Invalid;
 
@@ -350,6 +350,16 @@ namespace ast
 		std::vector<Expr*> values;
 	};
 
+	struct LitArray : Expr
+	{
+		LitArray(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
+		~LitArray() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		bool raw = false;
+		std::vector<Expr*> values;
+	};
 
 
 	struct TopLevelBlock : Stmt

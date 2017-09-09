@@ -33,7 +33,7 @@ namespace sst
 
 	struct TypeExpr : Expr
 	{
-		TypeExpr(const Location& l) : Expr(l) { }
+		TypeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~TypeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -41,9 +41,9 @@ namespace sst
 
 
 
-	struct Block : Expr
+	struct Block : Stmt
 	{
-		Block(const Location& l) : Expr(l) { }
+		Block(const Location& l) : Stmt(l) { }
 		~Block() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -54,7 +54,7 @@ namespace sst
 
 	struct BinaryOp : Expr
 	{
-		BinaryOp(const Location& l) : Expr(l) { }
+		BinaryOp(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~BinaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -66,7 +66,7 @@ namespace sst
 
 	struct UnaryOp : Expr
 	{
-		UnaryOp(const Location& l) : Expr(l) { }
+		UnaryOp(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~UnaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -77,7 +77,7 @@ namespace sst
 
 	struct AssignOp : Expr
 	{
-		AssignOp(const Location& l) : Expr(l) { }
+		AssignOp(const Location& l);
 		~AssignOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -91,7 +91,7 @@ namespace sst
 
 	struct SubscriptOp : Expr
 	{
-		SubscriptOp(const Location& l) : Expr(l) { }
+		SubscriptOp(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~SubscriptOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -104,7 +104,7 @@ namespace sst
 	struct FunctionDecl;
 	struct FunctionCall : Expr
 	{
-		FunctionCall(const Location& l) : Expr(l) { }
+		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~FunctionCall() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -117,7 +117,7 @@ namespace sst
 	struct VarDefn;
 	struct VarRef : Expr
 	{
-		VarRef(const Location& l) : Expr(l) { }
+		VarRef(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~VarRef() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -130,7 +130,7 @@ namespace sst
 
 	struct LiteralNumber : Expr
 	{
-		LiteralNumber(const Location& l) : Expr(l) { }
+		LiteralNumber(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~LiteralNumber() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -140,7 +140,7 @@ namespace sst
 
 	struct LiteralString : Expr
 	{
-		LiteralString(const Location& l) : Expr(l) { }
+		LiteralString(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~LiteralString() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -151,7 +151,7 @@ namespace sst
 
 	struct LiteralNull : Expr
 	{
-		LiteralNull(const Location& l) : Expr(l) { }
+		LiteralNull(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~LiteralNull() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -159,7 +159,7 @@ namespace sst
 
 	struct LiteralBool : Expr
 	{
-		LiteralBool(const Location& l) : Expr(l) { }
+		LiteralBool(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~LiteralBool() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -169,8 +169,18 @@ namespace sst
 
 	struct LiteralTuple : Expr
 	{
-		LiteralTuple(const Location& l) : Expr(l) { }
+		LiteralTuple(const Location& l, fir::Type* t) : Expr(l, t) { }
 		~LiteralTuple() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<Expr*> values;
+	};
+
+	struct LiteralArray : Expr
+	{
+		LiteralArray(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~LiteralArray() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
