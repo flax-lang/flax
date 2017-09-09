@@ -54,7 +54,94 @@ namespace parser
 
 		return new LitString(st.ploc(), ss.str(), israw);
 	}
+
+	LitArray* parseArray(State& st, bool israw)
+	{
+		iceAssert(st.front() == TT::LSquare);
+		Token front = st.eat();
+
+		std::vector<Expr*> values;
+		while(true)
+		{
+			Token tok = st.frontAfterWS();
+			if(tok.type == TT::Comma)
+			{
+				st.pop();
+
+				if(st.frontAfterWS() == TT::RSquare)
+					error(tok.loc, "Trailing commas are not allowed");
+
+				continue;
+			}
+			else if(tok.type == TT::RSquare)
+			{
+				break;
+			}
+			else
+			{
+				st.skipWS();
+				values.push_back(parseExpr(st));
+			}
+		}
+
+		st.skipWS();
+		iceAssert(st.front() == TT::RSquare);
+
+		auto end = st.eat();
+
+		auto ret = new LitArray(front.loc, values);
+		ret->raw = israw;
+
+		ret->loc.col = front.loc.col + 1;
+		ret->loc.len = (end.loc.col - front.loc.col) + 1;
+		return ret;
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

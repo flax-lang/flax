@@ -120,7 +120,7 @@ namespace lexer
 		Comment,				// 108
 		EndOfFile,				// 109
 
-		Attr_CString,			// 110
+		Attr_Raw,				// 110
 		Attr_EntryFn,			// 111
 		Attr_NoMangle,			// 112
 	};

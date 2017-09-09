@@ -41,9 +41,8 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			{
 				if(v->type == infer)
 				{
-					auto ret = new sst::VarRef(this->loc);
+					auto ret = new sst::VarRef(this->loc, v->type);
 					ret->name = this->name;
-					ret->type = v->type;
 					ret->def = v;
 
 					return ret;
@@ -61,9 +60,8 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			auto def = vs.front();
 			iceAssert(def);
 			{
-				auto ret = new sst::VarRef(this->loc);
+				auto ret = new sst::VarRef(this->loc, def->type);
 				ret->name = this->name;
-				ret->type = def->type;
 				ret->def = def;
 
 				return ret;

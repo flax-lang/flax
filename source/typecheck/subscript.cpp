@@ -24,7 +24,7 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 	// can we subscript it?
 	// todo: of course, custom things later
-	if(!(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isPointerType()))
+	if(!(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isPointerType() || lt->isArrayType()))
 		error(this->expr, "Cannot subscript type '%s'", lt->str());
 
 	// make sure the inside is legit
@@ -51,14 +51,16 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	else if(lt->isPointerType())
 		res = lt->getPointerElementType();
 
+	else if(lt->isArrayType())
+		res = lt->toArrayType()->getElementType();
+
 	else
 		iceAssert(0);
 
 
-	auto ret = new sst::SubscriptOp(this->loc);
+	auto ret = new sst::SubscriptOp(this->loc, res);
 	ret->expr = ls;
 	ret->inside = rs;
-	ret->type = res;
 
 	return ret;
 }

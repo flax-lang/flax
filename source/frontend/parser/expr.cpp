@@ -255,16 +255,13 @@ namespace parser
 	static Expr* parsePrimary(State& st);
 	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op);
 
-	static Expr* parseRhs(State& st, Stmt* lhs, int prio)
+	static Expr* parseRhs(State& st, Expr* lhs, int prio)
 	{
 		while(true)
 		{
-			if(lhs && !dynamic_cast<Expr*>(lhs))
-				error(lhs, "Statement cannot be used as an expression");
-
 			int prec = precedence(st);
 			if(prec < prio && !isRightAssociative(st.front()))
-				return dynamic_cast<Expr*>(lhs);
+				return lhs;
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
@@ -730,12 +727,16 @@ namespace parser
 				// 	return parseSizeof(ps);
 
 
-				case TT::Attr_CString:
+				case TT::Attr_Raw:
 					st.pop();
-					if(st.front() != TT::StringLiteral)
-						expectedAfter(st, "string literal", "@c", st.front().str());
+					if(st.front() == TT::StringLiteral)
+						return parseString(st, true);
 
-					return parseString(st, true);
+					else if(st.front() == TT::LSquare)
+						return parseArray(st, true);
+
+					else
+						expectedAfter(st, "string literal or ", "@c", st.front().str());
 
 				case TT::StringLiteral:
 					return parseString(st, false);
@@ -743,8 +744,8 @@ namespace parser
 				case TT::Number:
 					return parseNumber(st);
 
-				// case TT::LSquare:
-				// 	return parseArrayLiteral(ps);
+				case TT::LSquare:
+					return parseArray(st, false);
 
 				// no point creating separate functions for these
 				case TT::True:

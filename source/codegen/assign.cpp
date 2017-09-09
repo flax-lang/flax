@@ -7,6 +7,8 @@
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
+sst::AssignOp::AssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
+
 CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	auto lr = this->left->codegen(cs);
