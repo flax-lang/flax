@@ -284,7 +284,7 @@ namespace backend
 		}
 		else
 		{
-			error("Unimplememented type '%s' for LLVM backend", type->str().c_str());
+			error("Unimplememented type '%s' for LLVM backend", type->str());
 		}
 	}
 
@@ -478,7 +478,7 @@ namespace backend
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName().c_str());
+					error("failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName());
 
 				iceAssert(lgv);
 				return lgv;
@@ -754,7 +754,7 @@ namespace backend
 			}
 			else
 			{
-				error("unknown intrinsic '%s'", intr.first.str().c_str());
+				error("unknown intrinsic '%s'", intr.first.str());
 			}
 
 			valueMap[intr.second->id] = fn;

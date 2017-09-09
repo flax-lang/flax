@@ -13,7 +13,7 @@ using TCS = sst::TypecheckState;
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-sst::Stmt* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -116,9 +116,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// check the defn
 	if(this->initialiser)
 	{
-		defn->init = dcast(sst::Expr, this->initialiser->typecheck(fs, defn->type));
-		if(!defn->init)
-			error(this->initialiser, "Statement cannot be used as an expression");
+		defn->init = this->initialiser->typecheck(fs, defn->type);
 
 		if(defn->type == 0)
 		{

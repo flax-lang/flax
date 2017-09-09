@@ -126,6 +126,8 @@ struct Location
 	{
 		return !(*this == other);
 	}
+
+	std::string toString() const;
 };
 
 struct Locatable

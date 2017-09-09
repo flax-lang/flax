@@ -255,13 +255,16 @@ namespace parser
 	static Expr* parsePrimary(State& st);
 	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op);
 
-	static Expr* parseRhs(State& st, Expr* lhs, int prio)
+	static Expr* parseRhs(State& st, Stmt* lhs, int prio)
 	{
 		while(true)
 		{
+			if(lhs && !dynamic_cast<Expr*>(lhs))
+				error(lhs, "Statement cannot be used as an expression");
+
 			int prec = precedence(st);
 			if(prec < prio && !isRightAssociative(st.front()))
-				return lhs;
+				return dynamic_cast<Expr*>(lhs);
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
@@ -308,7 +311,7 @@ namespace parser
 			{
 				// lhs = parsePostfixUnary(st, tok_op, lhs);
 				// error("notsup");
-				lhs = parsePostfixUnary(st, lhs, tok_op);
+				lhs = parsePostfixUnary(st, dynamic_cast<Expr*>(lhs), tok_op);
 				continue;
 			}
 
@@ -381,13 +384,13 @@ namespace parser
 
 			if(op == Operator::DotOperator)
 			{
-				lhs = new DotOperator(tok_op.loc, lhs, rhs);
+				lhs = new DotOperator(tok_op.loc, dynamic_cast<Expr*>(lhs), rhs);
 			}
 			else if(isAssignOp(op))
 			{
 				auto newlhs = new AssignOp(tok_op.loc);
 
-				newlhs->left = lhs;
+				newlhs->left = dynamic_cast<Expr*>(lhs);
 				newlhs->right = rhs;
 				newlhs->op = op;
 
@@ -395,7 +398,7 @@ namespace parser
 			}
 			else
 			{
-				lhs = new BinaryOp(tok_op.loc, op, lhs, rhs);
+				lhs = new BinaryOp(tok_op.loc, op, dynamic_cast<Expr*>(lhs), rhs);
 			}
 		}
 	}

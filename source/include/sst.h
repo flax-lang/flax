@@ -4,6 +4,7 @@
 
 #pragma once
 #include "defs.h"
+#include "sst_expr.h"
 
 namespace fir
 {
@@ -18,38 +19,6 @@ namespace cgn
 
 namespace sst
 {
-	struct Stmt : Locatable
-	{
-		Stmt(const Location& l) : Locatable(l) { }
-		virtual ~Stmt() { }
-
-		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0)
-		{
-			if(didCodegen)
-			{
-				return cachedResult;
-			}
-			else
-			{
-				this->didCodegen = true;
-				return (this->cachedResult = this->_codegen(cs, inferred));
-			}
-		}
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) = 0;
-
-		bool didCodegen = false;
-		CGResult cachedResult = CGResult(0);
-	};
-
-	struct Expr : Stmt
-	{
-		Expr(const Location& l) : Stmt(l) { }
-		~Expr() { }
-
-		fir::Type* type = 0;
-	};
-
 	struct Defn : Stmt
 	{
 		Defn(const Location& l) : Stmt(l) { }
@@ -117,6 +86,18 @@ namespace sst
 
 		Expr* left = 0;
 		Expr* right = 0;
+	};
+
+
+	struct SubscriptOp : Expr
+	{
+		SubscriptOp(const Location& l) : Expr(l) { }
+		~SubscriptOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+		Expr* inside = 0;
 	};
 
 

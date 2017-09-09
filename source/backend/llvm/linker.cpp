@@ -185,8 +185,8 @@ namespace backend
 			foldername = this->inputFilenames[0].substr(0, sep);
 
 		bool wasEmpty = this->outputFilename.empty();
-		std::string oname = this->outputFilename.empty() ? (foldername + "/" + this->linkedModule->getModuleIdentifier()).c_str()
-			: this->outputFilename.c_str();
+		std::string oname = this->outputFilename.empty() ? (foldername + "/" + this->linkedModule->getModuleIdentifier())
+			: this->outputFilename;
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{

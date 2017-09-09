@@ -182,7 +182,7 @@ namespace sst
 
 
 
-sst::Stmt* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::TypeExpr::typecheck(TCS* fs, fir::Type* inferred)
 {
 	auto ret = new sst::TypeExpr(this->loc);
 	ret->type = fs->convertParserTypeToFIR(this->type);
@@ -196,12 +196,12 @@ sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 	unexpected(this->loc, "import statement");
 }
 
-sst::Stmt* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	return 0;
 }
 
-sst::Stmt* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	return 0;
 }
@@ -216,7 +216,7 @@ sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 	return 0;
 }
 
-sst::Stmt* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
 }
