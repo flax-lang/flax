@@ -13,7 +13,7 @@ using TCS = sst::TypecheckState;
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -25,7 +25,7 @@ sst::Stmt* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 	return ret;
 }
 
-sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -36,7 +36,7 @@ sst::Stmt* ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
 	return ret;
 }
 
-sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -48,7 +48,7 @@ sst::Stmt* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 	return ret;
 }
 
-sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -71,7 +71,7 @@ sst::Stmt* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 	return ret;
 }
 
-sst::Stmt* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
+sst::Expr* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

@@ -11,17 +11,13 @@
 
 using TCS = sst::TypecheckState;
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 {
 	// check the left side
-	auto l = dcast(sst::Expr, this->left->typecheck(fs));
-	if(!l) error(this->left, "Statement cannot be assigned to; expected expression");
+	auto l = this->left->typecheck(fs);
+	auto r = this->right->typecheck(fs, l->type);
 
-	auto r = dcast(sst::Expr, this->right->typecheck(fs, l->type));
-	if(!r)							error(this->right, "Statement cannot be used as an expression");
-	else if(r->type->isVoidType())	error(this->right, "Value has void type");
+	if(r->type->isVoidType())	error(this->right, "Value has void type");
 
 	// check if we can do it first
 	auto lt = l->type;
@@ -63,6 +59,5 @@ sst::Stmt* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 	ret->left = l;
 	ret->right = r;
 
-	ret->type = fir::Type::getVoid();
 	return ret;
 }

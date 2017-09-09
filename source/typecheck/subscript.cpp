@@ -10,33 +10,66 @@
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-sst::Stmt* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	auto ls = dcast(sst::Expr, this->expr->typecheck(fs));
-	if(!ls) error(this->expr, "Statement cannot be used as an expression");
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto ls = this->expr->typecheck(fs);
+	auto rs = this->inside->typecheck(fs);
 
 	// check what's the type
 	auto lt = ls->type;
+	auto rt = rs->type;
 
 	// can we subscript it?
 	// todo: of course, custom things later
 	if(!(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isPointerType()))
 		error(this->expr, "Cannot subscript type '%s'", lt->str());
 
+	// make sure the inside is legit
+	if(rt->isConstantNumberType())
+	{
+		if(!mpfr::isint(rt->toConstantNumberType()->getValue()))
+			error(this->inside, "Floating-point literal '%s' cannot be used as an subscript index, expected integer type",
+				rt->toConstantNumberType()->getValue().toString());
+
+		// ok...
+	}
+	else if(!rt->isIntegerType())
+		error(this->inside, "Subscript index must be an integer type, found '%s'", rt->str());
+
+	fir::Type* res = 0;
 
 	// check what it is, then
 	if(lt->isDynamicArrayType())
-	{
-		// do a check
-	}
+		res = lt->toDynamicArrayType()->getElementType();
+
 	else if(lt->isArraySliceType())
-	{
-	}
+		res = lt->toArraySliceType()->getElementType();
+
 	else if(lt->isPointerType())
-	{
-	}
+		res = lt->getPointerElementType();
+
 	else
-	{
 		iceAssert(0);
-	}
+
+
+	auto ret = new sst::SubscriptOp(this->loc);
+	ret->expr = ls;
+	ret->inside = rs;
+	ret->type = res;
+
+	return ret;
 }
+
+
+
+
+
+
+
+
+
+
+

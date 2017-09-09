@@ -16,7 +16,7 @@ namespace cgn
 			this->stree = it->second;
 
 		else
-			error(this->loc(), "Tried to enter non-existent namespace '%s' in current scope '%s'", name.c_str(), this->stree->name.c_str());
+			error(this->loc(), "Tried to enter non-existent namespace '%s' in current scope '%s'", name, this->stree->name);
 
 		// because we haven't created the vtree, it's fine to "make" one when we enter
 		auto it = this->vtree->subs.find(name);
@@ -68,6 +68,60 @@ namespace cgn
 	fir::Value* CodegenState::getDefaultValue(fir::Type* type)
 	{
 		return fir::ConstantValue::getZeroValue(type);
+	}
+
+
+
+	fir::Function* CodegenState::getOrDeclareLibCFunction(std::string name)
+	{
+		if(name == ALLOCATE_MEMORY_FUNC)
+		{
+			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr()), fir::LinkageType::External);
+		}
+		else if(name == FREE_MEMORY_FUNC)
+		{
+			return this->module->getOrCreateFunction(Identifier(FREE_MEMORY_FUNC, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getVoid()), fir::LinkageType::External);
+		}
+		else if(name == REALLOCATE_MEMORY_FUNC)
+		{
+			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr()), fir::LinkageType::External);
+		}
+		else if(name == "printf")
+		{
+			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+				fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
+		}
+		else if(name == "abort")
+		{
+			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::External);
+		}
+		else if(name == "strlen")
+		{
+			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::External);
+		}
+		else
+		{
+			error("enotsup: %s", name);
+		}
+	}
+
+
+	bool CodegenState::isRefCountedType(fir::Type* type)
+	{
+		return false;
+	}
+
+	void CodegenState::incrementRefCount(fir::Value* ptr)
+	{
+	}
+
+	void CodegenState::decrementRefCount(fir::Value* ptr)
+	{
 	}
 
 }

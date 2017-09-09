@@ -74,7 +74,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		ft = fir::FunctionType::get(ptypes, this->returnType);
 
 	if(cs->module->getFunction(this->id) != 0)
-		error(this, "Foreign function '%s' already defined elsewhere; overloading not possible", this->id.str().c_str());
+		error(this, "Foreign function '%s' already defined elsewhere; overloading not possible", this->id.str());
 
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 

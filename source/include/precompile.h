@@ -24,6 +24,8 @@
 #include <experimental/string_view>
 
 #include "../external/mpreal/mpreal.h"
+
+#define TINYFORMAT_ERROR(x)
 #include "../external/tinyformat/tinyformat.h"
 
 #endif

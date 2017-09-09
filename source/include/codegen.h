@@ -23,8 +23,43 @@ namespace sst
 
 namespace cgn
 {
+	struct CodegenState;
+
 	namespace glue
 	{
+		#define ALLOCATE_MEMORY_FUNC						"malloc"
+		#define REALLOCATE_MEMORY_FUNC						"realloc"
+		#define FREE_MEMORY_FUNC							"free"
+
+		namespace string
+		{
+			fir::Function* getCloneFunction(CodegenState* cs);
+			fir::Function* getAppendFunction(CodegenState* cs);
+			fir::Function* getCompareFunction(CodegenState* cs);
+			fir::Function* getCharAppendFunction(CodegenState* cs);
+			fir::Function* getBoundsCheckFunction(CodegenState* cs);
+			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
+			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
+			fir::Function* getCheckLiteralWriteFunction(CodegenState* cs);
+		}
+
+		namespace array
+		{
+			fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype);
+			fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
+			fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::Type* elmtype);
+			fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* elmtype);
+			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition);
+			fir::Function* getElementAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getCompareFunction(CodegenState* cs, fir::Type* arrtype, fir::Function* opf);
+			fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+
+		}
 	}
 
 	struct ValueTree
@@ -70,6 +105,12 @@ namespace cgn
 
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
 		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);
+
+		fir::Function* getOrDeclareLibCFunction(std::string name);
+
+		bool isRefCountedType(fir::Type* type);
+		void incrementRefCount(fir::Value* ptr);
+		void decrementRefCount(fir::Value* ptr);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

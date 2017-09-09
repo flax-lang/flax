@@ -4,6 +4,7 @@
 
 #pragma once
 #include "defs.h"
+#include "sst_expr.h"
 #include "precompile.h"
 
 namespace pts
@@ -18,9 +19,6 @@ namespace fir
 
 namespace sst
 {
-	struct Stmt;
-	struct Expr;
-
 	struct TypecheckState;
 }
 
@@ -38,7 +36,7 @@ namespace ast
 		Expr(const Location& l) : Stmt(l) { }
 		~Expr();
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
 	};
 
 	struct DeferredStmt : Stmt
@@ -183,7 +181,7 @@ namespace ast
 		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { }
 		~TypeExpr() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		pts::Type* type = 0;
 	};
@@ -193,7 +191,7 @@ namespace ast
 		Ident(const Location& l, std::string n) : Expr(l), name(n) { }
 		~Ident() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string name;
 	};
@@ -204,7 +202,7 @@ namespace ast
 		RangeExpr(const Location& loc) : Expr(loc) { }
 		~RangeExpr() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Expr* start = 0;
 		Expr* end = 0;
@@ -219,7 +217,7 @@ namespace ast
 		BinaryOp(const Location& loc, Operator o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
 		~BinaryOp() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Operator op = Operator::Invalid;
 
@@ -232,16 +230,16 @@ namespace ast
 		UnaryOp(const Location& l) : Expr(l) { }
 		~UnaryOp() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Operator op = Operator::Invalid;
 
 		Expr* expr = 0;
 	};
 
-	struct AssignOp : Expr
+	struct AssignOp : Stmt
 	{
-		AssignOp(const Location& l) : Expr(l) { }
+		AssignOp(const Location& l) : Stmt(l) { }
 		~AssignOp() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -257,7 +255,7 @@ namespace ast
 		SubscriptOp(const Location& l) : Expr(l) { }
 		~SubscriptOp() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Expr* expr = 0;
 		Expr* inside = 0;
@@ -268,7 +266,7 @@ namespace ast
 		SliceOp(const Location& l) : Expr(l) { }
 		~SliceOp() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Expr* expr = 0;
 
@@ -283,7 +281,7 @@ namespace ast
 		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }
 		~FunctionCall() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string name;
 		std::vector<Expr*> args;
@@ -294,7 +292,7 @@ namespace ast
 		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { }
 		~DotOperator() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Expr* left = 0;
 		Expr* right = 0;
@@ -308,7 +306,7 @@ namespace ast
 		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { }
 		~LitNumber() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string num;
 	};
@@ -318,7 +316,7 @@ namespace ast
 		LitBool(const Location& l, bool val) : Expr(l), value(val) { }
 		~LitBool() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		bool value = false;
 	};
@@ -328,7 +326,7 @@ namespace ast
 		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { }
 		~LitString() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string str;
 		bool isCString = false;
@@ -339,7 +337,7 @@ namespace ast
 		LitNull(const Location& l) : Expr(l) { }
 		~LitNull() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 	};
 
 	struct LitTuple : Expr
@@ -347,16 +345,16 @@ namespace ast
 		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
 		~LitTuple() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::vector<Expr*> values;
 	};
 
 
 
-	struct TopLevelBlock : Expr
+	struct TopLevelBlock : Stmt
 	{
-		TopLevelBlock(const Location& l, std::string n) : Expr(l), name(n) { }
+		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { }
 		~TopLevelBlock() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;

@@ -600,6 +600,12 @@ namespace frontend
 }
 
 
+std::string Location::toString() const
+{
+	return strprintf("(%s:%d:%d)", frontend::getFilenameFromID(this->fileID), this->line, this->col);
+}
+
+
 
 
 
