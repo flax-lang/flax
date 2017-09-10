@@ -45,14 +45,6 @@ namespace sst
 					error(expr, "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80()->str());
 			}
 		}
-		// else
-		// {
-		// 	if(lit->type->isIntegerType())
-		// 		return fir::Type::getInt64();
-
-		// 	else
-		// 		return fir::Type::getFloat64();
-		// }
 	}
 
 

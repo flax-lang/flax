@@ -22,11 +22,6 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	auto lt = ls->type;
 	auto rt = rs->type;
 
-	// can we subscript it?
-	// todo: of course, custom things later
-	if(!(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isPointerType() || lt->isArrayType()))
-		error(this->expr, "Cannot subscript type '%s'", lt->str());
-
 	// make sure the inside is legit
 	if(rt->isConstantNumberType())
 	{
@@ -37,27 +32,21 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 		// ok...
 	}
 	else if(!rt->isIntegerType())
+	{
 		error(this->inside, "Subscript index must be an integer type, found '%s'", rt->str());
+	}
 
 	fir::Type* res = 0;
 
 	// check what it is, then
-	if(lt->isDynamicArrayType())
-		res = lt->toDynamicArrayType()->getElementType();
+	if(lt->isDynamicArrayType())	res = lt->toDynamicArrayType()->getElementType();
+	else if(lt->isArraySliceType())	res = lt->toArraySliceType()->getElementType();
+	else if(lt->isPointerType())	res = lt->getPointerElementType();
+	else if(lt->isArrayType())		res = lt->toArrayType()->getElementType();
+	else if(lt->isStringType())		res = fir::Type::getCharType();
+	else							error(this->expr, "Cannot subscript type '%s'", lt->str());
 
-	else if(lt->isArraySliceType())
-		res = lt->toArraySliceType()->getElementType();
-
-	else if(lt->isPointerType())
-		res = lt->getPointerElementType();
-
-	else if(lt->isArrayType())
-		res = lt->toArrayType()->getElementType();
-
-	else
-		iceAssert(0);
-
-
+	iceAssert(res);
 	auto ret = new sst::SubscriptOp(this->loc, res);
 	ret->expr = ls;
 	ret->inside = rs;

@@ -865,7 +865,10 @@ namespace fir
 			error("ptr is not pointer type (got %s)", ptr->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::Value_Load, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
-		return this->addInstruction(instr, vname);
+		auto ret = this->addInstruction(instr, vname);
+		if(ptr->isImmutable()) ret->makeImmutable();
+
+		return ret;
 	}
 
 	Value* IRBuilder::CreateStore(Value* v, Value* ptr)

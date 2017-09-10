@@ -134,21 +134,25 @@ namespace cgn
 			if(!res)	return from;
 			else		return CGResult(res);
 		}
-		else
-		{
-			if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
-				&& target->getBitWidth() >= fromType->getBitWidth())
-			{
-				return CGResult(this->irb.CreateIntSizeCast(from.value, target));
-			}
-			else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
-			{
-				return CGResult(this->irb.CreateFExtend(from.value, target));
-			}
 
-			warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType->str(), target->str());
-			return CGResult(0);
+		// else
+		if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
+			&& target->getBitWidth() >= fromType->getBitWidth())
+		{
+			return CGResult(this->irb.CreateIntSizeCast(from.value, target));
 		}
+		else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
+		{
+			return CGResult(this->irb.CreateFExtend(from.value, target));
+		}
+		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
+		{
+			return CGResult(this->irb.CreateGetStringData(from.value));
+		}
+
+		// nope.
+		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType->str(), target->str());
+		return CGResult(0);
 	}
 
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)
@@ -157,7 +161,6 @@ namespace cgn
 		auto rt = rhs.value->getType();
 		if(lt == rt || (lt->isConstantNumberType() && rt->isConstantNumberType()))
 			return { lhs, rhs };
-
 
 		if(lt->isConstantNumberType() && !rt->isConstantNumberType())
 		{
@@ -215,6 +218,7 @@ namespace cgn
 			}
 		}
 
+		// nope...
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", lt->str(), rt->str());
 		return { CGResult(0), CGResult(0) };
 	}

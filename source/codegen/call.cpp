@@ -57,7 +57,9 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(i < numArgs)
 			inf = ft->getArgumentN(i);
 
-		auto val = arg->codegen(cs, inf).value;
+		auto vr = arg->codegen(cs, inf);
+		auto val = vr.value;
+
 		if(val->getType()->isConstantNumberType())
 		{
 			auto cv = dcast(fir::ConstantValue, val);
@@ -66,10 +68,25 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			val = cs->unwrapConstantNumber(cv);
 		}
 
-		if(i < numArgs && val->getType() != ft->getArgumentN(i))
+		if(i < numArgs)
 		{
-			error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
-				ft->getArgumentN(i)->str(), val->getType()->str());
+			if(val->getType() != ft->getArgumentN(i))
+			{
+				vr = cs->oneWayAutocast(vr, ft->getArgumentN(i));
+				val = vr.value;
+			}
+
+			// still?
+			if(val->getType() != ft->getArgumentN(i))
+			{
+				error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
+					ft->getArgumentN(i)->str(), val->getType()->str());
+			}
+		}
+		else if(val->getType()->isStringType())
+		{
+			// auto-convert strings into char* when passing to va_args
+			val = cs->irb.CreateGetStringData(val);
 		}
 
 		args.push_back(val);

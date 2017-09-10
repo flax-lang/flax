@@ -98,6 +98,10 @@ namespace sst
 
 		Expr* expr = 0;
 		Expr* inside = 0;
+
+		// to assist safety checks, store the generated things
+		fir::Value* cgSubscriptee = 0;
+		fir::Value* cgIndex = 0;
 	};
 
 
