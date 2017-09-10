@@ -18,15 +18,29 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		HighlightOptions hs;
 		hs.underlines.push_back(this->left->loc);
-		error(this, hs, "Cannot assign to non-lvalue");
+		error(this, hs, "Cannot assign to non-lvalue expression");
 	}
 
-	if(lr.pointer && lr.pointer->isImmutable())
+	if(lr.value->isImmutable() || (lr.pointer && lr.pointer->isImmutable()))
 	{
 		HighlightOptions hs;
 		hs.underlines.push_back(this->left->loc);
 		error(this, hs, "Cannot assign to immutable expression");
 	}
+
+
+	// check if we're trying to modify a literal, first of all.
+	// we do it here, because we need some special sauce to do stuff
+	if(auto so = dcast(SubscriptOp, this->left); so->cgSubscriptee->getType()->isStringType())
+	{
+		// yes, yes we are.
+		auto checkf = cgn::glue::string::getCheckLiteralWriteFunction(cs);
+		auto locstr = fir::ConstantString::get(this->loc.toString());
+
+		// call it
+		cs->irb.CreateCall3(checkf, so->cgSubscriptee, so->cgIndex, locstr);
+	}
+
 
 	// okay, i guess
 	auto rr = this->right->codegen(cs, lt);

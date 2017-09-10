@@ -524,12 +524,16 @@ namespace parser
 
 			if(!isSlice && st.front().type == TT::RSquare)
 			{
-				st.eat();
+				auto end = st.eat().loc;
 				iceAssert(inside);
 
 				auto ret = new SubscriptOp(op.loc);
 				ret->expr = lhs;
 				ret->inside = inside;
+
+				// custom thingy
+				ret->loc.col = lhs->loc.col;
+				ret->loc.len = end.col - ret->loc.col + 1;
 
 				return ret;
 			}
@@ -693,7 +697,7 @@ namespace parser
 					error(st, "Continue statements are not expressions");
 
 				case TT::If:
-					error(st, "If statements are not expressions (yet)");
+					error(st, "If statements are not expressions");
 
 				case TT::Do:
 				case TT::While:

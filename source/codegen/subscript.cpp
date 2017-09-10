@@ -31,6 +31,10 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lr = this->expr->codegen(cs);
 	auto lt = lr.value->getType();
 
+	// assists checking for literal writes later on
+	this->cgSubscriptee = lr.value;
+	this->cgIndex = index;
+
 	fir::Value* data = 0;
 	if(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isArrayType())
 	{
@@ -45,10 +49,10 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else if(lt->isArrayType())		max = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
 
 		auto ind = index;
-		auto str = fir::ConstantString::get(this->loc.toString());
+		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.CreateCall3(checkf, max, ind, str);
+		cs->irb.CreateCall3(checkf, max, ind, locstr);
 
 		// ok.
 		if(lt->isArrayType())
@@ -65,6 +69,18 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			data = cs->irb.CreateGetArraySliceData(lr.pointer);
 		}
+	}
+	else if(lt->isStringType())
+	{
+		// bounds check
+		auto checkf = cgn::glue::string::getBoundsCheckFunction(cs);
+		iceAssert(checkf);
+
+		auto locstr = fir::ConstantString::get(this->loc.toString());
+
+		// call it
+		cs->irb.CreateCall3(checkf, lr.value, index, locstr);
+		data = cs->irb.CreateGetStringData(lr.value);
 	}
 	else if(lt->isPointerType())
 	{
