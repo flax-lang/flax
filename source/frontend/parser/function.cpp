@@ -234,6 +234,9 @@ namespace parser
 			if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
 				st.pop();
 
+			else if(st.frontAfterWS() == TT::RBrace)
+				break;
+
 			else
 				expected(st, "newline or semicolon to terminate a statement", st.front().str());
 

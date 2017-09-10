@@ -65,12 +65,17 @@ struct Identifier
 
 struct CGResult
 {
-	enum class VK { Invalid, LValue, RValue };
+	enum class VK
+	{
+		Invalid,
+		LValue,		// lvalue, as in c/c++
+		RValue,		// rvalue, as in c/c++
+	};
 
 	CGResult() : CGResult(0) { }
-	CGResult(fir::Value* v) : value(v), pointer(0), kind(VK::RValue) { }
-	CGResult(fir::Value* v, fir::Value* p) : value(v), pointer(p), kind(VK::RValue) { }
-	CGResult(fir::Value* v, fir::Value* p, VK k) : value(v), pointer(p), kind(k) { }
+	explicit CGResult(fir::Value* v) : value(v), pointer(0), kind(VK::RValue) { }
+	explicit CGResult(fir::Value* v, fir::Value* p) : value(v), pointer(p), kind(VK::RValue) { }
+	explicit CGResult(fir::Value* v, fir::Value* p, VK k) : value(v), pointer(p), kind(k) { }
 
 	fir::Value* value = 0;
 	fir::Value* pointer = 0;

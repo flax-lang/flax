@@ -24,7 +24,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(!mpfr::isint(this->number) && !infer->isFloatingPointType())
 			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer->str());
 
-		return cs->unwrapConstantNumber(this->number, infer);
+		return CGResult(cs->unwrapConstantNumber(this->number, infer));
 	}
 	else
 	{
@@ -194,10 +194,8 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-
+		return CGResult(fir::ConstantString::get(this->str));
 	}
-
-	error(this, "not implemented");
 }
 
 

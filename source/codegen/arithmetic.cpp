@@ -148,7 +148,7 @@ namespace sst
 				auto cn = dcast(fir::ConstantNumber, value);
 				if(!cn) error(this->left, "what");
 
-				return cs->unwrapConstantNumber(cn->getValue(), target);
+				return CGResult(cs->unwrapConstantNumber(cn->getValue(), target));
 				// return _csdoConstantCast(this, cn, target);
 			}
 			else
@@ -291,7 +291,7 @@ namespace sst
 			} break;
 
 			case Operator::AddressOf: {
-				if(!ex.pointer || ex.kind != CGResult::VK::LValue)
+				if(!ex.pointer || ex.kind == CGResult::VK::RValue)
 					error(this, "Cannot take address of an rvalue");
 
 				return CGResult(ex.pointer);
