@@ -33,15 +33,10 @@ namespace sst
 		std::string name;
 		StateTree* parent = 0;
 
+		std::unordered_map<std::string, StateTree*> subtrees;
 		std::unordered_map<std::string, std::vector<Defn*>> definitions;
 
-		// std::unordered_map<std::string, VarDefn*> variables;
-		// std::unordered_map<std::string, std::vector<FunctionDefn*>> functions;
-		// std::unordered_map<std::string, ForeignFuncDefn*> foreignFunctions;
-
 		std::unordered_map<std::string, std::vector<ast::FuncDefn*>> unresolvedGenericFunctions;
-
-		std::unordered_map<std::string, StateTree*> subtrees;
 	};
 
 	struct DefinitionTree
@@ -70,10 +65,14 @@ namespace sst
 		void pushLoc(const Location& l);
 		void pushLoc(ast::Stmt* stmt);
 
-		int functionNestLevel = 0;
+		std::vector<FunctionDefn*> currentFunctionStack;
 		bool isInFunctionBody();
-		void enterFunctionBody();
-		void exitFunctionBody();
+
+		FunctionDefn* getCurrentFunction();
+		void enterFunctionBody(FunctionDefn* fn);
+		void leaveFunctionBody();
+
+		std::string getAnonymousScopeName();
 
 		Location loc();
 		Location popLoc();
@@ -84,9 +83,6 @@ namespace sst
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
 
-		// std::vector<FunctionDefn*> getFunctionsWithName(std::string name, StateTree* scope = 0);
-		// std::vector<FunctionDecl*> getFunctionDeclsWithName(std::string name, StateTree* scope = 0);
-
 		std::vector<Stmt*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
 			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
@@ -96,6 +92,8 @@ namespace sst
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
+
+		bool checkAllPathsReturn(FunctionDefn* fn);
 
 		struct PrettyError
 		{

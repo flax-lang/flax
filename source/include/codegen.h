@@ -17,6 +17,7 @@ namespace sst
 	struct Expr;
 	struct Stmt;
 	struct Defn;
+	struct BinaryOp;
 	struct StateTree;
 	struct DefinitionTree;
 }
@@ -97,6 +98,7 @@ namespace cgn
 		void leaveNamespace();
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
+		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
 
 		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
 		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);

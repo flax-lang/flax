@@ -16,10 +16,7 @@ using TCS = sst::TypecheckState;
 sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
-	fs->enterFunctionBody();
-
 	defer(fs->popLoc());
-	defer(fs->exitFunctionBody());
 
 	if(this->generics.size() > 0)
 	{
@@ -29,6 +26,10 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	using Param = sst::FunctionDefn::Param;
 	auto defn = new sst::FunctionDefn(this->loc);
+
+	fs->enterFunctionBody(defn);
+	defer(fs->leaveFunctionBody());
+
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
 
@@ -57,15 +58,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defn->global = !fs->isInFunctionBody();
 
 	fs->pushTree(defn->id.mangled());
-
-	defn->body = new sst::Block(this->body->loc);
-
-	// do the body
-	for(auto stmt : this->body->statements)
-		defn->body->statements.push_back(stmt->typecheck(fs));
-
-	for(auto stmt : this->body->deferredStatements)
-		defn->body->deferred.push_back(stmt->typecheck(fs));
+	defn->body = dcast(sst::Block, this->body->typecheck(fs));
+	iceAssert(defn->body);
 
 	fs->popTree();
 
@@ -96,6 +90,9 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 		error(this, "conflicting");
 
 	fs->stree->definitions[this->name].push_back(defn);
+
+	// ok, do the check.
+	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
 	return defn;
 }
 
@@ -166,6 +163,8 @@ sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
 	defer(fs->popLoc());
 
 	auto ret = new sst::Block(this->loc);
+	ret->closingBrace = this->closingBrace;
+	ret->generatedScopeName = fs->getAnonymousScopeName();
 
 	for(auto stmt : this->statements)
 		ret->statements.push_back(stmt->typecheck(fs));

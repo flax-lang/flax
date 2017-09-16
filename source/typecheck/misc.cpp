@@ -38,19 +38,28 @@ namespace sst
 	}
 
 
-	void TypecheckState::enterFunctionBody()
+	void TypecheckState::enterFunctionBody(FunctionDefn* fn)
 	{
-		this->functionNestLevel++;
+		this->currentFunctionStack.push_back(fn);
 	}
 
-	void TypecheckState::exitFunctionBody()
+	void TypecheckState::leaveFunctionBody()
 	{
-		this->functionNestLevel--;
+		if(this->currentFunctionStack.empty())
+			error(this->loc(), "Not inside function");
+	}
+
+	FunctionDefn* TypecheckState::getCurrentFunction()
+	{
+		if(this->currentFunctionStack.empty())
+			error(this->loc(), "Not inside function");
+
+		return this->currentFunctionStack.back();
 	}
 
 	bool TypecheckState::isInFunctionBody()
 	{
-		return this->functionNestLevel > 0;
+		return this->currentFunctionStack.size() > 0;
 	}
 
 
@@ -177,6 +186,12 @@ namespace sst
 			doTheExit();
 
 		return false;
+	}
+
+	static size_t _anonId = 0;
+	std::string TypecheckState::getAnonymousScopeName()
+	{
+		return "__anon_scope_" + std::to_string(_anonId++);
 	}
 }
 

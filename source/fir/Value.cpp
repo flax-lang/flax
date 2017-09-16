@@ -99,6 +99,11 @@ namespace fir
 		this->incoming[block] = v;
 	}
 
+	std::map<IRBlock*, Value*> PHINode::getValues()
+	{
+		return this->incoming;
+	}
+
 	PHINode::PHINode(Type* t) : fir::Value(t)
 	{
 	}

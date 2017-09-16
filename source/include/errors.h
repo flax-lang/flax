@@ -114,8 +114,8 @@ std::string __error_gen(HighlightOptions ops, const char* msg, const char* type,
 
 	// std::string filename = "TODO: filename";
 
-	if(ops.caret.line > 0 && ops.caret.col > 0 && ops.caret.fileID > 0)
-		ret += strprintf("%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename, ops.caret.line + 1, ops.caret.col);
+	if(ops.caret.fileID > 0)
+		ret += strprintf("%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename, ops.caret.line + 1, ops.caret.col + 1);
 
 	if(empty)	ret += strprintf("%s%s%s%s", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
 	else		ret += strprintf("%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
@@ -124,7 +124,7 @@ std::string __error_gen(HighlightOptions ops, const char* msg, const char* type,
 
 	ret += strprintf("%s\n", COLOUR_RESET);
 
-	if(ops.caret.line > 0 && ops.caret.col > 0)
+	if(ops.caret.fileID > 0)
 	{
 		std::vector<std::string> lines;
 		if(ops.caret.fileID > 0)
