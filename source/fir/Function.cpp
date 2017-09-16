@@ -82,6 +82,17 @@ namespace fir
 		return this->fnArguments;
 	}
 
+	Argument* Function::getArgumentWithName(std::string name)
+	{
+		for(auto a : this->fnArguments)
+		{
+			if(a->getName().name == name)
+				return a;
+		}
+
+		error("No argument named '%s' in function '%s'", name, this->getName().name);
+	}
+
 	bool Function::isCStyleVarArg()
 	{
 		return this->getType()->isCStyleVarArg();

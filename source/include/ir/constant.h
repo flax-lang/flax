@@ -53,6 +53,7 @@ namespace fir
 		friend struct Module;
 
 		static ConstantBool* get(bool value, FTContext* tc = 0);
+		bool getValue();
 
 		protected:
 		ConstantBool(bool val);

@@ -61,7 +61,26 @@ namespace cgn
 		this->vtree = this->vtree->parent;
 	}
 
+	void CodegenState::enterFunction(fir::Function* fn)
+	{
+		this->functionStack.push_back(fn);
+	}
 
+	void CodegenState::leaveFunction()
+	{
+		if(this->functionStack.empty())
+			error(this->loc(), "Not a in function");
+
+		this->functionStack.pop_back();
+	}
+
+	fir::Function* CodegenState::getCurrentFunction()
+	{
+		if(this->functionStack.empty())
+			error(this->loc(), "Not a in function");
+
+		return this->functionStack.back();
+	}
 
 
 

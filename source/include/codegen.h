@@ -100,6 +100,11 @@ namespace cgn
 		void enterNamespace(std::string name);
 		void leaveNamespace();
 
+		std::vector<fir::Function*> functionStack;
+		fir::Function* getCurrentFunction();
+		void enterFunction(fir::Function* fn);
+		void leaveFunction();
+
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
 

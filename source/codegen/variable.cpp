@@ -69,7 +69,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto it = cs->valueMap.find(this->def);
 	if(it == cs->valueMap.end())
-		error("wtf?");
+		error(this->def, "wtf?");
 
 	fir::Value* value = 0;
 	auto defn = it->second;

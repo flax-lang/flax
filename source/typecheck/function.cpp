@@ -28,6 +28,22 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	fs->enterFunctionBody(defn);
 	fs->pushTree(defn->id.mangled());
 	{
+		// add the arguments to the tree
+		// fs->stree->
+
+		for(auto arg : defn->params)
+		{
+			auto vd = new sst::ArgumentDefn(arg.loc);
+			vd->id = Identifier(arg.name, IdKind::Name);
+			vd->id.scope = fs->getCurrentScope();
+
+			vd->type = arg.type;
+
+			fs->stree->definitions[arg.name].push_back(vd);
+
+			defn->arguments.push_back(vd);
+		}
+
 		defn->body = dcast(sst::Block, this->body->typecheck(fs));
 		iceAssert(defn->body);
 	}

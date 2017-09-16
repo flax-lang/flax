@@ -25,6 +25,19 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto fn = cs->module->getOrCreateFunction(ident, ft,
 		this->privacy == PrivacyLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
+	// manually set the names, I guess
+	for(size_t i = 0; i < this->params.size(); i++)
+		fn->getArguments()[i]->setName(this->params[i].name);
+
+
+
+	// special case for functions, to enable recursive calling:
+	// set our cached result *before* we generate our body, in case we contain either
+	// a: a call to ourselves, or
+	// b: a call to someone that call us eventually
+
+	this->cachedResult = CGResult(fn);
+
 	auto restore = cs->irb.getCurrentBlock();
 	defer(cs->irb.setCurrentBlock(restore));
 
@@ -34,6 +47,12 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterNamespace(this->id.mangled());
 	defer(cs->leaveNamespace());
 
+	cs->enterFunction(fn);
+	defer(cs->leaveFunction());
+
+
+	for(auto a : this->arguments)
+		a->codegen(cs);
 
 
 	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
@@ -87,13 +106,30 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 
 	cs->valueMap[this] = CGResult(fn);
+	cs->vtree->values[this->id.name].push_back(CGResult(fn));
+
 	return CGResult(fn);
 }
 
 
 
 
+CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
 
+	auto fn = cs->getCurrentFunction();
+
+	// get the arguments
+	auto arg = fn->getArgumentWithName(this->id.name);
+
+	// ok...
+	cs->valueMap[this] = CGResult(arg);
+	cs->vtree->values[this->id.name].push_back(CGResult(arg));
+
+	return CGResult(arg);
+}
 
 CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
