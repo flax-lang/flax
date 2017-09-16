@@ -20,6 +20,7 @@ namespace fir
 namespace sst
 {
 	struct TypecheckState;
+	struct FunctionDefn;
 }
 
 namespace ast
@@ -86,6 +87,10 @@ namespace ast
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
+		bool didGenerateDecl = false;
+		sst::FunctionDefn* generatedDefn = 0;
+		void generateDeclaration(sst::TypecheckState* fs);
+
 		struct Arg
 		{
 			std::string name;
@@ -112,6 +117,7 @@ namespace ast
 		ForeignFuncDefn(const Location& l) : Stmt(l) { }
 		~ForeignFuncDefn() { }
 
+		bool didGenerateDecl = false;
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		using Arg = FuncDefn::Arg;
