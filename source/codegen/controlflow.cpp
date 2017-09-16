@@ -18,8 +18,12 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	auto rsn = cs->setNamespace(this->scope);
+	defer(cs->restoreNamespace(rsn));
+
 	cs->enterNamespace(this->generatedScopeName);
 	defer(cs->leaveNamespace());
+
 
 	auto trueblk = cs->irb.addNewBlockAfter("trueCase", cs->irb.getCurrentBlock());
 	auto mergeblk = cs->irb.addNewBlockAfter("mergeCase", cs->irb.getCurrentBlock());

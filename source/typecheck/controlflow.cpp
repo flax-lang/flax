@@ -15,13 +15,17 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto n = fs->getAnonymousScopeName();
-	fs->pushTree(n);
-	defer(fs->popTree());
 
 	using Case = sst::IfStmt::Case;
 	auto ret = new sst::IfStmt(this->loc);
+
+	auto n = fs->getAnonymousScopeName();
+
 	ret->generatedScopeName = n;
+	ret->scope = fs->getCurrentScope();
+
+	fs->pushTree(n);
+	defer(fs->popTree());
 
 	for(auto c : this->cases)
 	{

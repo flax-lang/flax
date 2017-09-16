@@ -19,21 +19,6 @@ fn foo(a: int)
 }
 
 
-fn bar1() -> bool
-{
-	printf("BAR ONE\n")
-	return true
-}
-
-fn bar2() -> bool
-{
-	printf("BAR TWO\n")
-
-	if true { }
-	else if false { }
-
-	return 3
-}
 
 @entry fn main(argc: i32, argv: i8**) -> void
 {
@@ -55,14 +40,11 @@ fn bar2() -> bool
 	// var one = 40
 	// let op = &one
 
-	3 + 1
+	var arr = [ 1, 2, 3, 4 ]
+	arr[0] = 3
 
-	var str = "foo, bar"
-	// str[0] = 65
+	printf("arr[0] = %d\n", arr[0])
 
-
-	printf("str = '%s'\n", str);
-	printf("str[0] = '%c'\n", str[0])
 
 	if(var k = 2; bar1() || bar2())
 	{
@@ -85,12 +67,25 @@ fn bar2() -> bool
 	{
 		printf("else: k = %d, m = %d\n", k, m)
 	}
-
-	// printf("k = %d\n", k)
 }
 
 
 
+fn bar1() -> bool
+{
+	printf("BAR ONE\n")
+	return true
+}
+
+fn bar2() -> bool
+{
+	printf("BAR TWO\n")
+
+	if true { }
+	else if false { }
+
+	return false
+}
 
 
 

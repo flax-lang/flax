@@ -68,9 +68,19 @@ namespace sst
 	{
 		iceAssert(this->stree);
 
-		auto newtree = new StateTree(name, this->stree);
-		this->stree->subtrees[name] = newtree;
-		this->stree = newtree;
+		if(auto it = this->stree->subtrees.find(name); it != this->stree->subtrees.end())
+		{
+			this->stree = it->second;
+		}
+		else
+		{
+			auto newtree = new StateTree(name, this->stree);
+			this->stree->subtrees[name] = newtree;
+			this->stree = newtree;
+		}
+
+		// if(!this->locationStack.empty())
+		// 	info(this->loc(), "enter namespace %s in %s", name, this->stree->parent->name);
 	}
 
 	StateTree* TypecheckState::popTree()
@@ -191,6 +201,7 @@ namespace sst
 	static size_t _anonId = 0;
 	std::string TypecheckState::getAnonymousScopeName()
 	{
+		// warn(this->loc(), "make anon scope %zu", _anonId);
 		return "__anon_scope_" + std::to_string(_anonId++);
 	}
 }
