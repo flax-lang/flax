@@ -20,6 +20,7 @@ namespace fir
 	struct VoidType;
 	struct CharType;
 	struct EnumType;
+	struct BoolType;
 	struct ArrayType;
 	struct TupleType;
 	struct ClassType;
@@ -49,6 +50,9 @@ namespace fir
 
 		// special thing #2
 		NullType* nullType = 0;
+
+		// #3
+		BoolType* boolType = 0;
 
 		// fir::LLVMContext* llvmContext = 0;
 		fir::Module* module = 0;
@@ -103,6 +107,7 @@ namespace fir
 		ClassType* toClassType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
+		BoolType* toBoolType();
 		CharType* toCharType();
 		EnumType* toEnumType();
 		NullType* toNullType();
@@ -157,7 +162,8 @@ namespace fir
 
 		static ConstantNumberType* getConstantNumber(mpfr::mpreal n, FTContext* tc = 0);
 
-		static PrimitiveType* getBool(FTContext* tc = 0);
+		static BoolType* getBool(FTContext* tc = 0);
+
 		static PrimitiveType* getInt8(FTContext* tc = 0);
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);
@@ -187,11 +193,11 @@ namespace fir
 		static PointerType* getUint64Ptr(FTContext* tc = 0);
 		static PointerType* getUint128Ptr(FTContext* tc = 0);
 
-		static CharType* getCharType(FTContext* tc = 0);
-		static StringType* getStringType(FTContext* tc = 0);
-		static RangeType* getRangeType(FTContext* tc = 0);
+		static CharType* getChar(FTContext* tc = 0);
+		static StringType* getString(FTContext* tc = 0);
+		static RangeType* getRange(FTContext* tc = 0);
 
-		static AnyType* getAnyType(FTContext* tc = 0);
+		static AnyType* getAny(FTContext* tc = 0);
 
 
 		protected:
@@ -235,7 +241,22 @@ namespace fir
 
 
 
+	struct BoolType : Type
+	{
+		friend struct Type;
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+
+		// protected constructor
+		BoolType();
+		protected:
+		virtual ~BoolType() override { }
+
+		public:
+		static BoolType* get(FTContext* tc = 0);
+	};
 
 	struct VoidType : Type
 	{
@@ -344,7 +365,6 @@ namespace fir
 		static PrimitiveType* getIntN(size_t bits, FTContext* tc = 0);
 		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
 
-		static PrimitiveType* getBool(FTContext* tc = 0);
 		static PrimitiveType* getInt8(FTContext* tc = 0);
 		static PrimitiveType* getInt16(FTContext* tc = 0);
 		static PrimitiveType* getInt32(FTContext* tc = 0);

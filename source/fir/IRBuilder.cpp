@@ -1453,7 +1453,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt8Ptr())
 			error("val is not an int8*");
 
-		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getStringType(), { str, val });
+		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getString(), { str, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1478,7 +1478,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock, fir::Type::getStringType(), { str, val });
+		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock, fir::Type::getString(), { str, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1783,7 +1783,7 @@ namespace fir
 			error("val is not an integer type (got '%s')", val->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::Range_SetLower, true, this->currentBlock,
-			fir::Type::getRangeType(), { range, val });
+			fir::Type::getRange(), { range, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1808,7 +1808,7 @@ namespace fir
 			error("val is not an integer type (got '%s')", val->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::Range_SetUpper, true, this->currentBlock,
-			fir::Type::getRangeType(), { range, val });
+			fir::Type::getRange(), { range, val });
 
 		return this->addInstruction(instr, vname);
 	}

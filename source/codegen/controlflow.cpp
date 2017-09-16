@@ -45,7 +45,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	// do a comparison
-	fir::Value* cmpRes = cs->irb.CreateICmpEQ(firstCond, fir::ConstantInt::getBool(true));
+	fir::Value* cmpRes = cs->irb.CreateICmpEQ(firstCond, fir::ConstantBool::get(true));
 	cs->irb.CreateCondBranch(cmpRes, trueblk, elseblk);
 
 
@@ -76,7 +76,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto trueblk = cs->irb.addNewBlockAfter("trueCaseR", cs->irb.getCurrentBlock());
 			auto falseblkr = cs->irb.addNewBlockAfter("falseCaseR", cs->irb.getCurrentBlock());
 
-			fir::Value* cmpr = cs->irb.CreateICmpEQ(cond, fir::ConstantInt::getBool(true));
+			fir::Value* cmpr = cs->irb.CreateICmpEQ(cond, fir::ConstantBool::get(true));
 
 			cs->irb.CreateCondBranch(cmpr, trueblk, falseblkr);
 

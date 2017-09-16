@@ -18,7 +18,7 @@ sst::Expr* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	auto n = mpfr::mpreal(this->num);
-	auto ret = new sst::LiteralNumber(this->loc, infer ? infer : fir::Type::getConstantNumber(n));
+	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::Type::getConstantNumber(n));
 	ret->number = n;
 
 	return ret;
@@ -81,7 +81,7 @@ sst::Expr* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 	}
 	else
 	{
-		ty = fir::Type::getStringType();
+		ty = fir::Type::getString();
 	}
 
 	auto ret = new sst::LiteralString(this->loc, ty);

@@ -28,7 +28,7 @@ namespace cgn
 			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType()->str());
 
 		// ok, compare first.
-		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantInt::getBool(true));
+		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantBool::get(true));
 		cs->irb.CreateCondBranch(cmpres, pass, check);
 
 		cs->irb.setCurrentBlock(check);
@@ -38,7 +38,7 @@ namespace cgn
 			if(!right->getType()->isBoolType())
 				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType()->str());
 
-			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantInt::getBool(true));
+			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantBool::get(true));
 			cs->irb.CreateCondBranch(cmpres, pass, merge);
 		}
 
@@ -50,8 +50,8 @@ namespace cgn
 		cs->irb.setCurrentBlock(merge);
 
 		auto phi = cs->irb.CreatePHINode(fir::Type::getBool());
-		phi->addIncoming(fir::ConstantInt::getBool(true), pass);
-		phi->addIncoming(fir::ConstantInt::getBool(false), check);
+		phi->addIncoming(fir::ConstantBool::get(true), pass);
+		phi->addIncoming(fir::ConstantBool::get(false), check);
 
 		return CGResult(phi);
 	}
@@ -74,7 +74,7 @@ namespace cgn
 			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType()->str());
 
 		// ok, compare first.
-		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantInt::getBool(true));
+		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantBool::get(true));
 		cs->irb.CreateCondBranch(cmpres, check, fail);
 
 		cs->irb.setCurrentBlock(fail);
@@ -90,15 +90,15 @@ namespace cgn
 			if(!right->getType()->isBoolType())
 				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType()->str());
 
-			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantInt::getBool(true));
+			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantBool::get(true));
 			cs->irb.CreateCondBranch(cmpres, merge, fail);
 		}
 
 		cs->irb.setCurrentBlock(merge);
 
 		auto phi = cs->irb.CreatePHINode(fir::Type::getBool());
-		phi->addIncoming(fir::ConstantInt::getBool(true), check);
-		phi->addIncoming(fir::ConstantInt::getBool(false), fail);
+		phi->addIncoming(fir::ConstantBool::get(true), check);
+		phi->addIncoming(fir::ConstantBool::get(false), fail);
 
 		return CGResult(phi);
 	}

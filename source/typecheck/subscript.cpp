@@ -43,7 +43,7 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	else if(lt->isArraySliceType())	res = lt->toArraySliceType()->getElementType();
 	else if(lt->isPointerType())	res = lt->getPointerElementType();
 	else if(lt->isArrayType())		res = lt->toArrayType()->getElementType();
-	else if(lt->isStringType())		res = fir::Type::getCharType();
+	else if(lt->isStringType())		res = fir::Type::getChar();
 	else							error(this->expr, "Cannot subscript type '%s'", lt->str());
 
 	iceAssert(res);

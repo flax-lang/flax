@@ -32,7 +32,7 @@ fn bar2() -> bool
 	if true { }
 	else if false { }
 
-	return true
+	return 3
 }
 
 @entry fn main(argc: i32, argv: i8**) -> void
