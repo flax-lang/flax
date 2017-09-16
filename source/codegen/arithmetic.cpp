@@ -212,7 +212,7 @@ namespace sst
 
 				auto res = doConstantThings(lnum, rnum, this->op);
 				if(isCompareOp(op))
-					return CGResult(fir::ConstantInt::getBool((bool) res));
+					return CGResult(fir::ConstantBool::get((bool) res));
 
 				else
 					return CGResult(fir::ConstantNumber::get(res));
@@ -246,7 +246,7 @@ namespace sst
 				if(auto c = dcast(fir::ConstantInt, val))
 				{
 					bool b = c->getSignedValue();
-					return CGResult(fir::ConstantInt::getBool(!b));
+					return CGResult(fir::ConstantBool::get(!b));
 				}
 				else
 				{

@@ -13,20 +13,6 @@ namespace fir
 	}
 
 
-	PrimitiveType* PrimitiveType::getBool(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// bitwidth = 1
-		std::vector<PrimitiveType*> bools = tc->primitiveTypes[1];
-
-		// how do we have more than 1?
-		iceAssert(bools.size() == 1 && "???? more than 1 bool??");
-		iceAssert(bools.front()->bitWidth == 1 && "not bool purporting to be bool???");
-
-		return bools.front();
-	}
 
 
 
@@ -225,9 +211,6 @@ namespace fir
 
 		if(this->primKind == Kind::Integer)
 		{
-			if(!this->isSigned() && this->getIntegerBitWidth() == 1)
-				return "bool";
-
 			if(this->isSigned())	ret = "i";
 			else					ret = "u";
 
@@ -332,8 +315,6 @@ namespace fir
 			return this;
 		}
 	}
-
-
 }
 
 

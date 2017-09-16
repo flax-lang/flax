@@ -35,7 +35,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getStringType()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getString()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -68,7 +68,7 @@ namespace string
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, cs->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
 
@@ -77,7 +77,7 @@ namespace string
 
 			// ok, now fix it
 
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getStringType());
+			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
 			str = cs->irb.CreateSetStringData(str, buf);
 			str = cs->irb.CreateSetStringLength(str, lhslen);
@@ -118,8 +118,8 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
-				fir::Type::getStringType()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
+				fir::Type::getString()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -172,11 +172,11 @@ namespace string
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, cs->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
 			cs->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, cs->irb.CreateIntSizeCast(rhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			// null terminator
 			fir::Value* nt = cs->irb.CreateGetPointer(offsetbuf, rhslen);
@@ -194,7 +194,7 @@ namespace string
 			#endif
 
 			// ok, now fix it
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getStringType());
+			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
 			str = cs->irb.CreateSetStringData(str, buf);
 			str = cs->irb.CreateSetStringLength(str, newlen);
@@ -219,8 +219,8 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getCharType() },
-				fir::Type::getStringType()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getChar() },
+				fir::Type::getString()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -265,7 +265,7 @@ namespace string
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, lhslen,
-				fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
 
@@ -286,7 +286,7 @@ namespace string
 
 			// ok, now fix it
 			// get an empty string
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getStringType());
+			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
 			str = cs->irb.CreateSetStringData(str, buf);
 			str = cs->irb.CreateSetStringLength(str, cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
@@ -318,7 +318,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getStringType() },
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
 				fir::Type::getInt64()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -415,7 +415,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid()),
+				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -485,7 +485,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType() }, fir::Type::getVoid()),
+				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()),
 				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -588,7 +588,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64(), fir::Type::getStringType() },
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64(), fir::Type::getString() },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -667,7 +667,7 @@ namespace string
 
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getStringType(), fir::Type::getInt64(), fir::Type::getStringType() },
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64(), fir::Type::getString() },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
