@@ -59,7 +59,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto c = this->cases.front();
 		c.body->codegen(cs);
 
-		cs->irb.CreateUnCondBranch(mergeblk);
+		if(!cs->irb.getCurrentBlock()->isTerminated())
+			cs->irb.CreateUnCondBranch(mergeblk);
 	}
 
 	// ok -- we don't really need to do it recursively, do we?
@@ -84,11 +85,13 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			cs->irb.CreateCondBranch(cmpr, trueblk, falseblkr);
 
+
 			cs->irb.setCurrentBlock(trueblk);
 			{
 				elif.body->codegen(cs);
 
-				cs->irb.CreateUnCondBranch(mergeblk);
+				if(!cs->irb.getCurrentBlock()->isTerminated())
+					cs->irb.CreateUnCondBranch(mergeblk);
 			}
 
 			cs->irb.setCurrentBlock(falseblkr);
@@ -97,7 +100,9 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				// if we're the last block, then gtfo and branch to merge
 				if(elif == remaining.back())
 				{
-					cs->irb.CreateUnCondBranch(mergeblk);
+					if(!cs->irb.getCurrentBlock()->isTerminated())
+						cs->irb.CreateUnCondBranch(mergeblk);
+
 					break;
 				}
 			}
@@ -110,7 +115,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->elseCase)
 			this->elseCase->codegen(cs);
 
-		if(elseblk != mergeblk)
+		if(elseblk != mergeblk && !cs->irb.getCurrentBlock()->isTerminated())
 			cs->irb.CreateUnCondBranch(mergeblk);
 	}
 

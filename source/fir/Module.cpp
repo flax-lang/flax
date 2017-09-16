@@ -310,6 +310,12 @@ namespace fir
 
 			ret += "\n{";
 
+			// do the args
+			for(auto arg : ffn->getArguments())
+			{
+				ret += strprintf("\n    arg %s (%%%zu) :: %s", arg->getName().name, arg->id, arg->getType()->str());
+			}
+
 
 			for(auto block : ffn->getBlockList())
 			{

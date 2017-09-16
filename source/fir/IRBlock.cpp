@@ -50,7 +50,25 @@ namespace fir
 	{
 		return this->instructions;
 	}
+
+	bool IRBlock::isTerminated()
+	{
+		if(this->instructions.size() == 0)
+			return false;
+
+		auto last = this->instructions.back();
+		return last->opKind == OpKind::Branch_Cond
+				|| last->opKind == OpKind::Branch_UnCond
+				|| last->opKind == OpKind::Value_Return;
+	}
 }
+
+
+
+
+
+
+
 
 
 

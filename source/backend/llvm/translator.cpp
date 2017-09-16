@@ -250,6 +250,11 @@ namespace backend
 			llvm::Type* ct = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
+		else if(fir::ConstantBool* cc = dynamic_cast<fir::ConstantBool*>(c))
+		{
+			llvm::Type* ct = typeToLlvm(c->getType(), mod);
+			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
+		}
 		else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
