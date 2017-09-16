@@ -32,6 +32,18 @@ namespace fir
 	}
 
 
+	ConstantBool* ConstantBool::get(bool val, FTContext* tc)
+	{
+		return new ConstantBool(val);
+	}
+
+	ConstantBool::ConstantBool(bool v) : ConstantValue(fir::Type::getBool()), value(v)
+	{
+	}
+
+
+
+
 	ConstantNumber* ConstantNumber::get(mpfr::mpreal n)
 	{
 		return new ConstantNumber(n);
@@ -73,12 +85,6 @@ namespace fir
 	size_t ConstantInt::getUnsignedValue()
 	{
 		return this->value;
-	}
-
-	ConstantInt* ConstantInt::getBool(bool value, FTContext* tc)
-	{
-		Type* t = Type::getBool(tc);
-		return ConstantInt::get(t, value);
 	}
 
 	ConstantInt* ConstantInt::getInt8(int8_t value, FTContext* tc)
@@ -371,7 +377,7 @@ namespace fir
 			if(target == fir::Type::getFloat32())		return (num >= -mpr(__FLT_MAX__) && num <= mpr(__FLT_MAX__));
 			else if(target == fir::Type::getFloat64())	return (num >= -mpr(__DBL_MAX__) && num <= mpr(__DBL_MAX__));
 			else if(target == fir::Type::getFloat80())	return (num >= -mpr(__LDBL_MAX__) && num <= mpr(__LDBL_MAX__));
-			else										error("unsupported type '%s'", target->str());
+			else										error("Unsupported type '%s' for literal number", target->str());
 		}
 		else
 		{
@@ -387,7 +393,7 @@ namespace fir
 			else if(target == fir::Type::getUint16())	return (num <= mpr(UINT16_MAX));
 			else if(target == fir::Type::getUint32())	return (num <= mpr(UINT32_MAX));
 			else if(target == fir::Type::getUint64())	return (num <= mpr(UINT64_MAX));
-			else										error("unsupported type '%s'", target->str());
+			else										error("Unsupported type '%s' for literal number", target->str());
 		}
 	}
 }

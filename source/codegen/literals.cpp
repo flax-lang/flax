@@ -11,7 +11,8 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-		return CGResult(fir::ConstantNumber::get(this->number));
+		error(this, "Non-numberical type '%s' inferred for literal number", infer->str());
+		// return CGResult(fir::ConstantNumber::get(this->number));
 
 	// todo: do some proper thing
 	if((this->type->isConstantNumberType() && infer) || (infer || this->type->isIntegerType() || this->type->isFloatingPointType()))
@@ -177,7 +178,7 @@ CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantInt::getBool(this->value));
+	return CGResult(fir::ConstantBool::get(this->value));
 }
 
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)

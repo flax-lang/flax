@@ -74,16 +74,7 @@ namespace fir
 		// special things
 		tc->voidType = new VoidType();
 		tc->nullType = new NullType();
-
-		// bool
-		{
-			PrimitiveType* t = new PrimitiveType(1, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[1].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-
+		tc->boolType = new BoolType();
 
 		// int8
 		{
@@ -207,10 +198,10 @@ namespace fir
 		}
 
 		// get 'nice' IDs for the common types
-		fir::Type::getAnyType(tc);
-		fir::Type::getRangeType(tc);
-		fir::Type::getCharType(tc);
-		fir::Type::getStringType(tc);
+		fir::Type::getAny(tc);
+		fir::Type::getRange(tc);
+		fir::Type::getChar(tc);
+		fir::Type::getString(tc);
 
 		fir::Type::getInt8Ptr(tc);
 		fir::Type::getInt16Ptr(tc);
@@ -371,8 +362,8 @@ namespace fir
 		else if(builtin == FLOAT80_TYPE_STRING)		real = Type::getFloat80(tc);
 		else if(builtin == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
 
-		else if(builtin == STRING_TYPE_STRING)		real = Type::getStringType();
-		else if(builtin == CHARACTER_TYPE_STRING)	real = Type::getCharType();
+		else if(builtin == STRING_TYPE_STRING)		real = Type::getString();
+		else if(builtin == CHARACTER_TYPE_STRING)	real = Type::getChar();
 
 		else if(builtin == BOOL_TYPE_STRING)		real = Type::getBool(tc);
 		else if(builtin == VOID_TYPE_STRING)		real = Type::getVoid(tc);
@@ -384,7 +375,7 @@ namespace fir
 		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
 		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
 
-		else if(builtin == ANY_TYPE_STRING)			real = Type::getAnyType(tc);
+		else if(builtin == ANY_TYPE_STRING)			real = Type::getAny(tc);
 
 		else return 0;
 
@@ -700,9 +691,9 @@ namespace fir
 		return VoidType::get(tc)->getPointerTo();
 	}
 
-	PrimitiveType* Type::getBool(FTContext* tc)
+	BoolType* Type::getBool(FTContext* tc)
 	{
-		return PrimitiveType::getBool(tc);
+		return BoolType::get(tc);
 	}
 
 	PrimitiveType* Type::getInt8(FTContext* tc)
@@ -826,22 +817,22 @@ namespace fir
 		return PointerType::getUint128Ptr(tc);
 	}
 
-	RangeType* Type::getRangeType(FTContext* tc)
+	RangeType* Type::getRange(FTContext* tc)
 	{
 		return RangeType::get(tc);
 	}
 
-	CharType* Type::getCharType(FTContext* tc)
+	CharType* Type::getChar(FTContext* tc)
 	{
 		return CharType::get(tc);
 	}
 
-	StringType* Type::getStringType(FTContext* tc)
+	StringType* Type::getString(FTContext* tc)
 	{
 		return StringType::get(tc);
 	}
 
-	AnyType* Type::getAnyType(FTContext* tc)
+	AnyType* Type::getAny(FTContext* tc)
 	{
 		return AnyType::get(tc);
 	}
@@ -861,6 +852,38 @@ namespace fir
 
 
 
+
+
+
+
+
+	BoolType::BoolType()
+	{
+		// nothing
+	}
+
+	std::string BoolType::str()
+	{
+		return "bool";
+	}
+
+	std::string BoolType::encodedStr()
+	{
+		return "bool";
+	}
+
+	bool BoolType::isTypeEqual(Type* other)
+	{
+		return other && other->isBoolType();
+	}
+
+	BoolType* BoolType::get(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		return tc->boolType;
+	}
 
 
 

@@ -48,13 +48,24 @@ namespace fir
 		mpfr::mpreal number;
 	};
 
+	struct ConstantBool : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantBool* get(bool value, FTContext* tc = 0);
+
+		protected:
+		ConstantBool(bool val);
+
+		bool value;
+	};
+
 	struct ConstantInt : ConstantValue
 	{
 		friend struct Module;
 
 		static ConstantInt* get(Type* intType, size_t val);
 
-		static ConstantInt* getBool(bool value, FTContext* tc = 0);
 		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);
 		static ConstantInt* getInt16(int16_t value, FTContext* tc = 0);
 		static ConstantInt* getInt32(int32_t value, FTContext* tc = 0);
@@ -84,7 +95,7 @@ namespace fir
 		char getValue() { return this->value; }
 
 		protected:
-		ConstantChar(char v) : ConstantValue(Type::getCharType()), value(v) { }
+		ConstantChar(char v) : ConstantValue(Type::getChar()), value(v) { }
 		char value;
 	};
 

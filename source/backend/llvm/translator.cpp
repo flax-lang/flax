@@ -180,6 +180,10 @@ namespace backend
 		{
 			return llvm::Type::getInt8Ty(gc);
 		}
+		else if(type->isBoolType())
+		{
+			return llvm::Type::getInt1Ty(gc);
+		}
 		else if(type->isRangeType())
 		{
 			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);

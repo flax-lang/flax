@@ -38,7 +38,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(isPerformingDecomposition ? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getStringType() },
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getString() },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -169,7 +169,7 @@ namespace array
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
 			cs->irb.CreateCall(memcpyf, { newptr, cs->irb.CreatePointerTypeCast(cs->irb.CreatePointerAdd(origptr,
-				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 		}
 		else if(elmType->isDynamicArrayType())
 		{
@@ -207,7 +207,7 @@ namespace array
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
 			cs->irb.CreateCall(memcpyf, { newptr, cs->irb.CreatePointerTypeCast(cs->irb.CreatePointerAdd(origptr,
-				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantInt::getBool(0) });
+				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 		}
 		else
 		{
@@ -468,7 +468,7 @@ namespace array
 
 			cs->irb.CreateCall(memcpyf, { cs->irb.CreatePointerTypeCast(newptr, fir::Type::getInt8Ptr()),
 				cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
-				fir::ConstantInt::getBool(0) });
+				fir::ConstantBool::get(false) });
 
 
 			cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
@@ -526,7 +526,7 @@ namespace array
 
 				cs->irb.CreateCall(memcpyf, { cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()),
 					cs->irb.CreatePointerTypeCast(s2ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
-					fir::ConstantInt::getBool(0) });
+					fir::ConstantBool::get(false) });
 
 				// increase the length
 				cs->irb.CreateSetDynamicArrayLength(s1, cs->irb.CreateAdd(origlen, applen));
