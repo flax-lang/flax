@@ -48,9 +48,53 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		Location closingBrace;
+
+		std::string generatedScopeName;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 	};
+
+	struct IfStmt : Stmt
+	{
+		IfStmt(const Location& l) : Stmt(l) { }
+		~IfStmt() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		struct Case
+		{
+			Expr* cond = 0;
+			Block* body = 0;
+
+			std::vector<Stmt*> inits;
+		};
+
+		std::string generatedScopeName;
+		std::vector<Case> cases;
+		Block* elseCase = 0;
+	};
+
+	struct ReturnStmt : Stmt
+	{
+		ReturnStmt(const Location& l) : Stmt(l) { }
+		~ReturnStmt() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* value = 0;
+		fir::Type* expectedType = 0;
+	};
+
+
+
+
+
+
+
+
+
+
 
 	struct BinaryOp : Expr
 	{
@@ -244,6 +288,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		Block* body = 0;
+		bool needReturnVoid = false;
 	};
 
 	struct ForeignFuncDefn : FunctionDecl

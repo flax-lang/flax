@@ -70,6 +70,16 @@ namespace parser
 				case TT::Internal:
 					return parseStmtWithAccessSpec(st);
 
+				case TT::If:
+					return parseIfStmt(st);
+
+				case TT::Else:
+					error(st, "Cannot have 'else' without preceeding 'if'");
+
+				case TT::Return:
+					return parseReturn(st);
+
+
 				case TT::Enum:
 				case TT::Class:
 				case TT::Static:
@@ -81,10 +91,8 @@ namespace parser
 				case TT::TypeAlias:
 				case TT::Dealloc:
 				case TT::Defer:
-				case TT::Return:
 				case TT::Break:
 				case TT::Continue:
-				case TT::If:
 				case TT::Do:
 				case TT::While:
 				case TT::Loop:
