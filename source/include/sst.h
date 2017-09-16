@@ -50,7 +50,9 @@ namespace sst
 
 		Location closingBrace;
 
+		std::vector<std::string> scope;
 		std::string generatedScopeName;
+
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 	};
@@ -70,6 +72,7 @@ namespace sst
 			std::vector<Stmt*> inits;
 		};
 
+		std::vector<std::string> scope;
 		std::string generatedScopeName;
 		std::vector<Case> cases;
 		Block* elseCase = 0;

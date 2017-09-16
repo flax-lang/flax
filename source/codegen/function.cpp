@@ -28,8 +28,13 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto restore = cs->irb.getCurrentBlock();
 	defer(cs->irb.setCurrentBlock(restore));
 
+	auto rsn = cs->setNamespace(this->id.scope);
+	defer(cs->restoreNamespace(rsn));
+
 	cs->enterNamespace(this->id.mangled());
 	defer(cs->leaveNamespace());
+
+
 
 	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
 	cs->irb.setCurrentBlock(block);
@@ -94,6 +99,12 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
+
+	auto rsn = cs->setNamespace(this->scope);
+	defer(cs->restoreNamespace(rsn));
+
+	cs->enterNamespace(this->generatedScopeName);
+	defer(cs->leaveNamespace());
 
 	for(auto stmt : this->statements)
 		stmt->codegen(cs);

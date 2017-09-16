@@ -69,6 +69,9 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			data = cs->irb.CreateGetArraySliceData(lr.pointer);
 		}
+
+		if(lr.pointer->isImmutable())
+			data->makeImmutable();
 	}
 	else if(lt->isStringType())
 	{

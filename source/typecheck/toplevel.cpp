@@ -157,6 +157,23 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	if(this->name == "")	fs->topLevelNamespace = ret;
 	else					fs->pushTree(this->name);
 
+	if(!fs->isInFunctionBody())
+	{
+		// visit all functions first, to get out-of-order calling -- but only at the namespace level, not inside functions.
+		// once we're in function-body-land, everything should be imperative-driven, and you shouldn't
+		// be able to see something after yourself.
+
+		for(auto stmt : this->statements)
+		{
+			if(auto fd = dynamic_cast<ast::FuncDefn*>(stmt))
+				fd->generateDeclaration(fs);
+
+			else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
+				ffd->typecheck(fs);
+		}
+	}
+
+
 	for(auto stmt : this->statements)
 	{
 		if(dynamic_cast<ast::ImportStmt*>(stmt))

@@ -19,16 +19,43 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	defer(fs->popLoc());
 
 	if(this->generics.size() > 0)
+		return 0;
+
+	this->generateDeclaration(fs);
+	auto defn = this->generatedDefn;
+	iceAssert(defn);
+
+	fs->enterFunctionBody(defn);
+	fs->pushTree(defn->id.mangled());
+	{
+		defn->body = dcast(sst::Block, this->body->typecheck(fs));
+		iceAssert(defn->body);
+	}
+	fs->popTree();
+	fs->leaveFunctionBody();
+
+	// ok, do the check.
+	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
+	return defn;
+}
+
+void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs)
+{
+	if(this->didGenerateDecl) return;
+
+	this->didGenerateDecl = true;
+
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	if(this->generics.size() > 0)
 	{
 		fs->stree->unresolvedGenericFunctions[this->name].push_back(this);
-		return 0;
+		return;
 	}
 
 	using Param = sst::FunctionDefn::Param;
 	auto defn = new sst::FunctionDefn(this->loc);
-
-	fs->enterFunctionBody(defn);
-	defer(fs->leaveFunctionBody());
 
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
@@ -57,13 +84,6 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	defn->global = !fs->isInFunctionBody();
 
-	fs->pushTree(defn->id.mangled());
-	defn->body = dcast(sst::Block, this->body->typecheck(fs));
-	iceAssert(defn->body);
-
-	fs->popTree();
-
-
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
@@ -89,15 +109,19 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	if(conflicts)
 		error(this, "conflicting");
 
+	this->generatedDefn = defn;
 	fs->stree->definitions[this->name].push_back(defn);
-
-	// ok, do the check.
-	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
-	return defn;
 }
+
+
 
 sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
+	if(this->didGenerateDecl)
+		return 0;
+
+	this->didGenerateDecl = true;
+
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -163,8 +187,13 @@ sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
 	defer(fs->popLoc());
 
 	auto ret = new sst::Block(this->loc);
+
+	ret->scope = fs->getCurrentScope();
 	ret->closingBrace = this->closingBrace;
 	ret->generatedScopeName = fs->getAnonymousScopeName();
+
+	fs->pushTree(ret->generatedScopeName);
+	defer(fs->popTree());
 
 	for(auto stmt : this->statements)
 		ret->statements.push_back(stmt->typecheck(fs));

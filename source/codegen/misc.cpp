@@ -10,6 +10,31 @@
 
 namespace cgn
 {
+	std::pair<sst::StateTree*, ValueTree*> CodegenState::setNamespace(std::vector<std::string> scope)
+	{
+		auto ret = std::make_pair(this->stree, this->vtree);
+
+		// get the root tree.
+		while(this->stree->parent)
+			this->stree = this->stree->parent,
+			this->vtree = this->vtree->parent;
+
+		// skip the first one, because it'll be the actual root.
+		for(size_t i = 1; i < scope.size(); i++)
+			this->enterNamespace(scope[i]);
+
+		return ret;
+	}
+
+	void CodegenState::restoreNamespace(std::pair<sst::StateTree*, ValueTree*> rsn)
+	{
+		iceAssert(rsn.first && rsn.second);
+
+		this->stree = rsn.first;
+		this->vtree = rsn.second;
+	}
+
+
 	void CodegenState::enterNamespace(std::string name)
 	{
 		if(auto it = this->stree->subtrees.find(name); it != this->stree->subtrees.end())
