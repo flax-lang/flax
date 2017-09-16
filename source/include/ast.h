@@ -73,6 +73,8 @@ namespace ast
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
+		Location closingBrace;
+
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferredStatements;
 	};
@@ -172,6 +174,35 @@ namespace ast
 		Expr* initialiser = 0;
 
 		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
+	};
+
+	struct IfStmt : Stmt
+	{
+		IfStmt(const Location& l) : Stmt(l) { }
+		~IfStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		struct Case
+		{
+			Expr* cond = 0;
+			Block* body = 0;
+
+			std::vector<Stmt*> inits;
+		};
+
+		std::vector<Case> cases;
+		Block* elseCase = 0;
+	};
+
+	struct ReturnStmt : Stmt
+	{
+		ReturnStmt(const Location& l) : Stmt(l) { }
+		~ReturnStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* value = 0;
 	};
 
 

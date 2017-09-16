@@ -86,10 +86,21 @@ namespace parser
 			return this->tokens[this->index];
 		}
 
+		// // non mutating
+		// const lexer::Token& peekAfterWS() const
+		// {
+		// 	// this->skipWS();
+		// }
+
 		const lexer::Token& frontAfterWS()
 		{
-			this->skipWS();
-			return this->front();
+			size_t ofs = 0;
+			while(this->tokens[this->index + ofs] == lexer::TokenType::NewLine
+				|| this->tokens[this->index + ofs] == lexer::TokenType::Comment)
+			{
+				ofs++;
+			}
+			return this->tokens[this->index + ofs];
 		}
 
 		const lexer::Token& prev()
@@ -150,6 +161,7 @@ namespace parser
 	ast::Stmt* parseStmt(State& st);
 
 	ast::Stmt* parseVariable(State& st);
+	ast::ReturnStmt* parseReturn(State& st);
 	ast::ImportStmt* parseImport(State& st);
 	ast::FuncDefn* parseFunction(State& st);
 	ast::Stmt* parseStmtWithAccessSpec(State& st);
@@ -160,6 +172,8 @@ namespace parser
 	ast::LitNumber* parseNumber(State& st);
 	ast::LitString* parseString(State& st, bool israw);
 	ast::LitArray* parseArray(State& st, bool israw);
+
+	ast::IfStmt* parseIfStmt(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 

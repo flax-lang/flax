@@ -36,8 +36,11 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	this->body->codegen(cs);
 
-	// todo: check the return paths etc.
-	cs->irb.CreateReturnVoid();
+	// note that we *trust* in the typechecker
+	// that all paths return the correct type.
+
+	if(this->needReturnVoid)
+		cs->irb.CreateReturnVoid();
 
 	if(this->isEntry)
 	{

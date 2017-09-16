@@ -59,6 +59,11 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 {
 	switch(op)
 	{
+		case Operator::LogicalOr:
+		case Operator::LogicalAnd:
+		case Operator::LogicalNot:
+			return fir::Type::getBool();
+
 		case Operator::CompareEq:
 		case Operator::CompareNotEq:
 		case Operator::CompareGreater:
@@ -165,7 +170,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	{
 		case Operator::LogicalNot: {
 			// check if we're convertible to bool
-			if(t != fir::Type::getBool())
+			if(!t->isBoolType())
 				error(this, "Invalid use of logical-not-operator '!' on non-boolean type '%s'", t->str());
 
 			out = fir::Type::getBool();

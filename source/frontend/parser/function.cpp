@@ -218,7 +218,11 @@ namespace parser
 
 	Block* parseBracedBlock(State& st)
 	{
-		iceAssert(st.eat() == TT::LBrace);
+		// iceAssert(st.eat() == TT::LBrace);
+		st.skipWS();
+		if(auto b = st.eat(); b != TT::LBrace)
+			expected(st, "'{' to begin braced block", b.str());
+
 		Block* ret = new Block(st.ploc());
 
 		st.skipWS();
@@ -230,6 +234,7 @@ namespace parser
 
 			else
 				ret->statements.push_back(stmt);
+
 
 			if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
 				st.pop();
@@ -243,8 +248,9 @@ namespace parser
 			st.skipWS();
 		}
 
-		iceAssert(st.eat() == TT::RBrace);
-		st.skipWS();
+		auto closing = st.eat();
+		iceAssert(closing == TT::RBrace);
+		ret->closingBrace = closing.loc;
 
 		return ret;
 	}

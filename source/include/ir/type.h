@@ -138,6 +138,7 @@ namespace fir
 		bool isPointerType();
 		bool isVoidType();
 		bool isNullType();
+		bool isBoolType();
 
 		bool isConstantNumberType();
 

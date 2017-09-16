@@ -403,8 +403,8 @@ namespace backend
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		auto getValue = [&valueMap, &module, &builder, firmod](fir::Value* fv) -> llvm::Value* {
-
+		std::function<llvm::Value* (fir::Value*)> getValue = [&getValue, &valueMap, &module, &builder, firmod](fir::Value* fv) -> llvm::Value*
+		{
 			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
@@ -424,6 +424,16 @@ namespace backend
 			else if(fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(fv))
 			{
 				return constToLlvm(cv, module);
+			}
+			else if(fir::PHINode* phi = dynamic_cast<fir::PHINode*>(fv))
+			{
+				auto vs = phi->getValues();
+				auto lp = builder.CreatePHI(typeToLlvm(phi->getType(), module), vs.size());
+
+				for(auto v : vs)
+					lp->addIncoming(getValue(v.second), llvm::cast<llvm::BasicBlock>(getValue(v.first)));
+
+				return lp;
 			}
 			else
 			{

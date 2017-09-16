@@ -165,6 +165,11 @@ namespace sst
 			}
 		}
 
+
+		if(this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
+			return cs->performLogicalBinaryOperation(this);
+
+
 		// TODO: figure out a better way
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
@@ -178,11 +183,6 @@ namespace sst
 
 		auto lt = l.value->getType();
 		auto rt = r.value->getType();
-
-		if(this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
-		{
-			error("not supported");
-		}
 
 		// handle pointer arithmetic
 		if((_lr.value->getType()->isPointerType() && _rr.value->getType()->isIntegerType())
@@ -211,7 +211,11 @@ namespace sst
 				}
 
 				auto res = doConstantThings(lnum, rnum, this->op);
-				return CGResult(fir::ConstantNumber::get(res));
+				if(isCompareOp(op))
+					return CGResult(fir::ConstantInt::getBool((bool) res));
+
+				else
+					return CGResult(fir::ConstantNumber::get(res));
 			}
 		}
 		else
@@ -238,7 +242,7 @@ namespace sst
 		switch(this->op)
 		{
 			case Operator::LogicalNot: {
-				iceAssert(ty == fir::Type::getBool());
+				iceAssert(ty->isBoolType());
 				if(auto c = dcast(fir::ConstantInt, val))
 				{
 					bool b = c->getSignedValue();

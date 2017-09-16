@@ -89,6 +89,8 @@ namespace fir
 		friend struct IRBuilder;
 		void addIncoming(Value* v, IRBlock* block);
 
+		std::map<IRBlock*, Value*> getValues();
+
 		protected:
 		PHINode(Type* type);
 

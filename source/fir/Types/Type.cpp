@@ -670,6 +670,10 @@ namespace fir
 		return dynamic_cast<NullType*>(this) != 0;
 	}
 
+	bool Type::isBoolType()
+	{
+		return this == fir::Type::getBool();
+	}
 
 
 

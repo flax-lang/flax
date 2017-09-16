@@ -89,6 +89,7 @@ namespace fir
 
 		Value* CreateLogicalNot(Value* v, std::string vname = "");
 
+		PHINode* CreatePHINode(Type* type, std::string vname = "");
 		Value* CreateStackAlloc(Type* type, std::string vname = "");
 		Value* CreateImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 

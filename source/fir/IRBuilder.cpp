@@ -1057,7 +1057,10 @@ namespace fir
 	}
 
 
-
+	PHINode* IRBuilder::CreatePHINode(Type* type, std::string vname)
+	{
+		return new PHINode(type);
+	}
 
 	Value* IRBuilder::CreateStackAlloc(Type* type, std::string vname)
 	{
