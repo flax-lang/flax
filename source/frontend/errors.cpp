@@ -102,9 +102,9 @@ std::string printContext(HighlightOptions ops)
 					cursorX += num1 + 1 + num2;
 
 					part2 += strprintf("%s%s%s%s%s", COLOUR_GREEN_BOLD,
-						uline ? repeat(" ̅", num1).c_str() : std::string(" ", num1),
+						uline ? repeat(" ̅", num1).c_str() : std::string(num1, ' '),
 						ops.drawCaret && !uline ? "^" : " ̅",
-						uline ? repeat(" ̅", num2).c_str() : std::string(" ", num2),
+						uline ? repeat(" ̅", num2).c_str() : std::string(num2, ' '),
 						COLOUR_RESET);
 				}
 				else
