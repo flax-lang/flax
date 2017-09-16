@@ -251,6 +251,14 @@ namespace sst
 		std::vector<Stmt*> statements;
 	};
 
+	struct ArgumentDefn : Defn
+	{
+		ArgumentDefn(const Location& l) : Defn(l) { }
+		~ArgumentDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
 	struct VarDefn : Defn
 	{
 		VarDefn(const Location& l) : Defn(l) { }
@@ -289,6 +297,8 @@ namespace sst
 		~FunctionDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<ArgumentDefn*> arguments;
 
 		Block* body = 0;
 		bool needReturnVoid = false;

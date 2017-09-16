@@ -54,6 +54,7 @@ namespace fir
 		Type* getReturnType();
 		size_t getArgumentCount();
 		std::vector<Argument*> getArguments();
+		Argument* getArgumentWithName(std::string name);
 
 		std::vector<IRBlock*>& getBlockList();
 		void deleteBody();

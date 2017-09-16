@@ -41,6 +41,11 @@ namespace fir
 	{
 	}
 
+	bool ConstantBool::getValue()
+	{
+		return this->value;
+	}
+
 
 
 
