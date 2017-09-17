@@ -19,25 +19,31 @@ import "LibCInterface.flx"
 // }
 
 
-fn doRecursiveFib(n: int, v: int, prev: int) -> int
-{
-	if n == 0 { return prev }
-	if n == 1 { return v }
+// fn doRecursiveFib(n: int, v: int, prev: int) -> int
+// {
+// 	if n == 0 { return prev }
+// 	if n == 1 { return v }
 
-	return doRecursiveFib(n - 1, v + prev, v)
-}
+// 	return doRecursiveFib(n - 1, v + prev, v)
+// }
 
-public fn doRecursiveFib(n: int) -> int
-{
-	return doRecursiveFib(n, 1, 0)
-}
+// fn doRecursiveFib(n: int) -> int
+// {
+// 	return doRecursiveFib(n, 1, 0)
+// }
 
 
 
 
 @entry fn main(argc: i32, argv: i8**) -> void
 {
-	printf("fib(20) = %d\n", doRecursiveFib(20))
+	// let str = "hello" + " " + "world"
+
+	let eq = ("hello" == "hello")
+	printf("eq = %d\n", eq)
+	// printf("str = %s\n", str)
+
+	// printf("fib(20) = %d\n", doRecursiveFib(20))
 
 	// var bar = -(401 + 76.1) as f64
 	// var qux = 30
