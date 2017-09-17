@@ -110,6 +110,8 @@ namespace fir
 		Value_InsertValue,					// corresponds to llvm.
 		Value_ExtractValue,					// same
 
+		Value_CreatePHI,
+
 		Misc_Sizeof,						// portable sizeof using GEP
 
 

@@ -402,6 +402,8 @@ namespace backend
 
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
+		fprintf(stderr, "\n%s\n", firmod->print().c_str());
+
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 
 		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
@@ -412,7 +414,7 @@ namespace backend
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		std::function<llvm::Value* (fir::Value*)> getValue = [&getValue, &valueMap, &module, &builder, firmod](fir::Value* fv) -> llvm::Value*
+		std::function<llvm::Value* (fir::Value*)> getValue = [&valueMap, &module, firmod](fir::Value* fv) -> llvm::Value*
 		{
 			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
 			{
@@ -427,22 +429,12 @@ namespace backend
 			else if(dynamic_cast<fir::Function*>(fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("!ret (id = %zu)", fv->id);
+				if(!ret) error("!ret fn (id = %zu)", fv->id);
 				return ret;
 			}
 			else if(fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(fv))
 			{
 				return constToLlvm(cv, module);
-			}
-			else if(fir::PHINode* phi = dynamic_cast<fir::PHINode*>(fv))
-			{
-				auto vs = phi->getValues();
-				auto lp = builder.CreatePHI(typeToLlvm(phi->getType(), module), vs.size());
-
-				for(auto v : vs)
-					lp->addIncoming(getValue(v.second), llvm::cast<llvm::BasicBlock>(getValue(v.first)));
-
-				return lp;
 			}
 			else
 			{
@@ -463,6 +455,8 @@ namespace backend
 		auto addValueToMap = [&valueMap](llvm::Value* v, fir::Value* fv) {
 
 			iceAssert(v);
+
+			// fprintf(stderr, "add id %zu\n", fv->id);
 
 			if(valueMap.find(fv->id) != valueMap.end())
 				error("already have value with id %zu", fv->id);
@@ -1409,6 +1403,23 @@ namespace backend
 
 							llvm::Value* ret = builder.CreateAlloca(t);
 							builder.CreateStore(llvm::Constant::getNullValue(t), ret);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case fir::OpKind::Value_CreatePHI:
+						{
+							iceAssert(inst->operands.size() == 1);
+							llvm::Type* t = typeToLlvm(inst->operands[0]->getType(), module);
+
+							auto phi = dynamic_cast<fir::PHINode*>(inst->realOutput);
+							iceAssert(phi);
+
+							llvm::PHINode* ret = builder.CreatePHI(t, phi->getValues().size());
+
+							for(auto v : phi->getValues())
+								ret->addIncoming(getValue(v.second), llvm::cast<llvm::BasicBlock>(getValue(v.first)));
 
 							addValueToMap(ret, inst->realOutput);
 							break;

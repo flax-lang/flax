@@ -454,7 +454,6 @@ namespace cgn
 					unsupportedError(lhs.first, lt, rhs.first, rt);
 
 				// ok, do the append
-				iceAssert(lp && rp);
 				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
 				fir::Value* res = this->irb.CreateCall2(maketwof, lv, rv);

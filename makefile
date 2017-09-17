@@ -74,8 +74,6 @@ osxflags:
 
 
 osx: prep jit osxflags
-	@printf "clang version: %s \n" $(CXX)
-	@$(CXX) --version
 
 satest: prep osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run -o build/standalone build/standalone.flx

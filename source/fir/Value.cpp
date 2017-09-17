@@ -16,11 +16,6 @@ namespace fir
 		this->id = vnames;
 		this->source = 0;
 		vnames++;
-
-		if(this->id == 498)
-		{
-			// abort();
-		}
 	}
 
 	Type* Value::getType()
