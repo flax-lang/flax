@@ -196,6 +196,18 @@ namespace fir
 			{
 				ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
 			}
+			else if(PHINode* phi = dynamic_cast<PHINode*>(op))
+			{
+				std::string nodes;
+
+				for(auto i : phi->getValues())
+					nodes += strprintf("[$%s -> %%%zu], ", i.first->getName().name, i.second->id);
+
+				nodes.pop_back();
+				nodes.pop_back();
+
+				ops += strprintf("(phi %s) :: %s", nodes, phi->getType()->str());
+			}
 			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
 			{
 				ops += "$" + ib->getName().str();

@@ -46,7 +46,7 @@ import "LibCInterface.flx"
 
 	printf("str = %s\n", str1)
 
-	// let arr = [ 1, 2 ] + [ 3, 4 ]
+	let arr = [ 1, 2 ] + [ 3, 4 ]
 
 	let eq = ("hello" == "hello")
 	printf("eq = %d\n", eq)

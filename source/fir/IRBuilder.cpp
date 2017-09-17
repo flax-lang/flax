@@ -1059,7 +1059,22 @@ namespace fir
 
 	PHINode* IRBuilder::CreatePHINode(Type* type, std::string vname)
 	{
-		return new PHINode(type);
+		Instruction* instr = new Instruction(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
+			{ ConstantValue::getZeroValue(type) });
+
+		// we need to 'lift' the allocation up to make it the first in the block
+		// this is an llvm requirement.
+
+		delete instr->realOutput;
+
+		instr->realOutput = new PHINode(type);
+		fir::Value* ret = instr->realOutput;
+
+		ret->setName(vname);
+
+		// insert at the front (back = no guarantees)
+		this->currentBlock->instructions.insert(this->currentBlock->instructions.begin(), instr);
+		return (PHINode*) instr->realOutput;
 	}
 
 	Value* IRBuilder::CreateStackAlloc(Type* type, std::string vname)
