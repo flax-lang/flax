@@ -83,7 +83,6 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			return CGResult(fir::ConstantDynamicArray::get(darty, fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
 		}
 
-
 		// make a function specifically to initialise this thing
 
 		static size_t _id = 0;
@@ -95,7 +94,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier("__init_array_" + std::to_string(_id - 1), IdKind::Name),
-				fir::FunctionType::get({  }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
@@ -137,13 +136,14 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto zero = fir::ConstantInt::getInt64(0);
 			auto aptr = cs->irb.CreateConstGEP2(array, 0, 0);
 
-			auto aa = cs->irb.CreateStackAlloc(darty);
-			cs->irb.CreateSetDynamicArrayData(aa, aptr);
-			cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			cs->irb.CreateSetDynamicArrayCapacity(aa, zero);
+			auto aa = cs->irb.CreateValue(darty);
+			aa = cs->irb.CreateSetDynamicArrayData(aa, aptr);
+			aa = cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
+			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, zero);
+			cs->irb.CreateSetDynamicArrayRefCount(aa, fir::ConstantInt::getInt64(-1));
 
 			aa->makeImmutable();
-			return CGResult(cs->irb.CreateLoad(aa), aa);
+			return CGResult(aa);
 		}
 
 	}

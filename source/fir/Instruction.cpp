@@ -138,6 +138,8 @@ namespace fir
 			case OpKind::DynamicArray_SetLength:			instrname = "set_arr.len"; break;
 			case OpKind::DynamicArray_GetCapacity:			instrname = "get_arr.cap"; break;
 			case OpKind::DynamicArray_SetCapacity:			instrname = "set_arr.cap"; break;
+			case OpKind::DynamicArray_GetRefCount:			instrname = "get_arr.rc"; break;
+			case OpKind::DynamicArray_SetRefCount:			instrname = "set_arr.rc"; break;
 
 			case OpKind::ArraySlice_GetData:				instrname = "get_slice.data"; break;
 			case OpKind::ArraySlice_SetData:				instrname = "set_slice.data"; break;

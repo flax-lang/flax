@@ -70,8 +70,11 @@ namespace cgn
 		std::string name;
 		ValueTree* parent = 0;
 
-		std::unordered_map<std::string, std::vector<CGResult>> values;
+		std::vector<fir::Value*> refCountedValues;
+		std::vector<fir::Value*> refCountedPointers;
+
 		std::unordered_map<std::string, ValueTree*> subs;
+		std::unordered_map<std::string, std::vector<CGResult>> values;
 	};
 
 	struct CodegenState
@@ -118,9 +121,32 @@ namespace cgn
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);
 
+		enum class OperatorFn
+		{
+			None,
+
+			Builtin,
+			UserDefined
+		};
+
+		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, Operator op);
+
 		bool isRefCountedType(fir::Type* type);
-		void incrementRefCount(fir::Value* ptr);
-		void decrementRefCount(fir::Value* ptr);
+		void incrementRefCount(fir::Value* val);
+		void decrementRefCount(fir::Value* val);
+
+		void addRefCountedValue(fir::Value* val);
+		void removeRefCountedValue(fir::Value* val);
+
+		void addRefCountedPointer(fir::Value* ptr);
+		void removeRefCountedPointer(fir::Value* ptr);
+
+		std::vector<fir::Value*> getRefCountedValues();
+		std::vector<fir::Value*> getRefCountedPointers();
+
+		void performRefCountingAssignment(fir::Value* lhs, CGResult rhs, bool isInitial);
+
+		// void removeRefCountedValueIfExists(fir::Value* ptr);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

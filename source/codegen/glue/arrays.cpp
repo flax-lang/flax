@@ -23,7 +23,6 @@
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
 
 
-
 namespace cgn {
 namespace glue {
 namespace array
@@ -161,6 +160,7 @@ namespace array
 		cs->irb.setCurrentBlock(merge);
 	}
 
+
 	static void _handleCallingAppropriateCloneFunction(CodegenState* cs, fir::Function* func, fir::Type* elmType, fir::Value* origptr,
 		fir::Value* newptr, fir::Value* origlen, fir::Value* actuallen, fir::Value* startIndex)
 	{
@@ -241,7 +241,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() }, arrtype),
+				fir::FunctionType::get({ arrtype, fir::Type::getInt64() }, arrtype),
 				fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -293,13 +293,12 @@ namespace array
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
-			fir::Value* newarr = cs->irb.CreateStackAlloc(arrtype);
-			cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
-			cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateLoad(cap));
+			fir::Value* newarr = cs->irb.CreateValue(arrtype);
+			newarr = cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
+			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateLoad(cap));
 
-			fir::Value* ret = cs->irb.CreateLoad(newarr);
-			cs->irb.CreateReturn(ret);
+			cs->irb.CreateReturn(newarr);
 
 			fn = func;
 			cs->irb.setCurrentBlock(restore);
@@ -329,7 +328,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), fir::Type::getInt64() },
+				fir::FunctionType::get({ arrtype, fir::Type::getInt64() },
 					fir::DynamicArrayType::get(arrtype->getElementType())), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -363,13 +362,12 @@ namespace array
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
-			fir::Value* newarr = cs->irb.CreateStackAlloc(fir::DynamicArrayType::get(arrtype->getElementType()));
-			cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
-			cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateSub(origlen, startIndex));
+			fir::Value* newarr = cs->irb.CreateValue(fir::DynamicArrayType::get(arrtype->getElementType()));
+			newarr = cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
+			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateSub(origlen, startIndex));
 
-			fir::Value* ret = cs->irb.CreateLoad(newarr);
-			cs->irb.CreateReturn(ret);
+			cs->irb.CreateReturn(newarr);
 
 			fn = func;
 			cs->irb.setCurrentBlock(restore);
@@ -393,13 +391,12 @@ namespace array
 
 
 	// required is how much *EXTRA* space we need.
-	static void _checkCapacityAndGrowIfNeeded(CodegenState* cs, fir::Function* func, fir::Value* arr, fir::Value* required)
+	static fir::Value* _checkCapacityAndGrowIfNeeded(CodegenState* cs, fir::Function* func, fir::Value* arr, fir::Value* required)
 	{
-		iceAssert(arr->getType()->isPointerType());
-		iceAssert(arr->getType()->getPointerElementType()->isDynamicArrayType());
+		iceAssert(arr->getType()->isDynamicArrayType());
 		iceAssert(required->getType() == fir::Type::getInt64());
 
-		auto elmtype = arr->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
+		auto elmtype = arr->getType()->getArrayElementType();
 
 		fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr, "ptr");
 		fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr, "len");
@@ -419,14 +416,11 @@ namespace array
 
 		cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
 
-
 		cs->irb.setCurrentBlock(trampoline);
 		{
 			cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
 			cs->irb.CreateCondBranch(cond, growNewblk, growblk);
 		}
-
-
 
 		// grows to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growblk);
@@ -442,8 +436,8 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cs->irb.CreateCall2(refunc, cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
 
-			cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
+			arr = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			arr = cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 		}
@@ -471,14 +465,17 @@ namespace array
 				fir::ConstantBool::get(false) });
 
 
-			cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
+			arr = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			arr = cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 		}
 
 		cs->irb.setCurrentBlock(mergeblk);
+		return arr;
 	}
+
+
 
 	fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
@@ -492,8 +489,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), arrtype->getPointerTo() },
-					fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype, arrtype }, arrtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -511,8 +507,7 @@ namespace array
 				fir::Value* applen = cs->irb.CreateGetDynamicArrayLength(s2);
 
 				// grow if needed
-				_checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
-
+				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
 				// // we should be ok, now copy.
 				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(s1);
@@ -529,7 +524,7 @@ namespace array
 					fir::ConstantBool::get(false) });
 
 				// increase the length
-				cs->irb.CreateSetDynamicArrayLength(s1, cs->irb.CreateAdd(origlen, applen));
+				s1 = cs->irb.CreateSetDynamicArrayLength(s1, cs->irb.CreateAdd(origlen, applen));
 
 
 				if(cs->isRefCountedType(elmType))
@@ -572,7 +567,7 @@ namespace array
 
 
 				// ok done.
-				cs->irb.CreateReturnVoid();
+				cs->irb.CreateReturn(s1);
 			}
 
 
@@ -601,8 +596,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), arrtype->getElementType() },
-					fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype, arrtype->getElementType() }, arrtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -620,7 +614,7 @@ namespace array
 				fir::Value* applen = fir::ConstantInt::getInt64(1);
 
 				// grow if needed
-				_checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
+				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
 
 				// we should be ok, now copy.
@@ -632,12 +626,11 @@ namespace array
 				if(cs->isRefCountedType(elmType))
 					cs->incrementRefCount(s2);
 
-
 				// increase the length
-				cs->irb.CreateSetDynamicArrayLength(s1, cs->irb.CreateAdd(origlen, applen));
+				s1 = cs->irb.CreateSetDynamicArrayLength(s1, cs->irb.CreateAdd(origlen, applen));
 
 				// ok done.
-				cs->irb.CreateReturnVoid();
+				cs->irb.CreateReturn(s1);
 			}
 
 
@@ -771,8 +764,8 @@ namespace array
 
 		cs->irb.setCurrentBlock(body);
 		{
-			fir::Value* v1 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)));
-			fir::Value* v2 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)));
+			// fir::Value* v1 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)));
+			// fir::Value* v2 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)));
 
 			// fir::Value* c = Operators::performGeneralArithmeticOperator(cs, ArithmeticOp::CmpEq, 0, v1, cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)), v2, cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)), { }).value;
 
@@ -832,8 +825,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo(), arrtype->getPointerTo() },
-					fir::Type::getInt64()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype, arrtype }, fir::Type::getInt64()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -927,7 +919,9 @@ namespace array
 			{
 				// ok. first, do pointer arithmetic to get the current array
 				fir::Value* strp = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
-				cs->decrementRefCount(cs->irb.CreateLoad(strp));
+
+				if(increment)	cs->incrementRefCount(cs->irb.CreateLoad(strp));
+				else			cs->decrementRefCount(cs->irb.CreateLoad(strp));
 
 				// increment counter
 				cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
@@ -974,7 +968,45 @@ namespace array
 
 	fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		return 0;
+		iceAssert(arrtype);
+
+		auto name = BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME + std::string("_") + arrtype->encodedStr();
+		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!cmpf)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype, arrtype }, arrtype), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* a1 = func->getArguments()[0];
+			fir::Value* a2 = func->getArguments()[1];
+
+			fir::Value* ret = cs->irb.CreateValue(arrtype);
+
+			auto clonef = getCloneFunction(cs, arrtype);
+			ret = cs->irb.CreateCall1(clonef, a1);
+
+			auto appendf = getAppendFunction(cs, arrtype);
+			ret = cs->irb.CreateCall2(appendf, ret, a2);
+
+			// ok, then
+
+			cs->irb.CreateReturn(ret);
+
+
+			cmpf = func;
+			cs->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
 	}
 
 	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)

@@ -85,6 +85,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			else if((left->isStringType() && right->isCharType()) || (left->isCharType() && right->isStringType()))
 				return fir::Type::getString();
 
+			else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
+				return left;
+
 		} break;
 
 		case Operator::Subtract: {

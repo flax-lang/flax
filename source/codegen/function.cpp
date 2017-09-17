@@ -100,8 +100,12 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 		ft = fir::FunctionType::get(ptypes, this->returnType);
 
-	if(cs->module->getFunction(this->id) != 0)
-		error(this, "Foreign function '%s' already defined elsewhere; overloading not possible", this->id.str());
+	auto ef = cs->module->getFunction(this->id);
+	if(ef && ef->getType() != ft)
+	{
+		error(this, "Foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
+			this->id.str(), ef->getType()->str());
+	}
 
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 
@@ -131,6 +135,9 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(arg);
 }
 
+
+
+
 CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -148,6 +155,15 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// then do the defers
 	for(auto stmt : this->deferred)
 		stmt->codegen(cs);
+
+
+	// then decrement all the refcounts
+	for(auto v : cs->getRefCountedValues())
+		cs->decrementRefCount(v);
+
+	// then decrement all the refcounts
+	for(auto p : cs->getRefCountedPointers())
+		cs->decrementRefCount(cs->irb.CreateLoad(p));
 
 	return CGResult(0);
 }

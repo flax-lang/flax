@@ -92,7 +92,7 @@ namespace parser
 		auto ret = new LitArray(front.loc, values);
 		ret->raw = israw;
 
-		ret->loc.col = front.loc.col + 1;
+		// ret->loc.col = front.loc.col + 1;
 		ret->loc.len = (end.loc.col - front.loc.col) + 1;
 		return ret;
 	}

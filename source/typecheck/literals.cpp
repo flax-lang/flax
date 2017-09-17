@@ -123,10 +123,10 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(infer)
 		{
-			if(infer->isDynamicArrayType())		elmty = infer->toDynamicArrayType()->getElementType();
-			else if(infer->isArrayType())		elmty = infer->toArrayType()->getElementType();
-			else if(infer->isArraySliceType())	elmty = infer->toArraySliceType()->getElementType();
-			else								error(this, "Invalid type '%s' inferred for array literal", infer->str());
+			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
+				error(this, "Invalid type '%s' inferred for array literal", infer->str());
+
+			elmty = infer->getArrayElementType();
 		}
 
 		for(auto v : this->values)
