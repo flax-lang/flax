@@ -406,15 +406,33 @@ namespace array
 		fir::Value* needed = cs->irb.CreateAdd(len, required, "needed");
 		fir::Value* cond = cs->irb.CreateICmpGT(needed, cap);
 
+
+
+		// TODO: ugly hack to force visiting the incoming values before we visit ourselves.
+		// THE ORDER OF THESE BLOCKS IS VERY IMPORTANT (FOR NOW)
+
+		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
+
 		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("grow", func);
-		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
 
 		// for when the 'dynamic' array came from a literal. same as the usual stuff
 		// capacity will be -1, in this case.
-		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
 		fir::IRBlock* growNewblk = cs->irb.addNewBlockInFunction("growFromScratch", func);
 
-		cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
+		fir::IRBlock* forceblk = cs->irb.addNewBlockInFunction("make_phi", func);
+
+		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
+
+		cs->irb.CreateUnCondBranch(forceblk);
+
+
+		// return a phi node.
+		cs->irb.setCurrentBlock(forceblk);
+		auto phi = cs->irb.CreatePHINode(arr->getType());
+		{
+			phi->addIncoming(arr, cs->irb.getCurrentBlock());
+			cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
+		}
 
 		cs->irb.setCurrentBlock(trampoline);
 		{
@@ -436,10 +454,12 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cs->irb.CreateCall2(refunc, cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
 
-			arr = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			arr = cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
+			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
+
+			phi->addIncoming(ret, growblk);
 		}
 
 
@@ -465,14 +485,16 @@ namespace array
 				fir::ConstantBool::get(false) });
 
 
-			arr = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			arr = cs->irb.CreateSetDynamicArrayCapacity(arr, nextpow2);
+			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
+
+			phi->addIncoming(ret, growNewblk);
 		}
 
 		cs->irb.setCurrentBlock(mergeblk);
-		return arr;
+		return phi;
 	}
 
 
@@ -991,7 +1013,7 @@ namespace array
 			fir::Value* ret = cs->irb.CreateValue(arrtype);
 
 			auto clonef = getCloneFunction(cs, arrtype);
-			ret = cs->irb.CreateCall1(clonef, a1);
+			ret = cs->irb.CreateCall2(clonef, a1, fir::ConstantInt::getInt64(0));
 
 			auto appendf = getAppendFunction(cs, arrtype);
 			ret = cs->irb.CreateCall2(appendf, ret, a2);
