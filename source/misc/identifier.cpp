@@ -53,12 +53,16 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isArrayType())
 	{
-		return "FA" + lentypestr(mangleType(t->toArrayType()->getElementType())) + std::to_string(t->toArrayType()->getArraySize());
+		return "FA" + lentypestr(mangleType(t->getArrayElementType())) + std::to_string(t->toArrayType()->getArraySize());
 	}
 	else if(t->isDynamicArrayType())
 	{
 		return (t->toDynamicArrayType()->isFunctionVariadic() ? "PP" : "DA")
-			+ lentypestr(mangleType(t->toDynamicArrayType()->getElementType()));
+			+ lentypestr(mangleType(t->getArrayElementType()));
+	}
+	else if(t->isArraySliceType())
+	{
+		return "SL" + lentypestr(mangleType(t->getArrayElementType()));
 	}
 	else if(t->isVoidType())
 	{

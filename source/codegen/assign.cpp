@@ -31,7 +31,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// check if we're trying to modify a literal, first of all.
 	// we do it here, because we need some special sauce to do stuff
-	if(auto so = dcast(SubscriptOp, this->left); so->cgSubscriptee->getType()->isStringType())
+	if(auto so = dcast(SubscriptOp, this->left); so && so->cgSubscriptee->getType()->isStringType())
 	{
 		// yes, yes we are.
 		auto checkf = cgn::glue::string::getCheckLiteralWriteFunction(cs);
@@ -72,6 +72,10 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(lr.pointer);
 	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());
+
+
+	if(cs->isRefCountedType(lt))
+		cs->performRefCountingAssignment(lr.value, rr, false);
 
 	// store
 	cs->irb.CreateStore(rr.value, lr.pointer);

@@ -13,17 +13,6 @@
 
 namespace fir
 {
-	enum class FValueKind
-	{
-		Invalid,
-
-		NullValue,
-
-		Constant,
-		Normal,
-		Global,
-	};
-
 	enum class LinkageType
 	{
 		Invalid,
@@ -80,7 +69,6 @@ namespace fir
 		Identifier ident;
 		Type* valueType;
 		Instruction* source;
-		FValueKind valueKind;
 		std::vector<Value*> users;
 	};
 

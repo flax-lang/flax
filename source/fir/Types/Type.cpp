@@ -387,6 +387,15 @@ namespace fir
 
 
 
+	Type* Type::getArrayElementType()
+	{
+		if(this->isDynamicArrayType())		return this->toDynamicArrayType()->getElementType();
+		else if(this->isArrayType())		return this->toArrayType()->getElementType();
+		else if(this->isArraySliceType())	return this->toArraySliceType()->getElementType();
+		else								error("'%s' is not an array type", this->str());
+	}
+
+
 
 
 

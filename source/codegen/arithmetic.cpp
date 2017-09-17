@@ -314,11 +314,27 @@ namespace cgn
 	CGResult CodegenState::performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs,
 		std::pair<Location, CGResult> rhs, Operator op)
 	{
+		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
+
+			HighlightOptions ho;
+			ho.caret = loc;
+			ho.underlines.push_back(al);
+			ho.underlines.push_back(bl);
+
+			ho.drawCaret = true;
+			error(loc, ho, "Unsupported operator '%s' between types '%s' and '%s'", operatorToString(op),
+				a->str(), b->str());
+		};
+
+
 		auto l = lhs.second;
 		auto r = rhs.second;
 
 		auto lt = l.value->getType();
 		auto rt = r.value->getType();
+
+		auto [ lv, lp ] = std::make_pair(l.value, l.pointer);
+		auto [ rv, rp ] = std::make_pair(r.value, r.pointer);
 
 		if(isCompareOp(op))
 		{
@@ -327,12 +343,12 @@ namespace cgn
 			{
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(l.value, r.value));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(l.value, r.value));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(l.value, r.value));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(l.value, r.value));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(l.value, r.value));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(l.value, r.value));
+					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(lv, rv));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(lv, rv));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(lv, rv));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(lv, rv));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(lv, rv));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(lv, rv));
 					default: error("no");
 				}
 			}
@@ -340,19 +356,19 @@ namespace cgn
 			{
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(l.value, r.value));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(l.value, r.value));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(l.value, r.value));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(l.value, r.value));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(l.value, r.value));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(l.value, r.value));
+					case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(lv, rv));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(lv, rv));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(lv, rv));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(lv, rv));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(lv, rv));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(lv, rv));
 					default: error("no");
 				}
 			}
 			else if(lt->isStringType() && rt->isStringType())
 			{
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
-				fir::Value* res = this->irb.CreateCall2(cmpfn, l.value, r.value);
+				fir::Value* res = this->irb.CreateCall2(cmpfn, lv, rv);
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
@@ -369,16 +385,86 @@ namespace cgn
 			}
 			else
 			{
-				error("??");
+				error("comparison not supported, hmm.");
 			}
 		}
 		else
 		{
 			if(lt->isPrimitiveType() && rt->isPrimitiveType())
-				return CGResult(this->irb.CreateBinaryOp(op, l.value, r.value));
+			{
+				return CGResult(this->irb.CreateBinaryOp(op, lv, rv));
+			}
+			else if(lt->isStringType() && rt->isStringType())
+			{
+				if(op != Operator::Add)
+					unsupportedError(lhs.first, lt, rhs.first, rt);
 
+				#if 0
+				// ok.
+				// if we're both string literals, then fuck it, do it compile-time
+				if(dcast(fir::ConstantString, lv) && dcast(fir::ConstantString, rv))
+				{
+					std::string cls = dcast(fir::ConstantString, lv)->getValue();
+					std::string crs = dcast(fir::ConstantString, rv)->getValue();
+
+					info(loc, "const strings");
+					return CGResult(fir::ConstantString::get(cls + crs));
+				}
+				#endif
+
+
+				auto appfn = cgn::glue::string::getAppendFunction(this);
+				auto res = this->irb.CreateCall2(appfn, lv, rv);
+				this->addRefCountedValue(res);
+
+				return CGResult(res);
+			}
+			else if((lt->isStringType() && rt->isCharType()) || (lt->isCharType() && rt->isStringType()))
+			{
+				// make life easier
+				if(lt->isCharType())
+				{
+					std::swap(lt, rt);
+					std::swap(lv, rv);
+				}
+
+
+				#if 0
+				if(dcast(fir::ConstantString, lv) && dcast(fir::ConstantChar, rv))
+				{
+					std::string cls = dcast(fir::ConstantString, lv)->getValue();
+					char crs = dcast(fir::ConstantChar, rv)->getValue();
+
+					info(loc, "const strings");
+					return CGResult(fir::ConstantString::get(cls + crs));
+				}
+				#endif
+
+
+				auto appfn = cgn::glue::string::getCharAppendFunction(this);
+				auto res = this->irb.CreateCall2(appfn, lv, rv);
+				this->addRefCountedValue(res);
+
+				return CGResult(res);
+			}
+			else if(lt->isDynamicArrayType() && rt->isDynamicArrayType() && lt->getArrayElementType() == rt->getArrayElementType())
+			{
+				// check what we're doing
+				if(op != Operator::Add)
+					unsupportedError(lhs.first, lt, rhs.first, rt);
+
+				// ok, do the append
+				iceAssert(lp && rp);
+				// auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
+
+				// fir::Value* ret = this->irb.CreateCall2(maketwof, lp, rp);
+
+				error(loc, "i'm gonna stop you right here");
+			}
 			else
+			{
 				error(loc, "not supported");
+			}
 		}
 	}
 }

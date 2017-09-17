@@ -22,12 +22,17 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* val = 0;
 	fir::Value* alloc = 0;
 
+	bool refcounted = cs->isRefCountedType(this->type);
 	if(this->init)
 	{
 		auto res = this->init->codegen(cs, this->type);
 		iceAssert(res.value);
 
 		val = res.value;
+
+		// check if we're refcounted.
+		if(refcounted)
+			cs->performRefCountingAssignment(0, res, true);
 	}
 
 	if(this->immutable)
@@ -59,7 +64,10 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
 	cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
-	return CGResult(alloc);
+
+	if(refcounted) cs->addRefCountedPointer(alloc);
+
+	return CGResult(0, alloc);
 }
 
 CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)

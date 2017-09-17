@@ -25,10 +25,10 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ToolOutputFile.h"
@@ -108,7 +108,7 @@ namespace backend
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
 			exitless_error("\nLLVM Module verification failed");
-			this->linkedModule->dump();
+			this->linkedModule->print(llvm::errs(), 0);
 
 			doTheExit();
 		}
@@ -126,7 +126,6 @@ namespace backend
 			fpm.add(llvm::createMergedLoadStoreMotionPass());
 			fpm.add(llvm::createInstructionCombiningPass());
 			fpm.add(llvm::createConstantPropagationPass());
-			fpm.add(llvm::createLoadCombinePass());
 			fpm.add(llvm::createScalarizerPass());
 		}
 

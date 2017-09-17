@@ -95,6 +95,9 @@ namespace fir
 		Type* getPointerTo(FTContext* tc = 0);
 		Type* getPointerElementType(FTContext* tc = 0);
 
+		// note: works for all array types, be it dynamic, fixed, or slices
+		Type* getArrayElementType();
+
 		ConstantNumberType* toConstantNumberType();
 		DynamicArrayType* toDynamicArrayType();
 		ArraySliceType* toArraySliceType();

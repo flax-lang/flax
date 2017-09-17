@@ -146,28 +146,41 @@ template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts.
 template <typename... Ts> [[attr]] void name (const Location& l, const char* fmt, Ts... ts)										\
 { fputs(__error_gen(HighlightOptions(l), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }							\
 																																\
+template <typename... Ts> [[attr]] void name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)				\
+{																																\
+	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());														\
+	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);																	\
+	if(doexit) doTheExit();																										\
+}																																\
+																																\
 template <typename... Ts> [[attr]] void name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)					\
 {																																\
-	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();																\
+	if(ops.caret.fileID == 0) ops.caret = (e ? e->loc : Location());															\
 	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);																	\
 	if(doexit) doTheExit();																										\
 }
 
 
-#define STRING_ERROR_FUNCTION(name, type)																	\
-template <typename... Ts> std::string name (const char* fmt, Ts... ts)										\
-{ return __error_gen(HighlightOptions(), fmt, type, ts...); }												\
-																											\
-template <typename... Ts> std::string name (Locatable* e, const char* fmt, Ts... ts)						\
-{ return __error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...); }						\
-																											\
-template <typename... Ts> std::string name (const Location& l, const char* fmt, Ts... ts)					\
-{ return __error_gen(HighlightOptions(l), fmt, type, ts...); }												\
-																											\
-template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)	\
-{																											\
-	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();											\
-	return __error_gen(ops, fmt, type, ts...);																\
+#define STRING_ERROR_FUNCTION(name, type)																			\
+template <typename... Ts> std::string name (const char* fmt, Ts... ts)												\
+{ return __error_gen(HighlightOptions(), fmt, type, ts...); }														\
+																													\
+template <typename... Ts> std::string name (Locatable* e, const char* fmt, Ts... ts)								\
+{ return __error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...); }								\
+																													\
+template <typename... Ts> std::string name (const Location& l, const char* fmt, Ts... ts)							\
+{ return __error_gen(HighlightOptions(l), fmt, type, ts...); }														\
+																													\
+template <typename... Ts> std::string name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)		\
+{																													\
+	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());											\
+	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);														\
+}																													\
+																													\
+template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)			\
+{																													\
+	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();													\
+	return __error_gen(ops, fmt, type, ts...);																		\
 }
 
 
