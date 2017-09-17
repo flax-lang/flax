@@ -455,11 +455,14 @@ namespace cgn
 
 				// ok, do the append
 				iceAssert(lp && rp);
-				// auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
+				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
-				// fir::Value* ret = this->irb.CreateCall2(maketwof, lp, rp);
+				fir::Value* res = this->irb.CreateCall2(maketwof, lv, rv);
+				this->addRefCountedValue(res);
 
-				error(loc, "i'm gonna stop you right here");
+				return CGResult(res);
+
+				// error(loc, "i'm gonna stop you right here");
 			}
 			else
 			{
