@@ -188,7 +188,7 @@ namespace sst
 		if((_lr.value->getType()->isPointerType() && _rr.value->getType()->isIntegerType())
 			|| (_lr.value->getType()->isIntegerType() && _rr.value->getType()->isPointerType()))
 		{
-			error("not supported");
+			error("pointer arithmetic not supported");
 		}
 
 
@@ -346,6 +346,24 @@ namespace cgn
 					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(l.value, r.value));
 					case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(l.value, r.value));
 					case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(l.value, r.value));
+					default: error("no");
+				}
+			}
+			else if(lt->isStringType() && rt->isStringType())
+			{
+				auto cmpfn = cgn::glue::string::getCompareFunction(this);
+				fir::Value* res = this->irb.CreateCall2(cmpfn, l.value, r.value);
+
+				fir::Value* zero = fir::ConstantInt::getInt64(0);
+
+				switch(op)
+				{
+					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(res, zero));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(res, zero));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(res, zero));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(res, zero));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(res, zero));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(res, zero));
 					default: error("no");
 				}
 			}
