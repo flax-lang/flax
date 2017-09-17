@@ -127,6 +127,8 @@ namespace fir
 		DynamicArray_SetLength,
 		DynamicArray_GetCapacity,
 		DynamicArray_SetCapacity,
+		DynamicArray_GetRefCount,
+		DynamicArray_SetRefCount,
 
 		ArraySlice_GetData,
 		ArraySlice_SetData,

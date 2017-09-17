@@ -15,7 +15,7 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/Support/raw_ostream.h"
+// #include "llvm/Support/raw_ostream.h"
 
 #include "ir/module.h"
 #include "ir/constant.h"
@@ -452,7 +452,7 @@ namespace backend
 			}
 		};
 
-		auto getOperand = [&module, &builder, &getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
+		auto getOperand = [&getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
 
 			iceAssert(inst->operands.size() > op);
 			fir::Value* fv = inst->operands[op];
@@ -579,13 +579,13 @@ namespace backend
 					{
 						// llvm is stupid.
 						auto it = func->arg_begin();
-						ptr1 = it.getNodePtrUnchecked();
+						ptr1 = it;
 						it++;
 
-						ptr2 = it.getNodePtrUnchecked();
+						ptr2 = it;
 						it++;
 
-						cmplen = it.getNodePtrUnchecked();
+						cmplen = it;
 					}
 
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
@@ -668,7 +668,7 @@ namespace backend
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
 
 					builder.CreateStore(oneconst, retval);
-					builder.CreateStore(func->arg_begin().getNodePtrUnchecked(), num);
+					builder.CreateStore(func->arg_begin(), num);
 
 
 					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "loopcond", func);
@@ -749,7 +749,7 @@ namespace backend
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
 			{
-				valueMap[ffn->getArguments()[i]->id] = it.getNodePtrUnchecked();
+				valueMap[ffn->getArguments()[i]->id] = it;
 
 				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
@@ -1941,9 +1941,7 @@ namespace backend
 							iceAssert(inst->operands.size() == 1);
 
 							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
 							if(inst->opKind == fir::OpKind::DynamicArray_GetData)
@@ -1953,8 +1951,7 @@ namespace backend
 							else
 								ind = 2;
 
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							llvm::Value* ret = builder.CreateLoad(gep);
+							llvm::Value* ret = builder.CreateExtractValue(a, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1968,16 +1965,10 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getArrayElementType()->getPointerTo(), module));
 
-							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getPointerElementType()->
-								toDynamicArrayType()->getElementType()->getPointerTo(), module));
-
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							builder.CreateStore(b, data);
-
-							llvm::Value* ret = builder.CreateLoad(data);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1991,9 +1982,7 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
+							iceAssert(a->getType()->isStructTy());
 							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
 
 							int ind = 0;
@@ -2002,11 +1991,50 @@ namespace backend
 							else
 								ind = 2;
 
-							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							builder.CreateStore(b, len);
-
-							llvm::Value* ret = builder.CreateLoad(len);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
 							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case fir::OpKind::DynamicArray_GetRefCount:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(a->getType()->isStructTy());
+
+							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
+
+							// refcount lies 8 bytes behind.
+							auto& gc = LLVMBackend::getLLVMContext();
+							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
+							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							llvm::Value* ret = builder.CreateLoad(rcp);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case fir::OpKind::DynamicArray_SetRefCount:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+
+							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
+
+							// refcount lies 8 bytes behind.
+							auto& gc = LLVMBackend::getLLVMContext();
+							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
+							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+							builder.CreateStore(b, rcp);
+
 							break;
 						}
 
@@ -2027,17 +2055,13 @@ namespace backend
 							iceAssert(inst->operands.size() == 1);
 
 							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
-
 							if(inst->opKind == fir::OpKind::ArraySlice_GetLength)
 								ind = 1;
 
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							llvm::Value* ret = builder.CreateLoad(gep);
+							llvm::Value* ret = builder.CreateExtractValue(a, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -2051,16 +2075,10 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getArrayElementType()->getPointerTo(), module));
 
-							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getPointerElementType()->
-								toArraySliceType()->getElementType()->getPointerTo(), module));
-
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 0);
-							builder.CreateStore(b, data);
-
-							llvm::Value* ret = builder.CreateLoad(data);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -2073,15 +2091,10 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
+							iceAssert(a->getType()->isStructTy());
 							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
 
-							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 1);
-							builder.CreateStore(b, len);
-
-							llvm::Value* ret = builder.CreateLoad(len);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 1);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

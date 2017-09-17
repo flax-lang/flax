@@ -1523,23 +1523,23 @@ namespace fir
 
 
 
-	Value* IRBuilder::CreateGetDynamicArrayData(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetDynamicArrayData(Value* arr, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetData, false, this->currentBlock,
-			ptr->getType()->getPointerElementType()->toDynamicArrayType()->getElementType()->getPointerTo(), { ptr });
+			arr->getType()->toDynamicArrayType()->getElementType()->getPointerTo(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetDynamicArrayData(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetDynamicArrayData(Value* arr, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
-		auto t = ptr->getType()->getPointerElementType()->toDynamicArrayType()->getElementType();
+		auto t = arr->getType()->toDynamicArrayType()->getElementType();
 		if(val->getType() != t->getPointerTo())
 		{
 			error("val is not a pointer to elm type (need '%s', have '%s')",
@@ -1547,60 +1547,88 @@ namespace fir
 		}
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetData, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
-	Value* IRBuilder::CreateGetDynamicArrayLength(Value* ptr, std::string vname)
+
+	Value* IRBuilder::CreateGetDynamicArrayLength(Value* arr, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetLength, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
+			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetDynamicArrayLength(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetDynamicArrayLength(Value* arr, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetLength, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
 
-	Value* IRBuilder::CreateGetDynamicArrayCapacity(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetDynamicArrayCapacity(Value* arr, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetCapacity, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
+			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetDynamicArrayCapacity(Value* arr, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isDynamicArrayType())
-			error("ptr is not a pointer to dynamic array type (got '%s')", ptr->getType()->str());
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetCapacity, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			arr->getType(), { arr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::CreateGetDynamicArrayRefCount(Value* arr, std::string vname)
+	{
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_GetRefCount, false, this->currentBlock,
+			fir::Type::getInt64(), { arr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetDynamicArrayRefCount(Value* arr, Value* val, std::string vname)
+	{
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_SetRefCount, true, this->currentBlock,
+			fir::Type::getVoid(), { arr, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1617,57 +1645,54 @@ namespace fir
 
 
 
-	Value* IRBuilder::CreateGetArraySliceData(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetArraySliceData(Value* slc, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
-			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str());
+		if(!slc->getType()->isArraySliceType())
+			error("slc is not an array slice type (got '%s')", slc->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_GetData, false, this->currentBlock,
-			ptr->getType()->getPointerElementType()->toArraySliceType()->getElementType()->getPointerTo(), { ptr });
+			slc->getType()->toArraySliceType()->getElementType()->getPointerTo(), { slc });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetArraySliceData(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetArraySliceData(Value* slc, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
-			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str());
+		if(!slc->getType()->isArraySliceType())
+			error("slc is not an array slice type (got '%s')", slc->getType()->str());
 
-		auto t = ptr->getType()->getPointerElementType()->toArraySliceType()->getElementType();
-		if(val->getType() != t->getPointerTo())
-		{
-			error("val is not a pointer to elm type (need '%s', have '%s')",
-				t->getPointerTo()->str(), val->getType()->str());
-		}
+		auto et = slc->getType()->toArraySliceType()->getElementType();
+		if(val->getType() != et->getPointerTo())
+			error("val is not a pointer to elm type (need '%s', have '%s')", et->getPointerTo()->str(), val->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			slc->getType(), { slc, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
-	Value* IRBuilder::CreateGetArraySliceLength(Value* ptr, std::string vname)
+	Value* IRBuilder::CreateGetArraySliceLength(Value* slc, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
-			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str());
+		if(!slc->getType()->isArraySliceType())
+			error("slc is not an array slice type (got '%s')", slc->getType()->str());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_GetLength, false, this->currentBlock,
-			fir::Type::getInt64(), { ptr });
+			fir::Type::getInt64(), { slc });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetArraySliceLength(Value* ptr, Value* val, std::string vname)
+	Value* IRBuilder::CreateSetArraySliceLength(Value* slc, Value* val, std::string vname)
 	{
-		if(!ptr->getType()->isPointerType() || !ptr->getType()->getPointerElementType()->isArraySliceType())
-			error("ptr is not a pointer to array slice type (got '%s')", ptr->getType()->str());
+		if(!slc->getType()->isArraySliceType())
+			error("slc is not an array slice type (got '%s')", slc->getType()->str());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_SetLength, true, this->currentBlock,
-			fir::Type::getVoid(), { ptr, val });
+			slc->getType(), { slc, val });
 
 		return this->addInstruction(instr, vname);
 	}

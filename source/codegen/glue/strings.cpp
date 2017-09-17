@@ -17,7 +17,7 @@
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
 
-#define DEBUG_MASTER		0
+#define DEBUG_MASTER		1
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
@@ -188,7 +188,7 @@ namespace string
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				fir::Value* tmpstr = cs->module->createGlobalString("malloc (%zu): %p (%s)\n");
+				fir::Value* tmpstr = cs->module->createGlobalString("malloc (%zu): %p ('%s')\n");
 				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf, buf });
 			}
 			#endif
@@ -279,7 +279,7 @@ namespace string
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Value* tmpstr = cs->module->createGlobalString("malloc: %p / %p (%s) // (%s) // (appc)\n");
+				fir::Value* tmpstr = cs->module->createGlobalString("malloc: %p / %p ('%s') // ('%s') // (appc)\n");
 				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, lhsbuf, buf, buf, lhsbuf });
 			}
 			#endif

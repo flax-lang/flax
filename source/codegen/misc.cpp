@@ -111,6 +111,28 @@ namespace cgn
 
 	fir::Value* CodegenState::getDefaultValue(fir::Type* type)
 	{
+		if(type->isStringType())
+		{
+			return fir::ConstantString::get("");
+		}
+		else if(type->isDynamicArrayType())
+		{
+			fir::Value* arr = this->irb.CreateValue(type);
+			arr = this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
+			arr = this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+
+			return arr;
+		}
+		else if(type->isArraySliceType())
+		{
+			fir::Value* arr = this->irb.CreateValue(type);
+			arr = this->irb.CreateSetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
+			arr = this->irb.CreateSetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
+
+			return arr;
+		}
+
 		return fir::ConstantValue::getZeroValue(type);
 	}
 
@@ -153,21 +175,6 @@ namespace cgn
 			error("enotsup: %s", name);
 		}
 	}
-
-
-	bool CodegenState::isRefCountedType(fir::Type* type)
-	{
-		return false;
-	}
-
-	void CodegenState::incrementRefCount(fir::Value* ptr)
-	{
-	}
-
-	void CodegenState::decrementRefCount(fir::Value* ptr)
-	{
-	}
-
 }
 
 

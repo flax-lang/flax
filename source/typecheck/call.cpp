@@ -107,8 +107,8 @@ namespace sst
 			if(args.size() == target.size() && (args.back()->isVariadicArrayType() || args.back()->isDynamicArrayType()))
 			{
 				// yes we can
-				auto a = args.back()->toDynamicArrayType()->getElementType();
-				auto t = target.back()->toDynamicArrayType()->getElementType();
+				auto a = args.back()->getArrayElementType();
+				auto t = target.back()->getArrayElementType();
 
 				if(a != t)
 				{
@@ -123,7 +123,7 @@ namespace sst
 			}
 			else
 			{
-				auto elmTy = target.back()->toDynamicArrayType()->getElementType();
+				auto elmTy = target.back()->getArrayElementType();
 				for(size_t i = target.size(); i < args.size(); i++)
 				{
 					auto ty = args[i];
