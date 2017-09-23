@@ -113,6 +113,8 @@ namespace backend
 			doTheExit();
 		}
 
+		// return;
+
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		fpm.add(llvm::createDeadInstEliminationPass());
@@ -168,7 +170,7 @@ namespace backend
 	void LLVMBackend::writeOutput()
 	{
 		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
-		// this->linkedModule->dump();
+		// this->linkedModule->print(llvm::errs(), 0);
 
 		// verify the module.
 		{
