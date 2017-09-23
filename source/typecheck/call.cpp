@@ -324,7 +324,47 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 
 
 
+sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	using Param = sst::FunctionDecl::Param;
 
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	std::vector<sst::Expr*> arguments;
+
+	for(auto p : this->args)
+	{
+		auto expr = p->typecheck(fs);
+		arguments.push_back(expr);
+	}
+
+	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+	std::vector<fir::Type*> tys = util::map(arguments, [](sst::Expr* e) -> auto { return e->type; });
+
+	auto target = this->callee->typecheck(fs);
+	iceAssert(target);
+
+	if(!target->type->isFunctionType())
+		error(this->callee, "Expression with non-function-type '%s' cannot be called");
+
+	Location eloc;
+	std::string estr;
+
+	auto ft = target->type->toFunctionType();
+	int dist = sst::computeOverloadDistance(ft->getArgumentTypes(), std::vector<Location>(),
+		tys, false, &eloc, &estr);
+
+	if(!estr.empty() || dist == -1)
+		error(eloc, "%s", estr);
+
+
+	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
+	ret->callee = target;
+	ret->arguments = arguments;
+
+	return ret;
+}
 
 
 

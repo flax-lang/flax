@@ -108,6 +108,52 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	fir::Value* fn = this->callee->codegen(cs).value;
+	iceAssert(fn->getType()->isFunctionType());
+
+	auto ft = fn->getType()->toFunctionType();
+
+	if(ft->getArgumentTypes().size() != this->arguments.size() && !ft->isVariadicFunc())
+	{
+		error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
+			ft->getArgumentTypes().size(), this->arguments.size());
+	}
+
+	std::vector<fir::Value*> args;
+	for(size_t i = 0; i < this->arguments.size(); i++)
+	{
+		fir::Type* inf = 0;
+
+		if(i < ft->getArgumentTypes().size())
+			inf = ft->getArgumentN(i);
+
+		else
+			inf = ft->getArgumentTypes().back()->getArrayElementType();
+
+		auto rarg = this->arguments[i]->codegen(cs, inf);
+		auto arg = cs->oneWayAutocast(rarg, inf).value;
+
+		if(!arg || arg->getType() != inf)
+		{
+			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", inf->str(),
+				arg ? "??" : arg->getType()->str());
+		}
+
+		args.push_back(arg);
+	}
+
+	auto ret = cs->irb.CreateCallToFunctionPointer(fn, ft, args);
+	return CGResult(ret);
+}
+
+
+
+
 
 
 
