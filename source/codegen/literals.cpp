@@ -86,7 +86,9 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// make a function specifically to initialise this thing
 
 		static size_t _id = 0;
-		auto _aty = fir::ArrayType::get(elmty, this->values.size());
+
+		// add one for the -1 refcount
+		auto _aty = fir::ArrayType::get(elmty, this->values.size() + 1);
 		auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
 			_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
 
@@ -116,11 +118,15 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				vals.push_back(vl.value);
 			}
 
+			// set the refcount to -1
+			cs->irb.CreateStore(fir::ConstantInt::getInt64(-1), cs->irb.CreateConstGEP2(array, 0, 0));
+
 			// ok -- basically unroll the loop, except there's no loop -- so we're just...
 			// doing a thing.
 			for(size_t i = 0; i < vals.size(); i++)
 			{
-				fir::Value* ptr = cs->irb.CreateConstGEP2(array, 0, i);
+				// offset by 1
+				fir::Value* ptr = cs->irb.CreateConstGEP2(array, 0, i + 1);
 				cs->irb.CreateStore(vals[i], ptr);
 			}
 
@@ -134,13 +140,12 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// return it
 		{
 			auto zero = fir::ConstantInt::getInt64(0);
-			auto aptr = cs->irb.CreateConstGEP2(array, 0, 0);
+			auto aptr = cs->irb.CreateConstGEP2(array, 0, 1);
 
 			auto aa = cs->irb.CreateValue(darty);
 			aa = cs->irb.CreateSetDynamicArrayData(aa, aptr);
 			aa = cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
 			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, zero);
-			cs->irb.CreateSetDynamicArrayRefCount(aa, fir::ConstantInt::getInt64(-1));
 
 			aa->makeImmutable();
 			return CGResult(aa);

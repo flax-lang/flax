@@ -402,7 +402,7 @@ namespace backend
 
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
-		fprintf(stderr, "\n%s\n", firmod->print().c_str());
+		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 
@@ -748,6 +748,9 @@ namespace backend
 				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
 
+			// sort the blocklist first
+			std::sort(ffn->getBlockList().begin(), ffn->getBlockList().end(), [](fir::IRBlock* a, fir::IRBlock* b) -> bool {
+				return a->id < b->id; });
 
 			for(auto b : ffn->getBlockList())
 			{
