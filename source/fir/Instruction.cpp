@@ -125,6 +125,8 @@ namespace fir
 			case OpKind::Value_PointerAddition:				instrname = "ptradd"; break;
 			case OpKind::Value_PointerSubtraction:			instrname = "ptrsub"; break;
 
+			case OpKind::Value_CreatePHI:					instrname = "phi"; break;
+
 			case OpKind::String_GetData:					instrname = "get_str.data"; break;
 			case OpKind::String_SetData:					instrname = "set_str.data"; break;
 			case OpKind::String_GetLength:					instrname = "get_str.len"; break;
@@ -162,67 +164,76 @@ namespace fir
 			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}
 
+
 		std::string ops;
 		bool endswithfn = false;
-		for(auto op : this->operands)
+
+		if(this->opKind == OpKind::Value_CreatePHI)
 		{
-			bool didfn = false;
-			if(op->getType()->isFunctionType())
-			{
-				ops += "@" + op->getName().str();
-				if(this->opKind == OpKind::Value_CallFunction)
-				{
-					ops += ", (";
-					didfn = true;
-				}
-			}
-			else if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
-			{
-				ops += std::to_string(ci->getSignedValue());
-			}
-			else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(op))
-			{
-				ops += std::to_string(cf->getValue());
-			}
-			else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
-			{
-				ops += "'" + std::to_string(cc->getValue()) + "'";
-			}
-			else if(ConstantBool* cb = dynamic_cast<ConstantBool*>(op))
-			{
-				ops += cb->getValue() ? "true" : "false";
-			}
-			else if(dynamic_cast<ConstantValue*>(op))
-			{
-				ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
-			}
-			else if(PHINode* phi = dynamic_cast<PHINode*>(op))
-			{
-				std::string nodes;
+			auto phi = dynamic_cast<PHINode*>(this->realOutput);
+			iceAssert(phi);
+			std::string nodes;
 
-				for(auto i : phi->getValues())
-					nodes += strprintf("[$%s -> %%%zu], ", i.first->getName().name, i.second->id);
+			for(auto i : phi->getValues())
+				nodes += strprintf("[$%s -> %%%zu], ", i.first->getName().name, i.second->id);
 
-				nodes.pop_back();
-				nodes.pop_back();
+			nodes.pop_back();
+			nodes.pop_back();
 
-				ops += strprintf("(phi %s) :: %s", nodes, phi->getType()->str());
-			}
-			else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
-			{
-				ops += "$" + ib->getName().str();
-			}
-			else
-			{
-				auto name = op->getName().str();
-				ops += name + (name.empty() ? "" : " ") + "(%" + std::to_string(op->id) + ") :: " + op->getType()->str();
-			}
-
-			if(!didfn)
-				ops += ", ";
-
-			endswithfn = didfn;
+			ops += nodes;
 		}
+		else
+		{
+			for(auto op : this->operands)
+			{
+				bool didfn = false;
+				if(op->getType()->isFunctionType())
+				{
+					ops += "@" + op->getName().str();
+					if(this->opKind == OpKind::Value_CallFunction)
+					{
+						ops += ", (";
+						didfn = true;
+					}
+				}
+				else if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
+				{
+					ops += std::to_string(ci->getSignedValue());
+				}
+				else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(op))
+				{
+					ops += std::to_string(cf->getValue());
+				}
+				else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
+				{
+					ops += "'" + std::to_string(cc->getValue()) + "'";
+				}
+				else if(ConstantBool* cb = dynamic_cast<ConstantBool*>(op))
+				{
+					ops += cb->getValue() ? "true" : "false";
+				}
+				else if(dynamic_cast<ConstantValue*>(op))
+				{
+					ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
+				}
+				else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
+				{
+					ops += "$" + ib->getName().str();
+				}
+				else
+				{
+					auto name = op->getName().str();
+					ops += name + (name.empty() ? "" : " ") + "(%" + std::to_string(op->id) + ") :: " + op->getType()->str();
+				}
+
+				if(!didfn)
+					ops += ", ";
+
+				endswithfn = didfn;
+			}
+		}
+
+
 
 		if(ops.length() > 0 && !endswithfn)
 			ops = ops.substr(0, ops.length() - 2);

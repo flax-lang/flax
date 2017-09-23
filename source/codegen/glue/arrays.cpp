@@ -256,14 +256,19 @@ namespace array
 			iceAssert(orig);
 			iceAssert(startIndex);
 
-			fir::Value* origptr = cs->irb.CreateGetDynamicArrayData(orig);
-			fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(orig);
 
-			fir::Value* cap = cs->irb.CreateStackAlloc(fir::Type::getInt64());
-			cs->irb.CreateStore(cs->irb.CreateGetDynamicArrayCapacity(orig), cap);
+
+			fir::Value* origptr = cs->irb.CreateGetDynamicArrayData(orig, "origptr");
+			fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(orig, "origlen");
+
+			// fir::Value* cap = cs->irb.CreateStackAlloc(fir::Type::getInt64(), "cap");
+
+			fir::Value* origcap = cs->irb.CreateGetDynamicArrayCapacity(orig);
+			// cs->irb.CreateStore(origcap, cap);
+
 
 			// note: sanity check that len <= cap
-			fir::Value* sane = cs->irb.CreateICmpLEQ(origlen, cs->irb.CreateLoad(cap));
+			fir::Value* sane = cs->irb.CreateICmpLEQ(origlen, origcap);
 			cs->irb.CreateCondBranch(sane, merge1, insane);
 
 
@@ -273,16 +278,20 @@ namespace array
 				// *but* since we're using dyn arrays as vararg arrays,
 				// then we just treat capacity = length.
 
-				cs->irb.CreateStore(origlen, cap);
 				cs->irb.CreateUnCondBranch(merge1);
 			}
 
+
 			// ok, back to normal
 			cs->irb.setCurrentBlock(merge1);
+			auto cap = cs->irb.CreatePHINode(fir::Type::getInt64());
+			cap->addIncoming(origcap, entry);
+			cap->addIncoming(origlen, insane);
+
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cs->irb.CreateMul(cs->irb.CreateLoad(cap), cs->irb.CreateSizeof(arrtype->getElementType()));
+			fir::Value* actuallen = cs->irb.CreateMul(cap, cs->irb.CreateSizeof(arrtype->getElementType()));
 
 
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
@@ -296,7 +305,8 @@ namespace array
 			fir::Value* newarr = cs->irb.CreateValue(arrtype);
 			newarr = cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
-			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateLoad(cap));
+			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cap);
+			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 			cs->irb.CreateReturn(newarr);
 
@@ -408,37 +418,29 @@ namespace array
 
 
 
-		// TODO: ugly hack to force visiting the incoming values before we visit ourselves.
-		// THE ORDER OF THESE BLOCKS IS VERY IMPORTANT (FOR NOW)
+		fir::IRBlock* cb = cs->irb.getCurrentBlock();
 
 		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
-
 		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("grow", func);
 
 		// for when the 'dynamic' array came from a literal. same as the usual stuff
 		// capacity will be -1, in this case.
 		fir::IRBlock* growNewblk = cs->irb.addNewBlockInFunction("growFromScratch", func);
 
-		fir::IRBlock* forceblk = cs->irb.addNewBlockInFunction("make_phi", func);
-
 		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
-
-		cs->irb.CreateUnCondBranch(forceblk);
-
-
-		// return a phi node.
-		cs->irb.setCurrentBlock(forceblk);
-		auto phi = cs->irb.CreatePHINode(arr->getType());
-		{
-			phi->addIncoming(arr, cs->irb.getCurrentBlock());
-			cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
-		}
+		cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
 
 		cs->irb.setCurrentBlock(trampoline);
 		{
 			cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
+
 			cs->irb.CreateCondBranch(cond, growNewblk, growblk);
 		}
+
+		// return a phi node.
+		fir::Value* growPhi = 0;
+		fir::Value* growNewPhi = 0;
+
 
 		// grows to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growblk);
@@ -459,7 +461,7 @@ namespace array
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
-			phi->addIncoming(ret, growblk);
+			growPhi = ret;
 		}
 
 
@@ -477,6 +479,7 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
 
+
 			// memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
@@ -490,11 +493,20 @@ namespace array
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
-			phi->addIncoming(ret, growNewblk);
+			growNewPhi = ret;
 		}
 
+
+
 		cs->irb.setCurrentBlock(mergeblk);
-		return phi;
+		{
+			auto phi = cs->irb.CreatePHINode(arr->getType());
+			phi->addIncoming(arr, cb);
+			phi->addIncoming(growPhi, growblk);
+			phi->addIncoming(growNewPhi, growNewblk);
+
+			return phi;
+		}
 	}
 
 
@@ -522,6 +534,7 @@ namespace array
 			fir::Value* s2 = func->getArguments()[1];
 
 			auto elmType = arrtype->getElementType();
+
 
 			// get the second one
 			{
@@ -993,9 +1006,9 @@ namespace array
 		iceAssert(arrtype);
 
 		auto name = BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
+		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
 
-		if(!cmpf)
+		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
@@ -1006,6 +1019,7 @@ namespace array
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
+
 
 			fir::Value* a1 = func->getArguments()[0];
 			fir::Value* a2 = func->getArguments()[1];
@@ -1023,26 +1037,29 @@ namespace array
 			cs->irb.CreateReturn(ret);
 
 
-			cmpf = func;
+			fn = func;
 			cs->irb.setCurrentBlock(restore);
 		}
 
-		iceAssert(cmpf);
-		return cmpf;
+		iceAssert(fn);
+		return fn;
 	}
 
 	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
+		iceAssert(0);
 		return 0;
 	}
 
 	fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
+		iceAssert(0);
 		return 0;
 	}
 
 	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
+		iceAssert(0);
 		return 0;
 	}
 }
