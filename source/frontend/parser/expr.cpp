@@ -124,7 +124,7 @@ namespace parser
 
 	static bool isPostfixUnaryOperator(TT tt)
 	{
-		return (tt == TT::LSquare) || (tt == TT::DoublePlus) || (tt == TT::DoubleMinus)
+		return (tt == TT::LParen) || (tt == TT::LSquare) || (tt == TT::DoublePlus) || (tt == TT::DoubleMinus)
 			|| (tt == TT::Ellipsis) || (tt == TT::HalfOpenEllipsis);
 	}
 
@@ -166,8 +166,9 @@ namespace parser
 
 		switch(st.front())
 		{
-			// . and [] have the same precedence.
+			// . () and [] have the same precedence.
 			// not sure if this should stay -- works for now.
+			case TT::LParen:
 			case TT::Period:
 			case TT::LSquare:
 				return 1000;
@@ -501,9 +502,72 @@ namespace parser
 	}
 
 
+	static FunctionCall* parseFunctionCall(State& st, std::string name)
+	{
+		auto ret = new FunctionCall(st.lookahead(-2).loc, name);
+
+		st.skipWS();
+		while(st.front() != TT::RParen)
+		{
+			ret->args.push_back(parseExpr(st));
+			st.skipWS();
+
+			if(st.front() == TT::Comma)
+				st.pop();
+
+			else if(st.front() != TT::RParen)
+				expected(st, "',' or '(' in function call argument list", st.front().str());
+		}
+
+		iceAssert(st.front() == TT::RParen);
+		st.pop();
+
+		return ret;
+	}
+
+
+	static Expr* parseCall(State& st, Expr* lhs, Token op)
+	{
+		if(Ident* id = dynamic_cast<Ident*>(lhs))
+			return parseFunctionCall(st, id->name);
+
+		auto ret = new ast::ExprCall(op.loc);
+		iceAssert(op == TT::LParen);
+
+		std::vector<Expr*> values;
+
+		Token t = st.front();
+		while(true)
+		{
+			values.push_back(parseExpr(st));
+			if(st.front().type == TT::RParen)
+				break;
+
+			if(st.front().type != TT::Comma)
+				expected(st, "either ')' or ',' in function call argument list", st.front().str());
+
+			st.eat();
+			t = st.front();
+		}
+
+		// leave the last rparen
+		iceAssert(st.front().type == TT::RParen);
+		st.eat();
+
+		ret->args = values;
+		ret->callee = lhs;
+
+		return ret;
+	}
+
+
 	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op)
 	{
-		if(op.type == TT::LSquare)
+		if(op.type == TT::LParen)
+		{
+			return parseCall(st, lhs, op);
+		}
+		else if(op.type == TT::LSquare)
 		{
 			// if we're a colon immediately, then it's a slice expr already.
 			// either [:x] or [:]
@@ -614,45 +678,13 @@ namespace parser
 
 
 
-	static FunctionCall* parseFunctionCall(State& st, std::string name)
-	{
-		iceAssert(st.front() == TT::LParen);
-		auto ret = new FunctionCall(st.ploc(), name);
-
-		st.pop();
-		st.skipWS();
-		while(st.front() != TT::RParen)
-		{
-			ret->args.push_back(parseExpr(st));
-			st.skipWS();
-
-			if(st.front() == TT::Comma)
-				st.pop();
-
-			else if(st.front() != TT::RParen)
-				expected(st, "',' or '(' in function call argument list", st.front().str());
-		}
-
-		iceAssert(st.front() == TT::RParen);
-		st.pop();
-
-		return ret;
-	}
-
 	static Expr* parseIdentifier(State& st)
 	{
 		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
 		std::string name = st.front().str();
 		st.pop();
 
-		if(st.front() == TT::LParen)
-		{
-			return parseFunctionCall(st, name);
-		}
-		else
-		{
-			return new Ident(st.ploc(), name);
-		}
+		return new Ident(st.ploc(), name);
 	}
 
 

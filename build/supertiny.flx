@@ -13,10 +13,15 @@ import "LibCInterface.flx"
 // 	printf("ONE\n")
 // }
 
-// fn foo(a: int)
-// {
-// 	printf("TWO\n")
-// }
+fn bar(a: int) -> int
+{
+	return a * a
+}
+
+fn foo() -> (int) -> int
+{
+	return bar
+}
 
 
 // fn doRecursiveFib(n: int, v: int, prev: int) -> int
@@ -43,6 +48,9 @@ import "LibCInterface.flx"
 	// printf("---\n")
 	// var str2: string
 	// str2 = str1
+
+	let x = foo()(7)
+	printf("x = %d\n", x)
 
 	// printf("str = %s\n", str1)
 

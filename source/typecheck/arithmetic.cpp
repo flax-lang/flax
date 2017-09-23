@@ -79,6 +79,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			if(left->isConstantNumberType() && right->isConstantNumberType())
 				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() + right->toConstantNumberType()->getValue());
 
+			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+				return left;
+
 			else if(left->isStringType() && right->isStringType())
 				return fir::Type::getString();
 
@@ -93,16 +96,28 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 		case Operator::Subtract: {
 			if(left->isConstantNumberType() && right->isConstantNumberType())
 				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() - right->toConstantNumberType()->getValue());
+
+			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+				return left;
+
 		} break;
 
 		case Operator::Multiply: {
 			if(left->isConstantNumberType() && right->isConstantNumberType())
 				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() * right->toConstantNumberType()->getValue());
+
+			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+				return left;
+
 		} break;
 
 		case Operator::Divide: {
 			if(left->isConstantNumberType() && right->isConstantNumberType())
 				return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() / right->toConstantNumberType()->getValue());
+
+			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+				return left;
+
 		} break;
 
 		case Operator::Modulo: {

@@ -324,6 +324,17 @@ namespace ast
 		std::vector<Expr*> args;
 	};
 
+	struct ExprCall : Expr
+	{
+		ExprCall(const Location& l) : Expr(l) { }
+		~ExprCall() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* callee = 0;
+		std::vector<Expr*> args;
+	};
+
 	struct DotOperator : Expr
 	{
 		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { }

@@ -152,7 +152,6 @@ namespace sst
 	};
 
 
-	struct FunctionDecl;
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { }
@@ -162,6 +161,17 @@ namespace sst
 
 		std::string name;
 		Defn* target = 0;
+		std::vector<Expr*> arguments;
+	};
+
+	struct ExprCall : Expr
+	{
+		ExprCall(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~ExprCall() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* callee = 0;
 		std::vector<Expr*> arguments;
 	};
 
