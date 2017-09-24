@@ -51,6 +51,10 @@ sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	auto ret = new sst::ReturnStmt(this->loc);
 
+	if(fs->isInDeferBlock())
+		error(this, "Cannot 'return' while inside a deferred block");
+
+
 	// ok, get the current function
 	auto fn = fs->getCurrentFunction();
 	auto retty = fn->returnType;
@@ -198,9 +202,12 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	fs->pushTree(n);
 	defer(fs->popTree());
 
-
-	ret->body = dcast(sst::Block, this->body->typecheck(fs));
-	iceAssert(ret->body);
+	fs->enterBreakableBody();
+	{
+		ret->body = dcast(sst::Block, this->body->typecheck(fs));
+		iceAssert(ret->body);
+	}
+	fs->leaveBreakableBody();
 
 	if(this->cond)
 	{
@@ -210,6 +217,35 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	}
 
 	return ret;
+}
+
+
+sst::Stmt* ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	if(!fs->isInBreakableBody())
+		error(this, "Cannot 'break' while not inside a loop");
+
+	else if(fs->isInDeferBlock())
+		error(this, "Cannot 'break' while inside a deferred block");
+
+	return new sst::BreakStmt(this->loc);
+}
+
+sst::Stmt* ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	if(!fs->isInBreakableBody())
+		error(this, "Cannot 'continue' while not inside a loop");
+
+	else if(fs->isInDeferBlock())
+		error(this, "Cannot 'continue' while inside a deferred block");
+
+	return new sst::ContinueStmt(this->loc);
 }
 
 

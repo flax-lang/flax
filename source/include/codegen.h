@@ -17,6 +17,7 @@ namespace sst
 	struct Expr;
 	struct Stmt;
 	struct Defn;
+	struct Block;
 	struct BinaryOp;
 	struct StateTree;
 	struct DefinitionTree;
@@ -77,6 +78,19 @@ namespace cgn
 		std::unordered_map<std::string, std::vector<CGResult>> values;
 	};
 
+	struct ControlFlowPoint
+	{
+		ControlFlowPoint(sst::Block* b, fir::IRBlock* bp, fir::IRBlock* cp) :
+			block(b), breakPoint(bp), continuePoint(cp) { }
+
+		sst::Block* block = 0;
+		ValueTree* vtree = 0;
+
+		fir::IRBlock* breakPoint = 0;
+		fir::IRBlock* continuePoint = 0;
+	};
+
+
 	struct CodegenState
 	{
 		CodegenState(const fir::IRBuilder& i) : irb(i) { }
@@ -107,6 +121,13 @@ namespace cgn
 		fir::Function* getCurrentFunction();
 		void enterFunction(fir::Function* fn);
 		void leaveFunction();
+
+
+		std::vector<ControlFlowPoint> breakingPointStack;
+		ControlFlowPoint getCurrentCFPoint();
+
+		void enterBreakableBody(ControlFlowPoint cfp);
+		void leaveBreakableBody();
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);

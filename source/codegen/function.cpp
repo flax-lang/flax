@@ -138,37 +138,6 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
-CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
-{
-	cs->pushLoc(this);
-	defer(cs->popLoc());
-
-	auto rsn = cs->setNamespace(this->scope);
-	defer(cs->restoreNamespace(rsn));
-
-	cs->enterNamespace(this->generatedScopeName);
-	defer(cs->leaveNamespace());
-
-	for(auto stmt : this->statements)
-		stmt->codegen(cs);
-
-	// then do the defers
-	for(auto stmt : this->deferred)
-		stmt->codegen(cs);
-
-
-	// then decrement all the refcounts
-	for(auto v : cs->getRefCountedValues())
-		cs->decrementRefCount(v);
-
-	// then decrement all the refcounts
-	for(auto p : cs->getRefCountedPointers())
-		cs->decrementRefCount(cs->irb.CreateLoad(p));
-
-	return CGResult(0);
-}
-
-
 
 
 

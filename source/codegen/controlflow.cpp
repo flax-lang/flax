@@ -174,14 +174,16 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		return cs->irb.CreateICmpEQ(cv.value, fir::ConstantBool::get(true));
 	};
 
-
-
 	if(this->isDoVariant)
 	{
 		cs->irb.CreateUnCondBranch(loop);
 		cs->irb.setCurrentBlock(loop);
 
-		this->body->codegen(cs);
+		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, loop));
+		{
+			this->body->codegen(cs);
+		}
+		cs->leaveBreakableBody();
 
 		// ok, check if we have a condition
 		if(this->cond)
@@ -206,10 +208,13 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		auto condv = getcond(cs, this->cond);
 		cs->irb.CreateCondBranch(condv, loop, merge);
 
-
 		cs->irb.setCurrentBlock(loop);
 
-		this->body->codegen(cs);
+		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, check));
+		{
+			this->body->codegen(cs);
+		}
+		cs->leaveBreakableBody();
 
 		// ok, do a jump back to the top
 		cs->irb.CreateUnCondBranch(check);
@@ -223,10 +228,94 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 
 
+static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
+{
+	// then do the defers
+	for(auto stmt : cfp.block->deferred)
+		stmt->codegen(cs);
+
+	for(auto v : cfp.vtree->refCountedValues)
+		cs->decrementRefCount(v);
+
+	for(auto p : cfp.vtree->refCountedPointers)
+		cs->decrementRefCount(cs->irb.CreateLoad(p));
+}
+
+CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto bp = cs->getCurrentCFPoint().breakPoint;
+	iceAssert(bp);
+
+	// do the necessary
+	doBlockEndThings(cs, cs->getCurrentCFPoint());
+	cs->irb.CreateUnCondBranch(bp);
+
+	return CGResult(0, 0, CGResult::VK::Break);
+}
+
+CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto cp = cs->getCurrentCFPoint().continuePoint;
+	iceAssert(cp);
+
+	// do the necessary
+	doBlockEndThings(cs, cs->getCurrentCFPoint());
+	cs->irb.CreateUnCondBranch(cp);
+
+	return CGResult(0, 0, CGResult::VK::Continue);
+}
 
 
 
 
+
+
+CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto rsn = cs->setNamespace(this->scope);
+	defer(cs->restoreNamespace(rsn));
+
+	// cs->enterNamespace(this->generatedScopeName);
+	// defer(cs->leaveNamespace());
+
+	bool broke = false;
+	bool cont = false;
+	for(auto stmt : this->statements)
+	{
+		auto res = stmt->codegen(cs);
+		if(res.kind == CGResult::VK::Break || res.kind == CGResult::VK::Continue)
+		{
+			broke = true;
+			cont = (res.kind == CGResult::VK::Continue);
+			break;
+		}
+	}
+
+
+	if(!broke)
+	{
+		for(auto stmt : this->deferred)
+			stmt->codegen(cs);
+
+		// then decrement all the refcounts
+		for(auto v : cs->getRefCountedValues())
+			cs->decrementRefCount(v);
+
+		for(auto p : cs->getRefCountedPointers())
+			cs->decrementRefCount(cs->irb.CreateLoad(p));
+	}
+
+	return CGResult(0);
+}
 
 
 

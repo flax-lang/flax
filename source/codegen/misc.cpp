@@ -84,6 +84,26 @@ namespace cgn
 
 
 
+	ControlFlowPoint CodegenState::getCurrentCFPoint()
+	{
+		return this->breakingPointStack.back();
+	}
+
+	void CodegenState::enterBreakableBody(ControlFlowPoint cfp)
+	{
+		iceAssert(cfp.block && cfp.breakPoint && cfp.continuePoint);
+		cfp.vtree = this->vtree;
+
+		this->breakingPointStack.push_back(cfp);
+	}
+
+	void CodegenState::leaveBreakableBody()
+	{
+		iceAssert(this->breakingPointStack.size() > 0);
+		this->breakingPointStack.pop_back();
+	}
+
+
 
 
 	void CodegenState::pushLoc(const Location& l)

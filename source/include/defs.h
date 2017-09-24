@@ -70,6 +70,9 @@ struct CGResult
 		Invalid,
 		LValue,		// lvalue, as in c/c++
 		RValue,		// rvalue, as in c/c++
+
+		Break,
+		Continue,
 	};
 
 	CGResult() : CGResult(0) { }

@@ -93,6 +93,40 @@ namespace sst
 	}
 
 
+	void TypecheckState::enterBreakableBody()
+	{
+		this->breakableBodyNest++;
+	}
+
+	void TypecheckState::leaveBreakableBody()
+	{
+		iceAssert(this->breakableBodyNest > 0);
+		this->breakableBodyNest--;
+	}
+
+	bool TypecheckState::isInBreakableBody()
+	{
+		return this->breakableBodyNest > 0;
+	}
+
+	void TypecheckState::enterDeferBlock()
+	{
+		this->deferBlockNest++;
+	}
+
+	void TypecheckState::leaveDeferBlock()
+	{
+		iceAssert(this->deferBlockNest > 0);
+		this->deferBlockNest--;
+	}
+
+	bool TypecheckState::isInDeferBlock()
+	{
+		return this->deferBlockNest > 0;
+	}
+
+
+
 	std::string TypecheckState::serialiseCurrentScope()
 	{
 		std::deque<std::string> scope;
