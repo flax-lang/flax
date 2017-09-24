@@ -168,7 +168,7 @@ namespace frontend
 	using BackendOption		= backend::BackendOption;
 	using OptimisationLevel	= backend::OptimisationLevel;
 
-	auto _outputMode		= ProgOutputMode::RunJit;
+	auto _outputMode		= ProgOutputMode::Program;
 	auto _backendCodegen	= BackendOption::LLVM;
 	auto _optLevel			= OptimisationLevel::Normal;
 

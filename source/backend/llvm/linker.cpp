@@ -105,6 +105,8 @@ namespace backend
 	{
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
 
+		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
+
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
 			exitless_error("\nLLVM Module verification failed");
@@ -169,7 +171,6 @@ namespace backend
 
 	void LLVMBackend::writeOutput()
 	{
-		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
 		// this->linkedModule->print(llvm::errs(), 0);
 
 		// verify the module.
