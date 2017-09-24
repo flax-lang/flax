@@ -15,7 +15,6 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-
 	using Case = sst::IfStmt::Case;
 	auto ret = new sst::IfStmt(this->loc);
 
@@ -112,6 +111,13 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				ret &= r;
 			}
 		}
+		else if(auto whileloop = dcast(sst::WhileLoop, s))
+		{
+			auto r = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
+			if(!r) faulty->push_back(whileloop->body);
+
+			ret &= r;
+		}
 
 
 		// check for returns
@@ -176,8 +182,35 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 
 
+sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	sst::WhileLoop* ret = new sst::WhileLoop(this->loc);
+	ret->isDoVariant = this->isDoVariant;
+
+	auto n = fs->getAnonymousScopeName();
+
+	ret->generatedScopeName = n;
+	ret->scope = fs->getCurrentScope();
+
+	fs->pushTree(n);
+	defer(fs->popTree());
 
 
+	ret->body = dcast(sst::Block, this->body->typecheck(fs));
+	iceAssert(ret->body);
+
+	if(this->cond)
+	{
+		ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
+		if(ret->cond->type != fir::Type::getBool())
+			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type->str());
+	}
+
+	return ret;
+}
 
 
 

@@ -149,6 +149,77 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto rsn = cs->setNamespace(this->scope);
+	defer(cs->restoreNamespace(rsn));
+
+	cs->enterNamespace(this->generatedScopeName);
+	defer(cs->leaveNamespace());
+
+	auto merge = cs->irb.addNewBlockAfter("merge", cs->irb.getCurrentBlock());
+	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
+
+
+	auto getcond = [](cgn::CodegenState* cs, Expr* c) -> fir::Value* {
+
+		auto cv = cs->oneWayAutocast(c->codegen(cs, fir::Type::getBool()), fir::Type::getBool());
+		if(cv.value->getType() != fir::Type::getBool())
+			error(c, "Non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType()->str());
+
+		// ok
+		return cs->irb.CreateICmpEQ(cv.value, fir::ConstantBool::get(true));
+	};
+
+
+
+	if(this->isDoVariant)
+	{
+		cs->irb.CreateUnCondBranch(loop);
+		cs->irb.setCurrentBlock(loop);
+
+		this->body->codegen(cs);
+
+		// ok, check if we have a condition
+		if(this->cond)
+		{
+			iceAssert(this->cond);
+			auto condv = getcond(cs, this->cond);
+			cs->irb.CreateCondBranch(condv, loop, merge);
+		}
+		else
+		{
+			cs->irb.CreateUnCondBranch(merge);
+		}
+	}
+	else
+	{
+		auto check = cs->irb.addNewBlockAfter("check", cs->irb.getCurrentBlock());
+		cs->irb.CreateUnCondBranch(check);
+		cs->irb.setCurrentBlock(check);
+
+		// ok
+		iceAssert(this->cond);
+		auto condv = getcond(cs, this->cond);
+		cs->irb.CreateCondBranch(condv, loop, merge);
+
+
+		cs->irb.setCurrentBlock(loop);
+
+		this->body->codegen(cs);
+
+		// ok, do a jump back to the top
+		cs->irb.CreateUnCondBranch(check);
+	}
+
+	cs->irb.setCurrentBlock(merge);
+
+	return CGResult(0);
+}
+
 
 
 
