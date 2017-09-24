@@ -206,10 +206,10 @@ sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
 
 	ret->scope = fs->getCurrentScope();
 	ret->closingBrace = this->closingBrace;
-	ret->generatedScopeName = fs->getAnonymousScopeName();
+	// ret->generatedScopeName = fs->getAnonymousScopeName();
 
-	fs->pushTree(ret->generatedScopeName);
-	defer(fs->popTree());
+	// fs->pushTree(ret->generatedScopeName);
+	// defer(fs->popTree());
 
 	for(auto stmt : this->statements)
 		ret->statements.push_back(stmt->typecheck(fs));

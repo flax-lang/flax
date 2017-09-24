@@ -72,6 +72,16 @@ namespace sst
 		void enterFunctionBody(FunctionDefn* fn);
 		void leaveFunctionBody();
 
+		int breakableBodyNest = 0;
+		void enterBreakableBody();
+		void leaveBreakableBody();
+		bool isInBreakableBody();
+
+		int deferBlockNest = 0;
+		void enterDeferBlock();
+		void leaveDeferBlock();
+		bool isInDeferBlock();
+
 		std::string getAnonymousScopeName();
 
 		Location loc();

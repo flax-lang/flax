@@ -23,6 +23,9 @@ fn foo() -> (int) -> int
 	return bar
 }
 
+fn bar1() -> bool { return true }
+fn bar2() -> bool { return false }
+
 
 // fn doRecursiveFib(n: int, v: int, prev: int) -> int
 // {
@@ -64,9 +67,25 @@ fn cond() -> bool
 	let eq = ("hello" == "hello")
 	printf("eq = %d\n", eq)
 
-	do {
-		printf("x")
-	} while false
+	var counter = 0
+	while true
+	{
+		counter += 1
+		printf("%d\n", counter)
+
+		var str = "foo" + "bar"
+
+		if counter > 30
+		{
+			break
+		}
+		else
+		{
+			continue
+		}
+
+		printf("no\n")
+	}
 
 
 	// printf("str = %s\n", str)
@@ -97,27 +116,29 @@ fn cond() -> bool
 	// printf("arr[0] = %d\n", arr[0])
 
 
-	// if(var k = 2; bar1() || bar2())
-	// {
-	// 	printf("k < 3\n")
+	if(var k = 2; bar1() || bar2())
+	{
+		printf("k < 3\n")
 
-	// 	if(10 > 30)
-	// 	{
-	// 		printf("TRUE\n")
-	// 	}
-	// 	else
-	// 	{
-	// 		printf("FALSE\n")
-	// 	}
-	// }
-	// else if(var m = 40; m > 1)
-	// {
-	// 	printf("m > 1\n");
-	// }
-	// else
-	// {
-	// 	printf("else: k = %d, m = %d\n", k, m)
-	// }
+		if(10 > 30)
+		{
+			printf("TRUE\n")
+		}
+		else
+		{
+			printf("FALSE\n")
+		}
+	}
+	else if(var m = 40; m > 1)
+	{
+		printf("m > 1\n");
+	}
+	else
+	{
+		printf("else: k = %d, m = %d\n", k, m)
+	}
+
+	printf("quit\n")
 }
 
 

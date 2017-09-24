@@ -84,6 +84,12 @@ namespace parser
 				case TT::Loop:
 					return parseWhileLoop(st);
 
+				case TT::Break:
+					return parseBreak(st);
+
+				case TT::Continue:
+					return parseContinue(st);
+
 				case TT::Enum:
 				case TT::Class:
 				case TT::Static:
@@ -95,8 +101,6 @@ namespace parser
 				case TT::TypeAlias:
 				case TT::Dealloc:
 				case TT::Defer:
-				case TT::Break:
-				case TT::Continue:
 				case TT::For:
 					error(st, "notsup");
 
