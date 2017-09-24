@@ -51,7 +51,6 @@ namespace sst
 		Location closingBrace;
 
 		std::vector<std::string> scope;
-		std::string generatedScopeName;
 
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
@@ -105,6 +104,22 @@ namespace sst
 		std::string generatedScopeName;
 	};
 
+
+	struct BreakStmt : Stmt
+	{
+		BreakStmt(const Location& l) : Stmt(l) { }
+		~BreakStmt() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
+	struct ContinueStmt : Stmt
+	{
+		ContinueStmt(const Location& l) : Stmt(l) { }
+		~ContinueStmt() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
 
 
 

@@ -224,6 +224,22 @@ namespace ast
 		bool isDoVariant = false;
 	};
 
+	struct BreakStmt : Stmt
+	{
+		BreakStmt(const Location& l) : Stmt(l) { }
+		~BreakStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+	};
+
+	struct ContinueStmt : Stmt
+	{
+		ContinueStmt(const Location& l) : Stmt(l) { }
+		~ContinueStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+	};
+
 
 
 

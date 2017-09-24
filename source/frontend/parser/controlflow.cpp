@@ -194,7 +194,26 @@ namespace parser
 
 		return ret;
 	}
+
+
+	ast::Stmt* parseBreak(State& st)
+	{
+		iceAssert(st.front() == TT::Break);
+		return new ast::BreakStmt(st.eat().loc);
+	}
+
+	ast::Stmt* parseContinue(State& st)
+	{
+		iceAssert(st.front() == TT::Continue);
+		return new ast::ContinueStmt(st.eat().loc);
+	}
 }
+
+
+
+
+
+
 
 
 

@@ -178,6 +178,8 @@ namespace parser
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 
+	ast::Stmt* parseBreak(State& st);
+	ast::Stmt* parseContinue(State& st);
 
 	std::map<std::string, TypeConstraints_t> parseGenericTypeList(State& st);
 
