@@ -211,6 +211,22 @@ namespace ast
 		Expr* value = 0;
 	};
 
+	struct WhileLoop : Stmt
+	{
+		WhileLoop(const Location& l) : Stmt(l) { }
+		~WhileLoop() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* cond = 0;
+		Block* body = 0;
+
+		bool isDoVariant = false;
+	};
+
+
+
+
 
 
 	struct TypeExpr : Expr

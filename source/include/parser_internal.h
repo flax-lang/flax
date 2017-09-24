@@ -174,6 +174,7 @@ namespace parser
 	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::IfStmt* parseIfStmt(State& st);
+	ast::WhileLoop* parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
 

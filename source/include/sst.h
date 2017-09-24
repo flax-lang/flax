@@ -89,8 +89,21 @@ namespace sst
 		fir::Type* expectedType = 0;
 	};
 
+	struct WhileLoop : Stmt
+	{
+		WhileLoop(const Location& l) : Stmt(l) { }
+		~WhileLoop() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		Expr* cond = 0;
+		Block* body = 0;
+
+		bool isDoVariant = false;
+
+		std::vector<std::string> scope;
+		std::string generatedScopeName;
+	};
 
 
 

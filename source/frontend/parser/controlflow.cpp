@@ -137,6 +137,63 @@ namespace parser
 
 		return ret;
 	}
+
+
+
+	ast::WhileLoop* parseWhileLoop(State& st)
+	{
+		// 1. do { }			-- body = block, cond = 0, doVariant = true
+		// 2. while x { }		-- body = block, cond = x, doVariant = false
+		// 3. do { } while x	-- body = block, cond = x, doVariant = true
+
+		auto loc = st.loc();
+
+		ast::Expr* cond = 0;
+		ast::Block* body = 0;
+		bool isdo = false;
+
+		iceAssert(st.front() == TT::While || st.front() == TT::Do);
+
+		if(st.front() == TT::While)
+		{
+			st.eat();
+			cond = parseExpr(st);
+			st.skipWS();
+
+			if(st.front() != TT::LBrace)
+				expectedAfter(st.loc(), "'{'", "'while'", st.front().str());
+
+			body = parseBracedBlock(st);
+		}
+		else
+		{
+			isdo = true;
+
+			st.eat();
+			if(st.front() != TT::LBrace)
+				expectedAfter(st.loc(), "'{'", "'do'", st.front().str());
+
+			body = parseBracedBlock(st);
+
+			if(st.front() == TT::While)
+			{
+				st.eat();
+
+				// do a check for stupid "do { } while { }"
+				if(st.frontAfterWS() == TT::LBrace)
+					expected(st.frontAfterWS().loc, "conditional expression after while", st.frontAfterWS().str());
+
+				cond = parseExpr(st);
+			}
+		}
+
+		auto ret = new ast::WhileLoop(loc);
+		ret->isDoVariant = isdo;
+		ret->body = body;
+		ret->cond = cond;
+
+		return ret;
+	}
 }
 
 
