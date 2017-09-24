@@ -128,23 +128,6 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
-CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
-{
-	if(this->value)
-	{
-		auto v = this->value->codegen(cs, this->expectedType).value;
-		cs->irb.CreateReturn(v);
-	}
-	else
-	{
-		iceAssert(this->expectedType->isVoidType());
-		cs->irb.CreateReturnVoid();
-	}
-
-	return CGResult(0);
-}
-
-
 
 
 
@@ -160,8 +143,8 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->enterNamespace(this->generatedScopeName);
 	defer(cs->leaveNamespace());
 
-	auto merge = cs->irb.addNewBlockAfter("merge", cs->irb.getCurrentBlock());
 	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
+	auto merge = cs->irb.addNewBlockAfter("merge", cs->irb.getCurrentBlock());
 
 
 	auto getcond = [](cgn::CodegenState* cs, Expr* c) -> fir::Value* {
@@ -269,6 +252,24 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->irb.CreateUnCondBranch(cp);
 
 	return CGResult(0, 0, CGResult::VK::Continue);
+}
+
+
+
+CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	if(this->value)
+	{
+		auto v = this->value->codegen(cs, this->expectedType).value;
+		cs->irb.CreateReturn(v);
+	}
+	else
+	{
+		iceAssert(this->expectedType->isVoidType());
+		cs->irb.CreateReturnVoid();
+	}
+
+	return CGResult(0, 0, CGResult::VK::Break);
 }
 
 
