@@ -48,7 +48,7 @@ fn cond() -> bool
 }
 
 
-@entry fn main(argc: i32, argv: i8**) -> void
+@entry fn main(argc: i32, argv: i8**) -> int
 {
 	// let str = "hello" + "world"
 	// let str1 = str + " number 10"
@@ -116,29 +116,31 @@ fn cond() -> bool
 	// printf("arr[0] = %d\n", arr[0])
 
 
-	if(var k = 2; bar1() || bar2())
-	{
-		printf("k < 3\n")
+	// if(var k = 2; bar1() || bar2())
+	// {
+	// 	printf("k < 3\n")
 
-		if(10 > 30)
-		{
-			printf("TRUE\n")
-		}
-		else
-		{
-			printf("FALSE\n")
-		}
-	}
-	else if(var m = 40; m > 1)
-	{
-		printf("m > 1\n");
-	}
-	else
-	{
-		printf("else: k = %d, m = %d\n", k, m)
-	}
+	// 	if(10 > 30)
+	// 	{
+	// 		printf("TRUE\n")
+	// 	}
+	// 	else
+	// 	{
+	// 		printf("FALSE\n")
+	// 	}
+	// }
+	// else if(var m = 40; m > 1)
+	// {
+	// 	printf("m > 1\n");
+	// }
+	// else
+	// {
+	// 	printf("else: k = %d, m = %d\n", k, m)
+	// }
 
-	printf("quit\n")
+	// printf("quit\n")
+
+	return 0
 }
 
 
