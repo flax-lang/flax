@@ -79,6 +79,10 @@ namespace parser
 				case TT::Return:
 					return parseReturn(st);
 
+				case TT::Do:
+				case TT::While:
+				case TT::Loop:
+					return parseWhileLoop(st);
 
 				case TT::Enum:
 				case TT::Class:
@@ -93,9 +97,6 @@ namespace parser
 				case TT::Defer:
 				case TT::Break:
 				case TT::Continue:
-				case TT::Do:
-				case TT::While:
-				case TT::Loop:
 				case TT::For:
 					error(st, "notsup");
 
