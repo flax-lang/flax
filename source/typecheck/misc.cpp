@@ -47,6 +47,8 @@ namespace sst
 	{
 		if(this->currentFunctionStack.empty())
 			error(this->loc(), "Not inside function");
+
+		this->currentFunctionStack.pop_back();
 	}
 
 	FunctionDefn* TypecheckState::getCurrentFunction()
@@ -197,9 +199,6 @@ namespace sst
 		while(tree)
 		{
 			auto fns = tree->definitions[name];
-
-			debuglog("searching '%s / %p' for '%s' -- %zu results\n", tree->name, tree, name, fns.size());
-
 			ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
