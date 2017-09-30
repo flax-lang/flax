@@ -1511,7 +1511,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetStringRefCount(Value* str, Value* val, std::string vname)
+	void IRBuilder::CreateSetStringRefCount(Value* str, Value* val, std::string vname)
 	{
 		if(!str->getType()->isStringType())
 			error("str is not a string type (got '%s')", str->getType()->str());
@@ -1522,7 +1522,7 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::String_SetRefCount, true, this->currentBlock,
 			fir::Type::getVoid(), { str, val });
 
-		return this->addInstruction(instr, vname);
+		this->addInstruction(instr, vname);
 	}
 
 
@@ -1634,7 +1634,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateSetDynamicArrayRefCount(Value* arr, Value* val, std::string vname)
+	void IRBuilder::CreateSetDynamicArrayRefCount(Value* arr, Value* val, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
 			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
@@ -1645,7 +1645,7 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetRefCount, true, this->currentBlock,
 			fir::Type::getVoid(), { arr, val });
 
-		return this->addInstruction(instr, vname);
+		this->addInstruction(instr, vname);
 	}
 
 

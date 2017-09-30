@@ -258,6 +258,8 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
+	doBlockEndThings(cs, cs->getCurrentCFPoint());
+
 	if(this->value)
 	{
 		auto v = this->value->codegen(cs, this->expectedType).value;
@@ -284,9 +286,6 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto rsn = cs->setNamespace(this->scope);
 	defer(cs->restoreNamespace(rsn));
-
-	// cs->enterNamespace(this->generatedScopeName);
-	// defer(cs->leaveNamespace());
 
 	bool broke = false;
 	bool cont = false;
