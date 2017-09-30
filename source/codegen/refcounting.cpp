@@ -180,13 +180,12 @@ namespace cgn
 		}
 		else if(type->isDynamicArrayType())
 		{
-			fir::Value* rc = cs->irb.CreateGetDynamicArrayRefCount(val);
-			fir::Value* one = fir::ConstantInt::getInt64(1);
+			fir::Function* rf = 0;
+			if(incr) rf = glue::array::getIncrementArrayRefCountFunction(cs, type->toDynamicArrayType());
+			else rf = glue::array::getDecrementArrayRefCountFunction(cs, type->toDynamicArrayType());
 
-			if(incr)	rc = cs->irb.CreateAdd(rc, one);
-			else		rc = cs->irb.CreateSub(rc, one);
-
-			cs->irb.CreateSetDynamicArrayRefCount(val, rc);
+			iceAssert(rf);
+			cs->irb.CreateCall1(rf, val);
 		}
 		else if(type->isArrayType())
 		{

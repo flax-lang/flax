@@ -58,7 +58,7 @@ namespace ns
 
 @entry fn main(argc: i32, argv: i8**) -> int
 {
-	// let str = "hello" + "world"
+	let str = "hello" + "world"
 	// let str1 = str + " number 10"
 
 	// printf("---\n")
@@ -79,18 +79,18 @@ namespace ns
 	while counter < 30
 	{
 		counter += 1
-		printf("%d\n", counter)
+		printf("%d - ", counter)
 
-		var str = "foo" + "bar"
+		// var str = "foo" + "bar"
 
-		// if counter > 30
-		// {
-		// 	break
-		// }
-		// else
-		// {
-		// 	continue
-		// }
+		if counter > 20
+		{
+			break
+		}
+		else
+		{
+			continue
+		}
 
 		printf("no\n")
 	}
@@ -148,7 +148,7 @@ namespace ns
 	// 	printf("else: k = %d, m = %d\n", k, m)
 	// }
 
-	// printf("quit\n")
+	printf("quit\n")
 
 	return 0
 }

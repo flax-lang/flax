@@ -91,7 +91,8 @@ namespace cgn
 
 	void CodegenState::enterBreakableBody(ControlFlowPoint cfp)
 	{
-		iceAssert(cfp.block && cfp.breakPoint && cfp.continuePoint);
+		// only the block needs to exist.
+		iceAssert(cfp.block);
 		cfp.vtree = this->vtree;
 
 		this->breakingPointStack.push_back(cfp);

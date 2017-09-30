@@ -58,7 +58,15 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
 	cs->irb.setCurrentBlock(block);
 
-	this->body->codegen(cs);
+	// special thing here:
+	// push a breakable block (ControlFlowPoint) so that a manual 'return' can know how to
+	// do refcounting and deferred things.
+
+	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
+	{
+		this->body->codegen(cs);
+	}
+	cs->leaveBreakableBody();
 
 	// note that we *trust* in the typechecker
 	// that all paths return the correct type.

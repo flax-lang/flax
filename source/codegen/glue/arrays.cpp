@@ -22,6 +22,9 @@
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
 
+#define DEBUG_MASTER		1
+#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
+#define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
 namespace cgn {
 namespace glue {
@@ -312,6 +315,17 @@ namespace array
 			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cap);
 			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
+
+			#if DEBUG_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("clone array: %p / len %zd / cap %zd\n");
+				cs->irb.CreateCall(printfn, { tmpstr, newptr, cs->irb.CreateSub(origlen, startIndex), cap });
+			}
+			#endif
+
+
 			cs->irb.CreateReturn(newarr);
 
 			fn = func;
@@ -382,11 +396,25 @@ namespace array
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
+
+			fir::Value* newlen = cs->irb.CreateSub(origlen, startIndex);
+
 			fir::Value* newarr = cs->irb.CreateValue(fir::DynamicArrayType::get(arrtype->getElementType()));
 			newarr = cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
-			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateSub(origlen, startIndex));
+			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, newlen);
+			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, newlen);
 			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
+
+
+			#if DEBUG_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("clone array: %p / len %zd / cap %zd\n");
+				cs->irb.CreateCall(printfn, { tmpstr, newptr, newlen, newlen });
+			}
+			#endif
+
 
 			cs->irb.CreateReturn(newarr);
 
@@ -456,14 +484,6 @@ namespace array
 		// grows to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growblk);
 		{
-			#if 1
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-				fir::Value* tmpstr = cs->module->createGlobalString("HEYA %d\n");
-				cs->irb.CreateCall(printfn, { tmpstr, cap });
-			}
-			#endif
-
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -484,6 +504,17 @@ namespace array
 			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
 			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
+
+			#if DEBUG_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("grow (realloc) array: %p / len %zd / cap (old) %zd / cap (new) %zd\n");
+				cs->irb.CreateCall(printfn, { tmpstr, newptr, len, cap, nextpow2 });
+			}
+			#endif
+
+
 			cs->irb.CreateUnCondBranch(mergeblk);
 
 			growPhi = ret;
@@ -493,14 +524,6 @@ namespace array
 		// makes a new memory piece, to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growNewblk);
 		{
-			#if 1
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-				fir::Value* tmpstr = cs->module->createGlobalString("HEYO\n");
-				cs->irb.CreateCall(printfn, { tmpstr });
-			}
-			#endif
-
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -529,6 +552,16 @@ namespace array
 			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
 			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
 			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
+
+
+			#if DEBUG_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("grow new (malloc) array: %p / len %zd / cap (old) %zd / cap (new) %zd\n");
+				cs->irb.CreateCall(printfn, { tmpstr, newptr, len, cap, nextpow2 });
+			}
+			#endif
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
@@ -574,14 +607,6 @@ namespace array
 
 			auto elmType = arrtype->getElementType();
 
-
-			#if 1
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-				fir::Value* tmpstr = cs->module->createGlobalString("HEY HO %d | %d\n");
-				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetDynamicArrayCapacity(s1), cs->irb.CreateGetDynamicArrayCapacity(s2) });
-			}
-			#endif
 
 
 			// get the second one
@@ -951,13 +976,13 @@ namespace array
 
 
 
-	static fir::Function* _getDoRefCountFunction(CodegenState* cs, fir::Type* elmtype, bool increment)
+	static fir::Function* _getDoRefCountFunction(CodegenState* cs, fir::Type* arrtype, bool increment)
 	{
-		iceAssert(elmtype);
-		iceAssert(cs->isRefCountedType(elmtype) && "not refcounted type");
+		iceAssert(arrtype);
+		iceAssert(cs->isRefCountedType(arrtype) && "not refcounted type");
 
 		auto name = (increment ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
-			+ std::string("_") + elmtype->encodedStr();
+			+ std::string("_") + arrtype->encodedStr();
 
 		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
 
@@ -966,58 +991,111 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ elmtype->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()),
-				fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype }, arrtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
 
-			fir::Value* ptr = func->getArguments()[0];
-			fir::Value* len = func->getArguments()[1];
 
-
-
-			// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
-			// in this shit
-
-			// loop from 0 to len
-			fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
-			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-			fir::Value* counter = cs->irb.CreateStackAlloc(fir::Type::getInt64());
-			cs->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
-
-			cs->irb.CreateUnCondBranch(cond);
-			cs->irb.setCurrentBlock(cond);
+			fir::Value* arr = func->getArguments()[0];
+			if(cs->isRefCountedType(arrtype->getArrayElementType()))
 			{
-				// check
-				fir::Value* cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(counter), len);
-				cs->irb.CreateCondBranch(cond, body, merge);
-			}
+				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr);
+				fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr);
 
-			cs->irb.setCurrentBlock(body);
-			{
-				// ok. first, do pointer arithmetic to get the current array
-				fir::Value* strp = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
 
-				if(increment)	cs->incrementRefCount(cs->irb.CreateLoad(strp));
-				else			cs->decrementRefCount(cs->irb.CreateLoad(strp));
+				// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
+				// in this shit
 
-				// increment counter
-				cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+				// loop from 0 to len
+				fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
+				fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-				// branch to top
+				fir::Value* counter = cs->irb.CreateStackAlloc(fir::Type::getInt64());
+				cs->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
+
 				cs->irb.CreateUnCondBranch(cond);
+				cs->irb.setCurrentBlock(cond);
+				{
+					// check
+					fir::Value* cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(counter), len);
+					cs->irb.CreateCondBranch(cond, body, merge);
+				}
+
+				cs->irb.setCurrentBlock(body);
+				{
+					// ok. first, do pointer arithmetic to get the current array
+					fir::Value* strp = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
+
+					if(increment)	cs->incrementRefCount(cs->irb.CreateLoad(strp));
+					else			cs->decrementRefCount(cs->irb.CreateLoad(strp));
+
+					// increment counter
+					cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
+
+					// branch to top
+					cs->irb.CreateUnCondBranch(cond);
+				}
+
+				// merge:
+				cs->irb.setCurrentBlock(merge);
 			}
 
-			// merge:
-			cs->irb.setCurrentBlock(merge);
-			cs->irb.CreateReturnVoid();
+			// ok, now we must change the refcount of the array itself
+			{
+				fir::Value* refc = cs->irb.CreateGetDynamicArrayRefCount(arr);
+				if(increment)	refc = cs->irb.CreateAdd(refc, fir::ConstantInt::getInt64(1));
+				else			refc = cs->irb.CreateSub(refc, fir::ConstantInt::getInt64(1));
+
+				cs->irb.CreateSetDynamicArrayRefCount(arr, refc);
+
+				fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
+				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 
+				#if DEBUG_REFCOUNTING
+				{
+					std::string x = increment ? "(incr)" : "(decr)";
+					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: %p = %d\n");
+
+					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.CreateGetDynamicArrayData(arr), refc });
+				}
+				#endif
+
+
+				cs->irb.CreateCondBranch(cs->irb.CreateICmpEQ(refc, fir::ConstantInt::getInt64(0)), dealloc, merge);
+
+				cs->irb.setCurrentBlock(dealloc);
+				{
+					fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr);
+					ptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
+					ptr = cs->irb.CreatePointerSub(ptr, fir::ConstantInt::getInt64(8));
+
+					auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
+					iceAssert(freefn);
+
+					cs->irb.CreateCall1(freefn, ptr);
+
+					#if DEBUG_ALLOCATION
+					{
+						fir::Value* tmpstr = cs->module->createGlobalString("free arr: %p\n");
+
+						cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
+					}
+					#endif
+
+
+					cs->irb.CreateUnCondBranch(merge);
+				}
+
+				cs->irb.setCurrentBlock(merge);
+			}
+
+
+			cs->irb.CreateReturn(arr);
 
 
 			cmpf = func;
@@ -1028,14 +1106,14 @@ namespace array
 		return cmpf;
 	}
 
-	fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::Type* elmtype)
+	fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		return _getDoRefCountFunction(cs, elmtype, true);
+		return _getDoRefCountFunction(cs, arrtype, true);
 	}
 
-	fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* elmtype)
+	fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		return _getDoRefCountFunction(cs, elmtype, false);
+		return _getDoRefCountFunction(cs, arrtype, false);
 	}
 
 
