@@ -261,8 +261,6 @@ namespace array
 			fir::Value* origptr = cs->irb.CreateGetDynamicArrayData(orig, "origptr");
 			fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(orig, "origlen");
 
-			// fir::Value* cap = cs->irb.CreateStackAlloc(fir::Type::getInt64(), "cap");
-
 			fir::Value* origcap = cs->irb.CreateGetDynamicArrayCapacity(orig);
 			// cs->irb.CreateStore(origcap, cap);
 
@@ -293,11 +291,16 @@ namespace array
 			// get size in bytes, since cap is in elements
 			fir::Value* actuallen = cs->irb.CreateMul(cap, cs->irb.CreateSizeof(arrtype->getElementType()));
 
+			// space for refcount
+			auto i64size = fir::ConstantInt::getInt64(8);
+			actuallen = cs->irb.CreateAdd(actuallen, i64size);
+
 
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
+			newptr = cs->irb.CreatePointerAdd(newptr, i64size);
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -364,10 +367,16 @@ namespace array
 			// get size in bytes, since cap is in elements
 			fir::Value* actuallen = cs->irb.CreateMul(origlen, cs->irb.CreateSizeof(arrtype->getElementType()));
 
+			// refcount space
+			auto i64size = fir::ConstantInt::getInt64(8);
+			actuallen = cs->irb.CreateAdd(actuallen, i64size);
+
+
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
+			newptr = cs->irb.CreatePointerAdd(newptr, i64size);
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -376,6 +385,7 @@ namespace array
 			newarr = cs->irb.CreateSetDynamicArrayData(newarr, cs->irb.CreatePointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			newarr = cs->irb.CreateSetDynamicArrayLength(newarr, cs->irb.CreateSub(origlen, startIndex));
 			newarr = cs->irb.CreateSetDynamicArrayCapacity(newarr, cs->irb.CreateSub(origlen, startIndex));
+			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 			cs->irb.CreateReturn(newarr);
 
@@ -411,6 +421,7 @@ namespace array
 		fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr, "ptr");
 		fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr, "len");
 		fir::Value* cap = cs->irb.CreateGetDynamicArrayCapacity(arr, "cap");
+		fir::Value* refcnt = cs->irb.CreateGetDynamicArrayRefCount(arr, "refcount");
 
 		// check if len + required > cap
 		fir::Value* needed = cs->irb.CreateAdd(len, required, "needed");
@@ -452,11 +463,17 @@ namespace array
 			fir::Function* refunc = cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC);
 			iceAssert(refunc);
 
+			auto dataptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
+			dataptr = cs->irb.CreatePointerSub(dataptr, fir::ConstantInt::getInt64(8));
+
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
-			fir::Value* newptr = cs->irb.CreateCall2(refunc, cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen);
+			fir::Value* newptr = cs->irb.CreateCall2(refunc, dataptr, actuallen);
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(8));
+
 
 			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
 			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
+			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
@@ -476,7 +493,12 @@ namespace array
 			iceAssert(mallocf);
 
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
+
+			// refcount space
+			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(8));
+
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(8));
 
 
 			// memcpy
@@ -489,6 +511,7 @@ namespace array
 
 			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
 			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
+			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
@@ -543,7 +566,7 @@ namespace array
 				// grow if needed
 				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
-				// // we should be ok, now copy.
+				// we should be ok, now copy.
 				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(s1);
 				ptr = cs->irb.CreatePointerAdd(ptr, origlen);
 
