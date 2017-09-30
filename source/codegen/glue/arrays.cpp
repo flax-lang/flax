@@ -283,8 +283,9 @@ namespace array
 			// ok, back to normal
 			cs->irb.setCurrentBlock(merge1);
 			auto cap = cs->irb.CreatePHINode(fir::Type::getInt64());
+
 			cap->addIncoming(origcap, entry);
-			cap->addIncoming(origlen, insane);
+			cap->addIncoming(/*origlen*/ origcap, insane);
 
 
 			// ok, alloc a buffer with the original capacity
@@ -455,6 +456,14 @@ namespace array
 		// grows to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growblk);
 		{
+			#if 1
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+				fir::Value* tmpstr = cs->module->createGlobalString("HEYA %d\n");
+				cs->irb.CreateCall(printfn, { tmpstr, cap });
+			}
+			#endif
+
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -484,6 +493,14 @@ namespace array
 		// makes a new memory piece, to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growNewblk);
 		{
+			#if 1
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+				fir::Value* tmpstr = cs->module->createGlobalString("HEYO\n");
+				cs->irb.CreateCall(printfn, { tmpstr });
+			}
+			#endif
+
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -556,6 +573,15 @@ namespace array
 			fir::Value* s2 = func->getArguments()[1];
 
 			auto elmType = arrtype->getElementType();
+
+
+			#if 1
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+				fir::Value* tmpstr = cs->module->createGlobalString("HEY HO %d | %d\n");
+				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetDynamicArrayCapacity(s1), cs->irb.CreateGetDynamicArrayCapacity(s2) });
+			}
+			#endif
 
 
 			// get the second one

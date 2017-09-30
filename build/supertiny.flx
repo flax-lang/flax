@@ -95,7 +95,7 @@ namespace ns
 		printf("no\n")
 	}
 
-	ns.test()
+	// ns.test()
 
 
 	// printf("str = %s\n", str)
