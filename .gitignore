@@ -54,7 +54,7 @@ countloc
 bug-repro
 .clang_complete
 
-
+.vscode
 
 prof.svg
 prof_with_square.svg

@@ -139,13 +139,12 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		// return it
 		{
-			auto zero = fir::ConstantInt::getInt64(0);
 			auto aptr = cs->irb.CreateConstGEP2(array, 0, 1);
 
 			auto aa = cs->irb.CreateValue(darty);
 			aa = cs->irb.CreateSetDynamicArrayData(aa, aptr);
 			aa = cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, zero);
+			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
 
 			aa->makeImmutable();
 			return CGResult(aa);

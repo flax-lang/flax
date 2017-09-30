@@ -162,12 +162,12 @@ namespace sst
 		return std::vector<std::string>(scope.begin(), scope.end());
 	}
 
-	std::vector<Stmt*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
+	std::vector<Defn*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
 
-		std::vector<Stmt*> ret;
+		std::vector<Defn*> ret;
 
 		iceAssert(tree);
 		while(tree)
@@ -270,11 +270,6 @@ sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 }
 
 sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
-sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
 }

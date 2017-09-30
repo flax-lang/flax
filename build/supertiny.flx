@@ -47,6 +47,14 @@ fn cond() -> bool
 	return true
 }
 
+namespace ns
+{
+	fn test()
+	{
+		printf("this is a test\n")
+	}
+}
+
 
 @entry fn main(argc: i32, argv: i8**) -> int
 {
@@ -68,24 +76,26 @@ fn cond() -> bool
 	printf("eq = %d\n", eq)
 
 	var counter = 0
-	while true
+	while counter < 30
 	{
 		counter += 1
 		printf("%d\n", counter)
 
 		var str = "foo" + "bar"
 
-		if counter > 30
-		{
-			break
-		}
-		else
-		{
-			continue
-		}
+		// if counter > 30
+		// {
+		// 	break
+		// }
+		// else
+		// {
+		// 	continue
+		// }
 
 		printf("no\n")
 	}
+
+	ns.test()
 
 
 	// printf("str = %s\n", str)

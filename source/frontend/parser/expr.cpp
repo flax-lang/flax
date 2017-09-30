@@ -541,18 +541,16 @@ namespace parser
 
 		std::vector<Expr*> values;
 
-		Token t = st.front();
-		while(true)
+		while(st.front() != TT::RParen)
 		{
 			values.push_back(parseExpr(st));
-			if(st.front().type == TT::RParen)
-				break;
+			st.skipWS();
 
-			if(st.front().type != TT::Comma)
-				expected(st, "either ')' or ',' in function call argument list", st.front().str());
+			if(st.front() == TT::Comma)
+				st.pop();
 
-			st.eat();
-			t = st.front();
+			else if(st.front() != TT::RParen)
+				expected(st, "',' or '(' in function call argument list", st.front().str());
 		}
 
 		// leave the last rparen
