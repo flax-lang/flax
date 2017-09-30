@@ -93,7 +93,7 @@ namespace sst
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
 
-		std::vector<Stmt*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
+		std::vector<Defn*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
 			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 

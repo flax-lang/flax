@@ -42,7 +42,7 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast -fno-limit-debug-info
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
 CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
 
 LDFLAGS			+= $(SANITISE)
@@ -107,7 +107,7 @@ copylibs: $(FLXSRC)
 
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) -lmpfr -lgmp $(LDFLAGS)
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) -lmpfr -lgmp $(LDFLAGS) -lpthread
 
 
 %.cpp.o: %.cpp

@@ -215,7 +215,15 @@ namespace sst
 		Defn* def = 0;
 	};
 
+	struct ScopeExpr : Expr
+	{
+		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~ScopeExpr() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<std::string> scope;
+	};
 
 	struct LiteralNumber : Expr
 	{
@@ -278,9 +286,9 @@ namespace sst
 
 
 
-	struct NamespaceDefn : Stmt
+	struct NamespaceDefn : Defn
 	{
-		NamespaceDefn(const Location& l) : Stmt(l) { }
+		NamespaceDefn(const Location& l) : Defn(l) { }
 		~NamespaceDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;

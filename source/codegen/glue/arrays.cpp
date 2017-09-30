@@ -432,8 +432,7 @@ namespace array
 
 		cs->irb.setCurrentBlock(trampoline);
 		{
-			cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
-
+			auto cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
 			cs->irb.CreateCondBranch(cond, growNewblk, growblk);
 		}
 

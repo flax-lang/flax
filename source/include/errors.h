@@ -174,7 +174,7 @@ template <typename... Ts> std::string name (const Location& l, const char* fmt, 
 template <typename... Ts> std::string name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)		\
 {																													\
 	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());											\
-	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);														\
+	return __error_gen(ops, fmt, type, ts...);																		\
 }																													\
 																													\
 template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)			\

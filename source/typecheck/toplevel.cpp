@@ -157,6 +157,8 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	if(this->name == "")	fs->topLevelNamespace = ret;
 	else					fs->pushTree(this->name);
 
+	auto tree = fs->stree;
+
 	if(!fs->isInFunctionBody())
 	{
 		// visit all functions first, to get out-of-order calling -- but only at the namespace level, not inside functions.
@@ -181,6 +183,9 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 		ret->statements.push_back(stmt->typecheck(fs));
 	}
+
+	if(tree->parent)
+		tree->parent->definitions[this->name].push_back(ret);
 
 	if(this->name != "")
 		fs->popTree();
