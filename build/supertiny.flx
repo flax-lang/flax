@@ -66,6 +66,11 @@ namespace ns
 
 @entry fn main(argc: i32, argv: i8**) -> int
 {
+	fn inner()
+	{
+	}
+
+	inner()
 	// let str = "hello" + "world"
 	// let str1 = str + " number 10"
 

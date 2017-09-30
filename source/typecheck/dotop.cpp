@@ -16,7 +16,6 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this->loc);
 	defer(fs->popLoc());
 
-	warn(this, "check");
 
 	auto lhs = this->left->typecheck(fs);
 	if(auto ident = dcast(sst::VarRef, lhs))
@@ -46,14 +45,12 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 			auto oldscope = fs->getCurrentScope();
 
 			fs->teleportToScope(scope);
-			// auto tree = fs->stree;
 
 			// check what the right side is
 			auto expr = this->right->typecheck(fs);
 			iceAssert(expr);
 
 			fs->teleportToScope(oldscope);
-			warn(expr, "done");
 
 			// check the thing
 			if(auto vr = dcast(sst::VarRef, expr))
@@ -68,8 +65,6 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 			{
 				return expr;
 			}
-
-			return expr;
 		}
 		else
 		{
