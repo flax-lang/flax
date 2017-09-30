@@ -174,8 +174,10 @@ namespace parser
 			// . () and [] have the same precedence.
 			// not sure if this should stay -- works for now.
 			case TT::LParen:
-			case TT::Period:
 			case TT::LSquare:
+				return 2000;
+
+			case TT::Period:
 				return 1000;
 
 			// unary !

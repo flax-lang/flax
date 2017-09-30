@@ -125,19 +125,8 @@ namespace sst
 		return this->deferBlockNest > 0;
 	}
 
-
-
-	std::string TypecheckState::serialiseCurrentScope()
+	static std::string serialiseScope(std::vector<std::string> scope)
 	{
-		std::deque<std::string> scope;
-		auto tree = this->stree;
-
-		while(tree)
-		{
-			scope.push_front(tree->name);
-			tree = tree->parent;
-		}
-
 		std::string ret;
 		for(auto s : scope)
 			ret += s + ".";
@@ -148,10 +137,24 @@ namespace sst
 		return ret;
 	}
 
+	std::string TypecheckState::serialiseCurrentScope()
+	{
+		std::deque<std::string> scope;
+		StateTree* tree = this->stree;
+
+		while(tree)
+		{
+			scope.push_front(tree->name);
+			tree = tree->parent;
+		}
+
+		return serialiseScope(std::vector<std::string>(scope.begin(), scope.end()));
+	}
+
 	std::vector<std::string> TypecheckState::getCurrentScope()
 	{
 		std::deque<std::string> scope;
-		auto tree = this->stree;
+		StateTree* tree = this->stree;
 
 		while(tree)
 		{
@@ -160,6 +163,27 @@ namespace sst
 		}
 
 		return std::vector<std::string>(scope.begin(), scope.end());
+	}
+
+	void TypecheckState::teleportToScope(std::vector<std::string> scope)
+	{
+		StateTree* tree = this->stree;
+		while(tree->parent)
+			tree = tree->parent;
+
+		// ok, we should be at the topmost level now
+		iceAssert(tree);
+
+		scope.erase(scope.begin());
+		for(auto s : scope)
+		{
+			if(tree->subtrees[s] == 0)
+				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, serialiseScope(scope));
+
+			tree = tree->subtrees[s];
+		}
+
+		this->stree = tree;
 	}
 
 	std::vector<Defn*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
@@ -173,6 +197,9 @@ namespace sst
 		while(tree)
 		{
 			auto fns = tree->definitions[name];
+
+			debuglog("searching '%s / %p' for '%s' -- %zu results\n", tree->name, tree, name, fns.size());
+
 			ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;

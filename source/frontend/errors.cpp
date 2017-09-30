@@ -98,7 +98,7 @@ std::string printContext(HighlightOptions ops)
 				if(ops.caret.fileID > 0)
 				{
 					auto num1 = (ops.caret.len / 2);
-					auto num2 = (ops.caret.len - 1) - (ops.caret.len / 2);
+					auto num2 = (ops.caret.len > 0 ? ((ops.caret.len - 1) - (ops.caret.len / 2)) : 0);
 					cursorX += num1 + 1 + num2;
 
 					part2 += strprintf("%s%s%s%s%s", COLOUR_GREEN_BOLD,

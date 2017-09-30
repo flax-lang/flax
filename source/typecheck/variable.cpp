@@ -19,10 +19,15 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	// hm.
-	auto tree = fs->stree;
+	sst::StateTree* tree = fs->stree;
 	while(tree)
 	{
-		auto vs = tree->definitions[this->name];
+		auto it = tree->definitions.find(this->name);
+
+		std::vector<sst::Defn*> vs;
+		if(it != tree->definitions.end())
+			vs = it->second;
+
 		if(vs.size() > 1)
 		{
 			if(infer == 0)
@@ -60,6 +65,8 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			auto def = vs.front();
 			iceAssert(def);
 			{
+				info("found %s (%s)\n", this->name, def->id.name);
+
 				auto ret = new sst::VarRef(this->loc, def->type);
 				ret->name = this->name;
 				ret->def = def;
@@ -72,7 +79,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "Reference to unknown variable '%s'", this->name);
+	error(this, "Reference to unknown variable '%s' (scope %s)", this->name, fs->serialiseCurrentScope());
 }
 
 

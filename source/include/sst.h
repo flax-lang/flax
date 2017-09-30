@@ -293,7 +293,6 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::string name;
 		std::vector<Stmt*> statements;
 	};
 
