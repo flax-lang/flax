@@ -65,8 +65,6 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			auto def = vs.front();
 			iceAssert(def);
 			{
-				info("found %s (%s)\n", this->name, def->id.name);
-
 				auto ret = new sst::VarRef(this->loc, def->type);
 				ret->name = this->name;
 				ret->def = def;

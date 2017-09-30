@@ -207,8 +207,6 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	ret->id = Identifier(this->name, IdKind::Name);
 	ret->id.scope = fs->getCurrentScope();
 
-	// warn(ret, "namespace '%s' is in scope '%s' / %p / %p", ret->id.name, fs->serialiseCurrentScope(), tree, tree->parent);
-
 	return ret;
 }
 
