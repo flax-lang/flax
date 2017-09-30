@@ -146,6 +146,15 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
 			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
 
+
+			// #if 1
+			// {
+			// 	fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+			// 	fir::Value* tmpstr = cs->module->createGlobalString("FUCK U %d / %d\n");
+			// 	cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetDynamicArrayCapacity(aa), cs->irb.CreateGetDynamicArrayLength(aa) });
+			// }
+			// #endif
+
 			aa->makeImmutable();
 			return CGResult(aa);
 		}
