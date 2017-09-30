@@ -13,18 +13,18 @@ import "LibCInterface.flx"
 // 	printf("ONE\n")
 // }
 
-fn bar(a: int) -> int
-{
-	return a * a
-}
+// fn bar(a: int) -> int
+// {
+// 	return a * a
+// }
 
-fn foo() -> (int) -> int
-{
-	return bar
-}
+// fn foo() -> (int) -> int
+// {
+// 	return bar
+// }
 
-fn bar1() -> bool { return true }
-fn bar2() -> bool { return false }
+// fn bar1() -> bool { return true }
+// fn bar2() -> bool { return false }
 
 
 // fn doRecursiveFib(n: int, v: int, prev: int) -> int
@@ -41,11 +41,11 @@ fn bar2() -> bool { return false }
 // }
 
 
-fn cond() -> bool
-{
-	printf("T")
-	return true
-}
+// fn cond() -> bool
+// {
+// 	printf("T")
+// 	return true
+// }
 
 namespace ns
 {
@@ -53,49 +53,59 @@ namespace ns
 	{
 		printf("this is a test\n")
 	}
+
+	namespace ns2
+	{
+		fn test2()
+		{
+			printf("testing 2\n")
+		}
+	}
 }
 
 
 @entry fn main(argc: i32, argv: i8**) -> int
 {
-	let str = "hello" + "world"
+	// let str = "hello" + "world"
 	// let str1 = str + " number 10"
 
 	// printf("---\n")
 	// var str2: string
 	// str2 = str1
 
-	let x = foo()(7)
-	printf("x = %d\n", x)
+	// let x = foo()(7)
+	// printf("x = %d\n", x)
 
-	// printf("str = %s\n", str1)
+	// // printf("str = %s\n", str1)
 
-	let arr = [ 1, 2 ] + [ 3, 4 ]
+	// let arr = [ 1, 2 ] + [ 3, 4 ]
 
-	let eq = ("hello" == "hello")
-	printf("eq = %d\n", eq)
+	// let eq = ("hello" == "hello")
+	// printf("eq = %d\n", eq)
 
-	var counter = 0
-	while counter < 30
-	{
-		counter += 1
-		printf("%d - ", counter)
+	// var counter = 0
+	// while counter < 30
+	// {
+	// 	counter += 1
+	// 	printf("%d - ", counter)
 
-		// var str = "foo" + "bar"
+	// 	// var str = "foo" + "bar"
 
-		if counter > 20
-		{
-			break
-		}
-		else
-		{
-			continue
-		}
+	// 	if counter > 20
+	// 	{
+	// 		break
+	// 	}
+	// 	else
+	// 	{
+	// 		continue
+	// 	}
 
-		printf("no\n")
-	}
+	// 	printf("no\n")
+	// }
+	// printf("\n\n")
 
-	// ns.test()
+	ns.test()
+	ns.ns2.test2()
 
 
 	// printf("str = %s\n", str)

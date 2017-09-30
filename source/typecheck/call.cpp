@@ -222,7 +222,7 @@ namespace sst
 		// when a shadowed thing is not a function
 
 		std::vector<Defn*> fns;
-		auto tree = this->stree;
+		StateTree* tree = this->stree;
 
 		bool didVar = false;
 		while(tree)

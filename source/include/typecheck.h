@@ -90,8 +90,10 @@ namespace sst
 		void pushTree(std::string name);
 		StateTree* popTree();
 
+
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
+		void teleportToScope(std::vector<std::string> scope);
 
 		std::vector<Defn*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
