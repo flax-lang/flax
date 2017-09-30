@@ -19,7 +19,7 @@
 
 #define DEBUG_MASTER		1
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
-#define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
+#define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
 
 
 namespace cgn {
@@ -85,9 +85,7 @@ namespace string
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Function* printfn = cs->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
 				fir::Value* tmpstr = cs->module->createGlobalString("clone string '%s' / %ld / %p\n");
 				cs->irb.CreateCall(printfn, { tmpstr, buf, lhslen, buf });
@@ -184,9 +182,7 @@ namespace string
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Function* printfn = cs->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
 				fir::Value* tmpstr = cs->module->createGlobalString("malloc (%zu): %p ('%s')\n");
 				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf, buf });

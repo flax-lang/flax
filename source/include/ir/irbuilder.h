@@ -136,7 +136,7 @@ namespace fir
 		Value* CreateGetStringLength(Value* str, std::string vname = "");
 		Value* CreateSetStringLength(Value* str, Value* val, std::string vname = "");
 		Value* CreateGetStringRefCount(Value* str, std::string vname = "");
-		Value* CreateSetStringRefCount(Value* str, Value* val, std::string vname = "");
+		void CreateSetStringRefCount(Value* str, Value* val, std::string vname = "");
 
 
 		Value* CreateGetDynamicArrayData(Value* ptr, std::string vname = "");
@@ -146,7 +146,7 @@ namespace fir
 		Value* CreateGetDynamicArrayCapacity(Value* ptr, std::string vname = "");
 		Value* CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname = "");
 		Value* CreateGetDynamicArrayRefCount(Value* ptr, std::string vname = "");
-		Value* CreateSetDynamicArrayRefCount(Value* ptr, Value* val, std::string vname = "");
+		void CreateSetDynamicArrayRefCount(Value* ptr, Value* val, std::string vname = "");
 
 
 		Value* CreateGetArraySliceData(Value* ptr, std::string vname = "");
