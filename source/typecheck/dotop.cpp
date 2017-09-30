@@ -16,6 +16,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this->loc);
 	defer(fs->popLoc());
 
+	warn(this, "check");
 
 	auto lhs = this->left->typecheck(fs);
 	if(auto ident = dcast(sst::VarRef, lhs))
@@ -23,7 +24,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 		auto defs = fs->getDefinitionsWithName(ident->name);
 		if(defs.empty())
 		{
-			error(lhs, "No namespace or type with name '%s'", ident->name);
+			error(lhs, "No namespace or type with name '%s' in scope '%s'", ident->name, fs->serialiseCurrentScope());
 		}
 		else if(defs.size() > 1)
 		{
@@ -39,7 +40,36 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 		// check the type
 		if(auto ns = dcast(sst::NamespaceDefn, def))
 		{
-			error("yes");
+			auto scope = ns->id.scope;
+			scope.push_back(ns->id.name);
+
+			auto oldscope = fs->getCurrentScope();
+
+			fs->teleportToScope(scope);
+			// auto tree = fs->stree;
+
+			// check what the right side is
+			auto expr = this->right->typecheck(fs);
+			iceAssert(expr);
+
+			fs->teleportToScope(oldscope);
+			warn(expr, "done");
+
+			// check the thing
+			if(auto vr = dcast(sst::VarRef, expr))
+			{
+				scope.push_back(vr->name);
+				auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
+				ret->scope = scope;
+
+				return ret;
+			}
+			else
+			{
+				return expr;
+			}
+
+			return expr;
 		}
 		else
 		{
@@ -48,7 +78,28 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, lhs))
 	{
-		error("no");
+		auto oldscope = fs->getCurrentScope();
+
+		auto scope = scp->scope;
+		fs->teleportToScope(scope);
+
+		auto expr = this->right->typecheck(fs);
+		iceAssert(expr);
+
+		fs->teleportToScope(oldscope);
+
+		if(auto vr = dcast(sst::VarRef, expr))
+		{
+			scope.push_back(vr->name);
+			auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
+			ret->scope = scope;
+
+			return ret;
+		}
+		else
+		{
+			return expr;
+		}
 	}
 	else
 	{

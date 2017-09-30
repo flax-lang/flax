@@ -36,7 +36,7 @@ namespace sst
 
 	static StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent)
 	{
-		auto tree = cloneTree(_tree, commonParent);
+		StateTree* tree = cloneTree(_tree, commonParent);
 		deleteTree(_tree);
 
 		// if(existing->name != tree->name)
@@ -131,7 +131,7 @@ namespace sst
 
 	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports)
 	{
-		auto tree = new sst::StateTree(file.moduleName, 0);
+		StateTree* tree = new sst::StateTree(file.moduleName, 0);
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ filename, import ] : imports)
@@ -142,10 +142,31 @@ namespace sst
 
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
 		iceAssert(tns);
-		tns->name = file.moduleName;
+
+		tns->id = Identifier(file.moduleName, IdKind::Name);
 
 		fs->dtree->topLevel = tns;
 		return fs->dtree;
+	}
+}
+
+
+static void visitFunctions(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
+{
+	for(auto stmt : ns->statements)
+	{
+		if(auto fd = dynamic_cast<ast::FuncDefn*>(stmt))
+			fd->generateDeclaration(fs);
+
+		else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
+			ffd->typecheck(fs);
+
+		else if(auto ns = dynamic_cast<ast::TopLevelBlock*>(stmt))
+		{
+			fs->pushTree(ns->name);
+			visitFunctions(fs, ns);
+			fs->popTree();
+		}
 	}
 }
 
@@ -157,7 +178,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	if(this->name == "")	fs->topLevelNamespace = ret;
 	else					fs->pushTree(this->name);
 
-	auto tree = fs->stree;
+	sst::StateTree* tree = fs->stree;
 
 	if(!fs->isInFunctionBody())
 	{
@@ -165,14 +186,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		// once we're in function-body-land, everything should be imperative-driven, and you shouldn't
 		// be able to see something after yourself.
 
-		for(auto stmt : this->statements)
-		{
-			if(auto fd = dynamic_cast<ast::FuncDefn*>(stmt))
-				fd->generateDeclaration(fs);
-
-			else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
-				ffd->typecheck(fs);
-		}
+		visitFunctions(fs, this);
 	}
 
 
@@ -190,7 +204,11 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	if(this->name != "")
 		fs->popTree();
 
-	ret->name = this->name;
+	ret->id = Identifier(this->name, IdKind::Name);
+	ret->id.scope = fs->getCurrentScope();
+
+	// warn(ret, "namespace '%s' is in scope '%s' / %p / %p", ret->id.name, fs->serialiseCurrentScope(), tree, tree->parent);
+
 	return ret;
 }
 
