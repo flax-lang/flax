@@ -30,6 +30,14 @@ namespace sst
 		PrivacyLevel privacy = PrivacyLevel::Internal;
 	};
 
+	struct TypeDefn : Defn
+	{
+		TypeDefn(const Location& l) : Defn(l) { }
+		~TypeDefn() { }
+
+		fir::Type* generatedType = 0;
+	};
+
 
 	struct TypeExpr : Expr
 	{
@@ -225,6 +233,33 @@ namespace sst
 		std::vector<std::string> scope;
 	};
 
+	struct InstanceDotOp : Expr
+	{
+		InstanceDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~InstanceDotOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* lhs = 0;
+		std::string rhsIdent;
+		bool isMethodRef = false;
+	};
+
+	struct TupleDotOp : Expr
+	{
+		TupleDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~TupleDotOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* lhs = 0;
+		size_t index = 0;
+	};
+
+
+
+
+
 	struct LiteralNumber : Expr
 	{
 		LiteralNumber(const Location& l, fir::Type* t) : Expr(l, t) { }
@@ -283,6 +318,10 @@ namespace sst
 
 		std::vector<Expr*> values;
 	};
+
+
+
+
 
 
 
@@ -372,6 +411,20 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
+
+
+	struct StructDefn : TypeDefn
+	{
+		StructDefn(const Location& l) : TypeDefn(l) { }
+		~StructDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<VarDefn*> fields;
+		std::vector<FunctionDefn*> methods;
+	};
+
+
 }
 
 

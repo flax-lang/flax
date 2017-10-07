@@ -68,9 +68,33 @@ namespace ns
 {
 	fn inner()
 	{
+		printf("inner\n")
 	}
 
+	struct foo
+	{
+		var k: int
+		var j: double
+
+		var s: string
+	}
+
+	var a: foo
+	a.k = 41
+	a.j = 7.3
+	a.s = "WORLD" + "_" + "ONE"
+
+	let s = "hello" + "bye"
+
+	printf("a.k = %d / a.j = %.2f\n", a.k, a.j)
+
+	var tup = (s, 30, 40)
+	printf("tup = (%s, %d, %d)\n", tup.0, tup.1, tup.2)
+
 	inner()
+
+
+
 	// let str = "hello" + "world"
 	// let str1 = str + " number 10"
 
@@ -109,9 +133,10 @@ namespace ns
 	// }
 	// printf("\n\n")
 
-	ns.test()
+	// ns.test1()
 	ns.ns2.test2()
 
+	// let k: (string, string, string) = (1, 2, 3)
 
 	// printf("str = %s\n", str)
 

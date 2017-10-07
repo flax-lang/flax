@@ -51,17 +51,37 @@ sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 
 	std::vector<sst::Expr*> vals;
 	std::vector<fir::Type*> fts;
-	for(auto v : this->values)
-	{
-		auto val = v->typecheck(fs);
-		sst::Expr* expr = dcast(sst::Expr, val);
-		if(!expr)
-			expected(v->loc, "expression", "statement");
 
-		vals.push_back(expr);
-		fts.push_back(expr->type);
+	if(infer)
+	{
+		if(!infer->isTupleType())
+			error(this, "Assigning tuple to inferred non-tuple type '%s'", infer->str());
+
+		auto tt = infer->toTupleType();
+		if(tt->getElementCount() != this->values.size())
+		{
+			error(this, "Mismatched types in inferred type: have literal with %zu elements, inferred type has %zu", this->values.size(),
+				tt->getElementCount());
+		}
 	}
 
+	size_t k = 0;
+	for(auto v : this->values)
+	{
+		auto inf = (infer ? infer->toTupleType()->getElementN(k) : 0);
+		auto expr = v->typecheck(fs, inf);
+
+		auto ty = expr->type;
+		if(expr->type->isConstantNumberType() && (!inf || !inf->isPrimitiveType()))
+			ty = fs->inferCorrectTypeForLiteral(expr);
+
+		vals.push_back(expr);
+		fts.push_back(ty);
+
+		k++;
+	}
+
+	// warn(this, "%s", fir::TupleType::get(fts)->str());
 	auto ret = new sst::LiteralTuple(this->loc, fir::TupleType::get(fts));
 	ret->values = vals;
 

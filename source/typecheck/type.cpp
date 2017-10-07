@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "ast.h"
 #include "pts.h"
 #include "errors.h"
 #include "ir/type.h"
@@ -61,7 +62,104 @@ namespace sst
 			}
 			else
 			{
-				error(this->loc(), "shouldn't be here yet");
+				auto name = pt->toNamedType()->str();
+
+				if(name.find(".") == std::string::npos)
+				{
+					auto defs = this->getDefinitionsWithName(name);
+
+					for(auto d : defs)
+					{
+						auto tyd = dcast(TypeDefn, d);
+						if(!tyd)
+						{
+							exitless_error(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name);
+							info(d, "'%s' was defined here:", d->id.name);
+
+							doTheExit();
+						}
+
+						return tyd->generatedType;
+					}
+
+					error(this->loc(), "No such type '%s' defined", name);
+				}
+				else
+				{
+					// fuck me
+					std::string actual;
+					std::deque<std::string> scopes;
+					{
+						std::string tmp;
+						for(auto c : name)
+						{
+							if(c == '.')
+							{
+								if(tmp.empty())
+									error(this->loc(), "Expected identifier between consecutive periods ('.') in nested type specifier");
+
+								scopes.push_back(tmp);
+								tmp.clear();
+							}
+							else
+							{
+								tmp += c;
+							}
+						}
+
+						if(tmp.empty())
+							error(this->loc(), "Expected identifier after final '.' in nested type specifier");
+
+						// don't push back.
+						actual = tmp;
+					}
+
+					auto begin = this->recursivelyFindTreeUpwards(scopes.front());
+					if(!begin) error(this->loc(), "No such scope '%s'", scopes.front());
+
+					std::string prev = scopes.front();
+					scopes.pop_front();
+
+					while(scopes.size() > 0)
+					{
+						auto it = begin->subtrees.find(scopes.front());
+						if(it == begin->subtrees.end())
+							error(this->loc(), "No such entity '%s' in scope '%s'", scopes.front(), prev);
+
+						prev = scopes.front();
+						scopes.pop_front();
+
+						begin = it->second;
+					}
+
+					// find the definitions.
+					auto defs = begin->definitions[actual];
+					if(defs.empty())
+					{
+						error(this->loc(), "No type named '%s' in scope '%s'", actual, begin->name);
+					}
+					else if(defs.size() > 1)
+					{
+						exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", actual, begin->name);
+						for(auto d : defs)
+							info(d, "Possible reference:");
+
+						doTheExit();
+					}
+
+					auto def = defs[0];
+					if(auto tyd = dcast(TypeDefn, def))
+					{
+						return tyd->generatedType;
+					}
+					else
+					{
+						exitless_error(this->loc(), "Definition of '%s' cannot be used as a type", def->id.name);
+						info(def, "'%s' was defined here:", def->id.name);
+
+						doTheExit();
+					}
+				}
 			}
 		}
 		else if(pt->isPointerType())
@@ -103,7 +201,6 @@ namespace sst
 		}
 	}
 }
-
 
 
 

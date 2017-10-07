@@ -11,7 +11,151 @@
 using TCS = sst::TypecheckState;
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
-sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
+
+static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type* infer)
+{
+	auto lhs = dotop->left->typecheck(fs);
+
+	// first we got to find the struct defn based on the type
+	auto type = lhs->type;
+	if(type->isTupleType())
+	{
+		ast::LitNumber* ln = dcast(ast::LitNumber, dotop->right);
+		if(!ln)
+			error(dotop->right, "Right-hand side of dot-operator on tuple type ('%s') must be a number literal", type->str());
+
+		if(ln->num.find(".") != std::string::npos || ln->num.find("-") != std::string::npos)
+			error(dotop->right, "Tuple indices must be non-negative integer numerical literals");
+
+		size_t n = std::stoul(ln->num);
+		auto tup = type->toTupleType();
+
+		if(n >= tup->getElementCount())
+			error(dotop->right, "Tuple only has %zu elements, cannot access wanted element %zu", tup->getElementCount(), n);
+
+		auto ret = new sst::TupleDotOp(dotop->loc, tup->getElementN(n));
+		ret->lhs = lhs;
+		ret->index = n;
+
+		return ret;
+	}
+	else if(type->isPointerType() && type->getPointerElementType()->isStructType())
+	{
+		type = type->getPointerElementType();
+	}
+	else if(!type->isStructType())
+	{
+		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
+	}
+
+
+	// ok.
+	auto defn = fs->typeDefnMap[type];
+	iceAssert(defn);
+
+	if(auto str = dcast(sst::StructDefn, defn))
+	{
+		// right.
+		if(auto fc = dcast(ast::FunctionCall, dotop->right))
+		{
+			error("no");
+		}
+		else if(auto fld = dcast(ast::Ident, dotop->right))
+		{
+			auto name = fld->name;
+			for(auto f : str->fields)
+			{
+				if(f->id.name == name)
+				{
+					auto ret = new sst::InstanceDotOp(dotop->loc, f->type);
+					ret->lhs = lhs;
+					ret->rhsIdent = name;
+
+					return ret;
+				}
+			}
+
+			// check for method references
+			std::vector<sst::FunctionDefn*> meths;
+			for(auto m : str->methods)
+			{
+				if(m->id.name == name)
+					meths.push_back(m);
+			}
+
+			if(meths.empty())
+			{
+				error(dotop->right, "No such instance field or method named '%s' in struct '%s'", name, str->id.name);
+			}
+			else
+			{
+				fir::Type* retty = 0;
+
+				// ok, disambiguate if we need to
+				if(meths.size() == 1)
+				{
+					retty = meths[0]->type;
+				}
+				else
+				{
+					// ok, we need to.
+					if(infer == 0)
+					{
+						exitless_error(dotop->right, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
+						for(auto m : meths)
+							info(m, "Potential target here:");
+
+						doTheExit();
+					}
+
+					// else...
+					if(!infer->isFunctionType())
+					{
+						error(dotop->right, "Non-function type '%s' inferred for reference to method '%s' of struct '%s'",
+							infer->str(), name, str->id.name);
+					}
+
+					// ok.
+					for(auto m : meths)
+					{
+						if(m->type == infer)
+						{
+							retty = m->type;
+							break;
+						}
+					}
+
+					// hm, okay
+					error(dotop->right, "No matching method named '%s' with signature '%s' to match inferred type",
+						name, infer->str());
+				}
+
+				auto ret = new sst::InstanceDotOp(dotop->loc, retty);
+				ret->lhs = lhs;
+				ret->rhsIdent = name;
+				ret->isMethodRef = true;
+
+				return ret;
+			}
+		}
+		else
+		{
+			error(dotop->right, "Unsupported right-side expression for dot-operator on struct '%s'", str->id.name);
+		}
+	}
+	else
+	{
+		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
+	}
+}
+
+
+
+
+
+
+
+sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this->loc);
 	defer(fs->popLoc());
@@ -66,9 +210,13 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 				return expr;
 			}
 		}
+		else if(auto typ = dcast(sst::TypeDefn, def))
+		{
+			error("static things not supported");
+		}
 		else
 		{
-			error("not supported");
+			// note: fallthrough to call to doExpressionDotOp()
 		}
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, lhs))
@@ -96,10 +244,9 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* inferred)
 			return expr;
 		}
 	}
-	else
-	{
-		error("no");
-	}
+
+	// catch-all, probably.
+	return doExpressionDotOp(fs, this, infer);
 }
 
 
