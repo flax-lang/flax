@@ -79,19 +79,24 @@ namespace ns
 		var s: string
 	}
 
-	var a: foo
-	a.k = 41
-	a.j = 7.3
-	a.s = "WORLD" + "_" + "ONE"
+	fn somefn() -> foo
+	{
+		var a: foo
+		a.k = 30
+		a.s = "rick" + "astley"
 
-	let s = "hello" + "bye"
+		return a
+	}
 
-	printf("a.k = %d / a.j = %.2f\n", a.k, a.j)
+	let f = somefn()
+	printf("f.k = %d, f.s = %s\n", f.k, f.s)
 
-	var tup = (s, 30, 40)
-	printf("tup = (%s, %d, %d)\n", tup.0, tup.1, tup.2)
+	// printf("a.k = %d / a.j = %.2f\n", a.k, a.j)
 
-	inner()
+	// var tup = (s, 30, 40)
+	// printf("tup = (%s, %d, %d)\n", tup.0, tup.1, tup.2)
+
+	// inner()
 
 
 
