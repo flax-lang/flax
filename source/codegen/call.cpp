@@ -93,17 +93,25 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		i++;
 	}
 
+	fir::Value* ret = 0;
+
 	if(fir::Function* func = dcast(fir::Function, vf))
 	{
-		return CGResult(cs->irb.CreateCall(func, args));
+		ret = cs->irb.CreateCall(func, args);
 	}
 	else
 	{
 		iceAssert(vf->getType()->getPointerElementType()->isFunctionType());
 		auto fptr = cs->irb.CreateLoad(vf);
 
-		return CGResult(cs->irb.CreateCallToFunctionPointer(fptr, ft, args));
+		ret = cs->irb.CreateCallToFunctionPointer(fptr, ft, args);
 	}
+
+	// do the refcounting if we need to
+	if(cs->isRefCountedType(ret->getType()))
+		cs->addRefCountedValue(ret);
+
+	return CGResult(ret);
 }
 
 

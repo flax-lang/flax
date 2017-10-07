@@ -75,10 +75,17 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	if(cs->isRefCountedType(lt))
-		cs->performRefCountingAssignment(lr.value, rr, false);
+	{
+		if(rr.kind == CGResult::VK::LValue)
+			cs->performRefCountingAssignment(lr, rr, false);
 
-	// store
-	cs->irb.CreateStore(rr.value, lr.pointer);
+		else
+			cs->moveRefCountedValue(lr, rr, false);
+	}
+	else
+	{
+		cs->irb.CreateStore(rr.value, lr.pointer);
+	}
 
 	return CGResult(0);
 }
