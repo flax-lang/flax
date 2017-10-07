@@ -258,15 +258,22 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	doBlockEndThings(cs, cs->getCurrentCFPoint());
+	// check if we have a value, and whether it's refcounted
+	// if so, inflate its refcount so it doesn't get deallocated and can survive
 
 	if(this->value)
 	{
 		auto v = this->value->codegen(cs, this->expectedType).value;
+		if(cs->isRefCountedType(v->getType()))
+			cs->incrementRefCount(v);
+
+		doBlockEndThings(cs, cs->getCurrentCFPoint());
 		cs->irb.CreateReturn(v);
 	}
 	else
 	{
+		doBlockEndThings(cs, cs->getCurrentCFPoint());
+
 		iceAssert(this->expectedType->isVoidType());
 		cs->irb.CreateReturnVoid();
 	}

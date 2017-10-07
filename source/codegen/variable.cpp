@@ -49,11 +49,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type->str(), val->getType()->str());
 	}
 
-	if(this->init && refcounted)
-	{
-		cs->performRefCountingAssignment(0, res, true);
-	}
-
 
 	if(this->immutable)
 	{
@@ -63,8 +58,22 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		alloc = cs->irb.CreateStackAlloc(this->type, this->id.name);
+	}
 
-		cs->irb.CreateStore(val, alloc);
+	iceAssert(alloc);
+	if(this->init)
+	{
+		if(refcounted)
+		{
+			if(res.kind == CGResult::VK::LValue)
+				cs->performRefCountingAssignment(CGResult(val, alloc), res, true);
+
+			else
+				cs->moveRefCountedValue(CGResult(val, alloc), res, true);
+		}
+
+		if(!this->immutable)
+			cs->irb.CreateStore(val, alloc);
 	}
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);

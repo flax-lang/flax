@@ -88,8 +88,12 @@ namespace ns
 		return a
 	}
 
+	// fn getstr() -> string { return "A" + "B" }
+
 	let f = somefn()
 	printf("f.k = %d, f.s = %s\n", f.k, f.s)
+
+	// var s = getstr()
 
 	// printf("a.k = %d / a.j = %.2f\n", a.k, a.j)
 
