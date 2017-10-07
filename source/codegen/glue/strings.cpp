@@ -21,6 +21,8 @@
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
+#define REFCOUNT_SIZE		8
+
 
 namespace cgn {
 namespace glue {
@@ -51,8 +53,8 @@ namespace string
 
 
 			// space for null + refcount
-			size_t i64Size = 8;
-			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + i64Size));
+
+			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
@@ -63,7 +65,7 @@ namespace string
 
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -155,8 +157,7 @@ namespace string
 			fir::Value* newlen = cs->irb.CreateAdd(lhslen, rhslen);
 
 			// space for null + refcount
-			size_t i64Size = 8;
-			fir::Value* malloclen = cs->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
+			fir::Value* malloclen = cs->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
@@ -165,7 +166,7 @@ namespace string
 			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -246,8 +247,7 @@ namespace string
 
 
 			// space for null (1) + refcount (i64size) + the char (another 1)
-			size_t i64Size = 8;
-			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + i64Size));
+			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
@@ -256,7 +256,7 @@ namespace string
 			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -549,12 +549,10 @@ namespace string
 				}
 				#endif
 
-
-
 				fir::Function* freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 				iceAssert(freefn);
 
-				cs->irb.CreateCall1(freefn, cs->irb.CreatePointerSub(bufp, fir::ConstantInt::getInt64(8)));
+				cs->irb.CreateCall1(freefn, cs->irb.CreatePointerSub(bufp, fir::ConstantInt::getInt64(REFCOUNT_SIZE)));
 
 				// cs->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 				cs->irb.CreateUnCondBranch(merge);
