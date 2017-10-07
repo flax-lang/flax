@@ -157,15 +157,16 @@ namespace cgn
 		void decrementRefCount(fir::Value* val);
 
 		void addRefCountedValue(fir::Value* val);
-		void removeRefCountedValue(fir::Value* val);
+		void removeRefCountedValue(fir::Value* val, bool ignoreMissing = false);
 
 		void addRefCountedPointer(fir::Value* ptr);
-		void removeRefCountedPointer(fir::Value* ptr);
+		void removeRefCountedPointer(fir::Value* ptr, bool ignoreMissing = false);
 
 		std::vector<fir::Value*> getRefCountedValues();
 		std::vector<fir::Value*> getRefCountedPointers();
 
-		void performRefCountingAssignment(fir::Value* lhs, CGResult rhs, bool isInitial);
+		void performRefCountingAssignment(CGResult lhs, CGResult rhs, bool isInitial);
+		void moveRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial);
 
 		// void removeRefCountedValueIfExists(fir::Value* ptr);
 	};

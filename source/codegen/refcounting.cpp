@@ -16,13 +16,13 @@ namespace cgn
 			error(l, "Adding duplicate refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType()->str());
 	}
 
-	static void _removeRC(const Location& l, fir::Value* v, std::vector<fir::Value*>* list, std::string kind)
+	static void _removeRC(const Location& l, fir::Value* v, std::vector<fir::Value*>* list, std::string kind, bool ignore)
 	{
 		if(auto it = std::find(list->begin(), list->end(), v); it != list->end())
 			list->erase(it);
 
-		else
-			error(l, "Removing non-existant refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType()->str());
+		else if(!ignore)
+			error(l, "Removing non-existent refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType()->str());
 	}
 
 
@@ -32,9 +32,9 @@ namespace cgn
 		_addRC(this->loc(), val, &this->vtree->refCountedValues, "value");
 	}
 
-	void CodegenState::removeRefCountedValue(fir::Value* val)
+	void CodegenState::removeRefCountedValue(fir::Value* val, bool ignore)
 	{
-		_removeRC(this->loc(), val, &this->vtree->refCountedValues, "value");
+		_removeRC(this->loc(), val, &this->vtree->refCountedValues, "value", ignore);
 	}
 
 
@@ -43,9 +43,9 @@ namespace cgn
 		_addRC(this->loc(), val, &this->vtree->refCountedPointers, "pointer");
 	}
 
-	void CodegenState::removeRefCountedPointer(fir::Value* val)
+	void CodegenState::removeRefCountedPointer(fir::Value* val, bool ignore)
 	{
-		_removeRC(this->loc(), val, &this->vtree->refCountedPointers, "pointer");
+		_removeRC(this->loc(), val, &this->vtree->refCountedPointers, "pointer", ignore);
 	}
 
 
@@ -62,17 +62,40 @@ namespace cgn
 	}
 
 
-
-
-	void CodegenState::performRefCountingAssignment(fir::Value* lhs, CGResult rhs, bool initial)
+	void CodegenState::moveRefCountedValue(CGResult lhs, CGResult rhs, bool initial)
 	{
 		auto rv = rhs.value;
-		// auto rk = rhs.kind;
+		auto lv = lhs.value;
 
-		if(lhs) iceAssert(this->isRefCountedType(lhs->getType()));
+		iceAssert(this->isRefCountedType(lv->getType()));
 		iceAssert(this->isRefCountedType(rv->getType()));
 
-		// if(rk == CGResult::VK::LValue)
+		{
+			// decrement the lhs refcount (only if not initial)
+
+			if(!initial)
+			{
+				iceAssert(lv);
+				this->decrementRefCount(lv);
+
+				// then do the store
+				iceAssert(lhs.pointer);
+				this->irb.CreateStore(rv, lhs.pointer);
+			}
+
+			// then, remove the rhs from any refcounting table
+			// but don't change the refcount itself.
+			this->removeRefCountedValue(rv);
+		}
+	}
+
+	void CodegenState::performRefCountingAssignment(CGResult lhs, CGResult rhs, bool initial)
+	{
+		auto rv = rhs.value;
+
+		if(lhs.value) iceAssert(this->isRefCountedType(lhs.value->getType()));
+		iceAssert(this->isRefCountedType(rv->getType()));
+
 		{
 			// ok, increment the rhs refcount;
 			// and decrement the lhs refcount (only if not initial)
@@ -81,33 +104,15 @@ namespace cgn
 
 			if(!initial)
 			{
-				iceAssert(lhs);
-				this->decrementRefCount(lhs);
+				iceAssert(lhs.value);
+				this->decrementRefCount(lhs.value);
+
+				// do the store -- if not initial.
+				// avoids immut shenanigans
+				iceAssert(lhs.pointer);
+				this->irb.CreateStore(rv, lhs.pointer);
 			}
 		}
-		// else
-		// {
-		// 	// the rhs has already been evaluated
-		// 	// as an rvalue, its refcount *SHOULD* be one
-		// 	// so we don't do anything to it
-		// 	// instead, decrement the left side
-
-		// 	// to avoid double-freeing, we remove 'val' from the list of refcounted things
-		// 	// since it's an rvalue, it can't be "re-referenced", so to speak.
-
-		// 	// the issue of double-free comes up when the variable being assigned to goes out of scope, and is freed
-		// 	// since they refer to the same pointer, we get a double free if the temporary expression gets freed as well.
-
-		// 	// this->removeRefCountedValueIfExists(rhsptr);
-
-		// 	// now we just store as usual
-		// 	// if(doAssign)
-		// 	// 	this->irb.CreateStore(rhs, lhsptr);
-
-
-		// 	if(!initial)
-		// 		this->decrementRefCount(lhs);
-		// }
 	}
 
 
