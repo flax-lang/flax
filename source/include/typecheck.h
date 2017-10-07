@@ -58,6 +58,8 @@ namespace sst
 		DefinitionTree* dtree = 0;
 		StateTree*& stree;
 
+		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
+
 		std::vector<std::unordered_map<std::string, VarDefn*>> symbolTableStack;
 
 		std::vector<Location> locationStack;
@@ -90,10 +92,11 @@ namespace sst
 		void pushTree(std::string name);
 		StateTree* popTree();
 
+		StateTree* recursivelyFindTreeUpwards(std::string name);
 
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
-		void teleportToScope(std::vector<std::string> scope);
+		void teleportToScope(const std::vector<std::string>& scope);
 
 		std::vector<Defn*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,

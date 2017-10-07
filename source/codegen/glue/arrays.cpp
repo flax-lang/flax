@@ -22,7 +22,7 @@
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
 
-#define DEBUG_MASTER		0
+#define DEBUG_MASTER		1
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 

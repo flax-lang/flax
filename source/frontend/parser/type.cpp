@@ -10,6 +10,74 @@ using namespace lexer;
 
 namespace parser
 {
+	using TT = TokenType;
+	StructDefn* parseStruct(State& st)
+	{
+		iceAssert(st.eat() == TT::Struct);
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'struct'", st.front().str());
+
+		StructDefn* defn = new StructDefn(st.loc());
+		defn->name = st.eat().str();
+
+		// check for generic function
+		if(st.front() == TT::LAngle)
+		{
+			st.eat();
+			// parse generic
+			if(st.front() == TT::RAngle)
+				error(st, "Empty type parameter lists are not allowed");
+
+			defn->generics = parseGenericTypeList(st);
+		}
+
+		st.skipWS();
+		if(st.front() != TT::LBrace)
+			expectedAfter(st, "'{'", "'struct'", st.front().str());
+
+		auto blk = parseBracedBlock(st);
+		for(auto s : blk->statements)
+		{
+			if(auto v = dynamic_cast<VarDefn*>(s))
+			{
+				if(v->type == pts::InferredType::get())
+					error(v, "Struct fields must have types explicitly specified");
+
+				defn->fields.push_back(v);
+			}
+			else if(auto f = dynamic_cast<FuncDefn*>(s))
+			{
+				defn->methods.push_back(f);
+			}
+			else
+			{
+				error(s, "Unsupported expression or statement in 'struct' body");
+			}
+		}
+
+		for(auto s : blk->deferredStatements)
+			error(s, "Unsupported expression or statement in 'struct' body");
+
+		return defn;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	static pts::Type* parseTypeIndirections(State& st, pts::Type* base)
 	{
 		using TT = TokenType;

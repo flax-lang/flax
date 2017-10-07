@@ -179,6 +179,19 @@ namespace util
 	}
 
 
+	inline std::string serialiseScope(const std::vector<std::string>& scope)
+	{
+		std::string ret;
+		for(const std::string& s : scope)
+			ret += s + ".";
+
+		if(!ret.empty() && ret.back() == '.')
+			ret.pop_back();
+
+		return ret;
+	}
+
+
 
 	template <typename T>
 	class FastVector

@@ -167,6 +167,8 @@ namespace parser
 	ast::Stmt* parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 
+	ast::StructDefn* parseStruct(State& st);
+
 	ast::Block* parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);

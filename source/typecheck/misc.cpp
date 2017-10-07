@@ -94,6 +94,25 @@ namespace sst
 		return ret;
 	}
 
+	StateTree* TypecheckState::recursivelyFindTreeUpwards(std::string name)
+	{
+		StateTree* tree = this->stree;
+
+		iceAssert(tree);
+		while(tree)
+		{
+			if(tree->name == name)
+				return tree;
+
+			else if(auto it = tree->subtrees.find(name); it != tree->subtrees.end())
+				return it->second;
+
+			tree = tree->parent;
+		}
+
+		return 0;
+	}
+
 
 	void TypecheckState::enterBreakableBody()
 	{
@@ -127,18 +146,6 @@ namespace sst
 		return this->deferBlockNest > 0;
 	}
 
-	static std::string serialiseScope(std::vector<std::string> scope)
-	{
-		std::string ret;
-		for(auto s : scope)
-			ret += s + ".";
-
-		if(!ret.empty() && ret.back() == '.')
-			ret.pop_back();
-
-		return ret;
-	}
-
 	std::string TypecheckState::serialiseCurrentScope()
 	{
 		std::deque<std::string> scope;
@@ -150,7 +157,7 @@ namespace sst
 			tree = tree->parent;
 		}
 
-		return serialiseScope(std::vector<std::string>(scope.begin(), scope.end()));
+		return util::serialiseScope(std::vector<std::string>(scope.begin(), scope.end()));
 	}
 
 	std::vector<std::string> TypecheckState::getCurrentScope()
@@ -167,7 +174,7 @@ namespace sst
 		return std::vector<std::string>(scope.begin(), scope.end());
 	}
 
-	void TypecheckState::teleportToScope(std::vector<std::string> scope)
+	void TypecheckState::teleportToScope(const std::vector<std::string>& scope)
 	{
 		StateTree* tree = this->stree;
 		while(tree->parent)
@@ -176,11 +183,12 @@ namespace sst
 		// ok, we should be at the topmost level now
 		iceAssert(tree);
 
-		scope.erase(scope.begin());
-		for(auto s : scope)
+		for(size_t i = 1; i < scope.size(); i++)
 		{
+			auto s = scope[i];
+
 			if(tree->subtrees[s] == 0)
-				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, serialiseScope(scope));
+				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 
 			tree = tree->subtrees[s];
 		}

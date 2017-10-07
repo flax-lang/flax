@@ -90,10 +90,12 @@ namespace parser
 				case TT::Continue:
 					return parseContinue(st);
 
+				case TT::Struct:
+					return parseStruct(st);
+
 				case TT::Enum:
 				case TT::Class:
 				case TT::Static:
-				case TT::Struct:
 				case TT::Operator:
 				case TT::Protocol:
 				case TT::Override:
@@ -397,6 +399,9 @@ namespace parser
 
 			if(op == Operator::DotOperator)
 			{
+				tok_op.loc.col = lhs->loc.col;
+				tok_op.loc.len = rhs->loc.col - lhs->loc.col + 1;
+
 				lhs = new DotOperator(tok_op.loc, dynamic_cast<Expr*>(lhs), rhs);
 			}
 			else if(isAssignOp(op))
@@ -421,7 +426,6 @@ namespace parser
 	{
 		iceAssert(lhs);
 
-		Token first = st.front();
 		std::vector<Expr*> values { lhs };
 
 		Token t = st.front();
@@ -441,8 +445,10 @@ namespace parser
 		// leave the last rparen
 		iceAssert(st.front().type == TT::RParen);
 
-		// return CreateAST(Tuple, first, values);
-		return new LitTuple(first.loc, values);
+		Location loc = lhs->loc;
+		loc.col -= 1;
+		loc.len = (st.front().loc.col - loc.col + 1);
+		return new LitTuple(loc, values);
 	}
 
 
