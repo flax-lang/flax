@@ -11,7 +11,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-		error(this, "Non-numberical type '%s' inferred for literal number", infer->str());
+		error(this, "Non-numerical type '%s' inferred for literal number", infer->str());
 		// return CGResult(fir::ConstantNumber::get(this->number));
 
 	// todo: do some proper thing
@@ -162,7 +162,27 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	error(this, "not implemented");
+	iceAssert(this->type->isTupleType());
+	auto tup = cs->irb.CreateValue(this->type);
+
+	for(size_t i = 0; i < this->values.size(); i++)
+	{
+		auto ty = this->type->toTupleType()->getElementN(i);
+		auto vr = this->values[i]->codegen(cs, ty);
+
+		if(vr.value->getType() != ty)
+			vr = cs->oneWayAutocast(vr, ty);
+
+		if(vr.value->getType() != ty)
+		{
+			error(this->values[i], "Mismatched types in tuple element %zu; expected type '%s', found type '%s'",
+				i, ty->str(), vr.value->getType()->str());
+		}
+
+		tup = cs->irb.CreateInsertValue(tup, { i }, vr.value);
+	}
+
+	return CGResult(tup);
 }
 
 

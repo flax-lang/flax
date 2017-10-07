@@ -10,7 +10,7 @@
 
 namespace cgn
 {
-	std::pair<sst::StateTree*, ValueTree*> CodegenState::setNamespace(std::vector<std::string> scope)
+	std::pair<sst::StateTree*, ValueTree*> CodegenState::setNamespace(const std::vector<std::string>& scope)
 	{
 		auto ret = std::make_pair(this->stree, this->vtree);
 
@@ -210,7 +210,7 @@ CGResult sst::TypeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ScopeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	iceAssert(0);
+	error(this, "Failed to resolve scope '%s'", util::serialiseScope(this->scope));
 }
 
 

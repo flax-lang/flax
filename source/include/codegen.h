@@ -111,7 +111,7 @@ namespace cgn
 
 		Location loc();
 
-		std::pair<sst::StateTree*, ValueTree*> setNamespace(std::vector<std::string> scope);
+		std::pair<sst::StateTree*, ValueTree*> setNamespace(const std::vector<std::string>& scope);
 		void restoreNamespace(std::pair<sst::StateTree*, ValueTree*>);
 
 		void enterNamespace(std::string name);

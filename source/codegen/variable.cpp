@@ -16,24 +16,44 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(this->global)
 	{
-		warn(this, "no");
+		warn(this, "globals not supported");
 	}
 
 	fir::Value* val = 0;
 	fir::Value* alloc = 0;
 
+	CGResult res;
 	bool refcounted = cs->isRefCountedType(this->type);
 	if(this->init)
 	{
-		auto res = this->init->codegen(cs, this->type);
+		res = this->init->codegen(cs, this->type);
 		iceAssert(res.value);
 
 		val = res.value;
-
-		// check if we're refcounted.
-		if(refcounted)
-			cs->performRefCountingAssignment(0, res, true);
 	}
+
+	if(!val) val = cs->getDefaultValue(this->type);
+
+
+	fir::Value* nv = val;
+	if(val->getType() != this->type)
+		nv = cs->oneWayAutocast(CGResult(val), this->type).value;
+
+
+	if(!nv)
+	{
+		iceAssert(this->init);
+
+		HighlightOptions hs;
+		hs.underlines.push_back(this->init->loc);
+		error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type->str(), val->getType()->str());
+	}
+
+	if(this->init && refcounted)
+	{
+		cs->performRefCountingAssignment(0, res, true);
+	}
+
 
 	if(this->immutable)
 	{
@@ -43,21 +63,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		alloc = cs->irb.CreateStackAlloc(this->type, this->id.name);
-		if(!val) val = cs->getDefaultValue(this->type);
-
-		fir::Value* nv = val;
-		if(val->getType() != alloc->getType()->getPointerElementType())
-			nv = cs->oneWayAutocast(CGResult(val), alloc->getType()->getPointerElementType()).value;
-
-		if(!nv)
-		{
-			iceAssert(this->init);
-
-			HighlightOptions hs;
-			hs.underlines.push_back(this->init->loc);
-			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'",
-				alloc->getType()->getPointerElementType()->str(), val->getType()->str());
-		}
 
 		cs->irb.CreateStore(val, alloc);
 	}

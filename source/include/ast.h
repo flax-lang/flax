@@ -242,6 +242,21 @@ namespace ast
 
 
 
+	struct StructDefn : Stmt
+	{
+		StructDefn(const Location& l) : Stmt(l) { }
+		~StructDefn() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		std::string name;
+		std::map<std::string, TypeConstraints_t> generics;
+
+		std::vector<VarDefn*> fields;
+		std::vector<FuncDefn*> methods;
+	};
+
+
 
 
 
