@@ -58,7 +58,94 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
-			error("no");
+			// check methods first
+			std::vector<sst::Defn*> mcands;
+			std::vector<sst::Defn*> fcands;
+			{
+				for(auto m : str->methods)
+				{
+					if(m->id.name == fc->name)
+						mcands.push_back(m);
+				}
+
+				for(auto f : str->fields)
+				{
+					if(f->id.name == fc->name)
+						fcands.push_back(f);
+				}
+			}
+
+
+
+			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
+
+			using Param = sst::FunctionDefn::Param;
+			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+
+
+			TCS::PrettyError errs;
+			sst::Defn* resolved = 0;
+
+			bool isExprCall = false;
+			if(mcands.size() > 0)
+			{
+				auto copy = ts;
+				copy.insert(copy.begin(), Param { .type = str->type->getPointerTo() });
+
+				resolved = fs->resolveFunctionFromCandidates(mcands, copy, &errs);
+			}
+
+			if(resolved == 0 && fcands.size() > 0)
+			{
+				TCS::PrettyError errs1;
+				resolved = fs->resolveFunctionFromCandidates(fcands, ts, &errs1);
+
+				errs.infoStrs.insert(errs.infoStrs.end(), errs1.infoStrs.begin(), errs1.infoStrs.end());
+
+				if(resolved)
+					isExprCall = true;
+			}
+
+			if(!resolved)
+			{
+				exitless_error(fc, "%s", errs.errorStr);
+				for(auto inf : errs.infoStrs)
+					fprintf(stderr, "%s", inf.second.c_str());
+
+				doTheExit();
+			}
+
+			iceAssert(resolved->type->isFunctionType());
+			sst::Expr* call = 0;
+
+			if(isExprCall)
+			{
+				auto c = new sst::ExprCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
+				c->arguments = arguments;
+
+				auto tmp = new sst::FieldDotOp(fc->loc, resolved->type);
+				tmp->lhs = lhs;
+				tmp->rhsIdent = fc->name;
+
+				c->callee = tmp;
+
+				call = c;
+			}
+			else
+			{
+				auto c = new sst::FunctionCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
+				c->arguments = arguments;
+				c->name = fc->name;
+				c->target = resolved;
+
+				call = c;
+			}
+
+			auto ret = new sst::MethodDotOp(fc->loc, resolved->type->toFunctionType()->getReturnType());
+			ret->lhs = lhs;
+			ret->call = call;
+
+			return ret;
 		}
 		else if(auto fld = dcast(ast::Ident, dotop->right))
 		{
@@ -67,7 +154,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			{
 				if(f->id.name == name)
 				{
-					auto ret = new sst::InstanceDotOp(dotop->loc, f->type);
+					auto ret = new sst::FieldDotOp(dotop->loc, f->type);
 					ret->lhs = lhs;
 					ret->rhsIdent = name;
 
@@ -130,7 +217,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 						name, infer->str());
 				}
 
-				auto ret = new sst::InstanceDotOp(dotop->loc, retty);
+				auto ret = new sst::FieldDotOp(dotop->loc, retty);
 				ret->lhs = lhs;
 				ret->rhsIdent = name;
 				ret->isMethodRef = true;

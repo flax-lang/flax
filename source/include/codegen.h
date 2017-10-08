@@ -104,12 +104,21 @@ namespace cgn
 
 		std::vector<Location> locationStack;
 		std::unordered_map<sst::Defn*, CGResult> valueMap;
+		std::vector<fir::Value*> methodSelfStack;
 
 		void pushLoc(const Location& loc);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 
 		Location loc();
+
+
+		void enterMethodBody(fir::Value* self);
+		void leaveMethodBody();
+
+		bool isInMethodBody();
+		fir::Value* getMethodSelf();
+
 
 		std::pair<sst::StateTree*, ValueTree*> setNamespace(const std::vector<std::string>& scope);
 		void restoreNamespace(std::pair<sst::StateTree*, ValueTree*>);

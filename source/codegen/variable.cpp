@@ -84,19 +84,67 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0, alloc);
 }
 
+static CGResult findValueInVTree(cgn::ValueTree* vtr, std::string name)
+{
+	cgn::ValueTree* tree = vtr;
+	while(tree)
+	{
+		auto vs = tree->values[name];
+		iceAssert(vs.size() <= 1);
+
+		if(vs.size() > 0)
+			return vs[0];
+
+		tree = tree->parent;
+	}
+
+	return CGResult(0);
+}
+
+
 CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto it = cs->valueMap.find(this->def);
-	if(it == cs->valueMap.end())
-		error(this->def, "wtf?");
+	CGResult defn;
+	{
+		auto it = cs->valueMap.find(this->def);
+
+		if(it != cs->valueMap.end())
+		{
+			defn = it->second;
+		}
+		else
+		{
+			auto r = findValueInVTree(cs->vtree, this->name);
+			if(r.value || r.pointer)
+			{
+				defn = r;
+			}
+			else if(cs->isInMethodBody())
+			{
+				fir::Value* self = cs->getMethodSelf();
+				auto ty = self->getType();
+
+				iceAssert(ty->isPointerType() && ty->getPointerElementType()->isStructType());
+				auto sty = ty->getPointerElementType()->toStructType();
+
+				if(sty->hasElementWithName(this->name))
+				{
+					// ok -- return directly from here.
+					fir::Value* ptr = cs->irb.CreateGetStructMember(self, this->name);
+					return CGResult(cs->irb.CreateLoad(ptr), ptr, CGResult::VK::LValue);
+				}
+			}
+			else if(!defn.pointer && !defn.value)
+			{
+				error(this, "wtf no");
+			}
+		}
+	}
 
 	fir::Value* value = 0;
-	auto defn = it->second;
-
-	// warn(this, "%p, %p", defn.value, defn.pointer);
 	if(!defn.pointer)
 	{
 		iceAssert(defn.value);

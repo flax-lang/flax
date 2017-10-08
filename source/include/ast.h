@@ -89,7 +89,7 @@ namespace ast
 
 		bool didGenerateDecl = false;
 		sst::FunctionDefn* generatedDefn = 0;
-		void generateDeclaration(sst::TypecheckState* fs);
+		void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer);
 
 		struct Arg
 		{

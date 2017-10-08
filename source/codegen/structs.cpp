@@ -10,9 +10,37 @@
 
 CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	iceAssert(this->generatedType && this->generatedType->isStructType());
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto rsn = cs->setNamespace(this->id.scope);
+	defer(cs->restoreNamespace(rsn));
+
+	cs->enterNamespace(this->id.name);
+	defer(cs->leaveNamespace());
+
+	iceAssert(this->type && this->type->isStructType());
+
+	for(auto method : this->methods)
+		method->codegen(cs);
+
 	return CGResult(0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* user, sst::Expr* lhs, fir::Type** baseType)
@@ -58,8 +86,44 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 
 
 
+CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
 
-CGResult sst::InstanceDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+
+	if(auto fc = dcast(sst::FunctionCall, this->call))
+	{
+		// basically what we need to do is just get the pointer
+		fir::Type* sty = 0;
+		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
+		if(!res.pointer)
+		{
+			info(this, "how?");
+			error(this->lhs, "did not have pointer");
+		}
+
+		// then we insert it as the first argument
+		auto rv = new sst::RawValueExpr(this->loc, res.pointer->getType());
+		rv->rawValue = CGResult(res.pointer);
+
+		fc->arguments.insert(fc->arguments.begin(), rv);
+		return fc->codegen(cs);
+	}
+	else if(auto ec = dcast(sst::ExprCall, this->call))
+	{
+		return ec->codegen(cs);
+	}
+	else
+	{
+		error(this->call, "what?");
+	}
+}
+
+
+
+
+CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());

@@ -61,6 +61,31 @@ namespace cgn
 		this->vtree = this->vtree->parent;
 	}
 
+	void CodegenState::enterMethodBody(fir::Value* self)
+	{
+		this->methodSelfStack.push_back(self);
+	}
+
+	void CodegenState::leaveMethodBody()
+	{
+		iceAssert(this->methodSelfStack.size() > 0);
+		this->methodSelfStack.pop_back();
+	}
+
+	bool CodegenState::isInMethodBody()
+	{
+		return this->methodSelfStack.size() > 0;
+	}
+
+	fir::Value* CodegenState::getMethodSelf()
+	{
+		iceAssert(this->methodSelfStack.size() > 0);
+		return this->methodSelfStack.back();
+	}
+
+
+
+
 	void CodegenState::enterFunction(fir::Function* fn)
 	{
 		this->functionStack.push_back(fn);
