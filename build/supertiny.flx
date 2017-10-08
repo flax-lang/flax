@@ -80,8 +80,8 @@ fn twice(a: int) -> int { return 2 * a }
 		var s: string
 		var f: (int) -> int
 
-		fn get2() -> int { return 2 }
-		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j }
+		fn get2() -> f64 { return 2.0 }
+		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (get2() + get2()) }
 	}
 
 	fn somefn() -> foo

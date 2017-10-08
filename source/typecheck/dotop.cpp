@@ -59,23 +59,20 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
 			// check methods first
-			std::vector<sst::Defn*> mcands;
-			std::vector<sst::Defn*> fcands;
+			std::vector<sst::Defn*> cands;
 			{
 				for(auto m : str->methods)
 				{
 					if(m->id.name == fc->name)
-						mcands.push_back(m);
+						cands.push_back(m);
 				}
 
 				for(auto f : str->fields)
 				{
 					if(f->id.name == fc->name)
-						fcands.push_back(f);
+						cands.push_back(f);
 				}
 			}
-
-
 
 			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
 
@@ -86,24 +83,15 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			TCS::PrettyError errs;
 			sst::Defn* resolved = 0;
 
-			bool isExprCall = false;
-			if(mcands.size() > 0)
+			// bool isExprCall = false;
+			if(cands.size() > 0)
 			{
 				auto copy = ts;
-				copy.insert(copy.begin(), Param { .type = str->type->getPointerTo() });
-
-				resolved = fs->resolveFunctionFromCandidates(mcands, copy, &errs);
+				resolved = fs->resolveFunctionFromCandidates(cands, copy, &errs);
 			}
-
-			if(resolved == 0 && fcands.size() > 0)
+			else
 			{
-				TCS::PrettyError errs1;
-				resolved = fs->resolveFunctionFromCandidates(fcands, ts, &errs1);
-
-				errs.infoStrs.insert(errs.infoStrs.end(), errs1.infoStrs.begin(), errs1.infoStrs.end());
-
-				if(resolved)
-					isExprCall = true;
+				error(fc, "No method named '%s' in struct '%s'", fc->name, str->id.name);
 			}
 
 			if(!resolved)
@@ -114,6 +102,8 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 				doTheExit();
 			}
+
+			bool isExprCall = std::find(str->fields.begin(), str->fields.end(), resolved) != str->fields.end();
 
 			iceAssert(resolved->type->isFunctionType());
 			sst::Expr* call = 0;
