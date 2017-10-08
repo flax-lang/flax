@@ -28,6 +28,8 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
 
 		ft = vt->getPointerElementType()->toFunctionType();
+
+		warn(this, "Prefer using functions to function pointers");
 	}
 
 	iceAssert(ft);

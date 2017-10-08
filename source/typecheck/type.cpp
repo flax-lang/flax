@@ -79,7 +79,7 @@ namespace sst
 							doTheExit();
 						}
 
-						return tyd->generatedType;
+						return tyd->type;
 					}
 
 					error(this->loc(), "No such type '%s' defined", name);
@@ -150,7 +150,7 @@ namespace sst
 					auto def = defs[0];
 					if(auto tyd = dcast(TypeDefn, def))
 					{
-						return tyd->generatedType;
+						return tyd->type;
 					}
 					else
 					{

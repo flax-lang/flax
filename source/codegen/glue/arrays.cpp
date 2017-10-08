@@ -26,6 +26,8 @@
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
 
+#define REFCOUNT_SIZE		8
+
 namespace cgn {
 namespace glue {
 namespace array
@@ -296,15 +298,14 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(cap, cs->irb.CreateSizeof(arrtype->getElementType()));
 
 			// space for refcount
-			auto i64size = fir::ConstantInt::getInt64(8);
-			actuallen = cs->irb.CreateAdd(actuallen, i64size);
+			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, i64size);
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -383,15 +384,14 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(origlen, cs->irb.CreateSizeof(arrtype->getElementType()));
 
 			// refcount space
-			auto i64size = fir::ConstantInt::getInt64(8);
-			actuallen = cs->irb.CreateAdd(actuallen, i64size);
+			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, i64size);
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -493,11 +493,11 @@ namespace array
 			iceAssert(refunc);
 
 			auto dataptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
-			dataptr = cs->irb.CreatePointerSub(dataptr, fir::ConstantInt::getInt64(8));
+			dataptr = cs->irb.CreatePointerSub(dataptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
 			fir::Value* newptr = cs->irb.CreateCall2(refunc, dataptr, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(8));
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 
 			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
@@ -535,10 +535,10 @@ namespace array
 			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
 
 			// refcount space
-			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(8));
+			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(8));
+			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 
 			// memcpy
@@ -1072,7 +1072,7 @@ namespace array
 				{
 					fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr);
 					ptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
-					ptr = cs->irb.CreatePointerSub(ptr, fir::ConstantInt::getInt64(8));
+					ptr = cs->irb.CreatePointerSub(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 					auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 					iceAssert(freefn);

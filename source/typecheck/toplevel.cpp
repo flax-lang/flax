@@ -156,7 +156,7 @@ static void visitFunctions(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 	for(auto stmt : ns->statements)
 	{
 		if(auto fd = dynamic_cast<ast::FuncDefn*>(stmt))
-			fd->generateDeclaration(fs);
+			fd->generateDeclaration(fs, 0);
 
 		else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
 			ffd->typecheck(fs);
