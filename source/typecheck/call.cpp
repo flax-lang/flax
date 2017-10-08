@@ -61,7 +61,7 @@ namespace sst
 	}
 
 	using Param = FunctionDecl::Param;
-	static int computeOverloadDistance(std::vector<fir::Type*> target, std::vector<Location> targetLocs,
+	static int computeOverloadDistance(const Location& fnLoc, std::vector<fir::Type*> target, std::vector<Location> targetLocs,
 		std::vector<fir::Type*> args, bool cvararg, Location* loc, std::string* estr)
 	{
 		iceAssert(estr);
@@ -73,11 +73,13 @@ namespace sst
 		if(!anyvararg && target.size() != args.size())
 		{
 			*estr = strprintf("Mismatched number of arguments; expected %zu, got %zu", target.size(), args.size());
+			*loc = fnLoc;
 			return -1;
 		}
 		else if(anyvararg && args.size() < target.size())
 		{
 			*estr = strprintf("Too few arguments; need at least %zu even if variadic arguments are empty", target.size());
+			*loc = fnLoc;
 			return -1;
 		}
 
@@ -114,6 +116,7 @@ namespace sst
 				{
 					*estr = strprintf("Mismatched element type in variadic array passthrough; expected '%s', got '%s'",
 						t->str(), a->str());
+					*loc = targetLocs.back();
 					return -1;
 				}
 				else
@@ -131,6 +134,7 @@ namespace sst
 					if(dist == -1)
 					{
 						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty->str(), elmTy->str());
+						*loc = targetLocs.back();
 						return -1;
 					}
 
@@ -160,7 +164,7 @@ namespace sst
 
 			if(auto fn = dcast(FunctionDecl, cand))
 			{
-				dist = computeOverloadDistance(util::map(fn->params, [](Param p) { return p.type; }),
+				dist = computeOverloadDistance(cand->loc, util::map(fn->params, [](Param p) { return p.type; }),
 					util::map(fn->params, [](Param p) { return p.loc; }),
 					util::map(arguments, [](Param p) { return p.type; }), fn->isVarArg, &fails[fn].first, &fails[fn].second);
 			}
@@ -170,7 +174,7 @@ namespace sst
 				auto ft = vr->type->toFunctionType();
 
 				auto prms = ft->getArgumentTypes();
-				dist = computeOverloadDistance(prms, std::vector<Location>(prms.size(), vr->loc),
+				dist = computeOverloadDistance(cand->loc, prms, std::vector<Location>(prms.size(), vr->loc),
 					util::map(arguments, [](Param p) { return p.type; }), false, &fails[vr].first, &fails[vr].second);
 			}
 
@@ -352,7 +356,7 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	std::string estr;
 
 	auto ft = target->type->toFunctionType();
-	int dist = sst::computeOverloadDistance(ft->getArgumentTypes(), std::vector<Location>(),
+	int dist = sst::computeOverloadDistance(this->loc, ft->getArgumentTypes(), std::vector<Location>(),
 		tys, false, &eloc, &estr);
 
 	if(!estr.empty() || dist == -1)

@@ -19,6 +19,9 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defn->id = Identifier(this->name, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 
+	// defn->generatedScopeName = this->name;
+	// defn->scope = fs->getCurrentScope();
+
 	fs->pushTree(defn->id.name);
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
@@ -32,16 +35,16 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 	}
 
+	auto str = fir::StructType::create(defn->id, tys);
+	defn->type = str;
+
 	for(auto m : this->methods)
 	{
-		auto f = dynamic_cast<sst::FunctionDefn*>(m->typecheck(fs));
+		auto f = dynamic_cast<sst::FunctionDefn*>(m->typecheck(fs, str));
 		iceAssert(f);
 
 		defn->methods.push_back(f);
 	}
-
-	auto str = fir::StructType::create(defn->id, tys);
-	defn->generatedType = str;
 
 	fs->popTree();
 

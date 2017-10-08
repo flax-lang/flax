@@ -51,9 +51,11 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->leaveFunction());
 
 
+	if(this->parentTypeForMethod)
+		cs->enterMethodBody(fn->getArguments()[0]);
+
 	for(auto a : this->arguments)
 		a->codegen(cs);
-
 
 	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
 	cs->irb.setCurrentBlock(block);
@@ -73,6 +75,10 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(this->needReturnVoid)
 		cs->irb.CreateReturnVoid();
+
+	if(this->parentTypeForMethod)
+		cs->leaveMethodBody();
+
 
 	if(this->isEntry)
 	{

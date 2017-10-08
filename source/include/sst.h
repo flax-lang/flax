@@ -34,8 +34,6 @@ namespace sst
 	{
 		TypeDefn(const Location& l) : Defn(l) { }
 		~TypeDefn() { }
-
-		fir::Type* generatedType = 0;
 	};
 
 
@@ -45,6 +43,16 @@ namespace sst
 		~TypeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
+	struct RawValueExpr : Expr
+	{
+		RawValueExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~RawValueExpr() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->rawValue; }
+
+		CGResult rawValue;
 	};
 
 
@@ -233,16 +241,27 @@ namespace sst
 		std::vector<std::string> scope;
 	};
 
-	struct InstanceDotOp : Expr
+	struct FieldDotOp : Expr
 	{
-		InstanceDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
-		~InstanceDotOp() { }
+		FieldDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~FieldDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		Expr* lhs = 0;
 		std::string rhsIdent;
 		bool isMethodRef = false;
+	};
+
+	struct MethodDotOp : Expr
+	{
+		MethodDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~MethodDotOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* lhs = 0;
+		Expr* call = 0;
 	};
 
 	struct TupleDotOp : Expr
@@ -386,6 +405,7 @@ namespace sst
 
 		Block* body = 0;
 		bool needReturnVoid = false;
+		fir::Type* parentTypeForMethod = 0;
 	};
 
 	struct ForeignFuncDefn : FunctionDecl
@@ -413,6 +433,8 @@ namespace sst
 	};
 
 
+
+
 	struct StructDefn : TypeDefn
 	{
 		StructDefn(const Location& l) : TypeDefn(l) { }
@@ -422,6 +444,9 @@ namespace sst
 
 		std::vector<VarDefn*> fields;
 		std::vector<FunctionDefn*> methods;
+
+		std::vector<std::string> scope;
+		std::string generatedScopeName;
 	};
 
 

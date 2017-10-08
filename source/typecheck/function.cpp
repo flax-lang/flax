@@ -13,7 +13,7 @@ using TCS = sst::TypecheckState;
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
 
-sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
+sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -21,7 +21,7 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	if(this->generics.size() > 0)
 		return 0;
 
-	this->generateDeclaration(fs);
+	this->generateDeclaration(fs, infer);
 	auto defn = this->generatedDefn;
 	iceAssert(defn);
 
@@ -55,7 +55,7 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	return defn;
 }
 
-void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs)
+void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
 	if(this->didGenerateDecl) return;
 
@@ -75,6 +75,17 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs)
 
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
+
+	if(infer)
+	{
+		iceAssert(infer->isStructType() && "expected struct type for method");
+		auto p = Param { .name = "self", .type = infer->getPointerTo() };
+
+		ps.push_back(p);
+		ptys.push_back(p.type);
+
+		defn->parentTypeForMethod = infer;
+	}
 
 	for(auto t : this->args)
 	{
