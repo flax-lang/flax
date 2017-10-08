@@ -164,9 +164,14 @@ namespace sst
 
 			if(auto fn = dcast(FunctionDecl, cand))
 			{
+				auto args = util::map(arguments, [](Param p) { return p.type; });
+
+				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0)
+					args.insert(args.begin(), def->parentTypeForMethod->getPointerTo());
+
 				dist = computeOverloadDistance(cand->loc, util::map(fn->params, [](Param p) { return p.type; }),
 					util::map(fn->params, [](Param p) { return p.loc; }),
-					util::map(arguments, [](Param p) { return p.type; }), fn->isVarArg, &fails[fn].first, &fails[fn].second);
+					args, fn->isVarArg, &fails[fn].first, &fails[fn].second);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{

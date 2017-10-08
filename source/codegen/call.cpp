@@ -34,8 +34,14 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(ft);
 
-	// auto fn = dynamic_cast<fir::Function*>(vf);
-	// iceAssert(fn);
+
+	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody())
+	{
+		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
+		fake->rawValue = CGResult(cs->getMethodSelf());
+
+		this->arguments.insert(this->arguments.begin(), fake);
+	}
 
 	size_t numArgs = ft->getArgumentTypes().size();
 	if(!ft->isCStyleVarArg() && this->arguments.size() != numArgs)
