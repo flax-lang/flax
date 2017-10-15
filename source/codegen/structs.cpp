@@ -24,6 +24,9 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(auto method : this->methods)
 		method->codegen(cs);
 
+	for(auto nt : this->nestedTypes)
+		nt->codegen(cs);
+
 	return CGResult(0);
 }
 
