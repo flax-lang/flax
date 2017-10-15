@@ -84,23 +84,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0, alloc);
 }
 
-static CGResult findValueInVTree(cgn::ValueTree* vtr, std::string name)
-{
-	cgn::ValueTree* tree = vtr;
-	while(tree)
-	{
-		auto vs = tree->values[name];
-		iceAssert(vs.size() <= 1);
-
-		if(vs.size() > 0)
-			return vs[0];
-
-		tree = tree->parent;
-	}
-
-	return CGResult(0);
-}
-
 
 CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
@@ -117,7 +100,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			auto r = findValueInVTree(cs->vtree, this->name);
+			auto r = cs->findValueInTree(this->name);
 			if(r.value || r.pointer)
 			{
 				defn = r;

@@ -62,6 +62,10 @@ build/cmake-output
 .idea
 CMakeLists.txt
 
+build/test
+build/supertiny
+build/gltest
+
 release.fish
 macosx.zip
 flax.config

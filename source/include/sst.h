@@ -206,6 +206,7 @@ namespace sst
 		std::string name;
 		Defn* target = 0;
 		std::vector<Expr*> arguments;
+		bool isImplicitMethodCall = false;
 	};
 
 	struct ExprCall : Expr

@@ -63,7 +63,7 @@ namespace ns
 	}
 }
 
-fn twice(a: int) -> int { return 2 * a }
+public fn twice(a: int) -> int { return 2 * a }
 
 @entry fn main(argc: i32, argv: i8**) -> int
 {
@@ -81,7 +81,7 @@ fn twice(a: int) -> int { return 2 * a }
 		var f: (int) -> int
 
 		fn get2() -> f64 { return 2.0 }
-		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (get2() + get2()) }
+		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (self.get2() + get2()) + (f(15) as f64) }
 	}
 
 	fn somefn() -> foo
@@ -95,12 +95,16 @@ fn twice(a: int) -> int { return 2 * a }
 
 	// fn getstr() -> string { return "A" + "B" }
 
-	let f = somefn()
-	printf("f.k = %d, f.s = %s\n", f.k, f.s)
+	let q = somefn()
+	printf("f.k = %d, f.s = %s\n", q.k, q.s)
 
 	var x: foo
 	x.f = twice
 	x.j = 1.738
+
+	let some = twice
+	printf("some = %d, %p\n", some(17), some)
+
 	printf("x = %.2f / twice = %d\n", x.dostuff(30), x.f(30))
 
 	// var s = getstr()

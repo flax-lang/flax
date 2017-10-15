@@ -236,6 +236,9 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 		} break;
 
 		case Operator::AddressOf: {
+			if(t->isFunctionType())
+				error(this, "Cannot take the address of a function; use it as a value type");
+
 			out = t->getPointerTo();
 		} break;
 

@@ -195,8 +195,7 @@ namespace sst
 
 		if(finals.empty())
 		{
-			std::vector<fir::Type*> tmp;
-			std::transform(arguments.begin(), arguments.end(), std::back_inserter(tmp), [](Param p) -> auto { return p.type; });
+			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
 
 			errs->errorStr += strbold("No overload of function '%s' matching given argument types '%s' amongst %zu candidate%s",
 				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), fails.size() == 1 ? "" : "s");
@@ -294,14 +293,9 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 		arguments.push_back(expr);
 	}
 
-
 	// resolve the function call here
 	sst::TypecheckState::PrettyError errs;
-
-	std::vector<Param> ts;
-	std::transform(arguments.begin(), arguments.end(), std::back_inserter(ts), [](sst::Expr* e) -> auto {
-		return Param { .type = e->type, .loc = e->loc };
-	});
+	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
 
 	target = fs->resolveFunction(this->name, ts, &errs);
 	if(!errs.errorStr.empty())
@@ -320,6 +314,16 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	ret->name = this->name;
 	ret->target = target;
 	ret->arguments = arguments;
+
+	// check if it's a method call
+	// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
+	// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
+
+	// so, if it was really an implicit call, it remains set
+	// if it was a dot-op call, it gets set back to false by the dotop checking.
+
+	if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
+		ret->isImplicitMethodCall = true;
 
 	return ret;
 }

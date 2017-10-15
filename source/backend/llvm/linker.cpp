@@ -69,7 +69,7 @@ namespace backend
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
-			_error_and_exit("Need exactly 1 input filename, have %zu", inputs.size());
+			_error_and_exit("Need exactly 1 input filename, have %zu\n", inputs.size());
 	}
 
 	std::string LLVMBackend::str()
@@ -115,7 +115,6 @@ namespace backend
 			doTheExit();
 		}
 
-		// return;
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
@@ -177,7 +176,7 @@ namespace backend
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_verify");
 			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-				_error_and_exit("\n\nLLVM Module verification failed");
+				_error_and_exit("\n\nLLVM Module verification failed\n");
 		}
 
 		std::string foldername;
@@ -208,7 +207,7 @@ namespace backend
 
 			if(frontend::getOutputMode() != ProgOutputMode::ObjectFile && !this->compiledData.module->getEntryFunction())
 			{
-				_error_and_exit("No entry function marked, a program cannot be compiled");
+				_error_and_exit("No entry function marked, a program cannot be compiled\n");
 			}
 
 			auto buffer = this->initialiseLLVMStuff();
@@ -387,6 +386,7 @@ namespace backend
 				{
 					fprintf(stderr, "%s\n", output.c_str());
 					fprintf(stderr, "linker returned non-zero (status = %d), exiting\n", status);
+					fprintf(stderr, "cmdline was: %s\n", cmdline.c_str());
 					exit(status);
 				}
 			}
@@ -457,7 +457,7 @@ namespace backend
 		}
 		else
 		{
-			_error_and_exit("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)",
+			_error_and_exit("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)\n",
 				frontend::getParameter("mcmodel").c_str());
 		}
 
@@ -610,7 +610,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
 			if(!dl.isValid())
-				_error_and_exit("Failed to load library '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
+				_error_and_exit("Failed to load library '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
 		}
 
 
@@ -621,7 +621,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				_error_and_exit("Failed to load framework '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
+				_error_and_exit("Failed to load framework '%s', dlopen failed with error:\n%s\n", l.c_str(), err.c_str());
 		}
 
 
@@ -645,7 +645,7 @@ namespace backend
 		}
 		else
 		{
-			_error_and_exit("No entry function marked, cannot JIT");
+			_error_and_exit("No entry function marked, cannot JIT\n");
 		}
 
 
