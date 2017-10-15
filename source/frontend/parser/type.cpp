@@ -49,6 +49,10 @@ namespace parser
 			{
 				defn->methods.push_back(f);
 			}
+			else if(auto t = dynamic_cast<StructDefn*>(s))
+			{
+				defn->nestedTypes.push_back(t);
+			}
 			else
 			{
 				error(s, "Unsupported expression or statement in 'struct' body");

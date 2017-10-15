@@ -254,6 +254,7 @@ namespace ast
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
+		std::vector<StructDefn*> nestedTypes;
 	};
 
 
