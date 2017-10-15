@@ -37,6 +37,15 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
+
+	for(auto t : this->nestedTypes)
+	{
+		auto st = dynamic_cast<sst::TypeDefn*>(t->typecheck(fs));
+		iceAssert(st);
+
+		defn->nestedTypes.push_back(st);
+	}
+
 	for(auto f : this->fields)
 	{
 		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));

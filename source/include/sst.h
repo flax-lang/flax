@@ -445,6 +445,7 @@ namespace sst
 
 		std::vector<VarDefn*> fields;
 		std::vector<FunctionDefn*> methods;
+		std::vector<TypeDefn*> nestedTypes;
 
 		std::vector<std::string> scope;
 		std::string generatedScopeName;

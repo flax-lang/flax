@@ -80,6 +80,13 @@ public fn twice(a: int) -> int { return 2 * a }
 		var s: string
 		var f: (int) -> int
 
+		struct bar
+		{
+			var x: int = 30
+		}
+
+		var b: bar
+
 		fn get2() -> f64 { return 2.0 }
 		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (self.get2() + get2()) + (f(15) as f64) }
 	}
@@ -90,20 +97,22 @@ public fn twice(a: int) -> int { return 2 * a }
 		a.k = 30
 		a.s = "rick" + "astley"
 
+		a.b.x = 117
+
 		return a
 	}
 
 	// fn getstr() -> string { return "A" + "B" }
 
 	let q = somefn()
-	printf("f.k = %d, f.s = %s\n", q.k, q.s)
+	printf("q.k = %d, q.s = %s, q.b.x = %d\n", q.k, q.s, q.b.x)
 
 	var x: foo
 	x.f = twice
 	x.j = 1.738
 
-	let some = twice
-	printf("some = %d, %p\n", some(17), some)
+	// let some = twice
+	// printf("some = %d, %p\n", some(17), some)
 
 	printf("x = %.2f / twice = %d\n", x.dostuff(30), x.f(30))
 
