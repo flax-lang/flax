@@ -22,7 +22,18 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// defn->generatedScopeName = this->name;
 	// defn->scope = fs->getCurrentScope();
 
+	auto str = fir::StructType::createWithoutBody(defn->id);
+	defn->type = str;
+
+	// add it first so we can use it in the method bodies,
+	// and make pointers to it
+	{
+		fs->stree->definitions[this->name].push_back(defn);
+		fs->typeDefnMap[str] = defn;
+	}
+
 	fs->pushTree(defn->id.name);
+
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
@@ -35,9 +46,6 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 	}
 
-	auto str = fir::StructType::create(defn->id, tys);
-	defn->type = str;
-
 	for(auto m : this->methods)
 	{
 		auto f = dynamic_cast<sst::FunctionDefn*>(m->typecheck(fs, str));
@@ -46,10 +54,9 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		defn->methods.push_back(f);
 	}
 
-	fs->popTree();
+	str->setBody(tys);
 
-	fs->stree->definitions[this->name].push_back(defn);
-	fs->typeDefnMap[str] = defn;
+	fs->popTree();
 
 	return defn;
 }

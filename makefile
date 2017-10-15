@@ -50,7 +50,7 @@ LDFLAGS			+= $(SANITISE)
 FLXFLAGS		+= -sysroot $(SYSROOT)
 
 
-TESTBIN			:= build/test
+TESTBIN			:= build/supertiny
 GLTESTBIN		:= build/gltest
 
 TESTSRC			:= build/supertiny.flx

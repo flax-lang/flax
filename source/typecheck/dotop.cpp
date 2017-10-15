@@ -43,7 +43,8 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 	{
 		type = type->getPointerElementType();
 	}
-	else if(!type->isStructType())
+
+	if(!type->isStructType())
 	{
 		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
 	}
@@ -83,11 +84,9 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			TCS::PrettyError errs;
 			sst::Defn* resolved = 0;
 
-			// bool isExprCall = false;
 			if(cands.size() > 0)
 			{
-				auto copy = ts;
-				resolved = fs->resolveFunctionFromCandidates(cands, copy, &errs);
+				resolved = fs->resolveFunctionFromCandidates(cands, ts, &errs);
 			}
 			else
 			{
@@ -127,6 +126,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				c->arguments = arguments;
 				c->name = fc->name;
 				c->target = resolved;
+				c->isImplicitMethodCall = false;
 
 				call = c;
 			}

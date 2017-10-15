@@ -112,13 +112,11 @@ namespace cgn
 
 		Location loc();
 
-
 		void enterMethodBody(fir::Value* self);
 		void leaveMethodBody();
 
 		bool isInMethodBody();
 		fir::Value* getMethodSelf();
-
 
 		std::pair<sst::StateTree*, ValueTree*> setNamespace(const std::vector<std::string>& scope);
 		void restoreNamespace(std::pair<sst::StateTree*, ValueTree*>);
@@ -131,12 +129,13 @@ namespace cgn
 		void enterFunction(fir::Function* fn);
 		void leaveFunction();
 
-
 		std::vector<ControlFlowPoint> breakingPointStack;
 		ControlFlowPoint getCurrentCFPoint();
 
 		void enterBreakableBody(ControlFlowPoint cfp);
 		void leaveBreakableBody();
+
+		CGResult findValueInTree(std::string name, ValueTree* vt = 0);
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);

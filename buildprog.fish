@@ -25,6 +25,10 @@ function callCompiler
 		set file "build/tiny.flx"
 	end
 
+	if contains "supertiny" $argv
+		set file "build/supertiny.flx"
+	end
+
 	if contains "standalone" $argv
 		set file "build/standalone.flx"
 	end
