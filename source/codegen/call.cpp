@@ -15,8 +15,58 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(!this->target)
 		error(this, "Failed to find target for function call to '%s'", this->name);
 
-	auto vf = this->target->codegen(cs).value;
+	// check this target
+	fir::Value* vf = 0;
 	fir::FunctionType* ft = 0;
+
+	if(auto vd = dcast(VarDefn, this->target))
+	{
+		// ok, we're calling a variable.
+		// the below stuff ain't gonna work without some intervention
+
+		CGResult defn;
+		auto r = cs->findValueInTree(this->name);
+
+		if(r.value || r.pointer)
+		{
+			if(!r.value)
+				defn = CGResult(cs->irb.CreateLoad(r.pointer), r.pointer);
+
+			else
+				defn = r;
+		}
+		else if(cs->isInMethodBody())
+		{
+			fir::Value* self = cs->getMethodSelf();
+			auto ty = self->getType();
+
+			iceAssert(ty->isPointerType() && ty->getPointerElementType()->isStructType());
+			auto sty = ty->getPointerElementType()->toStructType();
+
+			if(sty->hasElementWithName(this->name))
+			{
+				// ok -- return directly from here.
+				fir::Value* ptr = cs->irb.CreateGetStructMember(self, this->name);
+				defn = CGResult(cs->irb.CreateLoad(ptr), ptr);
+			}
+			else
+			{
+				error(this, "no");
+			}
+		}
+		else
+		{
+			error(this, "no such '%s'", this->name);
+		}
+
+		iceAssert(defn.value);
+		vf = defn.value;
+	}
+	else
+	{
+		vf = this->target->codegen(cs).value;
+	}
+
 
 	if(vf->getType()->isFunctionType())
 	{
@@ -35,7 +85,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(ft);
 
 
-	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody())
+	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody() && this->isImplicitMethodCall)
 	{
 		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(cs->getMethodSelf());
@@ -106,6 +156,10 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(fir::Function* func = dcast(fir::Function, vf))
 	{
 		ret = cs->irb.CreateCall(func, args);
+	}
+	else if(vf->getType()->isFunctionType())
+	{
+		ret = cs->irb.CreateCallToFunctionPointer(vf, ft, args);
 	}
 	else
 	{

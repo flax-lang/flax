@@ -155,6 +155,27 @@ namespace cgn
 	}
 
 
+	CGResult CodegenState::findValueInTree(std::string name, ValueTree* vtr)
+	{
+		ValueTree* tree = (vtr ? vtr : this->vtree);
+		iceAssert(tree);
+
+		while(tree)
+		{
+			auto& vs = tree->values[name];
+			iceAssert(vs.size() <= 1);
+
+			if(vs.size() > 0)
+				return vs[0];
+
+			tree = tree->parent;
+		}
+
+		return CGResult(0);
+	}
+
+
+
 	fir::Value* CodegenState::getDefaultValue(fir::Type* type)
 	{
 		if(type->isStringType())
