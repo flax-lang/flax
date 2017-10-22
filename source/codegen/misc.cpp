@@ -242,6 +242,60 @@ namespace cgn
 			error("enotsup: %s", name);
 		}
 	}
+
+
+
+	void CodegenState::addGlobalInitialiser(fir::Value* storage, fir::Value* value)
+	{
+		if(!storage->getType()->isPointerType())
+		{
+			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType()->str());
+		}
+		else if(storage->getType()->getPointerElementType() != value->getType())
+		{
+			error(this->loc(), "Cannot store value of type '%s' into storage of type '%s'", value->getType()->str(),
+				storage->getType()->str());
+		}
+
+		// ok, then
+		this->globalInits.push_back({ value, storage });
+	}
+
+
+	fir::IRBlock* CodegenState::enterGlobalInitFunction()
+	{
+		auto ret = this->irb.getCurrentBlock();
+
+		if(!this->globalInitFunc)
+		{
+			fir::Function* func = this->module->getOrCreateFunction(Identifier("__global_init_function__", IdKind::Name),
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
+			this->irb.setCurrentBlock(entry);
+
+			this->globalInitFunc = func;
+		}
+
+		iceAssert(this->globalInitFunc);
+		this->irb.setCurrentBlock(this->globalInitFunc->getBlockList().back());
+
+		return ret;
+	}
+
+	void CodegenState::leaveGlobalInitFunction(fir::IRBlock* restore)
+	{
+		this->irb.setCurrentBlock(restore);
+	}
+
+	void CodegenState::finishGlobalInitFunction()
+	{
+		auto r = this->enterGlobalInitFunction();
+
+		this->irb.CreateReturnVoid();
+
+		this->leaveGlobalInitFunction(r);
+	}
 }
 
 

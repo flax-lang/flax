@@ -106,6 +106,9 @@ namespace cgn
 		std::unordered_map<sst::Defn*, CGResult> valueMap;
 		std::vector<fir::Value*> methodSelfStack;
 
+		fir::Function* globalInitFunc = 0;
+		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
+
 		void pushLoc(const Location& loc);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
@@ -148,7 +151,15 @@ namespace cgn
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
 		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);
 
+		CGResult getStructFieldImplicitly(std::string name);
+
 		fir::Function* getOrDeclareLibCFunction(std::string name);
+
+		void addGlobalInitialiser(fir::Value* storage, fir::Value* value);
+
+		fir::IRBlock* enterGlobalInitFunction();
+		void leaveGlobalInitFunction(fir::IRBlock* restore);
+		void finishGlobalInitFunction();
 
 		enum class OperatorFn
 		{

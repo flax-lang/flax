@@ -83,11 +83,11 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isStructType())
 	{
-		return lentypestr(mangleScopeOnly(t->toStructType()->getStructName()));
+		return lentypestr(mangleScopeOnly(t->toStructType()->getTypeName()));
 	}
 	else if(t->isClassType())
 	{
-		return lentypestr(mangleScopeOnly(t->toClassType()->getClassName()));
+		return lentypestr(mangleScopeOnly(t->toClassType()->getTypeName()));
 	}
 	else if(t->isTupleType())
 	{

@@ -458,7 +458,7 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		Identifier getStructName();
+		Identifier getTypeName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
 		Type* getElement(std::string name);
@@ -502,7 +502,7 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		Identifier getClassName();
+		Identifier getTypeName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
 		Type* getElement(std::string name);

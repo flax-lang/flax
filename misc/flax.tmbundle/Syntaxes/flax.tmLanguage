@@ -920,7 +920,7 @@
 		<key>access-modifier</key>
 		<dict>
 			<key>match</key>
-			<string>\b(public|internal|private|global)\b</string>
+			<string>\b(public|internal|private)\b</string>
 			<key>name</key>
 			<string>storage.modifier.attribute.flax</string>
 		</dict>

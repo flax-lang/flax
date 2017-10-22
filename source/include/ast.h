@@ -241,10 +241,28 @@ namespace ast
 	};
 
 
-
-	struct StructDefn : Stmt
+	struct StaticStmt : Stmt
 	{
-		StructDefn(const Location& l) : Stmt(l) { }
+		StaticStmt(Stmt* s) : Stmt(s->loc), actual(s) { }
+		~StaticStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inf = 0) override { return this->actual->typecheck(fs, inf); }
+
+		Stmt* actual = 0;
+	};
+
+
+	struct TypeDefn : Stmt
+	{
+		TypeDefn(const Location& l) : Stmt(l) { }
+		~TypeDefn() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
+	};
+
+	struct StructDefn : TypeDefn
+	{
+		StructDefn(const Location& l) : TypeDefn(l) { }
 		~StructDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -254,11 +272,27 @@ namespace ast
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
-		std::vector<StructDefn*> nestedTypes;
+		std::vector<TypeDefn*> nestedTypes;
 	};
 
+	struct ClassDefn : TypeDefn
+	{
+		ClassDefn(const Location& l) : TypeDefn(l) { }
+		~ClassDefn() { }
 
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
+		std::string name;
+		std::map<std::string, TypeConstraints_t> generics;
+
+		std::vector<VarDefn*> fields;
+		std::vector<FuncDefn*> methods;
+
+		std::vector<VarDefn*> staticFields;
+		std::vector<FuncDefn*> staticMethods;
+
+		std::vector<TypeDefn*> nestedTypes;
+	};
 
 
 	struct TypeExpr : Expr

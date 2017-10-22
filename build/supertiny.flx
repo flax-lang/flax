@@ -47,6 +47,18 @@ import "LibCInterface.flx"
 // 	return true
 // }
 
+namespace g
+{
+	fn some() { }
+	namespace h
+	{
+		namespace i
+		{
+			var globby = 30
+		}
+	}
+}
+
 namespace ns
 {
 	fn test()
@@ -56,9 +68,9 @@ namespace ns
 
 	namespace ns2
 	{
-		fn test2()
+		namespace ns3
 		{
-			printf("testing 2\n")
+			fn test2() { printf("testing 2\n") }
 		}
 	}
 }
@@ -72,7 +84,7 @@ public fn twice(a: int) -> int { return 2 * a }
 		printf("inner\n")
 	}
 
-	struct foo
+	class foo
 	{
 		var k: int
 		var j: double
@@ -87,9 +99,10 @@ public fn twice(a: int) -> int { return 2 * a }
 
 		var b: bar
 
-		fn get2() -> f64 { return 2.0 }
 		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (self.get2() + get2()) + (f(15) as f64) }
+		fn get2() -> f64 { return 2.0 }
 	}
+
 
 	fn somefn() -> foo
 	{
@@ -115,6 +128,9 @@ public fn twice(a: int) -> int { return 2 * a }
 	// printf("some = %d, %p\n", some(17), some)
 
 	printf("x = %.2f / twice = %d\n", x.dostuff(30), x.f(30))
+
+	printf("global = %d\n", g.h.i.globby)
+	ns.ns2.ns3.test2()
 
 	// var s = getstr()
 
@@ -166,7 +182,6 @@ public fn twice(a: int) -> int { return 2 * a }
 	// printf("\n\n")
 
 	// ns.test1()
-	ns.ns2.test2()
 
 	// let k: (string, string, string) = (1, 2, 3)
 

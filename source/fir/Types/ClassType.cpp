@@ -31,7 +31,7 @@ namespace fir
 		// special: need to check if new type has the same name
 		for(auto t : tc->typeCache)
 		{
-			if(t->isClassType() && t->toClassType()->getClassName() == name)
+			if(t->isClassType() && t->toClassType()->getTypeName() == name)
 			{
 				// check members.
 				std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
@@ -60,7 +60,7 @@ namespace fir
 		// special case: if no body, just return a type of the existing name.
 		for(auto& t : tc->typeCache)
 		{
-			if(t->isClassType() && t->toClassType()->getClassName() == name)
+			if(t->isClassType() && t->toClassType()->getTypeName() == name)
 				return t->toClassType();
 		}
 
@@ -97,7 +97,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier ClassType::getClassName()
+	Identifier ClassType::getTypeName()
 	{
 		return this->className;
 	}

@@ -39,12 +39,12 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 		return ret;
 	}
-	else if(type->isPointerType() && type->getPointerElementType()->isStructType())
+	else if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
 	{
 		type = type->getPointerElementType();
 	}
 
-	if(!type->isStructType())
+	if(!type->isStructType() && !type->isClassType())
 	{
 		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
 	}
@@ -230,13 +230,13 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 
 
-
+template class std::vector<sst::Defn*>;
+template class std::unordered_map<std::string, std::vector<sst::Defn*>>;
 
 sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this->loc);
 	defer(fs->popLoc());
-
 
 	auto lhs = this->left->typecheck(fs);
 	if(auto ident = dcast(sst::VarRef, lhs))
@@ -244,7 +244,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		auto defs = fs->getDefinitionsWithName(ident->name);
 		if(defs.empty())
 		{
-			error(lhs, "No namespace or type with name '%s' in scope '%s'", ident->name, fs->serialiseCurrentScope());
+			error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
 		}
 		else if(defs.size() > 1)
 		{
@@ -264,23 +264,42 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			scope.push_back(ns->id.name);
 
 			auto oldscope = fs->getCurrentScope();
+			// warn(this, "scope = %s / %s", util::serialiseScope(scope), util::serialiseScope(oldscope));
 
 			fs->teleportToScope(scope);
+			defer(fs->teleportToScope(oldscope));
+
+			// for(auto d : fs->stree->definitions)
+			// {
+			// 	debuglog("in %s - %s / %zu\n", fs->stree->name, d.first, d.second.size());
+			// }
 
 			// check what the right side is
 			auto expr = this->right->typecheck(fs);
 			iceAssert(expr);
 
-			fs->teleportToScope(oldscope);
-
 			// check the thing
 			if(auto vr = dcast(sst::VarRef, expr))
 			{
-				scope.push_back(vr->name);
-				auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
-				ret->scope = scope;
+				// check for global vars
+				auto vrs = fs->stree->definitions[vr->name];
+				if(vrs.size() == 1 && dynamic_cast<sst::VarDefn*>(vrs[0])) // must make sure it's a var defn and not a namespace one
+				{
+					vr->def = vrs[0];
+					return vr;
+				}
+				else if(vrs.size() > 1)
+				{
+					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, ns->id.name);
+				}
+				else
+				{
+					scope.push_back(vr->name);
+					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
+					ret->scope = scope;
 
-				return ret;
+					return ret;
+				}
 			}
 			else
 			{
@@ -310,6 +329,10 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 
 		if(auto vr = dcast(sst::VarRef, expr))
 		{
+			// if it's a global, stop with the scopeexpr and return now.
+			if(dynamic_cast<sst::VarDefn*>(vr->def))
+				return vr;
+
 			scope.push_back(vr->name);
 			auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
 			ret->scope = scope;
