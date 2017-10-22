@@ -49,7 +49,7 @@ namespace parser
 			{
 				defn->methods.push_back(f);
 			}
-			else if(auto t = dynamic_cast<StructDefn*>(s))
+			else if(auto t = dynamic_cast<TypeDefn*>(s))
 			{
 				defn->nestedTypes.push_back(t);
 			}
@@ -67,6 +67,70 @@ namespace parser
 
 
 
+	ClassDefn* parseClass(State& st)
+	{
+		iceAssert(st.eat() == TT::Class);
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'struct'", st.front().str());
+
+		ClassDefn* defn = new ClassDefn(st.loc());
+		defn->name = st.eat().str();
+
+		// check for generic function
+		if(st.front() == TT::LAngle)
+		{
+			st.eat();
+			// parse generic
+			if(st.front() == TT::RAngle)
+				error(st, "Empty type parameter lists are not allowed");
+
+			defn->generics = parseGenericTypeList(st);
+		}
+
+		st.skipWS();
+		if(st.front() != TT::LBrace)
+			expectedAfter(st, "'{'", "'class'", st.front().str());
+
+		auto blk = parseBracedBlock(st);
+		for(auto s : blk->statements)
+		{
+			if(auto v = dynamic_cast<VarDefn*>(s))
+			{
+				if(v->type == pts::InferredType::get())
+					error(v, "Struct fields must have types explicitly specified");
+
+				defn->fields.push_back(v);
+			}
+			else if(auto f = dynamic_cast<FuncDefn*>(s))
+			{
+				defn->methods.push_back(f);
+			}
+			else if(auto t = dynamic_cast<TypeDefn*>(s))
+			{
+				defn->nestedTypes.push_back(t);
+			}
+			else if(auto st = dynamic_cast<StaticStmt*>(s))
+			{
+				if(auto fn = dynamic_cast<FuncDefn*>(st->actual))
+					defn->staticMethods.push_back(fn);
+
+				else if(auto vr = dynamic_cast<VarDefn*>(st->actual))
+					defn->staticFields.push_back(vr);
+
+				else
+					error(st, "Unsupported static statement in 'class' body");
+			}
+			else
+			{
+				error(s, "Unsupported expression or statement in 'class' body");
+			}
+		}
+
+		for(auto s : blk->deferredStatements)
+			error(s, "Unsupported expression or statement in 'class' body");
+
+		return defn;
+	}
 
 
 
@@ -74,7 +138,18 @@ namespace parser
 
 
 
+	StaticStmt* parseStaticStmt(State& st)
+	{
+		iceAssert(st.front() == TT::Static);
+		st.eat();
 
+		auto stmt = parseStmt(st);
+		if(dynamic_cast<FuncDefn*>(stmt) || dynamic_cast<VarDefn*>(stmt))
+			return new StaticStmt(stmt);
+
+		else
+			error(stmt, "'static' can only be used on function and field definitions inside class bodies");
+	}
 
 
 

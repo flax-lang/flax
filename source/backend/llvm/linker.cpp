@@ -682,6 +682,28 @@ namespace backend
 	{
 		// check for a main function somewhere
 
+		// if(!frontend::get())
+		{
+			// insert a call at the beginning of main().
+			llvm::Function* mainfunc = this->linkedModule->getFunction("main");
+			if((frontend::getOutputMode() == ProgOutputMode::Program || frontend::getOutputMode() == ProgOutputMode::RunJit) && !mainfunc)
+				_error_and_exit("No main() function\n");
+
+			iceAssert(mainfunc);
+
+			llvm::BasicBlock* entry = &mainfunc->getEntryBlock();
+			llvm::BasicBlock* f = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "__main_entry", mainfunc);
+
+			f->moveBefore(entry);
+
+			llvm::IRBuilder<> builder(LLVMBackend::getLLVMContext());
+
+			builder.SetInsertPoint(f);
+			builder.CreateCall(this->linkedModule->getFunction("__global_init_function__"));
+			builder.CreateBr(entry);
+		}
+
+
 
 		#if 0
 		auto& cd = this->compiledData;

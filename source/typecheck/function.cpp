@@ -78,7 +78,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	if(infer)
 	{
-		iceAssert(infer->isStructType() && "expected struct type for method");
+		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
 		auto p = Param { .name = "self", .type = infer->getPointerTo() };
 
 		ps.push_back(p);

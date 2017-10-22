@@ -30,7 +30,37 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
+CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
 
+	auto rsn = cs->setNamespace(this->id.scope);
+	defer(cs->restoreNamespace(rsn));
+
+	cs->enterNamespace(this->id.name);
+	defer(cs->leaveNamespace());
+
+	iceAssert(this->type && this->type->isClassType());
+
+	std::vector<fir::Function*> meths;
+
+	for(auto method : this->methods)
+	{
+		auto f = dynamic_cast<fir::Function*>(method->codegen(cs).value);
+		meths.push_back(f);
+	}
+
+	for(auto sm : this->staticMethods)
+		sm->codegen(cs);
+
+	for(auto nt : this->nestedTypes)
+		nt->codegen(cs);
+
+	this->type->toClassType()->setMethods(meths);
+
+	return CGResult(0);
+}
 
 
 
@@ -54,9 +84,10 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	fir::Value* retv = 0;
 	fir::Value* retp = 0;
 
-	if(restype->isStructType())
+	if(restype->isStructType() || restype->isClassType())
 	{
-		iceAssert(res.pointer->getType()->getPointerElementType()->isStructType());
+		auto t = res.pointer->getType()->getPointerElementType();
+		iceAssert(t->isStructType() || t->isClassType());
 
 		retv = res.value;
 		retp = res.pointer;
@@ -70,9 +101,10 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 
 		*baseType = restype;
 	}
-	else if(restype->isPointerType() && restype->getPointerElementType()->isStructType())
+	else if(restype->isPointerType() && (restype->getPointerElementType()->isStructType() || restype->getPointerElementType()->isClassType()))
 	{
-		iceAssert(res.value->getType()->getPointerElementType()->isStructType());
+		iceAssert(res.value->getType()->getPointerElementType()->isStructType() || res.value->getType()->getPointerElementType()->isClassType());
+
 		retv = 0;
 		retp = res.value;
 
@@ -144,7 +176,7 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->isMethodRef)
 		error("method ref not supported");
 
-	iceAssert(sty->toStructType()->hasElementWithName(this->rhsIdent));
+	// iceAssert(sty->toStructType()->hasElementWithName(this->rhsIdent));
 
 	// ok, at this point it's just a normal, instance field.
 	auto val = cs->irb.CreateGetStructMember(ptr, this->rhsIdent);
@@ -189,6 +221,34 @@ CGResult sst::TupleDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
+{
+	fir::Value* self = this->getMethodSelf();
+	auto ty = self->getType();
+
+	auto dothing = [this, name, self](auto sty) -> auto {
+
+		if(sty->hasElementWithName(name))
+		{
+			// ok -- return directly from here.
+			fir::Value* ptr = this->irb.CreateGetStructMember(self, name);
+			return CGResult(this->irb.CreateLoad(ptr), ptr, CGResult::VK::LValue);
+		}
+		else
+		{
+			error(this->loc(), "Type '%s' has no field named '%s'", sty->getTypeName().str(), name);
+		}
+	};
+
+	if(ty->isPointerType() && ty->getPointerElementType()->isStructType())
+		return dothing(ty->getPointerElementType()->toStructType());
+
+	else if(ty->isPointerType() && ty->getPointerElementType()->isClassType())
+		return dothing(ty->getPointerElementType()->toClassType());
+
+	else
+		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty->str(), name);
+}
 
 
 

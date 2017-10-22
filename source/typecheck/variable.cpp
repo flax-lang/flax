@@ -98,6 +98,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	defn->global = !fs->isInFunctionBody();
 
+
 	if(this->type != pts::InferredType::get())
 	{
 		defn->type = fs->convertParserTypeToFIR(this->type);
@@ -132,6 +133,8 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	fs->stree->definitions[this->name].push_back(defn);
+	// debuglog("check %s -- %p\n", util::serialiseScope(defn->id.scope), fs->stree);
+
 	return defn;
 }
 

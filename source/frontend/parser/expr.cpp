@@ -93,9 +93,14 @@ namespace parser
 				case TT::Struct:
 					return parseStruct(st);
 
-				case TT::Enum:
 				case TT::Class:
+					return parseClass(st);
+
 				case TT::Static:
+					st.pop();
+					return new StaticStmt(parseStmt(st));
+
+				case TT::Enum:
 				case TT::Operator:
 				case TT::Protocol:
 				case TT::Override:

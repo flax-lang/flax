@@ -32,6 +32,8 @@ namespace cgn
 		for(auto stmt : dtr->topLevel->statements)
 			stmt->codegen(cs);
 
+		cs->finishGlobalInitFunction();
+
 		// debuglog("\n\n\n%s\n\n", cs->module->print().c_str());
 		mod->setEntryFunction(cs->entryFunction.first);
 

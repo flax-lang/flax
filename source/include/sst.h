@@ -447,10 +447,29 @@ namespace sst
 		std::vector<FunctionDefn*> methods;
 		std::vector<TypeDefn*> nestedTypes;
 
-		std::vector<std::string> scope;
-		std::string generatedScopeName;
+		// std::vector<std::string> scope;
+		// std::string generatedScopeName;
 	};
 
+
+	struct ClassDefn : StructDefn
+	{
+		ClassDefn(const Location& l) : StructDefn(l) { }
+		~ClassDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		// std::vector<VarDefn*> fields;
+		// std::vector<FunctionDefn*> methods;
+
+		std::vector<VarDefn*> staticFields;
+		std::vector<FunctionDefn*> staticMethods;
+
+		// std::vector<TypeDefn*> nestedTypes;
+
+		// std::vector<std::string> scope;
+		// std::string generatedScopeName;
+	};
 
 }
 
