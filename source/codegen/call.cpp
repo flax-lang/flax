@@ -37,22 +37,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(cs->isInMethodBody())
 		{
-			fir::Value* self = cs->getMethodSelf();
-			auto ty = self->getType();
-
-			iceAssert(ty->isPointerType() && ty->getPointerElementType()->isStructType());
-			auto sty = ty->getPointerElementType()->toStructType();
-
-			if(sty->hasElementWithName(this->name))
-			{
-				// ok -- return directly from here.
-				fir::Value* ptr = cs->irb.CreateGetStructMember(self, this->name);
-				defn = CGResult(cs->irb.CreateLoad(ptr), ptr);
-			}
-			else
-			{
-				error(this, "no");
-			}
+			defn = cs->getStructFieldImplicitly(this->name);
 		}
 		else
 		{

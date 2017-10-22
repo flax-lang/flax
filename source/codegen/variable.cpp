@@ -14,16 +14,78 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// ok.
 	// add a new thing to the thing
 
+	auto checkStore = [this, cs](fir::Value* val) -> fir::Value* {
+
+		fir::Value* nv = val;
+		if(val->getType() != this->type)
+			nv = cs->oneWayAutocast(CGResult(val), this->type).value;
+
+		if(!nv)
+		{
+			iceAssert(this->init);
+
+			HighlightOptions hs;
+			hs.underlines.push_back(this->init->loc);
+			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type->str(), val->getType()->str());
+		}
+
+		return nv;
+	};
+
+
+	bool refcounted = cs->isRefCountedType(this->type);
+
 	if(this->global)
 	{
-		warn(this, "globals not supported");
+		auto rest = cs->enterGlobalInitFunction();
+
+		// else
+		CGResult res;
+
+		if(this->init)
+			res = this->init->codegen(cs, this->type);
+
+		else
+			res = CGResult(cs->getDefaultValue(this->type));
+
+		fir::Value* val = checkStore(res.value);
+		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, this->immutable, this->privacy == PrivacyLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
+
+		if(refcounted)
+		{
+			if(res.kind == CGResult::VK::LValue)
+				cs->performRefCountingAssignment(CGResult(val, alloc), res, true);
+
+			else
+				cs->moveRefCountedValue(CGResult(val, alloc), res, true);
+		}
+
+		if(!refcounted)
+		{
+			alloc->makeNotImmutable();
+			cs->irb.CreateStore(val, alloc);
+
+			if(this->immutable)
+				alloc->makeImmutable();
+		}
+
+		cs->leaveGlobalInitFunction(rest);
+
+		cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
+		cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
+
+		return CGResult(0, alloc);
 	}
+
+
+
+
+
 
 	fir::Value* val = 0;
 	fir::Value* alloc = 0;
 
 	CGResult res;
-	bool refcounted = cs->isRefCountedType(this->type);
 	if(this->init)
 	{
 		res = this->init->codegen(cs, this->type);
@@ -35,20 +97,8 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(!val) val = cs->getDefaultValue(this->type);
 
 
-	fir::Value* nv = val;
-	if(val->getType() != this->type)
-		nv = cs->oneWayAutocast(CGResult(val), this->type).value;
 
-
-	if(!nv)
-	{
-		iceAssert(this->init);
-
-		HighlightOptions hs;
-		hs.underlines.push_back(this->init->loc);
-		error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type->str(), val->getType()->str());
-	}
-
+	val = checkStore(val);
 
 	if(this->immutable)
 	{
@@ -107,18 +157,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(cs->isInMethodBody())
 			{
-				fir::Value* self = cs->getMethodSelf();
-				auto ty = self->getType();
-
-				iceAssert(ty->isPointerType() && ty->getPointerElementType()->isStructType());
-				auto sty = ty->getPointerElementType()->toStructType();
-
-				if(sty->hasElementWithName(this->name))
-				{
-					// ok -- return directly from here.
-					fir::Value* ptr = cs->irb.CreateGetStructMember(self, this->name);
-					return CGResult(cs->irb.CreateLoad(ptr), ptr, CGResult::VK::LValue);
-				}
+				return cs->getStructFieldImplicitly(this->name);
 			}
 			else if(!defn.pointer && !defn.value)
 			{

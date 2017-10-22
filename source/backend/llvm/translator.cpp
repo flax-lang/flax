@@ -67,35 +67,35 @@ namespace backend
 		{
 			fir::StructType* st = type->toStructType();
 
-			if(createdTypes.find(st->getStructName()) != createdTypes.end())
-				return createdTypes[st->getStructName()];
+			if(createdTypes.find(st->getTypeName()) != createdTypes.end())
+				return createdTypes[st->getTypeName()];
 
 			// to allow recursion, declare the type first.
-			createdTypes[st->getStructName()] = llvm::StructType::create(gc, st->getStructName().mangled());
+			createdTypes[st->getTypeName()] = llvm::StructType::create(gc, st->getTypeName().mangled());
 
 			std::vector<llvm::Type*> lmems;
 			for(auto a : st->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			createdTypes[st->getStructName()]->setBody(lmems, st->isPackedStruct());
-			return createdTypes[st->getStructName()];
+			createdTypes[st->getTypeName()]->setBody(lmems, st->isPackedStruct());
+			return createdTypes[st->getTypeName()];
 		}
 		else if(type->isClassType())
 		{
 			fir::ClassType* ct = type->toClassType();
 
-			if(createdTypes.find(ct->getClassName()) != createdTypes.end())
-				return createdTypes[ct->getClassName()];
+			if(createdTypes.find(ct->getTypeName()) != createdTypes.end())
+				return createdTypes[ct->getTypeName()];
 
 			// to allow recursion, declare the type first.
-			createdTypes[ct->getClassName()] = llvm::StructType::create(gc, ct->getClassName().mangled());
+			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
 			std::vector<llvm::Type*> lmems;
 			for(auto a : ct->getElements())
 				lmems.push_back(typeToLlvm(a, mod));
 
-			createdTypes[ct->getClassName()]->setBody(lmems);
-			return createdTypes[ct->getClassName()];
+			createdTypes[ct->getTypeName()]->setBody(lmems);
+			return createdTypes[ct->getTypeName()];
 		}
 		else if(type->isTupleType())
 		{
@@ -493,11 +493,16 @@ namespace backend
 		for(auto global : firmod->_getGlobals())
 		{
 			llvm::Constant* initval = 0;
+			llvm::Type* ty = typeToLlvm(global.second->getType()->getPointerElementType(), module);
+
 			if(global.second->getInitialValue() != 0)
 				initval = constToLlvm(global.second->getInitialValue(), module);
 
-			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, typeToLlvm(global.second->getType()->getPointerElementType(),
-				module), false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval, global.first.mangled());
+			else
+				initval = llvm::Constant::getNullValue(ty);
+
+			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*module, ty, false, global.second->linkageType == fir::LinkageType::External ? llvm::GlobalValue::LinkageTypes::ExternalLinkage : llvm::GlobalValue::LinkageTypes::InternalLinkage, initval,
+				global.first.mangled());
 
 			valueMap[global.second->id] = gv;
 		}
