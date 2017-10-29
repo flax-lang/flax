@@ -116,7 +116,7 @@ namespace sst
 			std::vector<std::pair<Location, std::string>> infoStrs;
 		};
 
-		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs);
+		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs, bool traverseUp);
 		Defn* resolveFunctionFromCandidates(std::vector<Defn*> fs, std::vector<FunctionDecl::Param> arguments,
 			PrettyError* errs);
 	};

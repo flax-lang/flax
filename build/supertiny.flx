@@ -75,6 +75,22 @@ namespace ns
 	}
 }
 
+/*
+	globals work now, but namespacing is a little iffy. For something like this:
+
+	namespace foo
+	{
+		namespace bar
+		{
+		}
+
+		fn somefn() { }
+	}
+
+
+	You can call `somefn` by using `foo.bar.somefn()`, as well as `foo.somefn()`. This is probably due to how we traverse upwards when looking for the definition of something; we need a way to disable that when we're using a dot-op, because that implicit upward searching should be disabled since there's an explicit scope provided. If anything, only the very first member -- `foo` in this case -- should be searched upwards, since we could be in an inner namespace. Anything after that should be a one-level search.
+*/
+
 public fn twice(a: int) -> int { return 2 * a }
 
 @entry fn main(argc: i32, argv: i8**) -> int
@@ -130,7 +146,7 @@ public fn twice(a: int) -> int { return 2 * a }
 	printf("x = %.2f / twice = %d\n", x.dostuff(30), x.f(30))
 
 	printf("global = %d\n", g.h.i.globby)
-	ns.ns2.ns3.test2()
+	ns.test()
 
 	// var s = getstr()
 
