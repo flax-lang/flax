@@ -220,7 +220,7 @@ namespace sst
 		}
 	}
 
-	Defn* TypecheckState::resolveFunction(std::string name, std::vector<Param> arguments, PrettyError* errs)
+	Defn* TypecheckState::resolveFunction(std::string name, std::vector<Param> arguments, PrettyError* errs, bool travUp)
 	{
 		iceAssert(errs);
 
@@ -263,11 +263,15 @@ namespace sst
 				}
 			}
 
-			tree = tree->parent;
+			if(travUp)
+				tree = tree->parent;
+
+			else
+				break;
 		}
 
 		if(fns.empty())
-			error(this->loc(), "No such function named '%s'", name);
+			error(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
 
 		return this->resolveFunctionFromCandidates(fns, arguments, errs);
 	}
@@ -297,7 +301,7 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	sst::TypecheckState::PrettyError errs;
 	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
 
-	target = fs->resolveFunction(this->name, ts, &errs);
+	target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
 	if(!errs.errorStr.empty())
 	{
 		exitless_error(this, "%s", errs.errorStr);

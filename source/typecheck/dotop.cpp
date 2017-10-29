@@ -264,15 +264,15 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			scope.push_back(ns->id.name);
 
 			auto oldscope = fs->getCurrentScope();
-			// warn(this, "scope = %s / %s", util::serialiseScope(scope), util::serialiseScope(oldscope));
 
 			fs->teleportToScope(scope);
 			defer(fs->teleportToScope(oldscope));
 
-			// for(auto d : fs->stree->definitions)
-			// {
-			// 	debuglog("in %s - %s / %zu\n", fs->stree->name, d.first, d.second.size());
-			// }
+			if(auto id = dcast(ast::Ident, this->right))
+				id->traverseUpwards = false;
+
+			else if(auto fc = dcast(ast::FunctionCall, this->right))
+				fc->traverseUpwards = false;
 
 			// check what the right side is
 			auto expr = this->right->typecheck(fs);
@@ -321,6 +321,12 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 
 		auto scope = scp->scope;
 		fs->teleportToScope(scope);
+
+		if(auto id = dcast(ast::Ident, this->right))
+			id->traverseUpwards = false;
+
+		else if(auto fc = dcast(ast::FunctionCall, this->right))
+			fc->traverseUpwards = false;
 
 		auto expr = this->right->typecheck(fs);
 		iceAssert(expr);
