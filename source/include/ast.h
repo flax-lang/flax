@@ -313,6 +313,7 @@ namespace ast
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string name;
+		bool traverseUpwards = true;
 	};
 
 
@@ -404,6 +405,8 @@ namespace ast
 
 		std::string name;
 		std::vector<Expr*> args;
+
+		bool traverseUpwards = true;
 	};
 
 	struct ExprCall : Expr

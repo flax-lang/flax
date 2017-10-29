@@ -73,11 +73,15 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			}
 		}
 
-		tree = tree->parent;
+		if(this->traverseUpwards)
+			tree = tree->parent;
+
+		else
+			break;
 	}
 
 	// ok, we haven't found anything
-	error(this, "Reference to unknown variable '%s' (scope %s)", this->name, fs->serialiseCurrentScope());
+	error(this, "Reference to unknown variable '%s' (in scope '%s')", this->name, fs->serialiseCurrentScope());
 }
 
 
