@@ -25,11 +25,11 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(!mpfr::isint(this->number) && !infer->isFloatingPointType())
 			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer->str());
 
-		return CGResult(cs->unwrapConstantNumber(this->number, infer));
+		return CGResult(cs->unwrapConstantNumber(this->number, infer), 0, CGResult::VK::LitRValue);
 	}
 	else
 	{
-		return CGResult(fir::ConstantNumber::get(this->number));
+		return CGResult(fir::ConstantNumber::get(this->number), 0, CGResult::VK::LitRValue);
 	}
 }
 
@@ -60,7 +60,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto ret = cs->module->createGlobalVariable(Identifier("_FV_ARR_" + std::to_string(array->id), IdKind::Name), array->getType(),
 			array, true, fir::LinkageType::Internal);
 
-		return CGResult(array, ret);
+		return CGResult(array, ret, CGResult::VK::LitRValue);
 	}
 	else if(this->type->isArraySliceType())
 	{
@@ -80,7 +80,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			// ok...
 			// just do a simple thing.
 			auto z = fir::ConstantInt::getInt64(0);
-			return CGResult(fir::ConstantDynamicArray::get(darty, fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
+			return CGResult(fir::ConstantDynamicArray::get(darty, fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z), 0,
+				CGResult::VK::LitRValue);
 		}
 
 		// make a function specifically to initialise this thing
@@ -147,7 +148,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
 
 			aa->makeImmutable();
-			return CGResult(aa);
+			return CGResult(aa, 0, CGResult::VK::LitRValue);
 		}
 
 	}
@@ -182,7 +183,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		tup = cs->irb.CreateInsertValue(tup, { i }, vr.value);
 	}
 
-	return CGResult(tup);
+	return CGResult(tup, 0, CGResult::VK::LitRValue);
 }
 
 
@@ -194,7 +195,7 @@ CGResult sst::LiteralNull::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantValue::getNull());
+	return CGResult(fir::ConstantValue::getNull(), 0, CGResult::VK::LitRValue);
 }
 
 CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -202,7 +203,7 @@ CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantBool::get(this->value));
+	return CGResult(fir::ConstantBool::get(this->value), 0, CGResult::VK::LitRValue);
 }
 
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -215,11 +216,11 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		// good old i8*
 		fir::Value* stringVal = cs->module->createGlobalString(this->str);
-		return CGResult(stringVal);
+		return CGResult(stringVal, 0, CGResult::VK::LitRValue);
 	}
 	else
 	{
-		return CGResult(fir::ConstantString::get(this->str));
+		return CGResult(fir::ConstantString::get(this->str), 0, CGResult::VK::LitRValue);
 	}
 }
 

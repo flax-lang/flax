@@ -43,6 +43,33 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 	{
 		type = type->getPointerElementType();
 	}
+	else if(type->isStringType())
+	{
+		auto rhs = dotop->right;
+		if(auto vr = dcast(ast::Ident, rhs))
+		{
+			// TODO: Extension support here
+			fir::Type* res = 0;
+			if(vr->name == "length" || vr->name == "count" || vr->name == "rc")
+				res = fir::Type::getInt64();
+
+			else if(vr->name == "ptr")
+				res = fir::Type::getInt8Ptr();
+
+			else
+				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type->str());
+
+			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+			tmp->lhs = lhs;
+			tmp->name = vr->name;
+
+			return tmp;
+		}
+		else
+		{
+			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type->str());
+		}
+	}
 
 	if(!type->isStructType() && !type->isClassType())
 	{
