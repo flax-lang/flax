@@ -87,55 +87,58 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
 			// check methods first
-			std::vector<sst::Defn*> cands;
-			{
-				for(auto m : str->methods)
-				{
-					if(m->id.name == fc->name)
-						cands.push_back(m);
-				}
-
-				for(auto f : str->fields)
-				{
-					if(f->id.name == fc->name)
-						cands.push_back(f);
-				}
-			}
-
-			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
-
 			using Param = sst::FunctionDefn::Param;
+			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
 			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+
+			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
+
+				if(meths)
+					ts.insert(ts.begin(), Param { .type = str->type->getPointerTo(), .loc = fc->loc });
+
+				return fs->resolveFunctionFromCandidates(cands, ts, errs, false);
+			};
+
+			std::vector<sst::Defn*> mcands = util::filter(util::map(str->methods, [](sst::FunctionDefn* fd) -> sst::Defn* { return fd; }),
+				[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+
+			std::vector<sst::Defn*> vcands = util::filter(util::map(str->fields, [](sst::VarDefn* fd) -> sst::Defn* { return fd; }),
+				[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+
+
+			if(mcands.empty() && vcands.empty())
+				error(fc, "No method or field named '%s' in struct '%s'", fc->name, str->id.name);
 
 
 			TCS::PrettyError errs;
-			sst::Defn* resolved = 0;
+			sst::Defn* resolved = search(mcands, ts, true, &errs);
 
-			if(cands.size() > 0)
+
+			sst::Expr* finalCall = 0;
+			if(resolved)
 			{
-				resolved = fs->resolveFunctionFromCandidates(cands, ts, &errs);
+				auto c = new sst::FunctionCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
+				c->arguments = arguments;
+				c->name = fc->name;
+				c->target = resolved;
+				c->isImplicitMethodCall = false;
+
+				finalCall = c;
 			}
 			else
 			{
-				error(fc, "No method named '%s' in struct '%s'", fc->name, str->id.name);
-			}
+				resolved = search(vcands, ts, false, &errs);
+				if(!resolved)
+				{
+					exitless_error(fc, "%s", errs.errorStr);
+					for(auto inf : errs.infoStrs)
+						fprintf(stderr, "%s", inf.second.c_str());
 
-			if(!resolved)
-			{
-				exitless_error(fc, "%s", errs.errorStr);
-				for(auto inf : errs.infoStrs)
-					fprintf(stderr, "%s", inf.second.c_str());
+					doTheExit();
+				}
 
-				doTheExit();
-			}
+				// else
 
-			bool isExprCall = std::find(str->fields.begin(), str->fields.end(), resolved) != str->fields.end();
-
-			iceAssert(resolved->type->isFunctionType());
-			sst::Expr* call = 0;
-
-			if(isExprCall)
-			{
 				auto c = new sst::ExprCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = arguments;
 
@@ -145,22 +148,12 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 				c->callee = tmp;
 
-				call = c;
-			}
-			else
-			{
-				auto c = new sst::FunctionCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
-				c->arguments = arguments;
-				c->name = fc->name;
-				c->target = resolved;
-				c->isImplicitMethodCall = false;
-
-				call = c;
+				finalCall = c;
 			}
 
 			auto ret = new sst::MethodDotOp(fc->loc, resolved->type->toFunctionType()->getReturnType());
 			ret->lhs = lhs;
-			ret->call = call;
+			ret->call = finalCall;
 
 			return ret;
 		}
@@ -335,7 +328,31 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		}
 		else if(auto typ = dcast(sst::TypeDefn, def))
 		{
-			error("static things not supported");
+			if(auto cls = dcast(sst::ClassDefn, def))
+			{
+				auto oldscope = fs->getCurrentScope();
+				auto scope = cls->id.scope;
+				scope.push_back(cls->id.name);
+
+				fs->teleportToScope(scope);
+
+				if(auto id = dcast(ast::Ident, this->right))
+					id->traverseUpwards = false;
+
+				else if(auto fc = dcast(ast::FunctionCall, this->right))
+					fc->traverseUpwards = false;
+
+				auto rhs = this->right->typecheck(fs);
+				iceAssert(rhs);
+
+				fs->teleportToScope(oldscope);
+
+				return rhs;
+			}
+			else
+			{
+				error("static things not supported on this thing");
+			}
 		}
 		else
 		{

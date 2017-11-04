@@ -129,6 +129,15 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 	}
 
+	// for(auto f : this->staticFields)
+	// {
+	// 	auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
+	// 	iceAssert(v);
+
+	// 	defn->fields.push_back(v);
+	// 	tys.push_back({ v->id.name, v->type });
+	// }
+
 
 	for(auto m : this->methods)
 	{
@@ -138,10 +147,28 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		defn->methods.push_back(m->generatedDefn);
 	}
 
+	for(auto m : this->staticMethods)
+	{
+		// infer is 0 because this is a static thing
+		m->generateDeclaration(fs, 0);
+		iceAssert(m->generatedDefn);
+
+		defn->staticMethods.push_back(m->generatedDefn);
+	}
+
 	for(auto m : this->methods)
 		m->typecheck(fs, cls);
 
+	for(auto m : this->staticMethods)
+		m->typecheck(fs);
+
+
+
 	cls->setMembers(tys);
+
+
+
+
 
 	fs->popTree();
 

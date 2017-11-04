@@ -179,6 +179,17 @@ namespace util
 		return ret;
 	}
 
+	template <typename T, class Predicate>
+	std::vector<T> filter(std::vector<T> input, Predicate cond)
+	{
+		std::vector<T> ret;
+		for(const auto& i : input)
+			if(cond(i))
+				ret.push_back(i);
+
+		return ret;
+	}
+
 
 	inline std::string serialiseScope(const std::vector<std::string>& scope)
 	{

@@ -118,7 +118,7 @@ namespace sst
 
 		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs, bool traverseUp);
 		Defn* resolveFunctionFromCandidates(std::vector<Defn*> fs, std::vector<FunctionDecl::Param> arguments,
-			PrettyError* errs);
+			PrettyError* errs, bool allowImplicitSelf);
 	};
 
 	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports);
