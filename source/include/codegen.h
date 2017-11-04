@@ -40,6 +40,7 @@ namespace cgn
 			fir::Function* getCompareFunction(CodegenState* cs);
 			fir::Function* getCharAppendFunction(CodegenState* cs);
 			fir::Function* getBoundsCheckFunction(CodegenState* cs);
+			fir::Function* getUnicodeLengthFunction(CodegenState* cs);
 			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
 			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
 			fir::Function* getCheckLiteralWriteFunction(CodegenState* cs);

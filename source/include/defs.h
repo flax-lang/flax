@@ -70,6 +70,7 @@ struct CGResult
 		Invalid,
 		LValue,		// lvalue, as in c/c++
 		RValue,		// rvalue, as in c/c++
+		LitRValue,	// literal rvalue, simplifies refcounting a little I guess
 
 		Break,
 		Continue,

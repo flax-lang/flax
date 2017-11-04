@@ -295,8 +295,8 @@ namespace sst
 			} break;
 
 			case Operator::AddressOf: {
-				if(ex.kind == CGResult::VK::RValue)
-					error(this, "Cannot take address of an rvalue");
+				if(ex.kind != CGResult::VK::LValue)
+					error(this, "Cannot take address of a non-lvalue");
 
 				else if(!ex.pointer && ex.value->getType()->isFunctionType())
 					error(this, "Cannot take the address of a function; use it as a value type");
