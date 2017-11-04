@@ -99,6 +99,8 @@ public fn twice(a: int) -> int { return 2 * a }
 
 		var b: bar
 
+		static fn sfn() { printf("static func\n"); }
+
 		fn dostuff(a: int) -> double { return (k as f64) + (a as f64) * j + (self.get2() + get2()) + (f(15) as f64) }
 		fn get2() -> f64 { return 2.0 }
 	}
@@ -123,6 +125,9 @@ public fn twice(a: int) -> int { return 2 * a }
 	var x: foo
 	x.f = twice
 	x.j = 1.738
+
+	foo.get2(&x)
+	foo.sfn()
 
 	// let some = twice
 	// printf("some = %d, %p\n", some(17), some)

@@ -147,8 +147,10 @@ namespace sst
 	}
 
 	Defn* TypecheckState::resolveFunctionFromCandidates(std::vector<Defn*> cands, std::vector<Param> arguments,
-		PrettyError* errs)
+		PrettyError* errs, bool allowImplicitSelf)
 	{
+		if(cands.empty()) return 0;
+
 		iceAssert(errs);
 
 		using Param = FunctionDefn::Param;
@@ -166,7 +168,7 @@ namespace sst
 			{
 				auto args = util::map(arguments, [](Param p) { return p.type; });
 
-				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0)
+				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
 					args.insert(args.begin(), def->parentTypeForMethod->getPointerTo());
 
 				dist = computeOverloadDistance(cand->loc, util::map(fn->params, [](Param p) { return p.type; }),
@@ -273,7 +275,7 @@ namespace sst
 		if(fns.empty())
 			error(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
 
-		return this->resolveFunctionFromCandidates(fns, arguments, errs);
+		return this->resolveFunctionFromCandidates(fns, arguments, errs, travUp);
 	}
 }
 

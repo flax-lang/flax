@@ -29,7 +29,6 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 	fs->pushTree(defn->id.mangled());
 	{
 		// add the arguments to the tree
-		// fs->stree->
 
 		for(auto arg : defn->params)
 		{
