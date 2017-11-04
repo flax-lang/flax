@@ -301,7 +301,7 @@ namespace sst
 				else if(!ex.pointer && ex.value->getType()->isFunctionType())
 					error(this, "Cannot take the address of a function; use it as a value type");
 
-				else
+				else if(!ex.pointer)
 					error(this, "Have lvalue without storage?");
 
 				return CGResult(ex.pointer);
