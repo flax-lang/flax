@@ -13,6 +13,7 @@
 #define BUILTIN_STRING_APPEND_FUNC_NAME				"__string_append"
 #define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME		"__string_appendchar"
 #define BUILTIN_STRING_CMP_FUNC_NAME				"__string_compare"
+#define BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME		"__string_ulength"
 
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
@@ -24,6 +25,7 @@
 #define REFCOUNT_SIZE		8
 
 
+// namespace cgn::glue::string
 namespace cgn {
 namespace glue {
 namespace string
@@ -717,6 +719,117 @@ namespace string
 
 		iceAssert(fn);
 		return fn;
+	}
+
+
+	fir::Function* getUnicodeLengthFunction(CodegenState* cs)
+	{
+		fir::Function* lenf = cs->module->getFunction(Identifier(BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME, IdKind::Name));
+
+		if(!lenf)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* _ptr = func->getArguments()[0];
+			iceAssert(_ptr);
+
+			fir::Value* ptrp = cs->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
+			cs->irb.CreateStore(_ptr, ptrp);
+
+			/*
+
+				public fn Utf8Length(_text: i8*) -> i64
+				{
+					var len = 0
+					var text = _text
+
+
+					while *text != 0
+					{
+						if (*text & 0xC0) != 0x80
+						{
+							len += 1
+						}
+
+						text = text + 1
+					}
+
+					return len
+				}
+			*/
+			auto i0 = fir::ConstantInt::getInt64(0);
+			auto i1 = fir::ConstantInt::getInt64(1);
+			auto c0 = fir::ConstantInt::getInt8(0);
+
+			fir::Value* lenp = cs->irb.CreateStackAlloc(fir::Type::getInt64());
+			cs->irb.CreateStore(i0, lenp);
+
+
+			fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
+			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+
+			fir::Value* isnull = cs->irb.CreateICmpEQ(fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()), _ptr);
+			cs->irb.CreateCondBranch(isnull, merge, cond);
+
+			cs->irb.setCurrentBlock(cond);
+			{
+				auto ch = cs->irb.CreateLoad(cs->irb.CreateLoad(ptrp));
+				auto isnotzero = cs->irb.CreateICmpNEQ(ch, c0);
+
+				cs->irb.CreateCondBranch(isnotzero, body, merge);
+			}
+
+			cs->irb.setCurrentBlock(body);
+			{
+				// if statement
+				auto ch = cs->irb.CreateLoad(cs->irb.CreateLoad(ptrp));
+
+				auto mask = cs->irb.CreateBitwiseAND(ch, fir::ConstantInt::getInt8(0xC0));
+				auto isch = cs->irb.CreateICmpNEQ(mask, fir::ConstantInt::getInt8(0x80));
+
+				fir::IRBlock* incr = cs->irb.addNewBlockInFunction("incr", func);
+				fir::IRBlock* skip = cs->irb.addNewBlockInFunction("skip", func);
+
+				cs->irb.CreateCondBranch(isch, incr, skip);
+				cs->irb.setCurrentBlock(incr);
+				{
+					cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(lenp), i1), lenp);
+
+					cs->irb.CreateUnCondBranch(skip);
+				}
+
+				cs->irb.setCurrentBlock(skip);
+				{
+					auto newptr = cs->irb.CreatePointerAdd(cs->irb.CreateLoad(ptrp), i1);
+					cs->irb.CreateStore(newptr, ptrp);
+
+					cs->irb.CreateUnCondBranch(cond);
+				}
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			{
+				auto len = cs->irb.CreateLoad(lenp);
+				cs->irb.CreateReturn(len);
+			}
+
+
+			lenf = func;
+			cs->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(lenf);
+		return lenf;
 	}
 }
 }

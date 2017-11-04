@@ -85,7 +85,8 @@ namespace cgn
 
 			// then, remove the rhs from any refcounting table
 			// but don't change the refcount itself.
-			this->removeRefCountedValue(rv);
+			if(rhs.kind != CGResult::VK::LitRValue)
+				this->removeRefCountedValue(rv);
 		}
 	}
 

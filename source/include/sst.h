@@ -276,7 +276,19 @@ namespace sst
 		size_t index = 0;
 	};
 
+	struct BuiltinDotOp : Expr
+	{
+		BuiltinDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~BuiltinDotOp() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* lhs = 0;
+		std::string name;
+
+		bool isFunctionCall = false;
+		std::vector<Expr*> args;
+	};
 
 
 
