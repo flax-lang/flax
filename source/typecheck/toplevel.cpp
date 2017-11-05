@@ -26,18 +26,12 @@ namespace sst
 		return clone;
 	}
 
-	static void deleteTree(StateTree* tree)
-	{
-		for(auto sub : tree->subtrees)
-			deleteTree(sub.second);
-
-		delete tree;
-	}
-
 	static StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent)
 	{
-		StateTree* tree = cloneTree(_tree, commonParent);
-		deleteTree(_tree);
+		// StateTree* tree = cloneTree(_tree, commonParent);
+		StateTree* tree = _tree;
+
+		// deleteTree(_tree);
 
 		// if(existing->name != tree->name)
 		// 	error("Cannot merge two StateTrees with differing names ('%s' and '%s')", existing->name.c_str(), tree->name.c_str());
@@ -54,7 +48,6 @@ namespace sst
 		}
 
 		// then, add all functions and shit
-		// todo: check for duplicates
 		for(auto defs : tree->definitions)
 		{
 			auto name = defs.first;
@@ -63,10 +56,18 @@ namespace sst
 				if(def->privacy == PrivacyLevel::Public)
 				{
 					// check functions
-					if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
+					bool skip = false;
+					auto others = existing->definitions[name];
+
+					for(auto ot : others)
 					{
-						auto others = existing->definitions[name];
-						for(auto ot : others)
+						if(ot == def)
+						{
+							skip = true;
+							continue;
+						}
+
+						if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
 						{
 							if(auto v = dynamic_cast<VarDefn*>(ot))
 							{
@@ -81,8 +82,8 @@ namespace sst
 								if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
 									util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
 								{
-									exitless_error(fn, "Duplicate definition of function '%s' with identical signature");
-									info(ot, "Conflicting definition was here:");
+									exitless_error(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name);
+									info(ot, "Conflicting definition was here: (%p vs %p)", f, fn);
 
 									doTheExit();
 								}
@@ -92,11 +93,7 @@ namespace sst
 								error(def, "??");
 							}
 						}
-					}
-					else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
-					{
-						auto others = existing->definitions[name];
-						if(others.size() > 0)
+						else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
 						{
 							exitless_error(def, "Duplicate definition for variable '%s'");
 
@@ -105,13 +102,18 @@ namespace sst
 
 							doTheExit();
 						}
-					}
-					else
-					{
-						error(def, "what is this?");
+						else
+						{
+							// probably a class or something
+
+							exitless_error(def, "Duplicate definition of '%s'", ot->id.name);
+							info(ot, "Conflicting definition was here:");
+							doTheExit();
+						}
 					}
 
-					existing->definitions[name].push_back(def);
+					if(!skip)
+						existing->definitions[name].push_back(def);
 				}
 			}
 		}
@@ -136,8 +138,28 @@ namespace sst
 
 		for(auto [ filename, import ] : imports)
 		{
-			fs->dtree->thingsImported.push_back(filename);
-			addTreeToExistingTree(tree, import, 0);
+			// debuglog("%s/%s/%p\n", filename, import->name, import->parent);
+			fs->dtree->thingsImported.insert(filename);
+
+			// for(auto i : tree->imported)
+			// 	debuglog("%s has %s\n", file.moduleName, i);
+
+			// for(auto i : import->imported)
+			// 	debuglog("%s has %s\n", import->name, i);
+
+			if(tree->imported.find(filename) == tree->imported.end())
+			{
+				// debuglog("have not imported '%s' before on '%s'\n", filename, file.moduleName);
+				// debuglog("tree = %p\n", tree);
+				addTreeToExistingTree(tree, import, 0);
+
+				tree->imported.insert(filename);
+				tree->imported.insert(import->imported.begin(), import->imported.end());
+			}
+			else
+			{
+				// debuglog("imported '%s' before in '%s', not importing again\n", filename, file.moduleName);
+			}
 		}
 
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));

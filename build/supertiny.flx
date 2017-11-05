@@ -3,8 +3,12 @@
 // Licensed under the Apache License Version 2.0.
 
 export supertiny
-import "IntegerLimits.flx"
-import "LibCInterface.flx"
+
+import "libc"
+import "limits"
+
+import "tests/fizzbuzz"
+// import "tests/functions"
 
 // ffi fn printf(fmt: u8*, ...) -> i32
 
@@ -55,6 +59,14 @@ namespace g
 		namespace i
 		{
 			var globby = 30
+		}
+	}
+
+	class nest
+	{
+		static fn nfn()
+		{
+			printf("nfn\n")
 		}
 	}
 }
@@ -127,7 +139,11 @@ public fn twice(a: int) -> int { return 2 * a }
 	x.j = 1.738
 
 	foo.get2(&x)
-	foo.sfn()
+	let f = foo.sfn
+	f()
+
+	let nf = g.nest.nfn
+	nf()
 
 	// let some = twice
 	// printf("some = %d, %p\n", some(17), some)
@@ -139,6 +155,10 @@ public fn twice(a: int) -> int { return 2 * a }
 	printf("'%s'.length = %d, count = %d\n", uni, uni.length, uni.count)
 
 	ns.test()
+
+	printf("\n\n")
+
+	doFizzBuzz(20)
 
 	// var s = getstr()
 
