@@ -125,6 +125,8 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->initialiser)
 	{
 		defn->init = this->initialiser->typecheck(fs, defn->type);
+		if(defn->init->type->isVoidType())
+			error(defn->init, "Value has void type");
 
 		if(defn->type == 0)
 		{

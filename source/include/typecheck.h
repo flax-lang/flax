@@ -8,6 +8,8 @@
 
 #include "precompile.h"
 
+#include <unordered_set>
+
 namespace parser
 {
 	struct ParsedFile;
@@ -37,6 +39,8 @@ namespace sst
 		std::unordered_map<std::string, std::vector<Defn*>> definitions;
 
 		std::unordered_map<std::string, std::vector<ast::FuncDefn*>> unresolvedGenericFunctions;
+
+		std::unordered_set<std::string> imported;
 	};
 
 	struct DefinitionTree
@@ -45,7 +49,7 @@ namespace sst
 
 		StateTree* base = 0;
 		NamespaceDefn* topLevel = 0;
-		std::vector<std::string> thingsImported;
+		std::unordered_set<std::string> thingsImported;
 	};
 
 	struct TypecheckState

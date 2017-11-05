@@ -245,7 +245,7 @@ namespace sst
 				{
 					fns.push_back(fn);
 				}
-				else if(auto vr = dcast(VarDefn, def); vr->type->isFunctionType())
+				else if(auto vr = dcast(VarDefn, def); vr && vr->type->isFunctionType())
 				{
 					// ok, we'll check it later i guess.
 					if(!didVar)

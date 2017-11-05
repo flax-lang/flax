@@ -4,8 +4,7 @@
 
 
 // import Foundation
-import LibCInterface
-
+import "libc"
 
 fn foo(a: int) { printf("foo: %d\n", a) }
 fn bar(a: int) { printf("bar: %d\n", a) }
@@ -26,28 +25,28 @@ namespace SomeNS
 		fn foo(a: int) { printf("foo in nested class: %p // %d\n", self, a) }
 		static fn bar(a: int) { printf("static bar in nested class: %d\n", a) }
 
-		fn mgen<T>(a: T) -> T { printf("method generic: %p // %d\n", self, a) }
-		static fn smgen<T>(a: T) -> T { printf("static generic: %d\n", a) }
+		// fn mgen<T>(a: T) -> T { printf("method generic: %p // %d\n", self, a) }
+		// static fn smgen<T>(a: T) -> T { printf("static generic: %d\n", a) }
 	}
 
-	fn ngen<T>(a: T) -> T { printf("namespace generic: %p // %d\n", a) }
+	// fn ngen<T>(a: T) -> T { printf("namespace generic: %p // %d\n", a) }
 }
 
 
 
-fn gen<T>(a: T) -> T
-{
-	// if(typeof(a) == typeof(int))
-	// {
-	// 	printf("int: %d\n", a)
-	// }
-	// else if(typeof(a) == typeof(f64))
-	// {
-	// 	printf("float: %lf\n", a)
-	// }
+// fn gen<T>(a: T) -> T
+// {
+// 	// if(typeof(a) == typeof(int))
+// 	// {
+// 	// 	printf("int: %d\n", a)
+// 	// }
+// 	// else if(typeof(a) == typeof(f64))
+// 	// {
+// 	// 	printf("float: %lf\n", a)
+// 	// }
 
-	return a + 1
-}
+// 	return a + 1
+// }
 
 fn et(a: int)
 {
@@ -63,7 +62,7 @@ fn et1(a: int) -> int
 
 class SomeStruct
 {
-	var f: [(SomeStruct*, int) -> int]
+	var f: (SomeStruct*, int) -> int
 	fn fun(a: string) -> int
 	{
 		printf("method: %s\n", a)
@@ -90,13 +89,13 @@ public fn doFunctionTest()
 	g(20)
 
 	printf("each test:")
-	let arr: int* = alloc[4] int as int*
-	arr[0] = 11
-	arr[1] = 22
-	arr[2] = 33
-	arr[3] = 44
+	// let arr: int* = alloc[4] int as int*
+	// arr[0] = 11
+	// arr[1] = 22
+	// arr[2] = 33
+	// arr[3] = 44
 
-	each(arr, 4, et)
+	// each(arr, 4, et)
 
 
 
@@ -126,56 +125,56 @@ public fn doFunctionTest()
 	}
 
 
-	printf("\ngeneric test\n")
-	do {
-		var gf: [(int) -> int] = gen
-		var gff: [(f64) -> f64] = gen
+	// printf("\ngeneric test\n")
+	// do {
+	// 	var gf: [(int) -> int] = gen
+	// 	var gff: [(f64) -> f64] = gen
 
-		gf(100)
-		gff(3.1415926536)
+	// 	gf(100)
+	// 	gff(3.1415926536)
 
-		// gf = SomeNS.ngen
-		gf(200)
-
-
-		// reassignment
-		printf("\nclass test\n")
-		do {
-			var gf2: [(int) -> int] = et1
-			printf("et:"); gf2(300); printf("\n")
-			gf2 = gen
-			gf2(400)
-
-			var s = SomeStruct()
-
-			let gf3 = SomeStruct.sfn
-			gf3(&s, 500)
-
-			s.f = gf3
-			let gf4 = s.f
-			gf4(&s, 600)
-
-			printf("\ngeneric member test\n")
-
-			let gf5: [(int) -> int] = SomeNS.NestedClass.smgen
-			gf5(10)
-
-			var gf6: [(SomeNS.NestedClass*, int) -> int]
-			gf6 = SomeNS.NestedClass.mgen
-
-			let nc = SomeNS.NestedClass()
-			gf6(&nc, 10)
+	// 	// gf = SomeNS.ngen
+	// 	gf(200)
 
 
-			printf("\ndirect field calling\n")
-			let res1 = s.f(&s, 10)
-		}
-	}
+	// 	// reassignment
+	// 	printf("\nclass test\n")
+	// 	do {
+	// 		var gf2: [(int) -> int] = et1
+	// 		printf("et:"); gf2(300); printf("\n")
+	// 		gf2 = gen
+	// 		gf2(400)
+
+	// 		var s = SomeStruct()
+
+	// 		let gf3 = SomeStruct.sfn
+	// 		gf3(&s, 500)
+
+	// 		s.f = gf3
+	// 		let gf4 = s.f
+	// 		gf4(&s, 600)
+
+	// 		printf("\ngeneric member test\n")
+
+	// 		let gf5: [(int) -> int] = SomeNS.NestedClass.smgen
+	// 		gf5(10)
+
+	// 		var gf6: [(SomeNS.NestedClass*, int) -> int]
+	// 		gf6 = SomeNS.NestedClass.mgen
+
+	// 		let nc = SomeNS.NestedClass()
+	// 		gf6(&nc, 10)
+
+
+	// 		printf("\ndirect field calling\n")
+	// 		let res1 = s.f(&s, 10)
+	// 	}
+	// }
 }
 
 
 
-fn each(arr: int*, length: int, f: [(int) -> void])
+fn each(arr: int*, length: int, f: (int) -> void)
 {
 	var i = 0
 
