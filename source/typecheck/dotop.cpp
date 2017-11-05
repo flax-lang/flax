@@ -303,7 +303,9 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			{
 				// check for global vars
 				auto vrs = fs->stree->definitions[vr->name];
-				if(vrs.size() == 1 && dynamic_cast<sst::VarDefn*>(vrs[0])) // must make sure it's a var defn and not a namespace one
+
+				// must make sure it's a var/func defn and not a namespace one
+				if(vrs.size() == 1 && (dynamic_cast<sst::VarDefn*>(vrs[0]) || dynamic_cast<sst::FunctionDefn*>(vrs[0])))
 				{
 					vr->def = vrs[0];
 					return vr;
@@ -318,6 +320,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
 					ret->scope = scope;
 
+					// info(this, "ret scope %s", util::serialiseScope(scope));
 					return ret;
 				}
 			}
@@ -366,6 +369,8 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		auto scope = scp->scope;
 		fs->teleportToScope(scope);
 
+		// info(lhs, "scope is '%s'", util::serialiseScope(scope));
+
 		if(auto id = dcast(ast::Ident, this->right))
 			id->traverseUpwards = false;
 
@@ -380,7 +385,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		if(auto vr = dcast(sst::VarRef, expr))
 		{
 			// if it's a global, stop with the scopeexpr and return now.
-			if(dynamic_cast<sst::VarDefn*>(vr->def))
+			if(dynamic_cast<sst::VarDefn*>(vr->def) || dynamic_cast<sst::FunctionDefn*>(vr->def))
 				return vr;
 
 			scope.push_back(vr->name);

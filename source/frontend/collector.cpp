@@ -37,12 +37,14 @@ namespace frontend
 			for(auto d : graph->getDependenciesOf(file))
 			{
 				auto stree = dtrees[d->name]->base;
+				// debuglog("stree = %p\n", stree);
 				iceAssert(stree);
 
 				imports.push_back({ d->name, stree });
 				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
+			// debuglog("typecheck %s\n", file);
 			dtrees[file] = sst::typecheck(parsed[file], imports);
 		}
 
