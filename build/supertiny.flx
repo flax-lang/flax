@@ -10,6 +10,7 @@ import "limits"
 import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
+import "tests/intlimits"
 
 // import "tests/functions"
 
@@ -88,6 +89,8 @@ namespace ns
 			fn test2() { printf("testing 2\n") }
 		}
 	}
+
+	let someglob = 30
 }
 
 public fn twice(a: int) -> int { return 2 * a }
@@ -162,11 +165,16 @@ public fn twice(a: int) -> int { return 2 * a }
 	printf("\n\n")
 
 
-	doFizzBuzz(20)
-	doSlicesTest()
+	// doFizzBuzz(20)
+	// doSlicesTest()
 
-	let fib = doRecursiveFib(20)
-	printf("\nfib(20) = %d\n", fib)
+	// let fib = doRecursiveFib(20)
+	// printf("\nfib(20) = %d\n", fib)
+
+	printIntegerLimits()
+
+
+
 
 	// var s = getstr()
 
