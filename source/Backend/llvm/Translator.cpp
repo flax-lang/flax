@@ -478,7 +478,7 @@ namespace Compiler
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		auto getValue = [&valueMap, &module, &builder, firmod](fir::Value* fv) -> llvm::Value* {
+		auto getValue = [&valueMap, &module, firmod](fir::Value* fv) -> llvm::Value* {
 
 			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
 			{
@@ -508,7 +508,7 @@ namespace Compiler
 			}
 		};
 
-		auto getOperand = [&module, &builder, &getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
+		auto getOperand = [&getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
 
 			iceAssert(inst->operands.size() > op);
 			fir::Value* fv = inst->operands[op];
@@ -635,13 +635,13 @@ namespace Compiler
 					{
 						// llvm is stupid.
 						auto it = func->arg_begin();
-						ptr1 = it.getNodePtrUnchecked();
+						ptr1 = it;
 						it++;
 
-						ptr2 = it.getNodePtrUnchecked();
+						ptr2 = it;
 						it++;
 
-						cmplen = it.getNodePtrUnchecked();
+						cmplen = it;
 					}
 
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
@@ -724,7 +724,7 @@ namespace Compiler
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
 
 					builder.CreateStore(oneconst, retval);
-					builder.CreateStore(func->arg_begin().getNodePtrUnchecked(), num);
+					builder.CreateStore(func->arg_begin(), num);
 
 
 					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(Compiler::LLVMBackend::getLLVMContext(), "loopcond", func);
@@ -805,7 +805,7 @@ namespace Compiler
 			size_t i = 0;
 			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
 			{
-				valueMap[ffn->getArguments()[i]->id] = it.getNodePtrUnchecked();
+				valueMap[ffn->getArguments()[i]->id] = it;
 
 				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
 			}
