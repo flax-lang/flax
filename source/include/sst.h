@@ -191,8 +191,28 @@ namespace sst
 		Expr* inside = 0;
 
 		// to assist safety checks, store the generated things
+		fir::Value* cgSubscripteePtr = 0;
 		fir::Value* cgSubscriptee = 0;
 		fir::Value* cgIndex = 0;
+	};
+
+
+	struct SliceOp : Expr
+	{
+		SliceOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~SliceOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+		Expr* begin = 0;
+		Expr* end = 0;
+
+		// to assist safety checks, store the generated things
+		fir::Value* cgSubscripteePtr = 0;
+		fir::Value* cgSubscriptee = 0;
+		fir::Value* cgBegin = 0;
+		fir::Value* cgEnd = 0;
 	};
 
 

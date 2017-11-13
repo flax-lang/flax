@@ -237,7 +237,7 @@ namespace sst
 		bool didVar = false;
 		while(tree)
 		{
-			auto defs = tree->definitions[name];
+			auto defs = tree->getDefinitionsWithName(name);
 			for(auto def : defs)
 			{
 				// warn(def, "%p, %s", def->type, def->type->str());

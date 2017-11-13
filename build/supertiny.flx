@@ -8,6 +8,9 @@ import "libc"
 import "limits"
 
 import "tests/fizzbuzz"
+import "tests/recursiveFib"
+import "tests/slices"
+
 // import "tests/functions"
 
 // ffi fn printf(fmt: u8*, ...) -> i32
@@ -158,7 +161,12 @@ public fn twice(a: int) -> int { return 2 * a }
 
 	printf("\n\n")
 
+
 	doFizzBuzz(20)
+	doSlicesTest()
+
+	let fib = doRecursiveFib(20)
+	printf("\nfib(20) = %d\n", fib)
 
 	// var s = getstr()
 

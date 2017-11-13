@@ -38,7 +38,7 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 
 			vd->type = arg.type;
 
-			fs->stree->definitions[arg.name].push_back(vd);
+			fs->stree->addDefinition(arg.name, vd);
 
 			defn->arguments.push_back(vd);
 		}
@@ -136,7 +136,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 		error(this, "conflicting");
 
 	this->generatedDefn = defn;
-	fs->stree->definitions[this->name].push_back(defn);
+	fs->stree->addDefinition(this->name, defn);
 }
 
 
@@ -199,7 +199,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	if(conflicts)
 		error(this, "conflicting");
 
-	fs->stree->definitions[this->name].push_back(defn);
+	fs->stree->addDefinition(this->name, defn);
 	return defn;
 }
 

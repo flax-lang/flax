@@ -139,20 +139,20 @@ namespace fir
 		void CreateSetStringRefCount(Value* str, Value* val, std::string vname = "");
 
 
-		Value* CreateGetDynamicArrayData(Value* ptr, std::string vname = "");
-		Value* CreateSetDynamicArrayData(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetDynamicArrayLength(Value* ptr, std::string vname = "");
-		Value* CreateSetDynamicArrayLength(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetDynamicArrayCapacity(Value* ptr, std::string vname = "");
-		Value* CreateSetDynamicArrayCapacity(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetDynamicArrayRefCount(Value* ptr, std::string vname = "");
-		void CreateSetDynamicArrayRefCount(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayData(Value* arr, std::string vname = "");
+		Value* CreateSetDynamicArrayData(Value* arr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayLength(Value* arr, std::string vname = "");
+		Value* CreateSetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayCapacity(Value* arr, std::string vname = "");
+		Value* CreateSetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
+		Value* CreateGetDynamicArrayRefCount(Value* arr, std::string vname = "");
+		void CreateSetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
 
 
-		Value* CreateGetArraySliceData(Value* ptr, std::string vname = "");
-		Value* CreateSetArraySliceData(Value* ptr, Value* val, std::string vname = "");
-		Value* CreateGetArraySliceLength(Value* ptr, std::string vname = "");
-		Value* CreateSetArraySliceLength(Value* ptr, Value* val, std::string vname = "");
+		Value* CreateGetArraySliceData(Value* arr, std::string vname = "");
+		Value* CreateSetArraySliceData(Value* arr, Value* val, std::string vname = "");
+		Value* CreateGetArraySliceLength(Value* arr, std::string vname = "");
+		Value* CreateSetArraySliceLength(Value* arr, Value* val, std::string vname = "");
 
 		Value* CreateGetAnyTypeID(Value* any, std::string vname = "");
 		Value* CreateSetAnyTypeID(Value* any, Value* val, std::string vname = "");

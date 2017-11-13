@@ -2,18 +2,16 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-
 class Orr
 {
 	static var Another = 76
-	var bar = 311
+	var bar: int = 311
 }
 
 class Something
 {
 	static var Or: Orr
-	var oor = 400
+	var oor: int = 400
 
 	fn somefoo() -> Orr
 	{
