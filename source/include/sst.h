@@ -27,7 +27,7 @@ namespace sst
 		Identifier id;
 		fir::Type* type = 0;
 		bool global = false;
-		PrivacyLevel privacy = PrivacyLevel::Internal;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
 	struct TypeDefn : Defn

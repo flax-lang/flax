@@ -49,7 +49,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			res = CGResult(cs->getDefaultValue(this->type));
 
 		fir::Value* val = checkStore(res.value);
-		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, this->immutable, this->privacy == PrivacyLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
+		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, this->immutable, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		if(refcounted)
 		{

@@ -23,7 +23,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		ident = Identifier(this->id.name, IdKind::Name);
 
 	auto fn = cs->module->getOrCreateFunction(ident, ft,
-		this->privacy == PrivacyLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
+		this->visibility == VisibilityLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
 	// manually set the names, I guess
 	for(size_t i = 0; i < this->params.size(); i++)

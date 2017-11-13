@@ -101,7 +101,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	defn->params = ps;
 	defn->returnType = retty;
-	defn->privacy = this->privacy;
+	defn->visibility = this->visibility;
 
 	defn->isEntry = this->isEntry;
 	defn->noMangle = this->noMangle;
@@ -164,7 +164,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 	defn->params = ps;
 	defn->returnType = retty;
-	defn->privacy = this->privacy;
+	defn->visibility = this->visibility;
 	defn->isVarArg = this->isVarArg;
 
 	if(this->isVarArg)

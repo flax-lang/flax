@@ -131,7 +131,7 @@ namespace parser
 		ffn->isVarArg = isvar;
 		ffn->args = defn->args;
 		ffn->name = defn->name;
-		ffn->privacy = defn->privacy;
+		ffn->visibility = defn->visibility;
 		ffn->returnType = defn->returnType;
 
 		delete defn;
