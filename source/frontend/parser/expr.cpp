@@ -17,25 +17,25 @@ namespace parser
 	ast::Stmt* parseStmtWithAccessSpec(State& st)
 	{
 		iceAssert(st.front() == TT::Public || st.front() == TT::Private || st.front() == TT::Internal);
-		auto vis = PrivacyLevel::Invalid;
+		auto vis = VisibilityLevel::Invalid;
 		switch(st.front())
 		{
-			case TT::Public:		vis = PrivacyLevel::Public; break;
-			case TT::Private:		vis = PrivacyLevel::Private; break;
-			case TT::Internal:		vis = PrivacyLevel::Internal; break;
+			case TT::Public:		vis = VisibilityLevel::Public; break;
+			case TT::Private:		vis = VisibilityLevel::Private; break;
+			case TT::Internal:		vis = VisibilityLevel::Internal; break;
 			default: iceAssert(0);
 		}
 
 		st.pop();
 		auto stmt = parseStmt(st);
 		if(auto defn = dynamic_cast<FuncDefn*>(stmt))
-			defn->privacy = vis;
+			defn->visibility = vis;
 
 		else if(auto defn = dynamic_cast<ForeignFuncDefn*>(stmt))
-			defn->privacy = vis;
+			defn->visibility = vis;
 
 		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
-			defn->privacy = vis;
+			defn->visibility = vis;
 
 		else
 			error(st, "Access specifier cannot be applied to this statement");

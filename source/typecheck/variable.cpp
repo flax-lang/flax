@@ -94,7 +94,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defn->id.scope = fs->getCurrentScope();
 
 	defn->immutable = this->immut;
-	defn->privacy = this->privacy;
+	defn->visibility = this->visibility;
 
 	defn->global = !fs->isInFunctionBody();
 

@@ -84,7 +84,7 @@ namespace parser
 		}
 
 		bool isFirst = true;
-		auto [ priv, tix ] = std::make_tuple(PrivacyLevel::Invalid, -1);
+		auto [ priv, tix ] = std::make_tuple(VisibilityLevel::Invalid, -1);
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
 		{
 			switch(st.front())
@@ -103,8 +103,8 @@ namespace parser
 						expectedAfter(st, "identifier", "'namespace'", st.front().str());
 
 					auto ns = parseTopLevel(st, tok.str());
-					if(priv != PrivacyLevel::Invalid)
-						ns->privacy = priv, priv = PrivacyLevel::Invalid, tix = -1;
+					if(priv != VisibilityLevel::Invalid)
+						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = -1;
 
 					root->statements.push_back(ns);
 
@@ -141,19 +141,19 @@ namespace parser
 				} break;
 
 				case TT::Public:
-					priv = PrivacyLevel::Public;
+					priv = VisibilityLevel::Public;
 					tix = st.getIndex();
 					st.pop();
 					break;
 
 				case TT::Private:
-					priv = PrivacyLevel::Private;
+					priv = VisibilityLevel::Private;
 					tix = st.getIndex();
 					st.pop();
 					break;
 
 				case TT::Internal:
-					priv = PrivacyLevel::Internal;
+					priv = VisibilityLevel::Internal;
 					tix = st.getIndex();
 					st.pop();
 					break;
@@ -168,12 +168,12 @@ namespace parser
 					goto out;
 
 				default:
-					if(priv != PrivacyLevel::Invalid)
+					if(priv != VisibilityLevel::Invalid)
 					{
 						st.rewindTo(tix);
 
 						tix = -1;
-						priv = PrivacyLevel::Invalid;
+						priv = VisibilityLevel::Invalid;
 					}
 
 					if(st.front() == TT::Export)
