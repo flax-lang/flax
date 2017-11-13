@@ -2,46 +2,48 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+import "libc"
+
 public namespace i8
 {
-	let min: i8 = -128
-	let max: i8 = +127
+	public let min: i8 = -128
+	public let max: i8 = +127
 }
 public namespace i16
 {
-	let min: i16 = -32768
-	let max: i16 = +32767
+	public let min: i16 = -32768
+	public let max: i16 = +32767
 }
 public namespace i32
 {
-	let min: i32 = -2147483648
-	let max: i32 = +2147483647
+	public let min: i32 = -2147483648
+	public let max: i32 = +2147483647
 }
 public namespace i64
 {
-	let min: i64 = -9223372036854775808
-	let max: i64 = +9223372036854775807
+	public let min: i64 = -9223372036854775808
+	public let max: i64 = +9223372036854775807
 }
 
 public namespace u8
 {
-	let min: u8 = 0
-	let max: u8 = 255
+	public let min: u8 = 0
+	public let max: u8 = 255
 }
 public namespace u16
 {
-	let min: u16 = 0
-	let max: u16 = 65535
+	public let min: u16 = 0
+	public let max: u16 = 65535
 }
 public namespace u32
 {
-	let min: u32 = 0
-	let max: u32 = 4294967295
+	public let min: u32 = 0
+	public let max: u32 = 4294967295
 }
 public namespace u64
 {
-	let min: u64 = 0
-	let max: u64 = 18446744073709551615
+	public let min: u64 = 0
+	public let max: u64 = 18446744073709551615
 }
 
 

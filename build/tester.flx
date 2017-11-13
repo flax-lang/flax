@@ -1,0 +1,161 @@
+// tester.flx
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export tester
+
+import "libc"
+import "limits"
+
+import "tests/fizzbuzz"
+import "tests/recursiveFib"
+import "tests/slices"
+import "tests/intlimits"
+
+fn runTests()
+{
+	// fib
+	let fibTitle		= "       *** FIBONACII SEQUENCE ***       \n"
+	let fizzbuzzTitle	= "            *** FIZZBUZZ ***            \n"
+	let intLimitsTitle	= "       *** PRINTING INT LIMITS ***      \n"
+	let scopeTitle		= "*** SCOPE RESOLUTION REGRESSION TEST ***\n"
+	let operatorTitle	= " *** OPERATOR/TUPLE REGRESSION TEST *** \n"
+	let arrayTitle		= "      *** ARRAY REGRESSION TEST ***     \n"
+	let genericsTitle	= "    *** GENERICS REGRESSION TEST ***    \n"
+	let functionsTitle	= "    *** FUNCTION REGRESSION TEST ***    \n"
+	let deferTitle		= "       *** DEFER SEMANTICS TEST ***     \n"
+	let anyTitle		= "        *** ANY SEMANTICS TEST ***      \n"
+	let slicesTitle		= "     *** SLICES REGRESSION TEST ***     \n"
+	let decomposeTitle	= " *** DECOMPOSITION REGRESSION TEST ***  \n"
+	let forLoopTitle	= "    *** FOR LOOP REGRESSION TEST ***    \n"
+	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
+	let thinLine		= "----------------------------------------\n"
+	let endTitle		= "============ TESTS COMPLETE ============\n"
+
+
+	printf("%s%s", fibTitle, thinLine)
+	do {
+		var n = 1
+		while n < 20
+		{
+			printf("%lld", doRecursiveFib(n))
+			n += 1
+
+			if n != 20
+			{
+				printf(", ")
+			}
+		}
+		printf("\n\n\n")
+	}
+
+
+	// fizzbuzz
+	printf("%s%s", fizzbuzzTitle, thinLine)
+	doFizzBuzz(15)
+	printf("\n\n\n")
+
+
+	// int limits
+	printf("%s%s", intLimitsTitle, thinLine)
+	printIntegerLimits()
+	printf("\n\n\n")
+
+
+	// scopes
+	printf("%s%s", scopeTitle, thinLine)
+	// doScopeTest("__llvm_jit__build/test")
+	printf("\n\n\n")
+
+
+	// operators and tuples (vectors type, mainly)
+	printf("%s%s", operatorTitle, thinLine)
+	// doOperatorTupleTest()
+	printf("\n\n\n")
+
+
+	// arrays
+	printf("%s%s", arrayTitle, thinLine)
+	// doArrayTest()
+	printf("\n\n\n")
+
+
+	// generics
+	printf("%s%s", genericsTitle, thinLine)
+	// doGenericsTest()
+	printf("\n\n\n")
+
+
+	// first-class-functions
+	printf("%s%s", functionsTitle, thinLine)
+	// doFunctionTest()
+	printf("\n\n\n")
+
+
+	// defer semantics
+	printf("%s%s", deferTitle, thinLine)
+	// doDeferTest()
+	printf("\n\n\n")
+
+
+	// any
+	printf("%s%s", anyTitle, thinLine)
+	// doAnyTest()
+	printf("\n\n\n")
+
+
+	// slices
+	printf("%s%s", slicesTitle, thinLine)
+	doSlicesTest()
+	printf("\n\n\n")
+
+
+	// decomposition
+	printf("%s%s", decomposeTitle, thinLine)
+	// doDecompositionTest()
+	printf("\n\n\n")
+
+
+	// for-loops
+	printf("%s%s", forLoopTitle, thinLine)
+	// doForLoopTest()
+	printf("\n\n\n")
+
+
+
+
+
+	// misc tests
+	printf("%s%s", miscTitle, thinLine)
+	// miscellaneousTests()
+	printf("\n\n\n")
+
+
+
+	// fin.
+	printf("%s\n\n\n\n\n", endTitle)
+}
+
+
+
+
+
+// name idea: mill
+
+
+
+@entry fn main(argc: i32, argv: i8**) -> int
+{
+	runTests()
+
+
+	printf("\n<< done >>\n")
+	return 0
+}
+
+
+
+
+
+
+

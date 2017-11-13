@@ -73,16 +73,16 @@ namespace cgn
 			// then subtract (num - 1)
 
 			if(target == fir::Type::getUint8())
-				return fir::ConstantInt::get(target, (uint8_t) (int8_t) num.toULLong());
+				return fir::ConstantInt::get(target, (uint8_t) (uint64_t) num.toLLong());
 
 			else if(target == fir::Type::getUint16())
-				return fir::ConstantInt::get(target, (uint16_t) (int16_t) num.toULLong());
+				return fir::ConstantInt::get(target, (uint16_t) (uint64_t) num.toLLong());
 
 			else if(target == fir::Type::getUint32())
-				return fir::ConstantInt::get(target, (uint32_t) (int32_t) num.toULLong());
+				return fir::ConstantInt::get(target, (uint32_t) (uint64_t) num.toLLong());
 
 			else if(target == fir::Type::getUint64())
-				return fir::ConstantInt::get(target, (uint64_t) (int64_t) num.toULLong());
+				return fir::ConstantInt::get(target, (uint64_t) (uint64_t) num.toLLong());
 
 			else
 				error("what %s", target->str());

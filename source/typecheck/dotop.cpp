@@ -288,7 +288,9 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 	fs->pushLoc(this->loc);
 	defer(fs->popLoc());
 
+	// warn(this, "hi there");
 	auto lhs = this->left->typecheck(fs);
+
 	if(auto ident = dcast(sst::VarRef, lhs))
 	{
 		auto defs = fs->getDefinitionsWithName(ident->name);
