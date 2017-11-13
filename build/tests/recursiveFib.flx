@@ -2,8 +2,6 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-
 fn doRecursiveFib(n: int, v: int, prev: int) -> int
 {
 	if n == 0 { return prev }

@@ -22,11 +22,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	sst::StateTree* tree = fs->stree;
 	while(tree)
 	{
-		auto it = tree->definitions.find(this->name);
-
-		std::vector<sst::Defn*> vs;
-		if(it != tree->definitions.end())
-			vs = it->second;
+		std::vector<sst::Defn*> vs = tree->getDefinitionsWithName(this->name);
 
 		if(vs.size() > 1)
 		{
@@ -138,7 +134,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 	}
 
-	fs->stree->definitions[this->name].push_back(defn);
+	fs->stree->addDefinition(this->name, defn);
 	// debuglog("check %s -- %p\n", util::serialiseScope(defn->id.scope), fs->stree);
 
 	return defn;

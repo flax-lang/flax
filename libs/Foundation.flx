@@ -4,11 +4,10 @@
 
 import Core
 import FileIO
-// import Format
 import Protocols
 import LibCInterface
 
-import Crypto.MD5
+// import Crypto.MD5
 
 public fn min(a: int, b: int) -> int
 {

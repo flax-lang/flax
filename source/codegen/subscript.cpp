@@ -32,6 +32,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lt = lr.value->getType();
 
 	// assists checking for literal writes later on
+	this->cgSubscripteePtr = lr.pointer;
 	this->cgSubscriptee = lr.value;
 	this->cgIndex = index;
 
@@ -44,8 +45,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(lr.pointer);
 
 		fir::Value* max = 0;
-		if(lt->isDynamicArrayType())	max = cs->irb.CreateGetDynamicArrayLength(lr.pointer);
-		else if(lt->isArraySliceType())	max = cs->irb.CreateGetArraySliceLength(lr.pointer);
+		if(lt->isDynamicArrayType())	max = cs->irb.CreateGetDynamicArrayLength(lr.value);
+		else if(lt->isArraySliceType())	max = cs->irb.CreateGetArraySliceLength(lr.value);
 		else if(lt->isArrayType())		max = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
 
 		auto ind = index;
@@ -63,11 +64,11 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(lt->isDynamicArrayType())
 		{
-			data = cs->irb.CreateGetDynamicArrayData(lr.pointer);
+			data = cs->irb.CreateGetDynamicArrayData(lr.value);
 		}
 		else if(lt->isArraySliceType())
 		{
-			data = cs->irb.CreateGetArraySliceData(lr.pointer);
+			data = cs->irb.CreateGetArraySliceData(lr.value);
 		}
 
 		if(lr.pointer->isImmutable())

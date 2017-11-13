@@ -15,6 +15,11 @@ namespace parser
 	struct ParsedFile;
 }
 
+namespace frontend
+{
+	struct CollectorState;
+}
+
 namespace pts
 {
 	struct Type;
@@ -30,17 +35,27 @@ namespace sst
 {
 	struct StateTree
 	{
-		StateTree(std::string nm, StateTree* p) : name(nm), parent(p) { }
+		StateTree(std::string nm, std::string filename, StateTree* p) : name(nm), topLevelFilename(filename), parent(p) { }
 
 		std::string name;
+		std::string topLevelFilename;
+
 		StateTree* parent = 0;
 
 		std::unordered_map<std::string, StateTree*> subtrees;
-		std::unordered_map<std::string, std::vector<Defn*>> definitions;
-
 		std::unordered_map<std::string, std::vector<ast::FuncDefn*>> unresolvedGenericFunctions;
 
-		std::unordered_set<std::string> imported;
+		using DefnMap = std::unordered_map<std::string, std::vector<Defn*>>;
+
+		// maps from filename to defnmap -- allows tracking definitions by where they came from
+		// so we can resolve the import duplication bullshit
+		std::unordered_map<std::string, DefnMap> definitions;
+
+		DefnMap getAllDefinitions();
+
+		std::vector<Defn*> getDefinitionsWithName(std::string name);
+		void addDefinition(std::string name, Defn* def);
+		void addDefinition(std::string sourceFile, std::string name, Defn* def);
 	};
 
 	struct DefinitionTree
@@ -125,7 +140,8 @@ namespace sst
 			PrettyError* errs, bool allowImplicitSelf);
 	};
 
-	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports);
+	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
+		std::vector<std::pair<std::string, StateTree*>> imports);
 }
 
 

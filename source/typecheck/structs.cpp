@@ -28,7 +28,7 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->stree->definitions[this->name].push_back(defn);
+		fs->stree->addDefinition(this->name, defn);
 		fs->typeDefnMap[str] = defn;
 	}
 
@@ -102,7 +102,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->stree->definitions[this->name].push_back(defn);
+		fs->stree->addDefinition(this->name, defn);
 		fs->typeDefnMap[cls] = defn;
 	}
 

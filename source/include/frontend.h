@@ -9,6 +9,8 @@
 #include "lexer.h"
 #include "parser.h"
 
+#include <unordered_set>
+
 namespace ast
 {
 	struct Expr;
@@ -41,6 +43,10 @@ namespace frontend
 	std::vector<std::string> getLibrariesToLink();
 	std::vector<std::string> getLibrarySearchPaths();
 
+	struct CollectorState
+	{
+		std::unordered_set<std::string> importedFiles;
+	};
 
 	fir::Module* collectFiles(std::string filename);
 
