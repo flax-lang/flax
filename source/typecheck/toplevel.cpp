@@ -57,7 +57,7 @@ namespace sst
 				auto name = defs.first;
 				for(auto def : defs.second)
 				{
-					if(def->privacy == PrivacyLevel::Public)
+					if(def->visibility == VisibilityLevel::Public)
 					{
 						auto others = existing->getDefinitionsWithName(name);
 
@@ -208,7 +208,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	ret->id = Identifier(this->name, IdKind::Name);
 	ret->id.scope = fs->getCurrentScope();
-	ret->privacy = this->privacy;
+	ret->visibility = this->visibility;
 
 	return ret;
 }

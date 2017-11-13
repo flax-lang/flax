@@ -106,7 +106,7 @@ namespace ast
 
 		Block* body = 0;
 
-		PrivacyLevel privacy = PrivacyLevel::Internal;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 
 		bool isEntry = false;
 		bool noMangle = false;
@@ -128,7 +128,7 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
-		PrivacyLevel privacy = PrivacyLevel::Internal;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
 	struct VarDefn : Stmt
@@ -144,7 +144,7 @@ namespace ast
 		bool immut = false;
 		Expr* initialiser = 0;
 
-		PrivacyLevel privacy = PrivacyLevel::Internal;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 		bool noMangle = false;
 	};
 
@@ -504,7 +504,7 @@ namespace ast
 
 		std::string name;
 		std::vector<Stmt*> statements;
-		PrivacyLevel privacy = PrivacyLevel::Internal;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 }
 

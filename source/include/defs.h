@@ -146,7 +146,7 @@ struct Locatable
 	Location loc;
 };
 
-enum class PrivacyLevel
+enum class VisibilityLevel
 {
 	Invalid,
 
