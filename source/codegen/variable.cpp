@@ -161,7 +161,29 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(!defn.pointer && !defn.value)
 			{
-				error(this, "wtf no");
+				auto restore = cs->setNamespace(this->def->id.scope);
+
+				this->def->codegen(cs);
+
+				cs->restoreNamespace(restore);
+
+				it = cs->valueMap.find(this->def);
+				if(it == cs->valueMap.end())
+				{
+					auto r = cs->findValueInTree(this->name);
+					if(r.value || r.pointer)
+					{
+						defn = r;
+					}
+					else
+					{
+						exitless_error(this, "Failed to codegen variable definition for '%s'", this->name);
+						info(this->def, "Offending definition is here:");
+						doTheExit();
+					}
+				}
+
+				defn = it->second;
 			}
 		}
 	}

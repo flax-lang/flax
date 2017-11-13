@@ -63,6 +63,7 @@ build/cmake-output
 CMakeLists.txt
 
 build/test
+build/tester
 build/supertiny
 build/gltest
 

@@ -240,7 +240,6 @@ namespace sst
 			auto defs = tree->getDefinitionsWithName(name);
 			for(auto def : defs)
 			{
-				// warn(def, "%p, %s", def->type, def->type->str());
 				if(auto fn = dcast(FunctionDecl, def))
 				{
 					fns.push_back(fn);

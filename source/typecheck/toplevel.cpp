@@ -14,7 +14,7 @@ using namespace ast;
 
 namespace sst
 {
-	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, std::string filename)
+	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, const std::string& filename)
 	{
 		auto clone = new StateTree(clonee->name, filename, surrogateParent);
 		for(auto sub : clonee->subtrees)
@@ -26,23 +26,23 @@ namespace sst
 		return clone;
 	}
 
-	static StateTree* addTreeToExistingTree(std::unordered_set<std::string> thingsImported, StateTree* existing, StateTree* _tree,
+	static StateTree* addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
 		StateTree* commonParent)
 	{
 		// StateTree* tree = cloneTree(_tree, commonParent);
 		StateTree* tree = _tree;
 
-		// deleteTree(_tree);
-
-
 		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
 		for(auto sub : tree->subtrees)
 		{
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
+			{
 				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing);
-
+			}
 			else
+			{
 				existing->subtrees[sub.first] = cloneTree(sub.second, existing, tree->topLevelFilename);
+			}
 		}
 
 		// then, add all functions and shit
@@ -59,18 +59,10 @@ namespace sst
 				{
 					if(def->privacy == PrivacyLevel::Public)
 					{
-						// check functions
-						// bool skip = false;
 						auto others = existing->getDefinitionsWithName(name);
 
 						for(auto ot : others)
 						{
-							// if(ot == def)
-							// {
-							// 	skip = true;
-							// 	continue;
-							// }
-
 							if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
 							{
 								if(auto v = dynamic_cast<VarDefn*>(ot))
@@ -116,8 +108,11 @@ namespace sst
 							}
 						}
 
-						// if(!skip)
 						existing->addDefinition(tree->topLevelFilename, name, def);
+					}
+					else
+					{
+						// warn(def, "skipping def %s because it is not public", def->id.name);
 					}
 				}
 			}
@@ -213,6 +208,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	ret->id = Identifier(this->name, IdKind::Name);
 	ret->id.scope = fs->getCurrentScope();
+	ret->privacy = this->privacy;
 
 	return ret;
 }

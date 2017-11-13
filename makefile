@@ -50,11 +50,13 @@ LDFLAGS			+= $(SANITISE)
 FLXFLAGS		+= -sysroot $(SYSROOT)
 
 
-TESTBIN			:= build/supertiny
+SUPERTINYBIN	:= build/supertiny
 GLTESTBIN		:= build/gltest
+TESTBIN			:= build/tester
 
-TESTSRC			:= build/supertiny.flx
+SUPERTINYSRC	:= build/supertiny.flx
 GLTESTSRC		:= build/gltest.flx
+TESTSRC			:= build/tester.flx
 
 
 
@@ -86,10 +88,13 @@ ci: linux
 linux: prep jit
 
 jit: build
-	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
+	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
 
 compile: build
-	@$(OUTPUT) $(FLXFLAGS) -o $(TESTBIN) $(TESTSRC) -lm
+	@$(OUTPUT) $(FLXFLAGS) -o $(SUPERTINYBIN) $(SUPERTINYSRC) -lm
+
+test: build
+	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
 
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
