@@ -25,6 +25,9 @@ namespace frontend
 
 		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
 		std::map<std::string, parser::ParsedFile> parsed;
+
+		CollectorState state;
+
 		for(auto file : files)
 		{
 			// parse it all
@@ -45,7 +48,7 @@ namespace frontend
 			}
 
 			// debuglog("typecheck %s\n", file);
-			dtrees[file] = sst::typecheck(parsed[file], imports);
+			dtrees[file] = sst::typecheck(&state, parsed[file], imports);
 		}
 
 		auto dtr = dtrees[full];

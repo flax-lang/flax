@@ -14,11 +14,11 @@ using namespace ast;
 
 namespace sst
 {
-	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent)
+	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, std::string filename)
 	{
-		auto clone = new StateTree(clonee->name, surrogateParent);
+		auto clone = new StateTree(clonee->name, filename, surrogateParent);
 		for(auto sub : clonee->subtrees)
-			clone->subtrees[sub.first] = cloneTree(sub.second, clone);
+			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
 
 		clone->definitions = clonee->definitions;
 		clone->unresolvedGenericFunctions = clonee->unresolvedGenericFunctions;
@@ -26,94 +26,99 @@ namespace sst
 		return clone;
 	}
 
-	static StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent)
+	static StateTree* addTreeToExistingTree(std::unordered_set<std::string> thingsImported, StateTree* existing, StateTree* _tree,
+		StateTree* commonParent)
 	{
 		// StateTree* tree = cloneTree(_tree, commonParent);
 		StateTree* tree = _tree;
 
 		// deleteTree(_tree);
 
-		// if(existing->name != tree->name)
-		// 	error("Cannot merge two StateTrees with differing names ('%s' and '%s')", existing->name.c_str(), tree->name.c_str());
-
 
 		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
 		for(auto sub : tree->subtrees)
 		{
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
-				addTreeToExistingTree(existing->subtrees[sub.first], sub.second, existing);
+				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing);
 
 			else
-				existing->subtrees[sub.first] = cloneTree(sub.second, existing);
+				existing->subtrees[sub.first] = cloneTree(sub.second, existing, tree->topLevelFilename);
 		}
 
 		// then, add all functions and shit
-		for(auto defs : tree->definitions)
+		for(auto defs_with_src : tree->definitions)
 		{
-			auto name = defs.first;
-			for(auto def : defs.second)
+			auto filename = defs_with_src.first;
+			if(thingsImported.find(filename) != thingsImported.end())
+				continue;
+
+			for(auto defs : defs_with_src.second)
 			{
-				if(def->privacy == PrivacyLevel::Public)
+				auto name = defs.first;
+				for(auto def : defs.second)
 				{
-					// check functions
-					bool skip = false;
-					auto others = existing->definitions[name];
-
-					for(auto ot : others)
+					if(def->privacy == PrivacyLevel::Public)
 					{
-						if(ot == def)
-						{
-							skip = true;
-							continue;
-						}
+						// check functions
+						// bool skip = false;
+						auto others = existing->getDefinitionsWithName(name);
 
-						if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
+						for(auto ot : others)
 						{
-							if(auto v = dynamic_cast<VarDefn*>(ot))
-							{
-								exitless_error(fn, "Conflicting definition for function '%s'; was previously defined as a variable");
-								info(ot, "Conflicting definition was here:");
+							// if(ot == def)
+							// {
+							// 	skip = true;
+							// 	continue;
+							// }
 
-								doTheExit();
-							}
-							else if(auto f = dynamic_cast<FunctionDecl*>(ot))
+							if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
 							{
-								using Param = sst::FunctionDecl::Param;
-								if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
-									util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
+								if(auto v = dynamic_cast<VarDefn*>(ot))
 								{
-									exitless_error(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name);
-									info(ot, "Conflicting definition was here: (%p vs %p)", f, fn);
+									exitless_error(fn, "Conflicting definition for function '%s'; was previously defined as a variable");
+									info(ot, "Conflicting definition was here:");
 
 									doTheExit();
 								}
+								else if(auto f = dynamic_cast<FunctionDecl*>(ot))
+								{
+									using Param = sst::FunctionDecl::Param;
+									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
+										util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
+									{
+										exitless_error(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name);
+										info(ot, "Conflicting definition was here: (%p vs %p)", f, fn);
+
+										doTheExit();
+									}
+								}
+								else
+								{
+									error(def, "??");
+								}
+							}
+							else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
+							{
+								exitless_error(def, "Duplicate definition for variable '%s'");
+
+								for(auto ot : others)
+									info(ot, "Previously defined here:");
+
+								doTheExit();
 							}
 							else
 							{
-								error(def, "??");
+								// probably a class or something
+
+								exitless_error(def, "Duplicate definition of '%s'", ot->id.name);
+								info(ot, "Conflicting definition was here:");
+								doTheExit();
 							}
 						}
-						else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
-						{
-							exitless_error(def, "Duplicate definition for variable '%s'");
 
-							for(auto ot : others)
-								info(ot, "Previously defined here:");
-
-							doTheExit();
-						}
-						else
-						{
-							// probably a class or something
-
-							exitless_error(def, "Duplicate definition of '%s'", ot->id.name);
-							info(ot, "Conflicting definition was here:");
-							doTheExit();
-						}
+						// if(!skip)
+						existing->addDefinition(tree->topLevelFilename, name, def);
 					}
-
-					if(!skip)
-						existing->definitions[name].push_back(def);
 				}
 			}
 		}
@@ -130,36 +135,16 @@ namespace sst
 
 
 
-
-	DefinitionTree* typecheck(const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports)
+	using frontend::CollectorState;
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports)
 	{
-		StateTree* tree = new sst::StateTree(file.moduleName, 0);
+		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ filename, import ] : imports)
 		{
-			// debuglog("%s/%s/%p\n", filename, import->name, import->parent);
+			addTreeToExistingTree(fs->dtree->thingsImported, tree, import, 0);
 			fs->dtree->thingsImported.insert(filename);
-
-			// for(auto i : tree->imported)
-			// 	debuglog("%s has %s\n", file.moduleName, i);
-
-			// for(auto i : import->imported)
-			// 	debuglog("%s has %s\n", import->name, i);
-
-			if(tree->imported.find(filename) == tree->imported.end())
-			{
-				// debuglog("have not imported '%s' before on '%s'\n", filename, file.moduleName);
-				// debuglog("tree = %p\n", tree);
-				addTreeToExistingTree(tree, import, 0);
-
-				tree->imported.insert(filename);
-				tree->imported.insert(import->imported.begin(), import->imported.end());
-			}
-			else
-			{
-				// debuglog("imported '%s' before in '%s', not importing again\n", filename, file.moduleName);
-			}
 		}
 
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
@@ -221,7 +206,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	}
 
 	if(tree->parent)
-		tree->parent->definitions[this->name].push_back(ret);
+		tree->parent->addDefinition(tree->topLevelFilename, this->name, ret);
 
 	if(this->name != "")
 		fs->popTree();

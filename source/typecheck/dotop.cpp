@@ -70,6 +70,36 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type->str());
 		}
 	}
+	else if(type->isDynamicArrayType() || type->isArraySliceType() || type->isArrayType())
+	{
+		auto rhs = dotop->right;
+		if(auto vr = dcast(ast::Ident, rhs))
+		{
+			// TODO: Extension support here
+			fir::Type* res = 0;
+			if(vr->name == "length" || vr->name == "count")
+				res = fir::Type::getInt64();
+
+			else if(type->isDynamicArrayType() && (vr->name == "capacity" || vr->name == "rc"))
+				res = fir::Type::getInt64();
+
+			else if(vr->name == "ptr")
+				res = fir::Type::getInt8Ptr();
+
+			else
+				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type->str());
+
+			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+			tmp->lhs = lhs;
+			tmp->name = vr->name;
+
+			return tmp;
+		}
+		else
+		{
+			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type->str());
+		}
+	}
 
 	if(!type->isStructType() && !type->isClassType())
 	{
@@ -302,7 +332,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			if(auto vr = dcast(sst::VarRef, expr))
 			{
 				// check for global vars
-				auto vrs = fs->stree->definitions[vr->name];
+				auto vrs = fs->stree->getDefinitionsWithName(vr->name);
 
 				// must make sure it's a var/func defn and not a namespace one
 				if(vrs.size() == 1 && (dynamic_cast<sst::VarDefn*>(vrs[0]) || dynamic_cast<sst::FunctionDefn*>(vrs[0])))

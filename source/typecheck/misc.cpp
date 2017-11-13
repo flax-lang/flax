@@ -76,7 +76,7 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = new StateTree(name, this->stree);
+			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree);
 			this->stree->subtrees[name] = newtree;
 			this->stree = newtree;
 		}
@@ -196,6 +196,42 @@ namespace sst
 		this->stree = tree;
 	}
 
+
+	std::unordered_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
+	{
+		std::unordered_map<std::string, std::vector<Defn*>> ret;
+		for(auto srcs : this->definitions)
+			ret.insert(srcs.second.begin(), srcs.second.end());
+
+		return ret;
+	}
+
+	std::vector<Defn*> StateTree::getDefinitionsWithName(std::string name)
+	{
+		std::vector<Defn*> ret;
+		for(auto srcs : this->definitions)
+		{
+			auto defs = srcs.second[name];
+
+			if(defs.size() > 0) ret.insert(ret.end(), defs.begin(), defs.end());
+		}
+
+		return ret;
+	}
+
+	void StateTree::addDefinition(std::string sourceFile, std::string name, Defn* def)
+	{
+		this->definitions[sourceFile][name].push_back(def);
+	}
+
+	void StateTree::addDefinition(std::string name, Defn* def)
+	{
+		this->definitions[this->topLevelFilename][name].push_back(def);
+	}
+
+
+
+
 	std::vector<Defn*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
 	{
 		if(tree == 0)
@@ -206,7 +242,7 @@ namespace sst
 		iceAssert(tree);
 		while(tree)
 		{
-			auto fns = tree->definitions[name];
+			auto fns = tree->getDefinitionsWithName(name);
 			ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
@@ -227,7 +263,7 @@ namespace sst
 		auto _tree = tree->parent;
 		while(_tree)
 		{
-			if(auto defs = _tree->definitions[defn->id.name]; defs.size() > 0)
+			if(auto defs = _tree->getDefinitionsWithName(defn->id.name); defs.size() > 0)
 			{
 				if(!didWarnAboutShadow)
 				{
@@ -243,7 +279,7 @@ namespace sst
 		}
 
 		// ok, now check only the current scope
-		auto defs = tree->definitions[defn->id.name];
+		auto defs = tree->getDefinitionsWithName(defn->id.name);
 
 		bool didError = false;
 		for(auto def : defs)
@@ -289,11 +325,6 @@ sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 }
 
 sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
-sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	return 0;
 }

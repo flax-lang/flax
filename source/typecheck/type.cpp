@@ -133,7 +133,7 @@ namespace sst
 					}
 
 					// find the definitions.
-					auto defs = begin->definitions[actual];
+					auto defs = begin->getDefinitionsWithName(actual);
 					if(defs.empty())
 					{
 						error(this->loc(), "No type named '%s' in scope '%s'", actual, begin->name);

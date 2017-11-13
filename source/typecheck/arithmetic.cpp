@@ -91,6 +91,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
 				return left;
 
+			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
+				return (left->isConstantNumberType() ? right : left);
+
 		} break;
 
 		case Operator::Subtract: {
@@ -99,6 +102,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 
 			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 				return left;
+
+			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
+				return (left->isConstantNumberType() ? right : left);
 
 		} break;
 
@@ -109,6 +115,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 				return left;
 
+			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
+				return (left->isConstantNumberType() ? right : left);
+
 		} break;
 
 		case Operator::Divide: {
@@ -117,6 +126,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 
 			else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 				return left;
+
+			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
+				return (left->isConstantNumberType() ? right : left);
 
 		} break;
 
@@ -134,6 +146,10 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			else if((left->isIntegerType() && right->isFloatingPointType()) || (left->isFloatingPointType() && right->isIntegerType()))
 			{
 				return (left->isFloatingPointType() ? left : right);
+			}
+			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
+			{
+				return (left->isConstantNumberType() ? right : left);
 			}
 			else
 			{
