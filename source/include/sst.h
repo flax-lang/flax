@@ -503,6 +503,25 @@ namespace sst
 		// std::string generatedScopeName;
 	};
 
+
+
+	struct EnumDefn : TypeDefn
+	{
+		EnumDefn(const Location& l) : TypeDefn(l) { }
+		~EnumDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		struct Case
+		{
+			std::string name;
+			Expr* value = 0;
+		};
+
+		std::string name;
+		std::vector<Case> cases;
+		fir::Type* memberType = 0;
+	};
 }
 
 

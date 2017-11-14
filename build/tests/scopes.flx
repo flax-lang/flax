@@ -64,7 +64,7 @@ enum StrongEnum
 
 class Sheep
 {
-	var thing = 43
+	var thing: int = 43
 	var foo: Something
 
 	static var afoo: Something

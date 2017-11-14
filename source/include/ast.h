@@ -294,6 +294,23 @@ namespace ast
 		std::vector<TypeDefn*> nestedTypes;
 	};
 
+	struct EnumDefn : TypeDefn
+	{
+		EnumDefn(const Location& l) : TypeDefn(l) { }
+		~EnumDefn() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		struct Case
+		{
+			std::string name;
+			Expr* value = 0;
+		};
+
+		std::string name;
+		std::vector<Case> cases;
+		pts::Type* memberType = 0;
+	};
 
 	struct TypeExpr : Expr
 	{
