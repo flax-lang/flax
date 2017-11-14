@@ -133,6 +133,82 @@ namespace parser
 	}
 
 
+	EnumDefn* parseEnum(State& st)
+	{
+		iceAssert(st.eat() == TT::Enum);
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'enum'", st.front().str());
+
+		auto idloc = st.loc();
+		std::string name = st.eat().str();
+		pts::Type* memberType = 0;
+
+		if(st.front() == TT::Colon)
+		{
+			st.eat();
+			memberType = parseType(st);
+		}
+
+		// ok...
+		st.skipWS();
+		if(st.eat() != TT::LBrace)
+			expectedAfter(st.ploc(), "opening brace", "'enum'", st.front().str());
+
+		std::vector<EnumDefn::Case> cases;
+		while(st.front() != TT::RBrace)
+		{
+			st.skipWS();
+
+			if(st.eat() != TT::Case)
+				expected(st.ploc(), "'case' inside enum body", st.prev().str());
+
+			if(st.front() != TT::Identifier)
+				expectedAfter(st.loc(), "identifier", "'case' in enum body", st.front().str());
+
+			std::string cn = st.eat().str();
+			Expr* value = 0;
+
+			if(st.frontAfterWS() == TT::Equal)
+			{
+				if(memberType == 0)
+					error(st.loc(), "Enumeration member type must be specified when assigning explicit values to cases");
+
+				// ok, parse a value
+				st.eat();
+				value = parseExpr(st);
+			}
+
+			// ok.
+			cases.push_back(EnumDefn::Case { .name = cn, .value = value });
+
+			// do some things
+			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
+			{
+				st.pop();
+			}
+			else if(st.front() == TT::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				error(st.loc(), "Unexpected token '%s' inside enum body", st.front().str());
+			}
+		}
+
+		iceAssert(st.front() == TT::RBrace);
+		st.eat();
+
+		auto ret = new EnumDefn(idloc);
+		ret->name = name;
+		ret->cases = cases;
+		ret->memberType = memberType;
+
+
+		return ret;
+	}
+
+
 
 
 

@@ -10,6 +10,7 @@ import "limits"
 import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
+import "tests/scopes"
 import "tests/intlimits"
 
 fn runTests()
