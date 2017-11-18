@@ -816,7 +816,3 @@ namespace fir
 
 
 
-
-
-
-

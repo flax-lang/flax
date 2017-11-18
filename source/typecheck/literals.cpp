@@ -55,7 +55,7 @@ sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 	if(infer)
 	{
 		if(!infer->isTupleType())
-			error(this, "Assigning tuple to inferred non-tuple type '%s'", infer->str());
+			error(this, "Assigning tuple to inferred non-tuple type '%s'", infer);
 
 		auto tt = infer->toTupleType();
 		if(tt->getElementCount() != this->values.size())
@@ -81,7 +81,7 @@ sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 		k++;
 	}
 
-	// warn(this, "%s", fir::TupleType::get(fts)->str());
+	// warn(this, "%s", fir::TupleType::get(fts));
 	auto ret = new sst::LiteralTuple(this->loc, fir::TupleType::get(fts));
 	ret->values = vals;
 
@@ -132,7 +132,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
 		{
-			error(this, "Invalid type '%s' inferred for array literal", infer->str());
+			error(this, "Invalid type '%s' inferred for array literal", infer);
 		}
 
 		type = infer;
@@ -144,7 +144,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		if(infer)
 		{
 			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
-				error(this, "Invalid type '%s' inferred for array literal", infer->str());
+				error(this, "Invalid type '%s' inferred for array literal", infer);
 
 			elmty = infer->getArrayElementType();
 		}
@@ -164,7 +164,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			else if(elmty != e->type)
 			{
 				error(v, "Mismatched type for expression in array literal; expected '%s' as inferred from previous elements, found '%s'",
-					elmty->str(), e->type->str());
+					elmty, e->type);
 			}
 
 			vals.push_back(e);
@@ -187,7 +187,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else
 		{
-			error(this, "Invalid type '%s' inferred for array literal", infer->str());
+			error(this, "Invalid type '%s' inferred for array literal", infer);
 		}
 	}
 

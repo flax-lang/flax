@@ -219,7 +219,7 @@ namespace backend
 		}
 		else
 		{
-			error("Unimplememented type '%s' for LLVM backend", type->str());
+			error("Unimplememented type '%s' for LLVM backend", type);
 		}
 	}
 
@@ -1385,9 +1385,9 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							if(a->getType() != b->getType()->getPointerElementType())
-							{
-								error("cannot store %s into %s", inst->operands[0]->getType()->str().c_str(), inst->operands[1]->getType()->str().c_str());
-							}
+								error("cannot store '%s' into '%s'", inst->operands[0]->getType(), inst->operands[1]->getType());
+
+
 							llvm::Value* ret = builder.CreateStore(a, b);
 							addValueToMap(ret, inst->realOutput);
 							break;

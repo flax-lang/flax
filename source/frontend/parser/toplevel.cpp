@@ -45,7 +45,7 @@ namespace parser
 				if(tokens[i].type != TT::NewLine && tokens[i].type != TT::Semicolon && tokens[i].type != TT::Comment)
 				{
 					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'",
-						tokens[i].text.to_string().c_str());
+						tokens[i].text.to_string());
 				}
 
 				// i++ handled by loop
@@ -180,7 +180,7 @@ namespace parser
 					{
 						if(!isFirst || name != "")
 						{
-							error(st, "Export declaration not allowed here (%s / %d)", name.c_str(), isFirst);
+							error(st, "Export declaration not allowed here (%s / %d)", name, isFirst);
 						}
 						else
 						{
@@ -221,7 +221,7 @@ namespace parser
 		auto modname = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");
 
-		// debuglog("module -> %s\n", modname.c_str());
+		// debuglog("module -> %s\n", modname);
 
 		return ParsedFile {
 			.name = filename,

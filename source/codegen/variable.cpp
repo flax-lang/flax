@@ -26,7 +26,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			HighlightOptions hs;
 			hs.underlines.push_back(this->init->loc);
-			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type->str(), val->getType()->str());
+			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, val->getType());
 		}
 
 		return nv;
@@ -202,7 +202,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// make sure types match... should we bother?
 	if(value->getType() != this->type)
-		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type->str(), value->getType()->str());
+		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
 	return CGResult(value, defn.pointer, CGResult::VK::LValue);
 }

@@ -119,7 +119,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else
 	{
-		_error_and_exit("unsupported ir type??? (%s)", t->str().c_str());
+		_error_and_exit("unsupported ir type??? ('%s')", t);
 	}
 }
 

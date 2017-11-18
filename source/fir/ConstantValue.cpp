@@ -237,14 +237,13 @@ namespace fir
 	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
-			_error_and_exit("Mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
+			error("Mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
 
 		for(size_t i = 0; i < st->getElementCount(); i++)
 		{
 			if(st->getElementN(i) != members[i]->getType())
 			{
-				_error_and_exit("Mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i)->str().c_str(),
-					members[i]->getType()->str().c_str());
+				error("Mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
 			}
 		}
 
@@ -382,7 +381,7 @@ namespace fir
 			if(target == fir::Type::getFloat32())		return (num >= -mpr(__FLT_MAX__) && num <= mpr(__FLT_MAX__));
 			else if(target == fir::Type::getFloat64())	return (num >= -mpr(__DBL_MAX__) && num <= mpr(__DBL_MAX__));
 			else if(target == fir::Type::getFloat80())	return (num >= -mpr(__LDBL_MAX__) && num <= mpr(__LDBL_MAX__));
-			else										error("Unsupported type '%s' for literal number", target->str());
+			else										error("Unsupported type '%s' for literal number", target);
 		}
 		else
 		{
@@ -398,7 +397,7 @@ namespace fir
 			else if(target == fir::Type::getUint16())	return (num <= mpr(UINT16_MAX));
 			else if(target == fir::Type::getUint32())	return (num <= mpr(UINT32_MAX));
 			else if(target == fir::Type::getUint64())	return (num <= mpr(UINT64_MAX));
-			else										error("Unsupported type '%s' for literal number", target->str());
+			else										error("Unsupported type '%s' for literal number", target);
 		}
 	}
 }

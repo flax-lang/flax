@@ -19,8 +19,8 @@ namespace fir
 		{
 			if(c.second->getType() != this->caseType)
 			{
-				_error_and_exit("Mismatched types: case '%s' in enum '%s' has type '%s', in enum of type '%s'", c.first.c_str(),
-					name.name.c_str(), c.second->getType()->str().c_str(), this->caseType->str().c_str());
+				error("Mismatched types: case '%s' in enum '%s' has type '%s', in enum of type '%s'", c.first,
+					name.name, c.second->getType(), this->caseType);
 			}
 		}
 
@@ -95,7 +95,7 @@ namespace fir
 		{
 			if(t->isEnumType() && t->toEnumType()->getEnumName() == name)
 			{
-				_error_and_exit("Enum '%s' already exists", name.str().c_str());
+				error("Enum '%s' already exists", name.str());
 			}
 		}
 

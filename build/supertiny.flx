@@ -173,6 +173,12 @@ public fn twice(a: int) -> int { return 2 * a }
 
 	printIntegerLimits()
 
+	enum Foob: int
+	{
+		case one = 10
+		case two = 20
+		case three = "30"
+	}
 
 
 

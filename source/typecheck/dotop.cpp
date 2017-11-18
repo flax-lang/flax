@@ -22,7 +22,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 	{
 		ast::LitNumber* ln = dcast(ast::LitNumber, dotop->right);
 		if(!ln)
-			error(dotop->right, "Right-hand side of dot-operator on tuple type ('%s') must be a number literal", type->str());
+			error(dotop->right, "Right-hand side of dot-operator on tuple type ('%s') must be a number literal", type);
 
 		if(ln->num.find(".") != std::string::npos || ln->num.find("-") != std::string::npos)
 			error(dotop->right, "Tuple indices must be non-negative integer numerical literals");
@@ -57,7 +57,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				res = fir::Type::getInt8Ptr();
 
 			else
-				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type->str());
+				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type);
 
 			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
 			tmp->lhs = lhs;
@@ -67,7 +67,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		}
 		else
 		{
-			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type->str());
+			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
 		}
 	}
 	else if(type->isDynamicArrayType() || type->isArraySliceType() || type->isArrayType())
@@ -87,7 +87,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				res = fir::Type::getInt8Ptr();
 
 			else
-				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type->str());
+				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type);
 
 			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
 			tmp->lhs = lhs;
@@ -97,13 +97,13 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		}
 		else
 		{
-			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type->str());
+			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
 		}
 	}
 
 	if(!type->isStructType() && !type->isClassType())
 	{
-		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
+		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
 
 
@@ -239,7 +239,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 					if(!infer->isFunctionType())
 					{
 						error(dotop->right, "Non-function type '%s' inferred for reference to method '%s' of struct '%s'",
-							infer->str(), name, str->id.name);
+							infer, name, str->id.name);
 					}
 
 					// ok.
@@ -254,7 +254,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 					// hm, okay
 					error(dotop->right, "No matching method named '%s' with signature '%s' to match inferred type",
-						name, infer->str());
+						name, infer);
 				}
 
 				auto ret = new sst::FieldDotOp(dotop->loc, retty);
@@ -272,7 +272,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 	}
 	else
 	{
-		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type->str());
+		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
 }
 

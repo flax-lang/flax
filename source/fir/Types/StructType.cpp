@@ -35,10 +35,7 @@ namespace fir
 				std::vector<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
 
 				if(!areTypeListsEqual(tl1, tl2))
-				{
-					std::string mstr = typeListToString(tl1);
-					error("Conflicting types for named struct %s:\n%s vs %s", name.str().c_str(), t->str().c_str(), mstr.c_str());
-				}
+					error("Conflicting types for named struct '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
 
 				// ok.
 				break;
