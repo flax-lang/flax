@@ -282,7 +282,7 @@ namespace parser
 			else
 			{
 				error(st, "Unexpected token '%s' after opening '['; expected some kind of array type",
-					st.front().str().c_str());
+					st.front().str());
 			}
 		}
 
@@ -309,7 +309,7 @@ namespace parser
 				else if(st.front() == TT::Identifier)
 				{
 					if(s.back() != '.')
-						error(st, "Unexpected identifer '%s' in type", st.front().str().c_str());
+						error(st, "Unexpected identifer '%s' in type", st.front().str());
 
 					else
 						s += st.eat().str();
@@ -359,7 +359,7 @@ namespace parser
 					}
 					else
 					{
-						// error(st, "Unexpected token '%s' in type mapping", st.front().str().c_str());
+						// error(st, "Unexpected token '%s' in type mapping", st.front().str());
 						break;
 					}
 				}
@@ -387,7 +387,7 @@ namespace parser
 				auto ty = parseType(st);
 
 				if(st.front() != TT::Comma && st.front() != TT::RParen)
-					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str().c_str());
+					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str());
 
 				else if(st.front() == TT::Comma)
 					st.eat();
@@ -428,7 +428,7 @@ namespace parser
 		}
 		else
 		{
-			error(st, "Unexpected token '%s' while parsing type", st.front().str().c_str());
+			error(st, "Unexpected token '%s' while parsing type", st.front().str());
 		}
 	}
 }

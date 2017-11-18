@@ -249,12 +249,12 @@ namespace cgn
 	{
 		if(!storage->getType()->isPointerType())
 		{
-			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType()->str());
+			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType());
 		}
 		else if(storage->getType()->getPointerElementType() != value->getType())
 		{
-			error(this->loc(), "Cannot store value of type '%s' into storage of type '%s'", value->getType()->str(),
-				storage->getType()->str());
+			error(this->loc(), "Cannot store value of type '%s' into storage of type '%s'", value->getType(),
+				storage->getType());
 		}
 
 		// ok, then

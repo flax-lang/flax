@@ -45,7 +45,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* firstCond = this->cases.front().cond->codegen(cs, fir::Type::getBool()).value;
 
 	if(!firstCond->getType()->isBoolType())
-		error(this->cases.front().cond, "Non-boolean type '%s' cannot be used as a conditional", firstCond->getType()->str());
+		error(this->cases.front().cond, "Non-boolean type '%s' cannot be used as a conditional", firstCond->getType());
 
 
 	// do a comparison
@@ -75,7 +75,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			auto cond = elif.cond->codegen(cs, fir::Type::getBool()).value;
 			if(!cond->getType()->isBoolType())
-				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType()->str());
+				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType());
 
 			// ok
 			auto trueblk = cs->irb.addNewBlockAfter("trueCaseR", cs->irb.getCurrentBlock());
@@ -151,7 +151,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		auto cv = cs->oneWayAutocast(c->codegen(cs, fir::Type::getBool()), fir::Type::getBool());
 		if(cv.value->getType() != fir::Type::getBool())
-			error(c, "Non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType()->str());
+			error(c, "Non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType());
 
 		// ok
 		return cs->irb.CreateICmpEQ(cv.value, fir::ConstantBool::get(true));

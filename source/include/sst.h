@@ -518,7 +518,6 @@ namespace sst
 			Expr* value = 0;
 		};
 
-		std::string name;
 		std::vector<Case> cases;
 		fir::Type* memberType = 0;
 	};
