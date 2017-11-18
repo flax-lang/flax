@@ -227,7 +227,7 @@ namespace backend
 				int fd = open(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
 				if(fd == -1)
 				{
-					exitless_error("Unable to create temporary file (%s) for linking", objname.c_str());
+					exitless_error("Unable to create temporary file ('%s') for linking", objname);
 					perror("open(2) error");
 
 					doTheExit();
@@ -369,8 +369,7 @@ namespace backend
 		const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
 		if(!theTarget)
 		{
-			error("failed in creating target: (wanted: '%s');"
-					"llvm error: %s\n", targetTriple.str().c_str(), err_str.c_str());
+			error("failed in creating target: (wanted: '%s'); llvm error: %s\n", targetTriple.str(), err_str);
 		}
 
 
@@ -398,8 +397,7 @@ namespace backend
 		}
 		else
 		{
-			error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)",
-				frontend::getParameter("mcmodel").c_str());
+			error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
 		}
 
 
@@ -551,7 +549,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load library '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
+				error("Failed to load library '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 
@@ -562,7 +560,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load framework '%s', dlopen failed with error:\n%s", l.c_str(), err.c_str());
+				error("Failed to load framework '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 

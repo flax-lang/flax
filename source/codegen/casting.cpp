@@ -43,24 +43,24 @@ namespace cgn
 	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, mpfr::mpreal num, fir::Type* target, bool isAutocast)
 	{
 		if(!(target->isIntegerType() || target->isFloatingPointType()))
-			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target->str());
+			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target);
 
 
 		bool signConvert = false;
 		if(!mpfr::isint(num) && target->isIntegerType())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting floating-point literal to integer type '%s' will cause a truncation", target->str());
+			warn(cs->loc(), "Casting floating-point literal to integer type '%s' will cause a truncation", target);
 		}
 		else if(target->isIntegerType() && !target->isSignedIntType() && num < 0)
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target->str()), signConvert = true;
+			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target), signConvert = true;
 		}
 
 		// ok, just do it
 		auto _doWarn = [](Location e, fir::Type* t) {
-			warn(e, "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type", t->str());
+			warn(e, "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type", t);
 		};
 
 		if(!fir::checkLiteralFitsIntoType(target->toPrimitiveType(), num))
@@ -85,7 +85,7 @@ namespace cgn
 				return fir::ConstantInt::get(target, (uint64_t) (uint64_t) num.toLLong());
 
 			else
-				error("what %s", target->str());
+				error("what %s", target);
 		}
 
 		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num.toFloat());
@@ -99,7 +99,7 @@ namespace cgn
 		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, (uint16_t) num.toULLong());
 		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, (uint32_t) num.toULLong());
 		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, (uint64_t) num.toULLong());
-		else										error("unsupported type '%s'", target->str());
+		else										error("unsupported type '%s'", target);
 	}
 
 
@@ -151,7 +151,7 @@ namespace cgn
 		}
 
 		// nope.
-		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType->str(), target->str());
+		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
 		return CGResult(0);
 	}
 
@@ -219,7 +219,7 @@ namespace cgn
 		}
 
 		// nope...
-		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", lt->str(), rt->str());
+		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", lt, rt);
 		return { CGResult(0), CGResult(0) };
 	}
 }

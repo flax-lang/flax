@@ -69,14 +69,14 @@ sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			hs.underlines.push_back(this->value->loc);
 
 			error(this, hs, "Cannot return a value of type '%s' in a function returning type '%s'",
-				ret->value->type->str(), retty->str());
+				ret->value->type, retty);
 		}
 
 		// ok
 	}
 	else if(!retty->isVoidType())
 	{
-		error(this, "Expected value after 'return'; function return type is '%s'", retty->str());
+		error(this, "Expected value after 'return'; function return type is '%s'", retty);
 	}
 
 	ret->expectedType = retty;
@@ -136,7 +136,7 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 			{
 				if(retstmt->expectedType->isVoidType())
 				{
-					error(retstmt, "Expected value after 'return'; function return type is '%s'", retty->str());
+					error(retstmt, "Expected value after 'return'; function return type is '%s'", retty);
 				}
 				else
 				{
@@ -144,7 +144,7 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 					hs.underlines.push_back(retstmt->value->loc);
 
 					error(retstmt, hs, "Cannot return a value of type '%s' in a function returning type '%s'",
-						retstmt->expectedType->str(), retty->str());
+						retstmt->expectedType, retty);
 				}
 			}
 
@@ -173,7 +173,7 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 	if(!expected->isVoidType() && !ret)
 	{
 		exitless_error(fn, "Not all paths return a value; expected value of type '%s'",
-			expected->str());
+			expected);
 
 		for(auto b : faults)
 			info(b->closingBrace, "Potentially missing return statement here:");
@@ -213,7 +213,7 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	{
 		ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
 		if(ret->cond->type != fir::Type::getBool())
-			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type->str());
+			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
 	}
 
 	return ret;

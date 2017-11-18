@@ -10,6 +10,18 @@
 #include "precompile.h"
 
 
+namespace stx
+{
+	using string_view = std::experimental::string_view;
+}
+
+namespace fir
+{
+	struct Type;
+	struct Value;
+}
+
+
 template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)
 {
@@ -24,16 +36,6 @@ template <typename... Ts>
 
 #define TAB_WIDTH 4
 
-namespace stx
-{
-	using string_view = std::experimental::string_view;
-}
-
-namespace fir
-{
-	struct Type;
-	struct Value;
-}
 
 enum class IdKind
 {

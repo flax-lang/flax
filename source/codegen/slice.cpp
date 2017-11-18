@@ -48,10 +48,10 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 	iceAssert(endIndex);
 
 	if(!beginIndex->getType()->isIntegerType())
-		error(bexpr, "Expected integer type for array slice; got '%s'", beginIndex->getType()->str().c_str());
+		error(bexpr, "Expected integer type for array slice; got '%s'", beginIndex->getType());
 
 	if(!endIndex->getType()->isIntegerType())
-		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType()->str().c_str());
+		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType());
 
 
 	fir::Value* length = cs->irb.CreateSub(endIndex, beginIndex);
@@ -242,7 +242,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		error(this, "Cannot slice unsupported type '%s'", ty->str());
+		error(this, "Cannot slice unsupported type '%s'", ty);
 	}
 }
 

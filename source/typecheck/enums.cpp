@@ -16,5 +16,28 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return 0;
+	auto defn = new sst::EnumDefn(this->loc);
+	defn->id = Identifier(this->name, IdKind::Type);
+	defn->id.scope = fs->getCurrentScope();
+
+
+	fir::Type* base = (this->memberType ? fs->convertParserTypeToFIR(this->memberType) : nullptr);
+	defn->memberType = base;
+
+	for(auto cs : this->cases)
+	{
+		sst::Expr* val = 0;
+		if(cs.value)
+		{
+			iceAssert(base);
+			val = cs.value->typecheck(fs, base);
+
+			if(val->type != base)
+				error(cs.value, "Mismatched type in enum case value; expected type '%s', but found type '%s'", base, val->type);
+		}
+
+		defn->cases.push_back(sst::EnumDefn::Case { .name = cs.name, .value = val });
+	}
+
+	return defn;
 }

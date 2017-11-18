@@ -11,7 +11,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-		error(this, "Non-numerical type '%s' inferred for literal number", infer->str());
+		error(this, "Non-numerical type '%s' inferred for literal number", infer);
 		// return CGResult(fir::ConstantNumber::get(this->number));
 
 	// todo: do some proper thing
@@ -23,7 +23,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			error("stop playing games");
 
 		if(!mpfr::isint(this->number) && !infer->isFloatingPointType())
-			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer->str());
+			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
 
 		return CGResult(cs->unwrapConstantNumber(this->number, infer), 0, CGResult::VK::LitRValue);
 	}
@@ -50,7 +50,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(v, "Constant value required in fixed array literal");
 
 			if(cv->getType() != elmty)
-				error(v, "Mismatched type for array literal; expected element type '%s', found '%s'", elmty->str(), cv->getType()->str());
+				error(v, "Mismatched type for array literal; expected element type '%s', found '%s'", elmty, cv->getType());
 
 			vals.push_back(cv);
 		}
@@ -112,7 +112,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				if(vl.value->getType() != elmty)
 				{
 					error(v, "Mismatched type for array literal; expected element type '%s', found '%s'",
-						elmty->str(), vl.value->getType()->str());
+						elmty, vl.value->getType());
 				}
 
 				// ok, it works
@@ -177,7 +177,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(vr.value->getType() != ty)
 		{
 			error(this->values[i], "Mismatched types in tuple element %zu; expected type '%s', found type '%s'",
-				i, ty->str(), vr.value->getType()->str());
+				i, ty, vr.value->getType());
 		}
 
 		tup = cs->irb.CreateInsertValue(tup, { i }, vr.value);

@@ -71,7 +71,7 @@ namespace parser
 			}
 			else
 			{
-				error(st, "Unexpected token '%s' in array decomposition", st.front().str().c_str());
+				error(st, "Unexpected token '%s' in array decomposition", st.front().str());
 			}
 
 			if(st.front() == TT::Comma)

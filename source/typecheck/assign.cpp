@@ -29,7 +29,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 		if(fs->getBinaryOpResultType(lt, rt, nonass) == 0)
 		{
 			error(this, "Unsupported operator '%s' between types '%s' and '%s', in compound assignment operator '%s'",
-				operatorToString(nonass), lt->str(), rt->str(), operatorToString(this->op));
+				operatorToString(nonass), lt, rt, operatorToString(this->op));
 		}
 	}
 
@@ -51,7 +51,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 		hs.underlines.push_back(this->left->loc);
 		hs.underlines.push_back(this->right->loc);
 
-		error(this, hs, "Cannot assign value of type '%s' to expected type '%s'", rt->str(), lt->str());
+		error(this, hs, "Cannot assign value of type '%s' to expected type '%s'", rt, lt);
 	}
 
 	auto ret = new sst::AssignOp(this->loc);

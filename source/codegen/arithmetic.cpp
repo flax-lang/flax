@@ -158,7 +158,7 @@ namespace sst
 				if(!res)
 				{
 					error(this, "No appropriate cast from type '%s' to '%s'; use 'as!' to force a bitcast",
-						vt->str(), target->str());
+						vt, target);
 				}
 
 				return CGResult(res);
@@ -177,8 +177,8 @@ namespace sst
 		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
 		if(!l.value || !r.value)
 		{
-			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType()->str(),
-				_rr.value->getType()->str());
+			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType(),
+				_rr.value->getType());
 		}
 
 		auto lt = l.value->getType();
@@ -329,7 +329,7 @@ namespace cgn
 
 			ho.drawCaret = true;
 			error(loc, ho, "Unsupported operator '%s' between types '%s' and '%s'", operatorToString(op),
-				a->str(), b->str());
+				a, b);
 		};
 
 
