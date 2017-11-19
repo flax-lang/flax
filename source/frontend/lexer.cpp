@@ -574,7 +574,8 @@ namespace lexer
 
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
-					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead, stream[i], stream.to_string(), *offset);
+					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead,
+						stream[i], stx::to_string(stream), *offset);
 				}
 			}
 
@@ -647,7 +648,7 @@ namespace lexer
 			}
 			else
 			{
-				error(tok.loc, "Unknown token '%s'", stream.substr(0, 10).to_string());
+				error(tok.loc, "Unknown token '%s'", stx::to_string(stream.substr(0, 10)));
 			}
 		}
 

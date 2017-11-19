@@ -159,7 +159,7 @@ namespace parser
 		{
 			if(st.front().type == TT::Identifier)
 			{
-				std::string gt = st.eat().text.to_string();
+				std::string gt = st.eat().str();
 				TypeConstraints_t constrs;
 
 				if(st.front().type == TT::Colon)
@@ -170,7 +170,7 @@ namespace parser
 
 					while(st.front().type == TT::Identifier)
 					{
-						constrs.protocols.push_back(st.eat().text.to_string());
+						constrs.protocols.push_back(st.eat().str());
 
 						if(st.front().type == TT::Ampersand)
 						{
