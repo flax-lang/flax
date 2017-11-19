@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{9FD6A820-341E-44AB-BA7F-A38E05B8E4F1}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>D:\Projects\flax\source\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>D:\Projects\flax\source\include;D:\Projects\lib\mpir\include;D:\Projects\lib\mpfr\include;D:\Projects\lib\llvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompile.h</PrecompiledHeaderFile>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <ForcedIncludeFiles>precompile.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <DisableSpecificWarnings>4624;4291;4141;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Projects\flax\source\include;D:\Projects\lib\mpir\include;D:\Projects\lib\mpfr\include;D:\Projects\lib\llvm\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompile.h</PrecompiledHeaderFile>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
+      <ForcedIncludeFiles>precompile.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <DisableSpecificWarnings>4624;4291;4141;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="source\backend\backend.cpp" />
+    <ClCompile Include="source\backend\llvm\linker.cpp" />
+    <ClCompile Include="source\backend\llvm\translator.cpp" />
+    <ClCompile Include="source\backend\x64AsmBackend.cpp" />
+    <ClCompile Include="source\codegen\arithmetic.cpp" />
+    <ClCompile Include="source\codegen\assign.cpp" />
+    <ClCompile Include="source\codegen\builtin.cpp" />
+    <ClCompile Include="source\codegen\call.cpp" />
+    <ClCompile Include="source\codegen\casting.cpp" />
+    <ClCompile Include="source\codegen\controlflow.cpp" />
+    <ClCompile Include="source\codegen\function.cpp" />
+    <ClCompile Include="source\codegen\glue\arrays.cpp" />
+    <ClCompile Include="source\codegen\glue\strings.cpp" />
+    <ClCompile Include="source\codegen\literals.cpp" />
+    <ClCompile Include="source\codegen\logical.cpp" />
+    <ClCompile Include="source\codegen\misc.cpp" />
+    <ClCompile Include="source\codegen\operators.cpp" />
+    <ClCompile Include="source\codegen\refcounting.cpp" />
+    <ClCompile Include="source\codegen\slice.cpp" />
+    <ClCompile Include="source\codegen\structs.cpp" />
+    <ClCompile Include="source\codegen\subscript.cpp" />
+    <ClCompile Include="source\codegen\toplevel.cpp" />
+    <ClCompile Include="source\codegen\variable.cpp" />
+    <ClCompile Include="source\external\tinyprocesslib\process.cpp" />
+    <ClCompile Include="source\external\tinyprocesslib\process_os.cpp" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\casemapping.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\codepoint.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\composition.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\database.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\decomposition.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\seeking.c" />
+    <ClCompile Include="source\external\utf8rewind\source\internal\streaming.c" />
+    <ClCompile Include="source\external\utf8rewind\source\unicodedatabase.c" />
+    <ClCompile Include="source\external\utf8rewind\source\utf8rewind.c" />
+    <ClCompile Include="source\fir\ConstantValue.cpp" />
+    <ClCompile Include="source\fir\ExecutionTarget.cpp" />
+    <ClCompile Include="source\fir\Function.cpp" />
+    <ClCompile Include="source\fir\GlobalValue.cpp" />
+    <ClCompile Include="source\fir\Instruction.cpp" />
+    <ClCompile Include="source\fir\IRBlock.cpp" />
+    <ClCompile Include="source\fir\IRBuilder.cpp" />
+    <ClCompile Include="source\fir\Module.cpp" />
+    <ClCompile Include="source\fir\types\AnyType.cpp" />
+    <ClCompile Include="source\fir\types\ArraySliceType.cpp" />
+    <ClCompile Include="source\fir\types\ArrayType.cpp" />
+    <ClCompile Include="source\fir\types\ClassType.cpp" />
+    <ClCompile Include="source\fir\types\ConstantNumberType.cpp" />
+    <ClCompile Include="source\fir\types\DynamicArrayType.cpp" />
+    <ClCompile Include="source\fir\types\EnumType.cpp" />
+    <ClCompile Include="source\fir\types\FunctionType.cpp" />
+    <ClCompile Include="source\fir\types\PointerType.cpp" />
+    <ClCompile Include="source\fir\types\PrimitiveType.cpp" />
+    <ClCompile Include="source\fir\types\RangeType.cpp" />
+    <ClCompile Include="source\fir\types\StringType.cpp" />
+    <ClCompile Include="source\fir\types\StructType.cpp" />
+    <ClCompile Include="source\fir\types\TupleType.cpp" />
+    <ClCompile Include="source\fir\types\Type.cpp" />
+    <ClCompile Include="source\fir\Value.cpp" />
+    <ClCompile Include="source\frontend\collector.cpp" />
+    <ClCompile Include="source\frontend\dependencies.cpp" />
+    <ClCompile Include="source\frontend\errors.cpp" />
+    <ClCompile Include="source\frontend\file.cpp" />
+    <ClCompile Include="source\frontend\frontend.cpp" />
+    <ClCompile Include="source\frontend\import.cpp" />
+    <ClCompile Include="source\frontend\lexer.cpp" />
+    <ClCompile Include="source\frontend\parser\controlflow.cpp" />
+    <ClCompile Include="source\frontend\parser\expr.cpp" />
+    <ClCompile Include="source\frontend\parser\function.cpp" />
+    <ClCompile Include="source\frontend\parser\literal.cpp" />
+    <ClCompile Include="source\frontend\parser\misc.cpp" />
+    <ClCompile Include="source\frontend\parser\toplevel.cpp" />
+    <ClCompile Include="source\frontend\parser\type.cpp" />
+    <ClCompile Include="source\frontend\parser\variable.cpp" />
+    <ClCompile Include="source\frontend\pts.cpp" />
+    <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\misc\destructors.cpp" />
+    <ClCompile Include="source\misc\identifier.cpp" />
+    <ClCompile Include="source\typecheck\arithmetic.cpp" />
+    <ClCompile Include="source\typecheck\assign.cpp" />
+    <ClCompile Include="source\typecheck\call.cpp" />
+    <ClCompile Include="source\typecheck\controlflow.cpp" />
+    <ClCompile Include="source\typecheck\dotop.cpp" />
+    <ClCompile Include="source\typecheck\enums.cpp" />
+    <ClCompile Include="source\typecheck\function.cpp" />
+    <ClCompile Include="source\typecheck\literals.cpp" />
+    <ClCompile Include="source\typecheck\misc.cpp" />
+    <ClCompile Include="source\typecheck\slice.cpp" />
+    <ClCompile Include="source\typecheck\structs.cpp" />
+    <ClCompile Include="source\typecheck\subscript.cpp" />
+    <ClCompile Include="source\typecheck\toplevel.cpp" />
+    <ClCompile Include="source\typecheck\type.cpp" />
+    <ClCompile Include="source\typecheck\variable.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\external\mpreal\mpreal.h" />
+    <ClInclude Include="source\external\tinyformat\tinyformat.h" />
+    <ClInclude Include="source\external\tinyprocesslib\process.h" />
+    <ClInclude Include="source\external\utf8rewind\include\utf8rewind\utf8rewind.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\base.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\casemapping.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\codepoint.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\composition.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\database.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\decomposition.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\seeking.h" />
+    <ClInclude Include="source\external\utf8rewind\source\internal\streaming.h" />
+    <ClInclude Include="source\external\utf8rewind\source\unicodedatabase.h" />
+    <ClInclude Include="source\include\ast.h" />
+    <ClInclude Include="source\include\backend.h" />
+    <ClInclude Include="source\include\codegen.h" />
+    <ClInclude Include="source\include\defs.h" />
+    <ClInclude Include="source\include\errors.h" />
+    <ClInclude Include="source\include\frontend.h" />
+    <ClInclude Include="source\include\ir\block.h" />
+    <ClInclude Include="source\include\ir\constant.h" />
+    <ClInclude Include="source\include\ir\function.h" />
+    <ClInclude Include="source\include\ir\identifier.h" />
+    <ClInclude Include="source\include\ir\instruction.h" />
+    <ClInclude Include="source\include\ir\irbuilder.h" />
+    <ClInclude Include="source\include\ir\module.h" />
+    <ClInclude Include="source\include\ir\type.h" />
+    <ClInclude Include="source\include\ir\value.h" />
+    <ClInclude Include="source\include\lexer.h" />
+    <ClInclude Include="source\include\parser.h" />
+    <ClInclude Include="source\include\parser_internal.h" />
+    <ClInclude Include="source\include\precompile.h" />
+    <ClInclude Include="source\include\profiling.h" />
+    <ClInclude Include="source\include\pts.h" />
+    <ClInclude Include="source\include\sst.h" />
+    <ClInclude Include="source\include\sst_expr.h" />
+    <ClInclude Include="source\include\typecheck.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="source\external\tinyprocesslib\process_unix.inc" />
+    <None Include="source\external\tinyprocesslib\process_win.inc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
