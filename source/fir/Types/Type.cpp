@@ -683,7 +683,6 @@ namespace fir
 
 
 
-
 	// static getting functions
 	VoidType* Type::getVoid(FTContext* tc)
 	{

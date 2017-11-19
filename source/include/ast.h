@@ -258,6 +258,7 @@ namespace ast
 		~TypeDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
+		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
 	struct StructDefn : TypeDefn
@@ -303,6 +304,7 @@ namespace ast
 
 		struct Case
 		{
+			Location loc;
 			std::string name;
 			Expr* value = 0;
 		};

@@ -29,6 +29,14 @@ template <typename... Ts>
 	abort();
 }
 
+namespace std
+{
+	std::string to_string(const stx::string_view& sv)
+	{
+		return std::string(sv.begin(), sv.length());
+	}
+}
+
 
 #define __nothing
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))

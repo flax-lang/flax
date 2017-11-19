@@ -548,29 +548,33 @@ namespace fir
 	{
 		friend struct Type;
 
-		bool hasCaseWithName(std::string name);
-		ConstantValue* getCaseWithName(std::string name);
-		ConstantArray* getConstantArrayOfValues();
 		Type* getCaseType();
+		Identifier getTypeName();
+
+		fir::ConstantValue* getNameArray();
+		fir::ConstantValue* getCaseArray();
+
+		void setNameArray(fir::ConstantValue* arr);
+		void setCaseArray(fir::ConstantValue* arr);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
-		Identifier getEnumName();
-
 		// protected constructor
 		protected:
-		EnumType(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases);
+		EnumType(const Identifier& name, Type* ty);
 		virtual ~EnumType() override { }
 
-		Identifier enumName;
 		Type* caseType;
-		std::map<std::string, ConstantValue*> cases;
+		Identifier typeName;
+
+		fir::ConstantValue* runtimeNameArray = 0;
+		fir::ConstantValue* runtimeCasesArray = 0;
 
 		// static funcs
 		public:
-		static EnumType* get(const Identifier& name, Type* caseType, std::map<std::string, ConstantValue*> _cases, FTContext* tc = 0);
+		static EnumType* get(const Identifier& name, Type* caseType, FTContext* tc = 0);
 	};
 
 

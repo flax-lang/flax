@@ -37,6 +37,9 @@ namespace parser
 		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
 			defn->visibility = vis;
 
+		else if(auto defn = dynamic_cast<TypeDefn*>(stmt))
+			defn->visibility = vis;
+
 		else
 			error(st, "Access specifier cannot be applied to this statement");
 

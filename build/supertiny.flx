@@ -173,14 +173,22 @@ public fn twice(a: int) -> int { return 2 * a }
 
 	printIntegerLimits()
 
-	enum Foob: int
+	enum Foob
 	{
-		case one = 10
-		case two = 20
-		case three = "30"
+		case one
+		case two
+		case three
 	}
 
+	enum Boof
+	{
+		case a
+		case b
+		case c
+	}
 
+	var lmao = Foob.one
+	printf("eq = %d, lmao.name = %s\n", lmao == Foob.three, lmao.name)
 
 	// var s = getstr()
 
