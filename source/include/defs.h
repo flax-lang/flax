@@ -10,6 +10,9 @@
 #include "precompile.h"
 
 
+
+
+
 template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)
 {
@@ -26,7 +29,13 @@ template <typename... Ts>
 
 namespace stx
 {
-	using string_view = std::experimental::string_view;
+	#if STRING_VIEW_IS_EXP == 0
+		using string_view = std::string_view;
+	#elif STRING_VIEW_IS_EXP == 1
+		using string_view = std::experimental::string_view;
+	#else
+		#error "No string_view"
+	#endif
 }
 
 namespace fir
