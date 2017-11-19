@@ -12,12 +12,19 @@
 
 
 
-
 template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)
 {
 	tinyformat::format(std::cerr, s, ts...);
 	abort();
+}
+
+namespace std
+{
+	std::string to_string(const stx::string_view& sv)
+	{
+		return std::string(sv.begin(), sv.length());
+	}
 }
 
 

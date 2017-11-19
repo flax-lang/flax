@@ -33,7 +33,7 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	}
 	else if(!rt->isIntegerType())
 	{
-		error(this->inside, "Subscript index must be an integer type, found '%s'", rt->str());
+		error(this->inside, "Subscript index must be an integer type, found '%s'", rt);
 	}
 
 	fir::Type* res = 0;
@@ -44,7 +44,7 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	else if(lt->isPointerType())	res = lt->getPointerElementType();
 	else if(lt->isArrayType())		res = lt->toArrayType()->getElementType();
 	else if(lt->isStringType())		res = fir::Type::getChar();
-	else							error(this->expr, "Cannot subscript type '%s'", lt->str());
+	else							error(this->expr, "Cannot subscript type '%s'", lt);
 
 	iceAssert(res);
 	auto ret = new sst::SubscriptOp(this->loc, res);

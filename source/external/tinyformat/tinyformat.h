@@ -303,6 +303,7 @@ TINYFORMAT_DEFINE_FORMAT_TRUNCATED_CSTR(char)
 /// By default, formatValue() uses the usual stream insertion operator
 /// operator<< to format the type T, with special cases for the %c and %p
 /// conversions.
+
 template<typename T>
 inline void formatValue(std::ostream& out, const char* /*fmtBegin*/,
                         const char* fmtEnd, int ntrunc, const T& value)

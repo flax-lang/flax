@@ -205,8 +205,8 @@ namespace fir
 		{
 			if(t->isVoidType()) return 0;
 
-			// _error_and_exit("unsupported type for compile-time sizeof: %s", t->str().c_str());
-			return -1;
+			error("unsupported type '%s' for compile-time sizeof", t);
+			// return -1;
 		}
 	}
 

@@ -62,13 +62,13 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(rr.value == 0)
 	{
-		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr.value->getType()->str(),
-			lt->str());
+		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr.value->getType(),
+			lt);
 	}
 
 	// ok then
 	if(lt != rr.value->getType())
-		error(this, "What? left = %s, right = %s", lt->str(), rr.value->getType()->str());
+		error(this, "What? left = %s, right = %s", lt, rr.value->getType());
 
 	iceAssert(lr.pointer);
 	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());

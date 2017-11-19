@@ -331,7 +331,7 @@ namespace fir
 	Value* IRBuilder::CreateAdd(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating add instruction with non-equal types (%s vs %s)", a->getType()->str(), b->getType()->str());
+			error("creating add instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Add;
@@ -346,7 +346,7 @@ namespace fir
 	Value* IRBuilder::CreateSub(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating sub instruction with non-equal types (%s vs %s)", a->getType()->str(), b->getType()->str());
+			error("creating sub instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Sub;
@@ -360,7 +360,7 @@ namespace fir
 	Value* IRBuilder::CreateMul(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating mul instruction with non-equal types (%s vs %s)", a->getType()->str(), b->getType()->str());
+			error("creating mul instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mul;
@@ -374,7 +374,7 @@ namespace fir
 	Value* IRBuilder::CreateDiv(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating div instruction with non-equal types (%s vs %s)", a->getType()->str(), b->getType()->str());
+			error("creating div instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
 
 
 		OpKind ok = OpKind::Invalid;
@@ -389,7 +389,7 @@ namespace fir
 	Value* IRBuilder::CreateMod(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
-			error("creating mod instruction with non-equal types (%s vs %s)", a->getType()->str(), b->getType()->str());
+			error("creating mod instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
 
 		OpKind ok = OpKind::Invalid;
 		if(a->getType()->isSignedIntType()) ok = OpKind::Signed_Mod;
@@ -715,7 +715,7 @@ namespace fir
 			double _ = 0;
 
 			if(std::modf(cfp->getValue(), &_) != 0.0)
-				warn("Truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType->str());
+				warn("Truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
 
 			return ConstantInt::get(targetType, (size_t) cfp->getValue());
 		}
@@ -753,7 +753,7 @@ namespace fir
 			}
 			else
 			{
-				error("Unknown floating point type '%s'", targetType->str());
+				error("Unknown floating point type '%s'", targetType);
 			}
 
 			return ret;
@@ -862,7 +862,7 @@ namespace fir
 	Value* IRBuilder::CreateLoad(Value* ptr, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not pointer type (got '%s')", ptr->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_Load, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
 		auto ret = this->addInstruction(instr, vname);
@@ -874,10 +874,10 @@ namespace fir
 	Value* IRBuilder::CreateStore(Value* v, Value* ptr)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not pointer type (got '%s')", ptr->getType());
 
 		if(v->getType()->getPointerTo() != ptr->getType())
-			error("ptr is not a pointer to type of value (storing %s into %s)", v->getType()->str(), ptr->getType()->str());
+			error("ptr is not a pointer to type of value (storing '%s' into '%s')", v->getType(), ptr->getType());
 
 		if(ptr->isImmutable())
 			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
@@ -968,7 +968,7 @@ namespace fir
 		{
 			// check here, to stop llvm dying
 			if(args.size() != fn->getArgumentCount())
-				error("Calling function %s with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+				error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
 					fn->getArgumentCount(), args.size());
 
 			for(size_t i = 0; i < args.size(); i++)
@@ -986,8 +986,8 @@ namespace fir
 
 				if(args[i]->getType() != target)
 				{
-					error("Mismatch in argument type (arg. %zu) in function %s (need %s, have %s)", i, fn->getName().str(),
-						fn->getArguments()[i]->getType()->str(), args[i]->getType()->str());
+					error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+						fn->getArguments()[i]->getType(), args[i]->getType());
 				}
 			}
 		}
@@ -1189,7 +1189,7 @@ namespace fir
 		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", ptr->getType()->getPointerElementType()->str());
+			error("type '%s' is not a valid type to GEP into", ptr->getType()->getPointerElementType());
 		}
 	}
 
@@ -1215,7 +1215,7 @@ namespace fir
 		}
 		else
 		{
-			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str());
+			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType());
 		}
 	}
 
@@ -1248,7 +1248,7 @@ namespace fir
 		}
 		else
 		{
-			error("type %s is not a valid type to GEP into", structPtr->getType()->getPointerElementType()->str());
+			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType());
 		}
 	}
 
@@ -1258,7 +1258,7 @@ namespace fir
 	Value* IRBuilder::CreateConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
 		auto ptri = ConstantInt::getUint64(ptrIndex);
 		auto elmi = ConstantInt::getUint64(elmIndex);
@@ -1270,7 +1270,7 @@ namespace fir
 	Value* IRBuilder::CreateGEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
 		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
@@ -1293,10 +1293,10 @@ namespace fir
 	Value* IRBuilder::CreateGetPointer(Value* ptr, Value* ptrIndex, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
 		if(!ptrIndex->getType()->isIntegerType())
-			error("ptrIndex is not an integer type (got %s)", ptrIndex->getType()->str());
+			error("ptrIndex is not an integer type (got '%s')", ptrIndex->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, false, this->currentBlock, ptr->getType(), { ptr, ptrIndex });
 
@@ -1336,10 +1336,10 @@ namespace fir
 	Value* IRBuilder::CreatePointerAdd(Value* ptr, Value* num, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
 		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got %s)", num->getType()->str());
+			error("num is not an integer type (got '%s')", num->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
@@ -1348,10 +1348,10 @@ namespace fir
 	Value* IRBuilder::CreatePointerSub(Value* ptr, Value* num, std::string vname)
 	{
 		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got %s)", ptr->getType()->str());
+			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
 		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got %s)", num->getType()->str());
+			error("num is not an integer type (got '%s')", num->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
@@ -1363,7 +1363,7 @@ namespace fir
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
-			error("val is not an aggregate type (have '%s')", t->str());
+			error("val is not an aggregate type (have '%s')", t);
 
 		Type* et = 0;
 		if(t->isStructType()) { et = t->toStructType()->getElementN(inds[0]); }
@@ -1376,7 +1376,7 @@ namespace fir
 		if(elm->getType() != et)
 		{
 			error("Mismatched types for value and element -- trying to insert '%s' into '%s'",
-				elm->getType()->str(), et->str());
+				elm->getType(), et);
 		}
 
 		std::vector<Value*> args = { val, elm };
@@ -1392,7 +1392,7 @@ namespace fir
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
-			error("val is not an aggregate type (have '%s')", t->str());
+			error("val is not an aggregate type (have '%s')", t);
 
 		Type* et = 0;
 		if(t->isStructType()) { et = t->toStructType()->getElementN(inds[0]); }
@@ -1417,7 +1417,7 @@ namespace fir
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
-			error("val is not an aggregate type with named members (class or struct) (have '%s')", t->str());
+			error("val is not an aggregate type with named members (class or struct) (have '%s')", t);
 
 		size_t ind = 0;
 		if(t->isStructType()) { ind = t->toStructType()->getElementIndex(n); }
@@ -1431,7 +1431,7 @@ namespace fir
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
-			error("val is not an aggregate type with named members (class or struct) (have '%s')", t->str());
+			error("val is not an aggregate type with named members (class or struct) (have '%s')", t);
 
 
 		size_t ind = 0;
@@ -1452,7 +1452,7 @@ namespace fir
 	Value* IRBuilder::CreateGetStringData(Value* str, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
 			fir::Type::getInt8()->getPointerTo(), { str });
@@ -1463,7 +1463,7 @@ namespace fir
 	Value* IRBuilder::CreateSetStringData(Value* str, Value* val, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		if(val->getType() != fir::Type::getInt8Ptr())
 			error("val is not an int8*");
@@ -1477,7 +1477,7 @@ namespace fir
 	Value* IRBuilder::CreateGetStringLength(Value* str, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { str });
@@ -1488,7 +1488,7 @@ namespace fir
 	Value* IRBuilder::CreateSetStringLength(Value* str, Value* val, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1503,7 +1503,7 @@ namespace fir
 	Value* IRBuilder::CreateGetStringRefCount(Value* str, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetRefCount, false, this->currentBlock,
 			fir::Type::getInt64(), { str });
@@ -1514,7 +1514,7 @@ namespace fir
 	void IRBuilder::CreateSetStringRefCount(Value* str, Value* val, std::string vname)
 	{
 		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType()->str());
+			error("str is not a string type (got '%s')", str->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1541,7 +1541,7 @@ namespace fir
 	Value* IRBuilder::CreateGetDynamicArrayData(Value* arr, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetData, false, this->currentBlock,
 			arr->getType()->toDynamicArrayType()->getElementType()->getPointerTo(), { arr });
@@ -1552,13 +1552,13 @@ namespace fir
 	Value* IRBuilder::CreateSetDynamicArrayData(Value* arr, Value* val, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		auto t = arr->getType()->toDynamicArrayType()->getElementType();
 		if(val->getType() != t->getPointerTo())
 		{
 			error("val is not a pointer to elm type (need '%s', have '%s')",
-				t->getPointerTo()->str(), val->getType()->str());
+				t->getPointerTo(), val->getType());
 		}
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetData, true, this->currentBlock,
@@ -1572,7 +1572,7 @@ namespace fir
 	Value* IRBuilder::CreateGetDynamicArrayLength(Value* arr, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
@@ -1583,7 +1583,7 @@ namespace fir
 	Value* IRBuilder::CreateSetDynamicArrayLength(Value* arr, Value* val, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1599,7 +1599,7 @@ namespace fir
 	Value* IRBuilder::CreateGetDynamicArrayCapacity(Value* arr, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetCapacity, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
@@ -1610,7 +1610,7 @@ namespace fir
 	Value* IRBuilder::CreateSetDynamicArrayCapacity(Value* arr, Value* val, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1626,7 +1626,7 @@ namespace fir
 	Value* IRBuilder::CreateGetDynamicArrayRefCount(Value* arr, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetRefCount, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
@@ -1637,7 +1637,7 @@ namespace fir
 	void IRBuilder::CreateSetDynamicArrayRefCount(Value* arr, Value* val, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType()->str());
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1663,7 +1663,7 @@ namespace fir
 	Value* IRBuilder::CreateGetArraySliceData(Value* slc, std::string vname)
 	{
 		if(!slc->getType()->isArraySliceType())
-			error("slc is not an array slice type (got '%s')", slc->getType()->str());
+			error("slc is not an array slice type (got '%s')", slc->getType());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_GetData, false, this->currentBlock,
 			slc->getType()->toArraySliceType()->getElementType()->getPointerTo(), { slc });
@@ -1674,11 +1674,11 @@ namespace fir
 	Value* IRBuilder::CreateSetArraySliceData(Value* slc, Value* val, std::string vname)
 	{
 		if(!slc->getType()->isArraySliceType())
-			error("slc is not an array slice type (got '%s')", slc->getType()->str());
+			error("slc is not an array slice type (got '%s')", slc->getType());
 
 		auto et = slc->getType()->toArraySliceType()->getElementType();
 		if(val->getType() != et->getPointerTo())
-			error("val is not a pointer to elm type (need '%s', have '%s')", et->getPointerTo()->str(), val->getType()->str());
+			error("val is not a pointer to elm type (need '%s', have '%s')", et->getPointerTo(), val->getType());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
 			slc->getType(), { slc, val });
@@ -1690,7 +1690,7 @@ namespace fir
 	Value* IRBuilder::CreateGetArraySliceLength(Value* slc, std::string vname)
 	{
 		if(!slc->getType()->isArraySliceType())
-			error("slc is not an array slice type (got '%s')", slc->getType()->str());
+			error("slc is not an array slice type (got '%s')", slc->getType());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { slc });
@@ -1701,7 +1701,7 @@ namespace fir
 	Value* IRBuilder::CreateSetArraySliceLength(Value* slc, Value* val, std::string vname)
 	{
 		if(!slc->getType()->isArraySliceType())
-			error("slc is not an array slice type (got '%s')", slc->getType()->str());
+			error("slc is not an array slice type (got '%s')", slc->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1722,7 +1722,7 @@ namespace fir
 	Value* IRBuilder::CreateGetAnyTypeID(Value* any, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		Instruction* instr = new Instruction(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getInt64(), { any });
 
@@ -1732,7 +1732,7 @@ namespace fir
 	Value* IRBuilder::CreateSetAnyTypeID(Value* any, Value* val, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1745,7 +1745,7 @@ namespace fir
 	Value* IRBuilder::CreateGetAnyFlag(Value* any, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		Instruction* instr = new Instruction(OpKind::Any_GetFlag, false, this->currentBlock, fir::Type::getInt64(), { any });
 
@@ -1755,7 +1755,7 @@ namespace fir
 	Value* IRBuilder::CreateSetAnyFlag(Value* any, Value* val, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
@@ -1772,7 +1772,7 @@ namespace fir
 	Value* IRBuilder::CreateGetAnyData(Value* any, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		Instruction* instr = new Instruction(OpKind::Any_GetData, false, this->currentBlock, fir::Type::getInt8()->getPointerTo(), { any });
 
@@ -1782,7 +1782,7 @@ namespace fir
 	Value* IRBuilder::CreateSetAnyData(Value* any, Value* val, std::string vname)
 	{
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType()->str());
+			error("any is not a pointer to an any type (got '%s')", any->getType());
 
 		iceAssert(this->context);
 		iceAssert(this->context->module);
@@ -1791,7 +1791,7 @@ namespace fir
 		if(sz > 24 || sz == -1)
 		{
 			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",
-				val->getType()->str(), (ssize_t) sz);
+				val->getType(), (ssize_t) sz);
 		}
 
 		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getVoid(), { any, val });
@@ -1806,7 +1806,7 @@ namespace fir
 	Value* IRBuilder::CreateGetRangeLower(Value* range, std::string vname)
 	{
 		if(!range->getType()->isRangeType())
-			error("range is not a range type (have '%s')", range->getType()->str());
+			error("range is not a range type (have '%s')", range->getType());
 
 		Instruction* instr = new Instruction(OpKind::Range_GetLower, false, this->currentBlock,
 			fir::Type::getInt64(), { range });
@@ -1817,10 +1817,10 @@ namespace fir
 	Value* IRBuilder::CreateSetRangeLower(Value* range, Value* val, std::string vname)
 	{
 		if(!range->getType()->isRangeType())
-			error("range is not a range type (got '%s')", range->getType()->str());
+			error("range is not a range type (got '%s')", range->getType());
 
 		if(!val->getType()->isIntegerType())
-			error("val is not an integer type (got '%s')", val->getType()->str());
+			error("val is not an integer type (got '%s')", val->getType());
 
 		Instruction* instr = new Instruction(OpKind::Range_SetLower, true, this->currentBlock,
 			fir::Type::getRange(), { range, val });
@@ -1831,7 +1831,7 @@ namespace fir
 	Value* IRBuilder::CreateGetRangeUpper(Value* range, std::string vname)
 	{
 		if(!range->getType()->isRangeType())
-			error("range is not a range type (have '%s')", range->getType()->str());
+			error("range is not a range type (have '%s')", range->getType());
 
 		Instruction* instr = new Instruction(OpKind::Range_GetUpper, false, this->currentBlock,
 			fir::Type::getInt64(), { range });
@@ -1842,13 +1842,69 @@ namespace fir
 	Value* IRBuilder::CreateSetRangeUpper(Value* range, Value* val, std::string vname)
 	{
 		if(!range->getType()->isRangeType())
-			error("range is not a range type (got '%s')", range->getType()->str());
+			error("range is not a range type (got '%s')", range->getType());
 
 		if(!val->getType()->isIntegerType())
-			error("val is not an integer type (got '%s')", val->getType()->str());
+			error("val is not an integer type (got '%s')", val->getType());
 
 		Instruction* instr = new Instruction(OpKind::Range_SetUpper, true, this->currentBlock,
 			fir::Type::getRange(), { range, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
+	Value* IRBuilder::CreateGetEnumCaseIndex(Value* ecs, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_GetIndex, true, this->currentBlock,
+			fir::Type::getInt64(), { ecs });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetEnumCaseIndex(Value* ecs, Value* idx, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		if(!idx->getType()->isIntegerType())
+			error("index is not an integer type (got '%s')", idx->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_SetIndex, true, this->currentBlock,
+			ecs->getType(), { ecs, idx });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateGetEnumCaseValue(Value* ecs, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_GetValue, true, this->currentBlock,
+			ecs->getType()->toEnumType()->getCaseType(), { ecs });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetEnumCaseValue(Value* ecs, Value* val, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		if(ecs->getType()->toEnumType()->getCaseType() != val->getType())
+		{
+			error("value type mismatch (enum case type is '%s', value type is '%s'",
+				ecs->getType()->toEnumType()->getCaseType(), val->getType());
+		}
+
+		Instruction* instr = new Instruction(OpKind::Enum_SetValue, true, this->currentBlock,
+			ecs->getType(), { ecs, val });
 
 		return this->addInstruction(instr, vname);
 	}

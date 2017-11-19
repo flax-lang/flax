@@ -90,7 +90,7 @@ namespace sst
 			if(d == -1)
 			{
 				*estr = strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'",
-					i, args[i]->str(), target[i]->str());
+					i, args[i], target[i]);
 				*loc = targetLocs[i];
 
 				return -1;
@@ -115,7 +115,7 @@ namespace sst
 				if(a != t)
 				{
 					*estr = strprintf("Mismatched element type in variadic array passthrough; expected '%s', got '%s'",
-						t->str(), a->str());
+						t, a);
 					*loc = targetLocs.back();
 					return -1;
 				}
@@ -133,7 +133,7 @@ namespace sst
 					auto dist = getCastDistance(ty, elmTy);
 					if(dist == -1)
 					{
-						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty->str(), elmTy->str());
+						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
 						*loc = targetLocs.back();
 						return -1;
 					}
@@ -256,7 +256,7 @@ namespace sst
 				{
 					didVar = true;
 					exitless_error(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type->str());
+						name, def->type);
 
 					info(def, "Previously defined here:");
 

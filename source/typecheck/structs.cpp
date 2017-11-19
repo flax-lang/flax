@@ -18,6 +18,7 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto defn = new sst::StructDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
+	defn->visibility = this->visibility;
 
 	// defn->generatedScopeName = this->name;
 	// defn->scope = fs->getCurrentScope();
@@ -92,6 +93,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto defn = new sst::ClassDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
+	defn->visibility = this->visibility;
 
 	// defn->generatedScopeName = this->name;
 	// defn->scope = fs->getCurrentScope();
