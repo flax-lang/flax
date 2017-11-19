@@ -111,7 +111,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isEnumType())
 	{
-		return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeOnly(t->toEnumType()->getEnumName()));
+		return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeOnly(t->toEnumType()->getTypeName()));
 	}
 	else if(t->isAnyType())
 	{
@@ -119,7 +119,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else
 	{
-		_error_and_exit("unsupported ir type??? (%s)", t->str().c_str());
+		_error_and_exit("unsupported ir type??? ('%s')", t);
 	}
 }
 

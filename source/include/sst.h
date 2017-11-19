@@ -10,6 +10,7 @@ namespace fir
 {
 	struct Type;
 	struct FunctionType;
+	struct ConstantValue;
 }
 
 namespace cgn
@@ -310,6 +311,17 @@ namespace sst
 		std::vector<Expr*> args;
 	};
 
+	struct EnumDefn;
+	struct EnumDotOp : Expr
+	{
+		EnumDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~EnumDotOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::string caseName;
+		EnumDefn* enumeration = 0;
+	};
 
 
 	struct LiteralNumber : Expr
@@ -478,9 +490,6 @@ namespace sst
 		std::vector<VarDefn*> fields;
 		std::vector<FunctionDefn*> methods;
 		std::vector<TypeDefn*> nestedTypes;
-
-		// std::vector<std::string> scope;
-		// std::string generatedScopeName;
 	};
 
 
@@ -491,19 +500,23 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		// std::vector<VarDefn*> fields;
-		// std::vector<FunctionDefn*> methods;
-
 		std::vector<VarDefn*> staticFields;
 		std::vector<FunctionDefn*> staticMethods;
-
-		// std::vector<TypeDefn*> nestedTypes;
-
-		// std::vector<std::string> scope;
-		// std::string generatedScopeName;
 	};
 
 
+	struct EnumCaseDefn : Defn
+	{
+		EnumCaseDefn(const Location& l) : Defn(l) { }
+		~EnumCaseDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* val = 0;
+		size_t index = 0;
+		EnumDefn* parentEnum = 0;
+		fir::ConstantValue* value = 0;
+	};
 
 	struct EnumDefn : TypeDefn
 	{
@@ -512,15 +525,8 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		struct Case
-		{
-			std::string name;
-			Expr* value = 0;
-		};
-
-		std::string name;
-		std::vector<Case> cases;
 		fir::Type* memberType = 0;
+		std::unordered_map<std::string, EnumCaseDefn*> cases;
 	};
 }
 

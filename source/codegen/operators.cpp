@@ -44,8 +44,7 @@ namespace cgn
 		}
 		else
 		{
-			error(this->loc(), "Unsupported operator function '%s' on types '%s' and '%s'",
-				operatorToString(op), a->str(), b->str());
+			error(this->loc(), "Unsupported operator function '%s' on types '%s' and '%s'", operatorToString(op), a, b);
 		}
 	}
 }

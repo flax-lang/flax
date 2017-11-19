@@ -112,7 +112,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	}
 	else
 	{
-		error(user, "Invalid type '%s' for instance dot op", restype->str());
+		error(user, "Invalid type '%s' for instance dot op", restype);
 	}
 
 	return CGResult(retv, retp);
@@ -247,7 +247,7 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		return dothing(ty->getPointerElementType()->toClassType());
 
 	else
-		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty->str(), name);
+		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty, name);
 }
 
 

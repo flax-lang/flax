@@ -37,6 +37,9 @@ namespace parser
 		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
 			defn->visibility = vis;
 
+		else if(auto defn = dynamic_cast<TypeDefn*>(stmt))
+			defn->visibility = vis;
+
 		else
 			error(st, "Access specifier cannot be applied to this statement");
 
@@ -380,7 +383,7 @@ namespace parser
 					case TT::As:				op = Operator::Cast;				break;
 
 					default:
-						error(st, "Unknown operator '%s'", tok_op.str().c_str());
+						error(st, "Unknown operator '%s'", tok_op.str());
 				}
 			}
 
@@ -737,7 +740,7 @@ namespace parser
 				case TT::Namespace:
 				case TT::TypeAlias:
 				case TT::ForeignFunc:
-					error(st, "Declarations are not expressions (%s)", tok.str().c_str());
+					error(st, "Declarations are not expressions (%s)", tok.str());
 
 				case TT::Dealloc:
 					error(st, "Deallocation statements are not expressions");
@@ -831,7 +834,7 @@ namespace parser
 					unexpected(st, "block; to create a nested scope, use 'do { ... }'");
 
 				default:
-					error(tok.loc, "Unexpected token '%s' (id = %d)", tok.str().c_str(), tok.type);
+					error(tok.loc, "Unexpected token '%s' (id = %d)", tok.str(), tok.type);
 			}
 		}
 

@@ -189,7 +189,7 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 		ho.underlines.push_back(this->right->loc);
 
 		ho.drawCaret = true;
-		error(this, ho, "Unsupported operator '%s' between types '%s' and '%s'", operatorToString(this->op), lt->str(), rt->str());
+		error(this, ho, "Unsupported operator '%s' between types '%s' and '%s'", operatorToString(this->op), lt, rt);
 	}
 
 	auto ret = new sst::BinaryOp(this->loc, rest);
@@ -212,7 +212,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 		case Operator::LogicalNot: {
 			// check if we're convertible to bool
 			if(!t->isBoolType())
-				error(this, "Invalid use of logical-not-operator '!' on non-boolean type '%s'", t->str());
+				error(this, "Invalid use of logical-not-operator '!' on non-boolean type '%s'", t);
 
 			out = fir::Type::getBool();
 		} break;
@@ -223,10 +223,10 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 				out = (op == Operator::Minus ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
 
 			else if(!t->isIntegerType() && !t->isFloatingPointType())
-				error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t->str());
+				error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
 
 			else if(op == Operator::Minus && t->isIntegerType() && !t->isSignedIntType())
-				error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t->str());
+				error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t);
 
 			out = t;
 		} break;
@@ -236,17 +236,17 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 				error(this, "Bitwise operations are not supported on literal numbers");
 
 			else if(!t->isIntegerType())
-				error(this, "Invalid use of bitwise not operator '~' on non-integer type '%s'", t->str());
+				error(this, "Invalid use of bitwise not operator '~' on non-integer type '%s'", t);
 
 			else if(t->isSignedIntType())
-				error(this, "Invalid use of bitwise not operator '~' on signed integer type '%s'", t->str());
+				error(this, "Invalid use of bitwise not operator '~' on signed integer type '%s'", t);
 
 			out = t;
 		} break;
 
 		case Operator::Dereference: {
 			if(!t->isPointerType())
-				error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t->str());
+				error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t);
 
 			out = t->getPointerElementType();
 		} break;

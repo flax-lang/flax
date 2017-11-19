@@ -40,9 +40,9 @@ namespace fir
 	void FTContext::dumpTypeIDs()
 	{
 		for(auto t : typeCache)
-			printf("%zu: %s\n", t->getID(), t->str().c_str());
+			debuglog("%zu: '%s'\n", t->getID(), t);
 
-		printf("\n\n");
+		debuglog("\n\n");
 	}
 
 
@@ -287,7 +287,7 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		if(!this->isPointerType())
-			error("type is not a pointer (%s)", this->str().c_str());
+			error("type is not a pointer ('%s')", this);
 
 
 		PointerType* ptrthis = dynamic_cast<PointerType*>(this);
@@ -392,7 +392,7 @@ namespace fir
 		if(this->isDynamicArrayType())		return this->toDynamicArrayType()->getElementType();
 		else if(this->isArrayType())		return this->toArrayType()->getElementType();
 		else if(this->isArraySliceType())	return this->toArraySliceType()->getElementType();
-		else								error("'%s' is not an array type", this->str());
+		else								error("'%s' is not an array type", this);
 	}
 
 
@@ -683,7 +683,6 @@ namespace fir
 
 
 
-
 	// static getting functions
 	VoidType* Type::getVoid(FTContext* tc)
 	{
@@ -961,11 +960,13 @@ namespace fir
 	}
 }
 
-
-
-
-
-
+namespace tinyformat
+{
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty)
+	{
+		out << ty->str();
+	}
+}
 
 
 

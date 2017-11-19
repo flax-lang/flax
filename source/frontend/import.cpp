@@ -42,9 +42,9 @@ namespace frontend
 			}
 			else
 			{
-				exitless_error(loc, "No module or library at the path '%s' could be found", imp.c_str());
-				info("'%s' does not exist", fullname.c_str());
-				info("'%s' does not exist", builtinlib.c_str());
+				exitless_error(loc, "No module or library at the path '%s' could be found", imp);
+				info("'%s' does not exist", fullname);
+				info("'%s' does not exist", builtinlib);
 
 				doTheExit();
 			}
@@ -88,8 +88,7 @@ namespace parser
 
 				if(tokens[i] != TT::NewLine && tokens[i] != TT::Semicolon && tokens[i] != TT::Comment)
 				{
-					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'",
-						tokens[i].str().c_str());
+					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'", tokens[i].str());
 				}
 
 				// i++ handled by loop

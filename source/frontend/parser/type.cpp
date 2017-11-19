@@ -154,6 +154,7 @@ namespace parser
 		if(st.eat() != TT::LBrace)
 			expectedAfter(st.ploc(), "opening brace", "'enum'", st.front().str());
 
+		bool hadValue = false;
 		std::vector<EnumDefn::Case> cases;
 		while(st.front() != TT::RBrace)
 		{
@@ -176,10 +177,17 @@ namespace parser
 				// ok, parse a value
 				st.eat();
 				value = parseExpr(st);
+
+				hadValue = true;
+			}
+			else if(hadValue)
+			{
+				// todo: remove this restriction maybe
+				error(st.loc(), "Enumeration cases must either all have no values, or all have values; a mix is not allowed.");
 			}
 
 			// ok.
-			cases.push_back(EnumDefn::Case { .name = cn, .value = value });
+			cases.push_back(EnumDefn::Case { .loc = st.loc(), .name = cn, .value = value });
 
 			// do some things
 			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
@@ -282,7 +290,7 @@ namespace parser
 			else
 			{
 				error(st, "Unexpected token '%s' after opening '['; expected some kind of array type",
-					st.front().str().c_str());
+					st.front().str());
 			}
 		}
 
@@ -309,7 +317,7 @@ namespace parser
 				else if(st.front() == TT::Identifier)
 				{
 					if(s.back() != '.')
-						error(st, "Unexpected identifer '%s' in type", st.front().str().c_str());
+						error(st, "Unexpected identifer '%s' in type", st.front().str());
 
 					else
 						s += st.eat().str();
@@ -359,7 +367,7 @@ namespace parser
 					}
 					else
 					{
-						// error(st, "Unexpected token '%s' in type mapping", st.front().str().c_str());
+						// error(st, "Unexpected token '%s' in type mapping", st.front().str());
 						break;
 					}
 				}
@@ -387,7 +395,7 @@ namespace parser
 				auto ty = parseType(st);
 
 				if(st.front() != TT::Comma && st.front() != TT::RParen)
-					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str().c_str());
+					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str());
 
 				else if(st.front() == TT::Comma)
 					st.eat();
@@ -428,7 +436,7 @@ namespace parser
 		}
 		else
 		{
-			error(st, "Unexpected token '%s' while parsing type", st.front().str().c_str());
+			error(st, "Unexpected token '%s' while parsing type", st.front().str());
 		}
 	}
 }
