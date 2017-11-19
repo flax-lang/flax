@@ -45,7 +45,7 @@ namespace parser
 				if(tokens[i].type != TT::NewLine && tokens[i].type != TT::Semicolon && tokens[i].type != TT::Comment)
 				{
 					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'",
-						tokens[i].text.to_string());
+						tokens[i].str());
 				}
 
 				// i++ handled by loop
