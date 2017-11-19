@@ -160,6 +160,11 @@ namespace fir
 			case OpKind::Range_GetUpper:					instrname = "get_range.upper"; break;
 			case OpKind::Range_SetUpper:					instrname = "set_range.upper"; break;
 
+			case OpKind::Enum_GetIndex:						instrname = "get_enum.index"; break;
+			case OpKind::Enum_SetIndex:						instrname = "set_enum.index"; break;
+			case OpKind::Enum_GetValue:						instrname = "get_enum.value"; break;
+			case OpKind::Enum_SetValue:						instrname = "set_enum.value"; break;
+
 			case OpKind::Unreachable:						instrname = "<unreachable>"; break;
 			case OpKind::Invalid:							instrname = "<unknown>"; break;
 		}

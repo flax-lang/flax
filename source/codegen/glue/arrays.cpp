@@ -216,7 +216,7 @@ namespace array
 		}
 		else
 		{
-			error("unsupported element type '%s' for array clone", elmType->str());
+			error("unsupported element type '%s' for array clone", elmType);
 		}
 	}
 
@@ -231,7 +231,7 @@ namespace array
 	{
 		if(arrtype->isDynamicArrayType())		return getCloneFunction(cs, arrtype->toDynamicArrayType());
 		else if(arrtype->isArraySliceType())	return getCloneFunction(cs, arrtype->toArraySliceType());
-		else									error("unsupported type '%s'", arrtype->str());
+		else									error("unsupported type '%s'", arrtype);
 	}
 
 	// takes ptr, start index
@@ -787,7 +787,7 @@ namespace array
 		}
 		else
 		{
-			error("invalid type '%s'", arrtype->str());
+			error("invalid type '%s'", arrtype);
 		}
 
 		fir::Value* len1 = 0; fir::Value* len2 = 0;
@@ -809,7 +809,7 @@ namespace array
 		}
 		else
 		{
-			error("invalid type '%s'", arrtype->str());
+			error("invalid type '%s'", arrtype);
 		}
 
 		// we compare to this to break

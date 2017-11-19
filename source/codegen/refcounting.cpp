@@ -13,7 +13,7 @@ namespace cgn
 			list->push_back(v);
 
 		else
-			error(l, "Adding duplicate refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType()->str());
+			error(l, "Adding duplicate refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType());
 	}
 
 	static void _removeRC(const Location& l, fir::Value* v, std::vector<fir::Value*>* list, std::string kind, bool ignore)
@@ -22,7 +22,7 @@ namespace cgn
 			list->erase(it);
 
 		else if(!ignore)
-			error(l, "Removing non-existent refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType()->str());
+			error(l, "Removing non-existent refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType());
 	}
 
 
@@ -219,7 +219,7 @@ namespace cgn
 		}
 		else
 		{
-			error("no: %s", type->str().c_str());
+			error("no: '%s'", type);
 		}
 	}
 

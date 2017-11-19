@@ -50,7 +50,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 
-			exitless_error(this, "No definition of '%s' matching type '%s'", this->name, infer->str());
+			exitless_error(this, "No definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
 				info(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
 

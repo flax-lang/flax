@@ -123,7 +123,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(val->getType() != ft->getArgumentN(i))
 			{
 				error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
-					ft->getArgumentN(i)->str(), val->getType()->str());
+					ft->getArgumentN(i), val->getType());
 			}
 		}
 		else if(val->getType()->isStringType())
@@ -195,8 +195,8 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(!arg || arg->getType() != inf)
 		{
-			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", inf->str(),
-				arg ? "??" : arg->getType()->str());
+			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", inf,
+				arg ? arg->getType() : fir::Type::getVoid());
 		}
 
 		args.push_back(arg);

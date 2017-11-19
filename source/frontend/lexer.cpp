@@ -303,10 +303,10 @@ namespace lexer
 			tok.text = "@entry";
 			read = 6;
 		}
-		else if(hasPrefix(stream, "@r"))
+		else if(hasPrefix(stream, "@raw"))
 		{
 			tok.type = TokenType::Attr_Raw;
-			tok.text = "@r";
+			tok.text = "@raw";
 			read = 2;
 		}
 
@@ -574,7 +574,7 @@ namespace lexer
 
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
-					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead, stream[i], stream.to_string().c_str(), *offset);
+					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead, stream[i], stream.to_string(), *offset);
 				}
 			}
 
@@ -647,7 +647,7 @@ namespace lexer
 			}
 			else
 			{
-				error(tok.loc, "Unknown token '%s'", stream.substr(0, 10).to_string().c_str());
+				error(tok.loc, "Unknown token '%s'", stream.substr(0, 10).to_string());
 			}
 		}
 

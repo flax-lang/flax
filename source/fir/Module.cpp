@@ -17,7 +17,7 @@ namespace fir
 	{
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
-			error("ICE: Already have a global with name %s", ident.str().c_str());
+			error("Already have a global with name '%s'", ident.str());
 
 		this->globals[ident] = gv;
 		return gv;
@@ -44,7 +44,7 @@ namespace fir
 	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
-			error("ICE: no such global with name %s", id.str().c_str());
+			error("No such global with name '%s'", id.str());
 
 		return this->globals[id];
 	}
@@ -90,7 +90,7 @@ namespace fir
 	Type* Module::getNamedType(const Identifier& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
-			error("ICE: no such type with name %s", id.str().c_str());
+			error("No such type with name '%s'", id.str());
 
 		return this->namedTypes[id];
 	}
@@ -98,7 +98,7 @@ namespace fir
 	void Module::addNamedType(const Identifier& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
-			error("ICE: type %s exists already", id.str().c_str());
+			error("Type '%s' exists already", id.str());
 
 		this->namedTypes[id] = type;
 	}
@@ -116,7 +116,7 @@ namespace fir
 	void Module::addFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) != this->functions.end())
-			error("function %s exists already", func->getName().str().c_str());
+			error("Function '%s' exists already", func->getName().str());
 
 		this->functions[func->getName()] = func;
 	}
@@ -124,7 +124,7 @@ namespace fir
 	void Module::removeFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) == this->functions.end())
-			error("function %s does not exist, cannot remove", func->getName().str().c_str());
+			error("Function '%s' does not exist, cannot remove", func->getName().str());
 
 		this->functions.erase(func->getName());
 	}
@@ -164,8 +164,8 @@ namespace fir
 		{
 			if(!this->functions[id]->getType()->isTypeEqual(ftype))
 			{
-				error("function %s redeclared with different type (have %s, new %s)", id.str().c_str(),
-					this->functions[id]->getType()->str().c_str(), ftype->str().c_str());
+				error("Function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
+					this->functions[id]->getType(), ftype);
 			}
 
 			return this->functions[id];

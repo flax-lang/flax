@@ -27,16 +27,16 @@ sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		elm = fir::Type::getChar();
 
 	else
-		error(array, "Invalid type '%s' for slice operation", ty->str());
+		error(array, "Invalid type '%s' for slice operation", ty);
 
 	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getInt64()) : 0;
 	auto end = this->end ? this->end->typecheck(fs, fir::Type::getInt64()) : 0;
 
 	if(begin && !begin->type->isIntegerType())
-		error(begin, "Expected integer type for start index of slice; found '%s'", begin->type->str());
+		error(begin, "Expected integer type for start index of slice; found '%s'", begin->type);
 
 	if(end && !end->type->isIntegerType())
-		error(end, "Expected integer type for end index of slice; found '%s'", end->type->str());
+		error(end, "Expected integer type for end index of slice; found '%s'", end->type);
 
 	auto ret = new sst::SliceOp(this->loc, fir::ArraySliceType::get(elm));
 	ret->expr = array;
