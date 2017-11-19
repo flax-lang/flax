@@ -19,14 +19,6 @@ template <typename... Ts>
 	abort();
 }
 
-namespace std
-{
-	std::string to_string(const stx::string_view& sv)
-	{
-		return std::string(sv.begin(), sv.length());
-	}
-}
-
 
 #define __nothing
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
@@ -43,7 +35,29 @@ namespace stx
 	#else
 		#error "No string_view"
 	#endif
+
+	inline std::string to_string(const stx::string_view& sv)
+	{
+		return std::string(sv.begin(), sv.length());
+	}
 }
+
+
+#ifdef WIN32
+	#define _macro_writeFile(a, b, c)		_write(a, b, c)
+	#define _macro_openFile(a, b, c)		_open(a, b, c)
+	#define _macro_closeFile(a)				_close(a)
+
+	#ifndef S_IRWXU
+		#define S_IRWXU 0
+	#endif
+#else
+	#include <unistd.h>
+	#define _macro_writeFile(a, b, c)		write(a, b, c)
+	#define _macro_openFile(a, b, c)		open(a, b, c)
+	#define _macro_closeFile(a)				close(a)
+#endif
+
 
 namespace fir
 {

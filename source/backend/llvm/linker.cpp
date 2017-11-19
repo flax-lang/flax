@@ -37,7 +37,6 @@
 
 #include <stdio.h>
 #include <fcntl.h>
-// #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -224,7 +223,7 @@ namespace backend
 			{
 				std::string objname = "/tmp/flax_" + this->linkedModule->getModuleIdentifier();
 
-				int fd = open(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+				int fd = _macro_openFile(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
 				if(fd == -1)
 				{
 					exitless_error("Unable to create temporary file ('%s') for linking", objname);
@@ -233,8 +232,8 @@ namespace backend
 					doTheExit();
 				}
 
-				write(fd, buffer.data(), buffer.size_in_bytes());
-				close(fd);
+				_macro_writeFile(fd, buffer.data(), buffer.size_in_bytes());
+				_macro_closeFile(fd);
 
 
 				auto libs = frontend::getLibrariesToLink();

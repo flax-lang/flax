@@ -209,7 +209,7 @@ namespace frontend
 
 	std::string getFileContents(std::string fullPath)
 	{
-		return readFileIfNecessary(fullPath).fileContents.to_string();
+		return stx::to_string(readFileIfNecessary(fullPath).fileContents);
 	}
 
 

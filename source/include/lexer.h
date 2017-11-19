@@ -132,7 +132,7 @@ namespace lexer
 		stx::string_view text;
 
 		operator TokenType() const { return this->type; }
-		std::string str() const { return this->text.to_string(); }
+		std::string str() const { return stx::to_string(this->text); }
 	};
 
 	inline void operator << (std::ostream& os, const TokenType& tt)

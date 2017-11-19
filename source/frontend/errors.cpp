@@ -50,7 +50,7 @@ std::string printContext(HighlightOptions ops)
 	auto lines = frontend::getFileLines(ops.caret.fileID);
 	if(lines.size() > ops.caret.line)
 	{
-		std::string orig = lines[ops.caret.line].to_string();
+		std::string orig = stx::to_string(lines[ops.caret.line]);
 
 		size_t adjust = 0;
 		size_t adjust1 = 0;
