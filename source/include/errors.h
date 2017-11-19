@@ -18,13 +18,13 @@ inline void debuglog(const char* s, Ts... ts)
 // error shortcuts
 
 // Expected $, found '$' instead
-void expected(const Location& loc, std::string, std::string) __attribute__((noreturn));
+[[noreturn]] void expected(const Location& loc, std::string, std::string);
 
 // Expected $ after $, found '$' instead
-void expectedAfter(const Location& loc, std::string, std::string, std::string) __attribute__((noreturn));
+[[noreturn]] void expectedAfter(const Location& loc, std::string, std::string, std::string);
 
 // Unexpected $
-void unexpected(const Location& loc, std::string) __attribute__((noreturn));
+[[noreturn]] void unexpected(const Location& loc, std::string);
 
 
 #define INTUNSPEC_TYPE_STRING			"int"

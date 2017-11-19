@@ -1,0 +1,466 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="source\frontend">
+      <UniqueIdentifier>{64b0fa75-6845-4c94-82e6-f5f41f439731}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\frontend\parser">
+      <UniqueIdentifier>{b2d7a2ab-a6cf-4ee1-92c1-41dd90d17079}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\typecheck">
+      <UniqueIdentifier>{ba4212cd-ba9e-4f63-a997-1becace32a82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\codegen">
+      <UniqueIdentifier>{d5252b61-f7a8-4a1d-a35a-5ff585ad990b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\codegen\glue">
+      <UniqueIdentifier>{73886a3b-17d7-4cf5-b22b-01168ae3cfda}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external">
+      <UniqueIdentifier>{64ccb233-6631-41ae-b337-579151776fd2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external\utf8rewind">
+      <UniqueIdentifier>{3f3f3cc6-6137-4454-9fd0-41923a289bc4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external\tinyprocesslib">
+      <UniqueIdentifier>{23334233-d44f-4b87-82dd-4eb3c05695e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\fir">
+      <UniqueIdentifier>{9796ab02-8eda-4961-80af-fa6b5437909e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\fir\Types">
+      <UniqueIdentifier>{94341067-8940-40cc-88c5-01d4521e8afa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\misc">
+      <UniqueIdentifier>{8dbfcdca-1cb6-4851-8032-88f032cc52d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\backend">
+      <UniqueIdentifier>{12b6bd7a-77a8-4dd2-8f67-7ed63aa89d44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\backend\llvm">
+      <UniqueIdentifier>{59048ab3-45d9-4749-a87d-3c1970c0f891}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{afb7c52c-bc10-43f3-8e62-a9819119c509}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\ir">
+      <UniqueIdentifier>{8c36bad7-6a56-4cd6-9404-cb1891f795b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external\utf8rewind\include">
+      <UniqueIdentifier>{e10151e6-818c-4425-b35a-bb74aff8e884}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external\tinyformat">
+      <UniqueIdentifier>{894feebd-56e8-4076-9798-bc98673674ee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\external\mpreal">
+      <UniqueIdentifier>{d8411fa5-bc1e-47a9-b4b7-5f7dcecf30e6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\main.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\controlflow.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\toplevel.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\arithmetic.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\assign.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\call.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\controlflow.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\function.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\literals.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\slice.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\function.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\frontend.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\misc.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\literal.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\arithmetic.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\glue\arrays.cpp">
+      <Filter>source\codegen\glue</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\assign.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\builtin.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\call.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\casemapping.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\codepoint.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\composition.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\database.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\decomposition.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\seeking.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\internal\streaming.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\unicodedatabase.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\utf8rewind\source\utf8rewind.c">
+      <Filter>source\external\utf8rewind</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\tinyprocesslib\process.cpp">
+      <Filter>source\external\tinyprocesslib</Filter>
+    </ClCompile>
+    <ClCompile Include="source\external\tinyprocesslib\process_os.cpp">
+      <Filter>source\external\tinyprocesslib</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\ConstantNumberType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\ArraySliceType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\ClassType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\ArrayType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\AnyType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\DynamicArrayType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\EnumType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\FunctionType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\PointerType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\PrimitiveType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\RangeType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\StringType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\StructType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\TupleType.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\types\Type.cpp">
+      <Filter>source\fir\Types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\ConstantValue.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\ExecutionTarget.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\Instruction.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\IRBlock.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\IRBuilder.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\GlobalValue.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\Module.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\Value.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\casting.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\dotop.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\controlflow.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\enums.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\misc\destructors.cpp">
+      <Filter>source\misc</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\errors.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\misc\identifier.cpp">
+      <Filter>source\misc</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\logical.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\literals.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\lexer.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\file.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\expr.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\fir\Function.cpp">
+      <Filter>source\fir</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\collector.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\dependencies.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\misc.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\misc.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\type.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\type.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\toplevel.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\structs.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\structs.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\operators.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\import.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\variable.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\variable.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\parser\variable.cpp">
+      <Filter>source\frontend\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="source\frontend\pts.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\refcounting.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\glue\strings.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\slice.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\subscript.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\subscript.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\typecheck\toplevel.cpp">
+      <Filter>source\typecheck</Filter>
+    </ClCompile>
+    <ClCompile Include="source\backend\llvm\translator.cpp">
+      <Filter>source\backend\llvm</Filter>
+    </ClCompile>
+    <ClCompile Include="source\backend\llvm\linker.cpp">
+      <Filter>source\backend\llvm</Filter>
+    </ClCompile>
+    <ClCompile Include="source\backend\backend.cpp">
+      <Filter>source\backend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\backend\x64AsmBackend.cpp">
+      <Filter>source\backend</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\function.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\include\ast.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\backend.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\codegen.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\defs.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\errors.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\frontend.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\lexer.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\parser.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\parser_internal.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\precompile.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\profiling.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\pts.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\sst.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\sst_expr.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\typecheck.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\casemapping.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\codepoint.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\composition.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\decomposition.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\streaming.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\seeking.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\include\utf8rewind\utf8rewind.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\unicodedatabase.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\identifier.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\instruction.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\irbuilder.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\module.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\block.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\constant.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\database.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\value.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\utf8rewind\source\internal\base.h">
+      <Filter>source\external\utf8rewind\include</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\tinyformat\tinyformat.h">
+      <Filter>source\external\tinyformat</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\tinyprocesslib\process.h">
+      <Filter>source\external\tinyprocesslib</Filter>
+    </ClInclude>
+    <ClInclude Include="source\external\mpreal\mpreal.h">
+      <Filter>source\external\mpreal</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\function.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\type.h">
+      <Filter>include\ir</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="source\external\tinyprocesslib\process_unix.inc">
+      <Filter>source\external\tinyprocesslib</Filter>
+    </None>
+    <None Include="source\external\tinyprocesslib\process_win.inc">
+      <Filter>source\external\tinyprocesslib</Filter>
+    </None>
+  </ItemGroup>
+</Project>

@@ -85,7 +85,7 @@ std::string printContext(HighlightOptions ops)
 			u.col -= adjust;
 
 		ops.underlines.push_back(ops.caret);
-		std::sort(ops.underlines.begin(), ops.underlines.end(), [](Location a, Location b) { return a.col < b.col; });
+		std::sort(ops.underlines.begin(), ops.underlines.end(), [=](Location a, Location b) { return a.col < b.col; });
 
 		for(auto& ul : ops.underlines)
 		{
