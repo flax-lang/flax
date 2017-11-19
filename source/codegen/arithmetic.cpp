@@ -345,7 +345,8 @@ namespace cgn
 		if(isCompareOp(op))
 		{
 			// do comparison
-			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
+			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
+				|| (lt->isCharType() && rt->isCharType()))
 			{
 				switch(op)
 				{
@@ -389,9 +390,25 @@ namespace cgn
 					default: error("no");
 				}
 			}
+			else if(lt->isEnumType() && lt == rt)
+			{
+				auto li = this->irb.CreateGetEnumCaseIndex(lv);
+				auto ri = this->irb.CreateGetEnumCaseIndex(rv);
+
+				switch(op)
+				{
+					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(li, ri));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(li, ri));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(li, ri));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(li, ri));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(li, ri));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(li, ri));
+					default: error("no");
+				}
+			}
 			else
 			{
-				error("comparison not supported, hmm.");
+				error("Unsupported comparison between types '%s' and '%s'", lt, rt);
 			}
 		}
 		else

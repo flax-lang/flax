@@ -149,6 +149,11 @@ namespace fir
 		Range_GetUpper,
 		Range_SetUpper,
 
+		Enum_GetIndex,
+		Enum_SetIndex,
+		Enum_GetValue,
+		Enum_SetValue,
+
 		Branch_UnCond,
 		Branch_Cond,
 

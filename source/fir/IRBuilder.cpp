@@ -1856,6 +1856,62 @@ namespace fir
 
 
 
+	Value* IRBuilder::CreateGetEnumCaseIndex(Value* ecs, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_GetIndex, true, this->currentBlock,
+			fir::Type::getInt64(), { ecs });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetEnumCaseIndex(Value* ecs, Value* idx, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		if(!idx->getType()->isIntegerType())
+			error("index is not an integer type (got '%s')", idx->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_SetIndex, true, this->currentBlock,
+			ecs->getType(), { ecs, idx });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateGetEnumCaseValue(Value* ecs, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		Instruction* instr = new Instruction(OpKind::Enum_GetValue, true, this->currentBlock,
+			ecs->getType()->toEnumType()->getCaseType(), { ecs });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::CreateSetEnumCaseValue(Value* ecs, Value* val, std::string vname)
+	{
+		if(!ecs->getType()->isEnumType())
+			error("enum is not an enum type (got '%s')", ecs->getType());
+
+		if(ecs->getType()->toEnumType()->getCaseType() != val->getType())
+		{
+			error("value type mismatch (enum case type is '%s', value type is '%s'",
+				ecs->getType()->toEnumType()->getCaseType(), val->getType());
+		}
+
+		Instruction* instr = new Instruction(OpKind::Enum_SetValue, true, this->currentBlock,
+			ecs->getType(), { ecs, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+
 
 
 

@@ -56,18 +56,15 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			else if(vr->name == "ptr")
 				res = fir::Type::getInt8Ptr();
 
-			else
-				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type);
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = vr->name;
 
-			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
-			tmp->lhs = lhs;
-			tmp->name = vr->name;
-
-			return tmp;
-		}
-		else
-		{
-			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
+				return tmp;
+			}
+			// else: break out below, for extensions
 		}
 	}
 	else if(type->isDynamicArrayType() || type->isArraySliceType() || type->isArrayType())
@@ -86,24 +83,51 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			else if(vr->name == "ptr")
 				res = fir::Type::getInt8Ptr();
 
-			else
-				error(dotop->right, "Unknown field '%s' on type '%s'", vr->name, type);
 
-			auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
-			tmp->lhs = lhs;
-			tmp->name = vr->name;
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = vr->name;
 
-			return tmp;
+				return tmp;
+			}
+			// else: break out below, for extensions
 		}
-		else
+	}
+	else if(type->isEnumType())
+	{
+		// allow getting name, raw and value
+		auto rhs = dotop->right;
+		if(auto vr = dcast(ast::Ident, rhs))
 		{
-			error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
+			// TODO: Extension support here
+			fir::Type* res = 0;
+			if(vr->name == "name")
+				res = fir::Type::getString();
+
+			else if(vr->name == "index")
+				res = fir::Type::getInt64();
+
+			else if(vr->name == "value")
+				res = type->toEnumType()->getCaseType();
+
+
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = vr->name;
+
+				return tmp;
+			}
+			// else: break out below, for extensions
 		}
 	}
 
 	if(!type->isStructType() && !type->isClassType())
 	{
-		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
+		error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
 	}
 
 
@@ -280,9 +304,6 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 
 
-template class std::vector<sst::Defn*>;
-template class std::unordered_map<std::string, std::vector<sst::Defn*>>;
-
 sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this->loc);
@@ -370,6 +391,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 				scope.push_back(cls->id.name);
 
 				fs->teleportToScope(scope);
+				defer(fs->teleportToScope(oldscope));
 
 				if(auto id = dcast(ast::Ident, this->right))
 					id->traverseUpwards = false;
@@ -380,13 +402,50 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 				auto rhs = this->right->typecheck(fs);
 				iceAssert(rhs);
 
-				fs->teleportToScope(oldscope);
-
 				return rhs;
+			}
+			else if(auto enm = dcast(sst::EnumDefn, def))
+			{
+				auto oldscope = fs->getCurrentScope();
+				auto scope = enm->id.scope;
+				scope.push_back(enm->id.name);
+
+				fs->teleportToScope(scope);
+				defer(fs->teleportToScope(oldscope));
+
+				if(auto id = dcast(ast::Ident, this->right))
+					id->traverseUpwards = false;
+
+				else if(auto fc = dcast(ast::FunctionCall, this->right))
+					fc->traverseUpwards = false;
+
+				auto rhs = this->right->typecheck(fs);
+				iceAssert(rhs);
+
+				if(auto vr = dcast(sst::VarRef, rhs))
+				{
+					for(auto [ n, c ] : enm->cases)
+					{
+						if(c->id.name == vr->name)
+						{
+							auto ret = new sst::EnumDotOp(vr->loc, enm->type);
+							ret->caseName = vr->name;
+							ret->enumeration = enm;
+
+							return ret;
+						}
+					}
+
+					error(vr, "Enumeration '%s' has no case named '%s'", enm->id.name, vr->name);
+				}
+				else
+				{
+					error(rhs, "Unsupported right-hand expression on enum '%s'", enm->id.name);
+				}
 			}
 			else
 			{
-				error("static things not supported on this thing");
+				error(this, "Static access is not supported on type '%s'", def->type);
 			}
 		}
 		else

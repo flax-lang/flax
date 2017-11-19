@@ -199,7 +199,11 @@ namespace backend
 		}
 		else if(type->isEnumType())
 		{
-			return typeToLlvm(type->toEnumType()->getCaseType(), mod);
+			std::vector<llvm::Type*> mems;
+			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
+			mems.push_back(typeToLlvm(type->toEnumType()->getCaseType(), mod));
+
+			return llvm::StructType::get(gc, mems, false);
 		}
 		else if(type->isAnyType())
 		{
@@ -2264,6 +2268,46 @@ namespace backend
 
 							break;
 						}
+
+
+
+						case fir::OpKind::Enum_GetIndex:
+						case fir::OpKind::Enum_GetValue:
+						{
+							unsigned int pos = 0;
+							if(inst->opKind == fir::OpKind::Enum_GetValue)
+								pos = 1;
+
+							llvm::Value* a = getOperand(inst, 0);
+							iceAssert(a->getType()->isStructTy());
+
+							llvm::Value* val = builder.CreateExtractValue(a, { pos });
+							addValueToMap(val, inst->realOutput);
+
+							break;
+						}
+
+
+						case fir::OpKind::Enum_SetIndex:
+						case fir::OpKind::Enum_SetValue:
+						{
+							unsigned int pos = 0;
+							if(inst->opKind == fir::OpKind::Enum_SetValue)
+								pos = 1;
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isStructTy());
+							if(pos == 0)	iceAssert(b->getType()->isIntegerTy());
+
+							llvm::Value* ret = builder.CreateInsertValue(a, b, { pos });
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
+
+
 
 
 

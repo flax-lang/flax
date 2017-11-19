@@ -166,6 +166,11 @@ namespace fir
 		Value* CreateGetRangeUpper(Value* range, std::string vname = "");
 		Value* CreateSetRangeUpper(Value* range, Value* val, std::string vname = "");
 
+		Value* CreateGetEnumCaseIndex(Value* ecs, std::string vname = "");
+		Value* CreateSetEnumCaseIndex(Value* ecs, Value* idx, std::string vname = "");
+		Value* CreateGetEnumCaseValue(Value* ecs, std::string vname = "");
+		Value* CreateSetEnumCaseValue(Value* ecs, Value* val, std::string vname = "");
+
 
 		void CreateUnreachable();
 
