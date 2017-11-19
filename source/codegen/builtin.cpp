@@ -73,13 +73,34 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if(this->name == "length" || this->name == "count")
 		{
-			CGResult(fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize()));
+			return CGResult(fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize()));
 		}
 		else if(this->name == "ptr")
 		{
 			iceAssert(res.pointer);
-			auto ret = cs->irb.CreateGEP2(res.pointer, fir::ConstantInt::getInt64(0), fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.CreateConstGEP2(res.pointer, 0, 0);
 			return CGResult(ret);
+		}
+	}
+	else if(ty->isEnumType())
+	{
+		if(this->name == "index")
+		{
+			return CGResult(cs->irb.CreateGetEnumCaseIndex(res.value));
+		}
+		else if(this->name == "value")
+		{
+			return CGResult(cs->irb.CreateGetEnumCaseValue(res.value));
+		}
+		else if(this->name == "name")
+		{
+			auto namearr = ty->toEnumType()->getNameArray();
+			iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());
+
+			auto idx = cs->irb.CreateGetEnumCaseIndex(res.value);
+			auto n = cs->irb.CreateGEP2(namearr, fir::ConstantInt::getInt64(0), idx);
+
+			return CGResult(cs->irb.CreateLoad(n));
 		}
 	}
 

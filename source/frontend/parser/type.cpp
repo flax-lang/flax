@@ -154,6 +154,7 @@ namespace parser
 		if(st.eat() != TT::LBrace)
 			expectedAfter(st.ploc(), "opening brace", "'enum'", st.front().str());
 
+		bool hadValue = false;
 		std::vector<EnumDefn::Case> cases;
 		while(st.front() != TT::RBrace)
 		{
@@ -176,10 +177,17 @@ namespace parser
 				// ok, parse a value
 				st.eat();
 				value = parseExpr(st);
+
+				hadValue = true;
+			}
+			else if(hadValue)
+			{
+				// todo: remove this restriction maybe
+				error(st.loc(), "Enumeration cases must either all have no values, or all have values; a mix is not allowed.");
 			}
 
 			// ok.
-			cases.push_back(EnumDefn::Case { .name = cn, .value = value });
+			cases.push_back(EnumDefn::Case { .loc = st.loc(), .name = cn, .value = value });
 
 			// do some things
 			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
