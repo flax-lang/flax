@@ -12,7 +12,7 @@
 static void compile(std::string in, std::string out)
 {
 	auto module = frontend::collectFiles(in);
-	auto cd = backend::CompiledData { .module = module };
+	auto cd = backend::CompiledData { module };
 
 	{
 		using namespace backend;

@@ -17,22 +17,19 @@ namespace frontend
 
 		std::string curpath = getPathFromFile(fullPath);
 		std::string fullname = curpath + "/" + imp + ext;
-		char* fname = realpath(fullname.c_str(), 0);
 
 		if(fullname == fullPath)
 			error(loc, "Cannot import module from within itself");
 
-		// a file here
-		if(fname != NULL)
-		{
-			auto ret = std::string(fname);
-			free(fname);
+		auto fname = _getFullPath(fullname.c_str());
 
-			return getFullPathOfFile(ret);
+		// a file here
+		if(!fname.empty())
+		{
+			return fname;
 		}
 		else
 		{
-			free(fname);
 			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ext;
 
 			struct stat buffer;

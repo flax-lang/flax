@@ -38,13 +38,15 @@ namespace stx
 
 	inline std::string to_string(const stx::string_view& sv)
 	{
-		return std::string(sv.begin(), sv.length());
+		return std::string(sv.data(), sv.length());
 	}
 }
 
 
-#ifdef WIN32
+#ifdef _WIN32
+	#include <io.h>
 	#define _macro_writeFile(a, b, c)		_write(a, b, c)
+	#define _macro_readFile(a, b, c)		_read(a, b, c)
 	#define _macro_openFile(a, b, c)		_open(a, b, c)
 	#define _macro_closeFile(a)				_close(a)
 
@@ -54,6 +56,7 @@ namespace stx
 #else
 	#include <unistd.h>
 	#define _macro_writeFile(a, b, c)		write(a, b, c)
+	#define _macro_readFile(a, b, c)		read(a, b, c)
 	#define _macro_openFile(a, b, c)		open(a, b, c)
 	#define _macro_closeFile(a)				close(a)
 #endif

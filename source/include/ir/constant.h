@@ -65,7 +65,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantInt* get(Type* intType, size_t val);
+		static ConstantInt* get(Type* intType, uint64_t val);
 
 		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);
 		static ConstantInt* getInt16(int16_t value, FTContext* tc = 0);
@@ -77,14 +77,14 @@ namespace fir
 		static ConstantInt* getUint64(uint64_t value, FTContext* tc = 0);
 
 
-		ssize_t getSignedValue();
-		size_t getUnsignedValue();
+		int64_t getSignedValue();
+		uint64_t getUnsignedValue();
 
 		protected:
-		ConstantInt(Type* type, ssize_t val);
-		ConstantInt(Type* type, size_t val);
+		ConstantInt(Type* type, int64_t val);
+		ConstantInt(Type* type, uint64_t val);
 
-		size_t value;
+		uint64_t value;
 	};
 
 	struct ConstantChar : ConstantValue

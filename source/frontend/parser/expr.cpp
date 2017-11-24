@@ -12,7 +12,7 @@ using namespace lexer;
 
 namespace parser
 {
-	using TT = TokenType;
+	using TT = lexer::TokenType;
 
 	ast::Stmt* parseStmtWithAccessSpec(State& st)
 	{

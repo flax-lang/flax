@@ -9,23 +9,28 @@
 
 #include <fcntl.h>
 #include <assert.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 
 #include "lexer.h"
 #include "errors.h"
 #include "frontend.h"
 
-#define USE_MMAP true
+#ifndef _WIN32
+	#include <unistd.h>
+	#include <sys/mman.h>
 
-#ifdef __MACH__
-#include <mach/vm_statistics.h>
-#define EXTRA_MMAP_FLAGS VM_FLAGS_SUPERPAGE_SIZE_2MB
-#elif defined(MAP_HUGE_2MB)
-#define EXTRA_MMAP_FLAGS MAP_HUGE_2MB
+	#define USE_MMAP true
+
+	#ifdef __MACH__
+		#include <mach/vm_statistics.h>
+		#define EXTRA_MMAP_FLAGS VM_FLAGS_SUPERPAGE_SIZE_2MB
+	#elif defined(MAP_HUGE_2MB)
+		#define EXTRA_MMAP_FLAGS MAP_HUGE_2MB
+	#else
+		#define EXTRA_MMAP_FLAGS 0
+	#endif
 #else
-#define EXTRA_MMAP_FLAGS 0
+	#define USE_MMAP false
 #endif
 
 namespace frontend
@@ -70,7 +75,7 @@ namespace frontend
 
 			size_t fileLength = st.st_size;
 
-			int fd = open(fullPath.c_str(), O_RDONLY);
+			int fd = _macro_openFile(fullPath.c_str(), O_RDONLY, 0);
 			if(fd == -1)
 			{
 				perror("There was an error getting opening the file");
@@ -85,28 +90,41 @@ namespace frontend
 			#define _
 
 			char* contents = 0;
-			if(fileLength >= MINIMUM_MMAP_THRESHOLD && USE_MMAP)
+
+			// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use here aren't available at all
+			// if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
+
+			// Problem is, there's another scenario in which we won't want to use mmap -- when the file size is too small. so, that's why the stuff
+			// below is structured the way it is.
+			#if USE_MMAP
 			{
-				// ok, do an mmap
-				contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
-				if(contents == MAP_FAILED)
+				if(fileLength >= MINIMUM_MMAP_THRESHOLD)
 				{
-					perror("There was an error getting reading the file");
-					exit(-1);
+					// ok, do an mmap
+					contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
+					if(contents == MAP_FAILED)
+					{
+						perror("There was an error getting reading the file");
+						exit(-1);
+					}
 				}
 			}
-			else
+			#endif
+
+			if(contents == 0)
 			{
 				// read normally
 				contents = new char[fileLength + 1];
-				size_t didRead = read(fd, contents, fileLength);
+				size_t didRead = _macro_readFile(fd, contents, fileLength);
 				if(didRead != fileLength)
 				{
 					perror("There was an error getting reading the file");
 					exit(-1);
 				}
 			}
-			close(fd);
+
+			iceAssert(contents);
+			_macro_closeFile(fd);
 
 			fileContents = stx::string_view(contents, fileLength);
 		}
@@ -272,18 +290,14 @@ namespace frontend
 		return ret;
 	}
 
+
 	std::string getFullPathOfFile(std::string partial)
 	{
-		const char* fullpath = realpath(partial.c_str(), 0);
-		if(fullpath == 0)
+		std::string full = _getFullPath(partial.c_str());
+		if(full.empty())
 			error("Nonexistent file %s", partial.c_str());
 
-		iceAssert(fullpath);
-
-		std::string ret = fullpath;
-		free((void*) fullpath);
-
-		return ret;
+		return full;
 	}
 
 	std::string removeExtensionFromFilename(std::string name)

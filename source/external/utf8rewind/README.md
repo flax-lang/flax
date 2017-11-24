@@ -6,7 +6,7 @@
 
 ```
 #!c
-	#include "utf8rewind.h"
+	#include "../include/utf8rewind.h"
 
 	int main(int argc, char** argv)
 	{
@@ -24,7 +24,7 @@
 
 		/*
 			Convert input to uppercase:
-			
+
 			"Hello World!" -> "HELLO WORLD!"
 		*/
 
@@ -40,7 +40,7 @@
 
 		/*
 			Convert UTF-8 input to wide (UTF-16 or UTF-32) encoded text:
-		
+
 			"HELLO WORLD!" -> L"HELLO WORLD!"
 		*/
 
@@ -56,7 +56,7 @@
 
 		/*
 			Seek in input:
-		
+
 			Hello World!" -> "World!"
 		*/
 
@@ -95,7 +95,7 @@ This project is licensed under the MIT license, a full copy of which should have
 [utf8rewind-1.2.1.zip (3.17 MB)](https://bitbucket.org/knight666/utf8rewind/downloads/utf8rewind-1.2.1.zip)
 
 ### Clone in Mercurial ###
- 
+
 	hg clone https://bitbucket.org/knight666/utf8rewind utf8rewind
 
 ## Building the project ##

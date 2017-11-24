@@ -1791,7 +1791,7 @@ namespace fir
 		if(sz > 24 || sz == -1)
 		{
 			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",
-				val->getType(), (ssize_t) sz);
+				val->getType(), (int64_t) sz);
 		}
 
 		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getVoid(), { any, val });

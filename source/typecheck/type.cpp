@@ -36,10 +36,10 @@ namespace sst
 			}
 			else
 			{
-				if(num >= mpfr::mpreal(__DBL_MIN__) && num <= mpfr::mpreal(__DBL_MAX__))
+				if(num >= mpfr::mpreal(DBL_MIN) && num <= mpfr::mpreal(DBL_MAX))
 					return fir::Type::getFloat64();
 
-				else if(num >= mpfr::mpreal(__LDBL_MIN__) && num <= mpfr::mpreal(__LDBL_MAX__))
+				else if(num >= mpfr::mpreal(LDBL_MIN) && num <= mpfr::mpreal(LDBL_MAX))
 					return fir::Type::getFloat80();
 
 				else

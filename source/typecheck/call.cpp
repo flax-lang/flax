@@ -300,7 +300,7 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 
 	// resolve the function call here
 	sst::TypecheckState::PrettyError errs;
-	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 
 	target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
 	if(!errs.errorStr.empty())
@@ -357,7 +357,7 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		arguments.push_back(expr);
 	}
 
-	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 	std::vector<fir::Type*> tys = util::map(arguments, [](sst::Expr* e) -> auto { return e->type; });
 
 	auto target = this->callee->typecheck(fs);

@@ -143,12 +143,12 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			// check methods first
 			using Param = sst::FunctionDefn::Param;
 			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
-			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { .type = e->type, .loc = e->loc }; });
+			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 
 			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
 
 				if(meths)
-					ts.insert(ts.begin(), Param { .type = str->type->getPointerTo(), .loc = fc->loc });
+					ts.insert(ts.begin(), Param { "",fc->loc, str->type->getPointerTo() });
 
 				return fs->resolveFunctionFromCandidates(cands, ts, errs, false);
 			};
