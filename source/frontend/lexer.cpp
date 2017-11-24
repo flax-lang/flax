@@ -371,7 +371,7 @@ namespace lexer
 		// string + 3
 		// so in every other case we want unary +/-.
 		// note: this dumb '<=255' thing is because windows likes to assert useless things.
-		else if(!stream.empty() && ((stream[0] >= 1 && stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
+		else if(!stream.empty() && ((stream[0] >= 1 && (int) stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
 			// copy it.
 			auto tmp = stream;

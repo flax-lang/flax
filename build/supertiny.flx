@@ -99,7 +99,7 @@ public fn twice(a: int) -> int { return 2 * a }
 {
 	fn inner()
 	{
-		printf("inner\n"
+		printf("inner\n")
 	}
 
 	class foo
