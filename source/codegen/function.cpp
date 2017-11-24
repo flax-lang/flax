@@ -79,7 +79,6 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->parentTypeForMethod)
 		cs->leaveMethodBody();
 
-
 	if(this->isEntry)
 	{
 		if(cs->entryFunction.first != 0)

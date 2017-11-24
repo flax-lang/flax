@@ -221,8 +221,8 @@ namespace backend
 			{
 				std::string objname = "/tmp/flax_" + this->linkedModule->getModuleIdentifier();
 
-				int fd = _macro_openFile(objname.c_str(), O_RDWR | O_CREAT, S_IRWXU);
-				if(fd == -1)
+				auto fd = platform::openFile(objname.c_str(), O_RDWR | O_CREAT, 0);
+				if(fd == platform::InvalidFileHandle)
 				{
 					exitless_error("Unable to create temporary file ('%s') for linking", objname);
 					perror("open(2) error");
@@ -230,8 +230,8 @@ namespace backend
 					doTheExit();
 				}
 
-				_macro_writeFile(fd, buffer.data(), buffer.size_in_bytes());
-				_macro_closeFile(fd);
+				platform::writeFile(fd, buffer.data(), buffer.size_in_bytes());
+				platform::closeFile(fd);
 
 
 				auto libs = frontend::getLibrariesToLink();

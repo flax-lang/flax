@@ -72,10 +72,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>D:\Projects\flax\source\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
+    <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -134,10 +137,11 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>call "$(DevEnvDir)..\..\VC\Auxiliary\Build\vcvars64.bat"
-cls
-$(OutputPath)flax.exe -sysroot $(ProjectDir)build/sysroot -run $(ProjectDir)build/supertiny.flx
-exit 0</Command>
+      <Command>rem call "$(DevEnvDir)..\..\VC\Auxiliary\Build\vcvars64.bat" &gt;nul
+robocopy $(ProjectDir)libs $(ProjectDir)build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /ns /np
+rem cls
+rem $(OutputPath)flax.exe -sysroot $(ProjectDir)build/sysroot -run $(ProjectDir)build/tester.flx
+rem exit 0</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Run the test</Message>
@@ -171,10 +175,11 @@ exit 0</Command>
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>call "$(DevEnvDir)..\..\VC\Auxiliary\Build\vcvars64.bat"
-cls
-$(OutputPath)flax.exe -sysroot $(ProjectDir)build/sysroot -run $(ProjectDir)build/supertiny.flx
-exit 0</Command>
+      <Command>rem call "$(DevEnvDir)..\..\VC\Auxiliary\Build\vcvars64.bat" &gt;nul
+robocopy $(ProjectDir)libs $(ProjectDir)build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /ns /np
+rem cls
+rem $(OutputPath)flax.exe -sysroot $(ProjectDir)build/sysroot -run $(ProjectDir)build/tester.flx
+rem exit 0</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Run the test</Message>
@@ -255,6 +260,7 @@ exit 0</Command>
     <ClCompile Include="source\frontend\parser\toplevel.cpp" />
     <ClCompile Include="source\frontend\parser\type.cpp" />
     <ClCompile Include="source\frontend\parser\variable.cpp" />
+    <ClCompile Include="source\frontend\platform.cpp" />
     <ClCompile Include="source\frontend\pts.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\misc\destructors.cpp" />
@@ -307,6 +313,7 @@ exit 0</Command>
     <ClInclude Include="source\include\lexer.h" />
     <ClInclude Include="source\include\parser.h" />
     <ClInclude Include="source\include\parser_internal.h" />
+    <ClInclude Include="source\include\platform.h" />
     <ClInclude Include="source\include\precompile.h" />
     <ClInclude Include="source\include\profiling.h" />
     <ClInclude Include="source\include\pts.h" />
