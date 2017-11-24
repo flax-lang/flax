@@ -56,9 +56,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 
 void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	if(this->didGenerateDecl) return;
-
-	this->didGenerateDecl = true;
+	if(this->generatedDefn)
+		return;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -143,10 +142,9 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
-	if(this->didGenerateDecl)
-		return 0;
+	if(this->generatedDecl)
+		return this->generatedDecl;
 
-	this->didGenerateDecl = true;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -199,6 +197,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	if(conflicts)
 		error(this, "conflicting");
 
+	this->generatedDecl = defn;
 	fs->stree->addDefinition(this->name, defn);
 	return defn;
 }

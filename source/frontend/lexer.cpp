@@ -72,7 +72,7 @@ namespace lexer
 
 
 	TokenType getNextToken(const util::FastVector<string_view>& lines, size_t* line, size_t* offset, const string_view& whole,
-		Location& pos, Token* out)
+		Location& pos, Token* out, bool crlf)
 	{
 		bool flag = true;
 
@@ -84,6 +84,14 @@ namespace lexer
 		}
 
 		string_view stream = lines[*line].substr(*offset);
+		if(stream.empty())
+		{
+			out->loc = pos;
+			out->type = TokenType::EndOfFile;
+			return TokenType::EndOfFile;
+		}
+
+
 
 		size_t read = 0;
 		size_t unicodeLength = 0;
@@ -93,13 +101,14 @@ namespace lexer
 
 		Token& tok = *out;
 		tok.loc = pos;
+		tok.type = TokenType::Invalid;
 
 
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
 		{
 			tok.type = TokenType::Comment;
-			stream = stream.substr(0, 0);
+			// stream = stream.substr(0, 0);
 			(*line)++;
 			pos.line++;
 			pos.col = 0;
@@ -532,7 +541,7 @@ namespace lexer
 			{
 				if(stream[i] == '\\')
 				{
-					if(i + 1 == stream.size() || *line + 1 == lines.size())
+					if(i + 1 == stream.size())
 					{
 						unexpected(pos, "end of input");
 					}
@@ -550,6 +559,9 @@ namespace lexer
 						pos.line++;
 						pos.col = 1;
 						(*line)++;
+
+						if(*line == lines.size())
+							unexpected(pos, "end of input");
 
 						i = 0;
 
@@ -596,9 +608,10 @@ namespace lexer
 			read = 0;
 			flag = false;
 		}
-		else if(hasPrefix(stream, "\r\n"))
+		else if(crlf && hasPrefix(stream, "\r\n"))
 		{
 			read = 2;
+			flag = false;
 
 			tok.type = TokenType::NewLine;
 			tok.text = "\n";
@@ -611,7 +624,7 @@ namespace lexer
 				switch(stream[0])
 				{
 					// for single-char things
-					case '\n':	tok.type = TokenType::NewLine;	pos.line++;	break;
+					case '\n':	tok.type = TokenType::NewLine;				break;
 					case '{':	tok.type = TokenType::LBrace;				break;
 					case '}':	tok.type = TokenType::RBrace;				break;
 					case '(':	tok.type = TokenType::LParen;				break;
@@ -681,6 +694,7 @@ namespace lexer
 		else
 		{
 			pos.col = 1;
+			pos.line++;
 
 			(*line)++;
 			(*offset) = 0;

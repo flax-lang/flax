@@ -1,0 +1,16 @@
+// a.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+// export foo
+
+import "b"
+
+ffi fn printf(fmt: i8*, ...) -> int
+public fn hello1() { printf("hello 1\n") }
+
+@entry fn main()
+{
+	printf("main\n")
+	hello1()
+	hello2()
+}

@@ -143,7 +143,7 @@ namespace lexer
 	using TokenList = util::FastVector<Token>;
 
 	lexer::TokenType getNextToken(const util::FastVector<util::string_view>& lines, size_t* line, size_t* offset,
-		const util::string_view& whole, Location& pos, Token* out);
+		const util::string_view& whole, Location& pos, Token* out, bool crlf);
 }
 
 
