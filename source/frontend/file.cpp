@@ -85,6 +85,12 @@ namespace frontend
 
 		Location pos;
 		FileInnards& innards = fileList[fullPath];
+		if(innards.isLexing)
+		{
+			warn("Attempting to lex file while file is already being lexed, stop it");
+			return innards;
+		}
+
 		{
 			pos.fileID = getFileIDFromFilename(fullPath);
 
@@ -92,7 +98,6 @@ namespace frontend
 			innards.lines = std::move(rawlines);
 			innards.isLexing = true;
 		}
-
 
 		// auto p = prof::Profile("lex");
 

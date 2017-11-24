@@ -274,6 +274,7 @@ namespace lexer
 				curpos.col++;
 			}
 
+
 			if(currentNest != 0)
 				error(opening, "Expected closing */ (reached EOF), for block comment started here:");
 
