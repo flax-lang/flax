@@ -1,0 +1,8 @@
+// b.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export bar
+
+ffi fn printf(fmt: i8*, ...) -> int
+public fn hello2() { printf("hello 2\n") }
