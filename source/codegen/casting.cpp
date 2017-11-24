@@ -31,7 +31,7 @@ namespace cgn
 		}
 		else
 		{
-			if(num > __DBL_MAX__)
+			if(num > DBL_MAX)
 				return fir::ConstantFP::getFloat80(num.toLDouble());
 
 			else

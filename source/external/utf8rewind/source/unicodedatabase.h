@@ -33,7 +33,7 @@
 	\cond INTERNAL
 */
 
-#include "utf8rewind.h"
+#include "../include/utf8rewind/utf8rewind.h"
 
 typedef struct {
 	unicode_t codepoint;

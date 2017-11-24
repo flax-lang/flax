@@ -66,28 +66,28 @@ namespace fir
 
 
 	// todo: unique these values.
-	ConstantInt* ConstantInt::get(Type* intType, size_t val)
+	ConstantInt* ConstantInt::get(Type* intType, uint64_t val)
 	{
 		iceAssert(intType->isIntegerType() && "not integer type");
 		return new ConstantInt(intType, val);
 	}
 
-	ConstantInt::ConstantInt(Type* type, ssize_t val) : ConstantValue(type)
+	ConstantInt::ConstantInt(Type* type, int64_t val) : ConstantValue(type)
 	{
 		this->value = val;
 	}
 
-	ConstantInt::ConstantInt(Type* type, size_t val) : ConstantValue(type)
+	ConstantInt::ConstantInt(Type* type, uint64_t val) : ConstantValue(type)
 	{
 		this->value = val;
 	}
 
-	ssize_t ConstantInt::getSignedValue()
+	int64_t ConstantInt::getSignedValue()
 	{
-		return (ssize_t) this->value;
+		return (int64_t) this->value;
 	}
 
-	size_t ConstantInt::getUnsignedValue()
+	uint64_t ConstantInt::getUnsignedValue()
 	{
 		return this->value;
 	}
@@ -378,16 +378,16 @@ namespace fir
 		using mpr = mpfr::mpreal;
 		if(mpfr::isint(num) && target->isFloatingPointType())
 		{
-			if(target == fir::Type::getFloat32())		return (num >= -mpr(__FLT_MAX__) && num <= mpr(__FLT_MAX__));
-			else if(target == fir::Type::getFloat64())	return (num >= -mpr(__DBL_MAX__) && num <= mpr(__DBL_MAX__));
-			else if(target == fir::Type::getFloat80())	return (num >= -mpr(__LDBL_MAX__) && num <= mpr(__LDBL_MAX__));
+			if(target == fir::Type::getFloat32())		return (num >= -mpr(FLT_MAX) && num <= mpr(FLT_MAX));
+			else if(target == fir::Type::getFloat64())	return (num >= -mpr(DBL_MAX) && num <= mpr(DBL_MAX));
+			else if(target == fir::Type::getFloat80())	return (num >= -mpr(LDBL_MAX) && num <= mpr(LDBL_MAX));
 			else										error("Unsupported type '%s' for literal number", target);
 		}
 		else
 		{
-			if(target == fir::Type::getFloat32())		return (mpfr::abs(num) >= mpr(__FLT_MIN__) && mpfr::abs(num) <= mpr(__FLT_MAX__));
-			else if(target == fir::Type::getFloat64())	return (mpfr::abs(num) >= mpr(__DBL_MIN__) && mpfr::abs(num) <= mpr(__DBL_MAX__));
-			else if(target == fir::Type::getFloat80())	return (mpfr::abs(num) >= mpr(__LDBL_MIN__) && mpfr::abs(num) <= mpr(__LDBL_MAX__));
+			if(target == fir::Type::getFloat32())		return (mpfr::abs(num) >= mpr(FLT_MIN) && mpfr::abs(num) <= mpr(FLT_MAX));
+			else if(target == fir::Type::getFloat64())	return (mpfr::abs(num) >= mpr(DBL_MIN) && mpfr::abs(num) <= mpr(DBL_MAX));
+			else if(target == fir::Type::getFloat80())	return (mpfr::abs(num) >= mpr(LDBL_MIN) && mpfr::abs(num) <= mpr(LDBL_MAX));
 
 			else if(target == fir::Type::getInt8())		return (num >= mpr(INT8_MIN) && num <= mpr(INT8_MAX));
 			else if(target == fir::Type::getInt16())	return (num >= mpr(INT16_MIN) && num <= mpr(INT16_MAX));

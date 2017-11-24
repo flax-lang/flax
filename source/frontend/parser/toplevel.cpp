@@ -17,7 +17,7 @@ namespace parser
 
 	static std::string parseModuleName(std::string fullpath)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		auto tokens = frontend::getFileTokens(fullpath);
 
 		std::string ret;
@@ -71,7 +71,7 @@ namespace parser
 
 	TopLevelBlock* parseTopLevel(State& st, std::string name)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		TopLevelBlock* root = new TopLevelBlock(st.loc(), name);
 
 		// if it's not empty, then it's an actual user-defined namespace
@@ -224,9 +224,9 @@ namespace parser
 		// debuglog("module -> %s\n", modname);
 
 		return ParsedFile {
-			.name = filename,
-			.root = toplevel,
-			.moduleName = modname
+			filename,
+			modname,
+			toplevel,
 		};
 	}
 }

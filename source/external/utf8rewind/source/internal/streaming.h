@@ -33,11 +33,11 @@
 	\cond INTERNAL
 */
 
-#include "utf8rewind.h"
+#include "../../include/utf8rewind/utf8rewind.h"
 
 /*
 	UAX15-D4. Stream-Safe Text Process
-		
+
 	This is the process of producing a Unicode string in Stream-Safe Text Format by processing that string
 	from start to finish, inserting U+034F COMBINING GRAPHEME JOINER (CGJ) within long sequences of
 	non-starters. The exact position of the inserted CGJs are determined according to the following algorithm,

@@ -78,7 +78,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	if(infer)
 	{
 		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-		auto p = Param { .name = "self", .type = infer->getPointerTo() };
+		auto p = Param { "self", this->loc, infer->getPointerTo() };
 
 		ps.push_back(p);
 		ptys.push_back(p.type);
@@ -88,7 +88,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	for(auto t : this->args)
 	{
-		auto p = Param { .name = t.name, .loc = t.loc, .type = fs->convertParserTypeToFIR(t.type) };
+		auto p = Param { t.name, t.loc, fs->convertParserTypeToFIR(t.type) };
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
@@ -156,7 +156,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 	std::vector<Param> ps;
 
 	for(auto t : this->args)
-		ps.push_back(Param { .name = t.name, .loc = t.loc, .type = fs->convertParserTypeToFIR(t.type) });
+		ps.push_back(Param { t.name, t.loc, fs->convertParserTypeToFIR(t.type) });
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 

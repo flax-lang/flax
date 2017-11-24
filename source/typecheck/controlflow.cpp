@@ -30,9 +30,9 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs); });
 		ret->cases.push_back(Case {
-									.cond = c.cond->typecheck(fs),
-									.body = dynamic_cast<sst::Block*>(c.body->typecheck(fs)),
-									.inits = inits
+									c.cond->typecheck(fs),
+									dynamic_cast<sst::Block*>(c.body->typecheck(fs)),
+									inits
 								});
 
 		iceAssert(ret->cases.back().body);

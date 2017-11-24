@@ -33,7 +33,7 @@
 	\cond INTERNAL
 */
 
-#include "utf8rewind.h"
+#include "../../include/utf8rewind/utf8rewind.h"
 
 const char* seeking_forward(const char* input, const char* inputEnd, size_t inputSize, off_t offset);
 

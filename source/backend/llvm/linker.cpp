@@ -37,6 +37,7 @@
 
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -53,9 +54,6 @@
 
 static llvm::LLVMContext globalContext;
 
-#ifdef _WIN32
-errno_t _putenv_s(const char* name, const char* value);
-#endif
 
 
 namespace backend
@@ -349,10 +347,13 @@ namespace backend
 
 	void LLVMBackend::setupTargetMachine()
 	{
-		llvm::InitializeAllTargets();
-		llvm::InitializeAllTargetMCs();
-		llvm::InitializeAllAsmParsers();
-		llvm::InitializeAllAsmPrinters();
+		// llvm::InitializeAllTargets();
+		// llvm::InitializeAllTargetMCs();
+		// llvm::InitializeAllAsmParsers();
+		// llvm::InitializeAllAsmPrinters();
+
+		// todo: support other platforms
+		llvm::InitializeNativeTarget();
 
 		llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
 		llvm::initializeCore(*Registry);

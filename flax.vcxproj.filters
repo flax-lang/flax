@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
-    </Filter>
     <Filter Include="source">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -62,6 +58,9 @@
     </Filter>
     <Filter Include="source\external\mpreal">
       <UniqueIdentifier>{d8411fa5-bc1e-47a9-b4b7-5f7dcecf30e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="build">
+      <UniqueIdentifier>{7c999564-ba54-46ec-b1cb-3e9c046ea237}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -341,6 +340,9 @@
     <ClCompile Include="source\codegen\function.cpp">
       <Filter>source\codegen</Filter>
     </ClCompile>
+    <ClCompile Include="source\codegen\enums.cpp">
+      <Filter>source\codegen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\include\ast.h">
@@ -461,6 +463,12 @@
     </None>
     <None Include="source\external\tinyprocesslib\process_win.inc">
       <Filter>source\external\tinyprocesslib</Filter>
+    </None>
+    <None Include="build\supertiny.flx">
+      <Filter>build</Filter>
+    </None>
+    <None Include="build\tester.flx">
+      <Filter>build</Filter>
     </None>
   </ItemGroup>
 </Project>

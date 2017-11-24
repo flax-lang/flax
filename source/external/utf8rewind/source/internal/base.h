@@ -33,7 +33,7 @@
 	\cond INTERNAL
 */
 
-#include "utf8rewind.h"
+#include "../../include/utf8rewind/utf8rewind.h"
 
 #if defined(__GNUC__) && !defined(COMPILER_ICC)
 	#define UTF8_UNUSED(_parameter) _parameter __attribute__ ((unused))

@@ -10,7 +10,7 @@ using namespace lexer;
 
 namespace parser
 {
-	using TT = TokenType;
+	using TT = lexer::TokenType;
 	StructDefn* parseStruct(State& st)
 	{
 		iceAssert(st.eat() == TT::Struct);
@@ -187,7 +187,7 @@ namespace parser
 			}
 
 			// ok.
-			cases.push_back(EnumDefn::Case { .loc = st.loc(), .name = cn, .value = value });
+			cases.push_back(EnumDefn::Case { st.loc(), cn, value });
 
 			// do some things
 			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
@@ -243,7 +243,7 @@ namespace parser
 
 	static pts::Type* parseTypeIndirections(State& st, pts::Type* base)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		auto ret = base;
 
 		while(st.front() == TT::Asterisk)
@@ -303,7 +303,7 @@ namespace parser
 
 	pts::Type* parseType(State& st)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		if(st.front() == TT::Identifier)
 		{
 			std::string s = st.eat().str();

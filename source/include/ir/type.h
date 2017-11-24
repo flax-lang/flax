@@ -152,7 +152,7 @@ namespace fir
 
 		size_t getBitWidth();
 
-		Type* getIndirectedType(ssize_t times, FTContext* tc = 0);
+		Type* getIndirectedType(int times, FTContext* tc = 0);
 
 		size_t getID() { return this->id; }
 

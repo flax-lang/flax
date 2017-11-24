@@ -9,7 +9,7 @@
 using namespace ast;
 using namespace lexer;
 
-using TT = TokenType;
+using TT = lexer::TokenType;
 namespace parser
 {
 	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
@@ -66,7 +66,7 @@ namespace parser
 			st.eat();
 			auto type = parseType(st);
 
-			defn->args.push_back(FuncDefn::Arg { .name = name, .type = type, .loc = loc });
+			defn->args.push_back(FuncDefn::Arg { name, loc, type });
 
 			if(st.front() == TT::Comma)
 				st.eat();
