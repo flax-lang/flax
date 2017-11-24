@@ -151,7 +151,6 @@ fn runTests()
 
 
 	printf("\n<< done >>\n")
-	return 0
 }
 
 
