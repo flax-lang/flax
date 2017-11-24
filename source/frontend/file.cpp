@@ -45,13 +45,13 @@ namespace frontend
 
 
 		// split into lines
+		bool crlf = false;
 		util::FastVector<util::string_view> rawlines;
 		{
 			// auto p = prof::Profile("lines");
 			util::string_view view = fileContents;
 
 			bool first = true;
-			bool crlf = false;
 			while(true)
 			{
 				size_t ln = 0;
@@ -59,11 +59,11 @@ namespace frontend
 				if(first || crlf)
 				{
 					ln = view.find("\r\n");
-					if(ln != util::string_view::npos)
+					if(ln != util::string_view::npos && first)
 						crlf = true;
 				}
 
-				if(!first || (first && !crlf))
+				if((!first && !crlf) || (first && !crlf && ln == util::string_view::npos))
 					ln = view.find('\n');
 
 				first = false;
@@ -78,6 +78,10 @@ namespace frontend
 					break;
 				}
 			}
+
+			// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
+			if(!view.empty())
+				new (rawlines.getEmptySlotPtrAndAppend()) util::string_view(view.data(), view.length());
 
 			// p.finish();
 		}
@@ -112,7 +116,7 @@ namespace frontend
 			size_t i = 0;
 
 			do {
-				auto type = lexer::getNextToken(innards.lines, &curLine, &curOffset, innards.fileContents, pos, ts.getEmptySlotPtrAndAppend());
+				auto type = lexer::getNextToken(innards.lines, &curLine, &curOffset, innards.fileContents, pos, ts.getEmptySlotPtrAndAppend(), crlf);
 
 				flag = (type != lexer::TokenType::EndOfFile);
 
@@ -121,8 +125,6 @@ namespace frontend
 
 				else if(type == lexer::TokenType::Invalid)
 					error(pos, "Invalid token");
-
-				// debuglog("found token '%s'\n", ts[ts.size() - 1].text);
 
 				i++;
 
