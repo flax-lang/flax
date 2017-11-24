@@ -4,6 +4,7 @@
 
 #include <fcntl.h>
 
+#include "errors.h"
 #include "frontend.h"
 
 #ifndef _WIN32
@@ -50,7 +51,7 @@ namespace platform
 		#else
 
 			struct stat st;
-			if(!stat(path.c_str(), &st))
+			if(stat(path.c_str(), &st) != 0)
 				_error_and_exit("Failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
 
 			return st.st_size;
@@ -63,13 +64,13 @@ namespace platform
 		// first, get the size of the file
 		size_t fileLength = getFileSize(path);
 
-
 		auto fd = openFile(path.c_str(), O_RDONLY, 0);
 		if(fd == platform::InvalidFileHandle)
 		{
 			perror("There was an error getting opening the file");
 			exit(-1);
 		}
+
 
 		// check if we should mmap
 		// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
@@ -143,7 +144,7 @@ namespace platform
 		#ifdef _WIN32
 			CloseHandle(fd);
 		#else
-			return close(fd);
+			close(fd);
 		#endif
 	}
 
@@ -229,7 +230,7 @@ namespace platform
 		}
 		#else
 		{
-			auto ret = realpath(pth, 0);
+			auto ret = realpath(partial.c_str(), 0);
 			if(ret == 0) return "";
 
 			auto str = std::string(ret);

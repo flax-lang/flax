@@ -62,10 +62,9 @@ namespace frontend
 					if(ln != util::string_view::npos)
 						crlf = true;
 				}
-				else
-				{
+
+				if(!first || (first && !crlf))
 					ln = view.find('\n');
-				}
 
 				first = false;
 
