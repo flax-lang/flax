@@ -5,7 +5,7 @@
 #pragma once
 
 #include "defs.h"
-#include "frontend.h"
+
 #include "precompile.h"
 
 template <typename... Ts>
@@ -88,11 +88,16 @@ struct HighlightOptions
 
 // Location getHighlightExtent(ast::Expr* e);
 
-[[noreturn]] void doTheExit();
 std::string printContext(HighlightOptions ops);
 
+namespace frontend
+{
+	const std::string& getFilenameFromID(size_t fileID);
+	std::string getFilenameFromPath(std::string path);
+}
+
 template <typename... Ts>
-std::string __error_gen(HighlightOptions ops, const char* msg, const char* type, Ts... ts)
+std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, Ts... ts)
 {
 	std::string ret;
 
@@ -198,36 +203,6 @@ template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
 {
 	return strprintf("%s%s", COLOUR_RESET, COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + strprintf("%s", COLOUR_RESET);
 }
-
-
-
-// template <typename... Ts> [[noreturn]] void error(const char* fmt, Ts... ts)
-// {
-// 	fputs(__error_gen(HighlightOptions(), fmt, "Error", true, ts...), stderr);
-// 	abort();
-// }
-
-// template <typename... Ts> [[noreturn]] void error(Locatable* e, const char* fmt, Ts... ts)
-// {
-// 	fputs(__error_gen(HighlightOptions(e ? e->loc : Location()), fmt, "Error", true, ts...), stderr);
-// 	abort();
-// }
-
-// template <typename... Ts> [[noreturn]] void error(const Location& loc, const char* fmt, Ts... ts)
-// {
-// 	fputs(__error_gen(HighlightOptions(loc), fmt, "Error", true, ts...), stderr);
-// 	abort();
-// }
-
-// template <typename... Ts> [[noreturn]] void error(Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)
-// {
-// 	if(ops.caret.fileID == 0)
-// 		ops.caret = e ? e->loc : Location();
-
-// 	fputs(__error_gen(ops, fmt, "Error", true, ts...), stderr);
-
-// 	abort();
-// }
 
 
 

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "codegen.h"
+#include "platform.h"
 
 // generate runtime glue code
 
@@ -607,7 +608,7 @@ namespace string
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
 					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
 					fir::LinkageType::External);
 
@@ -685,7 +686,7 @@ namespace string
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
 					fir::LinkageType::External);
 
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
 					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
 					fir::LinkageType::External);
 

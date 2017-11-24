@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
+#include "platform.h"
 #include "parser_internal.h"
 
 #include <sstream>

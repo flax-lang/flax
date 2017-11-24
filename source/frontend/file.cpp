@@ -15,31 +15,13 @@
 #include "errors.h"
 #include "frontend.h"
 
-#ifndef _WIN32
-	#include <unistd.h>
-	#include <sys/mman.h>
-
-	#define USE_MMAP true
-
-	#ifdef __MACH__
-		#include <mach/vm_statistics.h>
-		#define EXTRA_MMAP_FLAGS VM_FLAGS_SUPERPAGE_SIZE_2MB
-	#elif defined(MAP_HUGE_2MB)
-		#define EXTRA_MMAP_FLAGS MAP_HUGE_2MB
-	#else
-		#define EXTRA_MMAP_FLAGS 0
-	#endif
-#else
-	#define USE_MMAP false
-#endif
-
 namespace frontend
 {
 	struct FileInnards
 	{
 		lexer::TokenList tokens;
-		stx::string_view fileContents;
-		util::FastVector<stx::string_view> lines;
+		util::string_view fileContents;
+		util::FastVector<util::string_view> lines;
 		std::vector<size_t> importIndices;
 
 		bool didLex = false;
@@ -50,8 +32,6 @@ namespace frontend
 
 	static FileInnards& readFileIfNecessary(std::string fullPath)
 	{
-		stx::string_view fileContents;
-
 		// break early if we can
 		{
 			auto it = fileList.find(fullPath);
@@ -60,92 +40,39 @@ namespace frontend
 		}
 
 
-		{
-			// auto p = prof::Profile("read file");
-
-			// first, get the size of the file
-			struct stat st;
-			int ret = stat(fullPath.c_str(), &st);
-
-			if(ret != 0)
-			{
-				perror("There was an error getting the file size");
-				exit(-1);
-			}
-
-			size_t fileLength = st.st_size;
-
-			int fd = _macro_openFile(fullPath.c_str(), O_RDONLY, 0);
-			if(fd == -1)
-			{
-				perror("There was an error getting opening the file");
-				exit(-1);
-			}
-
-			// check if we should mmap
-			// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
-			// if we have at least 4mb worth of file.
-			// if not, then just 2 * pagesize.
-			#define MINIMUM_MMAP_THRESHOLD (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize())
-			#define _
-
-			char* contents = 0;
-
-			// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use here aren't available at all
-			// if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
-
-			// Problem is, there's another scenario in which we won't want to use mmap -- when the file size is too small. so, that's why the stuff
-			// below is structured the way it is.
-			#if USE_MMAP
-			{
-				if(fileLength >= MINIMUM_MMAP_THRESHOLD)
-				{
-					// ok, do an mmap
-					contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
-					if(contents == MAP_FAILED)
-					{
-						perror("There was an error getting reading the file");
-						exit(-1);
-					}
-				}
-			}
-			#endif
-
-			if(contents == 0)
-			{
-				// read normally
-				contents = new char[fileLength + 1];
-				size_t didRead = _macro_readFile(fd, contents, fileLength);
-				if(didRead != fileLength)
-				{
-					perror("There was an error getting reading the file");
-					exit(-1);
-				}
-			}
-
-			iceAssert(contents);
-			_macro_closeFile(fd);
-
-			fileContents = stx::string_view(contents, fileLength);
-		}
-
+		util::string_view fileContents = platform::readEntireFile(fullPath);
 
 
 
 		// split into lines
-		util::FastVector<stx::string_view> rawlines;
+		util::FastVector<util::string_view> rawlines;
 		{
 			// auto p = prof::Profile("lines");
-			stx::string_view view = fileContents;
+			util::string_view view = fileContents;
 
+			bool first = true;
+			bool crlf = false;
 			while(true)
 			{
-				size_t ln = view.find('\n');
+				size_t ln = 0;
 
-				if(ln != stx::string_view::npos)
+				if(first || crlf)
 				{
-					new (rawlines.getEmptySlotPtrAndAppend()) stx::string_view(view.data(), ln + 1);
-					view.remove_prefix(ln + 1);
+					ln = view.find("\r\n");
+					if(ln != util::string_view::npos)
+						crlf = true;
+				}
+				else
+				{
+					ln = view.find('\n');
+				}
+
+				first = false;
+
+				if(ln != util::string_view::npos)
+				{
+					new (rawlines.getEmptySlotPtrAndAppend()) util::string_view(view.data(), ln + (crlf ? 2 : 1));
+					view.remove_prefix(ln + (crlf ? 2 : 1));
 				}
 				else
 				{
@@ -191,6 +118,8 @@ namespace frontend
 				else if(type == lexer::TokenType::Invalid)
 					error(pos, "Invalid token");
 
+				// debuglog("found token '%s'\n", ts[ts.size() - 1].text);
+
 				i++;
 
 			} while(flag);
@@ -227,7 +156,7 @@ namespace frontend
 
 	std::string getFileContents(std::string fullPath)
 	{
-		return stx::to_string(readFileIfNecessary(fullPath).fileContents);
+		return util::to_string(readFileIfNecessary(fullPath).fileContents);
 	}
 
 
@@ -254,7 +183,7 @@ namespace frontend
 		}
 	}
 
-	const util::FastVector<stx::string_view>& getFileLines(size_t id)
+	const util::FastVector<util::string_view>& getFileLines(size_t id)
 	{
 		std::string fp = getFilenameFromID(id);
 		return readFileIfNecessary(fp).lines;
@@ -293,7 +222,7 @@ namespace frontend
 
 	std::string getFullPathOfFile(std::string partial)
 	{
-		std::string full = _getFullPath(partial.c_str());
+		std::string full = platform::getFullPath(partial);
 		if(full.empty())
 			error("Nonexistent file %s", partial.c_str());
 

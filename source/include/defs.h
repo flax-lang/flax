@@ -9,14 +9,13 @@
 
 #include "precompile.h"
 
-
-
+[[noreturn]] void doTheExit();
 
 template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)
 {
 	tinyformat::format(std::cerr, s, ts...);
-	abort();
+	doTheExit();
 }
 
 
@@ -26,41 +25,27 @@ template <typename... Ts>
 
 #define TAB_WIDTH 4
 
-namespace stx
+namespace util
 {
-	#if STRING_VIEW_IS_EXP == 0
-		using string_view = std::string_view;
-	#elif STRING_VIEW_IS_EXP == 1
-		using string_view = std::experimental::string_view;
-	#else
-		#error "No string_view"
+	#ifndef STRING_VIEW_TYPE
+		#error "what?"
 	#endif
 
-	inline std::string to_string(const stx::string_view& sv)
+	#if STRING_VIEW_TYPE == 0
+		using string_view = std::string_view;
+	#elif STRING_VIEW_TYPE == 1
+		using string_view = std::experimental::string_view;
+	#elif STRING_VIEW_TYPE == 2
+		using string_view = stx::string_view;
+	#else
+		#error "No string_view, or unknown type"
+	#endif
+
+	inline std::string to_string(const string_view& sv)
 	{
 		return std::string(sv.data(), sv.length());
 	}
 }
-
-
-#ifdef _WIN32
-	#include <io.h>
-	#define _macro_writeFile(a, b, c)		_write(a, b, c)
-	#define _macro_readFile(a, b, c)		_read(a, b, c)
-	#define _macro_openFile(a, b, c)		_open(a, b, c)
-	#define _macro_closeFile(a)				_close(a)
-
-	#ifndef S_IRWXU
-		#define S_IRWXU 0
-	#endif
-#else
-	#include <unistd.h>
-	#define _macro_writeFile(a, b, c)		write(a, b, c)
-	#define _macro_readFile(a, b, c)		read(a, b, c)
-	#define _macro_openFile(a, b, c)		open(a, b, c)
-	#define _macro_closeFile(a)				close(a)
-#endif
-
 
 namespace fir
 {

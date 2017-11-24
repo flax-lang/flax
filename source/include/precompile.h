@@ -26,14 +26,23 @@
 #error "Please switch to a compiler that supports '__has_include'"
 #endif
 
-#if __has_include(<string_view>)
+/*
+	STRING_VIEW_TYPE documentation
+
+	0: normal, std::string_view
+	1: experimental, std::experimental::string_view
+	2: external, stx::string_view
+*/
+#if __has_include(<string_view>) && _HAS_CXX17
 	#include <string_view>
-	#define STRING_VIEW_IS_EXP 0
-#elif __has_include(<experimental/string_view>)
+	#define STRING_VIEW_TYPE 0
+#elif __has_include(<experimental/string_view>) && _HAS_CXX17
 	#include <experimental/string_view>
-	#define STRING_VIEW_IS_EXP 1
+	#define STRING_VIEW_TYPE 1
 #else
-	#error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
+	// #error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
+	#include "../external/stx/string_view.hpp"
+	#define STRING_VIEW_TYPE 2
 #endif
 
 #include "../external/mpreal/mpreal.h"

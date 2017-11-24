@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "codegen.h"
+#include "platform.h"
 
 #define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
 #define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
@@ -21,6 +22,7 @@
 
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
+
 
 #define DEBUG_MASTER		0
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
@@ -73,7 +75,7 @@ namespace array
 					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
 					fir::Type::getInt32()), fir::LinkageType::External);
 
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier("fdopen", IdKind::Name),
+				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
 					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
 					fir::LinkageType::External);
 
