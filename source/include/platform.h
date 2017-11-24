@@ -21,6 +21,9 @@ namespace platform
 		#define CRT_FDOPEN			"_fdopen"
 		#define PLATFORM_NEWLINE	"\r\n"
 	#else
+		#include <unistd.h>
+		#include <sys/stat.h>
+
 		using filehandle_t = int;
 		static filehandle_t InvalidFileHandle = -1;
 

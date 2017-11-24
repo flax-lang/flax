@@ -622,6 +622,9 @@ namespace backend
 		// if not, then we need to make our own main (checking for conflicts) and call the real entry
 		// function there.
 
+		// this->linkedModule->print(llvm::errs(), 0);
+
+
 		llvm::IRBuilder<> builder(LLVMBackend::getLLVMContext());
 
 		auto entryfunc = this->entryFunction;
