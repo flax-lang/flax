@@ -308,7 +308,7 @@ namespace fir
 
 
 
-	Type* Type::getIndirectedType(ssize_t times, FTContext* tc)
+	Type* Type::getIndirectedType(int times, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -316,7 +316,7 @@ namespace fir
 		Type* ret = this;
 		if(times > 0)
 		{
-			for(ssize_t i = 0; i < times; i++)
+			for(int i = 0; i < times; i++)
 			{
 				// auto old = ret;
 				ret = ret->getPointerTo();
@@ -324,7 +324,7 @@ namespace fir
 		}
 		else if(times < 0)
 		{
-			for(ssize_t i = 0; i < -times; i++)
+			for(int i = 0; i < -times; i++)
 				ret = ret->getPointerElementType();
 		}
 		// both getPointerTo and getPointerElementType should already

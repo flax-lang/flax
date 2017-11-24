@@ -12,7 +12,7 @@ namespace parser
 {
 	static ArrayDecompVarDefn* parseArrayDecomp(State& st)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		iceAssert(st.front() == TT::LSquare);
 		st.pop();
 
@@ -99,7 +99,7 @@ namespace parser
 
 	Stmt* parseVariable(State& st)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		auto loc = st.front().loc;
 
 		iceAssert(st.front() == TT::Var || st.front() == TT::Val);

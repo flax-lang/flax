@@ -23,7 +23,7 @@
 	OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "utf8rewind.h"
+#include "../include/utf8rewind/utf8rewind.h"
 
 #include "internal/base.h"
 #include "internal/casemapping.h"
@@ -34,7 +34,26 @@
 #include "internal/seeking.h"
 #include "internal/streaming.h"
 
-#include <strings.h>
+#ifndef _WIN32
+	#include <strings.h>
+#else
+	int strncasecmp(const char* s1, const char* s2, size_t n)
+	{
+		for(; n != 0; --n)
+		{
+			int c1 = tolower(*((unsigned char*) s1++));
+			int c2 = tolower(*((unsigned char*) s2++));
+
+			if((c1 != c2) || (c1 == '\0'))
+			{
+				return c1 - c2;
+			}
+		}
+
+		return 0;
+	}
+#endif
+
 
 size_t utf8len(const char* text)
 {

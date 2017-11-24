@@ -10,7 +10,7 @@
 using namespace ast;
 using namespace lexer;
 
-using TT = TokenType;
+using TT = lexer::TokenType;
 namespace parser
 {
 	LitNumber* parseNumber(State& st)

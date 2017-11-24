@@ -12,7 +12,7 @@ namespace parser
 {
 	ImportStmt* parseImport(State& st)
 	{
-		using TT = TokenType;
+		using TT = lexer::TokenType;
 		iceAssert(st.eat() == TT::Import);
 
 		if(st.frontAfterWS() == TT::StringLiteral)
