@@ -96,47 +96,16 @@ namespace frontend
 	std::string getFilenameFromPath(std::string path);
 }
 
+std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type);
+std::string __error_gen_part2(const HighlightOptions& ops);
+
 template <typename... Ts>
 std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, Ts... ts)
 {
-	std::string ret;
-
-	auto colour = COLOUR_RED_BOLD;
-	if(strcmp(type, "Warning") == 0)
-		colour = COLOUR_MAGENTA_BOLD;
-
-	else if(strcmp(type, "Note") == 0)
-		colour = COLOUR_GREY_BOLD;
-
-	bool empty = strcmp(type, "") == 0;
-	bool dobold = strcmp(type, "Note") != 0;
-
-	// todo: do we want to truncate the file path?
-	// we're doing it now, might want to change (or use a flag)
-
-	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
-		: frontend::getFilenameFromID(ops.caret.fileID));
-
-	// std::string filename = "TODO: filename";
-
-	if(ops.caret.fileID > 0)
-		ret += strprintf("%s(%s:%zu:%zu) ", COLOUR_BLACK_BOLD, filename, ops.caret.line + 1, ops.caret.col + 1);
-
-	if(empty)	ret += strprintf("%s%s%s%s", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
-	else		ret += strprintf("%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
-
+	std::string ret = __error_gen_part1(ops, msg, type);
 	ret += tinyformat::format(msg, ts...);
+	ret += __error_gen_part2(ops);
 
-	ret += strprintf("%s\n", COLOUR_RESET);
-
-	if(ops.caret.fileID > 0)
-	{
-		std::vector<std::string> lines;
-		if(ops.caret.fileID > 0)
-			ret += printContext(ops);
-	}
-
-	ret += "\n";
 	return ret;
 }
 
