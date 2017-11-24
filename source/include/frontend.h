@@ -8,6 +8,7 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include "platform.h"
 
 #include <unordered_set>
 
@@ -63,7 +64,7 @@ namespace frontend
 	const std::string& getFilenameFromID(size_t fileID);
 	size_t getFileIDFromFilename(const std::string& name);
 	lexer::TokenList& getFileTokens(std::string fullPath);
-	const util::FastVector<stx::string_view>& getFileLines(size_t id);
+	const util::FastVector<util::string_view>& getFileLines(size_t id);
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename);
 
 	std::string resolveImport(std::string imp, const Location& loc, std::string fullPath);
@@ -106,53 +107,6 @@ namespace frontend
 }
 
 
-
-
-// trash for windows
-// todo: move this somewhere else maybe?
-#ifdef _WIN32
-#include <windows.h>
-inline bool _fileExists(const TCHAR* szPath)
-{
-	DWORD dwAttrib = GetFileAttributes(szPath);
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-}
-
-inline std::string _getFullPath(const char* pth)
-{
-	std::string path = pth;
-	std::replace(path.begin(), path.end(), '/', '\\');
-
-	char* out = new char[1024];
-	GetFullPathName((TCHAR*) path.c_str(), 1024, (TCHAR*) out, 0);
-
-	// windows is fucked up and GetFullPathName always returns non-zero, so we actually need to check if the
-	// file exists by ourselves.
-
-	bool exists = _fileExists((TCHAR*) out);
-	if(!exists)
-	{
-		delete[] out;
-		return "";
-	}
-
-	// ok
-	std::string ret = out;
-	delete[] out;
-
-	return ret;
-}
-
-#else
-
-inline std::string _getFullPath(const char* pth)
-{
-	auto ret = realpath(pth, 0);
-	if(ret == 0) return "";
-	return std::string(ret);
-}
-
-#endif
 
 
 

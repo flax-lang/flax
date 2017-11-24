@@ -129,10 +129,10 @@ namespace lexer
 	{
 		Location loc;
 		TokenType type = TokenType::Invalid;
-		stx::string_view text;
+		util::string_view text;
 
 		operator TokenType() const { return this->type; }
-		std::string str() const { return stx::to_string(this->text); }
+		std::string str() const { return util::to_string(this->text); }
 	};
 
 	inline void operator << (std::ostream& os, const TokenType& tt)
@@ -142,8 +142,8 @@ namespace lexer
 
 	using TokenList = util::FastVector<Token>;
 
-	lexer::TokenType getNextToken(const util::FastVector<stx::string_view>& lines, size_t* line, size_t* offset,
-		const stx::string_view& whole, Location& pos, Token* out);
+	lexer::TokenType getNextToken(const util::FastVector<util::string_view>& lines, size_t* line, size_t* offset,
+		const util::string_view& whole, Location& pos, Token* out);
 }
 
 

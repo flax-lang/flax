@@ -50,7 +50,7 @@ std::string printContext(HighlightOptions ops)
 	auto lines = frontend::getFileLines(ops.caret.fileID);
 	if(lines.size() > ops.caret.line)
 	{
-		std::string orig = stx::to_string(lines[ops.caret.line]);
+		std::string orig = util::to_string(lines[ops.caret.line]);
 
 		size_t adjust = 0;
 		size_t adjust1 = 0;
@@ -160,7 +160,7 @@ void error(const char* msg, ...)
 	va_start(ap, msg);
 	__error_gen(HighlightOptions(), msg, "Error", true, ap);
 	va_end(ap);
-	abort();
+	doTheExit();
 }
 
 void error(Locatable* relevantast, const char* msg, ...)
@@ -170,7 +170,7 @@ void error(Locatable* relevantast, const char* msg, ...)
 
 	__error_gen(HighlightOptions(relevantast ? relevantast->loc : Location()), msg, "Error", true, ap);
 	va_end(ap);
-	abort();
+	doTheExit();
 }
 
 void error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
@@ -183,7 +183,7 @@ void error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
 
 	__error_gen(ops, msg, "Error", true, ap);
 	va_end(ap);
-	abort();
+	doTheExit();
 }
 
 void error(const Location& loc, const char* msg, ...)
@@ -193,7 +193,7 @@ void error(const Location& loc, const char* msg, ...)
 
 	__error_gen(HighlightOptions(loc), msg, "Error", true, ap);
 	va_end(ap);
-	abort();
+	doTheExit();
 }
 
 

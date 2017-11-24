@@ -343,6 +343,9 @@
     <ClCompile Include="source\codegen\enums.cpp">
       <Filter>source\codegen</Filter>
     </ClCompile>
+    <ClCompile Include="source\frontend\platform.cpp">
+      <Filter>source\frontend</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\include\ast.h">
@@ -455,6 +458,9 @@
     </ClInclude>
     <ClInclude Include="source\include\ir\type.h">
       <Filter>include\ir</Filter>
+    </ClInclude>
+    <ClInclude Include="source\include\platform.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

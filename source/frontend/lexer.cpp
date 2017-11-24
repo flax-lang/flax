@@ -7,7 +7,7 @@
 
 #include "../external/utf8rewind/include/utf8rewind/utf8rewind.h"
 
-using string_view = stx::string_view;
+using string_view = util::string_view;
 
 namespace lexer
 {
@@ -370,7 +370,8 @@ namespace lexer
 		// number + 3
 		// string + 3
 		// so in every other case we want unary +/-.
-		else if(!stream.empty() && (isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
+		// note: this dumb '<=255' thing is because windows likes to assert useless things.
+		else if(!stream.empty() && ((stream[0] >= 1 && stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
 		{
 			// copy it.
 			auto tmp = stream;
@@ -519,7 +520,7 @@ namespace lexer
 			// because we want to avoid using std::string (ie. copying) in the lexer (Token), we must send the string over verbatim.
 
 			// store the starting position
-			size_t start = stream.begin() - whole.begin() + 1;
+			size_t start = (size_t) (stream.data() - whole.data() + 1);
 
 			// opening "
 			pos.col++;
@@ -575,7 +576,7 @@ namespace lexer
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
 					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead,
-						stream[i], stx::to_string(stream), *offset);
+						stream[i], util::to_string(stream), *offset);
 				}
 			}
 
@@ -593,6 +594,13 @@ namespace lexer
 
 			read = 0;
 			flag = false;
+		}
+		else if(hasPrefix(stream, "\r\n"))
+		{
+			read = 2;
+
+			tok.type = TokenType::NewLine;
+			tok.text = "\n";
 		}
 		else if(!stream.empty())
 		{
@@ -648,7 +656,7 @@ namespace lexer
 			}
 			else
 			{
-				error(tok.loc, "Unknown token '%s'", stx::to_string(stream.substr(0, 10)));
+				error(tok.loc, "Unknown token '%s'", util::to_string(stream.substr(0, 10)));
 			}
 		}
 

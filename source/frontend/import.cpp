@@ -21,7 +21,7 @@ namespace frontend
 		if(fullname == fullPath)
 			error(loc, "Cannot import module from within itself");
 
-		auto fname = _getFullPath(fullname.c_str());
+		auto fname = platform::getFullPath(fullname);
 
 		// a file here
 		if(!fname.empty())
@@ -32,8 +32,7 @@ namespace frontend
 		{
 			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ext;
 
-			struct stat buffer;
-			if(stat(builtinlib.c_str(), &buffer) == 0)
+			if(platform::checkFileExists(builtinlib))
 			{
 				return getFullPathOfFile(builtinlib);
 			}

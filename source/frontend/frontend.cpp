@@ -271,7 +271,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected framework name after '-framework' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_FRAMEWORK_SEARCH_PATH))
@@ -285,7 +284,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected path after '-F' option\n");
-						exit(-1);
 					}
 				}
 				else if(strstr(argv[i], ARG_LINK_LIBRARY) == argv[i])
@@ -301,7 +299,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected library name after '-l' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_LINK_LIBRARY))
@@ -317,7 +314,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected library name after '-l' option\n");
-						exit(-1);
 					}
 				}
 				else if(strstr(argv[i], ARG_LIBRARY_SEARCH_PATH) == argv[i])
@@ -332,7 +328,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected path after '-L' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_LIBRARY_SEARCH_PATH))
@@ -348,7 +343,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected path after '-L' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_SYSROOT))
@@ -362,7 +356,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected directory name after '-sysroot' option\n");
-						exit(-1);
 					}
 				}
 				if(!strcmp(argv[i], ARG_TARGET))
@@ -376,7 +369,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected target string after '-target' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_FREESTANDING))
@@ -402,7 +394,6 @@ namespace frontend
 						else
 						{
 							_error_and_exit("Error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str);
-							exit(-1);
 						}
 
 						continue;
@@ -410,7 +401,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected backend name after '-backend' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_OUTPUT_FILE))
@@ -424,7 +414,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected filename name after '-o' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_POSINDEPENDENT))
@@ -444,7 +433,6 @@ namespace frontend
 						if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
 						{
 							_error_and_exit("Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'.\n");
-							exit(-1);
 						}
 
 						frontend::_mcModel = mm;
@@ -452,7 +440,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Expected mcmodel name after '-mcmodel' option\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], WARNINGS_AS_ERRORS))
@@ -480,7 +467,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Cannot use '-c' option simultaneously with either '-emit-llvm' or '-jit'\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_SHOW_CLANG_OUTPUT))
@@ -496,7 +482,6 @@ namespace frontend
 					else
 					{
 						_error_and_exit("Error: Cannot use '-jit'/'-run' option simultaneously with either '-emit-llvm' or '-c'\n");
-						exit(-1);
 					}
 				}
 				else if(!strcmp(argv[i], ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS))
@@ -509,12 +494,10 @@ namespace frontend
 					if(strlen(argv[i]) < 3)
 					{
 						_error_and_exit("Error: '-O' is not a valid option on its own\n");
-						exit(-1);
 					}
 					else if(strlen(argv[i]) > 3)
 					{
 						_error_and_exit("Error: '%s' is not a valid option\n", argv[i]);
-						exit(-1);
 					}
 
 					if(argv[i][2] == 'x')
@@ -533,7 +516,6 @@ namespace frontend
 
 							default:
 								_error_and_exit("Error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);
-								exit(-1);
 						}
 					}
 				}
@@ -561,8 +543,6 @@ namespace frontend
 				else if(argv[i][0] == '-')
 				{
 					_error_and_exit("Error: Unrecognised option '%s'\n", argv[i]);
-
-					exit(-1);
 				}
 				else
 				{
@@ -574,19 +554,16 @@ namespace frontend
 		else
 		{
 			_error_and_exit("Expected at least one argument\n");
-			exit(-1);
 		}
 
 		if(filenames.empty())
 		{
 			_error_and_exit("Error: no input files\n");
-			exit(-1);
 		}
 
 		if(filenames.size() > 1)
 		{
 			_error_and_exit("Only one input file is supported at the moment\n");
-			exit(-1);
 		}
 
 
