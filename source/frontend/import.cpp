@@ -55,12 +55,12 @@ namespace frontend
 
 namespace parser
 {
-	std::vector<std::pair<std::string, Location>> parseImports(const std::string& filename, const lexer::TokenList& tokens)
+	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
 		using TT = lexer::TokenType;
 
-		std::vector<std::pair<std::string, Location>> imports;
+		std::vector<frontend::ImportThing> imports;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before imports
@@ -72,9 +72,15 @@ namespace parser
 			if(tok == TT::Import)
 			{
 				i++;
+
+				Location impLoc;
+				std::string name;
+				std::string impAs;
+
 				if(tokens[i] == TT::StringLiteral)
 				{
-					imports.push_back({ tokens[i].str(), tokens[i].loc });
+					name = tokens[i].str();
+					impLoc = tokens[i].loc;
 					i++;
 				}
 				else
@@ -82,10 +88,27 @@ namespace parser
 					expectedAfter(tokens[i].loc, "string literal for path", "'import'", tokens[i].str());
 				}
 
+				// check for 'import as foo'
+				if(tokens[i] == TT::As)
+				{
+					i++;
+					if(tokens[i] == TT::Underscore || tokens[i] == TT::Identifier)
+						impAs = tokens[i].str();
+
+					else
+						expectedAfter(tokens[i - 1].loc, "identifier", "'import-as'", tokens[i - 1].str());
+
+					i++;
+				}
+
+
 				if(tokens[i] != TT::NewLine && tokens[i] != TT::Semicolon && tokens[i] != TT::Comment)
 				{
 					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'", tokens[i].str());
 				}
+
+				frontend::ImportThing it { name, impAs, impLoc };
+				imports.push_back(it);
 
 				// i++ handled by loop
 			}

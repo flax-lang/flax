@@ -15,17 +15,28 @@ namespace parser
 		using TT = lexer::TokenType;
 		iceAssert(st.eat() == TT::Import);
 
-		if(st.frontAfterWS() == TT::StringLiteral)
+		if(st.frontAfterWS() != TT::StringLiteral)
+			expectedAfter(st, "string literal", "'import' for module specifier", st.frontAfterWS().str());
+
 		{
 			auto ret = new ImportStmt(st.loc(), st.frontAfterWS().str());
 			ret->resolvedModule = frontend::resolveImport(ret->path, ret->loc, st.currentFilePath);
 
 			st.eat();
+
+			// check for 'import as foo'
+			if(st.frontAfterWS() == TT::As)
+			{
+				st.eat();
+				auto t = st.eat();
+				if(t == TT::Underscore || t == TT::Identifier)
+					ret->importAs = util::to_string(t.text);
+
+				else
+					expectedAfter(st.ploc(), "identifier", "'import-as'", st.prev().str());
+			}
+
 			return ret;
-		}
-		else
-		{
-			expected(st, "string literal after 'import' for module specifier", st.frontAfterWS().str());
 		}
 	}
 }

@@ -44,7 +44,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto rsn = cs->setNamespace(this->id.scope);
 	defer(cs->restoreNamespace(rsn));
 
-	cs->enterNamespace(this->id.mangled());
+	cs->enterNamespace(this->id.mangledName());
 	defer(cs->leaveNamespace());
 
 	cs->enterFunction(fn);

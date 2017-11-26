@@ -17,6 +17,11 @@ namespace ast
 	struct Expr;
 }
 
+namespace sst
+{
+	struct DefinitionTree;
+}
+
 namespace fir
 {
 	struct Module;
@@ -47,6 +52,8 @@ namespace frontend
 	struct CollectorState
 	{
 		std::unordered_set<std::string> importedFiles;
+		std::map<std::string, parser::ParsedFile> parsed;
+		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
 	};
 
 	fir::Module* collectFiles(std::string filename);
@@ -69,11 +76,19 @@ namespace frontend
 
 	std::string resolveImport(std::string imp, const Location& loc, std::string fullPath);
 
+	struct ImportThing
+	{
+		std::string name;
+		std::string importAs;
+
+		Location loc;
+	};
+
+
 	// dependency system
 	struct DepNode
 	{
 		std::string name;
-		Location loc;
 
 		// mainly to aid error reporting
 		std::vector<std::pair<DepNode*, Location>> users;
@@ -87,6 +102,8 @@ namespace frontend
 	{
 		DepNode* from = 0;
 		DepNode* to = 0;
+
+		ImportThing ithing;
 	};
 
 	struct DependencyGraph
@@ -96,8 +113,8 @@ namespace frontend
 
 		std::stack<DepNode*> stack;
 
-		std::vector<DepNode*> getDependenciesOf(std::string name);
-		void addModuleDependency(std::string from, std::string to, const Location& loc);
+		std::vector<Dep*> getDependenciesOf(std::string name);
+		void addModuleDependency(std::string from, std::string to, ImportThing ithing);
 		std::vector<std::vector<DepNode*>> findCyclicDependencies();
 	};
 

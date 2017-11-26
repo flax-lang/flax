@@ -131,15 +131,54 @@ namespace sst
 
 
 	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, std::vector<std::pair<std::string, StateTree*>> imports)
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, std::vector<std::pair<frontend::ImportThing, StateTree*>> imports)
 	{
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);
 
-		for(auto [ filename, import ] : imports)
+		for(auto [ ithing, import ] : imports)
 		{
-			addTreeToExistingTree(fs->dtree->thingsImported, tree, import, 0);
-			fs->dtree->thingsImported.insert(filename);
+			StateTree* insertPoint = tree;
+
+			auto ias = ithing.importAs;
+			if(ias.empty())
+				ias = cs->parsed[ithing.name].moduleName;
+
+			if(ias != "_")
+			{
+				// ok, make tree the new tree thing.
+				StateTree* newinspt = 0;
+
+				if(auto it = insertPoint->subtrees.find(ias); it != insertPoint->subtrees.end())
+				{
+					newinspt = it->second;
+				}
+				else
+				{
+					newinspt = new sst::StateTree(ias, ithing.name, insertPoint);
+					insertPoint->subtrees[ias] = newinspt;
+
+					// note/fixme: because we don't want to be modifying things, we make a new namespacedefn that's essentially the same as the
+					// old one, but with a few scoping fixes.
+					auto oldns = cs->dtrees[ithing.name]->topLevel;
+					sst::NamespaceDefn* nsd = new sst::NamespaceDefn(oldns->loc);
+					nsd->id = oldns->id;
+					nsd->id.name = ias;
+
+					nsd->id.scope.insert(nsd->id.scope.begin(), insertPoint->name);
+					nsd->visibility = oldns->visibility;
+					nsd->statements = oldns->statements;
+
+					insertPoint->addDefinition(ias, nsd);
+
+					warn("add tree '%s' to '%s' (%s)", ias, insertPoint->name, nsd->id.str());
+				}
+
+				insertPoint = newinspt;
+			}
+
+			addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, 0);
+			fs->dtree->thingsImported.insert(ithing.name);
 		}
 
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));

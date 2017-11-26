@@ -3,8 +3,8 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
-#include "defs.h"
 #include "sst.h"
+#include "frontend.h"
 
 #include "precompile.h"
 
@@ -141,7 +141,7 @@ namespace sst
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
-		std::vector<std::pair<std::string, StateTree*>> imports);
+		std::vector<std::pair<frontend::ImportThing, StateTree*>> imports);
 }
 
 
