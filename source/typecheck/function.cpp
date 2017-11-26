@@ -26,7 +26,7 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 	iceAssert(defn);
 
 	fs->enterFunctionBody(defn);
-	fs->pushTree(defn->id.mangled());
+	fs->pushTree(defn->id.mangledName());
 	{
 		// add the arguments to the tree
 

@@ -23,10 +23,9 @@ namespace frontend
 		std::unordered_map<std::string, bool> visited;
 		auto files = checkForCycles(full, buildDependencyGraph(graph, full, visited));
 
-		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
-		std::map<std::string, parser::ParsedFile> parsed;
-
 		CollectorState state;
+		auto& parsed = state.parsed;
+		auto& dtrees = state.dtrees;
 
 		for(auto file : files)
 		{
@@ -36,14 +35,17 @@ namespace frontend
 			// note that we're guaranteed (because that's the whole point)
 			// that any module we encounter here will have had all of its dependencies checked already
 
-			std::vector<std::pair<std::string, sst::StateTree*>> imports;
+			std::vector<std::pair<ImportThing, sst::StateTree*>> imports;
 			for(auto d : graph->getDependenciesOf(file))
 			{
-				auto stree = dtrees[d->name]->base;
+				auto to = d->to;
+
+				auto stree = dtrees[to->name]->base;
 				// debuglog("stree = %p\n", stree);
 				iceAssert(stree);
 
-				imports.push_back({ d->name, stree });
+				ImportThing ithing { to->name, d->ithing.importAs, d->ithing.loc };
+				imports.push_back({ ithing, stree });
 				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 

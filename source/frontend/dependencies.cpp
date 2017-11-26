@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include "defs.h"
+#include "ast.h"
 #include "errors.h"
 #include "frontend.h"
 
@@ -10,7 +10,7 @@ namespace frontend
 {
 	static void stronglyConnect(DependencyGraph* graph, int& index, std::vector<std::vector<DepNode*>>& connected, DepNode* node);
 
-	void DependencyGraph::addModuleDependency(std::string from, std::string to, const Location& loc)
+	void DependencyGraph::addModuleDependency(std::string from, std::string to, ImportThing ithing)
 	{
 		// find existing node
 		DepNode* src = 0;
@@ -39,16 +39,16 @@ namespace frontend
 		{
 			dst = new DepNode();
 			dst->name = to;
-			dst->loc = loc;
 
 			this->nodes.push_back(dst);
 		}
 
-		dst->users.push_back({ src, loc });
+		dst->users.push_back({ src, ithing.loc });
 
 		Dep* d = new Dep();
 		d->from = src;
 		d->to = dst;
+		d->ithing = ithing;
 
 		this->edgesFrom[src].push_back(d);
 	}
@@ -76,7 +76,7 @@ namespace frontend
 		return ret;
 	}
 
-	std::vector<DepNode*> DependencyGraph::getDependenciesOf(std::string name)
+	std::vector<Dep*> DependencyGraph::getDependenciesOf(std::string name)
 	{
 		DepNode* node = 0;
 		for(auto n : this->nodes)
@@ -90,13 +90,7 @@ namespace frontend
 
 		if(!node) return { };
 
-		auto edges = this->edgesFrom[node];
-		std::vector<DepNode*> ret;
-
-		for(auto edge : edges)
-			ret.push_back(edge->to);
-
-		return ret;
+		return this->edgesFrom[node];
 	}
 
 
@@ -228,8 +222,8 @@ namespace frontend
 		std::vector<std::string> fullpaths;
 		for(auto imp : imports)
 		{
-			auto tovisit = resolveImport(imp.first, imp.second, full);
-			graph->addModuleDependency(full, tovisit, imp.second);
+			auto tovisit = resolveImport(imp.name, imp.loc, full);
+			graph->addModuleDependency(full, tovisit, imp);
 
 			if(!visited[tovisit])
 			{

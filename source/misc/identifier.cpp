@@ -36,13 +36,17 @@ static std::string mangleScopeOnly(const Identifier& id)
 	for(auto s : id.scope)
 		ret += std::to_string(s.length()) + s;
 
-	ret += std::to_string(id.name.length()) + id.name;
 	return ret;
 }
 
 static inline std::string lentypestr(std::string s)
 {
 	return std::to_string(s.length()) + s;
+}
+
+static std::string mangleScopeName(const Identifier& id)
+{
+	return mangleScopeOnly(id) + lentypestr(id.name);
 }
 
 static std::string mangleType(fir::Type* t)
@@ -83,11 +87,11 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isStructType())
 	{
-		return lentypestr(mangleScopeOnly(t->toStructType()->getTypeName()));
+		return lentypestr(mangleScopeName(t->toStructType()->getTypeName()));
 	}
 	else if(t->isClassType())
 	{
-		return lentypestr(mangleScopeOnly(t->toClassType()->getTypeName()));
+		return lentypestr(mangleScopeName(t->toClassType()->getTypeName()));
 	}
 	else if(t->isTupleType())
 	{
@@ -111,7 +115,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isEnumType())
 	{
-		return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeOnly(t->toEnumType()->getTypeName()));
+		return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeName(t->toEnumType()->getTypeName()));
 	}
 	else if(t->isAnyType())
 	{
@@ -123,30 +127,44 @@ static std::string mangleType(fir::Type* t)
 	}
 }
 
-std::string Identifier::mangled() const
+static std::string _doMangle(const Identifier& id, bool includeScope)
 {
-	if(this->kind == IdKind::Name)
-		return this->name;
+	if(id.kind == IdKind::Name)
+		return id.name;
 
 	std::string ret = "_F";
 
-	if(this->kind == IdKind::Function)					ret += "F";
-	else if(this->kind == IdKind::Type)					ret += "T";
+	if(id.kind == IdKind::Function)					ret += "F";
+	else if(id.kind == IdKind::Type)					ret += "T";
 	else												ret += "U";
 
-	ret += mangleScopeOnly(*this);
+	if(includeScope)
+		ret += mangleScopeOnly(id);
 
-	if(this->kind == IdKind::Function)
+	ret += lentypestr(id.name);
+
+	if(id.kind == IdKind::Function)
 	{
 		ret += "_FA";
-		for(auto t : this->params)
+		for(auto t : id.params)
 			ret += "_" + mangleType(t);
 
-		if(this->params.empty())
+		if(id.params.empty())
 			ret += "v";
 	}
 
 	return ret;
+}
+
+
+std::string Identifier::mangled() const
+{
+	return _doMangle(*this, false);
+}
+
+std::string Identifier::mangledName() const
+{
+	return _doMangle(*this, false);
 }
 
 

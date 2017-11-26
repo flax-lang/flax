@@ -75,6 +75,7 @@ struct Identifier
 
 	std::string str() const;
 	std::string mangled() const;
+	std::string mangledName() const;
 
 	bool operator == (const Identifier& other) const { return other.str() == this->str(); }
 	bool operator != (const Identifier& other) const { return !(other == *this); }
