@@ -11,6 +11,11 @@ namespace ast
 	struct TopLevelBlock;
 }
 
+namespace frontend
+{
+	struct ImportThing;
+}
+
 namespace parser
 {
 	struct ParsedFile
@@ -22,6 +27,6 @@ namespace parser
 	};
 
 
-	std::vector<std::pair<std::string, Location>> parseImports(const std::string& filename, const lexer::TokenList& tokens);
+	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens);
 	ParsedFile parseFile(std::string filename);
 }

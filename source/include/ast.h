@@ -66,6 +66,8 @@ namespace ast
 
 		std::string path;
 		std::string resolvedModule;
+
+		std::string importAs;
 	};
 
 	struct Block : Stmt

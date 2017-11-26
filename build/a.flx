@@ -3,7 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 // export foo
 
-import "b"
+import "b" as foo
 
 ffi fn printf(fmt: i8*, ...) -> int
 public fn hello1() { printf("hello 1\n") }
@@ -12,5 +12,5 @@ public fn hello1() { printf("hello 1\n") }
 {
 	printf("main\n")
 	hello1()
-	hello2()
+	foo.hello2()
 }

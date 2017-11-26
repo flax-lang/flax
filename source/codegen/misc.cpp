@@ -16,8 +16,10 @@ namespace cgn
 
 		// get the root tree.
 		while(this->stree->parent)
+		{
 			this->stree = this->stree->parent,
 			this->vtree = this->vtree->parent;
+		}
 
 		// skip the first one, because it'll be the actual root.
 		for(size_t i = 1; i < scope.size(); i++)
