@@ -330,6 +330,8 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 
 		auto def = defs[0];
 
+		// TODO: consolidate the code below (seting traverseUpwards to false, teleporting scope, etc)
+
 		// check the type
 		if(auto ns = dcast(sst::NamespaceDefn, def))
 		{
