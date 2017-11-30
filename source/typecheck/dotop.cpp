@@ -317,30 +317,17 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		auto defs = fs->getDefinitionsWithName(ident->name);
 		if(defs.empty())
 		{
-			error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
-		}
-		else if(defs.size() > 1)
-		{
-			exitless_error(lhs, "Ambiguous reference to entity with name '%s'", ident->name);
-			for(auto d : defs)
-				info(d, "Possible reference:");
+			#if 0
+			// check the state tree.
+			auto st = fs->stree->searchForName(ident->name);
+			if(st == 0)
+				error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
 
-			doTheExit();
-		}
-
-		auto def = defs[0];
-
-		// TODO: consolidate the code below (seting traverseUpwards to false, teleporting scope, etc)
-
-		// check the type
-		if(auto ns = dcast(sst::NamespaceDefn, def))
-		{
-			auto scope = ns->id.scope;
-			scope.push_back(ns->id.name);
-
+			// ok, then...
 			auto oldscope = fs->getCurrentScope();
+			auto newscope = st->getScope();
 
-			fs->teleportToScope(scope);
+			fs->teleportToScope(newscope);
 			defer(fs->teleportToScope(oldscope));
 
 			if(auto id = dcast(ast::Ident, this->right))
@@ -367,15 +354,80 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 				}
 				else if(vrs.size() > 1)
 				{
-					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, ns->id.name);
+					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, fs->stree->name);
 				}
 				else
 				{
-					scope.push_back(vr->name);
+					newscope.push_back(vr->name);
 					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
-					ret->scope = scope;
+					ret->scope = newscope;
 
 					// info(this, "ret scope %s", util::serialiseScope(scope));
+					return ret;
+				}
+			}
+			else
+			{
+				return expr;
+			}
+			#endif
+
+			error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
+		}
+		else if(defs.size() > 1)
+		{
+			exitless_error(lhs, "Ambiguous reference to entity with name '%s'", ident->name);
+			for(auto d : defs)
+				info(d, "Possible reference:");
+
+			doTheExit();
+		}
+
+		auto def = defs[0];
+
+		// TODO: consolidate the code below (seting traverseUpwards to false, teleporting scope, etc)
+
+
+		if(auto td = dcast(sst::TreeDefn, def))
+		{
+			auto newscope = td->tree->getScope();
+			auto oldscope = fs->getCurrentScope();
+
+			fs->teleportToScope(newscope);
+			defer(fs->teleportToScope(oldscope));
+
+			if(auto id = dcast(ast::Ident, this->right))
+				id->traverseUpwards = false;
+
+			else if(auto fc = dcast(ast::FunctionCall, this->right))
+				fc->traverseUpwards = false;
+
+			// check what the right side is
+			auto expr = this->right->typecheck(fs);
+			iceAssert(expr);
+
+			// check the thing
+			if(auto vr = dcast(sst::VarRef, expr))
+			{
+				// check for global vars
+				auto vrs = fs->stree->getDefinitionsWithName(vr->name);
+
+				// must make sure it's a var/func defn and not a namespace one
+				if(vrs.size() == 1 && (dynamic_cast<sst::VarDefn*>(vrs[0]) || dynamic_cast<sst::FunctionDefn*>(vrs[0])))
+				{
+					vr->def = vrs[0];
+					return vr;
+				}
+				else if(vrs.size() > 1)
+				{
+					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, td->tree->name);
+				}
+				else
+				{
+					newscope.push_back(vr->name);
+					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
+					ret->scope = newscope;
+
 					return ret;
 				}
 			}

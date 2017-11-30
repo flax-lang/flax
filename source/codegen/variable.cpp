@@ -161,11 +161,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(!defn.pointer && !defn.value)
 			{
-				auto restore = cs->setNamespace(this->def->id.scope);
-
 				this->def->codegen(cs);
-
-				cs->restoreNamespace(restore);
 
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())

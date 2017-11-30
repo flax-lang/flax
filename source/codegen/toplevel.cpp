@@ -49,12 +49,9 @@ CGResult sst::NamespaceDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	cs->enterNamespace(this->id.name);
-
 	for(auto stmt : this->statements)
 		stmt->codegen(cs);
 
-	cs->leaveNamespace();
 	return CGResult(0);
 }
 

@@ -206,7 +206,7 @@ namespace sst
 		return ret;
 	}
 
-	std::vector<Defn*> StateTree::getDefinitionsWithName(std::string name)
+	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
 	{
 		std::vector<Defn*> ret;
 		for(auto srcs : this->definitions)
@@ -219,15 +219,49 @@ namespace sst
 		return ret;
 	}
 
-	void StateTree::addDefinition(std::string sourceFile, std::string name, Defn* def)
+	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def)
 	{
 		this->definitions[sourceFile][name].push_back(def);
 	}
 
-	void StateTree::addDefinition(std::string name, Defn* def)
+	void StateTree::addDefinition(const std::string& name, Defn* def)
 	{
 		this->definitions[this->topLevelFilename][name].push_back(def);
 	}
+
+	// TODO: maybe cache this someday?
+	std::vector<std::string> StateTree::getScope()
+	{
+		std::deque<std::string> ret;
+		ret.push_front(this->name);
+
+		auto tree = this->parent;
+		while(tree)
+		{
+			ret.push_front(tree->name);
+			tree = tree->parent;
+		}
+
+		return std::vector<std::string>(ret.begin(), ret.end());
+	}
+
+	StateTree* StateTree::searchForName(const std::string& name)
+	{
+		auto tree = this;
+		while(tree)
+		{
+			if(tree->name == name)
+				return tree;
+
+			tree = tree->parent;
+		}
+
+		// warn("No such tree '%s' in scope", name);
+		return 0;
+	}
+
+
+
 
 
 

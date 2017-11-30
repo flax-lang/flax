@@ -175,6 +175,19 @@ std::string Identifier::mangledName() const
 
 
 
+namespace tinyformat
+{
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, VisibilityLevel vl)
+	{
+		switch(vl)
+		{
+			case VisibilityLevel::Invalid:	out << "invalid"; break;
+			case VisibilityLevel::Public:	out << "public"; break;
+			case VisibilityLevel::Private:	out << "private"; break;
+			case VisibilityLevel::Internal:	out << "internal"; break;
+		}
+	}
+}
 
 
 

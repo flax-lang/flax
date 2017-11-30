@@ -35,6 +35,7 @@ namespace sst
 		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
 		for(auto sub : tree->subtrees)
 		{
+			debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
 			{
 				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing);
@@ -57,6 +58,7 @@ namespace sst
 				auto name = defs.first;
 				for(auto def : defs.second)
 				{
+					info(def, "hello there (%s)", def->visibility);
 					if(def->visibility == VisibilityLevel::Public)
 					{
 						auto others = existing->getDefinitionsWithName(name);
@@ -109,10 +111,11 @@ namespace sst
 						}
 
 						existing->addDefinition(tree->topLevelFilename, name, def);
+						debuglog("add def '%s' / %s into tree '%s' (%p)\n", def->id.name, name, existing->name, existing);
 					}
 					else
 					{
-						// warn(def, "skipping def %s because it is not public", def->id.name);
+						warn(def, "skipping def %s because it is not public", def->id.name);
 					}
 				}
 			}
@@ -158,20 +161,25 @@ namespace sst
 					newinspt = new sst::StateTree(ias, ithing.name, insertPoint);
 					insertPoint->subtrees[ias] = newinspt;
 
+					auto treedef = new sst::TreeDefn(cs->dtrees[ithing.name]->topLevel->loc);
+					treedef->id = Identifier(ias, IdKind::Name);
+					treedef->tree = newinspt;
+
+					debuglog("ias = %s\n", ias);
+					insertPoint->addDefinition(ias, treedef);
+
 					// note/fixme: because we don't want to be modifying things, we make a new namespacedefn that's essentially the same as the
 					// old one, but with a few scoping fixes.
-					auto oldns = cs->dtrees[ithing.name]->topLevel;
-					sst::NamespaceDefn* nsd = new sst::NamespaceDefn(oldns->loc);
-					nsd->id = oldns->id;
-					nsd->id.name = ias;
+					// auto oldns = cs->dtrees[ithing.name]->topLevel;
+					// sst::NamespaceDefn* nsd = new sst::NamespaceDefn(oldns->loc);
+					// nsd->id = oldns->id;
+					// nsd->id.name = ias;
 
-					nsd->id.scope.insert(nsd->id.scope.begin(), insertPoint->name);
-					nsd->visibility = oldns->visibility;
-					nsd->statements = oldns->statements;
+					// nsd->id.scope.insert(nsd->id.scope.begin(), insertPoint->name);
+					// nsd->visibility = oldns->visibility;
+					// nsd->statements = oldns->statements;
 
-					insertPoint->addDefinition(ias, nsd);
-
-					warn("add tree '%s' to '%s' (%s)", ias, insertPoint->name, nsd->id.str());
+					// insertPoint->addDefinition(ias, nsd);
 				}
 
 				insertPoint = newinspt;
@@ -184,7 +192,8 @@ namespace sst
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
 		iceAssert(tns);
 
-		tns->id = Identifier(file.moduleName, IdKind::Name);
+		// tns->id = Identifier(file.moduleName, IdKind::Name);
+		tns->name = file.moduleName;
 
 		fs->dtree->topLevel = tns;
 		return fs->dtree;
@@ -216,8 +225,8 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 {
 	auto ret = new sst::NamespaceDefn(this->loc);
 
-	if(this->name == "")	fs->topLevelNamespace = ret;
-	else					fs->pushTree(this->name);
+	if(this->name != "")
+		fs->pushTree(this->name);
 
 	sst::StateTree* tree = fs->stree;
 
@@ -225,7 +234,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	{
 		// visit all functions first, to get out-of-order calling -- but only at the namespace level, not inside functions.
 		// once we're in function-body-land, everything should be imperative-driven, and you shouldn't
-		// be able to see something after yourself.
+		// be able to see something before it is defined/declared.
 
 		visitFunctions(fs, this);
 	}
@@ -240,14 +249,29 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	}
 
 	if(tree->parent)
-		tree->parent->addDefinition(tree->topLevelFilename, this->name, ret);
+	{
+		auto td = new sst::TreeDefn(this->loc);
+		td->tree = tree;
+		td->id = Identifier(this->name, IdKind::Name);
+		td->id.scope = tree->parent->getScope();
+
+		td->visibility = this->visibility;
+
+		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
+		warn("add def for '%s' (%p) into '%s' (%p)", this->name, td, tree->parent->name, tree->parent);
+	}
+
+	// if(tree->parent)
+	// 	tree->parent->addDefinition(tree->topLevelFilename, this->name, ret);
 
 	if(this->name != "")
 		fs->popTree();
 
-	ret->id = Identifier(this->name, IdKind::Name);
-	ret->id.scope = fs->getCurrentScope();
-	ret->visibility = this->visibility;
+	// ret->id = Identifier(this->name, IdKind::Name);
+	// ret->id.scope = fs->getCurrentScope();
+	// ret->visibility = this->visibility;
+
+	ret->name = this->name;
 
 	return ret;
 }

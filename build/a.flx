@@ -13,4 +13,5 @@ public fn hello1() { printf("hello 1\n") }
 	printf("main\n")
 	hello1()
 	foo.hello2()
+	foo.nsb.hello3()
 }

@@ -122,12 +122,6 @@ namespace cgn
 		bool isInMethodBody();
 		fir::Value* getMethodSelf();
 
-		std::pair<sst::StateTree*, ValueTree*> setNamespace(const std::vector<std::string>& scope);
-		void restoreNamespace(std::pair<sst::StateTree*, ValueTree*>);
-
-		void enterNamespace(std::string name);
-		void leaveNamespace();
-
 		std::vector<fir::Function*> functionStack;
 		fir::Function* getCurrentFunction();
 		void enterFunction(fir::Function* fn);
