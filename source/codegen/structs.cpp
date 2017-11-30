@@ -13,12 +13,6 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto rsn = cs->setNamespace(this->id.scope);
-	defer(cs->restoreNamespace(rsn));
-
-	cs->enterNamespace(this->id.name);
-	defer(cs->leaveNamespace());
-
 	iceAssert(this->type && this->type->isStructType());
 
 	for(auto method : this->methods)
@@ -34,12 +28,6 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
-
-	auto rsn = cs->setNamespace(this->id.scope);
-	defer(cs->restoreNamespace(rsn));
-
-	cs->enterNamespace(this->id.name);
-	defer(cs->leaveNamespace());
 
 	iceAssert(this->type && this->type->isClassType());
 

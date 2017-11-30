@@ -51,11 +51,14 @@ namespace sst
 		// so we can resolve the import duplication bullshit
 		std::unordered_map<std::string, DefnMap> definitions;
 
+		std::vector<std::string> getScope();
+		StateTree* searchForName(const std::string& name);
+
 		DefnMap getAllDefinitions();
 
-		std::vector<Defn*> getDefinitionsWithName(std::string name);
-		void addDefinition(std::string name, Defn* def);
-		void addDefinition(std::string sourceFile, std::string name, Defn* def);
+		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
+		void addDefinition(const std::string& name, Defn* def);
+		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def);
 	};
 
 	struct DefinitionTree
@@ -72,7 +75,6 @@ namespace sst
 		TypecheckState(StateTree* st) : dtree(new DefinitionTree(st)), stree(dtree->base) { }
 
 		std::string moduleName;
-		sst::NamespaceDefn* topLevelNamespace = 0;
 
 		DefinitionTree* dtree = 0;
 		StateTree*& stree;

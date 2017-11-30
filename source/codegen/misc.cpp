@@ -10,59 +10,6 @@
 
 namespace cgn
 {
-	std::pair<sst::StateTree*, ValueTree*> CodegenState::setNamespace(const std::vector<std::string>& scope)
-	{
-		auto ret = std::make_pair(this->stree, this->vtree);
-
-		// get the root tree.
-		while(this->stree->parent)
-		{
-			this->stree = this->stree->parent,
-			this->vtree = this->vtree->parent;
-		}
-
-		// skip the first one, because it'll be the actual root.
-		for(size_t i = 1; i < scope.size(); i++)
-			this->enterNamespace(scope[i]);
-
-		return ret;
-	}
-
-	void CodegenState::restoreNamespace(std::pair<sst::StateTree*, ValueTree*> rsn)
-	{
-		iceAssert(rsn.first && rsn.second);
-
-		this->stree = rsn.first;
-		this->vtree = rsn.second;
-	}
-
-
-	void CodegenState::enterNamespace(std::string name)
-	{
-		if(auto it = this->stree->subtrees.find(name); it != this->stree->subtrees.end())
-			this->stree = it->second;
-
-		else
-			error(this->loc(), "Tried to enter non-existent namespace '%s' in current scope '%s'", name, this->stree->name);
-
-		// because we haven't created the vtree, it's fine to "make" one when we enter
-		auto it = this->vtree->subs.find(name);
-
-		if(it == this->vtree->subs.end())
-			this->vtree->subs[name] = new ValueTree(name, this->vtree);
-
-		this->vtree = this->vtree->subs[name];
-	}
-
-	void CodegenState::leaveNamespace()
-	{
-		if(!this->stree->parent)
-			error(this->loc(), "Cannot leave the top-level namespace");
-
-		this->stree = this->stree->parent;
-		this->vtree = this->vtree->parent;
-	}
-
 	void CodegenState::enterMethodBody(fir::Value* self)
 	{
 		this->methodSelfStack.push_back(self);
@@ -315,6 +262,10 @@ CGResult sst::ScopeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	error(this, "Failed to resolve scope '%s'", util::serialiseScope(this->scope));
 }
 
+CGResult sst::TreeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	error(this, "Cannot codegen tree definition -- something fucked up somewhere");
+}
 
 
 
