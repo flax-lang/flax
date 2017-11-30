@@ -130,16 +130,14 @@ std::string printContext(HighlightOptions ops)
 	return ret;
 }
 
-#define DEBUG 1
-
 [[noreturn]] void doTheExit()
 {
 	fprintf(stderr, "There were errors, compilation cannot continue\n");
 
-	#if DEBUG
-		abort();
-	#else
+	#ifdef NDEBUG
 		exit(1);
+	#else
+		abort();
 	#endif
 }
 

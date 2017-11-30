@@ -14,13 +14,6 @@ CGResult sst::EnumDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(this->memberType);
 
-	auto rsn = cs->setNamespace(this->id.scope);
-	defer(cs->restoreNamespace(rsn));
-
-	cs->enterNamespace(this->id.name);
-	defer(cs->leaveNamespace());
-
-
 	// make the runtime array
 	auto values = std::vector<fir::ConstantValue*>(this->cases.size());
 	auto names = std::vector<fir::ConstantValue*>(this->cases.size());

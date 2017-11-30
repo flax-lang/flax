@@ -20,6 +20,8 @@ namespace cgn
 
 namespace sst
 {
+	struct StateTree;
+
 	struct Defn : Stmt
 	{
 		Defn(const Location& l) : Stmt(l) { }
@@ -387,15 +389,24 @@ namespace sst
 
 
 
-
-
-	struct NamespaceDefn : Defn
+	struct TreeDefn : Defn
 	{
-		NamespaceDefn(const Location& l) : Defn(l) { }
+		TreeDefn(const Location& l) : Defn(l) { }
+		~TreeDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		StateTree* tree = 0;
+	};
+
+	struct NamespaceDefn : Stmt
+	{
+		NamespaceDefn(const Location& l) : Stmt(l) { }
 		~NamespaceDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		std::string name;
 		std::vector<Stmt*> statements;
 	};
 
