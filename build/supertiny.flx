@@ -7,21 +7,6 @@ export supertiny
 import "libc"
 import "limits"
 
-fn foo(a: string)
-{
-	struct InsideFoo
-	{
-		var x: int
-	}
-}
-
-fn foo(b: int)
-{
-	var i: InsideFoo
-	i.x = 30;
-}
-
-
 
 @entry fn main()
 {

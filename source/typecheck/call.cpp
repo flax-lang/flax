@@ -326,8 +326,6 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, std::vector<sst::E
 
 sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 {
-	using Param = sst::FunctionDecl::Param;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -382,8 +380,6 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
-
-	using Param = sst::FunctionDecl::Param;
 
 	return this->typecheckWithArguments(fs, util::map(this->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); }));
 }
