@@ -131,7 +131,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	defer(cs->popLoc());
 
 	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
-	auto merge = cs->irb.addNewBlockAfter("merge", cs->irb.getCurrentBlock());
+	auto merge = cs->irb.addNewBlockAfter("mergerrrrr", cs->irb.getCurrentBlock());
 
 
 	auto getcond = [](cgn::CodegenState* cs, Expr* c) -> fir::Value* {

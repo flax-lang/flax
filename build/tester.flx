@@ -34,107 +34,107 @@ fn runTests()
 	let endTitle		= "============ TESTS COMPLETE ============\n"
 
 
-	printf("%s%s", fibTitle, thinLine)
+	libc.printf("%s%s", fibTitle, thinLine)
 	do {
 		var n = 1
 		while n < 20
 		{
-			printf("%lld", doRecursiveFib(n))
+			libc.printf("%lld", test_fib.doRecursiveFib(n))
 			n += 1
 
 			if n != 20
 			{
-				printf(", ")
+				libc.printf(", ")
 			}
 		}
-		printf("\n\n\n")
+		libc.printf("\n\n\n")
 	}
 
 
 	// fizzbuzz
-	printf("%s%s", fizzbuzzTitle, thinLine)
-	doFizzBuzz(15)
-	printf("\n\n\n")
+	libc.printf("%s%s", fizzbuzzTitle, thinLine)
+	test_fizz.doFizzBuzz(15)
+	libc.printf("\n\n\n")
 
 
 	// int limits
-	printf("%s%s", intLimitsTitle, thinLine)
-	printIntegerLimits()
-	printf("\n\n\n")
+	libc.printf("%s%s", intLimitsTitle, thinLine)
+	test_limits.printIntegerLimits()
+	libc.printf("\n\n\n")
 
 
 	// scopes
-	printf("%s%s", scopeTitle, thinLine)
+	libc.printf("%s%s", scopeTitle, thinLine)
 	// doScopeTest("__llvm_jit__build/test")
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// operators and tuples (vectors type, mainly)
-	printf("%s%s", operatorTitle, thinLine)
+	libc.printf("%s%s", operatorTitle, thinLine)
 	// doOperatorTupleTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// arrays
-	printf("%s%s", arrayTitle, thinLine)
+	libc.printf("%s%s", arrayTitle, thinLine)
 	// doArrayTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// generics
-	printf("%s%s", genericsTitle, thinLine)
+	libc.printf("%s%s", genericsTitle, thinLine)
 	// doGenericsTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// first-class-functions
-	printf("%s%s", functionsTitle, thinLine)
+	libc.printf("%s%s", functionsTitle, thinLine)
 	// doFunctionTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// defer semantics
-	printf("%s%s", deferTitle, thinLine)
+	libc.printf("%s%s", deferTitle, thinLine)
 	// doDeferTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// any
-	printf("%s%s", anyTitle, thinLine)
+	libc.printf("%s%s", anyTitle, thinLine)
 	// doAnyTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// slices
-	printf("%s%s", slicesTitle, thinLine)
-	doSlicesTest()
-	printf("\n\n\n")
+	libc.printf("%s%s", slicesTitle, thinLine)
+	test_slices.doSlicesTest()
+	libc.printf("\n\n\n")
 
 
 	// decomposition
-	printf("%s%s", decomposeTitle, thinLine)
+	libc.printf("%s%s", decomposeTitle, thinLine)
 	// doDecompositionTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 	// for-loops
-	printf("%s%s", forLoopTitle, thinLine)
+	libc.printf("%s%s", forLoopTitle, thinLine)
 	// doForLoopTest()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 
 
 
 	// misc tests
-	printf("%s%s", miscTitle, thinLine)
+	libc.printf("%s%s", miscTitle, thinLine)
 	// miscellaneousTests()
-	printf("\n\n\n")
+	libc.printf("\n\n\n")
 
 
 
 	// fin.
-	printf("%s\n\n\n\n\n", endTitle)
+	libc.printf("%s\n\n\n\n\n", endTitle)
 }
 
 
@@ -150,7 +150,8 @@ fn runTests()
 	runTests()
 
 
-	printf("\n<< done >>\n")
+	libc.printf("\n<< done >>\n")
+	return 0
 }
 
 

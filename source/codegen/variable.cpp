@@ -161,6 +161,8 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(!defn.pointer && !defn.value)
 			{
+				warn(this, "forcing codegen of this");
+				warn(this->def, "here");
 				this->def->codegen(cs);
 
 				it = cs->valueMap.find(this->def);

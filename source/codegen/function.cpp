@@ -58,6 +58,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// push a breakable block (ControlFlowPoint) so that a manual 'return' can know how to
 	// do refcounting and deferred things.
 
+
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
 		this->body->codegen(cs);
