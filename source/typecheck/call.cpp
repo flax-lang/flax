@@ -281,28 +281,19 @@ namespace sst
 
 
 
-
-sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
+sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, std::vector<sst::Expr*> arguments)
 {
-	using Param = sst::FunctionDecl::Param;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	sst::Defn* target = 0;
-	std::vector<sst::Expr*> arguments;
+	using Param = sst::FunctionDecl::Param;
 
-	for(auto p : this->args)
-	{
-		auto expr = p->typecheck(fs);
-		arguments.push_back(expr);
-	}
 
 	// resolve the function call here
 	sst::TypecheckState::PrettyError errs;
 	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 
-	target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
+	auto target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
 	if(!errs.errorStr.empty())
 	{
 		exitless_error(this, "%s", errs.errorStr);
@@ -333,29 +324,30 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	return ret;
 }
 
-
-
-
-
-
-
-
-
-
-sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 {
 	using Param = sst::FunctionDecl::Param;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	std::vector<sst::Expr*> arguments;
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); }));
+}
 
-	for(auto p : this->args)
-	{
-		auto expr = p->typecheck(fs);
-		arguments.push_back(expr);
-	}
+
+
+
+
+
+
+
+
+sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> arguments)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	using Param = sst::FunctionDecl::Param;
 
 	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 	std::vector<fir::Type*> tys = util::map(arguments, [](sst::Expr* e) -> auto { return e->type; });
@@ -382,6 +374,18 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	ret->arguments = arguments;
 
 	return ret;
+}
+
+
+
+sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	using Param = sst::FunctionDecl::Param;
+
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); }));
 }
 
 

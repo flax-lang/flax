@@ -312,66 +312,54 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 	// warn(this, "hi there");
 	auto lhs = this->left->typecheck(fs);
 
+	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news) -> sst::Expr* {
+
+		if(auto id = dcast(ast::Ident, dot->right))
+			id->traverseUpwards = false;
+
+		else if(auto fc = dcast(ast::FunctionCall, dot->right))
+			fc->traverseUpwards = false;
+
+
+		// note: for function/expr calls, we typecheck the arguments *before* we teleport to the scope, so that we don't conflate
+		// the scope of the argument (which is the current scope) with the scope of the call target (which is in whatever namespace)
+
+		sst::Expr* ret = 0;
+		if(auto fc = dcast(ast::FunctionCall, dot->right))
+		{
+			auto args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+
+			fs->teleportToScope(news);
+			ret = fc->typecheckWithArguments(fs, args);
+		}
+		else if(auto ec = dcast(ast::ExprCall, dot->right))
+		{
+			auto args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+
+			fs->teleportToScope(news);
+			ret = ec->typecheckWithArguments(fs, args);
+		}
+		else
+		{
+			fs->teleportToScope(news);
+			ret = dot->right->typecheck(fs);
+		}
+
+
+		iceAssert(ret);
+
+		fs->teleportToScope(olds);
+		return ret;
+	};
+
+
+
+
 	if(auto ident = dcast(sst::VarRef, lhs))
 	{
 		auto defs = fs->getDefinitionsWithName(ident->name);
 		if(defs.empty())
 		{
-			#if 0
-			// check the state tree.
-			auto st = fs->stree->searchForName(ident->name);
-			if(st == 0)
-				error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
-
-			// ok, then...
-			auto oldscope = fs->getCurrentScope();
-			auto newscope = st->getScope();
-
-			fs->teleportToScope(newscope);
-			defer(fs->teleportToScope(oldscope));
-
-			if(auto id = dcast(ast::Ident, this->right))
-				id->traverseUpwards = false;
-
-			else if(auto fc = dcast(ast::FunctionCall, this->right))
-				fc->traverseUpwards = false;
-
-			// check what the right side is
-			auto expr = this->right->typecheck(fs);
-			iceAssert(expr);
-
-			// check the thing
-			if(auto vr = dcast(sst::VarRef, expr))
-			{
-				// check for global vars
-				auto vrs = fs->stree->getDefinitionsWithName(vr->name);
-
-				// must make sure it's a var/func defn and not a namespace one
-				if(vrs.size() == 1 && (dynamic_cast<sst::VarDefn*>(vrs[0]) || dynamic_cast<sst::FunctionDefn*>(vrs[0])))
-				{
-					vr->def = vrs[0];
-					return vr;
-				}
-				else if(vrs.size() > 1)
-				{
-					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, fs->stree->name);
-				}
-				else
-				{
-					newscope.push_back(vr->name);
-					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
-					ret->scope = newscope;
-
-					// info(this, "ret scope %s", util::serialiseScope(scope));
-					return ret;
-				}
-			}
-			else
-			{
-				return expr;
-			}
-			#endif
-
 			error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
 		}
 		else if(defs.size() > 1)
@@ -385,7 +373,6 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 
 		auto def = defs[0];
 
-		// TODO: consolidate the code below (seting traverseUpwards to false, teleporting scope, etc)
 
 
 		if(auto td = dcast(sst::TreeDefn, def))
@@ -393,18 +380,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			auto newscope = td->tree->getScope();
 			auto oldscope = fs->getCurrentScope();
 
-			fs->teleportToScope(newscope);
-			defer(fs->teleportToScope(oldscope));
-
-			if(auto id = dcast(ast::Ident, this->right))
-				id->traverseUpwards = false;
-
-			else if(auto fc = dcast(ast::FunctionCall, this->right))
-				fc->traverseUpwards = false;
-
-			// check what the right side is
-			auto expr = this->right->typecheck(fs);
-			iceAssert(expr);
+			auto expr = checkRhs(fs, this, oldscope, newscope);
 
 			// check the thing
 			if(auto vr = dcast(sst::VarRef, expr))
@@ -441,40 +417,24 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			if(auto cls = dcast(sst::ClassDefn, def))
 			{
 				auto oldscope = fs->getCurrentScope();
-				auto scope = cls->id.scope;
-				scope.push_back(cls->id.name);
+				auto newscope = cls->id.scope;
+				newscope.push_back(cls->id.name);
 
-				fs->teleportToScope(scope);
+				fs->teleportToScope(newscope);
 				defer(fs->teleportToScope(oldscope));
 
-				if(auto id = dcast(ast::Ident, this->right))
-					id->traverseUpwards = false;
-
-				else if(auto fc = dcast(ast::FunctionCall, this->right))
-					fc->traverseUpwards = false;
-
-				auto rhs = this->right->typecheck(fs);
-				iceAssert(rhs);
-
-				return rhs;
+				return checkRhs(fs, this, oldscope, newscope);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
 				auto oldscope = fs->getCurrentScope();
-				auto scope = enm->id.scope;
-				scope.push_back(enm->id.name);
+				auto newscope = enm->id.scope;
+				newscope.push_back(enm->id.name);
 
-				fs->teleportToScope(scope);
+				fs->teleportToScope(newscope);
 				defer(fs->teleportToScope(oldscope));
 
-				if(auto id = dcast(ast::Ident, this->right))
-					id->traverseUpwards = false;
-
-				else if(auto fc = dcast(ast::FunctionCall, this->right))
-					fc->traverseUpwards = false;
-
-				auto rhs = this->right->typecheck(fs);
-				iceAssert(rhs);
+				auto rhs = checkRhs(fs, this, oldscope, newscope);
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
@@ -510,22 +470,13 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 	else if(auto scp = dcast(sst::ScopeExpr, lhs))
 	{
 		auto oldscope = fs->getCurrentScope();
+		auto newscope = scp->scope;
 
-		auto scope = scp->scope;
-		fs->teleportToScope(scope);
+		fs->teleportToScope(newscope);
+		defer(fs->teleportToScope(oldscope));
 
-		// info(lhs, "scope is '%s'", util::serialiseScope(scope));
+		auto expr = checkRhs(fs, this, oldscope, newscope);
 
-		if(auto id = dcast(ast::Ident, this->right))
-			id->traverseUpwards = false;
-
-		else if(auto fc = dcast(ast::FunctionCall, this->right))
-			fc->traverseUpwards = false;
-
-		auto expr = this->right->typecheck(fs);
-		iceAssert(expr);
-
-		fs->teleportToScope(oldscope);
 
 		if(auto vr = dcast(sst::VarRef, expr))
 		{
@@ -533,9 +484,9 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			if(dynamic_cast<sst::VarDefn*>(vr->def) || dynamic_cast<sst::FunctionDefn*>(vr->def))
 				return vr;
 
-			scope.push_back(vr->name);
+			newscope.push_back(vr->name);
 			auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
-			ret->scope = scope;
+			ret->scope = newscope;
 
 			return ret;
 		}

@@ -69,7 +69,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			}
 		}
 
-		debuglog("found nothing for '%s' in tree '%s' (%p)\n", this->name, tree->name, tree);
+		// debuglog("found nothing for '%s' in tree '%s' (%p)\n", this->name, tree->name, tree);
 
 		if(this->traverseUpwards)
 			tree = tree->parent;

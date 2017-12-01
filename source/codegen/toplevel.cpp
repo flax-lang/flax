@@ -29,8 +29,7 @@ namespace cgn
 		cs->pushLoc(dtr->topLevel);
 		defer(cs->popLoc());
 
-		for(auto stmt : dtr->topLevel->statements)
-			stmt->codegen(cs);
+		dtr->topLevel->codegen(cs);
 
 		cs->finishGlobalInitFunction();
 
@@ -50,7 +49,10 @@ CGResult sst::NamespaceDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	for(auto stmt : this->statements)
+	{
+		warn(stmt, "hello");
 		stmt->codegen(cs);
+	}
 
 	return CGResult(0);
 }

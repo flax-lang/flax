@@ -423,6 +423,7 @@ namespace ast
 		~FunctionCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
 
 		std::string name;
 		std::vector<Expr*> args;
@@ -436,10 +437,13 @@ namespace ast
 		~ExprCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
 
 		Expr* callee = 0;
 		std::vector<Expr*> args;
 	};
+
+
 
 	struct DotOperator : Expr
 	{
