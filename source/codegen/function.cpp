@@ -118,7 +118,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 
 	cs->valueMap[this] = CGResult(fn);
-	cs->vtree->values[this->id.name].push_back(CGResult(fn));
+	// cs->vtree->values[this->id.name].push_back(CGResult(fn));
 
 	return CGResult(fn);
 }
@@ -138,7 +138,7 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok...
 	cs->valueMap[this] = CGResult(arg);
-	cs->vtree->values[this->id.name].push_back(CGResult(arg));
+	// cs->vtree->values[this->id.name].push_back(CGResult(arg));
 
 	return CGResult(arg);
 }

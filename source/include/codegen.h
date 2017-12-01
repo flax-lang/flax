@@ -65,27 +65,15 @@ namespace cgn
 		}
 	}
 
-	struct ValueTree
-	{
-		ValueTree(std::string n, ValueTree* p) : name(n), parent(p) { }
-
-		std::string name;
-		ValueTree* parent = 0;
-
-		std::vector<fir::Value*> refCountedValues;
-		std::vector<fir::Value*> refCountedPointers;
-
-		std::unordered_map<std::string, ValueTree*> subs;
-		std::unordered_map<std::string, std::vector<CGResult>> values;
-	};
-
 	struct ControlFlowPoint
 	{
 		ControlFlowPoint(sst::Block* b, fir::IRBlock* bp, fir::IRBlock* cp) :
 			block(b), breakPoint(bp), continuePoint(cp) { }
 
 		sst::Block* block = 0;
-		ValueTree* vtree = 0;
+
+		std::vector<fir::Value*> refCountedValues;
+		std::vector<fir::Value*> refCountedPointers;
 
 		fir::IRBlock* breakPoint = 0;
 		fir::IRBlock* continuePoint = 0;
@@ -97,7 +85,6 @@ namespace cgn
 		CodegenState(const fir::IRBuilder& i) : irb(i) { }
 		fir::Module* module = 0;
 		sst::StateTree* stree = 0;
-		cgn::ValueTree* vtree = 0;
 
 		fir::IRBuilder irb;
 
@@ -131,9 +118,9 @@ namespace cgn
 		ControlFlowPoint getCurrentCFPoint();
 
 		void enterBreakableBody(ControlFlowPoint cfp);
-		void leaveBreakableBody();
+		ControlFlowPoint leaveBreakableBody();
 
-		CGResult findValueInTree(std::string name, ValueTree* vt = 0);
+		// CGResult findValueInTree(std::string name, ValueTree* vt = 0);
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);

@@ -406,7 +406,7 @@ namespace backend
 
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
-		fprintf(stderr, "\n%s\n", firmod->print().c_str());
+		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 

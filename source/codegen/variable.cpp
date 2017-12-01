@@ -72,7 +72,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		cs->leaveGlobalInitFunction(rest);
 
 		cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-		cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
+		// cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
 
 		return CGResult(0, alloc);
 	}
@@ -127,7 +127,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-	cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
+	// cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
 
 	if(refcounted) cs->addRefCountedPointer(alloc);
 
@@ -150,35 +150,30 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			auto r = cs->findValueInTree(this->name);
-			if(r.value || r.pointer)
-			{
-				defn = r;
-			}
-			else if(cs->isInMethodBody())
+			if(cs->isInMethodBody())
 			{
 				return cs->getStructFieldImplicitly(this->name);
 			}
 			else if(!defn.pointer && !defn.value)
 			{
-				warn(this, "forcing codegen of this");
-				warn(this->def, "here");
+				// warn(this, "forcing codegen of this");
+				// warn(this->def, "here");
 				this->def->codegen(cs);
 
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					auto r = cs->findValueInTree(this->name);
-					if(r.value || r.pointer)
-					{
-						defn = r;
-					}
-					else
-					{
+					// auto r = cs->findValueInTree(this->name);
+					// if(r.value || r.pointer)
+					// {
+					// 	defn = r;
+					// }
+					// else
+					// {
 						exitless_error(this, "Failed to codegen variable definition for '%s'", this->name);
 						info(this->def, "Offending definition is here:");
 						doTheExit();
-					}
+					// }
 				}
 
 				defn = it->second;

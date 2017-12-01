@@ -25,7 +25,8 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// the below stuff ain't gonna work without some intervention
 
 		CGResult defn;
-		auto r = cs->findValueInTree(this->name);
+		CGResult r = cs->valueMap[this->target];
+		// auto r = cs->findValueInTree(this->name);
 
 		if(r.value || r.pointer)
 		{

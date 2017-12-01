@@ -2,36 +2,22 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+/*
+ * This file isn't meant to be compiled.
+ * It's just a list of outstanding issues in the compiler that we've yet to get to.
 
-// NOTE: this file *SHOULD NOT* be compiled, at least until all the 'TOFIX'es have been moved to the
-// 'FIXED' section.
-
-
-// note: this issues system is some kind of shitty queue
-// queue numbers are recycled, but issues are not moved forward in the queue (ie. their numbers are not decremented)
-// more urgent issues are placed in front to reuse lower queue numbers
-
-// ^ why am i documenting this?
+ ? Note that some issues existed pre-rewrite, so they may not make sense. The 'fixed' log has not been
+ ? updated to reflect problems that were fixed in the process of the rewrite, for obvious reasons.
+*/
 
 
-
-//
-// TOFIX:
-//
-
-
+//! ISSUES TO FIX
 
 
 // 8. abort(), exit(), etc. should be allowed as the last expression in a function
 // 	and allow the compiler to just ignore the fact that there's no return value
 // 	ie. __attribute__((noreturn))
 fn foo() -> int { abort() }
-
-
-
-
-// 10. wider use of type-inference leveraging the generic type solver's capabilities
-
 
 
 
@@ -54,17 +40,10 @@ f()
 
 
 
-// 18. things defined inside functions may or may not leak into their overloaded colleagues.
-// this is a side-effect of the namespace simply being the common name of the top function.
-// needs more testing.
 
-
-
-
-//
-// FIXED
-//
 /*
+	* FIXED ISSUES
+
 	(fixed in e664992)
 	- enums declared in functions do not work
 	- global variables outside of namespaces don't work
@@ -113,24 +92,10 @@ f()
 */
 
 
-//
-// TO TEST
-//
 /*
-	1. tuple operators
-	2. array of strings
-*/
+	! TODO
 
-
-//
-// TODO
-//
-/*
 	3. splatting (http://coffeescript.org/#splats)
-
-	4. clean up typechecking
-		-- store the fir::Type of each AST node
-		-- recursively visit each node to get its type before anything happens
 
 	5. arbitrary refcounted types (ie. rc<T>)
 		recent work with 'any' has demonstrated that it's *somewhat trivial* to add a new refcounted type to the type system. The real
