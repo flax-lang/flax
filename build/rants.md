@@ -33,6 +33,13 @@ in the `intlimits` test.
 
 I don't even have the slightest idea about that one.
 
+
+#### Solved
+Turns out the 'initial' problem was a manifestation of the deeper problem with `ValueTree`s; I've just eliminated their entire existence from the
+compiler, and made `ControlFlowPoint`s store the reference counting things instead -- this way we don't need to modify the SST nodes to insert
+stateful values, and the nesting nature is controlled by a simple stack that's run through during codegen instead of stored permanently somewhere
+we don't need.
+
 ----
 
 ## 30th November 2017

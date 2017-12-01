@@ -204,10 +204,10 @@ static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
 	for(auto stmt : cfp.block->deferred)
 		stmt->codegen(cs);
 
-	for(auto v : cfp.vtree->refCountedValues)
+	for(auto v : cfp.refCountedValues)
 		cs->decrementRefCount(v);
 
-	for(auto p : cfp.vtree->refCountedPointers)
+	for(auto p : cfp.refCountedPointers)
 		cs->decrementRefCount(cs->irb.CreateLoad(p));
 }
 

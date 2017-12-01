@@ -67,15 +67,19 @@ namespace cgn
 	{
 		// only the block needs to exist.
 		iceAssert(cfp.block);
-		cfp.vtree = this->vtree;
+		// cfp.vtree = this->vtree;
 
 		this->breakingPointStack.push_back(cfp);
 	}
 
-	void CodegenState::leaveBreakableBody()
+	ControlFlowPoint CodegenState::leaveBreakableBody()
 	{
 		iceAssert(this->breakingPointStack.size() > 0);
+
+		auto ret = this->breakingPointStack.back();
 		this->breakingPointStack.pop_back();
+
+		return ret;
 	}
 
 
@@ -104,24 +108,24 @@ namespace cgn
 	}
 
 
-	CGResult CodegenState::findValueInTree(std::string name, ValueTree* vtr)
-	{
-		ValueTree* tree = (vtr ? vtr : this->vtree);
-		iceAssert(tree);
+	// CGResult CodegenState::findValueInTree(std::string name, ValueTree* vtr)
+	// {
+	// 	ValueTree* tree = (vtr ? vtr : this->vtree);
+	// 	iceAssert(tree);
 
-		while(tree)
-		{
-			auto& vs = tree->values[name];
-			iceAssert(vs.size() <= 1);
+	// 	while(tree)
+	// 	{
+	// 		auto& vs = tree->values[name];
+	// 		iceAssert(vs.size() <= 1);
 
-			if(vs.size() > 0)
-				return vs[0];
+	// 		if(vs.size() > 0)
+	// 			return vs[0];
 
-			tree = tree->parent;
-		}
+	// 		tree = tree->parent;
+	// 	}
 
-		return CGResult(0);
-	}
+	// 	return CGResult(0);
+	// }
 
 
 
