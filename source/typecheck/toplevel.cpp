@@ -35,7 +35,7 @@ namespace sst
 		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
 		for(auto sub : tree->subtrees)
 		{
-			debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
+			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
 			{
 				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing);
@@ -58,7 +58,7 @@ namespace sst
 				auto name = defs.first;
 				for(auto def : defs.second)
 				{
-					info(def, "hello there (%s)", def->visibility);
+					// info(def, "hello there (%s)", def->visibility);
 					if(def->visibility == VisibilityLevel::Public)
 					{
 						auto others = existing->getDefinitionsWithName(name);
@@ -111,11 +111,11 @@ namespace sst
 						}
 
 						existing->addDefinition(tree->topLevelFilename, name, def);
-						debuglog("add def '%s' / %s into tree '%s' (%p)\n", def->id.name, name, existing->name, existing);
+						// debuglog("add def '%s' / %s into tree '%s' (%p)\n", def->id.name, name, existing->name, existing);
 					}
 					else
 					{
-						warn(def, "skipping def %s because it is not public", def->id.name);
+						// warn(def, "skipping def %s because it is not public", def->id.name);
 					}
 				}
 			}
@@ -165,7 +165,7 @@ namespace sst
 					treedef->id = Identifier(ias, IdKind::Name);
 					treedef->tree = newinspt;
 
-					debuglog("ias = %s\n", ias);
+					// debuglog("ias = %s\n", ias);
 					insertPoint->addDefinition(ias, treedef);
 
 					// note/fixme: because we don't want to be modifying things, we make a new namespacedefn that's essentially the same as the
@@ -258,7 +258,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		td->visibility = this->visibility;
 
 		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
-		warn("add def for '%s' (%p) into '%s' (%p)", this->name, td, tree->parent->name, tree->parent);
+		// warn("add def for '%s' (%p) into '%s' (%p)", this->name, td, tree->parent->name, tree->parent);
 	}
 
 	// if(tree->parent)
