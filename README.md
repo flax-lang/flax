@@ -133,19 +133,10 @@ public fn main() -> int
 -----------------------------------------------
 
 
-#### Future Plans ####
-
-- Generic Types
-- Subtyping
-- Internal compiler optimisations
-- Incremental compilation
-- Rule the world
-
-
------------------------------------------------
-
-
 #### Building the Flax compiler ####
+
+
+##### macOS / Linux
 
 - Flax uses a makefile; most likely some form of GNU-compatible `make` will work.
 - LLVM needs to be installed. On macOS, `brew install llvm` should work. For Linux people, follow roughly `.travis.yml`, which uses apt-get to install the required libraries.
@@ -155,7 +146,14 @@ public fn main() -> int
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 
-- The `shakefile` still works, however. (probably. no guarantees.)
+
+##### Windows
+
+- Open `flax.vcxproj`
+- Edit the configuration variables to tell `msvc` where to find the libraries -- notably, these are needed: [`libmpir`](http://mpir.org), [`libmpfr`](http://mpfr.org), and most importantly, [`libllvm`](http://llvm.org). Follow the build instructions for each library, preferably generating both Debug and Release *static* libraries.
+- Point Visual Studio to the appropriate include and lib directories (as appropriate for each configuration if you built separate Release and Debug libraries)
+- Build and profit, hopefully.
+- The compiler executable is placed in `build/sysroot/windows/(Release|Debug)/`
 
 -----------------------------------------------
 
