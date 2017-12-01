@@ -244,11 +244,11 @@ namespace sst
 				{
 					fns.push_back(fn);
 				}
-				else if(auto vr = dcast(VarDefn, def); vr && vr->type->isFunctionType())
+				else if((dcast(VarDefn, def) || dcast(ArgumentDefn, def)) && def->type->isFunctionType())
 				{
 					// ok, we'll check it later i guess.
 					if(!didVar)
-						fns.push_back(vr);
+						fns.push_back(def);
 
 					didVar = true;
 				}
@@ -264,7 +264,7 @@ namespace sst
 				}
 			}
 
-			if(travUp)
+			if(travUp && fns.empty())
 				tree = tree->parent;
 
 			else

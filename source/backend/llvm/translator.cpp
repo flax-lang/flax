@@ -406,7 +406,7 @@ namespace backend
 
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
-		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
+		fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 
@@ -2056,6 +2056,23 @@ namespace backend
 							auto& gc = LLVMBackend::getLLVMContext();
 							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
 							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
+
+							// {
+							// 	auto printfn = module->getOrInsertFunction("printf", llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc) }, true));
+
+
+							// 	llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), "hey there %p %p\n", true);
+							// 	llvm::Constant* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
+							// 		llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "tmpstr");
+
+							// 	auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0);
+
+							// 	std::vector<llvm::Constant*> ix { zconst, zconst };
+							// 	gv = llvm::ConstantExpr::getInBoundsGetElementPtr(gv->getType()->getPointerElementType(), gv, ix);
+
+							// 	builder.CreateCall(printfn, { gv, ptr, rcp });
+							// }
+
 							builder.CreateStore(b, rcp);
 
 							break;

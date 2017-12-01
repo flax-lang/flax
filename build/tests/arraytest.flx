@@ -2,46 +2,46 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import LibCInterface
+import "libc"
 
-public fn doArrayTest()
+@entry public fn doArrayTest()
 {
 	do {
 		var arr: int[2][2] = [ [ 1, 2 ], [ 5, 6 ] ]
 		arr[1][1] = 400
 
-		printf("a[0][0]: %d, a[0][1]: %d, a[1][0]: %d, a[1][1]: %d\n", arr[0][0], arr[0][1], arr[1][0], arr[1][1])
+		libc.printf("a[0][0]: %d, a[0][1]: %d, a[1][0]: %d, a[1][1]: %d\n", arr[0][0], arr[0][1], arr[1][0], arr[1][1])
 
 		var d: f64[4] = [ 1.0, 2.0, 4.0, 8.0 ]
-		printf("d[0]: %f, d[1]: %f, d[2]: %f, d[3]: %f\n", d[0], d[1], d[2], d[3]);
+		libc.printf("d[0]: %f, d[1]: %f, d[2]: %f, d[3]: %f\n", d[0], d[1], d[2], d[3]);
 
 
-		var arr1: int* = alloc[4] int as int*
+		var arr1: int* = @raw alloc(int, 4)
 		arr1[1] = 97
 		arr1[2] = 43
 
-		printf("arr[1] = %d\n", (arr1 + 1)[0])
-		printf("arr[2] = %d\n", (3 + arr1)[-1])
+		libc.printf("arr[1] = %d\n", (arr1 + 1)[0])
+		libc.printf("arr[2] = %d\n", (3 + arr1)[-1])
 
-		dealloc arr1
+		// free arr1
 
-		printf("\n\n")
-		var s = alloc[4][4] string("array of array of strings test")
-		s[1][2] = "BOO YOU STRING"
+		libc.printf("\n\n")
+		// var s = alloc[4][4] string("array of array of strings test")
+		// s[1][2] = "BOO YOU STRING"
 
-		printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
+		// libc.printf("s[1][2] = %s, s[1][2].length = %ld\n", s[1][2], s[1][2].length)
 
-		dealloc s
+		// free s
 	}
 
-	printf("\n")
+	libc.printf("\n")
 	dynamicArrays()
 }
 
-public fn foldl(first: int, arr: int[], f: [(int, int) -> int]) -> int
+public fn foldl(first: int, arr: int[], f: (int, int) -> int) -> int
 {
 	if arr.length == 0 { return first }
-	return foldl(f(first, arr.popBack()), arr, f)
+	return foldl(f(first, arr.pop()), arr, f)
 }
 
 fn f(a: int, b: int) -> int
@@ -66,50 +66,65 @@ fn setup(max: int) -> int[]
 fn dynamicArrays()
 {
 	do {
-		printf("PRE X\n")
+		libc.printf("PRE X\n")
 		var x: string[]
-		printf("POST X\n")
-		var y = alloc[5] string
+		libc.printf("POST X\n")
+		var y = alloc(string, 5)
 
 		var i = 0
 
-		x += "aaa" + "AAA"
-		x += "BBB" + "bbb"
-		x += "ccc" + "CCC"
-		x += "DDD" + "ddd"
-		x += "eee" + "EEE"
+		libc.printf("ZERO\n")
+		x += "aaa"// + "AAA"
+		libc.printf("ONE\n")
+		x += "BBB"// + "bbb"
+		libc.printf("TWO\n")
+		x += "ccc"// + "CCC"
+		libc.printf("THREE\n")
+		x += "DDD"// + "ddd"
+		libc.printf("FOUR\n")
+		x += "eee"// + "EEE"
+		libc.printf("FIVE ALL OK - (%s, %p, %d), (%s, %p, %d), (%s, %p, %d), (%s, %p, %d), (%s, %p, %d)\n",
+			x[0].ptr, x[0].ptr, x[0].length,
+			x[1].ptr, x[1].ptr, x[1].length,
+			x[2].ptr, x[2].ptr, x[2].length,
+			x[3].ptr, x[3].ptr, x[3].length,
+			x[4].ptr, x[4].ptr, x[4].length)
 
-		x += y
+		// x += y
+
+		libc.printf("OK 2\n")
 
 		let k = x
+		libc.printf("OK 3\n")
 		var z = k.clone()
+		libc.printf("OK 4\n")
 
-		printf("k = %p, x = %p\n", k.data, x.data)
+		libc.printf("k = %p, x = %p\n", k.ptr, x.ptr)
 
 		z[9] = "LAST ELEMENT"
 
-		printf("z <= x: %d\n", z <= x)
+		libc.printf("z <= x: %d\n", z <= x)
 
 		while i < z.length
 		{
-			printf("z[%ld] = %s // %ld\n", i, z[i], z[i].rc)
+			libc.printf("z[%ld] = %s // %ld\n", i, z[i], z[i].rc)
 			i += 1
 		}
 
-		printf("z.back() = %s, length = %zd, cap = %zd\n", z.back(), z.length, z.capacity)
+		libc.printf("z.back() = %s, length = %zd, cap = %zd\n", z.back(), z.length, z.capacity)
 
 
 
 		let fib = setup(5)
 
 		let sum = foldl(1, fib, f)
-		printf("sum = %zd\n", sum)
+		libc.printf("sum = %zd\n", sum)
 
 		// x == k
-		dealloc x
+		// free x
 
 		// z is z
-		dealloc z
+		// free z
 	}
 }
 

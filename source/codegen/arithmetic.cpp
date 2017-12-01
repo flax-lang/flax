@@ -174,22 +174,19 @@ namespace sst
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
-		auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
-		if(!l.value || !r.value)
-		{
-			error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType(),
-				_rr.value->getType());
-		}
 
-		auto lt = l.value->getType();
-		auto rt = r.value->getType();
+		// auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
+		// if(!l.value || !r.value)
+		// {
+		// 	error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType(),
+		// 		_rr.value->getType());
+		// }
 
-		// handle pointer arithmetic
-		if((_lr.value->getType()->isPointerType() && _rr.value->getType()->isIntegerType())
-			|| (_lr.value->getType()->isIntegerType() && _rr.value->getType()->isPointerType()))
-		{
-			error("pointer arithmetic not supported");
-		}
+		// auto lt = l.value->getType();
+		// auto rt = r.value->getType();
+
+		auto [ l, r ] = std::make_tuple(_lr, _rr);
+		auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
 
 
 		// circumvent the '1 + 2 + 3'-expression-has-no-type issue by just computing whatever
@@ -372,6 +369,38 @@ namespace cgn
 					default: error("no");
 				}
 			}
+			else if((lt->isPrimitiveType() && rt->isConstantNumberType()) || (lt->isConstantNumberType() && rt->isPrimitiveType()))
+			{
+				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
+				iceAssert(lr.value && rr.value);
+
+				if(lr.value->getType()->isFloatingPointType())
+				{
+					switch(op)
+					{
+						case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(lr.value, rr.value));
+						case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(lr.value, rr.value));
+						case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(lr.value, rr.value));
+						case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(lr.value, rr.value));
+						case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(lr.value, rr.value));
+						case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(lr.value, rr.value));
+						default: error("no");
+					}
+				}
+				else
+				{
+					switch(op)
+					{
+						case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(lr.value, rr.value));
+						case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(lr.value, rr.value));
+						case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(lr.value, rr.value));
+						case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(lr.value, rr.value));
+						case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(lr.value, rr.value));
+						case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(lr.value, rr.value));
+						default: error("no");
+					}
+				}
+			}
 			else if(lt->isStringType() && rt->isStringType())
 			{
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
@@ -406,6 +435,25 @@ namespace cgn
 					default: error("no");
 				}
 			}
+			else if(lt->isDynamicArrayType() && lt == rt)
+			{
+				//! use opf when we have operator overloads
+				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt->toDynamicArrayType(), 0);
+				fir::Value* res = this->irb.CreateCall2(cmpfn, lv, rv);
+
+				fir::Value* zero = fir::ConstantInt::getInt64(0);
+
+				switch(op)
+				{
+					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(res, zero));
+					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(res, zero));
+					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(res, zero));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(res, zero));
+					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(res, zero));
+					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(res, zero));
+					default: error("no");
+				}
+			}
 			else
 			{
 				error("Unsupported comparison between types '%s' and '%s'", lt, rt);
@@ -415,7 +463,22 @@ namespace cgn
 		{
 			if(lt->isPrimitiveType() && rt->isPrimitiveType())
 			{
-				return CGResult(this->irb.CreateBinaryOp(op, lv, rv));
+				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
+
+				return CGResult(this->irb.CreateBinaryOp(op, lr.value, rr.value));
+			}
+			else if((lt->isPointerType() && (rt->isIntegerType() || rt->isConstantNumberType()))
+				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
+			{
+				auto ofsv = (lt->isPointerType() ? rv : lv);
+				auto ofs = this->oneWayAutocast(CGResult(ofsv), fir::Type::getInt64()).value;
+
+				iceAssert(ofs->getType()->isIntegerType());
+
+				auto ptr = (lt->isPointerType() ? lv : rv);
+				ptr = this->irb.CreatePointerAdd(ptr, ofs);
+
+				return CGResult(ptr);
 			}
 			else if(lt->isStringType() && rt->isStringType())
 			{
@@ -488,7 +551,7 @@ namespace cgn
 			}
 			else
 			{
-				error(loc, "not supported");
+				unsupportedError(lhs.first, lt, rhs.first, rt);
 			}
 		}
 	}

@@ -10,11 +10,16 @@
 
 #define BUILTIN_ARRAY_CMP_FUNC_NAME					"__array_compare"
 
+#define BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME		"__array_setelementsdefault"
+
 #define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__darray_clone"
 #define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__darray_append"
 #define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__darray_appendelement"
 #define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
 #define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
+
+#define BUILTIN_DYNARRAY_RESERVE_ENOUGH_NAME		"__darray_reservesufficient"
+#define BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME			"__darray_reserveextra"
 
 #define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
 #define BUILTIN_SLICE_APPEND_FUNC_NAME				"__slice_append"
@@ -24,9 +29,9 @@
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
 
 
-#define DEBUG_MASTER		0
+#define DEBUG_MASTER		1
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
-#define DEBUG_REFCOUNTING	(1 & DEBUG_MASTER)
+#define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
 
 #define REFCOUNT_SIZE		8
 
@@ -150,10 +155,25 @@ namespace array
 			fir::Value* origElm = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
 			fir::Value* clone = 0;
 
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("hello, clone, %d/%d\n");
+				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateLoad(counter), len });
+			}
+
+
 			if(fn->getArgumentCount() == 1)
 				clone = cs->irb.CreateCall1(fn, cs->irb.CreateLoad(origElm));
 			else
 				clone = cs->irb.CreateCall2(fn, cs->irb.CreateLoad(origElm), fir::ConstantInt::getInt64(0));
+
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("hello, clone, %d/%d\n");
+				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateLoad(counter), len });
+			}
 
 			// store clone
 			fir::Value* newElm = cs->irb.CreatePointerAdd(newptr, cs->irb.CreateLoad(counter));
@@ -309,6 +329,7 @@ namespace array
 			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
 			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
+
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
@@ -441,7 +462,7 @@ namespace array
 	// }
 
 
-	// required is how much *EXTRA* space we need.
+	//* required is how much *EXTRA* space we need.
 	static fir::Value* _checkCapacityAndGrowIfNeeded(CodegenState* cs, fir::Function* func, fir::Value* arr, fir::Value* required)
 	{
 		iceAssert(arr->getType()->isDynamicArrayType());
@@ -452,24 +473,66 @@ namespace array
 		fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr, "ptr");
 		fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr, "len");
 		fir::Value* cap = cs->irb.CreateGetDynamicArrayCapacity(arr, "cap");
-		fir::Value* refcnt = cs->irb.CreateGetDynamicArrayRefCount(arr, "refcount");
+		fir::Value* refcnt = 0;
+
+		auto curblk = cs->irb.getCurrentBlock();
+		fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
+		fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
+		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
+		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("grow", func);
+		fir::IRBlock* growNewblk = cs->irb.addNewBlockInFunction("growFromScratch", func);
+		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
+
+		fir::Value* needed = cs->irb.CreateAdd(len, required, "needed");
+
+		fir::Value* nullPhi = 0;
+		{
+			auto cond = cs->irb.CreateICmpEQ(cs->irb.CreatePointerToIntCast(ptr, fir::Type::getInt64()), fir::ConstantInt::getInt64(0));
+			cs->irb.CreateCondBranch(cond, isnull, notnull);
+
+			cs->irb.setCurrentBlock(isnull);
+			{
+				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
+				iceAssert(mallocf);
+
+				auto allocsz = cs->irb.CreateAdd(cs->irb.CreateMul(needed, cs->irb.CreateSizeof(elmtype)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				auto rawdata = cs->irb.CreateCall1(mallocf, allocsz);
+
+				auto dataptr = cs->irb.CreatePointerAdd(cs->irb.CreatePointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
+				dataptr = cs->irb.CreatePointerTypeCast(dataptr, elmtype->getPointerTo());
+
+				auto setfn = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, elmtype);
+				cs->irb.CreateCall2(setfn, dataptr, needed);
+
+				auto ret = cs->irb.CreateSetDynamicArrayData(arr, dataptr);
+				ret = cs->irb.CreateSetDynamicArrayLength(ret, needed);
+				ret = cs->irb.CreateSetDynamicArrayCapacity(ret, needed);
+
+				cs->irb.CreateSetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
+
+				nullPhi = ret;
+			}
+
+
+
+			cs->irb.CreateUnCondBranch(mergeblk);
+
+			cs->irb.setCurrentBlock(notnull);
+			refcnt = cs->irb.CreateGetDynamicArrayRefCount(arr);
+		}
+
 
 		// check if len + required > cap
-		fir::Value* needed = cs->irb.CreateAdd(len, required, "needed");
 		fir::Value* cond = cs->irb.CreateICmpGT(needed, cap);
 
 
 
 		fir::IRBlock* cb = cs->irb.getCurrentBlock();
 
-		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
-		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("grow", func);
 
 		// for when the 'dynamic' array came from a literal. same as the usual stuff
 		// capacity will be -1, in this case.
-		fir::IRBlock* growNewblk = cs->irb.addNewBlockInFunction("growFromScratch", func);
 
-		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
 		cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
 
 		cs->irb.setCurrentBlock(trampoline);
@@ -486,6 +549,7 @@ namespace array
 		// grows to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growblk);
 		{
+
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -502,20 +566,20 @@ namespace array
 			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 
-			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
-			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
-
 
 			#if DEBUG_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("grow (realloc) array: %p / len %zd / cap (old) %zd / cap (new) %zd\n");
+				fir::Value* tmpstr = cs->module->createGlobalString("grow (realloc) array: %p / len %ld / cap (old) %ld / cap (new) %ld\n");
 				cs->irb.CreateCall(printfn, { tmpstr, newptr, len, cap, nextpow2 });
 			}
 			#endif
 
+
+			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
+			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
+			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
 			cs->irb.CreateUnCondBranch(mergeblk);
 
@@ -526,6 +590,13 @@ namespace array
 		// makes a new memory piece, to the nearest power of two from (len + required)
 		cs->irb.setCurrentBlock(growNewblk);
 		{
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("grow (new) array len %zd / cap (old) %zd\n");
+				cs->irb.CreateCall(printfn, { tmpstr, len, cap });
+			}
+
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
@@ -576,6 +647,7 @@ namespace array
 		{
 			auto phi = cs->irb.CreatePHINode(arr->getType());
 			phi->addIncoming(arr, cb);
+			phi->addIncoming(nullPhi, isnull);
 			phi->addIncoming(growPhi, growblk);
 			phi->addIncoming(growNewPhi, growNewblk);
 
@@ -681,8 +753,8 @@ namespace array
 			}
 
 
-			appendf = func;
 			cs->irb.setCurrentBlock(restore);
+			appendf = func;
 		}
 
 		iceAssert(appendf);
@@ -726,7 +798,6 @@ namespace array
 				// grow if needed
 				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
-
 				// we should be ok, now copy.
 				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(s1);
 				ptr = cs->irb.CreatePointerAdd(ptr, origlen);
@@ -744,14 +815,117 @@ namespace array
 			}
 
 
-			appendf = func;
 			cs->irb.setCurrentBlock(restore);
+			appendf = func;
 		}
 
 		iceAssert(appendf);
 		return appendf;
 	}
 
+
+	fir::Function* getSetElementsToDefaultValueFunction(CodegenState* cs, fir::Type* elmType)
+	{
+		iceAssert(elmType);
+
+		auto name = BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME + std::string("_") + elmType->encodedStr();
+		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ elmType->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* arrdata = func->getArguments()[0];
+			fir::Value* len = func->getArguments()[1];
+
+
+			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
+			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			auto ctrptr = cs->irb.CreateStackAlloc(fir::Type::getInt64());
+			cs->irb.CreateStore(fir::ConstantInt::getInt64(0), ctrptr);
+
+			cs->irb.CreateUnCondBranch(check);
+			cs->irb.setCurrentBlock(check);
+			{
+				auto cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(ctrptr), len);
+				cs->irb.CreateCondBranch(cond, body, merge);
+			}
+
+			cs->irb.setCurrentBlock(body);
+			{
+				auto ctr = cs->irb.CreateLoad(ctrptr);
+				auto ptr = cs->irb.CreatePointerAdd(arrdata, ctr);
+
+				cs->irb.CreateStore(cs->getDefaultValue(elmType), ptr);
+				cs->irb.CreateStore(cs->irb.CreateAdd(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+
+				cs->irb.CreateUnCondBranch(check);
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			cs->irb.CreateReturnVoid();
+
+
+			cs->irb.setCurrentBlock(restore);
+			fn = func;
+		}
+
+		return fn;
+	}
+
+
+	//* On the other hand, this *always* reserves an *extra* N elements worth of space
+	//* in the array.
+	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+	{
+		iceAssert(arrtype);
+
+		auto name = BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME + std::string("_") + arrtype->encodedStr();
+		fir::Function* reservef = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!reservef)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype, fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* arr = func->getArguments()[0];
+			fir::Value* cnt = func->getArguments()[1];
+
+			auto elmType = arrtype->getElementType();
+
+			fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(arr);
+
+			arr = _checkCapacityAndGrowIfNeeded(cs, func, arr, cnt);
+
+			auto setfn = getSetElementsToDefaultValueFunction(cs, elmType);
+			auto ofsptr = cs->irb.CreatePointerAdd(cs->irb.CreateGetDynamicArrayData(arr), origlen);
+			cs->irb.CreateCall2(setfn, ofsptr, cnt);
+
+			cs->irb.CreateReturnVoid();
+
+			cs->irb.setCurrentBlock(restore);
+			reservef = func;
+		}
+
+		return reservef;
+	}
 
 
 
@@ -874,12 +1048,10 @@ namespace array
 
 		cs->irb.setCurrentBlock(body);
 		{
-			// fir::Value* v1 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)));
-			// fir::Value* v2 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)));
+			fir::Value* v1 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)));
+			fir::Value* v2 = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)));
 
-			// fir::Value* c = Operators::performGeneralArithmeticOperator(cs, ArithmeticOp::CmpEq, 0, v1, cs->irb.CreatePointerAdd(ptr1, cs->irb.CreateLoad(counter)), v2, cs->irb.CreatePointerAdd(ptr2, cs->irb.CreateLoad(counter)), { }).value;
-
-			fir::Value* c = 0;
+			fir::Value* c = cs->performBinaryOperation(cs->loc(), { cs->loc(), CGResult(v1) }, { cs->loc(), CGResult(v2) }, Operator::CompareEq).value;
 
 			// c is a bool, because it's very generic in nature
 			// so we just take !c and convert to i64 to get our result.
@@ -960,8 +1132,8 @@ namespace array
 			}
 
 
-			cmpf = func;
 			cs->irb.setCurrentBlock(restore);
+			cmpf = func;
 		}
 
 		iceAssert(cmpf);
@@ -1100,8 +1272,8 @@ namespace array
 			cs->irb.CreateReturn(arr);
 
 
-			cmpf = func;
 			cs->irb.setCurrentBlock(restore);
+			cmpf = func;
 		}
 
 		iceAssert(cmpf);
@@ -1165,8 +1337,8 @@ namespace array
 			cs->irb.CreateReturn(ret);
 
 
-			fn = func;
 			cs->irb.setCurrentBlock(restore);
+			fn = func;
 		}
 
 		iceAssert(fn);
@@ -1175,21 +1347,100 @@ namespace array
 
 	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		iceAssert(0);
-		return 0;
+		iceAssert(arrtype);
+
+		auto name = BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME + std::string("_") + arrtype->encodedStr();
+		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+			auto retTy = fir::TupleType::get({ arrtype, arrtype->getArrayElementType() });
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype, fir::Type::getString() }, retTy), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+
+			fir::Value* arr = func->getArguments()[0];
+			fir::Value* loc = func->getArguments()[1];
+
+			auto len = cs->irb.CreateGetDynamicArrayLength(arr);
+
+			auto cond = cs->irb.CreateICmpLT(len, fir::ConstantInt::getInt64(1));
+
+			fir::IRBlock* fail = cs->irb.addNewBlockInFunction("fail", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			cs->irb.CreateCondBranch(cond, fail, merge);
+			cs->irb.setCurrentBlock(fail);
+			{
+				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
+					fir::Type::getInt32()), fir::LinkageType::External);
+
+				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
+					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
+					fir::LinkageType::External);
+
+				// basically:
+				// void* stderr = fdopen(2, "w")
+				// fprintf(stderr, "", bla bla)
+
+				fir::Value* tmpstr = cs->module->createGlobalString("w");
+				fir::Value* fmtstr = cs->module->createGlobalString("%s: Calling pop() on empty array\n");
+				fir::Value* posstr = cs->irb.CreateGetStringData(loc);
+
+				fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+
+				cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr });
+
+				cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
+				cs->irb.CreateUnreachable();
+			}
+
+
+			cs->irb.setCurrentBlock(merge);
+			{
+				auto newlen = cs->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+
+				// first, load the last value
+				auto ptr = cs->irb.CreateGetDynamicArrayData(arr);
+				auto val = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr, newlen));
+
+				auto newarr = cs->irb.CreateSetDynamicArrayLength(arr, newlen);
+				auto ret = cs->irb.CreateValue(retTy);
+				ret = cs->irb.CreateInsertValue(ret, { 0 }, newarr);
+				ret = cs->irb.CreateInsertValue(ret, { 1 }, val);
+
+				cs->irb.CreateReturn(ret);
+			}
+
+
+			cs->irb.setCurrentBlock(restore);
+			fn = func;
+		}
+
+		return fn;
 	}
 
+
+	//* This makes sure that there is *enough space* for N elements in the array
+	//* If there is already enough space, it does nothing.
 	fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(0);
 		return 0;
 	}
 
-	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
-	{
-		iceAssert(0);
-		return 0;
-	}
+
+
+
+
 }
 }
 }

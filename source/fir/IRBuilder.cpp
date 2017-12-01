@@ -668,8 +668,8 @@ namespace fir
 
 	Value* IRBuilder::CreateIntSizeCast(Value* v, Type* targetType, std::string vname)
 	{
-		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
-		iceAssert(targetType->isIntegerType() && "target is not integer type");
+		iceAssert((v->getType()->isIntegerType() || v->getType()->isBoolType()) && "value is not integer type");
+		iceAssert((targetType->isIntegerType() || targetType->isBoolType()) && "target is not integer type");
 
 		// make constant result for constant operand
 		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))

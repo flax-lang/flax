@@ -192,6 +192,7 @@ rem exit 0</Command>
     <ClCompile Include="source\backend\llvm\linker.cpp" />
     <ClCompile Include="source\backend\llvm\translator.cpp" />
     <ClCompile Include="source\backend\x64AsmBackend.cpp" />
+    <ClCompile Include="source\codegen\alloc.cpp" />
     <ClCompile Include="source\codegen\arithmetic.cpp" />
     <ClCompile Include="source\codegen\assign.cpp" />
     <ClCompile Include="source\codegen\builtin.cpp" />
@@ -267,6 +268,7 @@ rem exit 0</Command>
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\misc\destructors.cpp" />
     <ClCompile Include="source\misc\identifier.cpp" />
+    <ClCompile Include="source\typecheck\alloc.cpp" />
     <ClCompile Include="source\typecheck\arithmetic.cpp" />
     <ClCompile Include="source\typecheck\assign.cpp" />
     <ClCompile Include="source\typecheck\call.cpp" />

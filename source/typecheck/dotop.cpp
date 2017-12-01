@@ -94,6 +94,44 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			}
 			// else: break out below, for extensions
 		}
+		else if(auto fc = dcast(ast::FunctionCall, rhs))
+		{
+			fir::Type* res = 0;
+
+			// TODO: extension support here
+			if(fc->name == "clone")
+			{
+				res = type;
+				if(fc->args.size() != 0)
+					error(fc, "'clone' expects exactly 0 arguments, found '%d' instead", fc->args.size());
+			}
+			else if(fc->name == "pop")
+			{
+				res = type->getArrayElementType();
+				if(fc->args.size() != 0)
+					error(fc, "'pop' expects exactly 0 arguments, found '%d' instead", fc->args.size());
+			}
+			else if(fc->name == "back")
+			{
+				res = type->getArrayElementType();
+				if(fc->args.size() != 0)
+					error(fc, "'back' expects exactly 0 arguments, found '%d' instead", fc->args.size());
+			}
+
+			// fallthrough
+
+
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = fc->name;
+				tmp->args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+				tmp->isFunctionCall = true;
+
+				return tmp;
+			}
+		}
 	}
 	else if(type->isEnumType())
 	{
