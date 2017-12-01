@@ -24,7 +24,7 @@ namespace cgn
 		cs->stree = dtr->base;
 		cs->module = mod;
 
-		cs->vtree = new ValueTree(dtr->base->name, 0);
+		// cs->vtree = new ValueTree(dtr->base->name, 0);
 
 		cs->pushLoc(dtr->topLevel);
 		defer(cs->popLoc());
@@ -49,10 +49,7 @@ CGResult sst::NamespaceDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	for(auto stmt : this->statements)
-	{
-		warn(stmt, "hello");
 		stmt->codegen(cs);
-	}
 
 	return CGResult(0);
 }
