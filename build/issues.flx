@@ -10,6 +10,30 @@
  ? updated to reflect problems that were fixed in the process of the rewrite, for obvious reasons.
 */
 
+//! FEATURES TO IMPLEMENT
+/*
+
+	1. Constructor syntax for types
+
+	4. Alloc and Dealloc
+
+	5. String operators
+
+	6. Ranges
+
+	7. Defer
+
+	8. Dynamic array operators
+
+	9. For loops
+
+	10. Decomposition
+
+	11. Generic functions & types
+*/
+
+
+
 
 //! ISSUES TO FIX
 
@@ -43,6 +67,12 @@ f()
 
 /*
 	* FIXED ISSUES
+
+	(added in b7c6f74)
+	- enums
+
+	(added in 408260c4)
+	- classes
 
 	(fixed in e664992)
 	- enums declared in functions do not work
