@@ -60,7 +60,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			// do a manual thing, return here immediately.
 			auto ret = cs->irb.CreateGEP2(lr.pointer, fir::ConstantInt::getInt64(0), ind);
-			return CGResult(cs->irb.CreateLoad(ret), ret);
+			return CGResult(cs->irb.CreateLoad(ret), ret, CGResult::VK::LValue);
 		}
 		else if(lt->isDynamicArrayType())
 		{

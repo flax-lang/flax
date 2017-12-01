@@ -91,8 +91,17 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
 				return left;
 
+			else if(left->isDynamicArrayType() && right == left->getArrayElementType())
+				return left;
+
 			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
 				return (left->isConstantNumberType() ? right : left);
+
+			else if(left->isPointerType() && (right->isIntegerType() || right->isConstantNumberType()))
+				return left;
+
+			else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
+				return right;
 
 		} break;
 
@@ -105,6 +114,12 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 
 			else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
 				return (left->isConstantNumberType() ? right : left);
+
+			else if(left->isPointerType() && (right->isIntegerType() || right->isConstantNumberType()))
+				return left;
+
+			else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
+				return right;
 
 		} break;
 

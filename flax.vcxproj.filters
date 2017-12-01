@@ -346,6 +346,12 @@
     <ClCompile Include="source\frontend\platform.cpp">
       <Filter>source\frontend</Filter>
     </ClCompile>
+    <ClCompile Include="source\typecheck\alloc.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\alloc.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\include\ast.h">

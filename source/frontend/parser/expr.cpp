@@ -106,12 +106,14 @@ namespace parser
 					st.pop();
 					return new StaticStmt(parseStmt(st));
 
+				case TT::Dealloc:
+					return parseDealloc(st);
+
 				case TT::Operator:
 				case TT::Protocol:
 				case TT::Override:
 				case TT::Extension:
 				case TT::TypeAlias:
-				case TT::Dealloc:
 				case TT::Defer:
 				case TT::For:
 					error(st, "notsup");
@@ -684,7 +686,44 @@ namespace parser
 	}
 
 
+	static Expr* parseAlloc(State& st, bool raw)
+	{
+		iceAssert(st.front() == TT::Alloc);
+		auto loc = st.eat().loc;
 
+		if(st.eat() != TT::LParen)
+			expectedAfter(st.loc(), "'('", "'alloc'", st.front().str());
+
+		// ok, there are 2 forms here:
+		// 1. alloc(T)
+		// 2. alloc(T, N)
+
+		auto ret = new ast::AllocOp(loc);
+		ret->isRaw = raw;
+		ret->allocTy = parseType(st);
+
+		if(st.front() == TT::Comma)
+		{
+			st.eat();
+			ret->count = parseExpr(st);
+		}
+
+		if(st.eat() != TT::RParen)
+			expectedAfter(st.ploc(), "')'", "'alloc'", st.prev().str());
+
+		return ret;
+	}
+
+	ast::DeallocOp* parseDealloc(State& st)
+	{
+		iceAssert(st.front() == TT::Dealloc);
+		auto loc = st.eat().loc;
+
+		auto ret = new ast::DeallocOp(loc);
+		ret->expr = parseExpr(st);
+
+		return ret;
+	}
 
 
 
@@ -780,8 +819,8 @@ namespace parser
 				case TT::UnicodeSymbol:
 					return parseIdentifier(st);
 
-				// case TT::Alloc:
-				// 	return parseAlloc(ps);
+				case TT::Alloc:
+					return parseAlloc(st, false);
 
 				// case TT::Typeof:
 				// 	return parseTypeof(ps);
@@ -801,8 +840,11 @@ namespace parser
 					else if(st.front() == TT::LSquare)
 						return parseArray(st, true);
 
+					else if(st.front() == TT::Alloc)
+						return parseAlloc(st, true);
+
 					else
-						expectedAfter(st, "string literal or ", "@c", st.front().str());
+						expectedAfter(st, "string literal or ", "@raw", st.front().str());
 
 				case TT::StringLiteral:
 					return parseString(st, false);

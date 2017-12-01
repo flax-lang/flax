@@ -144,6 +144,27 @@ namespace sst
 
 
 
+	struct AllocOp : Expr
+	{
+		AllocOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~AllocOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		fir::Type* elmType = 0;
+		Expr* count = 0;
+
+		bool isRaw = false;
+	};
+
+	struct DeallocOp : Stmt
+	{
+		DeallocOp(const Location& l) : Stmt(l) { }
+		~DeallocOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+		Expr* expr = 0;
+	};
 
 
 	struct BinaryOp : Expr

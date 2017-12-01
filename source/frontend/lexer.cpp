@@ -317,7 +317,7 @@ namespace lexer
 		{
 			tok.type = TokenType::Attr_Raw;
 			tok.text = "@raw";
-			read = 2;
+			read = 4;
 		}
 
 
@@ -507,7 +507,7 @@ namespace lexer
 			else if(compare(tok.text, "private"))		tok.type = TokenType::Private;
 			else if(compare(tok.text, "internal"))		tok.type = TokenType::Internal;
 			else if(compare(tok.text, "alloc"))			tok.type = TokenType::Alloc;
-			else if(compare(tok.text, "dealloc"))		tok.type = TokenType::Dealloc;
+			else if(compare(tok.text, "free"))			tok.type = TokenType::Dealloc;
 			else if(compare(tok.text, "typeof"))		tok.type = TokenType::Typeof;
 			else if(compare(tok.text, "typeid"))		tok.type = TokenType::Typeid;
 			else if(compare(tok.text, "sizeof"))		tok.type = TokenType::Sizeof;

@@ -353,6 +353,30 @@ namespace ast
 
 
 
+	struct AllocOp : Expr
+	{
+		AllocOp(const Location& l) : Expr(l) { }
+		~AllocOp() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		pts::Type* allocTy = 0;
+		Expr* count = 0;
+
+		bool isRaw = false;
+	};
+
+	struct DeallocOp : Stmt
+	{
+		DeallocOp(const Location& l) : Stmt(l) { }
+		~DeallocOp() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		Expr* expr = 0;
+	};
+
+
+
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& loc, Operator o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }

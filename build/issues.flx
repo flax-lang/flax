@@ -29,7 +29,12 @@
 
 	10. Decomposition
 
-	11. Generic functions & types
+	11. Splatting single value into decomposition declaration
+
+	12. Operator overloading
+
+	13. Generic functions & types
+
 */
 
 
