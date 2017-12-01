@@ -44,15 +44,55 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// okay, i guess
 	auto rr = this->right->codegen(cs, lt);
+	auto rt = rr.value->getType();
 
 	if(this->op != Operator::Assign)
 	{
 		// ok it's a compound assignment
-		auto [ newl, newr ] = cs->autoCastValueTypes(lr, rr);
+		// auto [ newl, newr ] = cs->autoCastValueTypes(lr, rr);
 		Operator nonass = getNonAssignOp(this->op);
 
+		// some things -- if we're doing +=, and the types are supported, then just call the actual
+		// append function, instead of doing the + first then assigning it.
+
+		if(nonass == Operator::Add)
+		{
+			if(lt->isDynamicArrayType() && lt == rt)
+			{
+				// right then.
+				if(lr.kind != CGResult::VK::LValue)
+					error(this, "Cannot append to an r-value array");
+
+				iceAssert(lr.pointer);
+				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
+
+				//? are there any ramifications for these actions for ref-counted things?
+				auto res = cs->irb.CreateCall2(appendf, lr.value, rr.value);
+
+				cs->irb.CreateStore(res, lr.pointer);
+				return CGResult(0);
+			}
+			else if(lt->isDynamicArrayType() && lt->getArrayElementType() == rt)
+			{
+				// right then.
+				if(lr.kind != CGResult::VK::LValue)
+					error(this, "Cannot append to an r-value array");
+
+				iceAssert(lr.pointer);
+				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
+
+
+				//? are there any ramifications for these actions for ref-counted things?
+				auto res = cs->irb.CreateCall2(appendf, lr.value, rr.value);
+
+				cs->irb.CreateStore(res, lr.pointer);
+				return CGResult(0);
+			}
+		}
+
+
 		// do the op first
-		auto res = cs->performBinaryOperation(this->loc, { this->left->loc, newl }, { this->right->loc, newr }, nonass);
+		auto res = cs->performBinaryOperation(this->loc, { this->left->loc, lr }, { this->right->loc, rr }, nonass);
 
 		// assign the res to the thing
 		rr = res;

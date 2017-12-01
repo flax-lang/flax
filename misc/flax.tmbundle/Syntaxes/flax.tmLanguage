@@ -913,7 +913,7 @@
 		<key>storage-type</key>
 		<dict>
 			<key>match</key>
-			<string>\b(var|let|fn|ƒ|class|alloc|dealloc|enum|struct|protocol|extension|typealias|namespace)\b</string>
+			<string>\b(var|let|fn|ƒ|class|alloc|free|enum|struct|protocol|extension|typealias|namespace)\b</string>
 			<key>name</key>
 			<string>storage.type.flax</string>
 		</dict>

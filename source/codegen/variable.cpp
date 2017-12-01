@@ -127,7 +127,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-	// cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
 
 	if(refcounted) cs->addRefCountedPointer(alloc);
 

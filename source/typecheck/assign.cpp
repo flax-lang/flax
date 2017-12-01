@@ -23,6 +23,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 	auto lt = l->type;
 	auto rt = r->type;
 
+	bool skipCheck = false;
 	if(this->op != Operator::Assign)
 	{
 		auto nonass = getNonAssignOp(this->op);
@@ -31,9 +32,10 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 			error(this, "Unsupported operator '%s' between types '%s' and '%s', in compound assignment operator '%s'",
 				operatorToString(nonass), lt, rt, operatorToString(this->op));
 		}
+
+		skipCheck = true;
 	}
 
-	bool skipCheck = false;
 	if(rt->isConstantNumberType() && lt->isPrimitiveType())
 	{
 		auto num = rt->toConstantNumberType()->getValue();
