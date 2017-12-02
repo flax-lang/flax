@@ -22,6 +22,8 @@
 #define BUILTIN_DYNARRAY_RESERVE_ENOUGH_NAME		"__darray_reservesufficient"
 #define BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME			"__darray_reserveextra"
 
+#define BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME	"__darray_recursiverefcount"
+
 #define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
 #define BUILTIN_SLICE_APPEND_FUNC_NAME				"__slice_append"
 #define BUILTIN_SLICE_APPEND_ELEMENT_FUNC_NAME		"__slice_appendelement"
@@ -1149,14 +1151,177 @@ namespace array
 
 
 
+	/*
+		How this works is simple, but at the same time not really. 'make-recursive-dealloc' will return a function that simply frees the memory
+		pointed to by the first argument.
 
+		Additionally, if the 'nest' parameter is greater than 0, it will call itself with nest - 1, to create a function that frees each *element*
+		of the array (ptr, len) using the same, recursive method.
 
+		After calling itself if necessary, it then simply does free() on the memory pointer.
 
-	static fir::Function* _getDoRefCountFunction(CodegenState* cs, fir::Type* arrtype, bool increment)
+		It's quite clever, I know.
+
+		One thing to note is that, because this deals exclusively with dynamic arrays, the 'ptr' passed to it is not the true memory pointer,
+		but rather the pointer to the first element -- so it must pass (ptr - 8) to free().
+
+		Oops, a last-minute addition and i'm too lazy to rewrite the above;
+		We now handle both incrementing and decrementing, to greatly simplify all the code. Incrementing simply ignores the part where we free things.
+	*/
+	static fir::Function* makeRecursiveRefCountingFunction(CodegenState* cs, fir::DynamicArrayType* arrtype, int nest, bool incr)
 	{
-		iceAssert(arrtype);
-		iceAssert(cs->isRefCountedType(arrtype) && "not refcounted type");
+		auto name = BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME + ("_" + std::to_string(nest) + (incr ? "_incr_" : "_decr_")) + arrtype->encodedStr();
+		fir::Function* retf = cs->module->getFunction(Identifier(name, IdKind::Name));
 
+		if(!retf)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* arr = func->getArguments()[0];
+
+			auto ptr = cs->irb.CreateGetDynamicArrayData(arr);
+			auto len = cs->irb.CreateGetDynamicArrayLength(arr);
+			auto cap = cs->irb.CreateGetDynamicArrayCapacity(arr);
+			auto refc = cs->irb.CreateGetDynamicArrayRefCount(arr);
+
+
+			// we combine these a little bit more than maybe you're expecting, but that's because fundamentally we're really
+			// doing the same thing, whether nest is > 1 or whether we're refcounting -- still a loop through the elements,
+			// the only thing that changes is what we do with each element.
+			{
+				auto elmtype = arrtype->getElementType();
+
+				if(nest > 1)	iceAssert(elmtype->isDynamicArrayType());
+				else			iceAssert(!elmtype->isDynamicArrayType());
+
+				// handle the refcount if we're nested, or if we're the final layer but our element type is refcounted (eg. strings)
+				if(nest > 1 || cs->isRefCountedType(elmtype))
+				{
+					fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
+					fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+					auto idxptr = cs->irb.CreateStackAlloc(fir::Type::getInt64());
+					cs->irb.CreateStore(fir::ConstantInt::getInt64(0), idxptr);
+
+					cs->irb.CreateUnCondBranch(check);
+					cs->irb.setCurrentBlock(check);
+					{
+						auto cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(idxptr), len);
+						cs->irb.CreateCondBranch(cond, body, merge);
+					}
+
+					cs->irb.setCurrentBlock(body);
+					{
+						auto val = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(idxptr)));
+
+						// this is where things differ a bit -- for nest > 1, it's a dynamic array.
+						// note that cs->(incr|decr)ementRefCount() eventually calls back to us, leading
+						// to a recursion fail, so we must do it ourselves, basically.
+
+						if(nest > 1)
+						{
+							auto fn = makeRecursiveRefCountingFunction(cs, elmtype->toDynamicArrayType(), nest - 1, incr);
+							iceAssert(fn);
+
+							cs->irb.CreateCall1(fn, val);
+						}
+						else
+						{
+							if(incr)	cs->incrementRefCount(val);
+							else		cs->decrementRefCount(val);
+						}
+
+						cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(idxptr), fir::ConstantInt::getInt64(1)), idxptr);
+
+						cs->irb.CreateUnCondBranch(check);
+					}
+
+					cs->irb.setCurrentBlock(merge);
+				}
+
+				// here it's the same thing regardless of nest.
+				if(incr)	cs->irb.CreateSetDynamicArrayRefCount(arr, cs->irb.CreateAdd(refc, fir::ConstantInt::getInt64(1)));
+				else		cs->irb.CreateSetDynamicArrayRefCount(arr, cs->irb.CreateSub(refc, fir::ConstantInt::getInt64(1)));
+
+				#if DEBUG_ARRAY_REFCOUNTING
+				{
+					std::string x = increment ? "(incr)" : "(decr)";
+					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: (ptr: %p, len: %ld) = %d\n");
+
+					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.CreateGetDynamicArrayData(arr), cs->irb.CreateGetDynamicArrayLength(arr), refc });
+				}
+				#endif
+
+				// ok. if we're incrementing, then we're done -- but if we're decrementing, we may need to free the memory.
+				if(!incr)
+				{
+					auto mem = cs->irb.CreatePointerAdd(cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()),
+						fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+
+					fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
+					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+					//! NOTE: what we want to happen here is for us to free the memory, but only if refcnt == 0 && capacity >= 0
+					// so our condition is (REFCOUNT == 0) & (CAP >= 0)
+
+					auto zv = fir::ConstantInt::getInt64(0);
+					auto dofree = cs->irb.CreateBitwiseAND(cs->irb.CreateICmpEQ(refc, zv), cs->irb.CreateICmpGEQ(cap, zv));
+					cs->irb.CreateCondBranch(dofree, dealloc, merge);
+
+					cs->irb.setCurrentBlock(dealloc);
+					{
+						ptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
+						ptr = cs->irb.CreatePointerSub(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+
+						auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
+						iceAssert(freefn);
+
+						cs->irb.CreateCall1(freefn, ptr);
+
+						#if DEBUG_ARRAY_ALLOCATION
+						{
+							fir::Value* tmpstr = cs->module->createGlobalString("freed arr: (ptr: %p)\n");
+							cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr,
+								cs->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE)) });
+						}
+						#endif
+
+
+						cs->irb.CreateUnCondBranch(merge);
+					}
+
+					cs->irb.setCurrentBlock(merge);
+				}
+			}
+
+
+
+			cs->irb.CreateReturnVoid();
+
+			cs->irb.setCurrentBlock(restore);
+			retf = func;
+		}
+
+		iceAssert(retf);
+		return retf;
+	}
+
+
+
+
+
+
+	static fir::Function* _getDoRefCountFunctionForDynamicArray(CodegenState* cs, fir::DynamicArrayType* arrtype, bool increment)
+	{
 		auto name = (increment ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
 			+ std::string("_") + arrtype->encodedStr();
 
@@ -1176,103 +1341,18 @@ namespace array
 
 
 			fir::Value* arr = func->getArguments()[0];
-			if(cs->isRefCountedType(arrtype->getArrayElementType()))
-			{
-				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr);
-				fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr);
 
+			int nest = 0;
+			auto ty = arr->getType();
+			while(ty->isDynamicArrayType())
+				ty = ty->getArrayElementType(), nest++;
 
-				// ok, we need to decrement the refcount of *ALL* THE FUCKING STRINGS
-				// in this shit
+			auto fn = makeRecursiveRefCountingFunction(cs, arr->getType()->toDynamicArrayType(), nest, increment);
+			iceAssert(fn);
 
-				// loop from 0 to len
-				fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
-				fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
-				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-				fir::Value* counter = cs->irb.CreateStackAlloc(fir::Type::getInt64());
-				cs->irb.CreateStore(fir::ConstantInt::getInt64(0), counter);
-
-				cs->irb.CreateUnCondBranch(cond);
-				cs->irb.setCurrentBlock(cond);
-				{
-					// check
-					fir::Value* cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(counter), len);
-					cs->irb.CreateCondBranch(cond, body, merge);
-				}
-
-				cs->irb.setCurrentBlock(body);
-				{
-					// ok. first, do pointer arithmetic to get the current array
-					fir::Value* strp = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
-
-					if(increment)	cs->incrementRefCount(cs->irb.CreateLoad(strp));
-					else			cs->decrementRefCount(cs->irb.CreateLoad(strp));
-
-					// increment counter
-					cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(counter), fir::ConstantInt::getInt64(1)), counter);
-
-					// branch to top
-					cs->irb.CreateUnCondBranch(cond);
-				}
-
-				// merge:
-				cs->irb.setCurrentBlock(merge);
-			}
-
-			// ok, now we must change the refcount of the array itself
-			{
-				fir::Value* refc = cs->irb.CreateGetDynamicArrayRefCount(arr);
-				if(increment)	refc = cs->irb.CreateAdd(refc, fir::ConstantInt::getInt64(1));
-				else			refc = cs->irb.CreateSub(refc, fir::ConstantInt::getInt64(1));
-
-				cs->irb.CreateSetDynamicArrayRefCount(arr, refc);
-
-				fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
-				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-
-				#if DEBUG_ARRAY_REFCOUNTING
-				{
-					std::string x = increment ? "(incr)" : "(decr)";
-					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: (ptr: %p, len: %ld) = %d\n");
-
-					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.CreateGetDynamicArrayData(arr), cs->irb.CreateGetDynamicArrayLength(arr), refc });
-				}
-				#endif
-
-
-				cs->irb.CreateCondBranch(cs->irb.CreateICmpEQ(refc, fir::ConstantInt::getInt64(0)), dealloc, merge);
-
-				cs->irb.setCurrentBlock(dealloc);
-				{
-					fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr);
-					ptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
-					ptr = cs->irb.CreatePointerSub(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-					auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
-					iceAssert(freefn);
-
-					cs->irb.CreateCall1(freefn, ptr);
-
-					#if DEBUG_ARRAY_ALLOCATION
-					{
-						fir::Value* tmpstr = cs->module->createGlobalString("freed arr: (ptr: %p)\n");
-						cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr,
-							cs->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE)) });
-					}
-					#endif
-
-
-					cs->irb.CreateUnCondBranch(merge);
-				}
-
-				cs->irb.setCurrentBlock(merge);
-			}
-
+			cs->irb.CreateCall1(fn, arr);
 
 			cs->irb.CreateReturn(arr);
-
 
 			cs->irb.setCurrentBlock(restore);
 			cmpf = func;
@@ -1282,14 +1362,98 @@ namespace array
 		return cmpf;
 	}
 
-	fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+	static fir::Function* _getDoRefCountFunctionForArray(CodegenState* cs, fir::ArrayType* arrtype, bool incr)
 	{
-		return _getDoRefCountFunction(cs, arrtype, true);
+		auto elmtype = arrtype->getElementType();
+
+		//* note that we don't need a separate name for it, since the type of the array is added to the name itself
+		auto name = (incr ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
+			+ std::string("_") + arrtype->encodedStr();
+
+		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!cmpf)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ arrtype->getPointerTo() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* arrptr = func->getArguments()[0];
+			fir::Value* ptr = cs->irb.CreateConstGEP2(arrptr, 0, 0);
+			fir::Value* len = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
+
+			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
+			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			auto idxptr = cs->irb.CreateStackAlloc(fir::Type::getInt64());
+			cs->irb.CreateStore(fir::ConstantInt::getInt64(0), idxptr);
+
+			cs->irb.CreateUnCondBranch(check);
+			cs->irb.setCurrentBlock(check);
+			{
+				auto cond = cs->irb.CreateICmpLT(cs->irb.CreateLoad(idxptr), len);
+				cs->irb.CreateCondBranch(cond, body, merge);
+			}
+
+			cs->irb.setCurrentBlock(body);
+			{
+				auto valptr = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(idxptr));
+				auto val = cs->irb.CreateLoad(valptr);
+
+				// if we're a dynamic array, then call the dynamic array version.
+				// if it's an array again, then call ourselves.
+				if(elmtype->isDynamicArrayType())
+				{
+					auto fn = (incr ? getIncrementArrayRefCountFunction(cs, elmtype) : getDecrementArrayRefCountFunction(cs, elmtype));
+					iceAssert(fn);
+
+					cs->irb.CreateCall1(fn, val);
+				}
+				else if(elmtype->isArrayType())
+				{
+					// call ourselves. we already declared and everything, so it should be fine.
+					cs->irb.CreateCall1(func, valptr);
+				}
+				else
+				{
+					if(incr)	cs->incrementRefCount(val);
+					else		cs->decrementRefCount(val);
+				}
+
+				cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(idxptr), fir::ConstantInt::getInt64(1)), idxptr);
+
+				cs->irb.CreateUnCondBranch(check);
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			cs->irb.CreateReturnVoid();
+
+			cs->irb.setCurrentBlock(restore);
+			cmpf = func;
+		}
+
+		iceAssert(cmpf);
+		return cmpf;
 	}
 
-	fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+
+	fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype)
 	{
-		return _getDoRefCountFunction(cs, arrtype, false);
+		if(arrtype->isDynamicArrayType())	return _getDoRefCountFunctionForDynamicArray(cs, arrtype->toDynamicArrayType(), true);
+		else								return _getDoRefCountFunctionForArray(cs, arrtype->toArrayType(), true);
+	}
+
+	fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype)
+	{
+		if(arrtype->isDynamicArrayType())	return _getDoRefCountFunctionForDynamicArray(cs, arrtype->toDynamicArrayType(), false);
+		else								return _getDoRefCountFunctionForArray(cs, arrtype->toArrayType(), false);
 	}
 
 
