@@ -23,7 +23,7 @@ import "libc"
 		libc.printf("arr[1] = %d\n", (arr1 + 1)[0])
 		libc.printf("arr[2] = %d\n", (3 + arr1)[-1])
 
-		// free arr1
+		free arr1
 
 		libc.printf("\n\n")
 		// var s = alloc[4][4] string("array of array of strings test")
@@ -38,10 +38,10 @@ import "libc"
 	dynamicArrays()
 }
 
-public fn foldl(first: int, arr: int[], f: (int, int) -> int) -> int
+public fn foldl(first: int, arr: int[:], f: (int, int) -> int) -> int
 {
 	if arr.length == 0 { return first }
-	return foldl(f(first, arr.pop()), arr, f)
+	return foldl(f(first, arr.pop()), arr[:arr.length - 1], f)
 }
 
 fn f(a: int, b: int) -> int
@@ -73,33 +73,19 @@ fn dynamicArrays()
 
 		var i = 0
 
-		libc.printf("ZERO\n")
-		x += "aaa"// + "AAA"
-		libc.printf("ONE\n")
-		x += "BBB"// + "bbb"
-		libc.printf("TWO\n")
-		x += "ccc"// + "CCC"
-		libc.printf("THREE\n")
-		x += "DDD"// + "ddd"
-		libc.printf("FOUR\n")
-		x += "eee"// + "EEE"
-		libc.printf("FIVE ALL OK - (%s, %p, %d), (%s, %p, %d), (%s, %p, %d), (%s, %p, %d), (%s, %p, %d)\n",
-			x[0].ptr, x[0].ptr, x[0].length,
-			x[1].ptr, x[1].ptr, x[1].length,
-			x[2].ptr, x[2].ptr, x[2].length,
-			x[3].ptr, x[3].ptr, x[3].length,
-			x[4].ptr, x[4].ptr, x[4].length)
+		x += "aaa" + "AAA"
+		x += "BBB" + "bbb"
+		x += "ccc" + "CCC"
+		x += "DDD" + "ddd"
+		x += "eee" + "EEE"
 
-		// x += y
-
-		libc.printf("OK 2\n")
+		x += y
 
 		let k = x
-		libc.printf("OK 3\n")
 		var z = k.clone()
-		libc.printf("OK 4\n")
 
 		libc.printf("k = %p, x = %p\n", k.ptr, x.ptr)
+		libc.printf("z.length = %d\n", z.length)
 
 		z[9] = "LAST ELEMENT"
 
@@ -111,14 +97,14 @@ fn dynamicArrays()
 			i += 1
 		}
 
-		libc.printf("z.back() = %s, length = %zd, cap = %zd\n", z.back(), z.length, z.capacity)
+		libc.printf("z.back() = %s, length = %ld, cap = %ld\n", z.back(), z.length, z.capacity)
 
 
 
 		let fib = setup(5)
 
 		let sum = foldl(1, fib, f)
-		libc.printf("sum = %zd\n", sum)
+		libc.printf("sum = %ld\n", sum)
 
 		// x == k
 		// free x

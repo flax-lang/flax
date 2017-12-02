@@ -52,12 +52,12 @@ namespace cgn
 			fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
 			fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype);
 			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition);
 			fir::Function* getElementAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getSetElementsToDefaultValueFunction(CodegenState* cs, fir::Type* elmType);
 			fir::Function* getCompareFunction(CodegenState* cs, fir::Type* arrtype, fir::Function* opf);
 			fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);

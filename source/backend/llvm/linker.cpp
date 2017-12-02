@@ -113,7 +113,6 @@ namespace backend
 			doTheExit();
 		}
 
-
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		fpm.add(llvm::createDeadInstEliminationPass());

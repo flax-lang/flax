@@ -81,7 +81,6 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				iceAssert(lr.pointer);
 				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
 
-
 				//? are there any ramifications for these actions for ref-counted things?
 				auto res = cs->irb.CreateCall2(appendf, lr.value, rr.value);
 

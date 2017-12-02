@@ -43,7 +43,10 @@ sst::Stmt* ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	auto ex = this->expr->typecheck(fs);
-	if(!ex->type->isDynamicArrayType() && !ex->type->isPointerType())
+	if(ex->type->isDynamicArrayType())
+		error(ex, "Dynamic arrays are reference-counted, and cannot be manually freed");
+
+	else if(!ex->type->isPointerType())
 		error(ex, "Expected pointer or dynamic array type to deallocate; found '%s' instead", ex->type);
 
 	auto ret = new sst::DeallocOp(this->loc);
