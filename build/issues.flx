@@ -48,7 +48,6 @@
 	15. Fix deallocating array of arrays.
 
 
-
 	16. [[noreturn]] for functions, so we don't error when no value is returned (eg. when calling abort())
 
 */
@@ -60,9 +59,9 @@
 
 	1. Should slices be a 'weak' reference to the elements?
 		ie. should making a slice of a dynamic array increase the refcount of the elements of the dynamic array?
-		Right now we do nothing special when slicing.
+		Right now, we don't increment the reference count -- ie. we've implemented weak slices.
 
-		Maybe when we have proper weak things, we'll have a weak slice? What would the syntax be? Who knows.
+		Do we want strong slices?
 */
 
 
@@ -71,6 +70,9 @@
 
 /*
 	* FIXED ISSUES
+
+	(fixed in 5be4db1)
+	- fix runtime glue code for arrays wrt. reference counting
 
 	(added in e3a2b55)
 	- alloc and dealloc
