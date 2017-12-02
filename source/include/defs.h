@@ -22,8 +22,8 @@ template <typename... Ts>
 #define __nothing
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 
+#define TAB_WIDTH	4
 
-#define TAB_WIDTH 4
 
 namespace util
 {

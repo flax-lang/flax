@@ -31,6 +31,8 @@ namespace platform
 		#define PLATFORM_NEWLINE	"\n"
 	#endif
 
+	#define REFCOUNT_SIZE		8
+
 	filehandle_t openFile(const char* name, int mode, int flags);
 	void closeFile(filehandle_t fd);
 

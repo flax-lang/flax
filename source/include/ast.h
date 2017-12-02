@@ -361,7 +361,7 @@ namespace ast
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		pts::Type* allocTy = 0;
-		Expr* count = 0;
+		std::vector<Expr*> counts;
 
 		bool isRaw = false;
 	};
