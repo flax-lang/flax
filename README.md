@@ -199,21 +199,35 @@ Broadly speaking this is a recursive descent parser, handwritten. Not terribly e
 
 
 
-##### Codegen: Part 1 #####
+##### Typechecking #####
 
-This is where the bulk of the compiler is, and naturally the messiest part. While there is no explicit typechecking pass, the code generation at the top level is, in itself, split into 6 passes, for technical reasons.
+At this stage, each AST node that the parser produced is traversed, at the file-level. AST nodes are transformed through a typechecking phase into SST nodes (the
+original meaning of this initialism has been lost). This typechecking consists of solidifying `pts::Type`s into `fir::Type`s; given that the former is simply
+a stripped-down version of the latter, this is natural.
 
-(Most of it is to allow all function declarations to be seen first, before bodies are seen -- allowing order-independent function calling. It's not perfect.)
+SST nodes are just AST nodes with refinements; identifiers are resolved to their targets, and function calls also find their intended target here.
 
-Each AST node is visited, and code generation into the Flax Intermediate Representation (see: `source/FlaxIR`) is done. Naturally the code generation involves checking types as well.
+Before the rewrite, this used to happen in an intertwined fashion with code generation, which definitely wasn't pretty.
 
 
 
-##### Codegen: Part 2 #####
+##### Code Generation #####
 
-Once the entire compilation unit (file) has been translated into FlaxIR, it is translated into LLVM IR. Since the design of FlaxIR is mostly LLVM except lacking actual code generation, it's fairly straightforward.
+After each file is typechecked, the collector forcibly squishes them together into a single unit, combining the necessary definitions from other files that
+were imported -- code generation happens at the program level.
 
-Once all modules are LLVM'ed, everything is linked together, and LLVM optimisations are applied. If the compiler is set to JIT, then the LLVM JIT engine is called on the module. If not, then it is compiled to an object file, upon which `cc` is invoked, to get an executable.
+During code generation, we output 'Flax Intermediate Representation', or 'FIR'. It's basically a layer on top of LLVM that preserves much of its interface,
+with some light abstractions built on top. This is where AST nodes actually get transformed into instructions.
+
+Part of the purpose for FIR was to decouple from LLVM, and partly to allow compile-time execution in the future, which would definitely be easier with our
+own IR (mainly to send and retrieve values across the compiler <> IR boundary).
+
+
+
+##### Translation #####
+
+After a `fir::Module` is produced by the code generator, we 'translate' this into LLVM code. The entire process can be seen in `source/backend/llvm/translator.cpp`,
+and clearly we basically cloned the LLVM interface here, which makes it easy to translate into LLVM.
 
 
 
