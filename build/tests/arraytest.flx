@@ -101,10 +101,10 @@ fn dynamicArrays()
 
 
 
-		let fib = setup(5)
+		// let fib = setup(5)
 
-		let sum = foldl(1, fib, f)
-		libc.printf("sum = %ld\n", sum)
+		// let sum = foldl(1, fib, f)
+		// libc.printf("sum = %ld\n", sum)
 
 		// x == k
 		// free x

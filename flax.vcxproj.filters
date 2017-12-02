@@ -468,6 +468,7 @@
     <ClInclude Include="source\include\platform.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="source\include\gluecode.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source\external\tinyprocesslib\process_unix.inc">

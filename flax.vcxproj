@@ -305,6 +305,7 @@ rem exit 0</Command>
     <ClInclude Include="source\include\defs.h" />
     <ClInclude Include="source\include\errors.h" />
     <ClInclude Include="source\include\frontend.h" />
+    <ClInclude Include="source\include\gluecode.h" />
     <ClInclude Include="source\include\ir\block.h" />
     <ClInclude Include="source\include\ir\constant.h" />
     <ClInclude Include="source\include\ir\function.h" />

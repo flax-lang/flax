@@ -711,7 +711,7 @@ namespace parser
 
 		// ok, there are 2 forms here:
 		// 1. alloc(T)
-		// 2. alloc(T, N)
+		// 2. alloc(T, N, ...)
 
 		auto ret = new ast::AllocOp(loc);
 		ret->isRaw = raw;
@@ -720,7 +720,18 @@ namespace parser
 		if(st.front() == TT::Comma)
 		{
 			st.eat();
-			ret->count = parseExpr(st);
+
+			while(st.front() != TT::RParen)
+			{
+				ret->counts.push_back(parseExpr(st));
+				if(st.front() == TT::Comma)
+					st.eat();
+
+				else if(st.front() != TT::RParen)
+					expected(st.loc(), "',' or ')' in dimension list for alloc expression", st.front().str());
+			}
+
+			iceAssert(st.front() == TT::RParen);
 		}
 
 		if(st.eat() != TT::RParen)

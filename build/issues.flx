@@ -15,15 +15,11 @@
 
 	1. Constructor syntax for types
 
-	4. Alloc and Dealloc
-
 	5. String operators
 
 	6. Ranges
 
 	7. Defer
-
-	8. Dynamic array operators
 
 	9. For loops
 
@@ -72,6 +68,10 @@ f()
 
 /*
 	* FIXED ISSUES
+
+	(added in e3a2b55)
+	- alloc and dealloc
+	- dynamic array operators (pop(), back())
 
 	(added in b7c6f74)
 	- enums
