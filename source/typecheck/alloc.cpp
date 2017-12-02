@@ -16,22 +16,23 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* elm = fs->convertParserTypeToFIR(this->allocTy);
 	iceAssert(elm);
 
-	sst::Expr* cnt = 0;
-	if(this->counts.size() > 0)
-	{
-		cnt = this->counts[0]->typecheck(fs, fir::Type::getInt64());
-		if(!cnt->type->isIntegerType())
-			error(cnt, "Expected integer type ('i64') for alloc count, found '%s' instead", cnt->type);
+	if(this->isRaw && this->counts.size() > 1)
+		error(this, "Only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
 
-		// aight.
-	}
+	std::vector<sst::Expr*> counts = util::map(this->counts, [fs](ast::Expr* e) -> auto {
+		auto c = e->typecheck(fs, fir::Type::getInt64());
+		if(!c->type->isIntegerType())
+			error(c, "Expected integer type ('i64') for alloc count, found '%s' instead", c->type);
 
-	fir::Type* resType = (this->isRaw ?
+		return c;
+	});
+
+	fir::Type* resType = (this->isRaw || counts.empty() ?
 		elm->getPointerTo() : fir::DynamicArrayType::get(elm));
 
 	auto ret = new sst::AllocOp(this->loc, resType);
 	ret->elmType = elm;
-	ret->count = cnt;
+	ret->counts = counts;
 	ret->isRaw = this->isRaw;
 
 	return ret;

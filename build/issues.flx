@@ -10,57 +10,60 @@
  ? updated to reflect problems that were fixed in the process of the rewrite, for obvious reasons.
 */
 
-//! FEATURES TO IMPLEMENT
 /*
+	! FEATURES TO IMPLEMENT
 
 	1. Constructor syntax for types
 
+
 	5. String operators
+
 
 	6. Ranges
 
+
 	7. Defer
+
 
 	9. For loops
 
+
 	10. Decomposition
 
+
 	11. Splatting single value into decomposition declaration
+		eg. let (a, b) = ...10   <-- a == b == 10
+
 
 	12. Operator overloading
 
+
 	13. Generic functions & types
+
+
+	14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach
+		eg. index with 'foo[a, b, c]' instead of 'foo[a][b][c]'
+
+
+	15. Fix deallocating array of arrays.
+
+
+
+	16. [[noreturn]] for functions, so we don't error when no value is returned (eg. when calling abort())
 
 */
 
 
 
+/*
+	? THINGS TO INVESTIGATE
 
-//! ISSUES TO FIX
+	1. Should slices be a 'weak' reference to the elements?
+		ie. should making a slice of a dynamic array increase the refcount of the elements of the dynamic array?
+		Right now we do nothing special when slicing.
 
-
-// 8. abort(), exit(), etc. should be allowed as the last expression in a function
-// 	and allow the compiler to just ignore the fact that there's no return value
-// 	ie. __attribute__((noreturn))
-fn foo() -> int { abort() }
-
-
-
-// 14. class instance method access should capture the instance
-// the call to fn() should not require explicit passing of the instance, but rather it should refer to the 'f' instance.
-// Foo.method would continue to work, but would require an instance.
-
-// note: we should probably wait until we have closure capabilities in the compiler, which we can leverage to implement this.
-class Foo { fn method() { /* ... */ } }
-Foo foo
-let f = foo.method
-f()
-
-
-
-
-// 17. pass overloaded functions around more seamlessly. currently does not work when passing to generic functions,
-// since we don't have the type to verify against. unsure of how to proceed.
+		Maybe when we have proper weak things, we'll have a weak slice? What would the syntax be? Who knows.
+*/
 
 
 

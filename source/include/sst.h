@@ -152,7 +152,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		fir::Type* elmType = 0;
-		Expr* count = 0;
+		std::vector<Expr*> counts;
 
 		bool isRaw = false;
 	};
