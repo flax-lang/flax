@@ -599,7 +599,6 @@ namespace parser
 			Expr* slcend = 0;
 
 			bool isSlice = false;
-			bool isEmptySlice = false;
 
 			if(st.front().type == TT::Colon)
 			{
@@ -609,14 +608,19 @@ namespace parser
 				if(st.front().type == TT::RSquare)
 				{
 					st.eat();
-					isEmptySlice = true;
+
+					// just return here.
+					auto ret = new SliceOp(op.loc);
+					ret->expr = lhs;
+					ret->start = 0;
+					ret->end = 0;
+
+					return ret;
 				}
 			}
 
 			// parse the inside expression
-			Expr* inside = 0;
-			if(!isEmptySlice)
-				inside = parseExpr(st);
+			Expr* inside = parseExpr(st);
 
 			if(!isSlice && st.front().type == TT::RSquare)
 			{
@@ -633,21 +637,32 @@ namespace parser
 
 				return ret;
 			}
-			else if(isEmptySlice || (isSlice && st.front().type == TT::RSquare) || st.front().type == TT::Colon)
+			else if(isSlice && st.front().type == TT::RSquare)
 			{
-				// right slice expr
+				st.eat();
+
+				// x[:N]
+				slcbegin = 0;
+				slcend = inside;
+
+				auto ret = new SliceOp(op.loc);
+				ret->expr = lhs;
+				ret->start = slcbegin;
+				ret->end = slcend;
+
+				return ret;
+			}
+			else if(st.front().type == TT::Colon)
+			{
+				st.eat();
+				// x[N:M]
 				slcbegin = inside;
+				slcend = parseExpr(st);
 
-				if(st.front().type == TT::Colon)
-				{
-					st.eat();
-					slcend = parseExpr(st);
-				}
+				if(st.front() != TT::RSquare)
+					expectedAfter(st.loc(), "']'", "expression for slice operation", st.front().str());
 
-				if(!isEmptySlice && st.front().type != TT::RSquare)
-					error(st, "Expected ']' after '[' in array slice");
-
-				if(!isEmptySlice) st.eat();
+				st.eat();
 
 				auto ret = new SliceOp(op.loc);
 				ret->expr = lhs;
@@ -658,7 +673,7 @@ namespace parser
 			}
 			else
 			{
-				error(st, "Expected ']' after '[' for array subscript");
+				expectedAfter(st.loc(), "']'", "'[' for array subscript", st.front().str());
 			}
 		}
 		else if(op.type == TT::Ellipsis || op.type == TT::HalfOpenEllipsis)

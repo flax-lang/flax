@@ -130,25 +130,9 @@ CGResult sst::DeallocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto value = this->expr->codegen(cs).value;
 	auto ty = value->getType();
 
-	fir::Value* ptr = 0;
-	if(ty->isPointerType())
-	{
-		// good, just free this nonsensical thing.
-		ptr = cs->irb.CreatePointerTypeCast(value, fir::Type::getInt8Ptr());
-	}
-	else if(ty->isDynamicArrayType())
-	{
-		ptr = cs->irb.CreateGetDynamicArrayData(value);
+	iceAssert(ty->isPointerType());
 
-		// do the refcount
-		ptr = cs->irb.CreatePointerSub(cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
-
-		ptr = cs->irb.CreatePointerTypeCast(value, fir::Type::getInt8Ptr());
-	}
-	else
-	{
-		error(this->expr, "Unsupported type '%s' for deallocation", ty);
-	}
+	fir::Value* ptr = cs->irb.CreatePointerTypeCast(value, fir::Type::getInt8Ptr());
 
 	cs->irb.CreateCall1(freef, ptr);
 	return CGResult(0);

@@ -28,12 +28,12 @@
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
 
+#define REFCOUNT_SIZE		8
 
-#define DEBUG_MASTER		1
+#define DEBUG_MASTER		0
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
 
-#define REFCOUNT_SIZE		8
 
 namespace cgn {
 namespace glue {
@@ -92,10 +92,10 @@ namespace array
 				fir::ConstantValue* fmtstr = 0;
 
 				if(isPerformingDecomposition)
-					fmtstr = cs->module->createGlobalString("%s: Tried to decompose array into '%zd' elements; length is only '%zd'\n");
+					fmtstr = cs->module->createGlobalString("%s: Tried to decompose array into '%ld' elements; length is only '%ld'\n");
 
 				else
-					fmtstr = cs->module->createGlobalString("%s: Tried to index array at index '%zd'; length is only '%zd'\n");
+					fmtstr = cs->module->createGlobalString("%s: Tried to index array at index '%ld'; length is only '%ld'\n");
 
 				iceAssert(fmtstr);
 
@@ -155,25 +155,12 @@ namespace array
 			fir::Value* origElm = cs->irb.CreatePointerAdd(ptr, cs->irb.CreateLoad(counter));
 			fir::Value* clone = 0;
 
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("hello, clone, %d/%d\n");
-				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateLoad(counter), len });
-			}
-
 
 			if(fn->getArgumentCount() == 1)
 				clone = cs->irb.CreateCall1(fn, cs->irb.CreateLoad(origElm));
 			else
 				clone = cs->irb.CreateCall2(fn, cs->irb.CreateLoad(origElm), fir::ConstantInt::getInt64(0));
 
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("hello, clone, %d/%d\n");
-				cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateLoad(counter), len });
-			}
 
 			// store clone
 			fir::Value* newElm = cs->irb.CreatePointerAdd(newptr, cs->irb.CreateLoad(counter));
@@ -344,7 +331,7 @@ namespace array
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("clone array: %p / len %zd / cap %zd\n");
+				fir::Value* tmpstr = cs->module->createGlobalString("clone array: (ptr: %p, len: %ld, cap: %ld)\n");
 				cs->irb.CreateCall(printfn, { tmpstr, newptr, cs->irb.CreateSub(origlen, startIndex), cap });
 			}
 			#endif
@@ -433,7 +420,7 @@ namespace array
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("clone array: %p / len %zd / cap %zd\n");
+				fir::Value* tmpstr = cs->module->createGlobalString("clone array: (ptr: %p, len: %ld, cap: %ld)\n");
 				cs->irb.CreateCall(printfn, { tmpstr, newptr, newlen, newlen });
 			}
 			#endif
@@ -473,17 +460,19 @@ namespace array
 		fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(arr, "ptr");
 		fir::Value* len = cs->irb.CreateGetDynamicArrayLength(arr, "len");
 		fir::Value* cap = cs->irb.CreateGetDynamicArrayCapacity(arr, "cap");
+		fir::Value* refCountSize = fir::ConstantInt::getInt64(REFCOUNT_SIZE);
 		fir::Value* refcnt = 0;
 
 		auto curblk = cs->irb.getCurrentBlock();
 		fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
 		fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
-		fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
-		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("grow", func);
-		fir::IRBlock* growNewblk = cs->irb.addNewBlockInFunction("growFromScratch", func);
+		// fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
+		fir::IRBlock* newblk = cs->irb.addNewBlockInFunction("newblock", func);
+		fir::IRBlock* freeold = cs->irb.addNewBlockInFunction("freeold", func);
 		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
 
 		fir::Value* needed = cs->irb.CreateAdd(len, required, "needed");
+		fir::Value* elmsize = cs->irb.CreateSizeof(elmtype, "elmsize");
 
 		fir::Value* nullPhi = 0;
 		{
@@ -495,7 +484,7 @@ namespace array
 				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
-				auto allocsz = cs->irb.CreateAdd(cs->irb.CreateMul(needed, cs->irb.CreateSizeof(elmtype)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				auto allocsz = cs->irb.CreateAdd(cs->irb.CreateMul(needed, elmsize), refCountSize);
 				auto rawdata = cs->irb.CreateCall1(mallocf, allocsz);
 
 				auto dataptr = cs->irb.CreatePointerAdd(cs->irb.CreatePointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
@@ -507,6 +496,15 @@ namespace array
 				auto ret = cs->irb.CreateSetDynamicArrayData(arr, dataptr);
 				ret = cs->irb.CreateSetDynamicArrayLength(ret, needed);
 				ret = cs->irb.CreateSetDynamicArrayCapacity(ret, needed);
+
+				#if DEBUG_ALLOCATION
+				{
+					fir::Value* tmpstr = cs->module->createGlobalString("grow arr (from null): OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
+
+					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, len, cap, dataptr, needed, needed });
+				}
+				#endif
+
 
 				cs->irb.CreateSetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
 
@@ -523,122 +521,129 @@ namespace array
 
 
 		// check if len + required > cap
-		fir::Value* cond = cs->irb.CreateICmpGT(needed, cap);
-
-
-
 		fir::IRBlock* cb = cs->irb.getCurrentBlock();
+		fir::Value* cond = cs->irb.CreateICmpGT(needed, cap);
 
 
 		// for when the 'dynamic' array came from a literal. same as the usual stuff
 		// capacity will be -1, in this case.
 
-		cs->irb.CreateCondBranch(cond, trampoline, mergeblk);
-
-		cs->irb.setCurrentBlock(trampoline);
-		{
-			auto cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
-			cs->irb.CreateCondBranch(cond, growNewblk, growblk);
-		}
+		cs->irb.CreateCondBranch(cond, newblk, mergeblk);
 
 		// return a phi node.
 		fir::Value* growPhi = 0;
-		fir::Value* growNewPhi = 0;
 
 
 		// grows to the nearest power of two from (len + required)
-		cs->irb.setCurrentBlock(growblk);
+		cs->irb.setCurrentBlock(newblk);
 		{
-
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
 
 			fir::Value* nextpow2 = cs->irb.CreateCall1(p2func, needed, "nextpow2");
 
-			fir::Function* refunc = cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC);
-			iceAssert(refunc);
+			fir::Value* newptr = 0;
+			#if 0
+			{
+				fir::Function* refunc = cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC);
+				iceAssert(refunc);
 
-			auto dataptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
-			dataptr = cs->irb.CreatePointerSub(dataptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				auto dataptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
+				dataptr = cs->irb.CreatePointerSub(dataptr, refCountSize);
 
-			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
-			fir::Value* newptr = cs->irb.CreateCall2(refunc, dataptr, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				fir::Value* actuallen = cs->irb.CreateMul(nextpow2, elmsize);
+				newptr = cs->irb.CreateCall2(refunc, dataptr, actuallen);
+				newptr = cs->irb.CreatePointerAdd(newptr, refCountSize);
+				newptr = cs->irb.CreatePointerTypeCast(newptr, ptr->getType());
+			}
+			#else
+			{
+				/*
+					* Because this shit has caused me a lot of trouble, here's some documentation on the semantics of this allocation
+					* job:
+
+					1. 'ptr' points to the start of the array, which is 8 bytes ahead of the actual allocated address.
+					2. We allocate nextpow2 + 8 bytes of memory
+					3. We set the returned pointer (mallocptr) to be 8 bytes ahead.
+					4. Memcpy only sees numElements * sizeof(element)
+				*/
 
 
+				fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
+				iceAssert(mallocf);
+
+				auto malloclen = cs->irb.CreateMul(nextpow2, elmsize);
+				auto mallocptr = cs->irb.CreateCall1(mallocf, cs->irb.CreateAdd(malloclen, refCountSize));
+				mallocptr = cs->irb.CreatePointerAdd(mallocptr, refCountSize);
+
+
+				fir::Value* oldptr = cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr());
+
+				// do a memcopy
+				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
+				auto copylen = cs->irb.CreateMul(len, elmsize);
+
+				cs->irb.CreateCall(memcpyf, { mallocptr, oldptr, copylen,
+					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+
+				iceAssert(mallocptr->getType() == fir::Type::getInt8Ptr());
+				newptr = cs->irb.CreatePointerTypeCast(mallocptr, ptr->getType());
+			}
+			#endif
+
+			iceAssert(newptr);
+
+
+			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, newptr);
+			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
+
+			iceAssert(refcnt);
+			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("grow (realloc) array: %p / len %ld / cap (old) %ld / cap (new) %ld\n");
-				cs->irb.CreateCall(printfn, { tmpstr, newptr, len, cap, nextpow2 });
+				fir::Value* tmpstr = cs->module->createGlobalString("grow arr: OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
+				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, len, cap, newptr, len, nextpow2 });
 			}
 			#endif
 
 
-			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
-			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
-
-			cs->irb.CreateUnCondBranch(mergeblk);
-
 			growPhi = ret;
+
+			// set the new space to valid things
+			if((false))
+			{
+				auto setfn = getSetElementsToDefaultValueFunction(cs, elmtype);
+				auto ofsptr = cs->irb.CreatePointerAdd(cs->irb.CreateGetDynamicArrayData(ret), len);
+				cs->irb.CreateCall2(setfn, ofsptr, cs->irb.CreateSub(nextpow2, len));
+			}
+
+
+			{
+				auto cond = cs->irb.CreateICmpEQ(cap, fir::ConstantInt::getInt64(-1));
+				cs->irb.CreateCondBranch(cond, mergeblk, freeold);
+			}
 		}
 
 
 		// makes a new memory piece, to the nearest power of two from (len + required)
-		cs->irb.setCurrentBlock(growNewblk);
+		cs->irb.setCurrentBlock(freeold);
 		{
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+			// free the old memory
+			fir::Function* freef = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
+			iceAssert(freef);
 
-				fir::Value* tmpstr = cs->module->createGlobalString("grow (new) array len %zd / cap (old) %zd\n");
-				cs->irb.CreateCall(printfn, { tmpstr, len, cap });
-			}
-
-			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
-			iceAssert(p2func);
-
-			fir::Value* nextpow2 = cs->irb.CreateCall1(p2func, needed, "nextpow2");
-
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* actuallen = cs->irb.CreateMul(nextpow2, cs->irb.CreateSizeof(elmtype));
-
-			// refcount space
-			actuallen = cs->irb.CreateAdd(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-			fir::Value* newptr = cs->irb.CreateCall1(mallocf, actuallen);
-			newptr = cs->irb.CreatePointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-
-			// memcpy
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-
-			cs->irb.CreateCall(memcpyf, { cs->irb.CreatePointerTypeCast(newptr, fir::Type::getInt8Ptr()),
-				cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
-				fir::ConstantBool::get(false) });
-
-
-			fir::Value* ret = cs->irb.CreateSetDynamicArrayData(arr, cs->irb.CreatePointerTypeCast(newptr, ptr->getType()));
-			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, nextpow2);
-			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
-
+			cs->irb.CreateCall1(freef, cs->irb.CreatePointerSub(cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), refCountSize));
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("grow new (malloc) array: %p / len %zd / cap (old) %zd / cap (new) %zd\n");
-				cs->irb.CreateCall(printfn, { tmpstr, newptr, len, cap, nextpow2 });
+				fir::Value* tmpstr = cs->module->createGlobalString("free arr: (ptr: %p)\n");
+				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
 			}
 			#endif
 
-			cs->irb.CreateUnCondBranch(mergeblk);
 
-			growNewPhi = ret;
+			cs->irb.CreateUnCondBranch(mergeblk);
 		}
 
 
@@ -648,8 +653,8 @@ namespace array
 			auto phi = cs->irb.CreatePHINode(arr->getType());
 			phi->addIncoming(arr, cb);
 			phi->addIncoming(nullPhi, isnull);
-			phi->addIncoming(growPhi, growblk);
-			phi->addIncoming(growNewPhi, growNewblk);
+			phi->addIncoming(growPhi, newblk);
+			phi->addIncoming(growPhi, freeold);
 
 			return phi;
 		}
@@ -795,14 +800,32 @@ namespace array
 				fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(s1);
 				fir::Value* applen = fir::ConstantInt::getInt64(1);
 
+				// if(s2->getType()->isStringType())
+				// {
+				// 	fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				// 	fir::Value* tmpstr = cs->module->createGlobalString("origarr[0] = %p\n");
+				// 	cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetStringData(cs->irb.CreateLoad(cs->irb.CreateGetDynamicArrayData(s1))) });
+				// }
+
 				// grow if needed
 				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
+
 				// we should be ok, now copy.
 				fir::Value* ptr = cs->irb.CreateGetDynamicArrayData(s1);
+				auto origptr = ptr;
 				ptr = cs->irb.CreatePointerAdd(ptr, origlen);
 
 				cs->irb.CreateStore(s2, ptr);
+				if(s2->getType()->isStringType())
+				{
+					fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+					fir::Value* tmpstr = cs->module->createGlobalString("origarr[0] = %p\n");
+					cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetStringData(cs->irb.CreateLoad(origptr)) });
+				}
+
 
 				if(cs->isRefCountedType(elmType))
 					cs->incrementRefCount(s2);
@@ -886,6 +909,7 @@ namespace array
 
 	//* On the other hand, this *always* reserves an *extra* N elements worth of space
 	//* in the array.
+	//! broken
 	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
 		iceAssert(arrtype);
@@ -1255,8 +1279,7 @@ namespace array
 
 					#if DEBUG_ALLOCATION
 					{
-						fir::Value* tmpstr = cs->module->createGlobalString("free arr: %p\n");
-
+						fir::Value* tmpstr = cs->module->createGlobalString("free arr: (ptr: %p)\n");
 						cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
 					}
 					#endif
@@ -1345,15 +1368,18 @@ namespace array
 		return fn;
 	}
 
-	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype)
 	{
 		iceAssert(arrtype);
+		iceAssert(arrtype->isDynamicArrayType() || arrtype->isArraySliceType());
 
 		auto name = BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
 
 		if(!fn)
 		{
+			bool isslice = arrtype->isArraySliceType();
+
 			auto restore = cs->irb.getCurrentBlock();
 			auto retTy = fir::TupleType::get({ arrtype, arrtype->getArrayElementType() });
 
@@ -1369,12 +1395,12 @@ namespace array
 			fir::Value* arr = func->getArguments()[0];
 			fir::Value* loc = func->getArguments()[1];
 
-			auto len = cs->irb.CreateGetDynamicArrayLength(arr);
-
-			auto cond = cs->irb.CreateICmpLT(len, fir::ConstantInt::getInt64(1));
+			fir::Value* origlen = (isslice ? cs->irb.CreateGetArraySliceLength(arr) : cs->irb.CreateGetDynamicArrayLength(arr));
 
 			fir::IRBlock* fail = cs->irb.addNewBlockInFunction("fail", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			auto cond = cs->irb.CreateICmpLT(origlen, fir::ConstantInt::getInt64(1));
 
 			cs->irb.CreateCondBranch(cond, fail, merge);
 			cs->irb.setCurrentBlock(fail);
@@ -1406,17 +1432,32 @@ namespace array
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				auto newlen = cs->irb.CreateSub(len, fir::ConstantInt::getInt64(1));
+				auto newlen = cs->irb.CreateSub(origlen, fir::ConstantInt::getInt64(1));
+				fir::Value* ret = 0;
 
 				// first, load the last value
-				auto ptr = cs->irb.CreateGetDynamicArrayData(arr);
-				auto val = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr, newlen));
+				if(isslice)
+				{
+					auto ptr = cs->irb.CreateGetArraySliceData(arr);
+					auto val = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr, newlen));
 
-				auto newarr = cs->irb.CreateSetDynamicArrayLength(arr, newlen);
-				auto ret = cs->irb.CreateValue(retTy);
-				ret = cs->irb.CreateInsertValue(ret, { 0 }, newarr);
-				ret = cs->irb.CreateInsertValue(ret, { 1 }, val);
+					auto newarr = cs->irb.CreateSetArraySliceLength(arr, newlen);
+					ret = cs->irb.CreateValue(retTy);
+					ret = cs->irb.CreateInsertValue(ret, { 0 }, newarr);
+					ret = cs->irb.CreateInsertValue(ret, { 1 }, val);
+				}
+				else
+				{
+					auto ptr = cs->irb.CreateGetDynamicArrayData(arr);
+					auto val = cs->irb.CreateLoad(cs->irb.CreatePointerAdd(ptr, newlen));
 
+					auto newarr = cs->irb.CreateSetDynamicArrayLength(arr, newlen);
+					ret = cs->irb.CreateValue(retTy);
+					ret = cs->irb.CreateInsertValue(ret, { 0 }, newarr);
+					ret = cs->irb.CreateInsertValue(ret, { 1 }, val);
+				}
+
+				iceAssert(ret);
 				cs->irb.CreateReturn(ret);
 			}
 

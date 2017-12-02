@@ -19,7 +19,7 @@
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
 
-#define DEBUG_MASTER		1
+#define DEBUG_MASTER		0
 #define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
 #define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
 
@@ -70,11 +70,10 @@ namespace string
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("clone string %p, %p, %d, %d\n");
-				cs->irb.CreateCall(printfn, { tmpstr, buf, lhsbuf, lhslen, malloclen });
+				fir::Value* tmpstr = cs->module->createGlobalString("clone string: OLD :: (ptr: %p, len: %ld) | NEW :: (ptr: %p, len: %ld)\n");
+				cs->irb.CreateCall(printfn, { tmpstr, lhsbuf, lhslen, buf, lhslen });
 			}
 			#endif
-
 
 
 			// move it forward (skip the refcount)
@@ -97,15 +96,6 @@ namespace string
 			str = cs->irb.CreateSetStringData(str, buf);
 			str = cs->irb.CreateSetStringLength(str, lhslen);
 			cs->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
-
-			#if DEBUG_ALLOCATION
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("clone string '%s' / %ld / %p\n");
-				cs->irb.CreateCall(printfn, { tmpstr, buf, lhslen, buf });
-			}
-			#endif
 
 
 			cs->irb.CreateReturn(str);
@@ -198,8 +188,8 @@ namespace string
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("malloc (%zu): %p ('%s')\n");
-				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf, buf });
+				fir::Value* tmpstr = cs->module->createGlobalString("append string: malloc(%d): (ptr: %p)\n");
+				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf });
 			}
 			#endif
 
@@ -288,10 +278,13 @@ namespace string
 
 			#if DEBUG_ALLOCATION
 			{
-				fir::Value* tmpstr = cs->module->createGlobalString("malloc: %p / %p ('%s') // ('%s') // (appc)\n");
-				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, lhsbuf, buf, buf, lhsbuf });
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("append char: malloc(%d): (ptr: %p)\n");
+				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf });
 			}
 			#endif
+
 
 			// ok, now fix it
 			// get an empty string

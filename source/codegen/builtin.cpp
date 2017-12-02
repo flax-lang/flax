@@ -29,8 +29,25 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(this->name == "back")
 		{
-			auto ptr = cs->irb.CreateGetDynamicArrayData(res.value);
-			auto idx = cs->irb.CreateSub(cs->irb.CreateGetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
+			fir::Value* ptr = 0;
+			fir::Value* idx = 0;
+
+			if(ty->isDynamicArrayType())
+			{
+				ptr = cs->irb.CreateGetDynamicArrayData(res.value);
+				idx = cs->irb.CreateSub(cs->irb.CreateGetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
+			}
+			else if(ty->isArraySliceType())
+			{
+				ptr = cs->irb.CreateGetArraySliceData(res.value);
+				idx = cs->irb.CreateSub(cs->irb.CreateGetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
+			}
+			else if(ty->isArrayType())
+			{
+				iceAssert(res.pointer);
+				ptr = cs->irb.CreateConstGEP2(res.pointer, 0, 0);
+				idx = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize() - 1);
+			}
 
 			ptr = cs->irb.CreatePointerAdd(ptr, idx);
 			return CGResult(cs->irb.CreateLoad(ptr));
@@ -40,7 +57,13 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(res.kind != CGResult::VK::LValue)
 				error(this->lhs, "Cannot call 'pop()' on an rvalue");
 
-			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty->toDynamicArrayType());
+			else if(res.value->isImmutable())
+				error(this->lhs, "Cannot call 'pop()' on an immutable value");
+
+			else if(ty->isArrayType())
+				error(this->lhs, "Cannot call 'pop()' on an array type ('%s')", ty);
+
+			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty);
 			auto tupl = cs->irb.CreateCall2(popf, res.value, fir::ConstantString::get(this->loc.toString()));
 
 			// tupl[0] is the new array
