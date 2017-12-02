@@ -52,6 +52,8 @@ std::string operatorToString(const Operator& op)
 		case Operator::BitwiseAndEquals:	return "&=";
 		case Operator::BitwiseOrEquals:		return "|=";
 		case Operator::BitwiseXorEquals:	return "^=";
+
+		default: iceAssert(0 && "invalid operator");
 	}
 }
 

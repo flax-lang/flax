@@ -17,9 +17,9 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	iceAssert(elm);
 
 	sst::Expr* cnt = 0;
-	if(this->count)
+	if(this->counts.size() > 0)
 	{
-		cnt = this->count->typecheck(fs, fir::Type::getInt64());
+		cnt = this->counts[0]->typecheck(fs, fir::Type::getInt64());
 		if(!cnt->type->isIntegerType())
 			error(cnt, "Expected integer type ('i64') for alloc count, found '%s' instead", cnt->type);
 

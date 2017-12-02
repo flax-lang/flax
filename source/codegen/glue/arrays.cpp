@@ -4,6 +4,7 @@
 
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 
 #define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
 #define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
@@ -27,12 +28,6 @@
 
 #define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
 #define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
-
-#define REFCOUNT_SIZE		8
-
-#define DEBUG_MASTER		0
-#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
-#define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
 
 
 namespace cgn {
@@ -327,12 +322,12 @@ namespace array
 			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_ARRAY_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("clone array: (ptr: %p, len: %ld, cap: %ld)\n");
-				cs->irb.CreateCall(printfn, { tmpstr, newptr, cs->irb.CreateSub(origlen, startIndex), cap });
+				fir::Value* tmpstr = cs->module->createGlobalString("clone array: OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
+				cs->irb.CreateCall(printfn, { tmpstr, origptr, origlen, origcap, newptr, cs->irb.CreateSub(origlen, startIndex), cap });
 			}
 			#endif
 
@@ -416,12 +411,12 @@ namespace array
 			cs->irb.CreateSetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_ARRAY_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("clone array: (ptr: %p, len: %ld, cap: %ld)\n");
-				cs->irb.CreateCall(printfn, { tmpstr, newptr, newlen, newlen });
+				fir::Value* tmpstr = cs->module->createGlobalString("clone slice: OLD :: (ptr: %p, len: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
+				cs->irb.CreateCall(printfn, { tmpstr, origptr, origlen, newptr, newlen, newlen });
 			}
 			#endif
 
@@ -497,7 +492,7 @@ namespace array
 				ret = cs->irb.CreateSetDynamicArrayLength(ret, needed);
 				ret = cs->irb.CreateSetDynamicArrayCapacity(ret, needed);
 
-				#if DEBUG_ALLOCATION
+				#if DEBUG_ARRAY_ALLOCATION
 				{
 					fir::Value* tmpstr = cs->module->createGlobalString("grow arr (from null): OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
 
@@ -600,7 +595,7 @@ namespace array
 			iceAssert(refcnt);
 			cs->irb.CreateSetDynamicArrayRefCount(ret, refcnt);
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_ARRAY_ALLOCATION
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("grow arr: OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
 				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, len, cap, newptr, len, nextpow2 });
@@ -635,7 +630,7 @@ namespace array
 
 			cs->irb.CreateCall1(freef, cs->irb.CreatePointerSub(cs->irb.CreatePointerTypeCast(ptr, fir::Type::getInt8Ptr()), refCountSize));
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_ARRAY_ALLOCATION
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("free arr: (ptr: %p)\n");
 				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
@@ -800,14 +795,6 @@ namespace array
 				fir::Value* origlen = cs->irb.CreateGetDynamicArrayLength(s1);
 				fir::Value* applen = fir::ConstantInt::getInt64(1);
 
-				// if(s2->getType()->isStringType())
-				// {
-				// 	fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				// 	fir::Value* tmpstr = cs->module->createGlobalString("origarr[0] = %p\n");
-				// 	cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetStringData(cs->irb.CreateLoad(cs->irb.CreateGetDynamicArrayData(s1))) });
-				// }
-
 				// grow if needed
 				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
 
@@ -818,15 +805,6 @@ namespace array
 				ptr = cs->irb.CreatePointerAdd(ptr, origlen);
 
 				cs->irb.CreateStore(s2, ptr);
-				if(s2->getType()->isStringType())
-				{
-					fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-					fir::Value* tmpstr = cs->module->createGlobalString("origarr[0] = %p\n");
-					cs->irb.CreateCall(printfn, { tmpstr, cs->irb.CreateGetStringData(cs->irb.CreateLoad(origptr)) });
-				}
-
-
 				if(cs->isRefCountedType(elmType))
 					cs->incrementRefCount(s2);
 
@@ -1254,12 +1232,12 @@ namespace array
 				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 
-				#if DEBUG_REFCOUNTING
+				#if DEBUG_ARRAY_REFCOUNTING
 				{
 					std::string x = increment ? "(incr)" : "(decr)";
-					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: %p = %d\n");
+					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: (ptr: %p, len: %ld) = %d\n");
 
-					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.CreateGetDynamicArrayData(arr), refc });
+					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.CreateGetDynamicArrayData(arr), cs->irb.CreateGetDynamicArrayLength(arr), refc });
 				}
 				#endif
 
@@ -1277,10 +1255,11 @@ namespace array
 
 					cs->irb.CreateCall1(freefn, ptr);
 
-					#if DEBUG_ALLOCATION
+					#if DEBUG_ARRAY_ALLOCATION
 					{
-						fir::Value* tmpstr = cs->module->createGlobalString("free arr: (ptr: %p)\n");
-						cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
+						fir::Value* tmpstr = cs->module->createGlobalString("freed arr: (ptr: %p)\n");
+						cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr,
+							cs->irb.CreatePointerAdd(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE)) });
 					}
 					#endif
 

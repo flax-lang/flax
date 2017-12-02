@@ -5,6 +5,7 @@
 #include "sst.h"
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
@@ -74,7 +75,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		auto allocsz = cs->irb.CreateMul(cntval, cs->irb.CreateSizeof(elmType));
 		if(!this->isRaw)
-			allocsz = cs->irb.CreateAdd(allocsz, fir::ConstantInt::getInt64(8));
+			allocsz = cs->irb.CreateAdd(allocsz, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 		auto rawdata = cs->irb.CreateCall1(mallocf, allocsz);
 
@@ -111,6 +112,15 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		arr = cs->irb.CreateSetDynamicArrayLength(arr, cntval);
 		arr = cs->irb.CreateSetDynamicArrayCapacity(arr, cntval);
 		cs->irb.CreateSetDynamicArrayRefCount(arr, fir::ConstantInt::getInt64(1));
+
+
+		#if DEBUG_ARRAY_ALLOCATION
+		{
+			fir::Value* tmpstr = cs->module->createGlobalString("alloc new array: (ptr: %p, len: %ld, cap: %ld)\n");
+			cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, dataptr, cntval, cntval });
+		}
+		#endif
+
 
 		return CGResult(arr, 0, CGResult::VK::LitRValue);
 	}

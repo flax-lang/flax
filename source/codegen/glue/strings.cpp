@@ -4,6 +4,7 @@
 
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 
 // generate runtime glue code
 
@@ -18,12 +19,6 @@
 
 #define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
 #define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
-
-#define DEBUG_MASTER		0
-#define DEBUG_ALLOCATION	(1 & DEBUG_MASTER)
-#define DEBUG_REFCOUNTING	(0 & DEBUG_MASTER)
-
-#define REFCOUNT_SIZE		8
 
 
 // namespace cgn::glue::string
@@ -66,7 +61,7 @@ namespace string
 			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
 
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
@@ -184,7 +179,7 @@ namespace string
 			fir::Value* nt = cs->irb.CreateGetPointer(offsetbuf, rhslen);
 			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
@@ -276,7 +271,7 @@ namespace string
 			fir::Value* nt = cs->irb.CreatePointerAdd(offsetbuf, fir::ConstantInt::getInt64(1));
 			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
 
-			#if DEBUG_ALLOCATION
+			#if DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
@@ -453,7 +448,7 @@ namespace string
 			fir::Value* newRc = cs->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
 			cs->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
-			#if DEBUG_REFCOUNTING
+			#if DEBUG_STRING_REFCOUNTING
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
 
@@ -528,7 +523,7 @@ namespace string
 			fir::Value* newRc = cs->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
 			cs->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
 
-			#if DEBUG_REFCOUNTING
+			#if DEBUG_STRING_REFCOUNTING
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
 
@@ -548,7 +543,7 @@ namespace string
 				fir::Value* bufp = cs->irb.CreateGetStringData(func->getArguments()[0]);
 
 
-				#if DEBUG_ALLOCATION
+				#if DEBUG_STRING_ALLOCATION
 				{
 					fir::Value* tmpstr = cs->module->createGlobalString("free %p ('%s') (%d)\n");
 					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
