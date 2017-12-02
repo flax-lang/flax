@@ -149,6 +149,15 @@ namespace cgn
 		{
 			return CGResult(this->irb.CreateGetStringData(from.value));
 		}
+		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
+		{
+			// ok, then
+			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType()));
+			ret = this->irb.CreateSetArraySliceData(ret, this->irb.CreateGetDynamicArrayData(from.value));
+			ret = this->irb.CreateSetArraySliceLength(ret, this->irb.CreateGetDynamicArrayLength(from.value));
+
+			return CGResult(ret);
+		}
 
 		// nope.
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);

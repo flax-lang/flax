@@ -48,6 +48,10 @@ namespace sst
 				default:	iceAssert(0);
 			}
 		}
+		else if(from->isDynamicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
+		{
+			return 2;
+		}
 		else if(from->isFloatingPointType() && to->isFloatingPointType())
 		{
 			return 1;
