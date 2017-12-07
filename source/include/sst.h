@@ -408,6 +408,23 @@ namespace sst
 
 
 
+	struct RangeExpr : Expr
+	{
+		RangeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~RangeExpr() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* start = 0;
+		Expr* end = 0;
+
+		Expr* step = 0;
+		bool halfOpen = false;
+	};
+
+
+
+
 
 
 	struct TreeDefn : Defn

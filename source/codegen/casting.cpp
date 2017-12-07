@@ -141,6 +141,11 @@ namespace cgn
 		{
 			return CGResult(this->irb.CreateIntSizeCast(from.value, target));
 		}
+		else if(fromType->isPointerType() && target->isBoolType())
+		{
+			//* support implicit casting for null checks
+			return CGResult(this->irb.CreateICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
+		}
 		else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
 		{
 			return CGResult(this->irb.CreateFExtend(from.value, target));

@@ -552,6 +552,7 @@ namespace cgn
 			else
 			{
 				unsupportedError(lhs.first, lt, rhs.first, rt);
+				doTheExit();
 			}
 		}
 	}

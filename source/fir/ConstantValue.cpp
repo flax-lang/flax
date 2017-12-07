@@ -370,6 +370,22 @@ namespace fir
 
 
 
+	ConstantArraySlice* ConstantArraySlice::get(ArraySliceType* t, ConstantValue* d, ConstantValue* l)
+	{
+		auto cda = new ConstantArraySlice(t);
+		cda->data = d;
+		cda->length = l;
+
+		return cda;
+	}
+
+	ConstantArraySlice::ConstantArraySlice(ArraySliceType* t) : ConstantValue(t)
+	{
+	}
+
+
+
+
 
 
 

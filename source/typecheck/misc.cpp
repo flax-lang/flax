@@ -358,11 +358,6 @@ sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 	unexpected(this->loc, "import statement");
 }
 
-sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
-{
-	return 0;
-}
-
 sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;

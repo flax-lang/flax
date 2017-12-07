@@ -42,7 +42,6 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok, do the thing
 		auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, false);
 		iceAssert(checkf);
-		iceAssert(lr.pointer);
 
 		fir::Value* max = 0;
 		if(lt->isDynamicArrayType())	max = cs->irb.CreateGetDynamicArrayLength(lr.value);
@@ -58,6 +57,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok.
 		if(lt->isArrayType())
 		{
+			iceAssert(lr.pointer);
+
 			// do a manual thing, return here immediately.
 			auto ret = cs->irb.CreateGEP2(lr.pointer, fir::ConstantInt::getInt64(0), ind);
 			return CGResult(cs->irb.CreateLoad(ret), ret, CGResult::VK::LValue);
@@ -71,7 +72,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			data = cs->irb.CreateGetArraySliceData(lr.value);
 		}
 
-		if(lr.pointer->isImmutable())
+		if(lr.pointer && lr.pointer->isImmutable())
 			data->makeImmutable();
 	}
 	else if(lt->isStringType())

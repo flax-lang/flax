@@ -348,6 +348,8 @@ namespace ast
 		Expr* start = 0;
 		Expr* end = 0;
 
+		Expr* step = 0;
+
 		bool halfOpen = false;
 	};
 

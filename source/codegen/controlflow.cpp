@@ -35,7 +35,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// at the current place, first do the cond.
 	iceAssert(this->cases.size() > 0);
-	fir::Value* firstCond = this->cases.front().cond->codegen(cs, fir::Type::getBool()).value;
+	fir::Value* firstCond = cs->oneWayAutocast(this->cases.front().cond->codegen(cs, fir::Type::getBool()), fir::Type::getBool()).value;
+	iceAssert(firstCond);
 
 	if(!firstCond->getType()->isBoolType())
 		error(this->cases.front().cond, "Non-boolean type '%s' cannot be used as a conditional", firstCond->getType());
@@ -66,7 +67,9 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		for(auto elif : remaining)
 		{
-			auto cond = elif.cond->codegen(cs, fir::Type::getBool()).value;
+			auto cond = cs->oneWayAutocast(elif.cond->codegen(cs, fir::Type::getBool()), fir::Type::getBool()).value;
+			iceAssert(cond);
+
 			if(!cond->getType()->isBoolType())
 				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType());
 
