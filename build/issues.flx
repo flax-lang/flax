@@ -62,6 +62,10 @@
 		Right now, we don't increment the reference count -- ie. we've implemented weak slices.
 
 		Do we want strong slices?
+
+
+	2. Foreach loops where you specify the skip, allows for things like these:
+		for [ first, middle, last, ... ] in (list) step 3 { ... }
 */
 
 
@@ -70,6 +74,10 @@
 
 /*
 	* FIXED ISSUES
+
+	(added in 72faeb0)
+	- better type inference/support for empty array literals
+	- implicit conversion from pointers to booleans for null checking
 
 	(fixed in 5be4db1)
 	- fix runtime glue code for arrays wrt. reference counting

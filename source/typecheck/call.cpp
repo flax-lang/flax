@@ -52,6 +52,10 @@ namespace sst
 		{
 			return 2;
 		}
+		else if(from->isDynamicArrayType() && from->getArrayElementType()->isVoidType() && (to->isDynamicArrayType() || to->isArraySliceType() || to->isArrayType()))
+		{
+			return 0;
+		}
 		else if(from->isFloatingPointType() && to->isFloatingPointType())
 		{
 			return 1;

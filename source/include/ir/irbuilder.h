@@ -165,6 +165,8 @@ namespace fir
 		Value* CreateSetRangeLower(Value* range, Value* val, std::string vname = "");
 		Value* CreateGetRangeUpper(Value* range, std::string vname = "");
 		Value* CreateSetRangeUpper(Value* range, Value* val, std::string vname = "");
+		Value* CreateGetRangeStep(Value* range, std::string vname = "");
+		Value* CreateSetRangeStep(Value* range, Value* step, std::string vname = "");
 
 		Value* CreateGetEnumCaseIndex(Value* ecs, std::string vname = "");
 		Value* CreateSetEnumCaseIndex(Value* ecs, Value* idx, std::string vname = "");

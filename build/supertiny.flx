@@ -8,8 +8,23 @@ import "libc"
 import "limits"
 
 
+fn foo(a: int[:]) -> void
+{
+	var i = 0
+	while i < a.length
+	{
+		libc.printf("%d\n", a[i])
+		i += 1
+	}
+
+	if(a.ptr)
+	{
+		libc.printf("lmao\n")
+	}
+}
 @entry fn main()
 {
+	foo([ 2, 4, 6 ])
 }
 
 

@@ -196,6 +196,21 @@ namespace fir
 		ConstantArray* arr = 0;
 	};
 
+	struct ConstantArraySlice : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantArraySlice* get(ArraySliceType* type, ConstantValue* data, ConstantValue* length);
+
+		ConstantValue* getData() { return this->data; }
+		ConstantValue* getLength() { return this->length; }
+
+		protected:
+		ConstantArraySlice(ArraySliceType* type);
+
+		ConstantValue* data = 0;
+		ConstantValue* length = 0;
+	};
 
 
 	struct GlobalValue : ConstantValue

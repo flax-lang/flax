@@ -64,7 +64,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(this->type->isArraySliceType())
 	{
-		// fir::constant
+		// TODO: support this
 		error(this, "Array literal cannot be coerced into an array slice");
 	}
 	else if(this->type->isDynamicArrayType())
@@ -77,11 +77,35 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(this->values.empty())
 		{
-			// ok...
-			// just do a simple thing.
-			auto z = fir::ConstantInt::getInt64(0);
-			return CGResult(fir::ConstantDynamicArray::get(darty, fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z), 0,
-				CGResult::VK::LitRValue);
+			// if our element type is void, and there is no infer... die.
+			if((elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
+				error(this, "Failed to infer type for empty array literal");
+
+			//! by right, if we have no values, then elmty is *supposed* to be void.
+			iceAssert(elmty->isVoidType() && infer);
+
+			if(infer->isDynamicArrayType())
+			{
+				// ok.
+				elmty = infer->getArrayElementType();
+				// error(this, "elmty = %s", elmty);
+
+				auto z = fir::ConstantInt::getInt64(0);
+				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()),
+					z, z), 0, CGResult::VK::LitRValue);
+			}
+			else if(infer->isArraySliceType())
+			{
+				elmty = infer->getArrayElementType();
+
+				auto z = fir::ConstantInt::getInt64(0);
+				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z),
+					0, CGResult::VK::LitRValue);
+			}
+			else
+			{
+				error(this, "Incorrectly inferred type '%s' for empty array literal", infer);
+			}
 		}
 
 		// make a function specifically to initialise this thing
