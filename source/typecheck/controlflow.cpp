@@ -29,11 +29,16 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	for(auto c : this->cases)
 	{
 		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs); });
-		ret->cases.push_back(Case {
-									c.cond->typecheck(fs),
-									dynamic_cast<sst::Block*>(c.body->typecheck(fs)),
-									inits
-								});
+		auto cs = Case {
+							c.cond->typecheck(fs),
+							dynamic_cast<sst::Block*>(c.body->typecheck(fs)),
+							inits
+						};
+
+		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
+			error(cs.cond, "Non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
+
+		ret->cases.push_back(cs);
 
 		iceAssert(ret->cases.back().body);
 	}
@@ -212,7 +217,7 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	if(this->cond)
 	{
 		ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
-		if(ret->cond->type != fir::Type::getBool())
+		if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
 			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
 	}
 

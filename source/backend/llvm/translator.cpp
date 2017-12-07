@@ -330,6 +330,13 @@ namespace backend
 			cachedConstants[c] = ret;
 			return ret;
 		}
+		else if(fir::ConstantArraySlice* cas = dynamic_cast<fir::ConstantArraySlice*>(c))
+		{
+			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), mod), constToLlvm(cas->getLength(), mod) };
+
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
+			return cachedConstants[c] = ret;
+		}
 		else if(fir::ConstantDynamicArray* cda = dynamic_cast<fir::ConstantDynamicArray*>(c))
 		{
 			if(cda->getArray())

@@ -122,7 +122,11 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->values.empty())
 	{
 		if(infer == 0)
-			error(this, "Unable to infer type for empty array literal");
+		{
+			// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
+			infer = fir::DynamicArrayType::get(fir::VoidType::get());
+		}
+			// error(this, "Unable to infer type for empty array literal");
 
 		// okay.
 		if(infer->isArrayType())
@@ -165,6 +169,17 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			{
 				error(v, "Mismatched type for expression in array literal; expected '%s' as inferred from previous elements, found '%s'",
 					elmty, e->type);
+			}
+
+
+			if(e->type->isVoidType())
+			{
+				// be helpful
+				exitless_error(v, "Expected value in array literal, found 'void' value instead");
+				if(auto fc = dcast(sst::FunctionCall, e); fc && fc->target)
+					info(fc->target, "Function was defined here:");
+
+				doTheExit();
 			}
 
 			vals.push_back(e);

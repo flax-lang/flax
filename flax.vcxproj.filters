@@ -352,6 +352,12 @@
     <ClCompile Include="source\codegen\alloc.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\typecheck\ranges.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\codegen\ranges.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\include\ast.h">

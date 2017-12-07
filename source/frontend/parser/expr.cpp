@@ -683,6 +683,14 @@ namespace parser
 
 			// current token now starts the ending expression (ie. '...' or '..<' are no longer in the token stream)
 			Expr* end = parseExpr(st);
+			Expr* step = 0;
+
+			// check if we got a step.
+			if(st.front() == TT::Identifier && st.front().text == "step")
+			{
+				st.eat();
+				step = parseExpr(st);
+			}
 
 			// ok
 			auto ret = new RangeExpr(op.loc);
@@ -691,7 +699,6 @@ namespace parser
 			ret->halfOpen = (op.type == TT::HalfOpenEllipsis);
 
 			return ret;
-			// newlhs = CreateAST_Pin(Range, curLhs->pin, start, end, );
 		}
 		else
 		{

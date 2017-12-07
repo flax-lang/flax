@@ -148,6 +148,8 @@ namespace fir
 		Range_SetLower,
 		Range_GetUpper,
 		Range_SetUpper,
+		Range_GetStep,
+		Range_SetStep,
 
 		Enum_GetIndex,
 		Enum_SetIndex,
