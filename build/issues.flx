@@ -75,68 +75,23 @@
 /*
 	* FIXED ISSUES
 
-	(added in 72faeb0)
+
+	(ca3ae4b)
 	- better type inference/support for empty array literals
 	- implicit conversion from pointers to booleans for null checking
 
-	(fixed in 5be4db1)
+	(5be4db1)
 	- fix runtime glue code for arrays wrt. reference counting
 
-	(added in e3a2b55)
-	- alloc and dealloc
-	- dynamic array operators (pop(), back())
+	(e3a2b55)
+	- add alloc and dealloc
+	- add dynamic array operators (pop(), back())
 
-	(added in b7c6f74)
-	- enums
+	(b7c6f74)
+	- add enums
 
-	(added in 408260c4)
-	- classes
-
-	(fixed in e664992)
-	- enums declared in functions do not work
-	- global variables outside of namespaces don't work
-
-	(fixed in bb6baf0)
-	- handle refcounts when doing slices
-
-	(added in e7c50a0)
-	- dynamic array slices
-
-	(fixed in 42b1aaf)
-	- assign [] to dynamic arrays
-	- pass [] to functions taking dynamic arrays
-
-	(fixed in 9334be3)
-	- do { } while { } parsing bug
-
-	(fixed in dc63839)
-	- T.0.1 parses as T. (0.1) where 0.1 is a number
-
-	(fixed in d9f8d4b)
-	- defer does not happen after the return, only before
-
-	(fixed in 61325cd)
-	- shit like this works "let g = 3let v = 10"
-
-	(fixed in 6d31d14)
-	- remove implicit returns, unless the function has exactly one *statement*.
-
-	(fixed in 3edc6f5)
-	- removed literal types
-
-	(added in b56ef9c)
-	- init+cond in if statements, a-la c++17
-
-	(added in 63ba763)
-	- for loops, ranges, for-in loops
-
-	(fixed in 586c963)
-	- empty array literals are now generic things (WIP)
-	- iterative generic solver is now used for everything
-	- the fucking generic type solver is hopefully finished
-
-	(fixed in 930bfa3)
-	- add automatic == and != for structs, using memcmp.
+	(408260c4)
+	- add classes
 */
 
 
