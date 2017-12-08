@@ -5,8 +5,6 @@
 export supertiny
 
 import "libc"
-import "limits"
-
 
 fn foo(a: int[:]) -> void
 {
@@ -22,9 +20,11 @@ fn foo(a: int[:]) -> void
 		libc.printf("lmao\n")
 	}
 }
+
 @entry fn main()
 {
 	foo([ 2, 4, 6 ])
+	libc.printf("%d x %d = %d\n", - 318, 2, 318 * 2)
 }
 
 
