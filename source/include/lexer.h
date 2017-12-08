@@ -132,6 +132,7 @@ namespace lexer
 		util::string_view text;
 
 		operator TokenType() const { return this->type; }
+		bool operator == (const std::string& s) { return this->str() == s; }
 		std::string str() const { return util::to_string(this->text); }
 	};
 

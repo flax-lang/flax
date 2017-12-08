@@ -381,12 +381,14 @@ namespace lexer
 		// string + 3
 		// so in every other case we want unary +/-.
 		// note: this dumb '<=255' thing is because windows likes to assert useless things.
-		else if(!stream.empty() && ((stream[0] >= 1 && (int) stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
+		else if((!stream.empty() && ((stream[0] >= 1 && (int) stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
+			/* handle cases like '+ 3' or '- 14' (ie. space between sign and number) */
+			&& ((isdigit(stream[0]) ? true : false) || stream.size() > 1 && isdigit(stream[1])))
 		{
 			// copy it.
 			auto tmp = stream;
 
-			if(stream.find('-') == 0 || stream.find('+') == 0)
+			if(tmp.find('-') == 0 || tmp.find('+') == 0)
 				tmp.remove_prefix(1);
 
 			int base = 10;
