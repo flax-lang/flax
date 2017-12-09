@@ -243,6 +243,8 @@ namespace ast
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
+		Location varloc;
+
 		std::string var;
 		Expr* array = 0;
 	};

@@ -90,8 +90,6 @@ namespace sst
 			std::vector<Stmt*> inits;
 		};
 
-		std::vector<std::string> scope;
-		std::string generatedScopeName;
 		std::vector<Case> cases;
 		Block* elseCase = 0;
 	};
@@ -118,9 +116,6 @@ namespace sst
 		Block* body = 0;
 
 		bool isDoVariant = false;
-
-		std::vector<std::string> scope;
-		std::string generatedScopeName;
 	};
 
 	struct VarDefn;
