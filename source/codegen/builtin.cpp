@@ -24,7 +24,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(arguments.empty());
 			auto clonef = cgn::glue::array::getCloneFunction(cs, ty);
 
-			auto ret = cs->irb.CreateCall2(clonef, res.value, fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.Call(clonef, res.value, fir::ConstantInt::getInt64(0));
 			return CGResult(ret, 0, CGResult::VK::LitRValue);
 		}
 		else if(this->name == "back")
@@ -34,23 +34,23 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			if(ty->isDynamicArrayType())
 			{
-				ptr = cs->irb.CreateGetDynamicArrayData(res.value);
-				idx = cs->irb.CreateSub(cs->irb.CreateGetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
+				ptr = cs->irb.GetDynamicArrayData(res.value);
+				idx = cs->irb.Sub(cs->irb.GetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
 			}
 			else if(ty->isArraySliceType())
 			{
-				ptr = cs->irb.CreateGetArraySliceData(res.value);
-				idx = cs->irb.CreateSub(cs->irb.CreateGetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
+				ptr = cs->irb.GetArraySliceData(res.value);
+				idx = cs->irb.Sub(cs->irb.GetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
 			}
 			else if(ty->isArrayType())
 			{
 				iceAssert(res.pointer);
-				ptr = cs->irb.CreateConstGEP2(res.pointer, 0, 0);
+				ptr = cs->irb.ConstGEP2(res.pointer, 0, 0);
 				idx = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize() - 1);
 			}
 
-			ptr = cs->irb.CreatePointerAdd(ptr, idx);
-			return CGResult(cs->irb.CreateLoad(ptr));
+			ptr = cs->irb.PointerAdd(ptr, idx);
+			return CGResult(cs->irb.Load(ptr));
 		}
 		else if(this->name == "pop")
 		{
@@ -64,13 +64,13 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(this->lhs, "Cannot call 'pop()' on an array type ('%s')", ty);
 
 			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty);
-			auto tupl = cs->irb.CreateCall2(popf, res.value, fir::ConstantString::get(this->loc.toString()));
+			auto tupl = cs->irb.Call(popf, res.value, fir::ConstantString::get(this->loc.toString()));
 
 			// tupl[0] is the new array
 			// tupl[1] is the last element
 
-			auto newarr = cs->irb.CreateExtractValue(tupl, { 0 });
-			auto retelm = cs->irb.CreateExtractValue(tupl, { 1 });
+			auto newarr = cs->irb.ExtractValue(tupl, { 0 });
+			auto retelm = cs->irb.ExtractValue(tupl, { 1 });
 
 			//* over here, we don't need to worry about ref-counting; lhs is an l-value, meaning that we stored a
 			//* refcounted *pointer*. Since the pointer doesn't change, only the value stored within, we don't
@@ -79,7 +79,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			//* there are cases (ie. function arguments) where we are an lvalue, but we don't have a pointer.
 			//* in those cases, we just don't store anything.
 			if(res.pointer)
-				cs->irb.CreateStore(newarr, res.pointer);
+				cs->irb.Store(newarr, res.pointer);
 
 			return CGResult(retelm);
 		}
@@ -90,53 +90,53 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			if(this->name == "length")
 			{
-				return CGResult(cs->irb.CreateGetStringLength(res.value));
+				return CGResult(cs->irb.GetStringLength(res.value));
 			}
 			if(this->name == "count")
 			{
 				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);
 				iceAssert(fn);
 
-				auto ret = cs->irb.CreateCall1(fn, cs->irb.CreateGetStringData(res.value));
+				auto ret = cs->irb.Call(fn, cs->irb.GetStringData(res.value));
 				return CGResult(ret);
 			}
 			else if(this->name == "ptr")
 			{
-				return CGResult(cs->irb.CreateGetStringData(res.value));
+				return CGResult(cs->irb.GetStringData(res.value));
 			}
 			else if(this->name == "rc")
 			{
-				return CGResult(cs->irb.CreateGetStringRefCount(res.value));
+				return CGResult(cs->irb.GetStringRefCount(res.value));
 			}
 		}
 		else if(ty->isDynamicArrayType())
 		{
 			if(this->name == "length" || this->name == "count")
 			{
-				return CGResult(cs->irb.CreateGetDynamicArrayLength(res.value));
+				return CGResult(cs->irb.GetDynamicArrayLength(res.value));
 			}
 			if(this->name == "capacity")
 			{
-				return CGResult(cs->irb.CreateGetDynamicArrayCapacity(res.value));
+				return CGResult(cs->irb.GetDynamicArrayCapacity(res.value));
 			}
 			else if(this->name == "ptr")
 			{
-				return CGResult(cs->irb.CreateGetDynamicArrayData(res.value));
+				return CGResult(cs->irb.GetDynamicArrayData(res.value));
 			}
 			else if(this->name == "rc")
 			{
-				return CGResult(cs->irb.CreateGetDynamicArrayRefCount(res.value));
+				return CGResult(cs->irb.GetDynamicArrayRefCount(res.value));
 			}
 		}
 		else if(ty->isArraySliceType())
 		{
 			if(this->name == "length" || this->name == "count")
 			{
-				return CGResult(cs->irb.CreateGetArraySliceLength(res.value));
+				return CGResult(cs->irb.GetArraySliceLength(res.value));
 			}
 			else if(this->name == "ptr")
 			{
-				return CGResult(cs->irb.CreateGetArraySliceData(res.value));
+				return CGResult(cs->irb.GetArraySliceData(res.value));
 			}
 		}
 		else if(ty->isArrayType())
@@ -148,7 +148,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			else if(this->name == "ptr")
 			{
 				iceAssert(res.pointer);
-				auto ret = cs->irb.CreateConstGEP2(res.pointer, 0, 0);
+				auto ret = cs->irb.ConstGEP2(res.pointer, 0, 0);
 				return CGResult(ret);
 			}
 		}
@@ -156,21 +156,21 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			if(this->name == "index")
 			{
-				return CGResult(cs->irb.CreateGetEnumCaseIndex(res.value));
+				return CGResult(cs->irb.GetEnumCaseIndex(res.value));
 			}
 			else if(this->name == "value")
 			{
-				return CGResult(cs->irb.CreateGetEnumCaseValue(res.value));
+				return CGResult(cs->irb.GetEnumCaseValue(res.value));
 			}
 			else if(this->name == "name")
 			{
 				auto namearr = ty->toEnumType()->getNameArray();
 				iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());
 
-				auto idx = cs->irb.CreateGetEnumCaseIndex(res.value);
-				auto n = cs->irb.CreateGEP2(namearr, fir::ConstantInt::getInt64(0), idx);
+				auto idx = cs->irb.GetEnumCaseIndex(res.value);
+				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getInt64(0), idx);
 
-				return CGResult(cs->irb.CreateLoad(n));
+				return CGResult(cs->irb.Load(n));
 			}
 		}
 	}

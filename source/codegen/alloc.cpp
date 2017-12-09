@@ -35,8 +35,8 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 		// make the thing
-		auto isNeg = cs->irb.CreateICmpLT(s1, fir::ConstantInt::getInt64(0));
-		cs->irb.CreateCondBranch(isNeg, failb, merge);
+		auto isNeg = cs->irb.ICmpLT(s1, fir::ConstantInt::getInt64(0));
+		cs->irb.CondBranch(isNeg, failb, merge);
 
 
 		cs->irb.setCurrentBlock(failb);
@@ -56,18 +56,18 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 			fir::Value* tmpstr = cs->module->createGlobalString("w");
 
 			fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to allocate memory with a negative (%d) count\n");
-			fir::Value* posstr = cs->irb.CreateGetStringData(s2);
+			fir::Value* posstr = cs->irb.GetStringData(s2);
 
-			fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+			fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-			cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr, s1 });
+			cs->irb.Call(fprintfn, { err, fmtstr, posstr, s1 });
 
-			cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
-			cs->irb.CreateUnreachable();
+			cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
+			cs->irb.Unreachable();
 		}
 
 		cs->irb.setCurrentBlock(merge);
-		cs->irb.CreateReturnVoid();
+		cs->irb.ReturnVoid();
 
 		cs->irb.setCurrentBlock(restore);
 		checkf = func;
@@ -90,10 +90,10 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
-		auto sz = cs->irb.CreateMul(cs->irb.CreateSizeof(type), cnt);
-		auto mem = cs->irb.CreateCall1(mallocf, sz);
+		auto sz = cs->irb.Mul(cs->irb.Sizeof(type), cnt);
+		auto mem = cs->irb.Call(mallocf, sz);
 
-		return cs->irb.CreatePointerTypeCast(mem, type->getPointerTo());
+		return cs->irb.PointerTypeCast(mem, type->getPointerTo());
 	}
 	else
 	{
@@ -106,33 +106,33 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 		// make sure the length isn't negative
 		auto checkf = getCheckNegativeLengthFunction(cs);
 		iceAssert(checkf);
-		cs->irb.CreateCall2(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
+		cs->irb.Call(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
 
 		// ok, now we have a length -- allocate enough memory for length * sizeof(elm) + refcount size
-		auto alloclen = cs->irb.CreateAdd(cs->irb.CreateMul(count, cs->irb.CreateSizeof(type)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-		auto mem = cs->irb.CreatePointerAdd(cs->irb.CreateCall1(mallocf, alloclen), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-		mem = cs->irb.CreatePointerTypeCast(mem, type->getPointerTo());
+		auto alloclen = cs->irb.Add(cs->irb.Mul(count, cs->irb.Sizeof(type)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+		auto mem = cs->irb.PointerAdd(cs->irb.Call(mallocf, alloclen), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
 
 
 		// make them valid things
 		auto setf = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, type);
 		iceAssert(setf);
 
-		cs->irb.CreateCall2(setf, mem, count);
+		cs->irb.Call(setf, mem, count);
 
 		// ok, now return the array we created.
 		{
 			auto ret = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
-			ret = cs->irb.CreateSetDynamicArrayData(ret, mem);
-			ret = cs->irb.CreateSetDynamicArrayLength(ret, count);
-			ret = cs->irb.CreateSetDynamicArrayCapacity(ret, count);
+			ret = cs->irb.SetDynamicArrayData(ret, mem);
+			ret = cs->irb.SetDynamicArrayLength(ret, count);
+			ret = cs->irb.SetDynamicArrayCapacity(ret, count);
 
-			cs->irb.CreateSetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
+			cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
 
 			#if DEBUG_ARRAY_ALLOCATION
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("alloc new array: (ptr: %p, len: %ld, cap: %ld)\n");
-				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, mem, count, count });
+				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, mem, count, count });
 			}
 			#endif
 
@@ -184,8 +184,8 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", fn);
 
 		// make the thing
-		auto isNeg = cs->irb.CreateICmpLT(cntval, fir::ConstantInt::getInt64(0));
-		cs->irb.CreateCondBranch(isNeg, failb, merge);
+		auto isNeg = cs->irb.ICmpLT(cntval, fir::ConstantInt::getInt64(0));
+		cs->irb.CondBranch(isNeg, failb, merge);
 
 
 		cs->irb.setCurrentBlock(failb);
@@ -205,14 +205,14 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			fir::Value* tmpstr = cs->module->createGlobalString("w");
 
 			fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to allocate memory with a negative (%d) count\n");
-			fir::Value* posstr = cs->irb.CreateGetStringData(fir::ConstantString::get(this->loc.toString()));
+			fir::Value* posstr = cs->irb.GetStringData(fir::ConstantString::get(this->loc.toString()));
 
-			fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+			fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-			cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr, cntval });
+			cs->irb.Call(fprintfn, { err, fmtstr, posstr, cntval });
 
-			cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
-			cs->irb.CreateUnreachable();
+			cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
+			cs->irb.Unreachable();
 		}
 
 		cs->irb.setCurrentBlock(merge);
@@ -224,25 +224,25 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 		iceAssert(mallocf);
 
-		auto allocsz = cs->irb.CreateMul(cntval, cs->irb.CreateSizeof(elmType));
+		auto allocsz = cs->irb.Mul(cntval, cs->irb.Sizeof(elmType));
 		if(!this->isRaw)
-			allocsz = cs->irb.CreateAdd(allocsz, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			allocsz = cs->irb.Add(allocsz, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
-		auto rawdata = cs->irb.CreateCall1(mallocf, allocsz);
+		auto rawdata = cs->irb.Call(mallocf, allocsz);
 
 
 		if(!this->isRaw)
 		{
-			dataptr = cs->irb.CreatePointerAdd(cs->irb.CreatePointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
-			dataptr = cs->irb.CreatePointerTypeCast(dataptr, elmType->getPointerTo());
+			dataptr = cs->irb.PointerAdd(cs->irb.PointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
+			dataptr = cs->irb.PointerTypeCast(dataptr, elmType->getPointerTo());
 		}
 		else
 		{
-			dataptr = cs->irb.CreatePointerTypeCast(rawdata, elmType->getPointerTo());
+			dataptr = cs->irb.PointerTypeCast(rawdata, elmType->getPointerTo());
 		}
 
 		auto setfn = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, elmType);
-		cs->irb.CreateCall2(setfn, dataptr, cntval);
+		cs->irb.Call(setfn, dataptr, cntval);
 	}
 	iceAssert(dataptr);
 
@@ -257,18 +257,18 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(this->type->isDynamicArrayType());
 		auto arr = cs->irb.CreateValue(this->type);
 
-		dataptr = cs->irb.CreatePointerTypeCast(dataptr, elmType->getPointerTo());
+		dataptr = cs->irb.PointerTypeCast(dataptr, elmType->getPointerTo());
 
-		arr = cs->irb.CreateSetDynamicArrayData(arr, dataptr);
-		arr = cs->irb.CreateSetDynamicArrayLength(arr, cntval);
-		arr = cs->irb.CreateSetDynamicArrayCapacity(arr, cntval);
-		cs->irb.CreateSetDynamicArrayRefCount(arr, fir::ConstantInt::getInt64(1));
+		arr = cs->irb.SetDynamicArrayData(arr, dataptr);
+		arr = cs->irb.SetDynamicArrayLength(arr, cntval);
+		arr = cs->irb.SetDynamicArrayCapacity(arr, cntval);
+		cs->irb.SetDynamicArrayRefCount(arr, fir::ConstantInt::getInt64(1));
 
 
 		#if DEBUG_ARRAY_ALLOCATION
 		{
 			fir::Value* tmpstr = cs->module->createGlobalString("alloc new array: (ptr: %p, len: %ld, cap: %ld)\n");
-			cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, dataptr, cntval, cntval });
+			cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, dataptr, cntval, cntval });
 		}
 		#endif
 
@@ -295,9 +295,9 @@ CGResult sst::DeallocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(ty->isPointerType());
 
-	fir::Value* ptr = cs->irb.CreatePointerTypeCast(value, fir::Type::getInt8Ptr());
+	fir::Value* ptr = cs->irb.PointerTypeCast(value, fir::Type::getInt8Ptr());
 
-	cs->irb.CreateCall1(freef, ptr);
+	cs->irb.Call(freef, ptr);
 	return CGResult(0);
 }
 

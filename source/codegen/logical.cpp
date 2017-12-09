@@ -28,8 +28,8 @@ namespace cgn
 			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType());
 
 		// ok, compare first.
-		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantBool::get(true));
-		cs->irb.CreateCondBranch(cmpres, pass, check);
+		fir::Value* cmpres = cs->irb.ICmpEQ(left, fir::ConstantBool::get(true));
+		cs->irb.CondBranch(cmpres, pass, check);
 
 		cs->irb.setCurrentBlock(check);
 		{
@@ -38,13 +38,13 @@ namespace cgn
 			if(!right->getType()->isBoolType())
 				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType());
 
-			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantBool::get(true));
-			cs->irb.CreateCondBranch(cmpres, pass, merge);
+			fir::Value* cmpres = cs->irb.ICmpEQ(right, fir::ConstantBool::get(true));
+			cs->irb.CondBranch(cmpres, pass, merge);
 		}
 
 		cs->irb.setCurrentBlock(pass);
 		{
-			cs->irb.CreateUnCondBranch(merge);
+			cs->irb.UnCondBranch(merge);
 		}
 
 		cs->irb.setCurrentBlock(merge);
@@ -74,13 +74,13 @@ namespace cgn
 			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType());
 
 		// ok, compare first.
-		fir::Value* cmpres = cs->irb.CreateICmpEQ(left, fir::ConstantBool::get(true));
-		cs->irb.CreateCondBranch(cmpres, check, fail);
+		fir::Value* cmpres = cs->irb.ICmpEQ(left, fir::ConstantBool::get(true));
+		cs->irb.CondBranch(cmpres, check, fail);
 
 		cs->irb.setCurrentBlock(fail);
 		{
 			// break straight to merge
-			cs->irb.CreateUnCondBranch(merge);
+			cs->irb.UnCondBranch(merge);
 		}
 
 		cs->irb.setCurrentBlock(check);
@@ -90,8 +90,8 @@ namespace cgn
 			if(!right->getType()->isBoolType())
 				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType());
 
-			fir::Value* cmpres = cs->irb.CreateICmpEQ(right, fir::ConstantBool::get(true));
-			cs->irb.CreateCondBranch(cmpres, merge, fail);
+			fir::Value* cmpres = cs->irb.ICmpEQ(right, fir::ConstantBool::get(true));
+			cs->irb.CondBranch(cmpres, merge, fail);
 		}
 
 		cs->irb.setCurrentBlock(merge);

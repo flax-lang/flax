@@ -167,10 +167,10 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// iceAssert(sty->toStructType()->hasElementWithName(this->rhsIdent));
 
 	// ok, at this point it's just a normal, instance field.
-	auto val = cs->irb.CreateGetStructMember(ptr, this->rhsIdent);
+	auto val = cs->irb.GetStructMember(ptr, this->rhsIdent);
 	iceAssert(val);
 
-	return CGResult(cs->irb.CreateLoad(val), val, CGResult::VK::LValue);
+	return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
 }
 
 
@@ -196,12 +196,12 @@ CGResult sst::TupleDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* retp = 0;
 	if(res.pointer)
 	{
-		retp = cs->irb.CreateStructGEP(res.pointer, this->index);
-		retv = cs->irb.CreateLoad(retp);
+		retp = cs->irb.StructGEP(res.pointer, this->index);
+		retv = cs->irb.Load(retp);
 	}
 	else
 	{
-		retv = cs->irb.CreateExtractValue(res.value, { this->index });
+		retv = cs->irb.ExtractValue(res.value, { this->index });
 	}
 
 	return CGResult(retv, retp, retp ? CGResult::VK::LValue : CGResult::VK::RValue);
@@ -219,8 +219,8 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		if(sty->hasElementWithName(name))
 		{
 			// ok -- return directly from here.
-			fir::Value* ptr = this->irb.CreateGetStructMember(self, name);
-			return CGResult(this->irb.CreateLoad(ptr), ptr, CGResult::VK::LValue);
+			fir::Value* ptr = this->irb.GetStructMember(self, name);
+			return CGResult(this->irb.Load(ptr), ptr, CGResult::VK::LValue);
 		}
 		else
 		{

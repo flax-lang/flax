@@ -23,6 +23,16 @@ fn foo(a: int[:]) -> void
 
 @entry fn main()
 {
+	let range = 3...40 step 3
+
+	do {
+		let x = 40
+	}
+
+	let y = x
+
+
+
 	foo([ 2, 4, 6 ])
 	libc.printf("%d x %d = %d\n", - 318, 2, 318 * 2)
 }

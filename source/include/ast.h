@@ -150,6 +150,15 @@ namespace ast
 		bool noMangle = false;
 	};
 
+	struct TupleDecompMapping
+	{
+		Location loc;
+		std::string name;
+		bool ref = false;
+
+		std::vector<TupleDecompMapping> inner;
+	};
+
 	struct TupleDecompVarDefn : Stmt
 	{
 		TupleDecompVarDefn(const Location& l) : Stmt(l) { }
@@ -157,18 +166,9 @@ namespace ast
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
-		struct Mapping
-		{
-			Location loc;
-			std::string name;
-			bool ref = false;
-
-			std::vector<Mapping> inner;
-		};
-
 		bool immut = false;
 		Expr* initialiser = 0;
-		std::vector<Mapping> mappings;
+		std::vector<TupleDecompMapping> mappings;
 	};
 
 	struct ArrayDecompVarDefn : Stmt
@@ -225,6 +225,50 @@ namespace ast
 
 		bool isDoVariant = false;
 	};
+
+	struct ForLoop : Stmt
+	{
+		ForLoop(const Location& l) : Stmt(l) { }
+		~ForLoop() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
+
+		Block* body = 0;
+	};
+
+	struct ForeachLoop : ForLoop
+	{
+		ForeachLoop(const Location& l) : ForLoop(l) { }
+		~ForeachLoop() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		std::string var;
+		Expr* array = 0;
+	};
+
+	struct ForTupleDecompLoop : ForLoop
+	{
+		ForTupleDecompLoop(const Location& l) : ForLoop(l) { }
+		~ForTupleDecompLoop() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* array = 0;
+		std::vector<TupleDecompMapping> mappings;
+	};
+
+	struct ForArrayDecompLoop : ForLoop
+	{
+		ForArrayDecompLoop(const Location& l) : ForLoop(l) { }
+		~ForArrayDecompLoop() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* array = 0;
+		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
+	};
+
 
 	struct BreakStmt : Stmt
 	{

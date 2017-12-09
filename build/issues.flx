@@ -16,6 +16,9 @@
 	1. Constructor syntax for types
 
 
+	2. Using namepace
+
+
 	5. String operators
 
 
@@ -29,6 +32,9 @@
 
 
 	10. Decomposition
+		Include nested decomposition, eg. array of tuples and tuple of arrays. (maybe just the former and not the latter??)
+		eg. let [(a, b), (c, d), ...] = array				# type = (int, int)[]
+		or: let ([a, b, c, ...], [x, y, z, ...]) = tuple	# type = (int[], int[])
 
 
 	11. Splatting single value into decomposition declaration
@@ -66,6 +72,9 @@
 
 	2. Foreach loops where you specify the skip, allows for things like these:
 		for [ first, middle, last, ... ] in (list) step 3 { ... }
+
+
+	3. Variadic functions should take a slice of any.
 */
 
 
@@ -75,6 +84,8 @@
 /*
 	* FIXED ISSUES
 
+	(dacc809)
+	- fix lexing/parsing of negative numerical literals
 
 	(ca3ae4b)
 	- better type inference/support for empty array literals

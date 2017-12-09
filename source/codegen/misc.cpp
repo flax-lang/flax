@@ -138,17 +138,17 @@ namespace cgn
 		else if(type->isDynamicArrayType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
-			arr = this->irb.CreateSetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
-			arr = this->irb.CreateSetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.CreateSetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
+			arr = this->irb.SetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
 
 			return arr;
 		}
 		else if(type->isArraySliceType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
-			arr = this->irb.CreateSetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
-			arr = this->irb.CreateSetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
+			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
 
 			return arr;
 		}
@@ -245,7 +245,7 @@ namespace cgn
 	{
 		auto r = this->enterGlobalInitFunction();
 
-		this->irb.CreateReturnVoid();
+		this->irb.ReturnVoid();
 
 		this->leaveGlobalInitFunction(r);
 	}

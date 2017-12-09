@@ -153,7 +153,7 @@ namespace sst
 			}
 			else
 			{
-				auto res = cs->irb.CreateAppropriateCast(value, target);
+				auto res = cs->irb.AppropriateCast(value, target);
 
 				if(!res)
 				{
@@ -247,7 +247,7 @@ namespace sst
 				}
 				else
 				{
-					return CGResult(cs->irb.CreateLogicalNot(val));
+					return CGResult(cs->irb.LogicalNot(val));
 				}
 			} break;
 
@@ -270,7 +270,7 @@ namespace sst
 				}
 				else
 				{
-					return CGResult(cs->irb.CreateNeg(val));
+					return CGResult(cs->irb.Negate(val));
 				}
 			} break;
 
@@ -282,13 +282,13 @@ namespace sst
 				}
 				else
 				{
-					return CGResult(cs->irb.CreateBitwiseNOT(val));
+					return CGResult(cs->irb.BitwiseNOT(val));
 				}
 			} break;
 
 			case Operator::Dereference: {
 				iceAssert(ty->isPointerType());
-				return CGResult(cs->irb.CreateLoad(val), val, CGResult::VK::LValue);
+				return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
 			} break;
 
 			case Operator::AddressOf: {
@@ -347,12 +347,12 @@ namespace cgn
 			{
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(lv, rv));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(lv, rv));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(lv, rv));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(lv, rv));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(lv, rv));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(lv, rv));
+					case Operator::CompareEq:			return CGResult(this->irb.ICmpEQ(lv, rv));
+					case Operator::CompareNotEq:		return CGResult(this->irb.ICmpNEQ(lv, rv));
+					case Operator::CompareGreater:		return CGResult(this->irb.ICmpGT(lv, rv));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.ICmpGEQ(lv, rv));
+					case Operator::CompareLess:			return CGResult(this->irb.ICmpLT(lv, rv));
+					case Operator::CompareLessEq:		return CGResult(this->irb.ICmpLEQ(lv, rv));
 					default: error("no");
 				}
 			}
@@ -360,12 +360,12 @@ namespace cgn
 			{
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(lv, rv));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(lv, rv));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(lv, rv));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(lv, rv));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(lv, rv));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(lv, rv));
+					case Operator::CompareEq:			return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
+					case Operator::CompareNotEq:		return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
+					case Operator::CompareGreater:		return CGResult(this->irb.FCmpGT_ORD(lv, rv));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
+					case Operator::CompareLess:			return CGResult(this->irb.FCmpLT_ORD(lv, rv));
+					case Operator::CompareLessEq:		return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
 					default: error("no");
 				}
 			}
@@ -378,12 +378,12 @@ namespace cgn
 				{
 					switch(op)
 					{
-						case Operator::CompareEq:			return CGResult(this->irb.CreateFCmpEQ_ORD(lr.value, rr.value));
-						case Operator::CompareNotEq:		return CGResult(this->irb.CreateFCmpNEQ_ORD(lr.value, rr.value));
-						case Operator::CompareGreater:		return CGResult(this->irb.CreateFCmpGT_ORD(lr.value, rr.value));
-						case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateFCmpGEQ_ORD(lr.value, rr.value));
-						case Operator::CompareLess:			return CGResult(this->irb.CreateFCmpLT_ORD(lr.value, rr.value));
-						case Operator::CompareLessEq:		return CGResult(this->irb.CreateFCmpLEQ_ORD(lr.value, rr.value));
+						case Operator::CompareEq:			return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
+						case Operator::CompareNotEq:		return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
+						case Operator::CompareGreater:		return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
+						case Operator::CompareGreaterEq:	return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
+						case Operator::CompareLess:			return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
+						case Operator::CompareLessEq:		return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
 						default: error("no");
 					}
 				}
@@ -391,12 +391,12 @@ namespace cgn
 				{
 					switch(op)
 					{
-						case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(lr.value, rr.value));
-						case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(lr.value, rr.value));
-						case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(lr.value, rr.value));
-						case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(lr.value, rr.value));
-						case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(lr.value, rr.value));
-						case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(lr.value, rr.value));
+						case Operator::CompareEq:			return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
+						case Operator::CompareNotEq:		return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
+						case Operator::CompareGreater:		return CGResult(this->irb.ICmpGT(lr.value, rr.value));
+						case Operator::CompareGreaterEq:	return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
+						case Operator::CompareLess:			return CGResult(this->irb.ICmpLT(lr.value, rr.value));
+						case Operator::CompareLessEq:		return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
 						default: error("no");
 					}
 				}
@@ -404,34 +404,34 @@ namespace cgn
 			else if(lt->isStringType() && rt->isStringType())
 			{
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
-				fir::Value* res = this->irb.CreateCall2(cmpfn, lv, rv);
+				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(res, zero));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(res, zero));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(res, zero));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(res, zero));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(res, zero));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(res, zero));
+					case Operator::CompareEq:			return CGResult(this->irb.ICmpEQ(res, zero));
+					case Operator::CompareNotEq:		return CGResult(this->irb.ICmpNEQ(res, zero));
+					case Operator::CompareGreater:		return CGResult(this->irb.ICmpGT(res, zero));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.ICmpGEQ(res, zero));
+					case Operator::CompareLess:			return CGResult(this->irb.ICmpLT(res, zero));
+					case Operator::CompareLessEq:		return CGResult(this->irb.ICmpLEQ(res, zero));
 					default: error("no");
 				}
 			}
 			else if(lt->isEnumType() && lt == rt)
 			{
-				auto li = this->irb.CreateGetEnumCaseIndex(lv);
-				auto ri = this->irb.CreateGetEnumCaseIndex(rv);
+				auto li = this->irb.GetEnumCaseIndex(lv);
+				auto ri = this->irb.GetEnumCaseIndex(rv);
 
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(li, ri));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(li, ri));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(li, ri));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(li, ri));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(li, ri));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(li, ri));
+					case Operator::CompareEq:			return CGResult(this->irb.ICmpEQ(li, ri));
+					case Operator::CompareNotEq:		return CGResult(this->irb.ICmpNEQ(li, ri));
+					case Operator::CompareGreater:		return CGResult(this->irb.ICmpGT(li, ri));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.ICmpGEQ(li, ri));
+					case Operator::CompareLess:			return CGResult(this->irb.ICmpLT(li, ri));
+					case Operator::CompareLessEq:		return CGResult(this->irb.ICmpLEQ(li, ri));
 					default: error("no");
 				}
 			}
@@ -439,18 +439,18 @@ namespace cgn
 			{
 				//! use opf when we have operator overloads
 				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt->toDynamicArrayType(), 0);
-				fir::Value* res = this->irb.CreateCall2(cmpfn, lv, rv);
+				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
 				switch(op)
 				{
-					case Operator::CompareEq:			return CGResult(this->irb.CreateICmpEQ(res, zero));
-					case Operator::CompareNotEq:		return CGResult(this->irb.CreateICmpNEQ(res, zero));
-					case Operator::CompareGreater:		return CGResult(this->irb.CreateICmpGT(res, zero));
-					case Operator::CompareGreaterEq:	return CGResult(this->irb.CreateICmpGEQ(res, zero));
-					case Operator::CompareLess:			return CGResult(this->irb.CreateICmpLT(res, zero));
-					case Operator::CompareLessEq:		return CGResult(this->irb.CreateICmpLEQ(res, zero));
+					case Operator::CompareEq:			return CGResult(this->irb.ICmpEQ(res, zero));
+					case Operator::CompareNotEq:		return CGResult(this->irb.ICmpNEQ(res, zero));
+					case Operator::CompareGreater:		return CGResult(this->irb.ICmpGT(res, zero));
+					case Operator::CompareGreaterEq:	return CGResult(this->irb.ICmpGEQ(res, zero));
+					case Operator::CompareLess:			return CGResult(this->irb.ICmpLT(res, zero));
+					case Operator::CompareLessEq:		return CGResult(this->irb.ICmpLEQ(res, zero));
 					default: error("no");
 				}
 			}
@@ -465,7 +465,7 @@ namespace cgn
 			{
 				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
 
-				return CGResult(this->irb.CreateBinaryOp(op, lr.value, rr.value));
+				return CGResult(this->irb.BinaryOp(op, lr.value, rr.value));
 			}
 			else if((lt->isPointerType() && (rt->isIntegerType() || rt->isConstantNumberType()))
 				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
@@ -476,7 +476,7 @@ namespace cgn
 				iceAssert(ofs->getType()->isIntegerType());
 
 				auto ptr = (lt->isPointerType() ? lv : rv);
-				ptr = this->irb.CreatePointerAdd(ptr, ofs);
+				ptr = this->irb.PointerAdd(ptr, ofs);
 
 				return CGResult(ptr);
 			}
@@ -500,7 +500,7 @@ namespace cgn
 
 
 				auto appfn = cgn::glue::string::getAppendFunction(this);
-				auto res = this->irb.CreateCall2(appfn, lv, rv);
+				auto res = this->irb.Call(appfn, lv, rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
@@ -528,7 +528,7 @@ namespace cgn
 
 
 				auto appfn = cgn::glue::string::getCharAppendFunction(this);
-				auto res = this->irb.CreateCall2(appfn, lv, rv);
+				auto res = this->irb.Call(appfn, lv, rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
@@ -542,7 +542,7 @@ namespace cgn
 				// ok, do the append
 				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
-				fir::Value* res = this->irb.CreateCall2(maketwof, lv, rv);
+				fir::Value* res = this->irb.Call(maketwof, lv, rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);

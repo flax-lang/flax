@@ -144,32 +144,32 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			// set the refcount to -1
-			cs->irb.CreateStore(fir::ConstantInt::getInt64(-1), cs->irb.CreateConstGEP2(array, 0, 0));
+			cs->irb.Store(fir::ConstantInt::getInt64(-1), cs->irb.ConstGEP2(array, 0, 0));
 
 			// ok -- basically unroll the loop, except there's no loop -- so we're just...
 			// doing a thing.
 			for(size_t i = 0; i < vals.size(); i++)
 			{
 				// offset by 1
-				fir::Value* ptr = cs->irb.CreateConstGEP2(array, 0, i + 1);
-				cs->irb.CreateStore(vals[i], ptr);
+				fir::Value* ptr = cs->irb.ConstGEP2(array, 0, i + 1);
+				cs->irb.Store(vals[i], ptr);
 			}
 
-			cs->irb.CreateReturnVoid();
+			cs->irb.ReturnVoid();
 			cs->irb.setCurrentBlock(restore);
 
 			// ok, call the function
-			cs->irb.CreateCall0(func);
+			cs->irb.Call(func);
 		}
 
 		// return it
 		{
-			auto aptr = cs->irb.CreateConstGEP2(array, 0, 1);
+			auto aptr = cs->irb.ConstGEP2(array, 0, 1);
 
 			auto aa = cs->irb.CreateValue(darty);
-			aa = cs->irb.CreateSetDynamicArrayData(aa, aptr);
-			aa = cs->irb.CreateSetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			aa = cs->irb.CreateSetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
+			aa = cs->irb.SetDynamicArrayData(aa, aptr);
+			aa = cs->irb.SetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
+			aa = cs->irb.SetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
 
 			aa->makeImmutable();
 			return CGResult(aa, 0, CGResult::VK::LitRValue);
@@ -204,7 +204,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				i, ty, vr.value->getType());
 		}
 
-		tup = cs->irb.CreateInsertValue(tup, { i }, vr.value);
+		tup = cs->irb.InsertValue(tup, { i }, vr.value);
 	}
 
 	return CGResult(tup, 0, CGResult::VK::LitRValue);

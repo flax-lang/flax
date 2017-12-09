@@ -191,6 +191,70 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 
 
+
+
+
+
+
+
+
+sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto ret = new sst::ForeachLoop(this->loc);
+
+	auto n = fs->getAnonymousScopeName();
+
+	// ret->generatedScopeName = n;
+	// ret->scope = fs->getCurrentScope();
+
+	// fs->pushTree(n);
+	// defer(fs->popTree());
+
+	// fs->enterBreakableBody();
+	// {
+	// 	ret->body = dcast(sst::Block, this->body->typecheck(fs));
+	// 	iceAssert(ret->body);
+	// }
+	// fs->leaveBreakableBody();
+
+	// if(this->cond)
+	// {
+	// 	ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
+	// 	if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
+	// 		error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
+	// }
+
+	return ret;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
