@@ -42,7 +42,17 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 
 	auto fake = new sst::VarDefn(this->varloc);
+	fake->id = Identifier(this->var, IdKind::Name);
+	fake->id.scope = fs->getCurrentScope();
 
+	{
+		fs->stree->addDefinition(this->var, fake);
+	}
+
+	fake->type = elmty;
+	fake->immutable = true;
+
+	ret->var = fake;
 
 	fs->enterBreakableBody();
 	{

@@ -97,7 +97,7 @@ namespace parser
 				c.body = parseBracedBlock(st);
 				cases.push_back(c);
 			}
-			else if(st.frontAfterWS() == TT::LBrace)
+			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)
 			{
 				// ok, parse an else
 				elseCase = parseBracedBlock(st);
@@ -211,9 +211,6 @@ namespace parser
 			expectedAfter(st.loc(), "'(', '[', or identifier", "'for'", st.front().str());
 
 		st.skipWS();
-		if(st.front() != TT::LBrace)
-			expectedAfter(st.loc(), "'{'", "for loop", st.front().str());
-
 		ret->body = parseBracedBlock(st);
 		return ret;
 	}
@@ -240,9 +237,6 @@ namespace parser
 			cond = parseExpr(st);
 			st.skipWS();
 
-			if(st.front() != TT::LBrace)
-				expectedAfter(st.loc(), "'{'", "'while'", st.front().str());
-
 			body = parseBracedBlock(st);
 		}
 		else
@@ -250,8 +244,6 @@ namespace parser
 			isdo = true;
 
 			st.eat();
-			if(st.front() != TT::LBrace)
-				expectedAfter(st.loc(), "'{'", "'do'", st.front().str());
 
 			body = parseBracedBlock(st);
 

@@ -22,10 +22,10 @@ namespace fir
 
 		Value* Negate(Value* a, std::string vname = "");
 		Value* Add(Value* a, Value* b, std::string vname = "");
-		Value* Sub(Value* a, Value* b, std::string vname = "");
-		Value* Mul(Value* a, Value* b, std::string vname = "");
-		Value* Div(Value* a, Value* b, std::string vname = "");
-		Value* Mod(Value* a, Value* b, std::string vname = "");
+		Value* Subtract(Value* a, Value* b, std::string vname = "");
+		Value* Multiply(Value* a, Value* b, std::string vname = "");
+		Value* Divide(Value* a, Value* b, std::string vname = "");
+		Value* Modulo(Value* a, Value* b, std::string vname = "");
 		Value* ICmpEQ(Value* a, Value* b, std::string vname = "");
 		Value* ICmpNEQ(Value* a, Value* b, std::string vname = "");
 		Value* ICmpGT(Value* a, Value* b, std::string vname = "");
