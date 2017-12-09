@@ -13,5 +13,22 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this->loc);
 	defer(cs->popLoc());
 
-	return CGResult(0);
+	auto start = cs->oneWayAutocast(this->start->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+	iceAssert(start);
+
+	auto end = cs->oneWayAutocast(this->end->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+	iceAssert(end);
+
+	auto step = this->step ?
+		cs->oneWayAutocast(this->step->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value :
+		fir::ConstantInt::getInt64(1);
+
+	iceAssert(step);
+
+	auto ret = cs->irb.CreateValue(fir::RangeType::get());
+	ret = cs->irb.SetRangeLower(ret, start);
+	ret = cs->irb.SetRangeUpper(ret, end);
+	ret = cs->irb.SetRangeStep(ret, step);
+
+	return CGResult(ret);
 }

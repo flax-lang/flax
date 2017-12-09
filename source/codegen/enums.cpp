@@ -96,8 +96,8 @@ CGResult sst::EnumDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ty = enr->type;
 
 	auto ret = cs->irb.CreateValue(ty);
-	ret = cs->irb.CreateSetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));
-	ret = cs->irb.CreateSetEnumCaseValue(ret, ecd->value);
+	ret = cs->irb.SetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));
+	ret = cs->irb.SetEnumCaseValue(ret, ecd->value);
 
 	return CGResult(ret);
 }

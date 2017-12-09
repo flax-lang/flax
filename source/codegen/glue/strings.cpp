@@ -46,19 +46,19 @@ namespace string
 			iceAssert(s1);
 
 			// get an empty string
-			fir::Value* lhslen = cs->irb.CreateGetStringLength(s1, "l1");
-			fir::Value* lhsbuf = cs->irb.CreateGetStringData(s1, "d1");
+			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
+			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
 
 
 			// space for null + refcount
 
-			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
+			fir::Value* malloclen = cs->irb.Add(lhslen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
-			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
+			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
 
 
 			#if DEBUG_STRING_ALLOCATION
@@ -66,34 +66,34 @@ namespace string
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
 				fir::Value* tmpstr = cs->module->createGlobalString("clone string: OLD :: (ptr: %p, len: %ld) | NEW :: (ptr: %p, len: %ld)\n");
-				cs->irb.CreateCall(printfn, { tmpstr, lhsbuf, lhslen, buf, lhslen });
+				cs->irb.Call(printfn, { tmpstr, lhsbuf, lhslen, buf, lhslen });
 			}
 			#endif
 
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, cs->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
-			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
+			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
 
 			// null terminator
-			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), offsetbuf);
+			cs->irb.Store(fir::ConstantInt::getInt8(0), offsetbuf);
 
 			// ok, now fix it
 
 			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
-			str = cs->irb.CreateSetStringData(str, buf);
-			str = cs->irb.CreateSetStringLength(str, lhslen);
-			cs->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+			str = cs->irb.SetStringData(str, buf);
+			str = cs->irb.SetStringLength(str, lhslen);
+			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
 
-			cs->irb.CreateReturn(str);
+			cs->irb.Return(str);
 
 			clonef = func;
 			cs->irb.setCurrentBlock(restore);
@@ -145,57 +145,57 @@ namespace string
 			iceAssert(s1);
 			iceAssert(s2);
 
-			fir::Value* lhslen = cs->irb.CreateGetStringLength(s1, "l1");
-			fir::Value* rhslen = cs->irb.CreateGetStringLength(s2, "l2");
+			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
+			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
 
-			fir::Value* lhsbuf = cs->irb.CreateGetStringData(s1, "d1");
-			fir::Value* rhsbuf = cs->irb.CreateGetStringData(s2, "d2");
+			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
 
 			// ok. combine the lengths
-			fir::Value* newlen = cs->irb.CreateAdd(lhslen, rhslen);
+			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
 
 			// space for null + refcount
-			fir::Value* malloclen = cs->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
+			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
-			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
+			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, cs->irb.CreateIntSizeCast(lhslen, fir::Type::getInt64()),
+			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
-			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
-			cs->irb.CreateCall(memcpyf, { offsetbuf, rhsbuf, cs->irb.CreateIntSizeCast(rhslen, fir::Type::getInt64()),
+			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
+			cs->irb.Call(memcpyf, { offsetbuf, rhsbuf, cs->irb.IntSizeCast(rhslen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			// null terminator
-			fir::Value* nt = cs->irb.CreateGetPointer(offsetbuf, rhslen);
-			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+			fir::Value* nt = cs->irb.GetPointer(offsetbuf, rhslen);
+			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
 
 			#if DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
 				fir::Value* tmpstr = cs->module->createGlobalString("append string: malloc(%d): (ptr: %p)\n");
-				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf });
+				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
 			}
 			#endif
 
 			// ok, now fix it
 			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
-			str = cs->irb.CreateSetStringData(str, buf);
-			str = cs->irb.CreateSetStringLength(str, newlen);
-			cs->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+			str = cs->irb.SetStringData(str, buf);
+			str = cs->irb.SetStringLength(str, newlen);
+			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
-			cs->irb.CreateReturn(str);
+			cs->irb.Return(str);
 
 			appendf = func;
 			cs->irb.setCurrentBlock(restore);
@@ -240,43 +240,43 @@ namespace string
 			iceAssert(s1);
 			iceAssert(s2);
 
-			fir::Value* lhsbuf = cs->irb.CreateGetStringData(s1, "d1");
-			fir::Value* lhslen = cs->irb.CreateGetStringLength(s1, "l1");
+			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
 
 
 			// space for null (1) + refcount (i64size) + the char (another 1)
-			fir::Value* malloclen = cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(2 + REFCOUNT_SIZE));
+			fir::Value* malloclen = cs->irb.Add(lhslen, fir::ConstantInt::getInt64(2 + REFCOUNT_SIZE));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
-			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
+			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
 
 			// move it forward (skip the refcount)
-			buf = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.CreateCall(memcpyf, { buf, lhsbuf, lhslen,
+			cs->irb.Call(memcpyf, { buf, lhsbuf, lhslen,
 				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
-			fir::Value* offsetbuf = cs->irb.CreatePointerAdd(buf, lhslen);
+			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
 
 			// store the char.
-			fir::Value* ch = cs->irb.CreateBitcast(s2, fir::Type::getInt8());
-			cs->irb.CreateStore(ch, offsetbuf);
+			fir::Value* ch = cs->irb.Bitcast(s2, fir::Type::getInt8());
+			cs->irb.Store(ch, offsetbuf);
 
 			// null terminator
-			fir::Value* nt = cs->irb.CreatePointerAdd(offsetbuf, fir::ConstantInt::getInt64(1));
-			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), nt);
+			fir::Value* nt = cs->irb.PointerAdd(offsetbuf, fir::ConstantInt::getInt64(1));
+			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
 
 			#if DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
 				fir::Value* tmpstr = cs->module->createGlobalString("append char: malloc(%d): (ptr: %p)\n");
-				cs->irb.CreateCall(printfn, { tmpstr, malloclen, buf });
+				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
 			}
 			#endif
 
@@ -285,11 +285,11 @@ namespace string
 			// get an empty string
 			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
-			str = cs->irb.CreateSetStringData(str, buf);
-			str = cs->irb.CreateSetStringLength(str, cs->irb.CreateAdd(lhslen, fir::ConstantInt::getInt64(1)));
-			cs->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+			str = cs->irb.SetStringData(str, buf);
+			str = cs->irb.SetStringLength(str, cs->irb.Add(lhslen, fir::ConstantInt::getInt64(1)));
+			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
-			cs->irb.CreateReturn(str);
+			cs->irb.Return(str);
 
 			appendf = func;
 			cs->irb.setCurrentBlock(restore);
@@ -337,57 +337,57 @@ namespace string
 			*/
 
 			{
-				fir::Value* str1p = cs->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
-				cs->irb.CreateStore(cs->irb.CreateGetStringData(s1, "s1"), str1p);
+				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				cs->irb.Store(cs->irb.GetStringData(s1, "s1"), str1p);
 
-				fir::Value* str2p = cs->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
-				cs->irb.CreateStore(cs->irb.CreateGetStringData(s2, "s2"), str2p);
+				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				cs->irb.Store(cs->irb.GetStringData(s2, "s2"), str2p);
 
 
 				fir::IRBlock* loopcond = cs->irb.addNewBlockInFunction("cond1", func);
 				fir::IRBlock* loopincr = cs->irb.addNewBlockInFunction("loopincr", func);
 				fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-				cs->irb.CreateUnCondBranch(loopcond);
+				cs->irb.UnCondBranch(loopcond);
 				cs->irb.setCurrentBlock(loopcond);
 				{
 					fir::IRBlock* cond2 = cs->irb.addNewBlockInFunction("cond2", func);
 
-					fir::Value* str1 = cs->irb.CreateLoad(str1p);
-					fir::Value* str2 = cs->irb.CreateLoad(str2p);
+					fir::Value* str1 = cs->irb.Load(str1p);
+					fir::Value* str2 = cs->irb.Load(str2p);
 
 					// make sure ptr1 is not null
-					fir::Value* cnd = cs->irb.CreateICmpNEQ(cs->irb.CreateLoad(str1), fir::ConstantInt::getInt8(0));
-					cs->irb.CreateCondBranch(cnd, cond2, merge);
+					fir::Value* cnd = cs->irb.ICmpNEQ(cs->irb.Load(str1), fir::ConstantInt::getInt8(0));
+					cs->irb.CondBranch(cnd, cond2, merge);
 
 					cs->irb.setCurrentBlock(cond2);
 					{
 						// check that they are equal
-						fir::Value* iseq = cs->irb.CreateICmpEQ(cs->irb.CreateLoad(str1), cs->irb.CreateLoad(str2));
-						cs->irb.CreateCondBranch(iseq, loopincr, merge);
+						fir::Value* iseq = cs->irb.ICmpEQ(cs->irb.Load(str1), cs->irb.Load(str2));
+						cs->irb.CondBranch(iseq, loopincr, merge);
 					}
 
 
 					cs->irb.setCurrentBlock(loopincr);
 					{
 						// increment str1 and str2
-						fir::Value* v1 = cs->irb.CreatePointerAdd(str1, fir::ConstantInt::getInt64(1));
-						fir::Value* v2 = cs->irb.CreatePointerAdd(str2, fir::ConstantInt::getInt64(1));
+						fir::Value* v1 = cs->irb.PointerAdd(str1, fir::ConstantInt::getInt64(1));
+						fir::Value* v2 = cs->irb.PointerAdd(str2, fir::ConstantInt::getInt64(1));
 
-						cs->irb.CreateStore(v1, str1p);
-						cs->irb.CreateStore(v2, str2p);
+						cs->irb.Store(v1, str1p);
+						cs->irb.Store(v2, str2p);
 
-						cs->irb.CreateUnCondBranch(loopcond);
+						cs->irb.UnCondBranch(loopcond);
 					}
 				}
 
 				cs->irb.setCurrentBlock(merge);
-				fir::Value* ret = cs->irb.CreateSub(cs->irb.CreateLoad(cs->irb.CreateLoad(str1p)),
-					cs->irb.CreateLoad(cs->irb.CreateLoad(str2p)));
+				fir::Value* ret = cs->irb.Sub(cs->irb.Load(cs->irb.Load(str1p)),
+					cs->irb.Load(cs->irb.Load(str2p)));
 
-				ret = cs->irb.CreateIntSizeCast(ret, func->getReturnType());
+				ret = cs->irb.IntSizeCast(ret, func->getReturnType());
 
-				cs->irb.CreateReturn(ret);
+				cs->irb.Return(ret);
 			}
 
 			cmpf = func;
@@ -424,15 +424,15 @@ namespace string
 
 			// if ptr is 0, we exit early.
 			{
-				fir::Value* ptr = cs->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.CreateICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
+				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 
-				cs->irb.CreateCondBranch(cond, merge, getref);
+				cs->irb.CondBranch(cond, merge, getref);
 			}
 
 
 			cs->irb.setCurrentBlock(getref);
-			fir::Value* curRc = cs->irb.CreateGetStringRefCount(func->getArguments()[0]);
+			fir::Value* curRc = cs->irb.GetStringRefCount(func->getArguments()[0]);
 
 			// never increment the refcount if this is a string literal
 			// how do we know? the refcount was -1 to begin with.
@@ -440,26 +440,26 @@ namespace string
 			// check.
 			fir::IRBlock* doadd = cs->irb.addNewBlockInFunction("doref", func);
 			{
-				fir::Value* cond = cs->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CreateCondBranch(cond, merge, doadd);
+				fir::Value* cond = cs->irb.ICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				cs->irb.CondBranch(cond, merge, doadd);
 			}
 
 			cs->irb.setCurrentBlock(doadd);
-			fir::Value* newRc = cs->irb.CreateAdd(curRc, fir::ConstantInt::getInt64(1));
-			cs->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+			fir::Value* newRc = cs->irb.Add(curRc, fir::ConstantInt::getInt64(1));
+			cs->irb.SetStringRefCount(func->getArguments()[0], newRc);
 
 			#if DEBUG_STRING_REFCOUNTING
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
 
-				auto bufp = cs->irb.CreateGetStringData(func->getArguments()[0]);
-				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
+				auto bufp = cs->irb.GetStringData(func->getArguments()[0]);
+				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
 
-			cs->irb.CreateUnCondBranch(merge);
+			cs->irb.UnCondBranch(merge);
 			cs->irb.setCurrentBlock(merge);
-			cs->irb.CreateReturnVoid();
+			cs->irb.ReturnVoid();
 
 			cs->irb.setCurrentBlock(restore);
 
@@ -501,66 +501,66 @@ namespace string
 
 			cs->irb.setCurrentBlock(entry);
 			{
-				fir::Value* ptr = cs->irb.CreateGetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.CreateICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
+				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
 
-				cs->irb.CreateCondBranch(cond, merge, checkneg);
+				cs->irb.CondBranch(cond, merge, checkneg);
 			}
 
 
 			// needs to handle freeing the thing.
 			cs->irb.setCurrentBlock(checkneg);
-			fir::Value* curRc = cs->irb.CreateGetStringRefCount(func->getArguments()[0]);
+			fir::Value* curRc = cs->irb.GetStringRefCount(func->getArguments()[0]);
 
 			// check.
 			{
-				fir::Value* cond = cs->irb.CreateICmpLT(curRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CreateCondBranch(cond, merge, dotest);
+				fir::Value* cond = cs->irb.ICmpLT(curRc, fir::ConstantInt::getInt64(0));
+				cs->irb.CondBranch(cond, merge, dotest);
 			}
 
 
 			cs->irb.setCurrentBlock(dotest);
-			fir::Value* newRc = cs->irb.CreateSub(curRc, fir::ConstantInt::getInt64(1));
-			cs->irb.CreateSetStringRefCount(func->getArguments()[0], newRc);
+			fir::Value* newRc = cs->irb.Sub(curRc, fir::ConstantInt::getInt64(1));
+			cs->irb.SetStringRefCount(func->getArguments()[0], newRc);
 
 			#if DEBUG_STRING_REFCOUNTING
 			{
 				fir::Value* tmpstr = cs->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
 
 
-				auto bufp = cs->irb.CreateGetStringData(func->getArguments()[0]);
-				cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
+				auto bufp = cs->irb.GetStringData(func->getArguments()[0]);
+				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
 			}
 			#endif
 
 			{
-				fir::Value* cond = cs->irb.CreateICmpEQ(newRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CreateCondBranch(cond, dealloc, merge);
+				fir::Value* cond = cs->irb.ICmpEQ(newRc, fir::ConstantInt::getInt64(0));
+				cs->irb.CondBranch(cond, dealloc, merge);
 
 				cs->irb.setCurrentBlock(dealloc);
 
 				// call free on the buffer.
-				fir::Value* bufp = cs->irb.CreateGetStringData(func->getArguments()[0]);
+				fir::Value* bufp = cs->irb.GetStringData(func->getArguments()[0]);
 
 
 				#if DEBUG_STRING_ALLOCATION
 				{
 					fir::Value* tmpstr = cs->module->createGlobalString("free %p ('%s') (%d)\n");
-					cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
+					cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
 				}
 				#endif
 
 				fir::Function* freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 				iceAssert(freefn);
 
-				cs->irb.CreateCall1(freefn, cs->irb.CreatePointerSub(bufp, fir::ConstantInt::getInt64(REFCOUNT_SIZE)));
+				cs->irb.Call(freefn, cs->irb.PointerSub(bufp, fir::ConstantInt::getInt64(REFCOUNT_SIZE)));
 
-				// cs->irb.CreateSetStringData(func->getArguments()[0], fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
-				cs->irb.CreateUnCondBranch(merge);
+				// cs->irb.SetStringData(func->getArguments()[0], fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+				cs->irb.UnCondBranch(merge);
 			}
 
 			cs->irb.setCurrentBlock(merge);
-			cs->irb.CreateReturnVoid();
+			cs->irb.ReturnVoid();
 
 			cs->irb.setCurrentBlock(restore);
 
@@ -596,10 +596,10 @@ namespace string
 			fir::Value* arg1 = func->getArguments()[0];
 			fir::Value* arg2 = func->getArguments()[1];
 
-			fir::Value* len = cs->irb.CreateGetStringLength(arg1);
-			fir::Value* res = cs->irb.CreateICmpGEQ(arg2, len);
+			fir::Value* len = cs->irb.GetStringLength(arg1);
+			fir::Value* res = cs->irb.ICmpGEQ(arg2, len);
 
-			cs->irb.CreateCondBranch(res, failb, checkneg);
+			cs->irb.CondBranch(res, failb, checkneg);
 			cs->irb.setCurrentBlock(failb);
 			{
 				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
@@ -616,25 +616,25 @@ namespace string
 
 				fir::Value* tmpstr = cs->module->createGlobalString("w");
 				fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
-				fir::Value* posstr = cs->irb.CreateGetStringData(func->getArguments()[2]);
+				fir::Value* posstr = cs->irb.GetStringData(func->getArguments()[2]);
 
-				fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr, arg2, len, cs->irb.CreateSub(len, fir::ConstantInt::getInt64(1)) });
+				cs->irb.Call(fprintfn, { err, fmtstr, posstr, arg2, len, cs->irb.Sub(len, fir::ConstantInt::getInt64(1)) });
 
-				cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.CreateUnreachable();
+				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
+				cs->irb.Unreachable();
 			}
 
 			cs->irb.setCurrentBlock(checkneg);
 			{
-				fir::Value* res = cs->irb.CreateICmpLT(arg2, fir::ConstantInt::getInt64(0));
-				cs->irb.CreateCondBranch(res, failb, merge);
+				fir::Value* res = cs->irb.ICmpLT(arg2, fir::ConstantInt::getInt64(0));
+				cs->irb.CondBranch(res, failb, merge);
 			}
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				cs->irb.CreateReturnVoid();
+				cs->irb.ReturnVoid();
 			}
 
 			fn = func;
@@ -674,10 +674,10 @@ namespace string
 			fir::Value* arg1 = func->getArguments()[0];
 			fir::Value* arg2 = func->getArguments()[1];
 
-			fir::Value* rc = cs->irb.CreateGetStringRefCount(arg1);
-			fir::Value* res = cs->irb.CreateICmpLT(rc, fir::ConstantInt::getInt64(0));
+			fir::Value* rc = cs->irb.GetStringRefCount(arg1);
+			fir::Value* res = cs->irb.ICmpLT(rc, fir::ConstantInt::getInt64(0));
 
-			cs->irb.CreateCondBranch(res, failb, merge);
+			cs->irb.CondBranch(res, failb, merge);
 			cs->irb.setCurrentBlock(failb);
 			{
 				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
@@ -694,20 +694,20 @@ namespace string
 
 				fir::Value* tmpstr = cs->module->createGlobalString("w");
 				fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to write to immutable string literal '%s' at index '%zd'!\n");
-				fir::Value* posstr = cs->irb.CreateGetStringData(func->getArguments()[2]);
+				fir::Value* posstr = cs->irb.GetStringData(func->getArguments()[2]);
 
-				fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				fir::Value* dp = cs->irb.CreateGetStringData(arg1);
-				cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr, dp, arg2 });
+				fir::Value* dp = cs->irb.GetStringData(arg1);
+				cs->irb.Call(fprintfn, { err, fmtstr, posstr, dp, arg2 });
 
-				cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.CreateUnreachable();
+				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
+				cs->irb.Unreachable();
 			}
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				cs->irb.CreateReturnVoid();
+				cs->irb.ReturnVoid();
 			}
 
 			fn = func;
@@ -740,8 +740,8 @@ namespace string
 			fir::Value* _ptr = func->getArguments()[0];
 			iceAssert(_ptr);
 
-			fir::Value* ptrp = cs->irb.CreateStackAlloc(fir::Type::getInt8Ptr());
-			cs->irb.CreateStore(_ptr, ptrp);
+			fir::Value* ptrp = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+			cs->irb.Store(_ptr, ptrp);
 
 			/*
 
@@ -768,8 +768,8 @@ namespace string
 			auto i1 = fir::ConstantInt::getInt64(1);
 			auto c0 = fir::ConstantInt::getInt8(0);
 
-			fir::Value* lenp = cs->irb.CreateStackAlloc(fir::Type::getInt64());
-			cs->irb.CreateStore(i0, lenp);
+			fir::Value* lenp = cs->irb.StackAlloc(fir::Type::getInt64());
+			cs->irb.Store(i0, lenp);
 
 
 			fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
@@ -777,49 +777,49 @@ namespace string
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 
-			fir::Value* isnull = cs->irb.CreateICmpEQ(fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()), _ptr);
-			cs->irb.CreateCondBranch(isnull, merge, cond);
+			fir::Value* isnull = cs->irb.ICmpEQ(fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()), _ptr);
+			cs->irb.CondBranch(isnull, merge, cond);
 
 			cs->irb.setCurrentBlock(cond);
 			{
-				auto ch = cs->irb.CreateLoad(cs->irb.CreateLoad(ptrp));
-				auto isnotzero = cs->irb.CreateICmpNEQ(ch, c0);
+				auto ch = cs->irb.Load(cs->irb.Load(ptrp));
+				auto isnotzero = cs->irb.ICmpNEQ(ch, c0);
 
-				cs->irb.CreateCondBranch(isnotzero, body, merge);
+				cs->irb.CondBranch(isnotzero, body, merge);
 			}
 
 			cs->irb.setCurrentBlock(body);
 			{
 				// if statement
-				auto ch = cs->irb.CreateLoad(cs->irb.CreateLoad(ptrp));
+				auto ch = cs->irb.Load(cs->irb.Load(ptrp));
 
-				auto mask = cs->irb.CreateBitwiseAND(ch, fir::ConstantInt::getInt8(0xC0));
-				auto isch = cs->irb.CreateICmpNEQ(mask, fir::ConstantInt::getInt8(0x80));
+				auto mask = cs->irb.BitwiseAND(ch, fir::ConstantInt::getInt8(0xC0));
+				auto isch = cs->irb.ICmpNEQ(mask, fir::ConstantInt::getInt8(0x80));
 
 				fir::IRBlock* incr = cs->irb.addNewBlockInFunction("incr", func);
 				fir::IRBlock* skip = cs->irb.addNewBlockInFunction("skip", func);
 
-				cs->irb.CreateCondBranch(isch, incr, skip);
+				cs->irb.CondBranch(isch, incr, skip);
 				cs->irb.setCurrentBlock(incr);
 				{
-					cs->irb.CreateStore(cs->irb.CreateAdd(cs->irb.CreateLoad(lenp), i1), lenp);
+					cs->irb.Store(cs->irb.Add(cs->irb.Load(lenp), i1), lenp);
 
-					cs->irb.CreateUnCondBranch(skip);
+					cs->irb.UnCondBranch(skip);
 				}
 
 				cs->irb.setCurrentBlock(skip);
 				{
-					auto newptr = cs->irb.CreatePointerAdd(cs->irb.CreateLoad(ptrp), i1);
-					cs->irb.CreateStore(newptr, ptrp);
+					auto newptr = cs->irb.PointerAdd(cs->irb.Load(ptrp), i1);
+					cs->irb.Store(newptr, ptrp);
 
-					cs->irb.CreateUnCondBranch(cond);
+					cs->irb.UnCondBranch(cond);
 				}
 			}
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				auto len = cs->irb.CreateLoad(lenp);
-				cs->irb.CreateReturn(len);
+				auto len = cs->irb.Load(lenp);
+				cs->irb.Return(len);
 			}
 
 

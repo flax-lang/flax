@@ -123,6 +123,20 @@ namespace sst
 		std::string generatedScopeName;
 	};
 
+	struct VarDefn;
+	struct ForeachLoop : Stmt
+	{
+		ForeachLoop(const Location& l) : Stmt(l) { }
+		~ForeachLoop() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		VarDefn* var = 0;
+		Expr* array = 0;
+
+		Block* body = 0;
+	};
+
 
 	struct BreakStmt : Stmt
 	{

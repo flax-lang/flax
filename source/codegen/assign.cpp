@@ -38,7 +38,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.CreateCall3(checkf, so->cgSubscriptee, so->cgIndex, locstr);
+		cs->irb.Call(checkf, so->cgSubscriptee, so->cgIndex, locstr);
 	}
 
 
@@ -67,9 +67,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.CreateCall2(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr.value, rr.value);
 
-				cs->irb.CreateStore(res, lr.pointer);
+				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);
 			}
 			else if(lt->isDynamicArrayType() && lt->getArrayElementType() == rt)
@@ -82,9 +82,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.CreateCall2(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr.value, rr.value);
 
-				cs->irb.CreateStore(res, lr.pointer);
+				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);
 			}
 		}
@@ -123,7 +123,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		cs->irb.CreateStore(rr.value, lr.pointer);
+		cs->irb.Store(rr.value, lr.pointer);
 	}
 
 	return CGResult(0);

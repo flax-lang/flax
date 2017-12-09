@@ -44,15 +44,15 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(checkf);
 
 		fir::Value* max = 0;
-		if(lt->isDynamicArrayType())	max = cs->irb.CreateGetDynamicArrayLength(lr.value);
-		else if(lt->isArraySliceType())	max = cs->irb.CreateGetArraySliceLength(lr.value);
+		if(lt->isDynamicArrayType())	max = cs->irb.GetDynamicArrayLength(lr.value);
+		else if(lt->isArraySliceType())	max = cs->irb.GetArraySliceLength(lr.value);
 		else if(lt->isArrayType())		max = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
 
 		auto ind = index;
 		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.CreateCall3(checkf, max, ind, locstr);
+		cs->irb.Call(checkf, max, ind, locstr);
 
 		// ok.
 		if(lt->isArrayType())
@@ -60,16 +60,16 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(lr.pointer);
 
 			// do a manual thing, return here immediately.
-			auto ret = cs->irb.CreateGEP2(lr.pointer, fir::ConstantInt::getInt64(0), ind);
-			return CGResult(cs->irb.CreateLoad(ret), ret, CGResult::VK::LValue);
+			auto ret = cs->irb.GEP2(lr.pointer, fir::ConstantInt::getInt64(0), ind);
+			return CGResult(cs->irb.Load(ret), ret, CGResult::VK::LValue);
 		}
 		else if(lt->isDynamicArrayType())
 		{
-			data = cs->irb.CreateGetDynamicArrayData(lr.value);
+			data = cs->irb.GetDynamicArrayData(lr.value);
 		}
 		else if(lt->isArraySliceType())
 		{
-			data = cs->irb.CreateGetArraySliceData(lr.value);
+			data = cs->irb.GetArraySliceData(lr.value);
 		}
 
 		if(lr.pointer && lr.pointer->isImmutable())
@@ -84,8 +84,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.CreateCall3(checkf, lr.value, index, locstr);
-		data = cs->irb.CreateGetStringData(lr.value);
+		cs->irb.Call(checkf, lr.value, index, locstr);
+		data = cs->irb.GetStringData(lr.value);
 	}
 	else if(lt->isPointerType())
 	{
@@ -98,8 +98,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	// ok, do it
-	fir::Value* ptr = cs->irb.CreateGetPointer(data, index);
-	fir::Value* val = cs->irb.CreateLoad(ptr);
+	fir::Value* ptr = cs->irb.GetPointer(data, index);
+	fir::Value* val = cs->irb.Load(ptr);
 
 	return CGResult(val, ptr, CGResult::VK::LValue);
 }

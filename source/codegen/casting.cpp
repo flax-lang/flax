@@ -139,27 +139,27 @@ namespace cgn
 		if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
 			&& target->getBitWidth() >= fromType->getBitWidth())
 		{
-			return CGResult(this->irb.CreateIntSizeCast(from.value, target));
+			return CGResult(this->irb.IntSizeCast(from.value, target));
 		}
 		else if(fromType->isPointerType() && target->isBoolType())
 		{
 			//* support implicit casting for null checks
-			return CGResult(this->irb.CreateICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
+			return CGResult(this->irb.ICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
 		}
 		else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
 		{
-			return CGResult(this->irb.CreateFExtend(from.value, target));
+			return CGResult(this->irb.FExtend(from.value, target));
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			return CGResult(this->irb.CreateGetStringData(from.value));
+			return CGResult(this->irb.GetStringData(from.value));
 		}
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
 			// ok, then
 			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType()));
-			ret = this->irb.CreateSetArraySliceData(ret, this->irb.CreateGetDynamicArrayData(from.value));
-			ret = this->irb.CreateSetArraySliceLength(ret, this->irb.CreateGetDynamicArrayLength(from.value));
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetDynamicArrayData(from.value));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetDynamicArrayLength(from.value));
 
 			return CGResult(ret);
 		}
@@ -201,11 +201,11 @@ namespace cgn
 			if(lt->getBitWidth() > rt->getBitWidth())
 			{
 				// cast rt to lt
-				return { lhs, CGResult(this->irb.CreateIntSizeCast(rhs.value, lt)) };
+				return { lhs, CGResult(this->irb.IntSizeCast(rhs.value, lt)) };
 			}
 			else if(lt->getBitWidth() < rt->getBitWidth())
 			{
-				return { CGResult(this->irb.CreateIntSizeCast(lhs.value, rt)), rhs };
+				return { CGResult(this->irb.IntSizeCast(lhs.value, rt)), rhs };
 			}
 			else
 			{
@@ -220,11 +220,11 @@ namespace cgn
 			if(lt->getBitWidth() > rt->getBitWidth())
 			{
 				// cast rt to lt
-				return { lhs, CGResult(this->irb.CreateFExtend(rhs.value, lt)) };
+				return { lhs, CGResult(this->irb.FExtend(rhs.value, lt)) };
 			}
 			else if(lt->getBitWidth() < rt->getBitWidth())
 			{
-				return { CGResult(this->irb.CreateFExtend(lhs.value, rt)), rhs };
+				return { CGResult(this->irb.FExtend(lhs.value, rt)), rhs };
 			}
 			else
 			{

@@ -140,6 +140,84 @@ namespace parser
 
 
 
+
+
+	static ast::ForTupleDecompLoop* parseForTupleLoop(State& st)
+	{
+		iceAssert(st.front() == TT::LParen);
+		auto ret = new ast::ForTupleDecompLoop(st.ploc());
+		ret->mappings = parseTupleDecomp(st);
+
+		if(st.front() != TT::Identifier || st.front().str() != "in")
+			expected(st.loc(), "'in' in for loop", st.front().str());
+
+		st.eat();
+
+		// get the array.
+		ret->array = parseExpr(st);
+		return ret;
+	}
+
+	static ast::ForArrayDecompLoop* parseForArrayLoop(State& st)
+	{
+		iceAssert(st.front() == TT::LSquare);
+		auto ret = new ast::ForArrayDecompLoop(st.ploc());
+		ret->mapping = parseArrayDecomp(st);
+
+		if(st.front() != TT::Identifier || st.front().str() != "in")
+			expected(st.loc(), "'in' in for loop", st.front().str());
+
+		st.eat();
+
+		// get the array.
+		ret->array = parseExpr(st);
+		return ret;
+	}
+
+	static ast::ForeachLoop* parseForeachLoop(State& st)
+	{
+		iceAssert(st.front() == TT::Identifier);
+		auto ret = new ast::ForeachLoop(st.ploc());
+
+		ret->var = st.eat().str();
+
+		if(st.front() != TT::Identifier || st.front().str() != "in")
+			expected(st.loc(), "'in' in for loop", st.front().str());
+
+		st.eat();
+
+		ret->array = parseExpr(st);
+		return ret;
+	}
+
+
+	ast::Stmt* parseForLoop(State& st)
+	{
+		iceAssert(st.eat() == TT::For);
+		ast::ForLoop* ret = 0;
+
+		if(st.front() == TT::LParen)
+			ret = parseForTupleLoop(st);
+
+		else if(st.front() == TT::LSquare)
+			ret = parseForArrayLoop(st);
+
+		else if(st.front() == TT::Identifier)
+			ret = parseForeachLoop(st);
+
+		else
+			expectedAfter(st.loc(), "'(', '[', or identifier", "'for'", st.front().str());
+
+		st.skipWS();
+		if(st.front() != TT::LBrace)
+			expectedAfter(st.loc(), "'{'", "for loop", st.front().str());
+
+		ret->body = parseBracedBlock(st);
+		return ret;
+	}
+
+
+
 	ast::WhileLoop* parseWhileLoop(State& st)
 	{
 		// 1. do { }			-- body = block, cond = 0, doVariant = true

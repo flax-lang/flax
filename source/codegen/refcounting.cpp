@@ -80,7 +80,7 @@ namespace cgn
 
 				// then do the store
 				iceAssert(lhs.pointer);
-				this->irb.CreateStore(rv, lhs.pointer);
+				this->irb.Store(rv, lhs.pointer);
 			}
 
 			// then, remove the rhs from any refcounting table
@@ -111,7 +111,7 @@ namespace cgn
 				// do the store -- if not initial.
 				// avoids immut shenanigans
 				iceAssert(lhs.pointer);
-				this->irb.CreateStore(rv, lhs.pointer);
+				this->irb.Store(rv, lhs.pointer);
 			}
 		}
 	}
@@ -146,14 +146,14 @@ namespace cgn
 		{
 			if(cs->isRefCountedType(m))
 			{
-				fir::Value* mem = cs->irb.CreateExtractValue(value, { i });
+				fir::Value* mem = cs->irb.ExtractValue(value, { i });
 
 				if(incr)	cs->incrementRefCount(mem);
 				else		cs->decrementRefCount(mem);
 			}
 			else if(isStructuredAggregate(m))
 			{
-				fir::Value* mem = cs->irb.CreateExtractValue(value, { i });
+				fir::Value* mem = cs->irb.ExtractValue(value, { i });
 
 				if(m->isStructType())		doRefCountOfAggregateType(cs, m->toStructType(), mem, incr);
 				else if(m->isClassType())	doRefCountOfAggregateType(cs, m->toClassType(), mem, incr);
@@ -174,7 +174,7 @@ namespace cgn
 			if(incr) rf = glue::string::getRefCountIncrementFunction(cs);
 			else rf = glue::string::getRefCountDecrementFunction(cs);
 
-			cs->irb.CreateCall1(rf, val);
+			cs->irb.Call(rf, val);
 		}
 		else if(isStructuredAggregate(type))
 		{
@@ -191,14 +191,14 @@ namespace cgn
 			else rf = glue::array::getDecrementArrayRefCountFunction(cs, type->toDynamicArrayType());
 
 			iceAssert(rf);
-			cs->irb.CreateCall1(rf, val);
+			cs->irb.Call(rf, val);
 		}
 		else if(type->isArrayType())
 		{
 			// fir::ArrayType* at = type->toArrayType();
 			// for(size_t i = 0; i < at->getArraySize(); i++)
 			// {
-			// 	fir::Value* elm = cs->irb.CreateExtractValue(type, { i });
+			// 	fir::Value* elm = cs->irb.ExtractValue(type, { i });
 			// 	iceAssert(cs->isRefCountedType(elm->getType()));
 
 			// 	if(incr) cs->incrementRefCount(elm);
@@ -213,7 +213,7 @@ namespace cgn
 			// if(incr) rf = glue::Any::getRefCountIncrementFunction(cgi);
 			// else rf = glue::Any::getRefCountDecrementFunction(cgi);
 
-			// cgi->irb.CreateCall1(rf, type);
+			// cgi->irb.Call(rf, type);
 
 			error("any not supported");
 		}
