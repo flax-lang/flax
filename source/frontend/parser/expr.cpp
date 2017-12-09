@@ -699,6 +699,7 @@ namespace parser
 			ret->start = start;
 			ret->end = end;
 			ret->halfOpen = (op.type == TT::HalfOpenEllipsis);
+			ret->step = step;
 
 			return ret;
 		}

@@ -6,35 +6,17 @@ export supertiny
 
 import "libc"
 
-fn foo(a: int[:]) -> void
-{
-	var i = 0
-	while i < a.length
-	{
-		libc.printf("%d\n", a[i])
-		i += 1
-	}
-
-	if(a.ptr)
-	{
-		libc.printf("lmao\n")
-	}
-}
-
 @entry fn main()
 {
-	let range = 3...40 step 3
+	for it in 1...5 step 2 => libc.printf("%d ", it)
+	libc.printf("\n")
 
-	do {
-		let x = 40
-	}
+	for c in "HELLO" => libc.printf("%c", c)
+	libc.printf("\n")
 
-	let y = x
+	for it in [ 1, 1, 2, 3, 5, 8, 13 ] => libc.printf("%d ", it)
 
-
-
-	foo([ 2, 4, 6 ])
-	libc.printf("%d x %d = %d\n", - 318, 2, 318 * 2)
+	libc.printf("\b\b\n");
 }
 
 
