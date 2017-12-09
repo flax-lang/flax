@@ -31,7 +31,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(r.value || r.pointer)
 		{
 			if(!r.value)
-				defn = CGResult(cs->irb.CreateLoad(r.pointer), r.pointer);
+				defn = CGResult(cs->irb.Load(r.pointer), r.pointer);
 
 			else
 				defn = r;
@@ -130,7 +130,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else if(val->getType()->isStringType())
 		{
 			// auto-convert strings into char* when passing to va_args
-			val = cs->irb.CreateGetStringData(val);
+			val = cs->irb.GetStringData(val);
 		}
 
 		args.push_back(val);
@@ -141,18 +141,18 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(fir::Function* func = dcast(fir::Function, vf))
 	{
-		ret = cs->irb.CreateCall(func, args);
+		ret = cs->irb.Call(func, args);
 	}
 	else if(vf->getType()->isFunctionType())
 	{
-		ret = cs->irb.CreateCallToFunctionPointer(vf, ft, args);
+		ret = cs->irb.CallToFunctionPointer(vf, ft, args);
 	}
 	else
 	{
 		iceAssert(vf->getType()->getPointerElementType()->isFunctionType());
-		auto fptr = cs->irb.CreateLoad(vf);
+		auto fptr = cs->irb.Load(vf);
 
-		ret = cs->irb.CreateCallToFunctionPointer(fptr, ft, args);
+		ret = cs->irb.CallToFunctionPointer(fptr, ft, args);
 	}
 
 	// do the refcounting if we need to
@@ -203,7 +203,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		args.push_back(arg);
 	}
 
-	auto ret = cs->irb.CreateCallToFunctionPointer(fn, ft, args);
+	auto ret = cs->irb.CallToFunctionPointer(fn, ft, args);
 	return CGResult(ret);
 }
 

@@ -43,8 +43,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	// do a comparison
-	fir::Value* cmpRes = cs->irb.CreateICmpEQ(firstCond, fir::ConstantBool::get(true));
-	cs->irb.CreateCondBranch(cmpRes, trueblk, elseblk);
+	fir::Value* cmpRes = cs->irb.ICmpEQ(firstCond, fir::ConstantBool::get(true));
+	cs->irb.CondBranch(cmpRes, trueblk, elseblk);
 
 
 	// now, then.
@@ -54,7 +54,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		c.body->codegen(cs);
 
 		if(!cs->irb.getCurrentBlock()->isTerminated())
-			cs->irb.CreateUnCondBranch(mergeblk);
+			cs->irb.UnCondBranch(mergeblk);
 	}
 
 	// ok -- we don't really need to do it recursively, do we?
@@ -77,9 +77,9 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto trueblk = cs->irb.addNewBlockAfter("trueCaseR", cs->irb.getCurrentBlock());
 			auto falseblkr = cs->irb.addNewBlockAfter("falseCaseR", cs->irb.getCurrentBlock());
 
-			fir::Value* cmpr = cs->irb.CreateICmpEQ(cond, fir::ConstantBool::get(true));
+			fir::Value* cmpr = cs->irb.ICmpEQ(cond, fir::ConstantBool::get(true));
 
-			cs->irb.CreateCondBranch(cmpr, trueblk, falseblkr);
+			cs->irb.CondBranch(cmpr, trueblk, falseblkr);
 
 
 			cs->irb.setCurrentBlock(trueblk);
@@ -87,7 +87,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				elif.body->codegen(cs);
 
 				if(!cs->irb.getCurrentBlock()->isTerminated())
-					cs->irb.CreateUnCondBranch(mergeblk);
+					cs->irb.UnCondBranch(mergeblk);
 			}
 
 			cs->irb.setCurrentBlock(falseblkr);
@@ -97,7 +97,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				if(elif == remaining.back())
 				{
 					if(!cs->irb.getCurrentBlock()->isTerminated())
-						cs->irb.CreateUnCondBranch(mergeblk);
+						cs->irb.UnCondBranch(mergeblk);
 
 					break;
 				}
@@ -112,7 +112,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			this->elseCase->codegen(cs);
 
 		if(elseblk != mergeblk && !cs->irb.getCurrentBlock()->isTerminated())
-			cs->irb.CreateUnCondBranch(mergeblk);
+			cs->irb.UnCondBranch(mergeblk);
 	}
 
 	cs->irb.setCurrentBlock(mergeblk);
@@ -144,12 +144,12 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			error(c, "Non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType());
 
 		// ok
-		return cs->irb.CreateICmpEQ(cv.value, fir::ConstantBool::get(true));
+		return cs->irb.ICmpEQ(cv.value, fir::ConstantBool::get(true));
 	};
 
 	if(this->isDoVariant)
 	{
-		cs->irb.CreateUnCondBranch(loop);
+		cs->irb.UnCondBranch(loop);
 		cs->irb.setCurrentBlock(loop);
 
 		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, loop));
@@ -163,23 +163,23 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		{
 			iceAssert(this->cond);
 			auto condv = getcond(cs, this->cond);
-			cs->irb.CreateCondBranch(condv, loop, merge);
+			cs->irb.CondBranch(condv, loop, merge);
 		}
 		else
 		{
-			cs->irb.CreateUnCondBranch(merge);
+			cs->irb.UnCondBranch(merge);
 		}
 	}
 	else
 	{
 		auto check = cs->irb.addNewBlockAfter("check", cs->irb.getCurrentBlock());
-		cs->irb.CreateUnCondBranch(check);
+		cs->irb.UnCondBranch(check);
 		cs->irb.setCurrentBlock(check);
 
 		// ok
 		iceAssert(this->cond);
 		auto condv = getcond(cs, this->cond);
-		cs->irb.CreateCondBranch(condv, loop, merge);
+		cs->irb.CondBranch(condv, loop, merge);
 
 		cs->irb.setCurrentBlock(loop);
 
@@ -190,7 +190,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		cs->leaveBreakableBody();
 
 		// ok, do a jump back to the top
-		cs->irb.CreateUnCondBranch(check);
+		cs->irb.UnCondBranch(check);
 	}
 
 	cs->irb.setCurrentBlock(merge);
@@ -211,7 +211,7 @@ static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
 		cs->decrementRefCount(v);
 
 	for(auto p : cfp.refCountedPointers)
-		cs->decrementRefCount(cs->irb.CreateLoad(p));
+		cs->decrementRefCount(cs->irb.Load(p));
 }
 
 CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -224,7 +224,7 @@ CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// do the necessary
 	doBlockEndThings(cs, cs->getCurrentCFPoint());
-	cs->irb.CreateUnCondBranch(bp);
+	cs->irb.UnCondBranch(bp);
 
 	return CGResult(0, 0, CGResult::VK::Break);
 }
@@ -239,7 +239,7 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// do the necessary
 	doBlockEndThings(cs, cs->getCurrentCFPoint());
-	cs->irb.CreateUnCondBranch(cp);
+	cs->irb.UnCondBranch(cp);
 
 	return CGResult(0, 0, CGResult::VK::Continue);
 }
@@ -258,14 +258,14 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->incrementRefCount(v);
 
 		doBlockEndThings(cs, cs->getCurrentCFPoint());
-		cs->irb.CreateReturn(v);
+		cs->irb.Return(v);
 	}
 	else
 	{
 		doBlockEndThings(cs, cs->getCurrentCFPoint());
 
 		iceAssert(this->expectedType->isVoidType());
-		cs->irb.CreateReturnVoid();
+		cs->irb.ReturnVoid();
 	}
 
 	return CGResult(0, 0, CGResult::VK::Break);
@@ -308,7 +308,7 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->decrementRefCount(v);
 
 		for(auto p : cs->getRefCountedPointers())
-			cs->decrementRefCount(cs->irb.CreateLoad(p));
+			cs->decrementRefCount(cs->irb.Load(p));
 	}
 
 	return CGResult(0);

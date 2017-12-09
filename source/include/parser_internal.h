@@ -167,6 +167,9 @@ namespace parser
 	ast::Stmt* parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 
+	std::map<size_t, std::tuple<std::string, bool, Location>> parseArrayDecomp(State& st);
+	std::vector<ast::TupleDecompMapping> parseTupleDecomp(State& st);
+
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
 	ast::StructDefn* parseStruct(State& st);
@@ -180,6 +183,7 @@ namespace parser
 	ast::LitString* parseString(State& st, bool israw);
 	ast::LitArray* parseArray(State& st, bool israw);
 
+	ast::Stmt* parseForLoop(State& st);
 	ast::IfStmt* parseIfStmt(State& st);
 	ast::WhileLoop* parseWhileLoop(State& st);
 

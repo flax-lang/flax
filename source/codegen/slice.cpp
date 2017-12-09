@@ -31,24 +31,24 @@ static void _complainAboutSliceIndices(cgn::CodegenState* cs, std::string fmt, f
 		iceAssert(fmtstr);
 
 		auto pstr = fir::ConstantString::get(loc.toString());
-		fir::Value* posstr = cs->irb.CreateGetStringData(pstr);
-		fir::Value* err = cs->irb.CreateCall2(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
+		fir::Value* posstr = cs->irb.GetStringData(pstr);
+		fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-		cs->irb.CreateCall(fprintfn, { err, fmtstr, posstr, complaintValue });
+		cs->irb.Call(fprintfn, { err, fmtstr, posstr, complaintValue });
 	}
 	#else
 	{
 		fir::ConstantValue* fmtstr = cs->module->createGlobalString(fmt);
 
 		auto pstr = fir::ConstantString::get(loc.toString());
-		fir::Value* posstr = cs->irb.CreateGetStringData(pstr);
+		fir::Value* posstr = cs->irb.GetStringData(pstr);
 
-		cs->irb.CreateCall(cs->getOrDeclareLibCFunction("printf"), { fmtstr, posstr, complaintValue });
+		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { fmtstr, posstr, complaintValue });
 	}
 	#endif
 
-	cs->irb.CreateCall0(cs->getOrDeclareLibCFunction("abort"));
-	cs->irb.CreateUnreachable();
+	cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
+	cs->irb.Unreachable();
 }
 
 
@@ -68,7 +68,7 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType());
 
 
-	fir::Value* length = cs->irb.CreateSub(endIndex, beginIndex);
+	fir::Value* length = cs->irb.Sub(endIndex, beginIndex);
 
 	// do a check
 	auto neg_begin = cs->irb.addNewBlockInFunction("neg_begin", cs->irb.getCurrentFunction());
@@ -79,20 +79,20 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 	auto merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
 
 	{
-		fir::Value* neg = cs->irb.CreateICmpLT(beginIndex, fir::ConstantInt::getInt64(0));
-		cs->irb.CreateCondBranch(neg, neg_begin, check1);
+		fir::Value* neg = cs->irb.ICmpLT(beginIndex, fir::ConstantInt::getInt64(0));
+		cs->irb.CondBranch(neg, neg_begin, check1);
 	}
 
 	cs->irb.setCurrentBlock(check1);
 	{
-		fir::Value* neg = cs->irb.CreateICmpLT(endIndex, fir::ConstantInt::getInt64(0));
-		cs->irb.CreateCondBranch(neg, neg_end, check2);
+		fir::Value* neg = cs->irb.ICmpLT(endIndex, fir::ConstantInt::getInt64(0));
+		cs->irb.CondBranch(neg, neg_end, check2);
 	}
 
 	cs->irb.setCurrentBlock(check2);
 	{
-		fir::Value* neg = cs->irb.CreateICmpLT(length, fir::ConstantInt::getInt64(0));
-		cs->irb.CreateCondBranch(neg, neg_len, merge);
+		fir::Value* neg = cs->irb.ICmpLT(length, fir::ConstantInt::getInt64(0));
+		cs->irb.CondBranch(neg, neg_len, merge);
 	}
 
 
@@ -114,7 +114,7 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
 		iceAssert(checkf);
 
-		cs->irb.CreateCall3(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
+		cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
 	}
 }
 
@@ -132,11 +132,11 @@ static CGResult performSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fi
 
 	// FINALLY.
 	// increment ptr
-	fir::Value* newptr = cs->irb.CreatePointerAdd(data, beginIndex, "newptr");
-	fir::Value* newlen = cs->irb.CreateSub(endIndex, beginIndex, "newlen");
+	fir::Value* newptr = cs->irb.PointerAdd(data, beginIndex, "newptr");
+	fir::Value* newlen = cs->irb.Sub(endIndex, beginIndex, "newlen");
 
-	slice = cs->irb.CreateSetArraySliceData(slice, newptr);
-	slice = cs->irb.CreateSetArraySliceLength(slice, newlen);
+	slice = cs->irb.SetArraySliceData(slice, newptr);
+	slice = cs->irb.SetArraySliceLength(slice, newlen);
 
 	// if(cs->isRefCountedType(elmType) || array->getType()->isDynamicArrayType())
 	// {
@@ -144,7 +144,7 @@ static CGResult performSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fi
 	// 	fir::Function* incrfn = cgn::glue::array::getIncrementArrayRefCountFunction(cs, fir::DynamicArrayType::get(elmType));
 	// 	iceAssert(incrfn);
 
-	// 	cs->irb.CreateCall1(incrfn, array);
+	// 	cs->irb.Call(incrfn, array);
 	// }
 
 	// slices are rvalues
@@ -172,9 +172,9 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(ty == lhs->getType());
 
 	fir::Value* length = 0;
-	if(ty->isDynamicArrayType())	length = cs->irb.CreateGetDynamicArrayLength(lhs, "orig_len");
-	else if(ty->isArraySliceType())	length = cs->irb.CreateGetArraySliceLength(lhs, "orig_len");
-	else if(ty->isStringType())		length = cs->irb.CreateGetStringLength(lhs, "orig_len");
+	if(ty->isDynamicArrayType())	length = cs->irb.GetDynamicArrayLength(lhs, "orig_len");
+	else if(ty->isArraySliceType())	length = cs->irb.GetArraySliceLength(lhs, "orig_len");
+	else if(ty->isStringType())		length = cs->irb.GetStringLength(lhs, "orig_len");
 	else if(ty->isArrayType())		length = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize());
 	else							error(this, "unsupported type '%s'", ty);
 
@@ -197,24 +197,24 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		// make that shit happen
 
-		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.CreateGetDynamicArrayData(lhs),
+		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.GetDynamicArrayData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isArrayType())
 	{
 		auto lhsptr = res.pointer;
 
-		if(!lhsptr) lhsptr = cs->irb.CreateImmutStackAlloc(lhs->getType(), lhs);
+		if(!lhsptr) lhsptr = cs->irb.ImmutStackAlloc(lhs->getType(), lhs);
 		iceAssert(lhsptr);
 
-		fir::Value* data = cs->irb.CreateConstGEP2(lhsptr, 0, 0);
+		fir::Value* data = cs->irb.ConstGEP2(lhsptr, 0, 0);
 
 		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, data,
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isArraySliceType())
 	{
-		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.CreateGetArraySliceData(lhs),
+		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.GetArraySliceData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isStringType())
@@ -226,39 +226,39 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 		// ok
-		fir::Value* srcptr = cs->irb.CreatePointerAdd(cs->irb.CreateGetStringData(lhs), this->cgBegin);
-		fir::Value* newlen = cs->irb.CreateSub(this->cgEnd, this->cgBegin);
+		fir::Value* srcptr = cs->irb.PointerAdd(cs->irb.GetStringData(lhs), this->cgBegin);
+		fir::Value* newlen = cs->irb.Sub(this->cgEnd, this->cgBegin);
 
 		fir::Value* data = 0;
 		{
 			// space for null + refcount
 			size_t i64Size = 8;
-			fir::Value* malloclen = cs->irb.CreateAdd(newlen, fir::ConstantInt::getInt64(1 + i64Size));
+			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + i64Size));
 
 			// now malloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
-			fir::Value* buf = cs->irb.CreateCall1(mallocf, malloclen);
+			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
 
 			// move it forward (skip the refcount)
-			data = cs->irb.CreatePointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
+			data = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
 
 
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.CreateCall(memcpyf, { data, srcptr, cs->irb.CreateIntSizeCast(newlen, fir::Type::getInt64()),
+			cs->irb.Call(memcpyf, { data, srcptr, cs->irb.IntSizeCast(newlen, fir::Type::getInt64()),
 				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
 			// null terminator
-			cs->irb.CreateStore(fir::ConstantInt::getInt8(0), cs->irb.CreatePointerAdd(data, newlen));
+			cs->irb.Store(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(data, newlen));
 		}
 
 		// ok, now fix it
 		fir::Value* str = cs->irb.CreateValue(fir::StringType::get());
-		str = cs->irb.CreateSetStringData(str, data);
-		str = cs->irb.CreateSetStringLength(str, newlen);
+		str = cs->irb.SetStringData(str, data);
+		str = cs->irb.SetStringLength(str, newlen);
 
-		cs->irb.CreateSetStringRefCount(str, fir::ConstantInt::getInt64(1));
+		cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
 		cs->addRefCountedValue(str);
 		return CGResult(str);

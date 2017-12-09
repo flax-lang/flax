@@ -193,7 +193,7 @@ namespace backend
 				return createdTypes[id];
 
 			auto str = llvm::StructType::create(gc, id.mangled());
-			str->setBody({ i64type, i64type });
+			str->setBody({ i64type, i64type, i64type });
 
 			return createdTypes[id] = str;
 		}
@@ -2243,10 +2243,14 @@ namespace backend
 
 						case fir::OpKind::Range_GetLower:
 						case fir::OpKind::Range_GetUpper:
+						case fir::OpKind::Range_GetStep:
 						{
 							unsigned int pos = 0;
 							if(inst->opKind == fir::OpKind::Range_GetUpper)
 								pos = 1;
+
+							else if(inst->opKind == fir::OpKind::Range_GetStep)
+								pos = 2;
 
 							llvm::Value* a = getOperand(inst, 0);
 							iceAssert(a->getType()->isStructTy());
@@ -2260,10 +2264,14 @@ namespace backend
 
 						case fir::OpKind::Range_SetLower:
 						case fir::OpKind::Range_SetUpper:
+						case fir::OpKind::Range_SetStep:
 						{
 							unsigned int pos = 0;
 							if(inst->opKind == fir::OpKind::Range_SetUpper)
 								pos = 1;
+
+							else if(inst->opKind == fir::OpKind::Range_SetStep)
+								pos = 2;
 
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);

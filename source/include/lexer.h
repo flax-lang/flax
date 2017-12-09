@@ -58,8 +58,8 @@ namespace lexer
 		Namespace,				// 46
 		Override,				// 47
 		Protocol,				// 48
-		Operator,				// 49
-		LBrace,					// 50
+		Operator,				//* 49
+		LBrace,					//! 50
 		RBrace,					// 51
 		LParen,					// 52
 		RParen,					// 53

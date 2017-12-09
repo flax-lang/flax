@@ -63,7 +63,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(!refcounted)
 		{
 			alloc->makeNotImmutable();
-			cs->irb.CreateStore(val, alloc);
+			cs->irb.Store(val, alloc);
 
 			if(this->immutable)
 				alloc->makeImmutable();
@@ -103,11 +103,11 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->immutable)
 	{
 		iceAssert(val);
-		alloc = cs->irb.CreateImmutStackAlloc(this->type, val, this->id.name);
+		alloc = cs->irb.ImmutStackAlloc(this->type, val, this->id.name);
 	}
 	else
 	{
-		alloc = cs->irb.CreateStackAlloc(this->type, this->id.name);
+		alloc = cs->irb.StackAlloc(this->type, this->id.name);
 	}
 
 	iceAssert(alloc);
@@ -123,7 +123,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 
 		if(!this->immutable)
-			cs->irb.CreateStore(val, alloc);
+			cs->irb.Store(val, alloc);
 	}
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
@@ -189,7 +189,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		iceAssert(defn.pointer);
-		value = cs->irb.CreateLoad(defn.pointer);
+		value = cs->irb.Load(defn.pointer);
 	}
 
 	// make sure types match... should we bother?

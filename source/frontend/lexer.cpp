@@ -503,7 +503,6 @@ namespace lexer
 			else if(compare(tok.text, "break"))			tok.type = TokenType::Break;
 			else if(compare(tok.text, "continue"))		tok.type = TokenType::Continue;
 			else if(compare(tok.text, "do"))			tok.type = TokenType::Do;
-			// else if(compare(tok.text, "loop"))			tok.type = TokenType::Loop;
 			else if(compare(tok.text, "defer"))			tok.type = TokenType::Defer;
 			else if(compare(tok.text, "public"))		tok.type = TokenType::Public;
 			else if(compare(tok.text, "private"))		tok.type = TokenType::Private;

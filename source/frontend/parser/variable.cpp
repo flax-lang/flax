@@ -10,13 +10,13 @@ using namespace lexer;
 
 namespace parser
 {
-	static ArrayDecompVarDefn* parseArrayDecomp(State& st)
+	std::map<size_t, std::tuple<std::string, bool, Location>> parseArrayDecomp(State& st)
 	{
 		using TT = lexer::TokenType;
 		iceAssert(st.front() == TT::LSquare);
 		st.pop();
 
-		auto decomp = new ArrayDecompVarDefn(st.ploc());
+		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
 
 		size_t index = 0;
 		while(st.front() != TT::RSquare)
@@ -37,7 +37,7 @@ namespace parser
 			}
 			else if(st.front() == TT::Identifier)
 			{
-				decomp->mapping[index] = std::make_tuple(id, ref, st.loc());
+				mapping[index] = std::make_tuple(id, ref, st.loc());
 				index++;
 
 				st.eat();
@@ -61,7 +61,7 @@ namespace parser
 					iceAssert(st.front() == TT::Identifier);
 					id = st.front().str();
 
-					decomp->mapping[-1] = std::make_tuple(id, ref, st.loc());
+					mapping[-1] = std::make_tuple(id, ref, st.loc());
 					st.pop();
 				}
 				else if(st.front() != TT::RSquare)
@@ -84,8 +84,17 @@ namespace parser
 			}
 		}
 
-		iceAssert(st.front() == TT::RSquare);
-		st.eat();
+		iceAssert(st.eat() == TT::RSquare);
+		return mapping;
+	}
+
+	ArrayDecompVarDefn* parseArrayDecompDecl(State& st)
+	{
+		using TT = lexer::TokenType;
+		iceAssert(st.front() == TT::LSquare);
+
+		auto decomp = new ArrayDecompVarDefn(st.loc());
+		decomp->mapping = parseArrayDecomp(st);
 
 		if(st.front() != TT::Equal)
 			expected(st, "'=' for assignment to decomposition", st.front().str());
@@ -95,6 +104,52 @@ namespace parser
 
 		return decomp;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+	std::vector<ast::TupleDecompMapping> parseTupleDecomp(State& st)
+	{
+		error("unsupported");
+	}
+
+	static ast::TupleDecompVarDefn* parseTupleDecompDecl(State& st)
+	{
+		using TT = lexer::TokenType;
+		iceAssert(st.front() == TT::LParen);
+
+		auto decomp = new TupleDecompVarDefn(st.loc());
+		decomp->mappings = parseTupleDecomp(st);
+
+		if(st.front() != TT::Equal)
+			expected(st, "'=' for assignment to decomposition", st.front().str());
+
+		st.pop();
+		decomp->initialiser = parseExpr(st);
+
+		return decomp;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	Stmt* parseVariable(State& st)
@@ -107,12 +162,14 @@ namespace parser
 		bool isImmut = (st.eat() == TT::Val);
 		if(st.front() == TT::LParen)
 		{
-			error(st, "not supported");
+			auto ret = parseTupleDecompDecl(st);
+			ret->immut = isImmut;
+
+			return ret;
 		}
 		else if(st.front() == TT::LSquare)
 		{
-			st.pop();
-			auto ret = parseArrayDecomp(st);
+			auto ret = parseArrayDecompDecl(st);
 			ret->immut = isImmut;
 
 			return ret;

@@ -69,7 +69,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// that all paths return the correct type.
 
 	if(this->needReturnVoid)
-		cs->irb.CreateReturnVoid();
+		cs->irb.ReturnVoid();
 
 	if(this->parentTypeForMethod)
 		cs->leaveMethodBody();
