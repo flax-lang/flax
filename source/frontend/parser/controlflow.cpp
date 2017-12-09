@@ -179,6 +179,7 @@ namespace parser
 		iceAssert(st.front() == TT::Identifier);
 		auto ret = new ast::ForeachLoop(st.ploc());
 
+		auto vl = st.loc();
 		ret->var = st.eat().str();
 
 		if(st.front() != TT::Identifier || st.front().str() != "in")
@@ -186,6 +187,7 @@ namespace parser
 
 		st.eat();
 
+		ret->varloc = vl;
 		ret->array = parseExpr(st);
 		return ret;
 	}

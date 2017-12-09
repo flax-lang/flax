@@ -20,9 +20,6 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto n = fs->getAnonymousScopeName();
 
-	ret->generatedScopeName = n;
-	ret->scope = fs->getCurrentScope();
-
 	fs->pushTree(n);
 	defer(fs->popTree());
 
@@ -196,126 +193,6 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 
 
-
-
-sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	auto ret = new sst::ForeachLoop(this->loc);
-
-	auto n = fs->getAnonymousScopeName();
-
-	// ret->generatedScopeName = n;
-	// ret->scope = fs->getCurrentScope();
-
-	// fs->pushTree(n);
-	// defer(fs->popTree());
-
-	// fs->enterBreakableBody();
-	// {
-	// 	ret->body = dcast(sst::Block, this->body->typecheck(fs));
-	// 	iceAssert(ret->body);
-	// }
-	// fs->leaveBreakableBody();
-
-	// if(this->cond)
-	// {
-	// 	ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
-	// 	if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
-	// 		error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
-	// }
-
-	return ret;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	sst::WhileLoop* ret = new sst::WhileLoop(this->loc);
-	ret->isDoVariant = this->isDoVariant;
-
-	auto n = fs->getAnonymousScopeName();
-
-	ret->generatedScopeName = n;
-	ret->scope = fs->getCurrentScope();
-
-	fs->pushTree(n);
-	defer(fs->popTree());
-
-	fs->enterBreakableBody();
-	{
-		ret->body = dcast(sst::Block, this->body->typecheck(fs));
-		iceAssert(ret->body);
-	}
-	fs->leaveBreakableBody();
-
-	if(this->cond)
-	{
-		ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
-		if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
-			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
-	}
-
-	return ret;
-}
-
-
-sst::Stmt* ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	if(!fs->isInBreakableBody())
-		error(this, "Cannot 'break' while not inside a loop");
-
-	else if(fs->isInDeferBlock())
-		error(this, "Cannot 'break' while inside a deferred block");
-
-	return new sst::BreakStmt(this->loc);
-}
-
-sst::Stmt* ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	if(!fs->isInBreakableBody())
-		error(this, "Cannot 'continue' while not inside a loop");
-
-	else if(fs->isInDeferBlock())
-		error(this, "Cannot 'continue' while inside a deferred block");
-
-	return new sst::ContinueStmt(this->loc);
-}
 
 
 

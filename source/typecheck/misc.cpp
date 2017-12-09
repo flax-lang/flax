@@ -368,6 +368,17 @@ sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 	return 0;
 }
 
+sst::Stmt* ast::ForArrayDecompLoop::typecheck(TCS* fs, fir::Type* inferred)
+{
+	return 0;
+}
+
+sst::Stmt* ast::ForTupleDecompLoop::typecheck(TCS* fs, fir::Type* inferred)
+{
+	return 0;
+}
+
+
 
 
 
