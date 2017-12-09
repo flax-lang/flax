@@ -90,39 +90,42 @@ namespace lexer
 		Tilde,					// 78
 		Caret,					// 79
 		Underscore,				// 80
-		Arrow,					// 81
-		EqualsTo,				// 82
-		NotEquals,				// 83
-		GreaterEquals,			// 84
-		LessThanEquals,			// 85
-		ShiftLeft,				// 86
-		ShiftRight,				// 87
-		DoublePlus,				// 88
-		DoubleMinus,			// 89
-		PlusEq,					// 90
-		MinusEq,				// 91
-		MultiplyEq,				// 92
-		DivideEq,				// 93
-		ModEq,					// 94
-		ShiftLeftEq,			// 95
-		ShiftRightEq,			// 96
-		AmpersandEq,			// 97
-		PipeEq,					// 98
-		CaretEq,				// 99
-		Ellipsis,				// 100
-		HalfOpenEllipsis,		// 101
-		DoubleColon,			// 102
-		Identifier,				// 103
-		UnicodeSymbol,			// 104
-		Number,					// 105
-		StringLiteral,			// 106
-		NewLine,				// 107
-		Comment,				// 108
-		EndOfFile,				// 109
+		LeftArrow,				// 81
+		RightArrow,				// 82
+		FatLeftArrow,			// 83
+		FatRightArrow,			// 84
+		EqualsTo,				// 85
+		NotEquals,				// 86
+		GreaterEquals,			// 87
+		LessThanEquals,			// 88
+		ShiftLeft,				// 89
+		ShiftRight,				// 90
+		DoublePlus,				// 91
+		DoubleMinus,			// 92
+		PlusEq,					// 93
+		MinusEq,				// 94
+		MultiplyEq,				// 95
+		DivideEq,				// 96
+		ModEq,					// 97
+		ShiftLeftEq,			// 98
+		ShiftRightEq,			// 99
+		AmpersandEq,			// 100
+		PipeEq,					// 101
+		CaretEq,				// 102
+		Ellipsis,				// 103
+		HalfOpenEllipsis,		// 104
+		DoubleColon,			// 105
+		Identifier,				// 106
+		UnicodeSymbol,			// 107
+		Number,					// 108
+		StringLiteral,			// 109
+		NewLine,				// 110
+		Comment,				// 111
+		EndOfFile,				// 112
 
-		Attr_Raw,				// 110
-		Attr_EntryFn,			// 111
-		Attr_NoMangle,			// 112
+		Attr_Raw,				// 113
+		Attr_EntryFn,			// 114
+		Attr_NoMangle,			// 115
 	};
 
 	struct Token

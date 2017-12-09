@@ -35,12 +35,12 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(ty->isDynamicArrayType())
 			{
 				ptr = cs->irb.GetDynamicArrayData(res.value);
-				idx = cs->irb.Sub(cs->irb.GetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
+				idx = cs->irb.Subtract(cs->irb.GetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
 			}
 			else if(ty->isArraySliceType())
 			{
 				ptr = cs->irb.GetArraySliceData(res.value);
-				idx = cs->irb.Sub(cs->irb.GetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
+				idx = cs->irb.Subtract(cs->irb.GetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
 			}
 			else if(ty->isArrayType())
 			{

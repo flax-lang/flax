@@ -301,7 +301,7 @@ namespace array
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cs->irb.Mul(cap, cs->irb.Sizeof(arrtype->getElementType()));
+			fir::Value* actuallen = cs->irb.Multiply(cap, cs->irb.Sizeof(arrtype->getElementType()));
 
 			// space for refcount
 			actuallen = cs->irb.Add(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
@@ -319,7 +319,7 @@ namespace array
 
 			fir::Value* newarr = cs->irb.CreateValue(arrtype);
 			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
-			newarr = cs->irb.SetDynamicArrayLength(newarr, cs->irb.Sub(origlen, startIndex));
+			newarr = cs->irb.SetDynamicArrayLength(newarr, cs->irb.Subtract(origlen, startIndex));
 			newarr = cs->irb.SetDynamicArrayCapacity(newarr, cap);
 			cs->irb.SetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
@@ -388,7 +388,7 @@ namespace array
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
-			fir::Value* actuallen = cs->irb.Mul(origlen, cs->irb.Sizeof(arrtype->getElementType()));
+			fir::Value* actuallen = cs->irb.Multiply(origlen, cs->irb.Sizeof(arrtype->getElementType()));
 
 			// refcount space
 			actuallen = cs->irb.Add(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
@@ -404,7 +404,7 @@ namespace array
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
 
-			fir::Value* newlen = cs->irb.Sub(origlen, startIndex);
+			fir::Value* newlen = cs->irb.Subtract(origlen, startIndex);
 
 			fir::Value* newarr = cs->irb.CreateValue(fir::DynamicArrayType::get(arrtype->getElementType()));
 			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
@@ -481,7 +481,7 @@ namespace array
 				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
-				auto allocsz = cs->irb.Add(cs->irb.Mul(needed, elmsize), refCountSize);
+				auto allocsz = cs->irb.Add(cs->irb.Multiply(needed, elmsize), refCountSize);
 				auto rawdata = cs->irb.Call(mallocf, allocsz);
 
 				auto dataptr = cs->irb.PointerAdd(cs->irb.PointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
@@ -569,7 +569,7 @@ namespace array
 				fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
-				auto malloclen = cs->irb.Mul(nextpow2, elmsize);
+				auto malloclen = cs->irb.Multiply(nextpow2, elmsize);
 				auto mallocptr = cs->irb.Call(mallocf, cs->irb.Add(malloclen, refCountSize));
 				mallocptr = cs->irb.PointerAdd(mallocptr, refCountSize);
 
@@ -578,7 +578,7 @@ namespace array
 
 				// do a memcopy
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-				auto copylen = cs->irb.Mul(len, elmsize);
+				auto copylen = cs->irb.Multiply(len, elmsize);
 
 				cs->irb.Call(memcpyf, { mallocptr, oldptr, copylen,
 					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
@@ -612,7 +612,7 @@ namespace array
 			{
 				auto setfn = getSetElementsToDefaultValueFunction(cs, elmtype);
 				auto ofsptr = cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(ret), len);
-				cs->irb.Call(setfn, ofsptr, cs->irb.Sub(nextpow2, len));
+				cs->irb.Call(setfn, ofsptr, cs->irb.Subtract(nextpow2, len));
 			}
 
 
@@ -701,7 +701,7 @@ namespace array
 
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-				fir::Value* actuallen = cs->irb.Mul(applen, cs->irb.Sizeof(arrtype->getElementType()));
+				fir::Value* actuallen = cs->irb.Multiply(applen, cs->irb.Sizeof(arrtype->getElementType()));
 
 				cs->irb.Call(memcpyf, { cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()),
 					cs->irb.PointerTypeCast(s2ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
@@ -1250,7 +1250,7 @@ namespace array
 
 				// here it's the same thing regardless of nest.
 				if(incr)	cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Add(refc, fir::ConstantInt::getInt64(1)));
-				else		cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Sub(refc, fir::ConstantInt::getInt64(1)));
+				else		cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Subtract(refc, fir::ConstantInt::getInt64(1)));
 
 				#if DEBUG_ARRAY_REFCOUNTING
 				{
@@ -1575,7 +1575,7 @@ namespace array
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				auto newlen = cs->irb.Sub(origlen, fir::ConstantInt::getInt64(1));
+				auto newlen = cs->irb.Subtract(origlen, fir::ConstantInt::getInt64(1));
 				fir::Value* ret = 0;
 
 				// first, load the last value

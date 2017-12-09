@@ -78,7 +78,7 @@ namespace parser
 		iceAssert(st.front() == TT::RParen);
 		st.eat();
 
-		if(st.front() == TT::Arrow)
+		if(st.front() == TT::RightArrow)
 		{
 			st.eat();
 			defn->returnType = parseType(st);
@@ -218,41 +218,53 @@ namespace parser
 
 	Block* parseBracedBlock(State& st)
 	{
-		// iceAssert(st.eat() == TT::LBrace);
 		st.skipWS();
-		if(auto b = st.eat(); b != TT::LBrace)
-			expected(st, "'{' to begin braced block", b.str());
 
-		Block* ret = new Block(st.ploc());
-
-		st.skipWS();
-		while(st.front() != TT::RBrace)
+		if(st.front() == TT::LBrace)
 		{
-			auto stmt = parseStmt(st);
-			if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
-				ret->deferredStatements.push_back(defer->actual);
-
-			else
-				ret->statements.push_back(stmt);
-
-
-			if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
-				st.pop();
-
-			else if(st.frontAfterWS() == TT::RBrace)
-				break;
-
-			else
-				expected(st, "newline or semicolon to terminate a statement", st.front().str());
+			Block* ret = new Block(st.eat().loc);
 
 			st.skipWS();
+			while(st.front() != TT::RBrace)
+			{
+				auto stmt = parseStmt(st);
+				if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
+					ret->deferredStatements.push_back(defer->actual);
+
+				else
+					ret->statements.push_back(stmt);
+
+
+				if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
+					st.pop();
+
+				else if(st.frontAfterWS() == TT::RBrace)
+					break;
+
+				else
+					expected(st, "newline or semicolon to terminate a statement", st.front().str());
+
+				st.skipWS();
+			}
+
+			auto closing = st.eat();
+			iceAssert(closing == TT::RBrace);
+			ret->closingBrace = closing.loc;
+
+			return ret;
 		}
+		else if(st.front() == TT::FatRightArrow)
+		{
+			Block* ret = new Block(st.eat().loc);
+			ret->statements.push_back(parseStmt(st));
+			ret->closingBrace = st.loc();
 
-		auto closing = st.eat();
-		iceAssert(closing == TT::RBrace);
-		ret->closingBrace = closing.loc;
-
-		return ret;
+			return ret;
+		}
+		else
+		{
+			expected(st, "'{' to begin braced block", st.front().str());
+		}
 	}
 }
 

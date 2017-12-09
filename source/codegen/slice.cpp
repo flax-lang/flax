@@ -68,7 +68,7 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType());
 
 
-	fir::Value* length = cs->irb.Sub(endIndex, beginIndex);
+	fir::Value* length = cs->irb.Subtract(endIndex, beginIndex);
 
 	// do a check
 	auto neg_begin = cs->irb.addNewBlockInFunction("neg_begin", cs->irb.getCurrentFunction());
@@ -133,7 +133,7 @@ static CGResult performSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fi
 	// FINALLY.
 	// increment ptr
 	fir::Value* newptr = cs->irb.PointerAdd(data, beginIndex, "newptr");
-	fir::Value* newlen = cs->irb.Sub(endIndex, beginIndex, "newlen");
+	fir::Value* newlen = cs->irb.Subtract(endIndex, beginIndex, "newlen");
 
 	slice = cs->irb.SetArraySliceData(slice, newptr);
 	slice = cs->irb.SetArraySliceLength(slice, newlen);
@@ -227,7 +227,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		// ok
 		fir::Value* srcptr = cs->irb.PointerAdd(cs->irb.GetStringData(lhs), this->cgBegin);
-		fir::Value* newlen = cs->irb.Sub(this->cgEnd, this->cgBegin);
+		fir::Value* newlen = cs->irb.Subtract(this->cgEnd, this->cgBegin);
 
 		fir::Value* data = 0;
 		{

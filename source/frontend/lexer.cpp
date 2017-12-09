@@ -156,10 +156,28 @@ namespace lexer
 			tok.text = "&&";
 			read = 2;
 		}
+		else if(hasPrefix(stream, "<-"))
+		{
+			tok.type = TokenType::LeftArrow;
+			tok.text = "<-";
+			read = 2;
+		}
 		else if(hasPrefix(stream, "->"))
 		{
-			tok.type = TokenType::Arrow;
+			tok.type = TokenType::RightArrow;
 			tok.text = "->";
+			read = 2;
+		}
+		else if(hasPrefix(stream, "<="))
+		{
+			tok.type = TokenType::FatLeftArrow;
+			tok.text = "<=";
+			read = 2;
+		}
+		else if(hasPrefix(stream, "=>"))
+		{
+			tok.type = TokenType::FatRightArrow;
+			tok.text = "=>";
 			read = 2;
 		}
 		else if(hasPrefix(stream, "++"))

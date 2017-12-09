@@ -412,7 +412,7 @@ namespace parser
 			}
 
 			// check if it's actually a function type
-			if(st.front() != TT::Arrow)
+			if(st.front() != TT::RightArrow)
 			{
 				// this *should* allow us to 'group' types together
 				// eg. ((i64, i64) -> i64)[] would allow us to create an array of functions

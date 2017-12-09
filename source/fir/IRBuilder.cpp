@@ -343,7 +343,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Sub(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Subtract(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating sub instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -357,7 +357,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Mul(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Multiply(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating mul instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -371,7 +371,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Div(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Divide(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating div instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -386,7 +386,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Mod(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Modulo(Value* a, Value* b, std::string vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating mod instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());

@@ -90,7 +90,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
-		auto sz = cs->irb.Mul(cs->irb.Sizeof(type), cnt);
+		auto sz = cs->irb.Multiply(cs->irb.Sizeof(type), cnt);
 		auto mem = cs->irb.Call(mallocf, sz);
 
 		return cs->irb.PointerTypeCast(mem, type->getPointerTo());
@@ -109,7 +109,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 		cs->irb.Call(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
 
 		// ok, now we have a length -- allocate enough memory for length * sizeof(elm) + refcount size
-		auto alloclen = cs->irb.Add(cs->irb.Mul(count, cs->irb.Sizeof(type)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+		auto alloclen = cs->irb.Add(cs->irb.Multiply(count, cs->irb.Sizeof(type)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 		auto mem = cs->irb.PointerAdd(cs->irb.Call(mallocf, alloclen), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
 

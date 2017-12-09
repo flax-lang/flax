@@ -382,7 +382,7 @@ namespace string
 				}
 
 				cs->irb.setCurrentBlock(merge);
-				fir::Value* ret = cs->irb.Sub(cs->irb.Load(cs->irb.Load(str1p)),
+				fir::Value* ret = cs->irb.Subtract(cs->irb.Load(cs->irb.Load(str1p)),
 					cs->irb.Load(cs->irb.Load(str2p)));
 
 				ret = cs->irb.IntSizeCast(ret, func->getReturnType());
@@ -520,7 +520,7 @@ namespace string
 
 
 			cs->irb.setCurrentBlock(dotest);
-			fir::Value* newRc = cs->irb.Sub(curRc, fir::ConstantInt::getInt64(1));
+			fir::Value* newRc = cs->irb.Subtract(curRc, fir::ConstantInt::getInt64(1));
 			cs->irb.SetStringRefCount(func->getArguments()[0], newRc);
 
 			#if DEBUG_STRING_REFCOUNTING
@@ -620,7 +620,7 @@ namespace string
 
 				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
 
-				cs->irb.Call(fprintfn, { err, fmtstr, posstr, arg2, len, cs->irb.Sub(len, fir::ConstantInt::getInt64(1)) });
+				cs->irb.Call(fprintfn, { err, fmtstr, posstr, arg2, len, cs->irb.Subtract(len, fir::ConstantInt::getInt64(1)) });
 
 				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
 				cs->irb.Unreachable();
