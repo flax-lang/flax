@@ -173,6 +173,21 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				return CGResult(cs->irb.Load(n));
 			}
 		}
+		else if(ty->isRangeType())
+		{
+			if(this->name == "begin")
+			{
+				return CGResult(cs->irb.GetRangeLower(res.value));
+			}
+			else if(this->name == "end")
+			{
+				return CGResult(cs->irb.GetRangeUpper(res.value));
+			}
+			else if(this->name == "step")
+			{
+				return CGResult(cs->irb.GetRangeStep(res.value));
+			}
+		}
 	}
 
 

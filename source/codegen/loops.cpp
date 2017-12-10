@@ -106,8 +106,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			.. continue ..
 	*/
 
-	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
 	auto check = cs->irb.addNewBlockAfter("check", cs->irb.getCurrentBlock());
+	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
 	auto merge = cs->irb.addNewBlockAfter("merge", cs->irb.getCurrentBlock());
 
 	fir::Value* end = 0;
@@ -130,11 +130,12 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 			for ranges however, (since we normalise the half-open range to an open range), we actually want to reach the ending value.
 			so, we just add 1 to end. this is independent of the step size.
-
-			* TODO: same kinda problem as the range, adding 1 might screw up when the end is less than the beginning, or when we go into negative things.
 		*/
 
-		end = cs->irb.Add(end, fir::ConstantInt::getInt64(1));
+		//! note: again for negative ranges, we should be subtracting 1 instead.
+
+		end = cs->irb.Add(end, cs->irb.Select(cs->irb.ICmpGEQ(step, fir::ConstantInt::getInt64(0)),
+			fir::ConstantInt::getInt64(1), fir::ConstantInt::getInt64(-1)));
 	}
 	else
 	{
@@ -167,38 +168,55 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->irb.UnCondBranch(check);
 	cs->irb.setCurrentBlock(check);
 
-	fir::Value* cond = cs->irb.ICmpLT(cs->irb.Load(idxptr), end);
+
+	//! here's some special shit where we handle ranges with start > end
+	fir::Value* cond = 0;
+	if(array->getType()->isRangeType())
+	{
+		cond = cs->irb.Select(cs->irb.ICmpGT(step, fir::ConstantInt::getInt64(0)),
+			cs->irb.ICmpLT(cs->irb.Load(idxptr), end),		// i < end for step > 0
+			cs->irb.ICmpGT(cs->irb.Load(idxptr), end));		// i > end for step < 0
+	}
+	else
+	{
+		cond = cs->irb.ICmpLT(cs->irb.Load(idxptr), end);
+	}
+
+	iceAssert(cond);
 	cs->irb.CondBranch(cond, loop, merge);
 
 	cs->irb.setCurrentBlock(loop);
 	{
-		// codegen the thing.
-		auto ptr = this->var->codegen(cs).pointer;
-		iceAssert(ptr);
+		// codegen the thing. if we used '_', then there's nothing to codegen.
+		if(this->var)
+		{
+			auto ptr = this->var->codegen(cs).pointer;
+			iceAssert(ptr);
 
-		// get the data.
-		fir::Value* val = 0;
-		if(array->getType()->isRangeType())
-			val = cs->irb.Load(idxptr);
+			// get the data.
+			fir::Value* val = 0;
+			if(array->getType()->isRangeType())
+				val = cs->irb.Load(idxptr);
 
-		else if(array->getType()->isDynamicArrayType())
-			val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(array), cs->irb.Load(idxptr)));
+			else if(array->getType()->isDynamicArrayType())
+				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(array), cs->irb.Load(idxptr)));
 
-		else if(array->getType()->isArraySliceType())
-			val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr)));
+			else if(array->getType()->isArraySliceType())
+				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr)));
 
-		else if(array->getType()->isStringType())
-			val = cs->irb.Bitcast(cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr))), fir::Type::getChar());
+			else if(array->getType()->isStringType())
+				val = cs->irb.Bitcast(cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr))), fir::Type::getChar());
 
-		else if(array->getType()->isArrayType())
-			val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr)));
+			else if(array->getType()->isArrayType())
+				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr)));
 
-		else
-			iceAssert(0);
+			else
+				iceAssert(0);
 
-		ptr->makeNotImmutable();
-		cs->irb.Store(val, ptr);
-		ptr->makeImmutable();
+			ptr->makeNotImmutable();
+			cs->irb.Store(val, ptr);
+			ptr->makeImmutable();
+		}
 
 
 		// make the block

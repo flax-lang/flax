@@ -602,28 +602,8 @@ namespace string
 			cs->irb.CondBranch(res, failb, checkneg);
 			cs->irb.setCurrentBlock(failb);
 			{
-				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
-
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
-					fir::LinkageType::External);
-
-				// basically:
-				// void* stderr = fdopen(2, "w")
-				// fprintf(stderr, "", bla bla)
-
-				fir::Value* tmpstr = cs->module->createGlobalString("w");
-				fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to index string at index '%zd'; length is only '%zd'! (max index is thus '%zu')\n");
-				fir::Value* posstr = cs->irb.GetStringData(func->getArguments()[2]);
-
-				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				cs->irb.Call(fprintfn, { err, fmtstr, posstr, arg2, len, cs->irb.Subtract(len, fir::ConstantInt::getInt64(1)) });
-
-				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.Unreachable();
+				printError(cs, func->getArguments()[2], "Tried to index string at index '%ld'; length is only '%ld'! (max index is thus '%ld')\n",
+					{ arg2, len, cs->irb.Subtract(len, fir::ConstantInt::getInt64(1)) });
 			}
 
 			cs->irb.setCurrentBlock(checkneg);
@@ -680,29 +660,9 @@ namespace string
 			cs->irb.CondBranch(res, failb, merge);
 			cs->irb.setCurrentBlock(failb);
 			{
-				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()),
-					fir::LinkageType::External);
-
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
-					fir::LinkageType::External);
-
-				// basically:
-				// void* stderr = fdopen(2, "w")
-				// fprintf(stderr, "", bla bla)
-
-				fir::Value* tmpstr = cs->module->createGlobalString("w");
-				fir::Value* fmtstr = cs->module->createGlobalString("%s: Tried to write to immutable string literal '%s' at index '%zd'!\n");
-				fir::Value* posstr = cs->irb.GetStringData(func->getArguments()[2]);
-
-				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
 				fir::Value* dp = cs->irb.GetStringData(arg1);
-				cs->irb.Call(fprintfn, { err, fmtstr, posstr, dp, arg2 });
-
-				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.Unreachable();
+				printError(cs, func->getArguments()[2], "Tried to write to immutable string literal '%s' at index '%ld'!\n",
+					{ dp, arg2 });
 			}
 
 			cs->irb.setCurrentBlock(merge);

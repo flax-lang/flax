@@ -28,19 +28,42 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// it's well documented that we always subtract 1 for half open, but it might be immediately obvious.
 	if(this->halfOpen) end = cs->irb.Subtract(end, fir::ConstantInt::getInt64(1));
 
-	auto step = this->step ?
+
+	// if start > end, the automatic step should be -1. else, it should be 1 as normal.
+	fir::Value* step = (this->step ?
 		cs->oneWayAutocast(this->step->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value :
-		fir::ConstantInt::getInt64(1);
+		cs->irb.Select(cs->irb.ICmpLEQ(start, end), fir::ConstantInt::getInt64(1), fir::ConstantInt::getInt64(-1))
+	);
 
 	iceAssert(step);
 	if(!step->getType()->isIntegerType())
 		error(this->step, "Expected integer type in range expression (step), found '%s' instead", step->getType());
-
 
 	auto ret = cs->irb.CreateValue(fir::RangeType::get());
 	ret = cs->irb.SetRangeLower(ret, start);
 	ret = cs->irb.SetRangeUpper(ret, end);
 	ret = cs->irb.SetRangeStep(ret, step);
 
+	// now that we have all the values, it's time to sanity check these things.
+	auto checkf = cgn::glue::misc::getRangeSanityCheckFunction(cs);
+	iceAssert(checkf);
+
+	cs->irb.Call(checkf, ret, fir::ConstantString::get(this->loc.toString()));
+
 	return CGResult(ret);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

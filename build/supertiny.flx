@@ -8,15 +8,23 @@ import "libc"
 
 @entry fn main()
 {
-	for it in 1...5 step 2 => libc.printf("%d ", it)
-	libc.printf("\n")
+	// for it in 1...5 step 2 => libc.printf("%d ", it)
+	// libc.printf("\n")
 
-	for c in "HELLO" => libc.printf("%c", c)
-	libc.printf("\n")
+	// for c in "HELLO" => libc.printf("%c", c)
+	// libc.printf("\n")
 
-	for it in [ 1, 1, 2, 3, 5, 8, 13 ] => libc.printf("%d ", it)
+	// for it in [ 1, 1, 2, 3, 5, 8, 13 ] => libc.printf("%d ", it)
+	// libc.printf("\n")
 
-	libc.printf("\b\b\n");
+	// let range = 5...1
+	// libc.printf("range: (%d, %d, %d)\n", range.begin, range.end, range.step);
+
+	for it in 5...-5 => libc.printf("%d ", it)
+	for _ in 1...10 => libc.printf("x")
+
+
+	libc.printf("\ndone\n");
 }
 
 

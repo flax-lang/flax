@@ -115,6 +115,7 @@ namespace fir
 
 		Value* Sizeof(Type* t, std::string vname = "");
 
+		Value* Select(Value* cond, Value* one, Value* two, std::string vname = "");
 
 		Value* BinaryOp(Operator ao, Value* a, Value* b, std::string vname = "");
 

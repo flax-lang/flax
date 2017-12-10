@@ -40,19 +40,25 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	else
 		error(this->array, "Invalid type '%s' in foreach loop", ret->array->type);
 
-
-	auto fake = new sst::VarDefn(this->varloc);
-	fake->id = Identifier(this->var, IdKind::Name);
-	fake->id.scope = fs->getCurrentScope();
-
+	if(this->var != "_")
 	{
-		fs->stree->addDefinition(this->var, fake);
+		auto fake = new sst::VarDefn(this->varloc);
+		fake->id = Identifier(this->var, IdKind::Name);
+		fake->id.scope = fs->getCurrentScope();
+
+		{
+			fs->stree->addDefinition(this->var, fake);
+		}
+
+		fake->type = elmty;
+		fake->immutable = true;
+		ret->var = fake;
+	}
+	else
+	{
+		ret->var = 0;
 	}
 
-	fake->type = elmty;
-	fake->immutable = true;
-
-	ret->var = fake;
 
 	fs->enterBreakableBody();
 	{

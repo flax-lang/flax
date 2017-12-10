@@ -5,51 +5,9 @@
 #include "sst.h"
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
-
-
-static void _complainAboutSliceIndices(cgn::CodegenState* cs, std::string fmt, fir::Value* complaintValue, Location loc)
-{
-	#if 1
-	{
-		fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-			fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-			fir::Type::getInt32()), fir::LinkageType::External);
-
-		fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
-			fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
-			fir::LinkageType::External);
-
-		// basically:
-		// void* stderr = fdopen(2, "w")
-		// fprintf(stderr, "", bla bla)
-
-		fir::ConstantValue* tmpstr = cs->module->createGlobalString("w");
-		fir::ConstantValue* fmtstr = cs->module->createGlobalString(fmt);
-
-		iceAssert(fmtstr);
-
-		auto pstr = fir::ConstantString::get(loc.toString());
-		fir::Value* posstr = cs->irb.GetStringData(pstr);
-		fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-		cs->irb.Call(fprintfn, { err, fmtstr, posstr, complaintValue });
-	}
-	#else
-	{
-		fir::ConstantValue* fmtstr = cs->module->createGlobalString(fmt);
-
-		auto pstr = fir::ConstantString::get(loc.toString());
-		fir::Value* posstr = cs->irb.GetStringData(pstr);
-
-		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { fmtstr, posstr, complaintValue });
-	}
-	#endif
-
-	cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
-	cs->irb.Unreachable();
-}
 
 
 static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex,
@@ -97,13 +55,13 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 
 	cs->irb.setCurrentBlock(neg_begin);
-	_complainAboutSliceIndices(cs, "%s: Start index for array slice was negative (%zd)\n", beginIndex, apos);
+	cgn::glue::printError(cs, fir::ConstantString::get(apos.toString()), "Start index of array slice was negative (got '%ld')\n", { beginIndex });
 
 	cs->irb.setCurrentBlock(neg_end);
-	_complainAboutSliceIndices(cs, "%s: Ending index for array slice was negative (%zd)\n", endIndex, bpos);
+	cgn::glue::printError(cs, fir::ConstantString::get(bpos.toString()), "End index of array slice was negative (got '%ld')\n", { endIndex });
 
 	cs->irb.setCurrentBlock(neg_len);
-	_complainAboutSliceIndices(cs, "%s: Length for array slice was negative (%zd)\n", length, bpos);
+	cgn::glue::printError(cs, fir::ConstantString::get(bpos.toString()), "Length of array slice was negative (got '%ld')\n", { length });
 
 
 	cs->irb.setCurrentBlock(merge);
