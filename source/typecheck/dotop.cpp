@@ -162,6 +162,28 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			// else: break out below, for extensions
 		}
 	}
+	else if(type->isRangeType())
+	{
+		auto rhs = dotop->right;
+		if(auto vr = dcast(ast::Ident, rhs))
+		{
+			// TODO: extension support here
+			fir::Type* res = 0;
+			if(vr->name == "begin" || vr->name == "end" || vr->name == "step")
+				res = fir::Type::getInt64();
+
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = vr->name;
+
+				return tmp;
+			}
+		}
+
+		// else: fallthrough;
+	}
 
 	if(!type->isStructType() && !type->isClassType())
 	{

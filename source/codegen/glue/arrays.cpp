@@ -73,36 +73,11 @@ namespace array
 			cs->irb.CondBranch(res, failb, checkneg);
 			cs->irb.setCurrentBlock(failb);
 			{
-				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
-
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
-					fir::LinkageType::External);
-
-				// basically:
-				// void* stderr = fdopen(2, "w")
-				// fprintf(stderr, "", bla bla)
-
-				fir::ConstantValue* tmpstr = cs->module->createGlobalString("w");
-				fir::ConstantValue* fmtstr = 0;
-
 				if(isPerformingDecomposition)
-					fmtstr = cs->module->createGlobalString("%s: Tried to decompose array into '%ld' elements; length is only '%ld'\n");
+					printError(cs, func->getArguments()[2], "Tried to decompose array with only '%ld' elements into '%ld' bindings\n", { max, ind });
 
 				else
-					fmtstr = cs->module->createGlobalString("%s: Tried to index array at index '%ld'; length is only '%ld'\n");
-
-				iceAssert(fmtstr);
-
-				fir::Value* posstr = cs->irb.GetStringData(func->getArguments()[2]);
-				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				cs->irb.Call(fprintfn, { err, fmtstr, posstr, ind, max });
-
-				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.Unreachable();
+					printError(cs, func->getArguments()[2], "Tried to index array at index '%ld', but length is only '%ld'\n", { ind, max });
 			}
 
 			cs->irb.setCurrentBlock(checkneg);
@@ -1271,7 +1246,7 @@ namespace array
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 					//! NOTE: what we want to happen here is for us to free the memory, but only if refcnt == 0 && capacity >= 0
-					// so our condition is (REFCOUNT == 0) & (CAP >= 0)
+					//* so our condition is (REFCOUNT == 0) & (CAP >= 0)
 
 					auto zv = fir::ConstantInt::getInt64(0);
 					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(refc, zv), cs->irb.ICmpGEQ(cap, zv));
@@ -1548,28 +1523,7 @@ namespace array
 			cs->irb.CondBranch(cond, fail, merge);
 			cs->irb.setCurrentBlock(fail);
 			{
-				fir::Function* fprintfn = cs->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
-					fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() },
-					fir::Type::getInt32()), fir::LinkageType::External);
-
-				fir::Function* fdopenf = cs->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
-					fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()),
-					fir::LinkageType::External);
-
-				// basically:
-				// void* stderr = fdopen(2, "w")
-				// fprintf(stderr, "", bla bla)
-
-				fir::Value* tmpstr = cs->module->createGlobalString("w");
-				fir::Value* fmtstr = cs->module->createGlobalString("%s: Calling pop() on empty array\n");
-				fir::Value* posstr = cs->irb.GetStringData(loc);
-
-				fir::Value* err = cs->irb.Call(fdopenf, fir::ConstantInt::getInt32(2), tmpstr);
-
-				cs->irb.Call(fprintfn, { err, fmtstr, posstr });
-
-				cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
-				cs->irb.Unreachable();
+				printError(cs, loc, "Calling pop() on an empty array\n", { });
 			}
 
 

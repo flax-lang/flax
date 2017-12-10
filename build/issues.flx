@@ -22,9 +22,6 @@
 	5. String operators
 
 
-	6. Ranges
-
-
 	7. Defer
 
 
@@ -49,9 +46,6 @@
 
 	14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach
 		eg. index with 'foo[a, b, c]' instead of 'foo[a][b][c]'
-
-
-	15. Fix deallocating array of arrays.
 
 
 	16. [[noreturn]] for functions, so we don't error when no value is returned (eg. when calling abort())
@@ -83,6 +77,11 @@
 
 /*
 	* FIXED ISSUES
+
+	(f3f8dbb)
+	- add ranges
+	- add foreach loops on ranges, arrays, and strings
+	- add '=>' syntax for single-statement blocks, eg. "if x == 0 => x += 4"
 
 	(dacc809)
 	- fix lexing/parsing of negative numerical literals

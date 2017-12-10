@@ -175,6 +175,11 @@ namespace cgn
 			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr()), fir::LinkageType::External);
 		}
+		else if(name == CRT_FDOPEN)
+		{
+			return this->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()), fir::LinkageType::External);
+		}
 		else if(name == "printf")
 		{
 			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
@@ -189,6 +194,16 @@ namespace cgn
 		{
 			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::External);
+		}
+		else if(name == "fprintf")
+		{
+			return this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+				fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
+		}
+		else if(name == "fflush")
+		{
+			return this->module->getOrCreateFunction(Identifier("fflush", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getVoidPtr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else
 		{

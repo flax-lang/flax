@@ -18,6 +18,9 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	if(this->name == "_")
+		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
+
 	// hm.
 	sst::StateTree* tree = fs->stree;
 	while(tree)
