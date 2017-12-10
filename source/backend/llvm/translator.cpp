@@ -2323,7 +2323,20 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::Value_Select:
+						{
+							llvm::Value* cond = getOperand(inst, 0);
+							llvm::Value* one = getOperand(inst, 1);
+							llvm::Value* two = getOperand(inst, 2);
 
+							iceAssert(cond->getType()->isIntegerTy() && cond->getType()->getIntegerBitWidth() == 1);
+							iceAssert(one->getType() == two->getType());
+
+							llvm::Value* ret = builder.CreateSelect(cond, one, two);
+							addValueToMap(ret, inst->realOutput);
+
+							break;
+						}
 
 
 

@@ -1257,6 +1257,19 @@ namespace fir
 	}
 
 
+	Value* IRBuilder::Select(Value* cond, Value* one, Value* two, std::string vname)
+	{
+		if(!cond->getType()->isBoolType())
+			error("cond is not a boolean type (got '%s')", cond->getType());
+
+		if(one->getType() != two->getType())
+			error("Non-identical types for operands (got '%s' and '%s')", one->getType(), two->getType());
+
+		Instruction* instr = new Instruction(OpKind::Value_Select, false, this->currentBlock, one->getType(), { cond, one, two });
+		return this->addInstruction(instr, vname);
+	}
+
+
 
 	Value* IRBuilder::Sizeof(Type* t, std::string vname)
 	{

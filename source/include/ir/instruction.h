@@ -110,6 +110,8 @@ namespace fir
 		Value_InsertValue,					// corresponds to llvm.
 		Value_ExtractValue,					// same
 
+		Value_Select,						// same as llvm: takes 3 operands, the first being a bool and the others being a condition.
+											// if the bool == true, returns the first value, else returns the second.
 		Value_CreatePHI,
 
 		Misc_Sizeof,						// portable sizeof using GEP

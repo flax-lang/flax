@@ -62,7 +62,11 @@ namespace cgn
 			fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype);
 			fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+		}
 
+		namespace misc
+		{
+			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
 		}
 	}
 
