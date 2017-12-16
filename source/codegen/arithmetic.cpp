@@ -461,7 +461,7 @@ namespace cgn
 		}
 		else
 		{
-			if(lt->isPrimitiveType() && rt->isPrimitiveType())
+			if((lt->isPrimitiveType() || lt->isConstantNumberType()) && (rt->isPrimitiveType() || rt->isConstantNumberType()))
 			{
 				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
 

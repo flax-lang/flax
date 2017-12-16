@@ -78,6 +78,9 @@
 /*
 	* FIXED ISSUES
 
+	(3b438c2)
+	- add support for reverse ranges (negative steps, start > end)
+
 	(f3f8dbb)
 	- add ranges
 	- add foreach loops on ranges, arrays, and strings

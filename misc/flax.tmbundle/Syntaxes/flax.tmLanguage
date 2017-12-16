@@ -409,7 +409,7 @@
 			<key>comment</key>
 			<string>function-result</string>
 			<key>match</key>
-			<string>(\-&gt;)</string>
+			<string>(\-&gt;|=&gt;)</string>
 			<key>name</key>
 			<string>keyword.operator.function-result.flax</string>
 			<!-- <key>begin</key>

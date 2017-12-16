@@ -71,6 +71,7 @@ namespace sst
 
 		std::vector<std::string> scope;
 
+		bool isSingleExpr = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 	};

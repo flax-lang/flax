@@ -169,6 +169,26 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 {
 	fir::Type* expected = fn->returnType;
 
+	if(fn->body->isSingleExpr)
+	{
+		// special things.
+		iceAssert(fn->body->statements.size() == 1);
+
+		auto stmt = fn->body->statements.front();
+		if(auto expr = dcast(sst::Expr, stmt); expr)
+		{
+			if(expr->type != expected)
+				error(expr, "Found expression of type '%s' in single-expression function, when function returns type '%s'", expr->type, expected);
+
+			// ok.
+			return false;
+		}
+		else
+		{
+			error(stmt, "Expected expression (of type '%s') for single-expression function, found statement instead.", expected);
+		}
+	}
+
 	std::vector<sst::Block*> faults { fn->body };
 	auto ret = checkBlockPathsReturn(this, fn->body, expected, &faults);
 

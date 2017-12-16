@@ -6,6 +6,8 @@ export supertiny
 
 import "libc"
 
+fn timestwo(x: int) -> int => x * 2
+
 @entry fn main()
 {
 	// for it in 1...5 step 2 => libc.printf("%d ", it)
@@ -20,7 +22,7 @@ import "libc"
 	// let range = 5...1
 	// libc.printf("range: (%d, %d, %d)\n", range.begin, range.end, range.step);
 
-	for it in 5...-5 => libc.printf("%d ", it)
+	for it in 5...-5 => libc.printf("%d ", timestwo(it))
 	for _ in 1...10 => libc.printf("x")
 
 
