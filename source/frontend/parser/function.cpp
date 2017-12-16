@@ -101,7 +101,7 @@ namespace parser
 			error(st, "C-style variadic arguments are not supported on non-foreign functions");
 
 		st.skipWS();
-		if(st.front() != TT::LBrace)
+		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
 			expected(st, "'{' to begin function body", st.front().str());
 
 		defn->body = parseBracedBlock(st);
@@ -250,6 +250,7 @@ namespace parser
 			auto closing = st.eat();
 			iceAssert(closing == TT::RBrace);
 			ret->closingBrace = closing.loc;
+			ret->isArrow = false;
 
 			return ret;
 		}
@@ -258,6 +259,7 @@ namespace parser
 			Block* ret = new Block(st.eat().loc);
 			ret->statements.push_back(parseStmt(st));
 			ret->closingBrace = st.loc();
+			ret->isArrow = true;
 
 			return ret;
 		}

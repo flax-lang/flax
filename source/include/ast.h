@@ -79,6 +79,7 @@ namespace ast
 
 		Location closingBrace;
 
+		bool isArrow = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferredStatements;
 	};

@@ -62,13 +62,22 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
 		this->body->codegen(cs);
+
+		if(this->body->isSingleExpr)
+		{
+			iceAssert(this->body->statements.size() == 1);
+			auto last = this->body->statements[0]->cachedResult;
+
+			cs->irb.Return(last.value);
+		}
 	}
 	cs->leaveBreakableBody();
 
 	// note that we *trust* in the typechecker
 	// that all paths return the correct type.
 
-	if(this->needReturnVoid)
+
+	if(this->needReturnVoid && !this->body->isSingleExpr)
 		cs->irb.ReturnVoid();
 
 	if(this->parentTypeForMethod)

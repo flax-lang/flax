@@ -44,6 +44,8 @@ sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
 		}
 
 		defn->body = dcast(sst::Block, this->body->typecheck(fs));
+		defn->body->isSingleExpr = this->body->isArrow;
+
 		iceAssert(defn->body);
 	}
 	fs->popTree();
@@ -92,7 +94,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 		ptys.push_back(p.type);
 	}
 
-	auto retty = fs->convertParserTypeToFIR(this->returnType);
+	fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
 
 	defn->id = Identifier(this->name, IdKind::Function);
 	defn->id.scope = fs->getCurrentScope();
