@@ -229,7 +229,7 @@ namespace parser
 			{
 				auto stmt = parseStmt(st);
 				if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
-					ret->deferredStatements.push_back(defer->actual);
+					ret->deferredStatements.push_back(defer);
 
 				else
 					ret->statements.push_back(stmt);

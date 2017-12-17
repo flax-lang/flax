@@ -97,32 +97,16 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 	for(size_t i = 0; i < block->statements.size(); i++)
 	{
 		auto& s = block->statements[i];
-
-		// check for things with bodies
-		if(auto ifstmt = dcast(sst::IfStmt, s))
+		if(auto hb = dcast(sst::HasBlocks, s))
 		{
-			for(auto c : ifstmt->cases)
+			const auto& blks = hb->getBlocks();
+			for(auto b : blks)
 			{
-				auto r = checkBlockPathsReturn(fs, c.body, retty, faulty);
-				if(!r) faulty->push_back(c.body);
+				auto r = checkBlockPathsReturn(fs, b, retty, faulty);
+				if(!r) faulty->push_back(b);
 
 				ret &= r;
 			}
-
-			if(ifstmt->elseCase)
-			{
-				auto r = checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
-				if(!r) faulty->push_back(ifstmt->elseCase);
-
-				ret &= r;
-			}
-		}
-		else if(auto whileloop = dcast(sst::WhileLoop, s))
-		{
-			auto r = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
-			if(!r) faulty->push_back(whileloop->body);
-
-			ret &= r;
 		}
 
 
