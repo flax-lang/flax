@@ -22,9 +22,6 @@
 	5. String operators
 
 
-	7. Defer
-
-
 	9. For loops
 
 
@@ -98,7 +95,10 @@
 
 
 /*
-	* FIXED ISSUES
+	* FIXED / IMPLEMENTED THINGS
+
+	(5a9aa9e)
+	- add deferred statements and blocks
 
 	(80a6619)
 	- add single-expression functions with `fn foo(a: T) -> T => a * 2`
