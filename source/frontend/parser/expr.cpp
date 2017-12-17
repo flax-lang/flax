@@ -112,12 +112,14 @@ namespace parser
 				case TT::Dealloc:
 					return parseDealloc(st);
 
+				case TT::Defer:
+					return parseDefer(st);
+
 				case TT::Operator:
 				case TT::Protocol:
 				case TT::Override:
 				case TT::Extension:
 				case TT::TypeAlias:
-				case TT::Defer:
 					error(st, "notsup");
 
 				case TT::Namespace:
@@ -761,6 +763,19 @@ namespace parser
 		return ret;
 	}
 
+	ast::DeferredStmt* parseDefer(State& st)
+	{
+		iceAssert(st.front() == TT::Defer);
+		auto ret = new ast::DeferredStmt(st.eat().loc);
+
+		if(st.front() == TT::LBrace)
+			ret->actual = parseBracedBlock(st);
+
+		else
+			ret->actual = parseStmt(st);
+
+		return ret;
+	}
 
 
 

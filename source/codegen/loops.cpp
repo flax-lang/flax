@@ -77,6 +77,12 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	return CGResult(0);
 }
 
+std::vector<sst::Block*> sst::WhileLoop::getBlocks()
+{
+	return { this->body };
+}
+
+
 
 CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
@@ -237,7 +243,10 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	return CGResult(0);
 }
 
-
+std::vector<sst::Block*> sst::ForeachLoop::getBlocks()
+{
+	return { this->body };
+}
 
 
 

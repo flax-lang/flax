@@ -21,6 +21,14 @@ namespace cgn
 namespace sst
 {
 	struct StateTree;
+	struct Block;
+
+	struct HasBlocks
+	{
+		HasBlocks() { }
+		virtual ~HasBlocks() { }
+		virtual std::vector<Block*> getBlocks() = 0;
+	};
 
 	struct Defn : Stmt
 	{
@@ -76,12 +84,13 @@ namespace sst
 		std::vector<Stmt*> deferred;
 	};
 
-	struct IfStmt : Stmt
+	struct IfStmt : Stmt, HasBlocks
 	{
 		IfStmt(const Location& l) : Stmt(l) { }
 		~IfStmt() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+		virtual std::vector<Block*> getBlocks() override;
 
 		struct Case
 		{
@@ -106,12 +115,13 @@ namespace sst
 		fir::Type* expectedType = 0;
 	};
 
-	struct WhileLoop : Stmt
+	struct WhileLoop : Stmt, HasBlocks
 	{
 		WhileLoop(const Location& l) : Stmt(l) { }
 		~WhileLoop() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+		virtual std::vector<Block*> getBlocks() override;
 
 		Expr* cond = 0;
 		Block* body = 0;
@@ -120,12 +130,13 @@ namespace sst
 	};
 
 	struct VarDefn;
-	struct ForeachLoop : Stmt
+	struct ForeachLoop : Stmt, HasBlocks
 	{
 		ForeachLoop(const Location& l) : Stmt(l) { }
 		~ForeachLoop() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+		virtual std::vector<Block*> getBlocks() override;
 
 		VarDefn* var = 0;
 		Expr* array = 0;

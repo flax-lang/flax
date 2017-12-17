@@ -53,6 +53,15 @@
 */
 
 
+/*
+	! THINGS TO FIX
+
+	1. Importing the same module under multiple names should not be allowed.
+		Right now it fails and produces unexpected behaviour -- I think only the first import is considered,
+		but no errors are thrown.
+*/
+
+
 
 /*
 	? THINGS TO INVESTIGATE
@@ -69,6 +78,19 @@
 
 
 	3. Variadic functions should take a slice of any.
+
+
+	4. Type inference for single-expr functions? It's a little weird to have two arrows like this:
+		fn foo(a: T) -> T => a * a
+
+		The type inference would require some re-working though, because to generate the declaration of the function we need the return type, but to
+		get the return type in this situation we need to typecheck the function body. Albeit it's a single function, there might still be
+		unresolved or unresolvable things inside the body.
+
+		Possibly investigate whether we can do the typechecking in the generateDecl function?? But it's highly likely we separated those for a reason,
+		so I don't think it's doable at this point.
+
+		It's not really a high-priority thing anyway.
 */
 
 
@@ -77,6 +99,9 @@
 
 /*
 	* FIXED ISSUES
+
+	(80a6619)
+	- add single-expression functions with `fn foo(a: T) -> T => a * 2`
 
 	(3b438c2)
 	- add support for reverse ranges (negative steps, start > end)
