@@ -160,6 +160,8 @@ namespace parser
 	ast::Expr* parseExpr(State& st);
 	ast::Stmt* parseStmt(State& st);
 
+	ast::DeferredStmt* parseDefer(State& st);
+
 	ast::Stmt* parseVariable(State& st);
 	ast::ReturnStmt* parseReturn(State& st);
 	ast::ImportStmt* parseImport(State& st);

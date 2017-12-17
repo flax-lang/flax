@@ -120,7 +120,17 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
+std::vector<sst::Block*> sst::IfStmt::getBlocks()
+{
+	std::vector<sst::Block*> ret;
+	for(auto c : this->cases)
+		ret.push_back(c.body);
 
+	if(this->elseCase)
+		ret.push_back(this->elseCase);
+
+	return ret;
+}
 
 
 
@@ -231,8 +241,8 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(!broke)
 	{
-		for(auto stmt : this->deferred)
-			stmt->codegen(cs);
+		for(auto it = this->deferred.rbegin(); it != this->deferred.rend(); it++)
+			(*it)->codegen(cs);
 
 		// then decrement all the refcounts
 		for(auto v : cs->getRefCountedValues())

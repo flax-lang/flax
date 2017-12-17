@@ -46,10 +46,7 @@ namespace ast
 		DeferredStmt(const Location& l) : Stmt(l) { }
 		~DeferredStmt() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override
-		{
-			return this->actual->typecheck(fs, inferred);
-		}
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Stmt* actual = 0;
 	};
