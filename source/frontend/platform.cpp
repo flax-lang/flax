@@ -236,7 +236,7 @@ namespace platform
 			auto str = std::string(ret);
 			free(ret);
 
-			return ret;
+			return str;
 		}
 		#endif
 	}
