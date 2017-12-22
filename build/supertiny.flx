@@ -28,8 +28,6 @@ fn timestwo(x: int) -> int => x * 2
 		printf("one\n")
 		printf("two\n")
 		printf("three\n")
-
-		return
 	}
 
 	for it in 5...-5 => printf("%d ", timestwo(it))
