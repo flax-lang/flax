@@ -139,10 +139,10 @@ public fn main() -> int
 ##### macOS / Linux
 
 - Flax uses a makefile; most likely some form of GNU-compatible `make` will work.
-- LLVM needs to be installed. On macOS, `brew install llvm` should work. For Linux people, follow roughly `.travis.yml`, which uses apt-get to install the required libraries.
+- LLVM needs to be installed. On macOS, `brew install llvm` should work.
 - For macOS people, simply call `make`.
 - Linux people, call `make linux`.
-- A C++14-compatible compiler should be used, `g++-6` is good. Due to *reasons*, `clang++` doesn't like `libstdc++`, and `libllvm` from `apt` is linked with `libstdc++`, so you basically need to use `g++` on Linux.
+- A *C++17*-compatible compiler should be used.
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 
@@ -183,7 +183,7 @@ public fn main() -> int
 
 Some stuff about the compiler itself, now. As any noob looking to build a compiler would do, I used the [LLVM Kaleidoscope tutorial](http://llvm.org/docs/tutorial/) as a starting point. Naturally, it being a tutorial did no favours for the code cleanliness and organisation of the Flax compiler.
 
-Flax itself has 3 main passes -- Tokenising and Lexing, Parsing, and finally Codegen. Yes -- there is no separate typechecking phase. Strictly speaking this is a bad practice, but as with any large structure, replacing the foundation in one fell swoop is nigh impossible.
+Flax itself has 4 main passes -- Lexing, Parsing, Typechecking, and finally Codegen. Yes that's right, the shitty typecheck-and-codegen-at-the-same-time architecture of old has been completely replaced!
 
 
 ##### Tokenising and Lexing #####
@@ -201,9 +201,7 @@ Broadly speaking this is a recursive descent parser, handwritten. Not terribly e
 
 ##### Typechecking #####
 
-At this stage, each AST node that the parser produced is traversed, at the file-level. AST nodes are transformed through a typechecking phase into SST nodes (the
-original meaning of this initialism has been lost). This typechecking consists of solidifying `pts::Type`s into `fir::Type`s; given that the former is simply
-a stripped-down version of the latter, this is natural.
+At this stage, each AST node that the parser produced is traversed, at the file-level. AST nodes are transformed through a typechecking phase into SST nodes (the original meaning of this initialism has been lost). This typechecking consists of solidifying `pts::Type`s into `fir::Type`s; given that the former is simply a stripped-down version of the latter, this is natural.
 
 SST nodes are just AST nodes with refinements; identifiers are resolved to their targets, and function calls also find their intended target here.
 
@@ -213,21 +211,17 @@ Before the rewrite, this used to happen in an intertwined fashion with code gene
 
 ##### Code Generation #####
 
-After each file is typechecked, the collector forcibly squishes them together into a single unit, combining the necessary definitions from other files that
-were imported -- code generation happens at the program level.
+After each file is typechecked, the collector forcibly squishes them together into a single unit, combining the necessary definitions from other files that were imported -- code generation happens at the program level.
 
-During code generation, we output 'Flax Intermediate Representation', or 'FIR'. It's basically a layer on top of LLVM that preserves much of its interface,
-with some light abstractions built on top. This is where AST nodes actually get transformed into instructions.
+During code generation, we output 'Flax Intermediate Representation', or 'FIR'. It's basically a layer on top of LLVM that preserves much of its interface, with some light abstractions built on top. This is where AST nodes actually get transformed into instructions.
 
-Part of the purpose for FIR was to decouple from LLVM, and partly to allow compile-time execution in the future, which would definitely be easier with our
-own IR (mainly to send and retrieve values across the compiler <> IR boundary).
+Part of the purpose for FIR was to decouple from LLVM, and partly to allow compile-time execution in the future, which would definitely be easier with our own IR (mainly to send and retrieve values across the compiler <> IR boundary).
 
 
 
 ##### Translation #####
 
-After a `fir::Module` is produced by the code generator, we 'translate' this into LLVM code. The entire process can be seen in `source/backend/llvm/translator.cpp`,
-and clearly we basically cloned the LLVM interface here, which makes it easy to translate into LLVM.
+After a `fir::Module` is produced by the code generator, we 'translate' this into LLVM code. The entire process can be seen in `source/backend/llvm/translator.cpp`, and clearly we basically cloned the LLVM interface here, which makes it easy to translate into LLVM.
 
 
 
