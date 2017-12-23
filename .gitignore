@@ -5,8 +5,12 @@
 *.obj
 
 # Precompiled Headers
-*.gch
-*.pch
+*.gch*
+*.pch*
+
+# Makefile dependencies
+*.cpp.d
+*.c.d
 
 # Compiled Dynamic libraries
 *.so
@@ -43,7 +47,6 @@ build/standalone
 *.bc
 
 *.ir
-*.m
 shakefile.hi
 shakefile
 .shake.database

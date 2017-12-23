@@ -4,7 +4,7 @@
 
 
 
-WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-old-style-cast -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable
 
 
 CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat
@@ -33,7 +33,7 @@ PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
 FLXLIBLOCATION	:= $(SYSROOT)/$(PREFIX)/lib
 FLXSRC			:= $(shell find libs -iname "*.flx")
 
-CXXDEPS			:= $(CXXSRC:.cpp=.cpp.m)
+CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 
 NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
@@ -118,13 +118,13 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 %.cpp.o: %.cpp
 	@$(eval DONEFILES += "CPP")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -MF $<.m -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MP -MD -o $@ $<
 
 
 %.c.o: %.c
 	@$(eval DONEFILES += "C")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/external/utf8rewind/include/utf8rewind -MMD -MP -MF $<.m -o $@ $<
+	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/external/utf8rewind/include/utf8rewind -MP -MD -o $@ $<
 
 
 %.h.gch: %.h
@@ -137,7 +137,8 @@ clena: clean
 clean:
 	@rm -f $(OUTPUT)
 	@find source -name "*.o" | xargs rm -f
-	@find source -name "*.gch" | xargs rm -f
+	@find source -name "*.gch*" | xargs rm -f
+	@find source -name "*.pch*" | xargs rm -f
 
 	@find source -name "*.c.m" | xargs rm -f
 	@find source -name "*.c.d" | xargs rm -f
