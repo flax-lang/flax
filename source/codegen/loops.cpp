@@ -120,8 +120,6 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	fir::Value* step = 0;
 	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
-	fir::Value* data = 0;
-
 	auto [ array, arrayptr, _ ] = this->array->codegen(cs);
 	if(array->getType()->isRangeType())
 	{
