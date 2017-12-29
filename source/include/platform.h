@@ -10,13 +10,16 @@
 
 namespace platform
 {
+
 	#ifdef _WIN32
 		#define WIN32_LEAN_AND_MEAN 1
 
-		#define NOMINMAX
+		#ifndef NOMINMAX
+			#define NOMINMAX
+		#endif
+
 		#include <windows.h>
 		using filehandle_t = HANDLE;
-		static filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
 
 		#define CRT_FDOPEN			"_fdopen"
 		#define PLATFORM_NEWLINE	"\r\n"
@@ -25,11 +28,12 @@ namespace platform
 		#include <sys/stat.h>
 
 		using filehandle_t = int;
-		static filehandle_t InvalidFileHandle = -1;
 
 		#define CRT_FDOPEN			"fdopen"
 		#define PLATFORM_NEWLINE	"\n"
 	#endif
+
+	extern filehandle_t InvalidFileHandle;
 
 	#define REFCOUNT_SIZE		8
 

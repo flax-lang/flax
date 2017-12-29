@@ -28,6 +28,12 @@
 
 namespace platform
 {
+	#ifdef _WIN32
+		filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
+	#else
+		filehandle_t InvalidFileHandle = -1;
+	#endif
+
 	size_t getFileSize(const std::string& path)
 	{
 		#ifdef _WIN32

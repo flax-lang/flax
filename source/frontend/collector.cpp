@@ -38,14 +38,25 @@ namespace frontend
 			std::vector<std::pair<ImportThing, sst::StateTree*>> imports;
 			for(auto d : graph->getDependenciesOf(file))
 			{
-				auto to = d->to;
+				auto imported = d->to;
 
-				auto stree = dtrees[to->name]->base;
+				auto stree = dtrees[imported->name]->base;
 				// debuglog("stree = %p\n", stree);
 				iceAssert(stree);
 
-				ImportThing ithing { to->name, d->ithing.importAs, d->ithing.loc };
+				ImportThing ithing { imported->name, d->ithing.importAs, d->ithing.loc };
+				if(auto it = std::find_if(imports.begin(), imports.end(), [&ithing](auto x) -> bool { return x.first.name == ithing.name; });
+					it != imports.end())
+				{
+					exitless_error(ithing.loc, "Importing previously imported module '%s'", ithing.name);
+					info(it->first.loc, "Previous import was here:");
+
+					doTheExit();
+				}
+
+
 				imports.push_back({ ithing, stree });
+
 				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
@@ -58,27 +69,6 @@ namespace frontend
 
 		return cgn::codegen(dtr);
 
-
-
-
-
-		// std::function<void (sst::StateTree*, size_t)> recursivelyPrintTree = [&](sst::StateTree* tr, size_t i) {
-		// 	auto tab = std::string(i * 4, ' ');
-		// 	auto tab2 = std::string((i + 1) * 4, ' ');
-
-		// 	debuglog("%stree %s\n", tab.c_str(), tr->name.c_str());
-		// 	debuglog("%s{\n", tab.c_str());
-
-		// 	for(auto f : tr->foreignFunctions)
-		// 		debuglog("%sffi fn %s()\n", tab2.c_str(), f.first.c_str());
-
-		// 	for(auto sub : tr->subtrees)
-		// 		recursivelyPrintTree(sub.second, i + 1);
-
-		// 	debuglog("%s}\n", tab.c_str());
-		// };
-
-		// recursivelyPrintTree(dtr->base, 0);
 	}
 }
 

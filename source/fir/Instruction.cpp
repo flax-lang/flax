@@ -119,6 +119,7 @@ namespace fir
 			case OpKind::Value_GetGEP2: 					instrname = "gep"; break;
 			case OpKind::Value_InsertValue: 				instrname = "insertval"; break;
 			case OpKind::Value_ExtractValue: 				instrname = "extractval"; break;
+			case OpKind::Value_Select: 						instrname = "select"; break;
 			case OpKind::Misc_Sizeof:						instrname = "sizeof"; break;
 			case OpKind::Branch_UnCond: 					instrname = "jump"; break;
 			case OpKind::Branch_Cond: 						instrname = "branch"; break;
@@ -159,6 +160,8 @@ namespace fir
 			case OpKind::Range_SetLower:					instrname = "set_range.lower"; break;
 			case OpKind::Range_GetUpper:					instrname = "get_range.upper"; break;
 			case OpKind::Range_SetUpper:					instrname = "set_range.upper"; break;
+			case OpKind::Range_GetStep:						instrname = "get_range.step"; break;
+			case OpKind::Range_SetStep:						instrname = "set_range.step"; break;
 
 			case OpKind::Enum_GetIndex:						instrname = "get_enum.index"; break;
 			case OpKind::Enum_SetIndex:						instrname = "set_enum.index"; break;
