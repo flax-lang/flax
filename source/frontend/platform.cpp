@@ -214,7 +214,7 @@ namespace platform
 
 			TCHAR* out = new TCHAR[MAX_PATH];
 			defer(delete[] out);
-			auto ret = GetFinalPathNameByHandle(hd, out, MAX_PATH, VOLUME_NAME_DOS);
+			auto ret = GetFinalPathNameByHandleA(hd, out, MAX_PATH, VOLUME_NAME_DOS);
 
 			if(ret != 0)
 			{

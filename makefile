@@ -118,13 +118,13 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 %.cpp.o: %.cpp
 	@$(eval DONEFILES += "CPP")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MP -MD -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
 
 
 %.c.o: %.c
 	@$(eval DONEFILES += "C")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/external/utf8rewind/include/utf8rewind -MP -MD -o $@ $<
+	@$(CC) $(CFLAGS) $(WARNINGS) -Isource/external/utf8rewind/include/utf8rewind -MMD -MP -o $@ $<
 
 
 %.h.gch: %.h
