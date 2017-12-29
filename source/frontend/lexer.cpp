@@ -496,7 +496,7 @@ namespace lexer
 			read = identLength;
 			tok.text = stream.substr(0, identLength);
 
-
+			// make this a little better maybe?
 			// check for keywords
 			if(compare(tok.text, "class"))				tok.type = TokenType::Class;
 			else if(compare(tok.text, "struct"))		tok.type = TokenType::Struct;
