@@ -57,7 +57,7 @@ std::string operatorToString(const Operator& op)
 	}
 }
 
-fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operator op)
+fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operator op, sst::FunctionDefn** overloadFn)
 {
 	switch(op)
 	{
@@ -179,6 +179,24 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 			error("op '%s' not supported", operatorToString(op));
 	}
 
+	// ok, check the operator map.
+	{
+		auto tree = this->stree;
+		while(tree)
+		{
+			for(auto op : tree->operatorOverloads[op])
+			{
+				if(this->isDuplicateOverload(util::map(op->params, [](auto p) { return p.type; }), { left, right }))
+				{
+					if(overloadFn) *overloadFn = op;
+					return op->returnType;
+				}
+			}
+
+			tree = tree->parent;
+		}
+	}
+
 	return 0;
 }
 
@@ -197,7 +215,9 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	auto lt = l->type;
 	auto rt = r->type;
 
-	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op);
+	sst::FunctionDefn* overloadFn = 0;
+
+	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op, &overloadFn);
 	if(!rest)
 	{
 		HighlightOptions ho;
@@ -214,6 +234,8 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	ret->left = dynamic_cast<sst::Expr*>(l);
 	ret->right = dynamic_cast<sst::Expr*>(r);
 	ret->op = this->op;
+
+	ret->overloadedOpFunction = overloadFn;
 
 	return ret;
 }

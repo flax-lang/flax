@@ -74,7 +74,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 
 	if(restype->isStructType() || restype->isClassType())
 	{
-		auto t = res.pointer->getType()->getPointerElementType();
+		auto t = res.value->getType();
 		iceAssert(t->isStructType() || t->isClassType());
 
 		retv = res.value;
@@ -121,10 +121,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::Type* sty = 0;
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 		if(!res.pointer)
-		{
-			info(this, "how?");
-			error(this->lhs, "did not have pointer");
-		}
+			res.pointer = cs->irb.ImmutStackAlloc(sty, res.value);
 
 		// then we insert it as the first argument
 		auto rv = new sst::RawValueExpr(this->loc, res.pointer->getType());
@@ -151,26 +148,26 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	if(this->isMethodRef)
+		error("method ref not supported");
+
 	fir::Type* sty = 0;
 	auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 	if(!res.pointer)
 	{
-		info(this, "how?");
-		error(this->lhs, "did not have pointer");
+		// use extractvalue.
+		return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent), 0, CGResult::VK::RValue);
 	}
+	else
+	{
+		auto ptr = res.pointer;
 
-	auto ptr = res.pointer;
+		// ok, at this point it's just a normal, instance field.
+		auto val = cs->irb.GetStructMember(ptr, this->rhsIdent);
+		iceAssert(val);
 
-	if(this->isMethodRef)
-		error("method ref not supported");
-
-	// iceAssert(sty->toStructType()->hasElementWithName(this->rhsIdent));
-
-	// ok, at this point it's just a normal, instance field.
-	auto val = cs->irb.GetStructMember(ptr, this->rhsIdent);
-	iceAssert(val);
-
-	return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
+		return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
+	}
 }
 
 

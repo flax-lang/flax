@@ -154,6 +154,22 @@ namespace sst
 		return distance;
 	}
 
+
+	bool TypecheckState::isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b)
+	{
+		return this->isDuplicateOverload(util::map(a, [](Param p) { return p.type; }), util::map(b, [](Param p) { return p.type; }));
+	}
+
+	bool TypecheckState::isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
+	{
+		Location eloc;
+		std::string estr;
+
+		auto dist = computeOverloadDistance(this->loc(), a, std::vector<Location>(a.size()), b, false, &eloc, &estr);
+
+		return dist == 0;
+	}
+
 	Defn* TypecheckState::resolveFunctionFromCandidates(std::vector<Defn*> cands, std::vector<Param> arguments,
 		PrettyError* errs, bool allowImplicitSelf)
 	{

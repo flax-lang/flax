@@ -43,13 +43,18 @@ namespace sst
 		StateTree* parent = 0;
 
 		std::unordered_map<std::string, StateTree*> subtrees;
-		std::unordered_map<std::string, std::vector<ast::FuncDefn*>> unresolvedGenericFunctions;
+		std::unordered_map<std::string, std::vector<ast::Stmt*>> unresolvedGenericDefs;
 
 		using DefnMap = std::unordered_map<std::string, std::vector<Defn*>>;
 
 		// maps from filename to defnmap -- allows tracking definitions by where they came from
 		// so we can resolve the import duplication bullshit
 		std::unordered_map<std::string, DefnMap> definitions;
+
+		// what's there to explain? a simple map of operators to their functions. we use
+		// function overload resolution to determine which one to call, and ambiguities are
+		// handled the usual way.
+		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> operatorOverloads;
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
@@ -95,6 +100,14 @@ namespace sst
 		void enterFunctionBody(FunctionDefn* fn);
 		void leaveFunctionBody();
 
+
+		std::vector<TypeDefn*> structBodyStack;
+		TypeDefn* getCurrentStructBody();
+		bool isInStructBody();
+		void enterStructBody(TypeDefn* str);
+		void leaveStructBody();
+
+
 		int breakableBodyNest = 0;
 		void enterBreakableBody();
 		void leaveBreakableBody();
@@ -123,7 +136,7 @@ namespace sst
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
 			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 
-		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, Operator op);
+		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, Operator op, sst::FunctionDefn** overloadFn = 0);
 
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
@@ -136,6 +149,9 @@ namespace sst
 			std::string errorStr;
 			std::vector<std::pair<Location, std::string>> infoStrs;
 		};
+
+		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
+		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
 		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs, bool traverseUp);
 		Defn* resolveFunctionFromCandidates(std::vector<Defn*> fs, std::vector<FunctionDecl::Param> arguments,

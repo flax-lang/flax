@@ -84,6 +84,7 @@ std::string printContext(HighlightOptions ops)
 		for(auto& u : ops.underlines)
 			u.col -= adjust;
 
+
 		ops.underlines.push_back(ops.caret);
 		std::sort(ops.underlines.begin(), ops.underlines.end(), [=](Location a, Location b) { return a.col < b.col; });
 
@@ -118,6 +119,7 @@ std::string printContext(HighlightOptions ops)
 				part2 += strprintf("%s%s%s", COLOUR_GREEN_BOLD, repeat(" ̅", ul.len).c_str(), COLOUR_RESET);
 				cursorX += ul.len;
 			}
+
 		}
 
 		ret += (_convertTab() + part2);

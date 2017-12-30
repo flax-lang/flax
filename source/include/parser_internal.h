@@ -156,6 +156,8 @@ namespace parser
 			const lexer::TokenList& tokens;
 	};
 
+	Operator parseOperatorTokens(State& st);
+
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
 	ast::Stmt* parseStmt(State& st);
@@ -168,6 +170,7 @@ namespace parser
 	ast::FuncDefn* parseFunction(State& st);
 	ast::Stmt* parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
+	ast::OperatorOverloadDefn* parseOperatorOverload(State& st);
 
 	std::map<size_t, std::tuple<std::string, bool, Location>> parseArrayDecomp(State& st);
 	std::vector<ast::TupleDecompMapping> parseTupleDecomp(State& st);
