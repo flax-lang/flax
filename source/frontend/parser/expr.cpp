@@ -116,6 +116,8 @@ namespace parser
 					return parseDefer(st);
 
 				case TT::Operator:
+					return parseOperatorOverload(st);
+
 				case TT::Protocol:
 				case TT::Override:
 				case TT::Extension:
@@ -300,106 +302,24 @@ namespace parser
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
-			Token tok_op = st.eat();
-			Token next1 = st.front();
-
-
-			auto op = Operator::Invalid;
-			if(tok_op == TT::LAngle || tok_op == TT::RAngle)
+			if(auto tok_op = st.front(); isPostfixUnaryOperator(tok_op))
 			{
-				// check if the next one matches.
-				if(tok_op == TT::LAngle)
-				{
-					if(next1 == TT::LAngle)
-					{
-						// < < is <<
-						op = Operator::ShiftLeft;
-						st.eat();
-					}
-					else if(next1 == TT::LessThanEquals)
-					{
-						// < <= is <<=
-						op = Operator::ShiftLeftEquals;
-						st.eat();
-					}
-				}
-				else if(tok_op == TT::RAngle)
-				{
-					if(next1 == TT::RAngle)
-					{
-						// > > is >>
-						op = Operator::ShiftRight;
-						st.eat();
-					}
-					else if(next1 == TT::GreaterEquals)
-					{
-						// > >= is >>=
-						op = Operator::ShiftRightEquals;
-						st.eat();
-					}
-				}
-			}
-			else if(isPostfixUnaryOperator(tok_op))
-			{
-				// lhs = parsePostfixUnary(st, tok_op, lhs);
-				// error("notsup");
+				st.eat();
 				lhs = parsePostfixUnary(st, dynamic_cast<Expr*>(lhs), tok_op);
 				continue;
 			}
 
-
-
+			auto loc = st.loc();
+			auto op = parseOperatorTokens(st);
 			if(op == Operator::Invalid)
-			{
-				switch(tok_op.type)
-				{
-					case TT::Plus:				op = Operator::Add;					break;
-					case TT::Minus:				op = Operator::Subtract;			break;
-					case TT::Asterisk:			op = Operator::Multiply;			break;
-					case TT::Divide:			op = Operator::Divide;				break;
-					case TT::Percent:			op = Operator::Modulo;				break;
-					case TT::ShiftLeft:			op = Operator::ShiftLeft;			break;
-					case TT::ShiftRight:		op = Operator::ShiftRight;			break;
-					case TT::Equal:				op = Operator::Assign;				break;
-
-					case TT::LAngle:			op = Operator::CompareLess;			break;
-					case TT::RAngle:			op = Operator::CompareGreater;		break;
-					case TT::LessThanEquals:	op = Operator::CompareLessEq;		break;
-					case TT::GreaterEquals:		op = Operator::CompareGreaterEq;	break;
-					case TT::EqualsTo:			op = Operator::CompareEq;			break;
-					case TT::NotEquals:			op = Operator::CompareNotEq;		break;
-
-					case TT::Ampersand:			op = Operator::BitwiseAnd;			break;
-					case TT::Pipe:				op = Operator::BitwiseOr;			break;
-					case TT::Caret:				op = Operator::BitwiseXor;			break;
-					case TT::LogicalOr:			op = Operator::LogicalOr;			break;
-					case TT::LogicalAnd:		op = Operator::LogicalAnd;			break;
-
-					case TT::PlusEq:			op = Operator::PlusEquals;			break;
-					case TT::MinusEq:			op = Operator::MinusEquals;			break;
-					case TT::MultiplyEq:		op = Operator::MultiplyEquals;		break;
-					case TT::DivideEq:			op = Operator::DivideEquals;		break;
-					case TT::ModEq:				op = Operator::ModuloEquals;		break;
-					case TT::ShiftLeftEq:		op = Operator::ShiftLeftEquals;		break;
-					case TT::ShiftRightEq:		op = Operator::ShiftRightEquals;	break;
-					case TT::AmpersandEq:		op = Operator::BitwiseAndEquals;	break;
-					case TT::PipeEq:			op = Operator::BitwiseOrEquals;		break;
-					case TT::CaretEq:			op = Operator::BitwiseXorEquals;	break;
-
-					case TT::Period:			op = Operator::DotOperator;			break;
-					case TT::As:				op = Operator::Cast;				break;
-
-					default:
-						error(st, "Unknown operator '%s'", tok_op.str());
-				}
-			}
+				error(loc, "Invalid operator '%s'", st.prev().str());
 
 
 
 			Expr* rhs = 0;
-			if(tok_op.type == TT::As)
+			if(op == Operator::Cast)
 			{
-				rhs = new TypeExpr(tok_op.loc, parseType(st));
+				rhs = new TypeExpr(loc, parseType(st));
 			}
 			else
 			{
@@ -416,14 +336,14 @@ namespace parser
 
 			if(op == Operator::DotOperator)
 			{
-				tok_op.loc.col = lhs->loc.col;
-				tok_op.loc.len = rhs->loc.col - lhs->loc.col + 1;
+				loc.col = lhs->loc.col;
+				loc.len = rhs->loc.col - lhs->loc.col + 1;
 
-				lhs = new DotOperator(tok_op.loc, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = new DotOperator(loc, dynamic_cast<Expr*>(lhs), rhs);
 			}
 			else if(isAssignOp(op))
 			{
-				auto newlhs = new AssignOp(tok_op.loc);
+				auto newlhs = new AssignOp(loc);
 
 				newlhs->left = dynamic_cast<Expr*>(lhs);
 				newlhs->right = rhs;
@@ -433,7 +353,7 @@ namespace parser
 			}
 			else
 			{
-				lhs = new BinaryOp(tok_op.loc, op, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = new BinaryOp(loc, op, dynamic_cast<Expr*>(lhs), rhs);
 			}
 		}
 	}

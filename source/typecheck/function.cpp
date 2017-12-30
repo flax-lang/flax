@@ -8,12 +8,11 @@
 
 #include "ir/type.h"
 
-using TCS = sst::TypecheckState;
-
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
 
-sst::Stmt* ast::FuncDefn::typecheck(TCS* fs, fir::Type* infer)
+
+sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -66,7 +65,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	if(this->generics.size() > 0)
 	{
-		fs->stree->unresolvedGenericFunctions[this->name].push_back(this);
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
 		return;
 	}
 
@@ -111,20 +110,22 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	defn->global = !fs->isInFunctionBody();
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
 			// make sure we didn't fuck up somewhere
 			iceAssert(decl->id.name == defn->id.name);
 
-			// check the typelists, then
-			bool ret = fir::Type::areTypeListsEqual(
-				util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
-				util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
-			);
+			return fs->isDuplicateOverload(defn->params, decl->params);
 
-			return ret;
+			// check the typelists, then
+			// bool ret = fir::Type::areTypeListsEqual(
+			// 	util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
+			// 	util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
+			// );
+
+			// return ret;
 		}
 		else
 		{
@@ -142,7 +143,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 
 
-sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
+sst::Stmt* ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	if(this->generatedDecl)
 		return this->generatedDecl;
@@ -174,7 +175,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 		defn->type = fir::FunctionType::get(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
 
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](TCS* fs, sst::Stmt* other) -> bool {
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
@@ -208,7 +209,7 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(TCS* fs, fir::Type* inferred)
 
 
 
-sst::Stmt* ast::Block::typecheck(TCS* fs, fir::Type* inferred)
+sst::Stmt* ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

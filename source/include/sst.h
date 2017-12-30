@@ -187,7 +187,7 @@ namespace sst
 		Expr* expr = 0;
 	};
 
-
+	struct FunctionDefn;
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& l, fir::Type* t) : Expr(l, t) { }
@@ -198,6 +198,8 @@ namespace sst
 		Expr* left = 0;
 		Expr* right = 0;
 		Operator op = Operator::Invalid;
+
+		FunctionDefn* overloadedOpFunction = 0;
 	};
 
 	struct UnaryOp : Expr
@@ -530,6 +532,16 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
+
+	struct OperatorOverloadDefn : FunctionDefn
+	{
+		OperatorOverloadDefn(const Location& l) : FunctionDefn(l) { }
+		~OperatorOverloadDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
+
 
 	struct TupleDecompDefn : Stmt
 	{

@@ -66,6 +66,35 @@ namespace sst
 
 
 
+	TypeDefn* TypecheckState::getCurrentStructBody()
+	{
+		if(this->structBodyStack.empty())
+			error(this->loc(), "Not inside struct body");
+
+		return this->structBodyStack.back();
+	}
+
+	bool TypecheckState::isInStructBody()
+	{
+		return this->structBodyStack.size() > 0;
+	}
+
+	void TypecheckState::enterStructBody(TypeDefn* str)
+	{
+		this->structBodyStack.push_back(str);
+	}
+
+	void TypecheckState::leaveStructBody()
+	{
+		if(this->structBodyStack.empty())
+			error(this->loc(), "Not inside struct body");
+
+		this->structBodyStack.pop_back();
+	}
+
+
+
+
 	void TypecheckState::pushTree(std::string name)
 	{
 		iceAssert(this->stree);

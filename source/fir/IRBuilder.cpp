@@ -1396,9 +1396,9 @@ namespace fir
 
 
 		size_t ind = 0;
-		if(t->isStructType()) { ind = t->toStructType()->getElementIndex(n); }
-		else if(t->isClassType()) { ind = t->toClassType()->getElementIndex(n); }
-		iceAssert(ind);
+		if(t->isStructType())		ind = t->toStructType()->getElementIndex(n);
+		else if(t->isClassType())	ind = t->toClassType()->getElementIndex(n);
+		else						iceAssert(0);
 
 		return this->ExtractValue(val, { ind }, vname);
 	}

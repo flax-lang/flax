@@ -21,7 +21,8 @@ namespace sst
 			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
 
 		clone->definitions = clonee->definitions;
-		clone->unresolvedGenericFunctions = clonee->unresolvedGenericFunctions;
+		clone->operatorOverloads = clonee->operatorOverloads;
+		clone->unresolvedGenericDefs = clonee->unresolvedGenericDefs;
 
 		return clone;
 	}
@@ -122,9 +123,16 @@ namespace sst
 		}
 
 
-		for(auto f : tree->unresolvedGenericFunctions)
+		for(auto f : tree->unresolvedGenericDefs)
 		{
-			existing->unresolvedGenericFunctions[f.first].insert(existing->unresolvedGenericFunctions[f.first].end(),
+			existing->unresolvedGenericDefs[f.first].insert(existing->unresolvedGenericDefs[f.first].end(),
+				f.second.begin(), f.second.end());
+		}
+
+
+		for(auto f : tree->operatorOverloads)
+		{
+			existing->operatorOverloads[f.first].insert(existing->operatorOverloads[f.first].end(),
 				f.second.begin(), f.second.end());
 		}
 
@@ -165,21 +173,7 @@ namespace sst
 					treedef->id = Identifier(ias, IdKind::Name);
 					treedef->tree = newinspt;
 
-					// debuglog("ias = %s\n", ias);
 					insertPoint->addDefinition(ias, treedef);
-
-					// note/fixme: because we don't want to be modifying things, we make a new namespacedefn that's essentially the same as the
-					// old one, but with a few scoping fixes.
-					// auto oldns = cs->dtrees[ithing.name]->topLevel;
-					// sst::NamespaceDefn* nsd = new sst::NamespaceDefn(oldns->loc);
-					// nsd->id = oldns->id;
-					// nsd->id.name = ias;
-
-					// nsd->id.scope.insert(nsd->id.scope.begin(), insertPoint->name);
-					// nsd->visibility = oldns->visibility;
-					// nsd->statements = oldns->statements;
-
-					// insertPoint->addDefinition(ias, nsd);
 				}
 
 				insertPoint = newinspt;
@@ -220,6 +214,20 @@ static void visitFunctions(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 	}
 }
 
+static bool _isType(ast::Stmt* stmt)
+{
+	return (dynamic_cast<ast::StructDefn*>(stmt) || dynamic_cast<ast::ClassDefn*>(stmt) || dynamic_cast<ast::EnumDefn*>(stmt));
+}
+
+static void visitTypes(sst::TypecheckState* fs, ast::TopLevelBlock* ns, sst::NamespaceDefn* ret)
+{
+	for(auto stmt : ns->statements)
+	{
+		if(_isType(stmt))
+			ret->statements.push_back(stmt->typecheck(fs));
+	}
+}
+
 
 sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
@@ -236,13 +244,17 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		// once we're in function-body-land, everything should be imperative-driven, and you shouldn't
 		// be able to see something before it is defined/declared.
 
+		//* but, we need all types to be visible, so we can use them in the function declarations
+		//* we'll see next -- if not then it breaks
+		visitTypes(fs, this, ret);
+
 		visitFunctions(fs, this);
 	}
 
 
 	for(auto stmt : this->statements)
 	{
-		if(dynamic_cast<ast::ImportStmt*>(stmt))
+		if(dynamic_cast<ast::ImportStmt*>(stmt) || _isType(stmt))
 			continue;
 
 		ret->statements.push_back(stmt->typecheck(fs));

@@ -4,6 +4,8 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "typecheck.h"
+
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
@@ -174,17 +176,6 @@ namespace sst
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
-
-		// auto [ l, r ] = cs->autoCastValueTypes(_lr, _rr);
-		// if(!l.value || !r.value)
-		// {
-		// 	error(this, "Unsupported operator '%s' on types '%s' and '%s'", operatorToString(this->op), _lr.value->getType(),
-		// 		_rr.value->getType());
-		// }
-
-		// auto lt = l.value->getType();
-		// auto rt = r.value->getType();
-
 		auto [ l, r ] = std::make_tuple(_lr, _rr);
 		auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
 
@@ -214,6 +205,33 @@ namespace sst
 				else
 					return CGResult(fir::ConstantNumber::get(res));
 			}
+		}
+		else if(this->overloadedOpFunction)
+		{
+			// fantastic, just call this piece of shit.
+			auto func = dcast(fir::Function, this->overloadedOpFunction->codegen(cs, 0).value);
+			iceAssert(func);
+			iceAssert(func->getArgumentCount() == 2);
+
+			if(lt != func->getArguments()[0]->getType())
+			{
+				exitless_error(this->left, "Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					operatorToString(this->op), func->getArguments()[0]->getType(), lt);
+
+				info(this->overloadedOpFunction, "Operator was overloaded here:");
+				doTheExit();
+			}
+			else if(rt != func->getArguments()[1]->getType())
+			{
+				exitless_error(this->left, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					operatorToString(this->op), func->getArguments()[1]->getType(), lt);
+
+				info(this->overloadedOpFunction, "Operator was overloaded here:");
+				doTheExit();
+			}
+
+			// ok, call that guy.
+			return CGResult(cs->irb.Call(func, l.value, r.value));
 		}
 		else
 		{
@@ -338,6 +356,7 @@ namespace cgn
 
 		auto [ lv, lp ] = std::make_pair(l.value, l.pointer);
 		auto [ rv, rp ] = std::make_pair(r.value, r.pointer);
+
 
 		if(isCompareOp(op))
 		{

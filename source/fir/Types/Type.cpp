@@ -635,11 +635,6 @@ namespace fir
 		return dynamic_cast<ArraySliceType*>(this) != 0;
 	}
 
-	bool Type::isVoidPointer()
-	{
-		return this == PrimitiveType::getVoid()->getPointerTo();
-	}
-
 	bool Type::isRangeType()
 	{
 		return dynamic_cast<RangeType*>(this) != 0;
