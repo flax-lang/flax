@@ -4,37 +4,29 @@
 
 export supertiny
 
-import "libc"
 import "libc" as _
 
 fn timestwo(x: int) -> int => x * 2
 
+struct vec2 { var x: int; var y: int }
+
+operator + (x: vec2, y: vec2) -> vec2
+{
+	var ret: vec2
+	ret.x = x.x + y.x
+	ret.y = x.y + y.y
+
+	return ret;
+}
+
 @entry fn main()
 {
-	// for it in 1...5 step 2 => libc.printf("%d ", it)
-	// libc.printf("\n")
+	var a: vec2; a.x = 10; a.y = 20;
+	var b: vec2; b.x = 23; b.y = 17;
 
-	// for c in "HELLO" => libc.printf("%c", c)
-	// libc.printf("\n")
+	let c = a + b
 
-	// for it in [ 1, 1, 2, 3, 5, 8, 13 ] => libc.printf("%d ", it)
-	// libc.printf("\n")
-
-	// let range = 5...1
-	// libc.printf("range: (%d, %d, %d)\n", range.begin, range.end, range.step);
-
-
-	defer printf("\ndone\n");
-	defer {
-		printf("one\n")
-		printf("two\n")
-		printf("three\n")
-	}
-
-
-	for it in 5...-5 => printf("%d ", timestwo(it))
-	for _ in 1...10 => printf("x")
-	printf("\n")
+	printf("c = (%d, %d)\n", c.x, c.y)
 }
 
 

@@ -81,6 +81,9 @@ namespace ast
 		std::vector<Stmt*> deferredStatements;
 	};
 
+
+
+
 	struct FuncDefn : Stmt
 	{
 		FuncDefn(const Location& l) : Stmt(l) { }
@@ -129,6 +132,26 @@ namespace ast
 
 		bool isVarArg = false;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+	};
+
+	struct OperatorOverloadDefn : FuncDefn
+	{
+		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { }
+		~OperatorOverloadDefn() { }
+
+		void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer);
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		enum class Kind
+		{
+			Invalid,
+			Binary,
+			UnaryPrefix,
+			UnaryPostfix
+		};
+
+		Kind kind = Kind::Invalid;
+		Operator op = Operator::Invalid;
 	};
 
 	struct VarDefn : Stmt

@@ -129,7 +129,7 @@ namespace backend
 		}
 		else if(type->isPointerType())
 		{
-			if(type->isVoidPointer())
+			if(type == fir::Type::getVoidPtr())
 				return llvm::Type::getInt8PtrTy(gc);
 
 			else

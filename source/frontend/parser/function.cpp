@@ -12,14 +12,11 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
+	static std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
 	{
-		iceAssert(st.eat() == TT::Func);
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'fn'", st.front().str());
-
-		FuncDefn* defn = new FuncDefn(st.loc());
-		defn->name = st.eat().str();
+		pts::Type* returnType = 0;
+		std::vector<FuncDefn::Arg> args;
+		std::map<std::string, TypeConstraints_t> generics;
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -29,7 +26,7 @@ namespace parser
 			if(st.front() == TT::RAngle)
 				error(st, "Empty type parameter lists are not allowed");
 
-			defn->generics = parseGenericTypeList(st);
+			generics = parseGenericTypeList(st);
 		}
 
 		if(st.front() != TT::LParen)
@@ -66,7 +63,7 @@ namespace parser
 			st.eat();
 			auto type = parseType(st);
 
-			defn->args.push_back(FuncDefn::Arg { name, loc, type });
+			args.push_back(FuncDefn::Arg { name, loc, type });
 
 			if(st.front() == TT::Comma)
 				st.eat();
@@ -81,14 +78,30 @@ namespace parser
 		if(st.front() == TT::RightArrow)
 		{
 			st.eat();
-			defn->returnType = parseType(st);
+			returnType = parseType(st);
 		}
 		else
 		{
-			defn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			returnType = pts::NamedType::create(VOID_TYPE_STRING);
 		}
 
-		return std::make_tuple(defn, isvar, varloc);
+		return std::make_tuple(args, generics, returnType, isvar, varloc);
+	}
+
+
+	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
+	{
+		iceAssert(st.eat() == TT::Func);
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'fn'", st.front().str());
+
+		FuncDefn* defn = new FuncDefn(st.loc());
+		defn->name = st.eat().str();
+
+		Location loc;
+		bool isvar = false;
+		std::tie(defn->args, defn->generics, defn->returnType, isvar, loc) = parseFunctionLookingDecl(st);
+		return std::make_tuple(defn, isvar, loc);
 	}
 
 
@@ -106,6 +119,38 @@ namespace parser
 
 		defn->body = parseBracedBlock(st);
 		return defn;
+	}
+
+	OperatorOverloadDefn* parseOperatorOverload(State& st)
+	{
+		iceAssert(st.front() == TT::Operator);
+		auto ret = new ast::OperatorOverloadDefn(st.eat().loc);
+
+		if(st.front().str() == "prefix")
+			ret->kind = ast::OperatorOverloadDefn::Kind::UnaryPrefix, st.eat();
+
+		else if(st.front().str() == "postfix")
+			ret->kind = ast::OperatorOverloadDefn::Kind::UnaryPostfix, st.eat();
+
+		else
+			ret->kind = ast::OperatorOverloadDefn::Kind::Binary;
+
+		ret->op = parseOperatorTokens(st);
+		if(ret->op == Operator::Invalid)
+			error(st.ploc(), "Invalid operator '%s' (custom operators are not yet supported)", st.prev().str());
+
+		bool isvar = false;
+		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
+
+		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
+
+		st.skipWS();
+		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
+			expected(st, "'{' to begin function body", st.front().str());
+
+		ret->body = parseBracedBlock(st);
+		ret->name = operatorToString(ret->op);
+		return ret;
 	}
 
 

@@ -97,6 +97,12 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
+	(???????)
+	- fix member access on structs that were passed as arguments (ie. 'did not have pointer' -- solved by using ExtractValue in such cases)
+
+	(45e818e)
+	- check for and error on duplicate module imports.
+
 	(5a9aa9e)
 	- add deferred statements and blocks
 

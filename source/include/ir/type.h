@@ -137,7 +137,6 @@ namespace fir
 		bool isSignedIntType();
 		bool isFloatingPointType();
 
-		bool isVoidPointer();
 		bool isArraySliceType();
 		bool isDynamicArrayType();
 		bool isVariadicArrayType();

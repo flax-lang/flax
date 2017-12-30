@@ -54,16 +54,25 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 	}
 
-	for(auto m : this->methods)
+
+	//* this is a slight misnomer, since we only 'enter' the struct body when generating methods.
+	//* for all intents and purposes, static methods (aka functions) don't really need any special
+	//* treatment anyway, apart from living in a special namespace -- so this should really be fine.
+	fs->enterStructBody(defn);
 	{
-		m->generateDeclaration(fs, str);
-		iceAssert(m->generatedDefn);
+		for(auto m : this->methods)
+		{
+			m->generateDeclaration(fs, str);
+			iceAssert(m->generatedDefn);
 
-		defn->methods.push_back(m->generatedDefn);
+			defn->methods.push_back(m->generatedDefn);
+		}
+
+		for(auto m : this->methods)
+			m->typecheck(fs, str);
 	}
+	fs->leaveStructBody();
 
-	for(auto m : this->methods)
-		m->typecheck(fs, str);
 
 	str->setBody(tys);
 
@@ -135,14 +144,17 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// 	tys.push_back({ v->id.name, v->type });
 	// }
 
-
-	for(auto m : this->methods)
+	fs->enterStructBody(defn);
 	{
-		m->generateDeclaration(fs, cls);
-		iceAssert(m->generatedDefn);
+		for(auto m : this->methods)
+		{
+			m->generateDeclaration(fs, cls);
+			iceAssert(m->generatedDefn);
 
-		defn->methods.push_back(m->generatedDefn);
+			defn->methods.push_back(m->generatedDefn);
+		}
 	}
+	fs->leaveStructBody();
 
 	for(auto m : this->staticMethods)
 	{
@@ -153,8 +165,16 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		defn->staticMethods.push_back(m->generatedDefn);
 	}
 
-	for(auto m : this->methods)
-		m->typecheck(fs, cls);
+
+	//* again, same deal here.
+	fs->enterStructBody(defn);
+	{
+		for(auto m : this->methods)
+			m->typecheck(fs, cls);
+	}
+	fs->leaveStructBody();
+
+
 
 	for(auto m : this->staticMethods)
 		m->typecheck(fs);
