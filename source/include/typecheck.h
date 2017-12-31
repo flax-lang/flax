@@ -54,7 +54,9 @@ namespace sst
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are
 		// handled the usual way.
-		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> operatorOverloads;
+		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
+		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
+		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);

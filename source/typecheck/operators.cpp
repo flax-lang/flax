@@ -34,7 +34,7 @@ sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Ty
 	defer(fs->popLoc());
 
 	if(this->kind == Kind::Invalid)
-		error(this, "Invalid operator kind; must be one of 'binary', 'postfix unary', or 'prefix unary'");
+		error(this, "Invalid operator kind; must be one of 'infix', 'postfix', or 'prefix'");
 
 	if(fs->isInStructBody())
 		error(this, "Operator overloads cannot be methods of a type.");
@@ -59,12 +59,12 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	// ok, do our checks on the defn instead.
 	auto ft = defn->type->toFunctionType();
 
-	if(this->kind == Kind::Binary)
+	if(this->kind == Kind::Infix)
 	{
 		if(ft->getArgumentTypes().size() != 2)
 		{
-			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d were found",
-				operatorToString(this->op), ft->getArgumentTypes().size());
+			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
+				operatorToString(this->op), ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
 		else if(!isAssignOp(this->op) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1)))
 		{
@@ -75,12 +75,12 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 			doTheExit();
 		}
 	}
-	else if(this->kind == Kind::UnaryPostfix || this->kind == Kind::UnaryPrefix)
+	else if(this->kind == Kind::Postfix || this->kind == Kind::Prefix)
 	{
 		if(ft->getArgumentTypes().size() != 1)
 		{
-			error(this, "Operator overload for unary operator '%s' must have exactly 1 parameter, but %d were found",
-				operatorToString(this->op), ft->getArgumentTypes().size());
+			error(this, "Operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
+				operatorToString(this->op), ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)))
 		{
@@ -110,7 +110,10 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	}
 
 	// before we add, check for duplication.
-	for(auto it : fs->stree->operatorOverloads[this->op])
+	auto& thelist = (this->kind == Kind::Infix ? fs->stree->infixOperatorOverloads : (this->kind == Kind::Prefix
+		? fs->stree->prefixOperatorOverloads : fs->stree->postfixOperatorOverloads));
+
+	for(auto it : thelist[this->op])
 	{
 		if(fs->isDuplicateOverload(it->params, defn->params))
 		{
@@ -122,7 +125,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	}
 
 	// ok, we should be good now.
-	fs->stree->operatorOverloads[this->op].push_back(defn);
+	thelist[this->op].push_back(defn);
 }
 
 
