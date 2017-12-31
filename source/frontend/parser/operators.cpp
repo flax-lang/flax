@@ -13,7 +13,8 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st);
+	std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location>
+	parseFunctionLookingDecl(State& st);
 
 	OperatorOverloadDefn* parseOperatorOverload(State& st)
 	{
@@ -35,7 +36,7 @@ namespace parser
 			expectedAfter(st, "either 'infix', 'prefix' or 'postfix'", "'operator'", st.front().str());
 
 		st.eat();
-		ret->op = parseOperatorTokens(st);
+		ret->symbol = parseOperatorTokens(st);
 
 
 		// check whether we can support this
@@ -57,9 +58,6 @@ namespace parser
 		//! needs to be actually done.
 
 
-		if(ret->op == Operator::Invalid)
-			error(st.ploc(), "Invalid operator '%s' (custom operators are not yet supported)", st.prev().str());
-
 		bool isvar = false;
 		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
 
@@ -70,14 +68,14 @@ namespace parser
 			expected(st, "'{' to begin function body", st.front().str());
 
 		ret->body = parseBracedBlock(st);
-		ret->name = operatorToString(ret->op);
+		ret->name = ret->symbol;
 		return ret;
 	}
 
 
 
 
-	Operator parseOperatorTokens(State& st)
+	std::string parseOperatorTokens(State& st)
 	{
 		using TT = lexer::TokenType;
 
@@ -92,13 +90,13 @@ namespace parser
 				{
 					// < < is <<
 					st.eat();
-					return Operator::ShiftLeft;
+					return "<<";
 				}
 				else if(st.front() == TT::LessThanEquals)
 				{
 					// < <= is <<=
 					st.eat();
-					return Operator::ShiftLeftEquals;
+					return "<<=";
 				}
 			}
 			else if(tok_op == TT::RAngle)
@@ -107,13 +105,13 @@ namespace parser
 				{
 					// > > is >>
 					st.eat();
-					return Operator::ShiftRight;
+					return ">>";
 				}
 				else if(st.front() == TT::GreaterEquals)
 				{
 					// > >= is >>=
 					st.eat();
-					return Operator::ShiftRightEquals;
+					return ">>=";
 				}
 			}
 		}
@@ -121,56 +119,117 @@ namespace parser
 
 		switch(tok_op.type)
 		{
-			case TT::Plus:				return Operator::Add;
-			case TT::Minus:				return Operator::Subtract;
-			case TT::Asterisk:			return Operator::Multiply;
-			case TT::Divide:			return Operator::Divide;
-			case TT::Percent:			return Operator::Modulo;
-			case TT::ShiftLeft:			return Operator::ShiftLeft;
-			case TT::ShiftRight:		return Operator::ShiftRight;
-			case TT::Equal:				return Operator::Assign;
+			case TT::Plus:				return "+";
+			case TT::Minus:				return "-";
+			case TT::Asterisk:			return "*";
+			case TT::Divide:			return "/";
+			case TT::Percent:			return "%";
+			case TT::ShiftLeft:			return "<<";
+			case TT::ShiftRight:		return ">>";
+			case TT::Equal:				return "=";
 
-			case TT::LAngle:			return Operator::CompareLess;
-			case TT::RAngle:			return Operator::CompareGreater;
-			case TT::LessThanEquals:	return Operator::CompareLessEq;
-			case TT::GreaterEquals:		return Operator::CompareGreaterEq;
-			case TT::EqualsTo:			return Operator::CompareEq;
-			case TT::NotEquals:			return Operator::CompareNotEq;
+			case TT::LAngle:			return "<";
+			case TT::RAngle:			return ">";
+			case TT::LessThanEquals:	return "<=";
+			case TT::GreaterEquals:		return ">=";
+			case TT::EqualsTo:			return "==";
+			case TT::NotEquals:			return "!=";
 
-			case TT::Ampersand:			return Operator::BitwiseAnd;
-			case TT::Pipe:				return Operator::BitwiseOr;
-			case TT::Caret:				return Operator::BitwiseXor;
-			case TT::LogicalOr:			return Operator::LogicalOr;
-			case TT::LogicalAnd:		return Operator::LogicalAnd;
+			case TT::Ampersand:			return "&";
+			case TT::Pipe:				return "|";
+			case TT::Caret:				return "^";
+			case TT::LogicalOr:			return "||";
+			case TT::LogicalAnd:		return "&&";
 
-			case TT::PlusEq:			return Operator::PlusEquals;
-			case TT::MinusEq:			return Operator::MinusEquals;
-			case TT::MultiplyEq:		return Operator::MultiplyEquals;
-			case TT::DivideEq:			return Operator::DivideEquals;
-			case TT::ModEq:				return Operator::ModuloEquals;
-			case TT::ShiftLeftEq:		return Operator::ShiftLeftEquals;
-			case TT::ShiftRightEq:		return Operator::ShiftRightEquals;
-			case TT::AmpersandEq:		return Operator::BitwiseAndEquals;
-			case TT::PipeEq:			return Operator::BitwiseOrEquals;
-			case TT::CaretEq:			return Operator::BitwiseXorEquals;
+			case TT::PlusEq:			return "+=";
+			case TT::MinusEq:			return "-=";
+			case TT::MultiplyEq:		return "*=";
+			case TT::DivideEq:			return "/=";
+			case TT::ModEq:				return "%=";
+			case TT::ShiftLeftEq:		return "<<=";
+			case TT::ShiftRightEq:		return ">>=";
+			case TT::AmpersandEq:		return "&=";
+			case TT::PipeEq:			return "|=";
+			case TT::CaretEq:			return "^=";
 
-			case TT::Period:			return Operator::DotOperator;
-			case TT::As:				return Operator::Cast;
+			case TT::Period:			return ".";
+			case TT::As:				return "cast";
 
-			default:					return Operator::Invalid;
+			default:					return "";
 		}
 	}
 
+	int parseOperatorDecl(const lexer::TokenList& tokens, int idx, int* _kind, CustomOperatorDecl* out)
+	{
+		iceAssert(tokens[idx] == TT::Attr_Operator);
+		const Token tok = tokens[idx];
 
-	std::tuple<std::vector<CustomOperatorDecl>, std::vector<CustomOperatorDecl>, std::vector<CustomOperatorDecl>>
-	parseOperators(const std::string& filename, const lexer::TokenList& tokens)
+		using Kind = CustomOperatorDecl::Kind;
+		CustomOperatorDecl oper;
+		oper.loc = tok.loc;
+
+		idx++;
+
+		if(tokens[idx].str() != "prefix" && tokens[idx].str() != "postfix" && tokens[idx].str() != "infix")
+		{
+			expectedAfter(tokens[idx].loc, "either 'prefix', 'postfix' or 'infix'", "'operator' in custom operator declaration",
+				tokens[idx].str());
+		}
+
+		int kind = 0;
+		if(tokens[idx].str() == "infix")		kind = 1, oper.kind = Kind::Infix;
+		else if(tokens[idx].str() == "prefix")	kind = 2, oper.kind = Kind::Prefix;
+		else if(tokens[idx].str() == "postfix")	kind = 3, oper.kind = Kind::Postfix;
+		else									iceAssert(0);
+
+		idx++;
+
+		{
+			if(tokens[idx] != TT::Number)
+				expectedAfter(tokens[idx].loc, "integer value", "to specify precedence value", tokens[idx].str());
+
+			// make sure it's an integer.
+			auto num = tokens[idx].str();
+			if(num.find('.') != std::string::npos)
+				expected(tokens[idx].loc, "integer value for precedence", num);
+
+			int prec = std::stoi(num);
+			if(prec <= 0)
+				expected(tokens[idx].loc, "a precedence value greater than zero", num);
+
+			oper.precedence = prec;
+			idx++;
+		}
+
+
+		oper.symbol = tokens[idx].str();
+		idx++;
+
+
+
+		if(tokens[idx] != TT::NewLine && tokens[idx] != TT::Semicolon && tokens[idx] != TT::Comment)
+		{
+			error(tokens[idx].loc, "Expected newline or semicolon to terminate operator declaration, found '%s'", tokens[idx].str());
+		}
+
+		if(_kind)	*_kind = kind;
+		if(out)		*out = oper;
+
+		return idx;
+	}
+
+
+	std::tuple<std::unordered_map<std::string, parser::CustomOperatorDecl>,
+				std::unordered_map<std::string, parser::CustomOperatorDecl>,
+				std::unordered_map<std::string, parser::CustomOperatorDecl>>
+	parseOperators(const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
 		using TT = lexer::TokenType;
 
-		std::vector<std::vector<CustomOperatorDecl>> infix;
-		std::vector<std::vector<CustomOperatorDecl>> prefix;
-		std::vector<std::vector<CustomOperatorDecl>> postfix;
+		std::unordered_map<std::string, CustomOperatorDecl> infix;
+		std::unordered_map<std::string, CustomOperatorDecl> prefix;
+		std::unordered_map<std::string, CustomOperatorDecl> postfix;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before imports
@@ -179,56 +238,27 @@ namespace parser
 		for(size_t i = 0; i < tokens.size(); i++)
 		{
 			const Token& tok = tokens[i];
-			if(tok == TT::Operator)
+			if(tok == TT::Attr_Operator)
 			{
-				i++;
-
-				Location loc = tok.loc;
-				std::string op;
-
-				if(tokens[i].str() != "prefix" && tokens[i].str() != "postfix" && tokens[i].str() != "infix")
-					expectedAfter(tokens[i].loc, "either 'prefix', 'postfix' or 'infix'", "'operator' in custom operator declaration", tokens[i].str());
-
+				CustomOperatorDecl oper;
 				int kind = 0;
-				if(tokens[i].str() == "infix")			kind = 1;
-				else if(tokens[i].str() == "prefix")	kind = 2;
-				else if(tokens[i].str() == "postfix")	kind = 3;
-				else									iceAssert(0);
 
+				i = parseOperatorDecl(tokens, i, &kind, &oper);
+
+				if(kind == 1)		infix[oper.symbol] = oper;
+				else if(kind == 2)	prefix[oper.symbol] = oper;
+				else if(kind == 3)	postfix[oper.symbol] = oper;
+			}
+			else if(tok == TT::Export)
+			{
+				// skip the name as well
 				i++;
-
-				// if we're an infix or a prefix, expect a number as a precedence.
-				if(kind == 1 || kind == 2)
-				{
-					if(tokens[i] != TT::Number)
-						expectedAfter(tokens[i].loc, "integer value", "'infix' or 'prefix' to specify precedence value", tokens[i].str());
-
-					// make sure it's an integer.
-					auto num = tokens[i].str();
-					if(num.find('.') != std::string::npos)
-						expected(tokens[i].loc, "integer value for precedence", num);
-
-					int prec = std::stoi(num);
-					if(prec <= 0)
-						expected(tokens[i].loc, "a precedence value");
-				}
-
-
-				op = tokens[i].str();
-				i++;
-
-				if(tokens[i] != TT::NewLine && tokens[i] != TT::Semicolon && tokens[i] != TT::Comment)
-				{
-					error(tokens[i].loc, "Expected newline or semicolon to terminate operator declaration, found '%s'", tokens[i].str());
-				}
-
-				CustomOperatorDecl opr;
-				opr.kind = (tok.str() == "prefix" ? CustomOperatorDecl::Kind::Prefix : CustomOperatorDecl::Kind::Postfix);
-
-
-
-				if(tok.str() == "prefix")	prefix.push_back(
-				// i++ handled by loop
+			}
+			else if(tok == TT::Import)
+			{
+				// skip until a newline.
+				while(tokens[i] != TT::Comment && tokens[i] != TT::NewLine)
+					i++;
 			}
 			else if(tok == TT::Comment || tok == TT::NewLine)
 			{
@@ -241,7 +271,7 @@ namespace parser
 			}
 		}
 
-		return imports;
+		return std::make_tuple(infix, prefix, postfix);
 	}
 }
 

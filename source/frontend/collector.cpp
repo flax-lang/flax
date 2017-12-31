@@ -30,7 +30,57 @@ namespace frontend
 		for(auto file : files)
 		{
 			// parse it all
-			parsed[file] = parser::parseFile(file);
+			auto opers = parser::parseOperators(frontend::getFileTokens(file));
+
+			{
+				// TODO: clean this up maybe.
+				for(const auto& op : std::get<0>(opers))
+				{
+					if(auto it = state.binaryOps.find(op.first); it != state.binaryOps.end())
+					{
+						exitless_error(op.second.loc, "Duplicate declaration for infix operator '%s'", op.second.symbol);
+
+						info(it->second.loc, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+
+				for(const auto& op : std::get<1>(opers))
+				{
+					if(auto it = state.prefixOps.find(op.first); it != state.prefixOps.end())
+					{
+						exitless_error(op.second.loc, "Duplicate declaration for prefix operator '%s'", op.second.symbol);
+
+						info(it->second.loc, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+
+				for(const auto& op : std::get<2>(opers))
+				{
+					if(auto it = state.binaryOps.find(op.first); it != state.binaryOps.end())
+					{
+						exitless_error(op.second.loc, "Duplicate declaration for postfix operator '%s'", op.second.symbol);
+
+						info(it->second.loc, "Previous declaration was here:");
+						doTheExit();
+					}
+				}
+
+				for(const auto& op : std::get<0>(opers))
+					state.binaryOps[op.first] = op.second;
+
+				for(const auto& op : std::get<1>(opers))
+					state.prefixOps[op.first] = op.second;
+
+				for(const auto& op : std::get<2>(opers))
+					state.postfixOps[op.first] = op.second;
+			}
+
+
+			parsed[file] = parser::parseFile(file, state);
+
+
 
 			// note that we're guaranteed (because that's the whole point)
 			// that any module we encounter here will have had all of its dependencies checked already

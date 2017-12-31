@@ -117,7 +117,7 @@ namespace fir
 
 		Value* Select(Value* cond, Value* one, Value* two, std::string vname = "");
 
-		Value* BinaryOp(Operator ao, Value* a, Value* b, std::string vname = "");
+		Value* BinaryOp(std::string ao, Value* a, Value* b, std::string vname = "");
 
 
 		Value* PointerAdd(Value* ptr, Value* num, std::string vname = "");

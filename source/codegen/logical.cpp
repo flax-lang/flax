@@ -110,7 +110,7 @@ namespace cgn
 
 	CGResult CodegenState::performLogicalBinaryOperation(sst::BinaryOp* bo)
 	{
-		if(bo->op == Operator::LogicalAnd)
+		if(bo->op == "&&")
 			return doLogicalAnd(this, bo);
 
 		else

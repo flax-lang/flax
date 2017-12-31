@@ -127,6 +127,7 @@ namespace lexer
 		Attr_Raw,				// 114
 		Attr_EntryFn,			// 115
 		Attr_NoMangle,			// 116
+		Attr_Operator,			// 117
 	};
 
 	struct Token
