@@ -367,7 +367,7 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); }));
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); }));
 }
 
 
@@ -386,7 +386,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, std::v
 	using Param = sst::FunctionDecl::Param;
 
 	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
-	std::vector<fir::Type*> tys = util::map(arguments, [](sst::Expr* e) -> auto { return e->type; });
+	std::vector<fir::Type*> tys = util::map(ts, [](auto p) -> auto { return p.type; });
 
 	auto target = this->callee->typecheck(fs);
 	iceAssert(target);
@@ -419,7 +419,7 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); }));
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); }));
 }
 
 

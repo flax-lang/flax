@@ -19,10 +19,10 @@
 	2. Using namepace
 
 
+	3. Named parameter calling, and optional arguments.
+
+
 	5. String operators
-
-
-	9. For loops
 
 
 	10. Decomposition
@@ -67,8 +67,8 @@
 		Do we want strong slices?
 
 
-	2. Foreach loops where you specify the skip, allows for things like these:
-		for [ first, middle, last, ... ] in (list) step 3 { ... }
+	2. Foreach loops where you take more than one thing at a time, like this, maybe:
+		for [ first, middle, last, ... ] in list { ... }
 
 
 	3. Variadic functions should take a slice of any.
@@ -85,6 +85,42 @@
 		so I don't think it's doable at this point.
 
 		It's not really a high-priority thing anyway.
+
+
+	5. wrt. named parameters:
+
+		there are two cases of named parameters being used; first in a type constructor, and second in a regular function call.
+
+		When calling a type constructor of a struct, all arguments are optional, ie. you can specify all, some or none of the fields
+		as named arguments in your constructor call. Those not provided will be given the default value for their type, or, if the
+		struct definition itself has initialisers at the field declaration site, that particular init value.
+
+		On the other hand, the constructor for a class acts like a normal function, in that only defined 'init' functions can be called,
+		and they can only be called with their corresponding arguments.
+
+		For these regular function calls, named parameters are must come after any positional arguments, and positional arguments cannot come after
+		named arguments. Thus, once you start naming arguments in a call, you must name all subsequent arguments.
+
+		Note that functions cannot be overloaded solely on the names of the arguments, just the types.
+
+		Finally, for optional arguments, it behaves much the same, except that you *must* refer to it by name to specify a value. For example:
+
+		fn foo(a: int, b: int = 3) => ...
+
+		* valid combinations:
+		foo(30)
+		foo(a: 30)
+		foo(30, b: 5)
+		foo(a: 30, b: 1)
+
+		* invalid combinations:
+		foo(a: 30, 1)		<-- cannot have positional arguments after named ones
+		foo(30, 7)			<-- must name the optional argument 'b'
+
+
+		Yep, that's about it for named args. I don't plan on supporting the whole 'internal/external name' thing that Swift has going on.
+		It's probably just an objective-c fetishism thing, and muddles up function declarations. If you want the internal name to be different,
+		just create a new variable, it's not going to kill the program.
 */
 
 

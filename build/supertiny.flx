@@ -73,6 +73,8 @@ operator infix cross (a: vec3, b: vec3) -> vec3
 }
 
 
+fn somefunc(a: int, b: int) -> int => a * b
+
 
 @entry fn main()
 {
@@ -82,6 +84,8 @@ operator infix cross (a: vec3, b: vec3) -> vec3
 	let c = a + b
 	let d = a dot b
 	let e = a cross b
+
+	printf("%d\n", somefunc(a: 10, b: 20))
 
 	printf("c = (%d, %d, %d), e = (%d, %d, %d)  |  (%d), (%f)\n", c.x, c.y, c.z, e.x, e.y, e.z, d, √1491)
 }

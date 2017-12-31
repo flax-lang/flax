@@ -519,7 +519,7 @@ namespace ast
 		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
 
 		std::string name;
-		std::vector<Expr*> args;
+		std::vector<std::pair<std::string, Expr*>> args;
 
 		bool traverseUpwards = true;
 	};
@@ -533,7 +533,7 @@ namespace ast
 		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
 
 		Expr* callee = 0;
-		std::vector<Expr*> args;
+		std::vector<std::pair<std::string, Expr*>> args;
 	};
 
 

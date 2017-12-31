@@ -126,7 +126,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = fc->name;
-				tmp->args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+				tmp->args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
 				tmp->isFunctionCall = true;
 
 				return tmp;
@@ -202,7 +202,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		{
 			// check methods first
 			using Param = sst::FunctionDefn::Param;
-			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](ast::Expr* arg) -> sst::Expr* { return arg->typecheck(fs); });
+			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](auto arg) -> sst::Expr* { return arg.second->typecheck(fs); });
 			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
 
 			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
@@ -387,14 +387,14 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		sst::Expr* ret = 0;
 		if(auto fc = dcast(ast::FunctionCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+			auto args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
 
 			fs->teleportToScope(news);
 			ret = fc->typecheckWithArguments(fs, args);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](ast::Expr* e) -> sst::Expr* { return e->typecheck(fs); });
+			auto args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
 
 			fs->teleportToScope(news);
 			ret = ec->typecheckWithArguments(fs, args);

@@ -481,14 +481,25 @@ namespace parser
 	}
 
 
-	static FunctionCall* parseFunctionCall(State& st, std::string name)
+	static std::vector<std::pair<std::string, Expr*>> parseCallArgumentList(State& st)
 	{
-		auto ret = new FunctionCall(st.lookahead(-2).loc, name);
+		std::vector<std::pair<std::string, Expr*>> ret;
 
-		st.skipWS();
 		while(st.front() != TT::RParen)
 		{
-			ret->args.push_back(parseExpr(st));
+			std::string argname;
+
+			auto ex = parseExpr(st);
+			if(auto id = dynamic_cast<ast::Ident*>(ex); id && st.front() == TT::Colon)
+			{
+				argname = id->name;
+
+				// eat the colon, get the actual argument.
+				st.eat();
+				ex = parseExpr(st);
+			}
+
+			ret.push_back({ argname, ex });
 			st.skipWS();
 
 			if(st.front() == TT::Comma)
@@ -498,8 +509,17 @@ namespace parser
 				expected(st, "',' or '(' in function call argument list", st.front().str());
 		}
 
-		iceAssert(st.front() == TT::RParen);
-		st.pop();
+		iceAssert(st.pop().type == TT::RParen);
+
+		return ret;
+	}
+
+	static FunctionCall* parseFunctionCall(State& st, std::string name)
+	{
+		auto ret = new FunctionCall(st.ploc(), name);
+
+		st.skipWS();
+		ret->args = parseCallArgumentList(st);
 
 		return ret;
 	}
@@ -513,25 +533,7 @@ namespace parser
 		auto ret = new ast::ExprCall(op.loc);
 		iceAssert(op == TT::LParen);
 
-		std::vector<Expr*> values;
-
-		while(st.front() != TT::RParen)
-		{
-			values.push_back(parseExpr(st));
-			st.skipWS();
-
-			if(st.front() == TT::Comma)
-				st.pop();
-
-			else if(st.front() != TT::RParen)
-				expected(st, "',' or '(' in function call argument list", st.front().str());
-		}
-
-		// leave the last rparen
-		iceAssert(st.front().type == TT::RParen);
-		st.eat();
-
-		ret->args = values;
+		ret->args = parseCallArgumentList(st);
 		ret->callee = lhs;
 
 		return ret;
