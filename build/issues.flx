@@ -94,6 +94,10 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
+	(d2f8dbd)
+	- add ability to overload prefix operators
+	- internally, move Operator to be a string type to make our lives easier with overloading.
+
 	(dcc28ba)
 	- fix member access on structs that were passed as arguments (ie. 'did not have pointer' -- solved by using ExtractValue in such cases)
 	- fix method calling (same thing as above) -- but this time we need to use ImmutAlloc, because we need a 'this' pointer

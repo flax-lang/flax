@@ -5,32 +5,61 @@
 export supertiny
 
 import "libc" as _
+import "math" as _
 
 @operator prefix 950 %
+@operator prefix 950 √
+@operator infix 800 dot
 
 
-fn timestwo(x: int) -> int => x * 2
+struct vec2
+{
+	var x: int
+	var y: int
+}
 
-struct vec2 { var x: int; var y: int }
+struct vec3
+{
+	var x: int
+	var y: int
+	var z: int
+}
 
 
-operator infix + (x: vec2, y: vec2) -> vec2
+operator infix + (a: vec2, b: vec2) -> vec2
 {
 	var ret: vec2
-	ret.x = x.x + y.x
-	ret.y = x.y + y.y
+	ret.x = a.x + b.x
+	ret.y = a.y + b.y
 
 	return ret
 }
 
-operator prefix % (x: vec2) -> vec2
+operator infix + (a: vec3, b: vec3) -> vec3
 {
-	var ret: vec2
-	ret.x = x.x * x.x
-	ret.y = x.y * x.y
+	var ret: vec3
+	ret.x = a.x + b.x
+	ret.y = a.y + b.y
+	ret.z = a.z + b.z
 
 	return ret
 }
+
+operator prefix √ (a: double) -> double
+{
+	return sqrt(a)
+}
+
+operator infix dot (a: vec2, b: vec2) -> int
+{
+	return a.x * b.x + a.y * b.y
+}
+
+operator infix dot (a: vec3, b: vec3) -> int
+{
+	return a.x * b.x + a.y * b.y + a.z * b.z
+}
+
 
 @entry fn main()
 {
@@ -38,9 +67,9 @@ operator prefix % (x: vec2) -> vec2
 	var b: vec2; b.x = 23; b.y = 17;
 
 	let c = a + b
+	let d = a dot b
 
-	let d = %c
-	printf("c = (%d, %d), (%d, %d)\n", c.x, c.y, d.x, d.y)
+	printf("c = (%d, %d), (%d), (%f)\n", c.x, c.y, d, √1491)
 }
 
 
