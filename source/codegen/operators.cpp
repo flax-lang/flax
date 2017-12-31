@@ -8,7 +8,7 @@
 namespace cgn
 {
 	using OperatorFn = CodegenState::OperatorFn;
-	std::pair<OperatorFn, fir::Function*> CodegenState::getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, Operator op)
+	std::pair<OperatorFn, fir::Function*> CodegenState::getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op)
 	{
 		std::function<bool (fir::Type*)> isBuiltinType = [&](fir::Type* t) -> bool {
 			if(t->isPrimitiveType())		return true;
@@ -44,7 +44,7 @@ namespace cgn
 		}
 		else
 		{
-			error(this->loc(), "Unsupported operator function '%s' on types '%s' and '%s'", operatorToString(op), a, b);
+			error(this->loc(), "Unsupported operator function '%s' on types '%s' and '%s'", op, a, b);
 		}
 	}
 }

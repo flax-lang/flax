@@ -85,15 +85,32 @@ namespace parser
 
 		bool isFirst = true;
 		auto [ priv, tix ] = std::make_tuple(VisibilityLevel::Invalid, -1);
+
+
+		// flags that determine whether or not 'import' and '@operator' things can still be done.
+		bool importsStillValid = true;
+		bool operatorsStillValid = true;
+
+
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
 		{
 			switch(st.front())
 			{
 				case TT::Import:
-					if(name != "")
+					if(name != "" || !importsStillValid)
 						error(st, "Import statements are not allowed here");
 
 					root->statements.push_back(parseImport(st));
+					break;
+
+				case TT::Attr_Operator:
+					if(name != "" || !operatorsStillValid)
+						error(st, "Custom operator declarations are not allowed here");
+
+					// just skip it.
+					st.setIndex(parseOperatorDecl(st.getTokenList(), st.getIndex(), 0, 0));
+
+					importsStillValid = false;
 					break;
 
 				case TT::Namespace: {
@@ -107,6 +124,9 @@ namespace parser
 						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = -1;
 
 					root->statements.push_back(ns);
+
+					importsStillValid = false;
+					operatorsStillValid = false;
 
 				} break;
 
@@ -126,6 +146,10 @@ namespace parser
 						vd->noMangle = true;
 
 					root->statements.push_back(stmt);
+
+					importsStillValid = false;
+					operatorsStillValid = false;
+
 				} break;
 
 				case TT::Attr_EntryFn: {
@@ -138,6 +162,10 @@ namespace parser
 						error(st, "'@entry' attribute is only applicable to function definitions");
 
 					root->statements.push_back(stmt);
+
+					importsStillValid = false;
+					operatorsStillValid = false;
+
 				} break;
 
 				case TT::Public:
@@ -190,6 +218,9 @@ namespace parser
 							break;
 						}
 					}
+
+					importsStillValid = false;
+					operatorsStillValid = false;
 
 					root->statements.push_back(parseStmt(st));
 					break;

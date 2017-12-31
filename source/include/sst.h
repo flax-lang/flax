@@ -197,7 +197,7 @@ namespace sst
 
 		Expr* left = 0;
 		Expr* right = 0;
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		FunctionDefn* overloadedOpFunction = 0;
 	};
@@ -210,7 +210,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		Expr* expr = 0;
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		FunctionDefn* overloadedOpFunction = 0;
 	};
@@ -222,7 +222,7 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		Expr* left = 0;
 		Expr* right = 0;

@@ -9,6 +9,7 @@
 
 #include "ast.h"
 #include "lexer.h"
+#include "parser.h"
 
 namespace pts
 {
@@ -124,6 +125,12 @@ namespace parser
 			return this->index;
 		}
 
+		void setIndex(size_t i)
+		{
+			iceAssert(i < tokens.size());
+			this->index = i;
+		}
+
 		bool frontIsWS() const
 		{
 			return this->front() == lexer::TokenType::Comment || this->front() == lexer::TokenType::NewLine;
@@ -134,7 +141,10 @@ namespace parser
 			return this->index < this->tokens.size();
 		}
 
-
+		const lexer::TokenList& getTokenList()
+		{
+			return this->tokens;
+		}
 
 
 		// implicitly coerce to location, so we can
@@ -155,7 +165,7 @@ namespace parser
 			const lexer::TokenList& tokens;
 	};
 
-	Operator parseOperatorTokens(State& st);
+	std::string parseOperatorTokens(State& st);
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);

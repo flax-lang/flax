@@ -1030,7 +1030,7 @@ namespace array
 			fir::Value* v1 = cs->irb.Load(cs->irb.PointerAdd(ptr1, cs->irb.Load(counter)));
 			fir::Value* v2 = cs->irb.Load(cs->irb.PointerAdd(ptr2, cs->irb.Load(counter)));
 
-			fir::Value* c = cs->performBinaryOperation(cs->loc(), { cs->loc(), CGResult(v1) }, { cs->loc(), CGResult(v2) }, Operator::CompareEq).value;
+			fir::Value* c = cs->performBinaryOperation(cs->loc(), { cs->loc(), CGResult(v1) }, { cs->loc(), CGResult(v2) }, "==").value;
 
 			// c is a bool, because it's very generic in nature
 			// so we just take !c and convert to i64 to get our result.

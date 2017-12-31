@@ -337,6 +337,12 @@ namespace lexer
 			tok.text = "@raw";
 			read = 4;
 		}
+		else if(hasPrefix(stream, "@operator"))
+		{
+			tok.type = TokenType::Attr_Operator;
+			tok.text = "@operator";
+			read = 9;
+		}
 
 
 

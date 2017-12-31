@@ -54,9 +54,9 @@ namespace sst
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are
 		// handled the usual way.
-		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
-		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
-		std::unordered_map<Operator, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
+		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
+		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
+		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
@@ -138,7 +138,7 @@ namespace sst
 		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
 			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 
-		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, Operator op, sst::FunctionDefn** overloadFn = 0);
+		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, std::string op, sst::FunctionDefn** overloadFn = 0);
 
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);

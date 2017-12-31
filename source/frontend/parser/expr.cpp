@@ -131,6 +131,9 @@ namespace parser
 				case TT::Import:
 					error(st, "All imports must happen at the top-level scope");
 
+				case TT::Attr_Operator:
+					error(st, "All operator declarations must happen at the top-level scope");
+
 				case TT::Export:
 					error(st, "Export declaration must be the first non-comment line in the file");
 
@@ -163,21 +166,12 @@ namespace parser
 		return res;
 	}
 
-	static int unaryPrecedence(Operator op)
+	static int unaryPrecedence(const std::string& op)
 	{
-		switch(op)
-		{
-			case Operator::LogicalNot:
-			case Operator::Add:
-			case Operator::Subtract:
-			case Operator::BitwiseNot:
-			case Operator::Multiply:
-			case Operator::BitwiseAnd:
-				return 950;
+		if(op == "!" || op == "+" || op == "-" || op == "~" || op == "*" || op == "&")
+			return 950;
 
-			default:
-				return -1;
-		}
+		return -1;
 	}
 
 	static int precedence(State& st)
@@ -201,7 +195,7 @@ namespace parser
 
 		switch(st.front())
 		{
-			// . () and [] have the same precedence.
+			// () and [] have the same precedence.
 			// not sure if this should stay -- works for now.
 			case TT::LParen:
 			case TT::LSquare:
@@ -215,6 +209,8 @@ namespace parser
 			// bitwise ~
 			// unary &
 			// unary *
+			// ^^ all have 950.
+
 			case TT::As:
 				return 900;
 
@@ -320,13 +316,13 @@ namespace parser
 
 			auto loc = st.loc();
 			auto op = parseOperatorTokens(st);
-			if(op == Operator::Invalid)
+			if(op.empty())
 				error(loc, "Invalid operator '%s'", st.prev().str());
 
 
 
 			Expr* rhs = 0;
-			if(op == Operator::Cast)
+			if(op == "cast")
 			{
 				rhs = new TypeExpr(loc, parseType(st));
 			}
@@ -343,7 +339,7 @@ namespace parser
 			// todo: chained relational operators
 			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
 
-			if(op == Operator::DotOperator)
+			if(op == ".")
 			{
 				loc.col = lhs->loc.col;
 				loc.len = rhs->loc.col - lhs->loc.col + 1;
@@ -430,28 +426,28 @@ namespace parser
 		auto tk = st.front();
 
 		// check for unary shit
-		auto op = Operator::Invalid;
+		std::string op;
 
 		//* note: we use the binary versions of the operator; since the unary AST and binary AST are separate,
 		//* there's no confusion here. It also makes custom operators less troublesome to implement.
 
 
-		if(tk.type == TT::Exclamation)		op = Operator::LogicalNot;
-		else if(tk.type == TT::Plus)		op = Operator::Add;
-		else if(tk.type == TT::Minus)		op = Operator::Subtract;
-		else if(tk.type == TT::Tilde)		op = Operator::BitwiseNot;
-		else if(tk.type == TT::Asterisk)	op = Operator::Multiply;
-		else if(tk.type == TT::Ampersand)	op = Operator::BitwiseAnd;
+		if(tk.type == TT::Exclamation || tk.type == TT::Plus || tk.type == TT::Minus
+			|| tk.type == TT::Tilde || tk.type == TT::Asterisk || tk.type == TT::Ampersand)
+		{
+			op = tk.str();
+		}
+
 
 		int prec = -1;
-		if(auto it = st.prefixOps.find(tk.str()); op == Operator::Invalid && it != st.prefixOps.end())
+		if(auto it = st.prefixOps.find(tk.str()); op.empty() && it != st.prefixOps.end())
 		{
 			// great.
 			auto cop = it->second;
 			iceAssert(cop.kind == CustomOperatorDecl::Kind::Prefix);
 
 			prec = cop.precedence;
-			op = Operator::UserDefined;
+			op = cop.symbol;
 		}
 		else
 		{
@@ -460,7 +456,7 @@ namespace parser
 
 
 
-		if(op != Operator::Invalid)
+		if(!op.empty())
 		{
 			st.eat();
 

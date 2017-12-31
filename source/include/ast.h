@@ -150,8 +150,8 @@ namespace ast
 			Postfix
 		};
 
+		std::string symbol;
 		Kind kind = Kind::Invalid;
-		Operator op = Operator::Invalid;
 	};
 
 	struct VarDefn : Stmt
@@ -448,12 +448,12 @@ namespace ast
 
 	struct BinaryOp : Expr
 	{
-		BinaryOp(const Location& loc, Operator o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
+		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
 		~BinaryOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		Expr* left = 0;
 		Expr* right = 0;
@@ -466,7 +466,7 @@ namespace ast
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		Expr* expr = 0;
 	};
@@ -478,7 +478,7 @@ namespace ast
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
-		Operator op = Operator::Invalid;
+		std::string op;
 
 		Expr* left = 0;
 		Expr* right = 0;

@@ -127,7 +127,7 @@ namespace cgn
 
 		// CGResult findValueInTree(std::string name, ValueTree* vt = 0);
 
-		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, Operator op);
+		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
 
 		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
@@ -156,7 +156,7 @@ namespace cgn
 			UserDefined
 		};
 
-		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, Operator op);
+		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op);
 
 		bool isRefCountedType(fir::Type* type);
 		void incrementRefCount(fir::Value* val);
