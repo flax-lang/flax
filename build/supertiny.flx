@@ -7,9 +7,9 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-@operator prefix 950 %
 @operator prefix 950 √
 @operator infix 800 dot
+@operator infix 800 cross
 
 
 struct vec2
@@ -40,10 +40,12 @@ operator infix + (a: vec3, b: vec3) -> vec3
 	var ret: vec3
 	ret.x = a.x + b.x
 	ret.y = a.y + b.y
-	ret.z = a.z + b.z
+	ret.y = a.z + b.z
 
 	return ret
 }
+
+
 
 operator prefix √ (a: double) -> double
 {
@@ -57,19 +59,31 @@ operator infix dot (a: vec2, b: vec2) -> int
 
 operator infix dot (a: vec3, b: vec3) -> int
 {
-	return a.x * b.x + a.y * b.y + a.z * b.z
+	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z)
 }
+
+operator infix cross (a: vec3, b: vec3) -> vec3
+{
+	var ret: vec3
+	ret.x = (a.y * b.z) - (a.z * b.y)
+	ret.y = (a.z * b.x) - (a.x * b.z)
+	ret.z = (a.x * b.y) - (a.y * b.x)
+
+	return ret
+}
+
 
 
 @entry fn main()
 {
-	var a: vec2; a.x = 10; a.y = 20;
-	var b: vec2; b.x = 23; b.y = 17;
+	var a: vec3; a.x = 10; a.y = 20; a.z = 4;
+	var b: vec3; b.x = 23; b.y = 17; b.z = 9;
 
 	let c = a + b
 	let d = a dot b
+	let e = a cross b
 
-	printf("c = (%d, %d), (%d), (%f)\n", c.x, c.y, d, √1491)
+	printf("c = (%d, %d, %d), e = (%d, %d, %d)  |  (%d), (%f)\n", c.x, c.y, c.z, e.x, e.y, e.z, d, √1491)
 }
 
 

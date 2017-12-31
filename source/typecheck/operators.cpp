@@ -78,7 +78,8 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
 				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
-		else if(!isAssignOp(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1)))
+		else if(!isAssignOp(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
+			 && isBuiltinOperator(this->symbol))
 		{
 			exitless_error(this, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
 				this->symbol, ft->getArgumentN(0), ft->getArgumentN(1));
@@ -136,19 +137,9 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 		}
 	}
 
-	// warn(this, "ADDING (%s) : %d, %d / %d / %d", this->symbol,
-	// 	(*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(),
-	// 	fs->stree->prefixOperatorOverloads[this->symbol].size(),
-	// 	fs->stree->postfixOperatorOverloads[this->symbol].size());
 
 	// ok, we should be good now.
 	(*thelist)[this->symbol].push_back(defn);
-
-	// warn(this, "ADDED (%s) : %d, %d / %d / %d", this->symbol,
-	// 	(*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(),
-	// 	fs->stree->prefixOperatorOverloads[this->symbol].size(),
-	// 	fs->stree->postfixOperatorOverloads[this->symbol].size());
-
 }
 
 
