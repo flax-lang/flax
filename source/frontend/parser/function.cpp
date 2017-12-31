@@ -12,7 +12,8 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	static std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
+	// declared in parser/operators.cpp (because we use it there)
+	std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
 	{
 		pts::Type* returnType = 0;
 		std::vector<FuncDefn::Arg> args;
@@ -119,38 +120,6 @@ namespace parser
 
 		defn->body = parseBracedBlock(st);
 		return defn;
-	}
-
-	OperatorOverloadDefn* parseOperatorOverload(State& st)
-	{
-		iceAssert(st.front() == TT::Operator);
-		auto ret = new ast::OperatorOverloadDefn(st.eat().loc);
-
-		if(st.front().str() == "prefix")
-			ret->kind = ast::OperatorOverloadDefn::Kind::UnaryPrefix, st.eat();
-
-		else if(st.front().str() == "postfix")
-			ret->kind = ast::OperatorOverloadDefn::Kind::UnaryPostfix, st.eat();
-
-		else
-			ret->kind = ast::OperatorOverloadDefn::Kind::Binary;
-
-		ret->op = parseOperatorTokens(st);
-		if(ret->op == Operator::Invalid)
-			error(st.ploc(), "Invalid operator '%s' (custom operators are not yet supported)", st.prev().str());
-
-		bool isvar = false;
-		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
-
-		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
-
-		st.skipWS();
-		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
-			expected(st, "'{' to begin function body", st.front().str());
-
-		ret->body = parseBracedBlock(st);
-		ret->name = operatorToString(ret->op);
-		return ret;
 	}
 
 

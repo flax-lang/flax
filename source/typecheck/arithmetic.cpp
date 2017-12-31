@@ -38,10 +38,6 @@ std::string operatorToString(const Operator& op)
 		case Operator::Cast:				return "cast";
 		case Operator::DotOperator:			return ".";
 		case Operator::BitwiseNot:			return "~";
-		case Operator::Minus:				return "-";
-		case Operator::Plus:				return "+";
-		case Operator::AddressOf:			return "&";
-		case Operator::Dereference:			return "*";
 		case Operator::PlusEquals:			return "+=";
 		case Operator::MinusEquals:			return "-=";
 		case Operator::MultiplyEquals:		return "*=";
@@ -184,7 +180,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, Operato
 		auto tree = this->stree;
 		while(tree)
 		{
-			for(auto op : tree->operatorOverloads[op])
+			for(auto op : tree->infixOperatorOverloads[op])
 			{
 				if(this->isDuplicateOverload(util::map(op->params, [](auto p) { return p.type; }), { left, right }))
 				{
@@ -246,6 +242,30 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 	auto t = v->type;
 	fir::Type* out = 0;
+
+	// check for custom ops first, i guess.
+	{
+		auto tree = fs->stree;
+		while(tree)
+		{
+			for(auto ovp : tree->prefixOperatorOverloads[this->op])
+			{
+				if(fs->isDuplicateOverload(util::map(ovp->params, [](auto p) { return p.type; }), { t }))
+				{
+					auto ret = new sst::UnaryOp(this->loc, ovp->returnType);
+					ret->op = this->op;
+					ret->expr = v;
+
+					ret->overloadedOpFunction = ovp;
+					return ret;
+				}
+			}
+
+			tree = tree->parent;
+		}
+	}
+
+
 	switch(this->op)
 	{
 		case Operator::LogicalNot: {
@@ -256,15 +276,15 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 			out = fir::Type::getBool();
 		} break;
 
-		case Operator::Plus:
-		case Operator::Minus: {
+		case Operator::Add:
+		case Operator::Subtract: {
 			if(t->isConstantNumberType())
-				out = (op == Operator::Minus ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
+				out = (op == Operator::Subtract ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
 
 			else if(!t->isIntegerType() && !t->isFloatingPointType())
 				error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
 
-			else if(op == Operator::Minus && t->isIntegerType() && !t->isSignedIntType())
+			else if(op == Operator::Subtract && t->isIntegerType() && !t->isSignedIntType())
 				error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t);
 
 			out = t;
@@ -283,14 +303,14 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 			out = t;
 		} break;
 
-		case Operator::Dereference: {
+		case Operator::Multiply: {
 			if(!t->isPointerType())
 				error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t);
 
 			out = t->getPointerElementType();
 		} break;
 
-		case Operator::AddressOf: {
+		case Operator::BitwiseAnd: {
 			if(t->isFunctionType())
 				error(this, "Cannot take the address of a function; use it as a value type");
 

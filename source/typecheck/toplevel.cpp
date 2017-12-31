@@ -21,8 +21,12 @@ namespace sst
 			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
 
 		clone->definitions = clonee->definitions;
-		clone->operatorOverloads = clonee->operatorOverloads;
 		clone->unresolvedGenericDefs = clonee->unresolvedGenericDefs;
+
+
+		clone->infixOperatorOverloads = clonee->infixOperatorOverloads;
+		clone->prefixOperatorOverloads = clonee->prefixOperatorOverloads;
+		clone->postfixOperatorOverloads = clonee->postfixOperatorOverloads;
 
 		return clone;
 	}
@@ -130,9 +134,21 @@ namespace sst
 		}
 
 
-		for(auto f : tree->operatorOverloads)
+		for(auto f : tree->infixOperatorOverloads)
 		{
-			existing->operatorOverloads[f.first].insert(existing->operatorOverloads[f.first].end(),
+			existing->infixOperatorOverloads[f.first].insert(existing->infixOperatorOverloads[f.first].end(),
+				f.second.begin(), f.second.end());
+		}
+
+		for(auto f : tree->prefixOperatorOverloads)
+		{
+			existing->prefixOperatorOverloads[f.first].insert(existing->prefixOperatorOverloads[f.first].end(),
+				f.second.begin(), f.second.end());
+		}
+
+		for(auto f : tree->postfixOperatorOverloads)
+		{
+			existing->postfixOperatorOverloads[f.first].insert(existing->postfixOperatorOverloads[f.first].end(),
 				f.second.begin(), f.second.end());
 		}
 

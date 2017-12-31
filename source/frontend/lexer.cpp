@@ -643,34 +643,35 @@ namespace lexer
 				switch(stream[0])
 				{
 					// for single-char things
-					case '\n':	tok.type = TokenType::NewLine;				break;
-					case '{':	tok.type = TokenType::LBrace;				break;
-					case '}':	tok.type = TokenType::RBrace;				break;
-					case '(':	tok.type = TokenType::LParen;				break;
-					case ')':	tok.type = TokenType::RParen;				break;
-					case '[':	tok.type = TokenType::LSquare;				break;
-					case ']':	tok.type = TokenType::RSquare;				break;
-					case '<':	tok.type = TokenType::LAngle;				break;
-					case '>':	tok.type = TokenType::RAngle;				break;
-					case '+':	tok.type = TokenType::Plus;					break;
-					case '-':	tok.type = TokenType::Minus;				break;
-					case '*':	tok.type = TokenType::Asterisk;				break;
-					case '/':	tok.type = TokenType::Divide;				break;
-					case '\'':	tok.type = TokenType::SQuote;				break;
-					case '.':	tok.type = TokenType::Period;				break;
-					case ',':	tok.type = TokenType::Comma;				break;
-					case ':':	tok.type = TokenType::Colon;				break;
-					case '=':	tok.type = TokenType::Equal;				break;
-					case '?':	tok.type = TokenType::Question;				break;
-					case '!':	tok.type = TokenType::Exclamation;			break;
-					case ';':	tok.type = TokenType::Semicolon;			break;
-					case '&':	tok.type = TokenType::Ampersand;			break;
-					case '%':	tok.type = TokenType::Percent;				break;
-					case '|':	tok.type = TokenType::Pipe;					break;
-					case '@':	tok.type = TokenType::At;					break;
-					case '#':	tok.type = TokenType::Pound;				break;
-					case '~':	tok.type = TokenType::Tilde;				break;
-					case '^':	tok.type = TokenType::Caret;				break;
+					case '\n':	tok.type = TokenType::NewLine;		break;
+					case '{':	tok.type = TokenType::LBrace;		break;
+					case '}':	tok.type = TokenType::RBrace;		break;
+					case '(':	tok.type = TokenType::LParen;		break;
+					case ')':	tok.type = TokenType::RParen;		break;
+					case '[':	tok.type = TokenType::LSquare;		break;
+					case ']':	tok.type = TokenType::RSquare;		break;
+					case '<':	tok.type = TokenType::LAngle;		break;
+					case '>':	tok.type = TokenType::RAngle;		break;
+					case '+':	tok.type = TokenType::Plus;			break;
+					case '-':	tok.type = TokenType::Minus;		break;
+					case '*':	tok.type = TokenType::Asterisk;		break;
+					case '/':	tok.type = TokenType::Divide;		break;
+					case '\'':	tok.type = TokenType::SQuote;		break;
+					case '.':	tok.type = TokenType::Period;		break;
+					case ',':	tok.type = TokenType::Comma;		break;
+					case ':':	tok.type = TokenType::Colon;		break;
+					case '=':	tok.type = TokenType::Equal;		break;
+					case '?':	tok.type = TokenType::Question;		break;
+					case '!':	tok.type = TokenType::Exclamation;	break;
+					case ';':	tok.type = TokenType::Semicolon;	break;
+					case '&':	tok.type = TokenType::Ampersand;	break;
+					case '%':	tok.type = TokenType::Percent;		break;
+					case '|':	tok.type = TokenType::Pipe;			break;
+					case '@':	tok.type = TokenType::At;			break;
+					case '#':	tok.type = TokenType::Pound;		break;
+					case '~':	tok.type = TokenType::Tilde;		break;
+					case '^':	tok.type = TokenType::Caret;		break;
+					case '$':	tok.type = TokenType::Dollar;		break;
 
 					default:
 						error(tok.loc, "Unknown token '%c'", stream[0]);

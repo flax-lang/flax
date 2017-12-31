@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "parser.h"
 #include "parser_internal.h"
 
 using namespace ast;
@@ -148,10 +149,18 @@ namespace parser
 		return false;
 	}
 
-	static bool isPostfixUnaryOperator(TT tt)
+	static bool isPostfixUnaryOperator(State& st, const Token& tk)
 	{
-		return (tt == TT::LParen) || (tt == TT::LSquare) || (tt == TT::DoublePlus) || (tt == TT::DoubleMinus)
-			|| (tt == TT::Ellipsis) || (tt == TT::HalfOpenEllipsis);
+		bool res = (tk == TT::LParen) || (tk == TT::LSquare) || (tk == TT::DoublePlus) || (tk == TT::DoubleMinus)
+			|| (tk == TT::Ellipsis) || (tk == TT::HalfOpenEllipsis);
+
+		if(auto it = st.postfixOps.find(tk.str()); !res && it != st.postfixOps.end())
+		{
+			iceAssert(it->second.kind == CustomOperatorDecl::Kind::Postfix);
+			res = true;
+		}
+
+		return res;
 	}
 
 	static int unaryPrecedence(Operator op)
@@ -159,11 +168,11 @@ namespace parser
 		switch(op)
 		{
 			case Operator::LogicalNot:
-			case Operator::Plus:
-			case Operator::Minus:
+			case Operator::Add:
+			case Operator::Subtract:
 			case Operator::BitwiseNot:
-			case Operator::Dereference:
-			case Operator::AddressOf:
+			case Operator::Multiply:
+			case Operator::BitwiseAnd:
 				return 950;
 
 			default:
@@ -302,7 +311,7 @@ namespace parser
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything
 
-			if(auto tok_op = st.front(); isPostfixUnaryOperator(tok_op))
+			if(auto tok_op = st.front(); isPostfixUnaryOperator(st, tok_op))
 			{
 				st.eat();
 				lhs = parsePostfixUnary(st, dynamic_cast<Expr*>(lhs), tok_op);
@@ -423,18 +432,38 @@ namespace parser
 		// check for unary shit
 		auto op = Operator::Invalid;
 
+		//* note: we use the binary versions of the operator; since the unary AST and binary AST are separate,
+		//* there's no confusion here. It also makes custom operators less troublesome to implement.
+
+
 		if(tk.type == TT::Exclamation)		op = Operator::LogicalNot;
-		else if(tk.type == TT::Plus)		op = Operator::Plus;
-		else if(tk.type == TT::Minus)		op = Operator::Minus;
+		else if(tk.type == TT::Plus)		op = Operator::Add;
+		else if(tk.type == TT::Minus)		op = Operator::Subtract;
 		else if(tk.type == TT::Tilde)		op = Operator::BitwiseNot;
-		else if(tk.type == TT::Asterisk)	op = Operator::Dereference;
-		else if(tk.type == TT::Ampersand)	op = Operator::AddressOf;
+		else if(tk.type == TT::Asterisk)	op = Operator::Multiply;
+		else if(tk.type == TT::Ampersand)	op = Operator::BitwiseAnd;
+
+		int prec = -1;
+		if(auto it = st.prefixOps.find(tk.str()); op == Operator::Invalid && it != st.prefixOps.end())
+		{
+			// great.
+			auto cop = it->second;
+			iceAssert(cop.kind == CustomOperatorDecl::Kind::Prefix);
+
+			prec = cop.precedence;
+			op = Operator::UserDefined;
+		}
+		else
+		{
+			prec = unaryPrecedence(op);
+		}
+
+
 
 		if(op != Operator::Invalid)
 		{
 			st.eat();
 
-			int prec = unaryPrecedence(op);
 			Expr* un = parseUnary(st);
 			Expr* thing = parseRhs(st, un, prec);
 

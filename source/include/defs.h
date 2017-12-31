@@ -343,16 +343,16 @@ enum class Operator
 {
 	Invalid,
 
-	Add,
-	Subtract,
-	Multiply,
+	Add,			// also unary +
+	Subtract,		// also unary -
+	Multiply,		// also unary * (aka dereference)
 	Divide,
 	Modulo,
 
 	Assign,
 
 	BitwiseOr,
-	BitwiseAnd,
+	BitwiseAnd,		// also unary & (aka address-of)
 	BitwiseXor,
 
 	LogicalOr,
@@ -373,11 +373,6 @@ enum class Operator
 	DotOperator,
 
 	BitwiseNot,
-	Minus,
-	Plus,
-
-	AddressOf,
-	Dereference,
 
 	PlusEquals,
 	MinusEquals,
@@ -389,6 +384,8 @@ enum class Operator
 	BitwiseAndEquals,
 	BitwiseOrEquals,
 	BitwiseXorEquals,
+
+	UserDefined,
 };
 
 std::string operatorToString(const Operator& op);

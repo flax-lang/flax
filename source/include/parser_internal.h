@@ -86,11 +86,6 @@ namespace parser
 			return this->tokens[this->index];
 		}
 
-		// // non mutating
-		// const lexer::Token& peekAfterWS() const
-		// {
-		// 	// this->skipWS();
-		// }
 
 		const lexer::Token& frontAfterWS()
 		{
@@ -150,6 +145,10 @@ namespace parser
 		}
 
 		std::string currentFilePath;
+
+		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		private:
 			size_t index = 0;
