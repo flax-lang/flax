@@ -149,25 +149,28 @@ namespace sst
 			iceAssert(func);
 			iceAssert(func->getArgumentCount() == 2);
 
-			if(lt != func->getArguments()[0]->getType())
+			fir::Value* lv = cs->oneWayAutocast(l, func->getArguments()[0]->getType()).value;
+			fir::Value* rv = cs->oneWayAutocast(r, func->getArguments()[0]->getType()).value;
+
+			if(lv->getType() != func->getArguments()[0]->getType())
 			{
 				exitless_error(this->left, "Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), lt);
+					this->op, func->getArguments()[0]->getType(), lv->getType());
 
 				info(this->overloadedOpFunction, "Operator was overloaded here:");
 				doTheExit();
 			}
-			else if(rt != func->getArguments()[1]->getType())
+			else if(rv->getType() != func->getArguments()[1]->getType())
 			{
-				exitless_error(this->left, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[1]->getType(), lt);
+				exitless_error(this->right, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[1]->getType(), rv->getType());
 
 				info(this->overloadedOpFunction, "Operator was overloaded here:");
 				doTheExit();
 			}
 
 			// ok, call that guy.
-			return CGResult(cs->irb.Call(func, l.value, r.value));
+			return CGResult(cs->irb.Call(func, lv, rv));
 		}
 		else
 		{
@@ -194,10 +197,12 @@ namespace sst
 			iceAssert(func);
 			iceAssert(func->getArgumentCount() == 1);
 
-			if(ty != func->getArguments()[0]->getType())
+			val = cs->oneWayAutocast(ex, func->getArguments()[0]->getType()).value;
+
+			if(val->getType() != func->getArguments()[0]->getType())
 			{
 				exitless_error(this->expr, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), ty);
+					this->op, func->getArguments()[0]->getType(), val->getType());
 
 				info(this->overloadedOpFunction, "Operator was overloaded here:");
 				doTheExit();

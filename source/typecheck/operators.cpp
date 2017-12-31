@@ -27,6 +27,17 @@ static bool isBuiltinType(fir::Type* ty)
 		|| ty->isBoolType());
 }
 
+static bool isBuiltinOperator(std::string op)
+{
+	return (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" || op == "<<"
+		|| op == ">>" || op == "=" || op == "<" || op == ">" || op == "<=" || op == ">="
+		|| op == "==" || op == "!="	|| op == "&" || op == "|" || op == "^" || op == "||"
+		|| op == "&&" || op == "+=" || op == "-=" || op == "*=" || op == "/=" || op == "%="
+		|| op == "<<=" || op == ">>=" || op == "&=" || op == "|=" || op == "^=" || op == "."
+		|| op == "cast");
+}
+
+
 
 sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -56,6 +67,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	auto defn = this->generatedDefn;
 	iceAssert(defn);
 
+
 	// ok, do our checks on the defn instead.
 	auto ft = defn->type->toFunctionType();
 
@@ -82,7 +94,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 			error(this, "Operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
 				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
-		else if(isBuiltinType(ft->getArgumentN(0)))
+		else if(isBuiltinType(ft->getArgumentN(0)) && isBuiltinOperator(this->symbol))
 		{
 			error(defn->arguments[0], "Unary operator '%s' cannot be overloaded for the builtin type '%s'",
 				this->symbol, ft->getArgumentN(0));
@@ -124,14 +136,19 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 		}
 	}
 
-	warn(this, "ADDING : %d, %d / %d / %d", (*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(), fs->stree->prefixOperatorOverloads[this->symbol].size(),
-		fs->stree->postfixOperatorOverloads[this->symbol].size());
+	// warn(this, "ADDING (%s) : %d, %d / %d / %d", this->symbol,
+	// 	(*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(),
+	// 	fs->stree->prefixOperatorOverloads[this->symbol].size(),
+	// 	fs->stree->postfixOperatorOverloads[this->symbol].size());
 
 	// ok, we should be good now.
 	(*thelist)[this->symbol].push_back(defn);
 
-	warn(this, "ADDED %s %s : %d, %d / %d / %d", fs->stree->name, this->symbol, (*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(), fs->stree->prefixOperatorOverloads[this->symbol].size(),
-		fs->stree->postfixOperatorOverloads[this->symbol].size());
+	// warn(this, "ADDED (%s) : %d, %d / %d / %d", this->symbol,
+	// 	(*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(),
+	// 	fs->stree->prefixOperatorOverloads[this->symbol].size(),
+	// 	fs->stree->postfixOperatorOverloads[this->symbol].size());
+
 }
 
 
