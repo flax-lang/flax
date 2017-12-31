@@ -179,17 +179,41 @@ namespace parser
 		for(size_t i = 0; i < tokens.size(); i++)
 		{
 			const Token& tok = tokens[i];
-			if(tok.str() == "prefix" || tok.str() == "postfix")
+			if(tok == TT::Operator)
 			{
 				i++;
 
 				Location loc = tok.loc;
 				std::string op;
 
-				if(tokens[i] != TT::Operator)
-					expectedAfter(tokens[i].loc, "'operator'", "'" + tok.str() + "' in custom operator declaration", tokens[i].str());
+				if(tokens[i].str() != "prefix" && tokens[i].str() != "postfix" && tokens[i].str() != "infix")
+					expectedAfter(tokens[i].loc, "either 'prefix', 'postfix' or 'infix'", "'operator' in custom operator declaration", tokens[i].str());
+
+				int kind = 0;
+				if(tokens[i].str() == "infix")			kind = 1;
+				else if(tokens[i].str() == "prefix")	kind = 2;
+				else if(tokens[i].str() == "postfix")	kind = 3;
+				else									iceAssert(0);
 
 				i++;
+
+				// if we're an infix or a prefix, expect a number as a precedence.
+				if(kind == 1 || kind == 2)
+				{
+					if(tokens[i] != TT::Number)
+						expectedAfter(tokens[i].loc, "integer value", "'infix' or 'prefix' to specify precedence value", tokens[i].str());
+
+					// make sure it's an integer.
+					auto num = tokens[i].str();
+					if(num.find('.') != std::string::npos)
+						expected(tokens[i].loc, "integer value for precedence", num);
+
+					int prec = std::stoi(num);
+					if(prec <= 0)
+						expected(tokens[i].loc, "a precedence value");
+				}
+
+
 				op = tokens[i].str();
 				i++;
 
@@ -205,11 +229,6 @@ namespace parser
 
 				if(tok.str() == "prefix")	prefix.push_back(
 				// i++ handled by loop
-			}
-			else if(tok == TT::Export)
-			{
-				// skip the name as well
-				i++;
 			}
 			else if(tok == TT::Comment || tok == TT::NewLine)
 			{
