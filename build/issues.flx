@@ -94,6 +94,10 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
+	(3add15b)
+	- fix implicit casting arguments to overloaded operators
+	- add ability to overload unicode symbols as operators
+
 	(d2f8dbd)
 	- add ability to overload prefix operators
 	- internally, move Operator to be a string type to make our lives easier with overloading.
