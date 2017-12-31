@@ -641,9 +641,17 @@
 					<key>comment</key>
 					<string>other keyword</string>
 					<key>match</key>
-					<string>\b(associativity|didSet|get|infix|inout|mutating|none|nonmutating|operator|override|postfix|precedence|prefix|set|unowned((un)?safe)?|weak|willSet)\b</string>
+					<string>\b(associativity|didSet|get|inout|mutating|none|nonmutating|operator|override|set|unowned((un)?safe)?|weak|willSet)\b</string>
 					<key>name</key>
 					<string>keyword.other.flax</string>
+				</dict>
+				<dict>
+					<key>comment</key>
+					<string>custom operator declaration</string>
+					<key>match</key>
+					<string>\b(prefix|postfix|infix)\b</string>
+					<key>name</key>
+					<string>storage.modifier.attribute.flax</string>
 				</dict>
 			</array>
 		</dict>
@@ -744,7 +752,7 @@
 			<key>comment</key>
 			<string>operator-declaration</string>
 			<key>match</key>
-			<string>\b(operator|prefix|infix|postfix)\b</string>
+			<string>\b(operator)\b</string>
 			<key>name</key>
 			<string>keyword.other.operator.flax</string>
 		</dict>

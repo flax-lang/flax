@@ -211,6 +211,8 @@ namespace sst
 
 		Expr* expr = 0;
 		Operator op = Operator::Invalid;
+
+		FunctionDefn* overloadedOpFunction = 0;
 	};
 
 	struct AssignOp : Expr

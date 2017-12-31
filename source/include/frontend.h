@@ -54,6 +54,10 @@ namespace frontend
 		std::unordered_set<std::string> importedFiles;
 		std::map<std::string, parser::ParsedFile> parsed;
 		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
+
+		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
 	};
 
 	fir::Module* collectFiles(std::string filename);

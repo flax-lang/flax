@@ -10,13 +10,27 @@ fn timestwo(x: int) -> int => x * 2
 
 struct vec2 { var x: int; var y: int }
 
-operator + (x: vec2, y: vec2) -> vec2
+// postfix operator $
+prefix operator %
+// infix operator ++
+
+
+operator infix + (x: vec2, y: vec2) -> vec2
 {
 	var ret: vec2
 	ret.x = x.x + y.x
 	ret.y = x.y + y.y
 
-	return ret;
+	return ret
+}
+
+operator prefix % (x: vec2) -> vec2
+{
+	var ret: vec2
+	ret.x = x.x * x.x
+	ret.y = x.y * x.y
+
+	return ret
 }
 
 @entry fn main()
@@ -26,7 +40,8 @@ operator + (x: vec2, y: vec2) -> vec2
 
 	let c = a + b
 
-	printf("c = (%d, %d)\n", c.x, c.y)
+	let d = %c
+	printf("c = (%d, %d), (%d, %d)\n", c.x, c.y, d.x, d.y)
 }
 
 

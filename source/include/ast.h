@@ -145,9 +145,9 @@ namespace ast
 		enum class Kind
 		{
 			Invalid,
-			Binary,
-			UnaryPrefix,
-			UnaryPostfix
+			Infix,
+			Prefix,
+			Postfix
 		};
 
 		Kind kind = Kind::Invalid;

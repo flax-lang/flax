@@ -14,6 +14,7 @@ namespace ast
 namespace frontend
 {
 	struct ImportThing;
+	struct CollectorState;
 }
 
 namespace parser
@@ -27,6 +28,19 @@ namespace parser
 	};
 
 
+	struct CustomOperatorDecl
+	{
+		Location loc;
+		std::string symbol;
+		int precedence = 0;
+
+		enum class Kind { Invalid, Infix, Prefix, Postfix };
+		Kind kind = Kind::Invalid;
+	};
+
+	std::tuple<std::vector<CustomOperatorDecl>, std::vector<CustomOperatorDecl>,
+		std::vector<CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
+
 	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens);
-	ParsedFile parseFile(std::string filename);
+	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs);
 }

@@ -250,9 +250,28 @@ namespace sst
 		auto ty = ex.value->getType();
 		auto val = ex.value;
 
-		// HighlightOptions hs;
-		// hs.underlines.push_back(this->expr->loc);
-		// warn(this, hs, "");
+
+		if(this->overloadedOpFunction)
+		{
+			// fantastic, just call this piece of shit.
+			auto func = dcast(fir::Function, this->overloadedOpFunction->codegen(cs, 0).value);
+			iceAssert(func);
+			iceAssert(func->getArgumentCount() == 1);
+
+			if(ty != func->getArguments()[0]->getType())
+			{
+				exitless_error(this->expr, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
+					operatorToString(this->op), func->getArguments()[0]->getType(), ty);
+
+				info(this->overloadedOpFunction, "Operator was overloaded here:");
+				doTheExit();
+			}
+
+			// ok, call that guy.
+			return CGResult(cs->irb.Call(func, val));
+		}
+
+
 
 		switch(this->op)
 		{
@@ -269,10 +288,10 @@ namespace sst
 				}
 			} break;
 
-			case Operator::Plus:
+			case Operator::Add:
 				return ex;
 
-			case Operator::Minus: {
+			case Operator::Subtract: {
 				if(auto ci = dcast(fir::ConstantInt, val))
 				{
 					iceAssert(ci->getType()->isSignedIntType());
@@ -304,12 +323,12 @@ namespace sst
 				}
 			} break;
 
-			case Operator::Dereference: {
+			case Operator::Multiply: {
 				iceAssert(ty->isPointerType());
 				return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
 			} break;
 
-			case Operator::AddressOf: {
+			case Operator::BitwiseAnd: {
 				if(ex.kind != CGResult::VK::LValue)
 					error(this, "Cannot take address of a non-lvalue");
 

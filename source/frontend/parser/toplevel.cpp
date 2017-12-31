@@ -211,17 +211,21 @@ namespace parser
 		return root;
 	}
 
-	ParsedFile parseFile(std::string filename)
+	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs)
 	{
 		auto full = frontend::getFullPathOfFile(filename);
 		const TokenList& tokens = frontend::getFileTokens(full);
 		auto state = State(tokens);
 		state.currentFilePath = full;
 
+		// copy this stuff over.
+		state.binaryOps = cs.binaryOps;
+		state.prefixOps = cs.prefixOps;
+		state.postfixOps = cs.postfixOps;
+
 		auto modname = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");
 
-		// debuglog("module -> %s\n", modname);
 
 		return ParsedFile {
 			filename,

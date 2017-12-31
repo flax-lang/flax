@@ -35,9 +35,6 @@
 		eg. let (a, b) = ...10   <-- a == b == 10
 
 
-	12. Operator overloading
-
-
 	13. Generic functions & types
 
 
@@ -97,11 +94,13 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
-	(???????)
+	(dcc28ba)
 	- fix member access on structs that were passed as arguments (ie. 'did not have pointer' -- solved by using ExtractValue in such cases)
+	- fix method calling (same thing as above) -- but this time we need to use ImmutAlloc, because we need a 'this' pointer
+	- add basic operator overloading for binary, non-assigment operators.
 
 	(45e818e)
-	- check for and error on duplicate module imports.
+	- check for, and error on, duplicate module imports.
 
 	(5a9aa9e)
 	- add deferred statements and blocks
