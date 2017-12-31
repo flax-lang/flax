@@ -10,9 +10,7 @@ fn timestwo(x: int) -> int => x * 2
 
 struct vec2 { var x: int; var y: int }
 
-// postfix operator $
-prefix operator %
-// infix operator ++
+operator prefix 950 %
 
 
 operator infix + (x: vec2, y: vec2) -> vec2
