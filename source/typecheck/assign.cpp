@@ -24,13 +24,13 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 	auto rt = r->type;
 
 	bool skipCheck = false;
-	if(this->op != Operator::Assign)
+	if(this->op != "=")
 	{
 		auto nonass = getNonAssignOp(this->op);
 		if(fs->getBinaryOpResultType(lt, rt, nonass) == 0)
 		{
 			error(this, "Unsupported operator '%s' between types '%s' and '%s', in compound assignment operator '%s'",
-				operatorToString(nonass), lt, rt, operatorToString(this->op));
+				nonass, lt, rt, this->op);
 		}
 
 		skipCheck = true;

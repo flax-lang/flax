@@ -6,11 +6,12 @@ export supertiny
 
 import "libc" as _
 
+@operator prefix 950 %
+
+
 fn timestwo(x: int) -> int => x * 2
 
 struct vec2 { var x: int; var y: int }
-
-operator prefix 950 %
 
 
 operator infix + (x: vec2, y: vec2) -> vec2

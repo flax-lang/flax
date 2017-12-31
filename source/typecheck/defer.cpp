@@ -18,7 +18,7 @@ sst::Stmt* ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
 	auto ret = this->actual->typecheck(fs, infer);
 
 	std::function<void (const Location&, std::vector<sst::Stmt*>)> checkRecursively
-		= [&fs, &checkRecursively](const Location& loc, std::vector<sst::Stmt*> stmts) -> void
+		= [&checkRecursively](const Location& loc, std::vector<sst::Stmt*> stmts) -> void
 	{
 		for(auto stmt : stmts)
 		{

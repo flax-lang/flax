@@ -338,7 +338,7 @@ namespace util
 	};
 }
 
-
+/*
 enum class Operator
 {
 	Invalid,
@@ -387,13 +387,13 @@ enum class Operator
 
 	UserDefined,
 };
+*/
+// std::string operatorToString(const Operator& op);
 
-std::string operatorToString(const Operator& op);
-
-bool isAssignOp(Operator op);
-bool isBitwiseOp(Operator op);
-bool isCompareOp(Operator op);
-Operator getNonAssignOp(Operator op);
+bool isAssignOp(std::string op);
+bool isBitwiseOp(std::string op);
+bool isCompareOp(std::string op);
+std::string getNonAssignOp(std::string op);
 
 
 

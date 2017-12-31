@@ -64,12 +64,12 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 		if(ft->getArgumentTypes().size() != 2)
 		{
 			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
-				operatorToString(this->op), ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
+				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
-		else if(!isAssignOp(this->op) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1)))
+		else if(!isAssignOp(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1)))
 		{
 			exitless_error(this, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
-				operatorToString(this->op), ft->getArgumentN(0), ft->getArgumentN(1));
+				this->symbol, ft->getArgumentN(0), ft->getArgumentN(1));
 
 			info("At least one of the parameters must be a user-defined type");
 			doTheExit();
@@ -80,52 +80,58 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 		if(ft->getArgumentTypes().size() != 1)
 		{
 			error(this, "Operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
-				operatorToString(this->op), ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
+				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)))
 		{
 			error(defn->arguments[0], "Unary operator '%s' cannot be overloaded for the builtin type '%s'",
-				operatorToString(this->op), ft->getArgumentN(0));
+				this->symbol, ft->getArgumentN(0));
 		}
 	}
 
 	// ok, further checks.
-	if(isAssignOp(this->op))
+	if(isAssignOp(this->symbol))
 	{
 		if(!ft->getReturnType()->isVoidType())
 		{
 			error(this, "Operator overload for assignment operators (have '%s') must return void, but a return type of '%s' was found",
-				operatorToString(this->op), ft->getReturnType());
+				this->symbol, ft->getReturnType());
 		}
 		else if(!ft->getArgumentN(0)->isPointerType())
 		{
 			error(defn->arguments[0], "Operator overload for assignment operator '%s' must take a pointer to the type as the first parameter, found '%s'",
-				operatorToString(this->op), ft->getArgumentN(0));
+				this->symbol, ft->getArgumentN(0));
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)->getPointerElementType()))
 		{
 			error(defn->arguments[0], "Assignment operator '%s' cannot be overloaded for the builtin type '%s'",
-				operatorToString(this->op), ft->getArgumentN(0));
+				this->symbol, ft->getArgumentN(0));
 		}
 	}
 
 	// before we add, check for duplication.
-	auto& thelist = (this->kind == Kind::Infix ? fs->stree->infixOperatorOverloads : (this->kind == Kind::Prefix
-		? fs->stree->prefixOperatorOverloads : fs->stree->postfixOperatorOverloads));
+	auto thelist = (this->kind == Kind::Infix ? &fs->stree->infixOperatorOverloads : (this->kind == Kind::Prefix
+		? &fs->stree->prefixOperatorOverloads : &fs->stree->postfixOperatorOverloads));
 
-	for(auto it : thelist[this->op])
+	for(auto it : (*thelist)[this->symbol])
 	{
 		if(fs->isDuplicateOverload(it->params, defn->params))
 		{
-			exitless_error(this, "Duplicate operator overload for '%s' taking identical arguments", operatorToString(this->op));
+			exitless_error(this, "Duplicate operator overload for '%s' taking identical arguments", this->symbol);
 			info(it, "Previous definition was here:");
 
 			doTheExit();
 		}
 	}
 
+	warn(this, "ADDING : %d, %d / %d / %d", (*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(), fs->stree->prefixOperatorOverloads[this->symbol].size(),
+		fs->stree->postfixOperatorOverloads[this->symbol].size());
+
 	// ok, we should be good now.
-	thelist[this->op].push_back(defn);
+	(*thelist)[this->symbol].push_back(defn);
+
+	warn(this, "ADDED %s %s : %d, %d / %d / %d", fs->stree->name, this->symbol, (*thelist)[this->symbol].size(), fs->stree->infixOperatorOverloads[this->symbol].size(), fs->stree->prefixOperatorOverloads[this->symbol].size(),
+		fs->stree->postfixOperatorOverloads[this->symbol].size());
 }
 
 
