@@ -152,6 +152,9 @@ namespace sst
 			std::vector<std::pair<Location, std::string>> infoStrs;
 		};
 
+		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
+		int getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
+
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 

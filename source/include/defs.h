@@ -338,58 +338,6 @@ namespace util
 	};
 }
 
-/*
-enum class Operator
-{
-	Invalid,
-
-	Add,			// also unary +
-	Subtract,		// also unary -
-	Multiply,		// also unary * (aka dereference)
-	Divide,
-	Modulo,
-
-	Assign,
-
-	BitwiseOr,
-	BitwiseAnd,		// also unary & (aka address-of)
-	BitwiseXor,
-
-	LogicalOr,
-	LogicalAnd,
-	LogicalNot,
-
-	ShiftLeft,
-	ShiftRight,
-
-	CompareEq,
-	CompareNotEq,
-	CompareGreater,
-	CompareGreaterEq,
-	CompareLess,
-	CompareLessEq,
-
-	Cast,
-	DotOperator,
-
-	BitwiseNot,
-
-	PlusEquals,
-	MinusEquals,
-	MultiplyEquals,
-	DivideEquals,
-	ModuloEquals,
-	ShiftLeftEquals,
-	ShiftRightEquals,
-	BitwiseAndEquals,
-	BitwiseOrEquals,
-	BitwiseXorEquals,
-
-	UserDefined,
-};
-*/
-// std::string operatorToString(const Operator& op);
-
 bool isAssignOp(std::string op);
 bool isBitwiseOp(std::string op);
 bool isCompareOp(std::string op);

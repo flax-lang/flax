@@ -154,9 +154,14 @@ namespace parser
 
 			case TT::Period:			return ".";
 			case TT::As:				return "cast";
-
-			default:					return "";
+			default:					break;
 		}
+
+		// check custom operators.
+		if(tok_op.type == TT::Identifier || tok_op.type == TT::UnicodeSymbol)
+			return tok_op.str();
+
+		return "";
 	}
 
 	int parseOperatorDecl(const lexer::TokenList& tokens, int idx, int* _kind, CustomOperatorDecl* out)

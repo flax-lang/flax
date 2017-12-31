@@ -1,0 +1,15 @@
+// math.flx
+// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+public ffi fn sqrt(x: f64) -> f64
+public ffi fn sqrtf(x: f32) -> f32
+
+public ffi fn log(x: f64) -> f64
+public ffi fn logf(x: f32) -> f32
+
+public ffi fn floor(x: f64) -> f64
+public ffi fn floorf(x: f32) -> f32
+
+public ffi fn pow(x: f64, y: f64) -> f64
+public ffi fn powf(x: f32, y: f32) -> f32

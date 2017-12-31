@@ -280,11 +280,13 @@ namespace parser
 				break;
 
 			case TT::Identifier:
-			// case TT::UnicodeSymbol:
-			// 	if(st.cgi->customOperatorMapRev.find(st.front().text.to_string()) != st.cgi->customOperatorMapRev.end())
-			// 	{
-			// 		return st.cgi->customOperatorMap[st.cgi->customOperatorMapRev[st.front().text.to_string()]].second;
-			// 	}
+			case TT::UnicodeSymbol:
+				if(auto it = st.binaryOps.find(st.front().str()); it != st.binaryOps.end())
+					return it->second.precedence;
+
+				else if(auto it = st.postfixOps.find(st.front().str()); it != st.postfixOps.end())
+					return it->second.precedence;
+
 				return -1;
 
 			default:
@@ -448,6 +450,8 @@ namespace parser
 
 			prec = cop.precedence;
 			op = cop.symbol;
+
+			// debuglog("symbol = '%s'\n", op);
 		}
 		else
 		{

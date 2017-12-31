@@ -10,48 +10,60 @@
 
 using TCS = sst::TypecheckState;
 
-// std::string operatorToString(const Operator& op)
-// {
-// 	switch(op)
-// 	{
-// 		case Operator::Invalid:				return "invalid";
-// 		case Operator::Add:					return "+";
-// 		case Operator::Subtract:			return "-";
-// 		case Operator::Multiply:			return "*";
-// 		case Operator::Divide:				return "÷";
-// 		case Operator::Modulo:				return "%";
-// 		case Operator::Assign:				return "=";
-// 		case Operator::BitwiseOr:			return "|";
-// 		case Operator::BitwiseAnd:			return "&";
-// 		case Operator::BitwiseXor:			return "^";
-// 		case Operator::LogicalOr:			return "||";
-// 		case Operator::LogicalAnd:			return "&&";
-// 		case Operator::LogicalNot:			return "!";
-// 		case Operator::ShiftLeft:			return "<<";
-// 		case Operator::ShiftRight:			return ">>";
-// 		case Operator::CompareEq:			return "==";
-// 		case Operator::CompareNotEq:		return "!=";
-// 		case Operator::CompareGreater:		return ">";
-// 		case Operator::CompareGreaterEq:	return ">=";
-// 		case Operator::CompareLess:			return "<";
-// 		case Operator::CompareLessEq:		return "<=";
-// 		case Operator::Cast:				return "cast";
-// 		case Operator::DotOperator:			return ".";
-// 		case Operator::BitwiseNot:			return "~";
-// 		case Operator::PlusEquals:			return "+=";
-// 		case Operator::MinusEquals:			return "-=";
-// 		case Operator::MultiplyEquals:		return "*=";
-// 		case Operator::DivideEquals:		return "÷=";
-// 		case Operator::ModuloEquals:		return "%=";
-// 		case Operator::ShiftLeftEquals:		return "<<=";
-// 		case Operator::ShiftRightEquals:	return ">>=";
-// 		case Operator::BitwiseAndEquals:	return "&=";
-// 		case Operator::BitwiseOrEquals:		return "|=";
-// 		case Operator::BitwiseXorEquals:	return "^=";
 
-// 		default: iceAssert(0 && "invalid operator");
-// 	}
-// }
+static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const Location& loc, int kind, std::string op,
+	std::vector<fir::Type*> args)
+{
+	auto tree = fs->stree;
+	while(tree)
+	{
+		int best = 10000000;
+		std::vector<sst::FunctionDefn*> cands;
+
+		auto thelist = (kind == 0 ? &tree->infixOperatorOverloads : (kind == 1
+			? &tree->prefixOperatorOverloads : &tree->postfixOperatorOverloads));
+
+		for(auto ovp : (*thelist)[op])
+		{
+			int dist = fs->getOverloadDistance(util::map(ovp->params, [](auto p) { return p.type; }), args);
+			if(dist == -1) continue;
+
+			if(dist == best)
+			{
+				cands.push_back(ovp);
+			}
+			else if(dist < best)
+			{
+				best = dist;
+
+				cands.clear();
+				cands.push_back(ovp);
+			}
+		}
+
+		if(cands.size() > 0)
+		{
+			if(cands.size() > 1)
+			{
+				exitless_error(loc, "Ambiguous use of overloaded operator '%s'", op);
+				for(auto c : cands) info(c, "Potential overload candidate here:");
+
+				doTheExit();
+			}
+			else
+			{
+				return cands[0];
+			}
+		}
+
+		// only go up if we didn't find anything here.
+		tree = tree->parent;
+	}
+
+	return 0;
+}
+
+
 
 fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, std::string op, sst::FunctionDefn** overloadFn)
 {
@@ -164,21 +176,14 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, std::st
 
 	// ok, check the operator map.
 	{
-		auto tree = this->stree;
-		while(tree)
+		auto oper = getOverloadedOperator(this, this->loc(), 0, op, { left, right });
+		if(oper)
 		{
-			for(auto op : tree->infixOperatorOverloads[op])
-			{
-				if(this->isDuplicateOverload(util::map(op->params, [](auto p) { return p.type; }), { left, right }))
-				{
-					if(overloadFn) *overloadFn = op;
-					return op->returnType;
-				}
-			}
-
-			tree = tree->parent;
+			if(overloadFn) *overloadFn = oper;
+			return oper->returnType;
 		}
 	}
+
 
 	return 0;
 }
@@ -232,23 +237,15 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 	// check for custom ops first, i guess.
 	{
-		auto tree = fs->stree;
-		while(tree)
+		auto oper = getOverloadedOperator(fs, this->loc, 1, this->op, { t });
+		if(oper)
 		{
-			for(auto ovp : tree->prefixOperatorOverloads[this->op])
-			{
-				if(fs->isDuplicateOverload(util::map(ovp->params, [](auto p) { return p.type; }), { t }))
-				{
-					auto ret = new sst::UnaryOp(this->loc, ovp->returnType);
-					ret->op = this->op;
-					ret->expr = v;
+			auto ret = new sst::UnaryOp(this->loc, oper->returnType);
+			ret->op = this->op;
+			ret->expr = v;
 
-					ret->overloadedOpFunction = ovp;
-					return ret;
-				}
-			}
-
-			tree = tree->parent;
+			ret->overloadedOpFunction = oper;
+			return ret;
 		}
 	}
 
