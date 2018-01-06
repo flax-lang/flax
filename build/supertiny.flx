@@ -78,8 +78,11 @@ fn somefunc(a: int, b: int) -> int => a * b
 
 @entry fn main()
 {
-	var a: vec3; a.x = 10; a.y = 20; a.z = 4;
-	var b: vec3; b.x = 23; b.y = 17; b.z = 9;
+	let a = vec3(x: 10, y: 20, z: 4)
+	let b = vec3(23, 17, 9)
+
+	// var a: vec3; a.x = 10; a.y = 20; a.z = 4;
+	// var b: vec3; b.x = 23; b.y = 17; b.z = 9;
 
 	let c = a + b
 	let d = a dot b

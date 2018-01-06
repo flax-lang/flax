@@ -509,6 +509,17 @@ namespace ast
 	};
 
 
+	//! ugly duplication
+	struct FnCallArgument
+	{
+		FnCallArgument(const Location& l, const std::string& n, sst::Expr* v) : loc(l), name(n), value(v) { }
+
+		Location loc;
+		std::string name;
+
+		sst::Expr* value = 0;
+	};
+
 
 	struct FunctionCall : Expr
 	{
@@ -516,7 +527,7 @@ namespace ast
 		~FunctionCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args);
 
 		std::string name;
 		std::vector<std::pair<std::string, Expr*>> args;
@@ -530,7 +541,7 @@ namespace ast
 		~ExprCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> args);
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args);
 
 		Expr* callee = 0;
 		std::vector<std::pair<std::string, Expr*>> args;

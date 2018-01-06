@@ -387,14 +387,14 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		sst::Expr* ret = 0;
 		if(auto fc = dcast(ast::FunctionCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs)); });
 
 			fs->teleportToScope(news);
 			ret = fc->typecheckWithArguments(fs, args);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs)); });
 
 			fs->teleportToScope(news);
 			ret = ec->typecheckWithArguments(fs, args);

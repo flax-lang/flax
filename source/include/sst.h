@@ -265,6 +265,17 @@ namespace sst
 	};
 
 
+	struct FnCallArgument
+	{
+		FnCallArgument(const Location& l, const std::string& n, Expr* v) : loc(l), name(n), value(v) { }
+
+		Location loc;
+		std::string name;
+
+		Expr* value = 0;
+	};
+
+
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { }
@@ -288,6 +299,20 @@ namespace sst
 		Expr* callee = 0;
 		std::vector<Expr*> arguments;
 	};
+
+	struct ConstructorCall : Expr
+	{
+		ConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { }
+		~ConstructorCall() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		TypeDefn* target = 0;
+		std::vector<FnCallArgument> arguments;
+	};
+
+
+
 
 	struct VarDefn;
 	struct VarRef : Expr

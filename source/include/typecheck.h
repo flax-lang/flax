@@ -35,7 +35,7 @@ namespace sst
 {
 	struct StateTree
 	{
-		StateTree(std::string nm, std::string filename, StateTree* p) : name(nm), topLevelFilename(filename), parent(p) { }
+		StateTree(const std::string& nm, const std::string& filename, StateTree* p) : name(nm), topLevelFilename(filename), parent(p) { }
 
 		std::string name;
 		std::string topLevelFilename;
@@ -125,20 +125,20 @@ namespace sst
 		Location loc();
 		Location popLoc();
 
-		void pushTree(std::string name);
+		void pushTree(const std::string& name);
 		StateTree* popTree();
 
-		StateTree* recursivelyFindTreeUpwards(std::string name);
+		StateTree* recursivelyFindTreeUpwards(const std::string& name);
 
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
 		void teleportToScope(const std::vector<std::string>& scope);
 
-		std::vector<Defn*> getDefinitionsWithName(std::string name, StateTree* tree = 0);
-		bool checkForShadowingOrConflictingDefinition(Defn* def, std::string kind,
+		std::vector<Defn*> getDefinitionsWithName(const std::string& name, StateTree* tree = 0);
+		bool checkForShadowingOrConflictingDefinition(Defn* def, const std::string& kind,
 			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 
-		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, std::string op, sst::FunctionDefn** overloadFn = 0);
+		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, const std::string& op, sst::FunctionDefn** overloadFn = 0);
 
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt);
@@ -158,13 +158,15 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
-		Defn* resolveFunction(std::string name, std::vector<FunctionDecl::Param> arguments, PrettyError* errs, bool traverseUp);
-		Defn* resolveFunctionFromCandidates(std::vector<Defn*> fs, std::vector<FunctionDecl::Param> arguments,
+		Defn* resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs, bool traverseUp);
+		Defn* resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments,
 			PrettyError* errs, bool allowImplicitSelf);
+
+		TypeDefn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs);
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
-		std::vector<std::pair<frontend::ImportThing, StateTree*>> imports);
+		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports);
 }
 
 
