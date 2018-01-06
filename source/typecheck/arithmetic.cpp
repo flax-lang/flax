@@ -65,7 +65,7 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 
 
 
-fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, std::string op, sst::FunctionDefn** overloadFn)
+fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const std::string& op, sst::FunctionDefn** overloadFn)
 {
 	if(op == "||" || op == "&&" || op == "!")
 	{

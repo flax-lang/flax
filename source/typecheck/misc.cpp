@@ -95,7 +95,7 @@ namespace sst
 
 
 
-	void TypecheckState::pushTree(std::string name)
+	void TypecheckState::pushTree(const std::string& name)
 	{
 		iceAssert(this->stree);
 
@@ -123,7 +123,7 @@ namespace sst
 		return ret;
 	}
 
-	StateTree* TypecheckState::recursivelyFindTreeUpwards(std::string name)
+	StateTree* TypecheckState::recursivelyFindTreeUpwards(const std::string& name)
 	{
 		StateTree* tree = this->stree;
 
@@ -295,7 +295,7 @@ namespace sst
 
 
 
-	std::vector<Defn*> TypecheckState::getDefinitionsWithName(std::string name, StateTree* tree)
+	std::vector<Defn*> TypecheckState::getDefinitionsWithName(const std::string& name, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
@@ -314,7 +314,7 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::string kind,
+	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, const std::string& kind,
 		std::function<bool (TypecheckState* fs, Defn* other)> doCheck, StateTree* tree)
 	{
 		if(tree == 0)
