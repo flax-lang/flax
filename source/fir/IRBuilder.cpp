@@ -1383,7 +1383,6 @@ namespace fir
 		size_t ind = 0;
 		if(t->isStructType()) { ind = t->toStructType()->getElementIndex(n); }
 		else if(t->isClassType()) { ind = t->toClassType()->getElementIndex(n); }
-		iceAssert(ind);
 
 		return this->InsertValue(val, { ind }, elm, vname);
 	}
