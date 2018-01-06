@@ -155,6 +155,9 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
+	(ec728cd)
+	- add constructor syntax for types (as previously discussed), where you can do some fields with names, or all fields positionally.
+
 	(ec7b2f3)
 	- fix false assertion (assert index > 0) for InsertValue by index in FIR. Index can obviously be 0 for the first element.
 
