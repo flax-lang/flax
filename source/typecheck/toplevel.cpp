@@ -158,7 +158,7 @@ namespace sst
 
 
 	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, std::vector<std::pair<frontend::ImportThing, StateTree*>> imports)
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports)
 	{
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);

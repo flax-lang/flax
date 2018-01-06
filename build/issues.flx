@@ -121,6 +121,31 @@
 		Yep, that's about it for named args. I don't plan on supporting the whole 'internal/external name' thing that Swift has going on.
 		It's probably just an objective-c fetishism thing, and muddles up function declarations. If you want the internal name to be different,
 		just create a new variable, it's not going to kill the program.
+
+
+	6. wrt tuples: https://www.reddit.com/r/ProgrammingLanguages/comments/7o5fs0/languages_with_better_tuple_support/
+
+		definitely some interesting ideas over there. Would streamline things by making functions take a tuple as an argument, although it means
+		we need to slightly tweak overload resolution and overload distance computation, but since they're just operating on a list of types
+		anyway, it should be simple (famous last words right) to do.
+
+		One thing is that we don't have named tuples, so there's no correlation between calling a function with named arguments and tuples. However,
+		passing a struct straight to a function that takes named arguments (that correspond to the fields of the struct) feels wrong and obscene.
+
+		What we can do instead is the reverse; if a function takes a struct, allow ad-hoc construction of the struct simply by calling it with
+		named arguments. However, this is one of the things that complicates function resolution for very little benefit; assuming we implement
+		constructor syntax for structs, plus named arguments in constructors, then this entire thing is rendered basically moot, because you
+		can just type a few more characters of the struct name and avoid a lot of implementation headaches.
+
+		So basically, the only thing we're taking away from that guy's post is having functions take tuples as arguments? Again, we don't have
+		named tuples so a lot of the 'hype' of his post is pointless and misdirected for our use case.
+
+		In which case the question comes -- do we want named tuples? What advantages do they serve over structs? On a surface level, they're just
+		structs, but (1) without methods, (2) without requiring a type definition, and thus (3) more ad-hoc.
+
+		They can be useful, but I feel that wherever you're using named tuples a lot, you'd be better served by a struct. I guess?
+
+		Do an RFC on the IRC channel I guess.
 */
 
 
@@ -129,6 +154,9 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+	(ec7b2f3)
+	- fix false assertion (assert index > 0) for InsertValue by index in FIR. Index can obviously be 0 for the first element.
 
 	(3add15b)
 	- fix implicit casting arguments to overloaded operators

@@ -9,6 +9,8 @@
 
 #include "ir/type.h"
 
+#include <set>
+
 using TCS = sst::TypecheckState;
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
@@ -184,7 +186,7 @@ namespace sst
 
 
 
-	Defn* TypecheckState::resolveFunctionFromCandidates(std::vector<Defn*> cands, std::vector<Param> arguments,
+	Defn* TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
 		PrettyError* errs, bool allowImplicitSelf)
 	{
 		if(cands.empty()) return 0;
@@ -260,7 +262,7 @@ namespace sst
 		}
 	}
 
-	Defn* TypecheckState::resolveFunction(std::string name, std::vector<Param> arguments, PrettyError* errs, bool travUp)
+	Defn* TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, PrettyError* errs, bool travUp)
 	{
 		iceAssert(errs);
 
@@ -290,6 +292,12 @@ namespace sst
 
 					didVar = true;
 				}
+				else if(auto typedf = dcast(TypeDefn, def))
+				{
+					// ok, then.
+					//* note: no need to specify 'travUp', because we already resolved the type here.
+					return this->resolveConstructorCall(typedf, arguments, errs);
+				}
 				else
 				{
 					didVar = true;
@@ -314,12 +322,81 @@ namespace sst
 
 		return this->resolveFunctionFromCandidates(fns, arguments, errs, travUp);
 	}
+
+
+
+	TypeDefn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs)
+	{
+		iceAssert(errs);
+
+		if(auto str = dcast(StructDefn, typedf))
+		{
+			// ok, structs get named arguments, and no un-named arguments.
+			// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
+
+			//* note that structs don't have inline member initialisers, so there's no trouble with this approach (in the codegeneration)
+			//* of inserting missing arguments as just '0' or whatever their default value is
+
+			//* in the case of classes, they will have inline initialisers, so the constructor calling must handle such things.
+			//* but then class constructors are handled like regular functions, so it should be fine.
+
+			std::set<std::string> fieldNames;
+			for(auto f : str->fields)
+				fieldNames.insert(f->id.name);
+
+			bool useNames = false;
+			bool firstName = true;
+			for(auto arg : arguments)
+			{
+				if(arg.name.empty() && useNames)
+				{
+					error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor");
+				}
+				else if(firstName && !arg.name.empty())
+				{
+					useNames = true;
+					firstName = false;
+				}
+				else if(!arg.name.empty() && !useNames && !firstName)
+				{
+					error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor");
+				}
+				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
+				{
+					exitless_error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name);
+					info(str, "Struct was defined here:");
+
+					doTheExit();
+				}
+			}
+
+			if(!useNames && arguments.size() != fieldNames.size())
+			{
+				exitless_error(this->loc(),
+					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
+					str->id.name, fieldNames.size(), arguments.size());
+
+				info(this->loc(), "All arguments are mandatory when using positional arguments");
+				doTheExit();
+			}
+
+			// in actual fact we just return the thing here. sigh.
+			return str;
+		}
+		else
+		{
+			exitless_error(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name);
+			info(typedf, "Type was defined here:");
+
+			doTheExit();
+		}
+	}
 }
 
 
 
 
-sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, std::vector<sst::Expr*> arguments)
+sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<FnCallArgument>& arguments)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -329,7 +406,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, std::vector<sst::E
 
 	// resolve the function call here
 	sst::TypecheckState::PrettyError errs;
-	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
+	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
 
 	auto target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
 	if(!errs.errorStr.empty())
@@ -342,24 +419,38 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, std::vector<sst::E
 	}
 
 	iceAssert(target);
-	iceAssert(target->type->isFunctionType());
 
-	auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
-	ret->name = this->name;
-	ret->target = target;
-	ret->arguments = arguments;
+	if(auto typedf = dcast(sst::TypeDefn, target))
+	{
+		auto args = util::map(arguments, [](auto a) -> auto { return sst::FnCallArgument(a.loc, a.name, a.value); });
+		auto ret = new sst::ConstructorCall(this->loc, typedf->type);
 
-	// check if it's a method call
-	// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
-	// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
+		ret->target = typedf;
+		ret->arguments = args;
 
-	// so, if it was really an implicit call, it remains set
-	// if it was a dot-op call, it gets set back to false by the dotop checking.
+		return ret;
+	}
+	else
+	{
+		iceAssert(target->type->isFunctionType());
 
-	if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
-		ret->isImplicitMethodCall = true;
+		auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
+		ret->name = this->name;
+		ret->target = target;
+		ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
 
-	return ret;
+		// check if it's a method call
+		// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
+		// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
+
+		// so, if it was really an implicit call, it remains set
+		// if it was a dot-op call, it gets set back to false by the dotop checking.
+
+		if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
+			ret->isImplicitMethodCall = true;
+
+		return ret;
+	}
 }
 
 sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
@@ -367,7 +458,9 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); }));
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> FnCallArgument {
+		return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs));
+	}));
 }
 
 
@@ -378,14 +471,14 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 
 
 
-sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, std::vector<sst::Expr*> arguments)
+sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	using Param = sst::FunctionDecl::Param;
 
-	std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
+	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
 	std::vector<fir::Type*> tys = util::map(ts, [](auto p) -> auto { return p.type; });
 
 	auto target = this->callee->typecheck(fs);
@@ -407,7 +500,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, std::v
 
 	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;
-	ret->arguments = arguments;
+	ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
 
 	return ret;
 }
@@ -419,7 +512,9 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); }));
+	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> FnCallArgument {
+		return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs));
+	}));
 }
 
 
