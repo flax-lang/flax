@@ -28,21 +28,15 @@ struct vec3
 
 operator infix + (a: vec2, b: vec2) -> vec2
 {
-	var ret: vec2
-	ret.x = a.x + b.x
-	ret.y = a.y + b.y
-
-	return ret
+	return vec2(x: a.x + b.x,
+				y: a.y + b.y);
 }
 
 operator infix + (a: vec3, b: vec3) -> vec3
 {
-	var ret: vec3
-	ret.x = a.x + b.x
-	ret.y = a.y + b.y
-	ret.y = a.z + b.z
-
-	return ret
+	return vec3(x: a.x + b.x,
+				y: a.y + b.y,
+				z: a.z + b.z);
 }
 
 
@@ -64,12 +58,9 @@ operator infix dot (a: vec3, b: vec3) -> int
 
 operator infix cross (a: vec3, b: vec3) -> vec3
 {
-	var ret: vec3
-	ret.x = (a.y * b.z) - (a.z * b.y)
-	ret.y = (a.z * b.x) - (a.x * b.z)
-	ret.z = (a.x * b.y) - (a.y * b.x)
-
-	return ret
+	return vec3(x: (a.y * b.z) - (a.z * b.y),
+				y: (a.z * b.x) - (a.x * b.z),
+				z: (a.x * b.y) - (a.y * b.x));
 }
 
 
@@ -78,9 +69,9 @@ fn somefunc(a: int, b: int) -> int => a * b
 
 @entry fn main()
 {
-	let a = vec3(x: 10, y: 20, z: 4)
+	let a = vec3(y: 20, x: 10, z: 4)
 	let b = vec3(23, 17, 9)
-
+	let k = vec3()
 	// var a: vec3; a.x = 10; a.y = 20; a.z = 4;
 	// var b: vec3; b.x = 23; b.y = 17; b.z = 9;
 

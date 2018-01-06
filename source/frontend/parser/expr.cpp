@@ -506,7 +506,7 @@ namespace parser
 				st.pop();
 
 			else if(st.front() != TT::RParen)
-				expected(st, "',' or '(' in function call argument list", st.front().str());
+				expected(st, "',' or ')' in function call argument list", st.front().str());
 		}
 
 		iceAssert(st.pop().type == TT::RParen);

@@ -1327,10 +1327,10 @@ namespace fir
 			error("val is not an aggregate type (have '%s')", t);
 
 		Type* et = 0;
-		if(t->isStructType())     et = t->toStructType()->getElementN(inds[0]);
-		else if(t->isClassType()) et = t->toClassType()->getElementN(inds[0]);
-		else if(t->isTupleType()) et = t->toTupleType()->getElementN(inds[0]);
-		else if(t->isArrayType()) et = t->toArrayType()->getElementType();
+		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
+		else if(t->isClassType())   et = t->toClassType()->getElementN(inds[0]);
+		else if(t->isTupleType())   et = t->toTupleType()->getElementN(inds[0]);
+		else if(t->isArrayType())   et = t->toArrayType()->getElementType();
 
 		iceAssert(et);
 
@@ -1356,10 +1356,10 @@ namespace fir
 			error("val is not an aggregate type (have '%s')", t);
 
 		Type* et = 0;
-		if(t->isStructType())     et = t->toStructType()->getElementN(inds[0]);
-		else if(t->isClassType()) et = t->toClassType()->getElementN(inds[0]);
-		else if(t->isTupleType()) et = t->toTupleType()->getElementN(inds[0]);
-		else if(t->isArrayType()) et = t->toArrayType()->getElementType();
+		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
+		else if(t->isClassType())   et = t->toClassType()->getElementN(inds[0]);
+		else if(t->isTupleType())   et = t->toTupleType()->getElementN(inds[0]);
+		else if(t->isArrayType())   et = t->toArrayType()->getElementType();
 
 		iceAssert(et);
 
@@ -1381,9 +1381,9 @@ namespace fir
 			error("val is not an aggregate type with named members (class or struct) (have '%s')", t);
 
 		size_t ind = 0;
-		if(t->isStructType())     ind = t->toStructType()->getElementIndex(n);
-		else if(t->isClassType()) ind = t->toClassType()->getElementIndex(n);
-		else                      iceAssert(0);
+		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n);
+		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n);
+		else                        iceAssert(0);
 
 		return this->InsertValue(val, { ind }, elm, vname);
 	}
