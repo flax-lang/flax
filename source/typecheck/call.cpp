@@ -346,6 +346,8 @@ namespace sst
 
 			bool useNames = false;
 			bool firstName = true;
+
+			std::set<std::string> seenNames;
 			for(auto arg : arguments)
 			{
 				if(arg.name.empty() && useNames)
@@ -368,15 +370,22 @@ namespace sst
 
 					doTheExit();
 				}
+				else if(useNames && seenNames.find(arg.name) != seenNames.end())
+				{
+					error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'", arg.name, str->id.name);
+				}
+
+				seenNames.insert(arg.name);
 			}
 
-			if(!useNames && arguments.size() != fieldNames.size())
+			//* note: if we're doing positional args, allow only all or none.
+			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
 			{
 				exitless_error(this->loc(),
 					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
 					str->id.name, fieldNames.size(), arguments.size());
 
-				info(this->loc(), "All arguments are mandatory when using positional arguments");
+				info("All arguments are mandatory when using positional arguments");
 				doTheExit();
 			}
 
