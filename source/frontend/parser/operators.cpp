@@ -119,42 +119,43 @@ namespace parser
 
 		switch(tok_op.type)
 		{
-			case TT::Plus:				return "+";
-			case TT::Minus:				return "-";
-			case TT::Asterisk:			return "*";
-			case TT::Divide:			return "/";
-			case TT::Percent:			return "%";
-			case TT::ShiftLeft:			return "<<";
-			case TT::ShiftRight:		return ">>";
-			case TT::Equal:				return "=";
+			case TT::Plus:              return "+";
+			case TT::Minus:             return "-";
+			case TT::Asterisk:          return "*";
+			case TT::Divide:            return "/";
+			case TT::Percent:           return "%";
+			case TT::ShiftLeft:         return "<<";
+			case TT::ShiftRight:        return ">>";
+			case TT::Equal:             return "=";
 
-			case TT::LAngle:			return "<";
-			case TT::RAngle:			return ">";
-			case TT::LessThanEquals:	return "<=";
-			case TT::GreaterEquals:		return ">=";
-			case TT::EqualsTo:			return "==";
-			case TT::NotEquals:			return "!=";
+			case TT::LAngle:            return "<";
+			case TT::RAngle:            return ">";
+			case TT::LessThanEquals:    return "<=";
+			case TT::GreaterEquals:     return ">=";
+			case TT::EqualsTo:          return "==";
+			case TT::NotEquals:         return "!=";
 
-			case TT::Ampersand:			return "&";
-			case TT::Pipe:				return "|";
-			case TT::Caret:				return "^";
-			case TT::LogicalOr:			return "||";
-			case TT::LogicalAnd:		return "&&";
+			case TT::Ampersand:         return "&";
+			case TT::Pipe:              return "|";
+			case TT::Caret:             return "^";
+			case TT::LogicalOr:         return "||";
+			case TT::LogicalAnd:        return "&&";
 
-			case TT::PlusEq:			return "+=";
-			case TT::MinusEq:			return "-=";
-			case TT::MultiplyEq:		return "*=";
-			case TT::DivideEq:			return "/=";
-			case TT::ModEq:				return "%=";
-			case TT::ShiftLeftEq:		return "<<=";
-			case TT::ShiftRightEq:		return ">>=";
-			case TT::AmpersandEq:		return "&=";
-			case TT::PipeEq:			return "|=";
-			case TT::CaretEq:			return "^=";
+			case TT::PlusEq:            return "+=";
+			case TT::MinusEq:           return "-=";
+			case TT::MultiplyEq:        return "*=";
+			case TT::DivideEq:          return "/=";
+			case TT::ModEq:             return "%=";
+			case TT::ShiftLeftEq:       return "<<=";
+			case TT::ShiftRightEq:      return ">>=";
+			case TT::AmpersandEq:       return "&=";
+			case TT::PipeEq:            return "|=";
+			case TT::CaretEq:           return "^=";
 
-			case TT::Period:			return ".";
-			case TT::As:				return "cast";
-			default:					break;
+			case TT::Period:            return ".";
+			case TT::As:                return "cast";
+			case TT::At:                return "@";
+			default:                    break;
 		}
 
 		// check custom operators.
@@ -182,10 +183,10 @@ namespace parser
 		}
 
 		int kind = 0;
-		if(tokens[idx].str() == "infix")		kind = 1, oper.kind = Kind::Infix;
-		else if(tokens[idx].str() == "prefix")	kind = 2, oper.kind = Kind::Prefix;
-		else if(tokens[idx].str() == "postfix")	kind = 3, oper.kind = Kind::Postfix;
-		else									iceAssert(0);
+		if(tokens[idx].str() == "infix")        kind = 1, oper.kind = Kind::Infix;
+		else if(tokens[idx].str() == "prefix")  kind = 2, oper.kind = Kind::Prefix;
+		else if(tokens[idx].str() == "postfix") kind = 3, oper.kind = Kind::Postfix;
+		else                                    iceAssert(0);
 
 		idx++;
 

@@ -163,6 +163,7 @@ namespace sst
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);
 
+
 		for(auto [ ithing, import ] : imports)
 		{
 			StateTree* insertPoint = tree;
@@ -202,7 +203,6 @@ namespace sst
 		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
 		iceAssert(tns);
 
-		// tns->id = Identifier(file.moduleName, IdKind::Name);
 		tns->name = file.moduleName;
 
 		fs->dtree->topLevel = tns;
