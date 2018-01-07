@@ -264,18 +264,6 @@ namespace sst
 		fir::Value* cgEnd = 0;
 	};
 
-
-	struct FnCallArgument
-	{
-		FnCallArgument(const Location& l, const std::string& n, Expr* v) : loc(l), name(n), value(v) { }
-
-		Location loc;
-		std::string name;
-
-		Expr* value = 0;
-	};
-
-
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { }
@@ -285,7 +273,7 @@ namespace sst
 
 		std::string name;
 		Defn* target = 0;
-		std::vector<Expr*> arguments;
+		std::vector<FnCallArgument> arguments;
 		bool isImplicitMethodCall = false;
 	};
 

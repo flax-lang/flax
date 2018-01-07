@@ -71,14 +71,17 @@ namespace sst
 	}
 
 	using Param = FunctionDecl::Param;
-	static int computeOverloadDistance(const Location& fnLoc, std::vector<fir::Type*> target, std::vector<Location> targetLocs,
-		std::vector<fir::Type*> args, bool cvararg, Location* loc, std::string* estr)
+
+	//* we take Param for both because we want to be able to call without having an Expr*
+	//* so we stick with the types.
+	static int computeOverloadDistance(const Location& fnLoc, std::vector<FunctionDecl::Param> target,
+		std::vector<FunctionDecl::Param> args, bool cvararg, Location* loc, std::string* estr, Defn* candidate)
 	{
 		iceAssert(estr);
 		if(target.empty() && args.empty())
 			return 0;
 
-		bool anyvararg = cvararg || (target.size() > 0 && target.back()->isVariadicArrayType());
+		bool anyvararg = cvararg || (target.size() > 0 && target.back().type->isVariadicArrayType());
 
 		if(!anyvararg && target.size() != args.size())
 		{
@@ -93,15 +96,84 @@ namespace sst
 			return -1;
 		}
 
-		int distance = 0;
+		// find the first named argument -- get the index of the first named argument.
+		auto idx = util::indexOf(args, [](Param p) -> bool { return p.name != ""; });
+
+		std::vector<Param> positional;
+		std::vector<Param> named;
+
+		std::unordered_map<std::string, size_t> nameToIndex;
 		for(size_t i = 0; i < target.size(); i++)
+			nameToIndex[target[i].name] = i;
+
+		if(idx == 0)
 		{
-			auto d = getCastDistance(args[i], target[i]);
+			// all named
+			named = args;
+		}
+		else if(idx == -1)
+		{
+			// all positional
+			positional = args;
+		}
+		else
+		{
+			positional = std::vector<Param>(args.begin(), args.begin() + idx - 1);
+			named = std::vector<Param>(args.begin() + idx, args.end());
+		}
+
+
+		//* note: sanity checking
+		{
+			// make sure there are no positional arguments in 'named'
+			std::set<std::string> names;
+			for(auto k : named)
+			{
+				if(k.name == "")
+				{
+					*estr = strprintf("Positional arguments cannot appear after named arguments in a function call");
+					*loc = k.loc;
+
+					return -1;
+				}
+				else if(candidate && dcast(sst::FunctionDefn, candidate) && dcast(sst::FunctionDefn, candidate)->parentTypeForMethod && k.name == "self")
+				{
+					*estr = strprintf("Self pointer cannot be specified in a method call");
+					*loc = k.loc;
+
+					return -1;
+				}
+				else if(names.find(k.name) != names.end())
+				{
+					*estr = strprintf("Duplicate named argument '%s'", k.name);
+					*loc = k.loc;
+
+					return -1;
+				}
+				else if(nameToIndex.find(k.name) == nameToIndex.end())
+				{
+					*estr = strprintf("Function does not have a parameter named '%s'", k.name);
+					*loc = k.loc;
+
+					return -1;
+				}
+
+				names.insert(k.name);
+			}
+		}
+
+
+		int distance = 0;
+
+		// handle the positional arguments
+		for(size_t i = 0; i < std::min(target.size(), positional.size()); i++)
+		{
+			auto d = getCastDistance(args[i].type, target[i].type);
 			if(d == -1)
 			{
 				*estr = strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'",
-					i, args[i], target[i]);
-				*loc = targetLocs[i];
+					i, args[i].type, target[i].type);
+				*loc = args[i].loc;
 
 				return -1;
 			}
@@ -111,22 +183,50 @@ namespace sst
 			}
 		}
 
+		// check the named ones.
+		for(auto narg : named)
+		{
+			auto ind = nameToIndex[narg.name];
+			if(!positional.empty() && ind <= positional.size())
+			{
+				*estr = strprintf("Duplicate argument '%s', was already specified as a positional argument", narg.name);
+				*loc = narg.loc;
+
+				return -1;
+			}
+
+			int d = getCastDistance(narg.type, target[ind].type);
+			if(d == -1)
+			{
+				*estr = strprintf("Mismatched argument type in named argument '%s': no valid cast from given type '%s' to expected type '%s'",
+					narg.name, narg.type, target[ind].type);
+				*loc = narg.loc;
+
+				return -1;
+			}
+
+			distance += d;
+		}
+
+
+
 		// means we're a flax-variadic function
 		// thus we need to actually check the types.
 		if(anyvararg && !cvararg)
 		{
 			// first, check if we can do a direct-passthrough
-			if(args.size() == target.size() && (args.back()->isVariadicArrayType() || args.back()->isDynamicArrayType()))
+			if(args.size() == target.size() && (args.back().type->isVariadicArrayType() || args.back().type->isDynamicArrayType()))
 			{
 				// yes we can
-				auto a = args.back()->getArrayElementType();
-				auto t = target.back()->getArrayElementType();
+				// TODO: if we take any[...], then passing an array should *not* cast to a single 'any' (duh)
+				auto a = args.back().type->getArrayElementType();
+				auto t = target.back().type->getArrayElementType();
 
 				if(a != t)
 				{
 					*estr = strprintf("Mismatched element type in variadic array passthrough; expected '%s', got '%s'",
 						t, a);
-					*loc = targetLocs.back();
+					*loc = target.back().loc;
 					return -1;
 				}
 				else
@@ -136,15 +236,15 @@ namespace sst
 			}
 			else
 			{
-				auto elmTy = target.back()->getArrayElementType();
+				auto elmTy = target.back().type->getArrayElementType();
 				for(size_t i = target.size(); i < args.size(); i++)
 				{
-					auto ty = args[i];
+					auto ty = args[i].type;
 					auto dist = getCastDistance(ty, elmTy);
 					if(dist == -1)
 					{
 						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
-						*loc = targetLocs.back();
+						*loc = args.back().loc;
 						return -1;
 					}
 
@@ -163,7 +263,10 @@ namespace sst
 		Location eloc;
 		std::string estr;
 
-		return computeOverloadDistance(this->loc(), a, std::vector<Location>(a.size()), b, false, &eloc, &estr);
+		using Param = FunctionDefn::Param;
+
+		return computeOverloadDistance(this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }),
+			util::map(b, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }), false, &eloc, &estr, 0);
 	}
 
 	int TypecheckState::getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b)
@@ -206,23 +309,35 @@ namespace sst
 
 			if(auto fn = dcast(FunctionDecl, cand))
 			{
-				auto args = util::map(arguments, [](Param p) { return p.type; });
+				// make a copy, i guess.
+				auto args = arguments;
 
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
-					args.insert(args.begin(), def->parentTypeForMethod->getPointerTo());
+					args.insert(args.begin(), Param { "", Location(), def->parentTypeForMethod->getPointerTo() });
 
-				dist = computeOverloadDistance(cand->loc, util::map(fn->params, [](Param p) { return p.type; }),
-					util::map(fn->params, [](Param p) { return p.loc; }),
-					args, fn->isVarArg, &fails[fn].first, &fails[fn].second);
+				dist = computeOverloadDistance(cand->loc, fn->params,
+					args, fn->isVarArg, &fails[fn].first, &fails[fn].second, cand);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{
 				iceAssert(vr->type->isFunctionType());
 				auto ft = vr->type->toFunctionType();
 
+				// check if have any names
+				for(auto p : arguments)
+				{
+					if(p.name != "")
+					{
+						errs->errorStr += strbold("Function values cannot be called with named arguments");
+						errs->infoStrs.push_back({ vr->loc, strinfo(vr->loc, "'%s' was defined here:", vr->id.name) });
+
+						return 0;
+					}
+				}
+
 				auto prms = ft->getArgumentTypes();
-				dist = computeOverloadDistance(cand->loc, prms, std::vector<Location>(prms.size(), vr->loc),
-					util::map(arguments, [](Param p) { return p.type; }), false, &fails[vr].first, &fails[vr].second);
+				dist = computeOverloadDistance(cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param { "", Location(), t }; }),
+					arguments, false, &fails[vr].first, &fails[vr].second, cand);
 			}
 
 			if(dist == -1)
@@ -243,7 +358,7 @@ namespace sst
 				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), fails.size() == 1 ? "" : "s");
 
 			for(auto f : fails)
-				errs->infoStrs.push_back({ f.first->loc, strinfo(f.second.first, "Candidate not viable: %s", f.second.second) });
+				errs->infoStrs.push_back({ f.first->loc, strinfo(f.first->loc, "Candidate not viable: %s", f.second.second) });
 
 			return 0;
 		}
@@ -431,11 +546,10 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 
 	if(auto typedf = dcast(sst::TypeDefn, target))
 	{
-		auto args = util::map(arguments, [](auto a) -> auto { return sst::FnCallArgument(a.loc, a.name, a.value); });
 		auto ret = new sst::ConstructorCall(this->loc, typedf->type);
 
 		ret->target = typedf;
-		ret->arguments = args;
+		ret->arguments = arguments;
 
 		return ret;
 	}
@@ -446,7 +560,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 		auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
 		ret->name = this->name;
 		ret->target = target;
-		ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
+		ret->arguments = arguments;
 
 		// check if it's a method call
 		// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
@@ -488,7 +602,6 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	using Param = sst::FunctionDecl::Param;
 
 	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
-	std::vector<fir::Type*> tys = util::map(ts, [](auto p) -> auto { return p.type; });
 
 	auto target = this->callee->typecheck(fs);
 	iceAssert(target);
@@ -500,12 +613,11 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	std::string estr;
 
 	auto ft = target->type->toFunctionType();
-	int dist = sst::computeOverloadDistance(this->loc, ft->getArgumentTypes(), std::vector<Location>(),
-		tys, false, &eloc, &estr);
+	int dist = sst::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
+		return Param { "", Location(), t }; }), ts, false, &eloc, &estr, 0);
 
 	if(!estr.empty() || dist == -1)
 		error(eloc, "%s", estr);
-
 
 	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;

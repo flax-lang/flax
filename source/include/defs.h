@@ -53,6 +53,11 @@ namespace fir
 	struct Value;
 }
 
+namespace sst
+{
+	struct Expr;
+}
+
 enum class IdKind
 {
 	Invalid,
@@ -185,6 +190,17 @@ struct TypeConstraints_t
 	}
 };
 
+struct FnCallArgument
+{
+	FnCallArgument(const Location& l, const std::string& n, sst::Expr* v) : loc(l), name(n), value(v) { }
+
+	Location loc;
+	std::string name;
+
+	sst::Expr* value = 0;
+};
+
+
 
 namespace util
 {
@@ -207,6 +223,28 @@ namespace util
 				ret.push_back(i);
 
 		return ret;
+	}
+
+	template <typename T, class Predicate>
+	std::vector<T> filterUntil(std::vector<T> input, Predicate cond)
+	{
+		std::vector<T> ret;
+		for(const auto& i : input)
+		{
+			if(cond(i)) ret.push_back(i);
+			else        break;
+		}
+
+		return ret;
+	}
+
+	template <typename T, class Predicate>
+	size_t indexOf(std::vector<T> input, Predicate cond)
+	{
+		for(size_t i = 0; i < input.size(); i++)
+			if(cond(input[i])) return i;
+
+		return -1;
 	}
 
 

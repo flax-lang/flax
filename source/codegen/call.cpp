@@ -76,7 +76,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(cs->getMethodSelf());
 
-		this->arguments.insert(this->arguments.begin(), fake);
+		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake));
 	}
 
 	size_t numArgs = ft->getArgumentTypes().size();
@@ -93,15 +93,26 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 
-	size_t i = 0;
-	std::vector<fir::Value*> args;
+	std::unordered_map<std::string, size_t> idxmap;
+	if(auto fd = dcast(sst::FunctionDefn, this->target))
+	{
+		for(size_t i = 0; i < fd->params.size(); i++)
+			idxmap[fd->params[i].name] = i;
+	}
+
+	// do this so we can index directly.
+	auto args = std::vector<fir::Value*>(this->arguments.size());
+
+	size_t counter = 0;
 	for(auto arg : this->arguments)
 	{
+		size_t i = (arg.name == "" ? counter : idxmap[arg.name]);
+
 		fir::Type* inf = 0;
 		if(i < numArgs)
 			inf = ft->getArgumentN(i);
 
-		auto vr = arg->codegen(cs, inf);
+		auto vr = arg.value->codegen(cs, inf);
 		auto val = vr.value;
 
 		if(val->getType()->isConstantNumberType())
@@ -123,7 +134,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			// still?
 			if(val->getType() != ft->getArgumentN(i))
 			{
-				error(arg, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
+				error(arg.loc, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
 					ft->getArgumentN(i), val->getType());
 			}
 		}
@@ -133,8 +144,11 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			val = cs->irb.GetStringData(val);
 		}
 
-		args.push_back(val);
-		i++;
+
+		// args.push_back(val);
+		args[i] = val;
+
+		counter++;
 	}
 
 	fir::Value* ret = 0;
