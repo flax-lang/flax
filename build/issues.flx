@@ -25,7 +25,13 @@
 	5. String operators
 
 
-	6. Call functions using a tuple as the argument list.
+	6. Make function calls take the argument list as a tuple
+
+
+	7. 'cases' member of enums to enable runtime enumeration... of the enumeration.
+
+
+	8. Operator overloading for assignment and subscript/slice
 
 
 	10. Decomposition
@@ -133,28 +139,9 @@
 
 	6. wrt tuples: https://www.reddit.com/r/ProgrammingLanguages/comments/7o5fs0/languages_with_better_tuple_support/
 
-		definitely some interesting ideas over there. Would streamline things by making functions take a tuple as an argument, although it means
-		we need to slightly tweak overload resolution and overload distance computation, but since they're just operating on a list of types
-		anyway, it should be simple (famous last words right) to do.
-
-		One thing is that we don't have named tuples, so there's no correlation between calling a function with named arguments and tuples. However,
-		passing a struct straight to a function that takes named arguments (that correspond to the fields of the struct) feels wrong and obscene.
-
-		What we can do instead is the reverse; if a function takes a struct, allow ad-hoc construction of the struct simply by calling it with
-		named arguments. However, this is one of the things that complicates function resolution for very little benefit; assuming we implement
-		constructor syntax for structs, plus named arguments in constructors, then this entire thing is rendered basically moot, because you
-		can just type a few more characters of the struct name and avoid a lot of implementation headaches.
-
-		So basically, the only thing we're taking away from that guy's post is having functions take tuples as arguments? Again, we don't have
-		named tuples so a lot of the 'hype' of his post is pointless and misdirected for our use case.
-
-		In which case the question comes -- do we want named tuples? What advantages do they serve over structs? On a surface level, they're just
-		structs, but (1) without methods, (2) without requiring a type definition, and thus (3) more ad-hoc.
-
 		They can be useful, but I feel that wherever you're using named tuples a lot, you'd be better served by a struct. I guess?
 
 		Do an RFC on the IRC channel I guess.
-
 
 		RFC concluded: anonymous structs are mostly better than named tuples. But we should change FIR to do function calls with tuples (since it
 		has no notion of named arguments); instead of having things littered around to convert <> tuples, just have everybody use tuples.
@@ -165,10 +152,6 @@
 
 	7. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
 		https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
-
-
-	8. We seem to be parsing custom operator declarations twice?
-		EDIT: false alarm, turns out we were parsing the second time to throw it away during regular parsing.
 */
 
 
@@ -178,7 +161,8 @@
 /*
 	* FIXED / IMPLEMENTED THINGS
 
-
+	(4eaae34)
+	- fix custom unary operators for certain cases ('@' was not being done properly, amongst other things)
 
 	(d06e235)
 	- add named arguments for all function calls, including methods, but excluding fn-pointer calls
