@@ -43,6 +43,9 @@ namespace parser
 				if(v->type == pts::InferredType::get())
 					error(v, "Struct fields must have types explicitly specified");
 
+				else if(v->initialiser)
+					error(v->initialiser, "Struct fields cannot have inline initialisers");
+
 				defn->fields.push_back(v);
 			}
 			else if(auto f = dynamic_cast<FuncDefn*>(s))
@@ -55,12 +58,12 @@ namespace parser
 			}
 			else
 			{
-				error(s, "Unsupported expression or statement in 'struct' body");
+				error(s, "Unsupported expression or statement in struct body");
 			}
 		}
 
 		for(auto s : blk->deferredStatements)
-			error(s, "Unsupported expression or statement in 'struct' body");
+			error(s, "Unsupported expression or statement in struct body");
 
 		return defn;
 	}
@@ -118,16 +121,16 @@ namespace parser
 					defn->staticFields.push_back(vr);
 
 				else
-					error(st, "Unsupported static statement in 'class' body");
+					error(st, "Unsupported static statement in class body");
 			}
 			else
 			{
-				error(s, "Unsupported expression or statement in 'class' body");
+				error(s, "Unsupported expression or statement in class body");
 			}
 		}
 
 		for(auto s : blk->deferredStatements)
-			error(s, "Unsupported expression or statement in 'class' body");
+			error(s, "Unsupported expression or statement in class body");
 
 		return defn;
 	}
@@ -403,9 +406,6 @@ namespace parser
 				types.push_back(ty);
 			}
 
-			if(types.size() == 0)
-				error(st, "Empty tuples '()' are not supported");
-
 			if(st.eat().type != TT::RParen)
 			{
 				expected(st, "')' to end tuple type specifier", st.prev().str());
@@ -418,7 +418,10 @@ namespace parser
 				// eg. ((i64, i64) -> i64)[] would allow us to create an array of functions
 				// whereas (i64, i64) -> i64[] would parse as a function returning an array of i64s.
 
-				if(types.size() == 1)
+				if(types.size() == 0)
+					error(st, "Empty tuples '()' are not supported");
+
+				else if(types.size() == 1)
 					return parseTypeIndirections(st, types[0]);
 
 				auto tup = new pts::TupleType(types);
