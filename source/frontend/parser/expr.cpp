@@ -279,17 +279,13 @@ namespace parser
 				iceAssert(0);	// note: handled above, should not reach here
 				break;
 
-			case TT::Identifier:
-			case TT::UnicodeSymbol:
+			default:
 				if(auto it = st.binaryOps.find(st.front().str()); it != st.binaryOps.end())
 					return it->second.precedence;
 
 				else if(auto it = st.postfixOps.find(st.front().str()); it != st.postfixOps.end())
 					return it->second.precedence;
 
-				return -1;
-
-			default:
 				return -1;
 		}
 	}
@@ -660,6 +656,18 @@ namespace parser
 			ret->end = end;
 			ret->halfOpen = (op.type == TT::HalfOpenEllipsis);
 			ret->step = step;
+
+			return ret;
+		}
+		else if(auto it = st.postfixOps.find(op.str()); it != st.postfixOps.end())
+		{
+			// yay...?
+			//* note: custom postfix ops are handled internally in the AST as normal unary ops.
+			auto ret = new UnaryOp(op.loc);
+
+			ret->expr = lhs;
+			ret->op = op.str();
+			ret->isPostfix = true;
 
 			return ret;
 		}

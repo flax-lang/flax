@@ -30,6 +30,7 @@ namespace frontend
 		for(auto file : files)
 		{
 			// parse it all
+			// TODO: seems to parse operator declarations twice, investigate
 			auto opers = parser::parseOperators(frontend::getFileTokens(file));
 
 			{

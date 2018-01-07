@@ -137,7 +137,6 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 		}
 	}
 
-
 	// ok, we should be good now.
 	(*thelist)[this->symbol].push_back(defn);
 }

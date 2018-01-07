@@ -237,7 +237,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 	// check for custom ops first, i guess.
 	{
-		auto oper = getOverloadedOperator(fs, this->loc, 1, this->op, { t });
+		auto oper = getOverloadedOperator(fs, this->loc, this->isPostfix ? 2 : 1, this->op, { t });
 		if(oper)
 		{
 			auto ret = new sst::UnaryOp(this->loc, oper->returnType);
@@ -301,7 +301,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	}
 	else
 	{
-		error(this, "unsupported unary op '%s'???", this->op);
+		error(this, "Unsupported unary operator '%s' on type '%s'", this->op, v->type);
 	}
 
 
