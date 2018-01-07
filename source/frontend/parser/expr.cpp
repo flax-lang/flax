@@ -485,6 +485,7 @@ namespace parser
 	{
 		std::vector<std::pair<std::string, Expr*>> ret;
 
+		bool named = false;
 		while(st.front() != TT::RParen)
 		{
 			std::string argname;
@@ -497,6 +498,12 @@ namespace parser
 				// eat the colon, get the actual argument.
 				st.eat();
 				ex = parseExpr(st);
+
+				named = true;
+			}
+			else if(named)
+			{
+				error(st, "Positional arguments cannot appear after named arguments in a function call");
 			}
 
 			ret.push_back({ argname, ex });

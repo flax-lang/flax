@@ -202,8 +202,11 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		{
 			// check methods first
 			using Param = sst::FunctionDefn::Param;
-			std::vector<sst::Expr*> arguments = util::map(fc->args, [fs](auto arg) -> sst::Expr* { return arg.second->typecheck(fs); });
-			std::vector<Param> ts = util::map(arguments, [](sst::Expr* e) -> auto { return Param { "", e->loc, e->type }; });
+			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
+				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs));
+			});
+
+			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param { e.name, e.loc, e.value->type }; });
 
 			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
 
@@ -254,7 +257,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				// else
 
 				auto c = new sst::ExprCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
-				c->arguments = arguments;
+				c->arguments = util::map(arguments, [](FnCallArgument e) -> sst::Expr* { return e.value; });
 
 				auto tmp = new sst::FieldDotOp(fc->loc, resolved->type);
 				tmp->lhs = lhs;
