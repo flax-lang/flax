@@ -467,8 +467,8 @@ namespace ast
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		std::string op;
-
 		Expr* expr = 0;
+		bool isPostfix = false;
 	};
 
 	struct AssignOp : Expr

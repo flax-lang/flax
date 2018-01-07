@@ -13,16 +13,19 @@
 /*
 	! FEATURES TO IMPLEMENT
 
-	1. Constructor syntax for types
+	1. Constructor syntax for classes
 
 
 	2. Using namepace
 
 
-	3. Named parameter calling, and optional arguments.
+	3. Optional arguments.
 
 
 	5. String operators
+
+
+	6. Call functions using a tuple as the argument list.
 
 
 	10. Decomposition
@@ -153,7 +156,19 @@
 		Do an RFC on the IRC channel I guess.
 
 
+		RFC concluded: anonymous structs are mostly better than named tuples. But we should change FIR to do function calls with tuples (since it
+		has no notion of named arguments); instead of having things littered around to convert <> tuples, just have everybody use tuples.
+
+
 	6. do a location stack trace on error, since we already have a location stack.
+
+
+	7. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
+		https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
+
+
+	8. We seem to be parsing custom operator declarations twice?
+		EDIT: false alarm, turns out we were parsing the second time to throw it away during regular parsing.
 */
 
 
@@ -162,6 +177,11 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+
+
+	(d06e235)
+	- add named arguments for all function calls, including methods, but excluding fn-pointer calls
 
 	(d0f8c93)
 	- fix some bugs re: the previous commit.

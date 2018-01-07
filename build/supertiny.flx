@@ -10,6 +10,7 @@ import "math" as _
 @operator prefix 950 √
 @operator infix 800 dot
 @operator infix 800 cross
+@operator postfix 400 @
 
 
 struct vec2
@@ -68,6 +69,11 @@ operator infix cross (a: vec3, b: vec3) -> vec3
 				z: (a.x * b.y) - (a.y * b.x));
 }
 
+operator postfix @ (a: vec3) -> string
+{
+	return "HELLO?"
+}
+
 
 fn somefunc(a: int, b: int) -> int => a - b
 
@@ -77,12 +83,12 @@ fn somefunc(a: int, b: int) -> int => a - b
 	let a = vec3(y: 20, x: 10, z: 4)
 	let b = vec3(23, 17, 9)
 	let k = vec3()
-	// var a: vec3; a.x = 10; a.y = 20; a.z = 4;
-	// var b: vec3; b.x = 23; b.y = 17; b.z = 9;
 
 	let c = a + b
 	let d = a dot b
 	let e = a cross b
+
+	printf("%s\n", c@)
 
 	let z = e.foo(b: 3, c: 15, a: 7)
 	printf("%d / %d\n", somefunc(10, 20), somefunc(b: 10, a: 20))
