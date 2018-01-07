@@ -509,18 +509,6 @@ namespace ast
 	};
 
 
-	//! ugly duplication
-	struct FnCallArgument
-	{
-		FnCallArgument(const Location& l, const std::string& n, sst::Expr* v) : loc(l), name(n), value(v) { }
-
-		Location loc;
-		std::string name;
-
-		sst::Expr* value = 0;
-	};
-
-
 	struct FunctionCall : Expr
 	{
 		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }

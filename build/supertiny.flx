@@ -23,6 +23,11 @@ struct vec3
 	var x: int
 	var y: int
 	var z: int
+
+	fn foo(a: int, b: int, c: int) -> vec3
+	{
+		return vec3(x * a, y - b, z / c)
+	}
 }
 
 
@@ -64,7 +69,7 @@ operator infix cross (a: vec3, b: vec3) -> vec3
 }
 
 
-fn somefunc(a: int, b: int) -> int => a * b
+fn somefunc(a: int, b: int) -> int => a - b
 
 
 @entry fn main()
@@ -79,7 +84,9 @@ fn somefunc(a: int, b: int) -> int => a * b
 	let d = a dot b
 	let e = a cross b
 
-	printf("%d\n", somefunc(a: 10, b: 20))
+	let z = e.foo(b: 3, c: 15, a: 7)
+	printf("%d / %d\n", somefunc(10, 20), somefunc(b: 10, a: 20))
+	printf("%d, %d, %d\n", z.x, z.y, z.z)
 
 	printf("c = (%d, %d, %d), e = (%d, %d, %d)  |  (%d), (%f)\n", c.x, c.y, c.z, e.x, e.y, e.z, d, √1491)
 }

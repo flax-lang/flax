@@ -127,7 +127,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto rv = new sst::RawValueExpr(this->loc, res.pointer->getType());
 		rv->rawValue = CGResult(res.pointer);
 
-		fc->arguments.insert(fc->arguments.begin(), rv);
+		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv));
 		return fc->codegen(cs);
 	}
 	else if(auto ec = dcast(sst::ExprCall, this->call))
