@@ -155,6 +155,10 @@ namespace parser
 			case TT::Period:            return ".";
 			case TT::As:                return "cast";
 			case TT::At:                return "@";
+
+			case TT::Ellipsis:          return "...";
+			case TT::HalfOpenEllipsis:  return "..<";
+
 			default:                    break;
 		}
 
