@@ -154,8 +154,7 @@ namespace parser
 
 	static bool isPostfixUnaryOperator(State& st, const Token& tk)
 	{
-		bool res = (tk == TT::LParen) || (tk == TT::LSquare) || (tk == TT::DoublePlus) || (tk == TT::DoubleMinus)
-			|| (tk == TT::Ellipsis) || (tk == TT::HalfOpenEllipsis);
+		bool res = (tk == TT::LParen) || (tk == TT::LSquare) || (tk == TT::DoublePlus) || (tk == TT::DoubleMinus);
 
 		if(auto it = st.postfixOps.find(tk.str()); !res && it != st.postfixOps.end())
 		{
@@ -184,7 +183,6 @@ namespace parser
 
 			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::RAngle)
 				return 650;
-
 
 			else if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LessThanEquals)
 				return 100;
@@ -343,6 +341,31 @@ namespace parser
 				loc.len = rhs->loc.col - lhs->loc.col + 1;
 
 				lhs = new DotOperator(loc, dynamic_cast<Expr*>(lhs), rhs);
+			}
+			else if(op == "..." || op == "..<")
+			{
+				Expr* start = lhs;
+				iceAssert(start);
+
+				// current token now starts the ending expression (ie. '...' or '..<' are no longer in the token stream)
+				Expr* end = rhs;
+				Expr* step = 0;
+
+				// check if we got a step.
+				if(st.front() == TT::Identifier && st.front().text == "step")
+				{
+					st.eat();
+					step = parseExpr(st);
+				}
+
+				// ok
+				auto ret = new RangeExpr(loc);
+				ret->start = start;
+				ret->end = end;
+				ret->halfOpen = (op == "..<");
+				ret->step = step;
+
+				lhs = ret;
 			}
 			else if(isAssignOp(op))
 			{
@@ -633,31 +656,6 @@ namespace parser
 			{
 				expectedAfter(st.loc(), "']'", "'[' for array subscript", st.front().str());
 			}
-		}
-		else if(op.type == TT::Ellipsis || op.type == TT::HalfOpenEllipsis)
-		{
-			Expr* start = lhs;
-			iceAssert(start);
-
-			// current token now starts the ending expression (ie. '...' or '..<' are no longer in the token stream)
-			Expr* end = parseExpr(st);
-			Expr* step = 0;
-
-			// check if we got a step.
-			if(st.front() == TT::Identifier && st.front().text == "step")
-			{
-				st.eat();
-				step = parseExpr(st);
-			}
-
-			// ok
-			auto ret = new RangeExpr(op.loc);
-			ret->start = start;
-			ret->end = end;
-			ret->halfOpen = (op.type == TT::HalfOpenEllipsis);
-			ret->step = step;
-
-			return ret;
 		}
 		else if(auto it = st.postfixOps.find(op.str()); it != st.postfixOps.end())
 		{
