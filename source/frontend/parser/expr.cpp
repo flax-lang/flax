@@ -427,7 +427,7 @@ namespace parser
 		Expr* within = parseExpr(st);
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
-			error(opening.loc, "Expected closing ')' to match opening parenthesis here, or ',' to begin a tuple");
+			expected(opening.loc, "closing ')' to match opening parenthesis here, or ',' to begin a tuple", st.front().str());
 
 		// if we're a tuple, get ready for this shit.
 		if(st.front().type == TT::Comma)

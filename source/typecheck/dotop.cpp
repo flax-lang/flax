@@ -9,8 +9,6 @@
 #include "ir/type.h"
 
 using TCS = sst::TypecheckState;
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 
 static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type* infer)
 {

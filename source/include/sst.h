@@ -228,6 +228,19 @@ namespace sst
 		Expr* right = 0;
 	};
 
+	//* for the case where we assign to a tuple literal, to enable (a, b) = (b, a) (or really (a, b) = anything)
+	struct TupleAssignOp : Expr
+	{
+		TupleAssignOp(const Location& l);
+		~TupleAssignOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<Expr*> lefts;
+		Expr* right = 0;
+	};
+
+
 
 	struct SubscriptOp : Expr
 	{
@@ -383,6 +396,7 @@ namespace sst
 		std::string caseName;
 		EnumDefn* enumeration = 0;
 	};
+
 
 
 	struct LiteralNumber : Expr

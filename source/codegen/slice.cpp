@@ -7,9 +7,6 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
-
 static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex,
 	sst::Expr* bexpr, sst::Expr* eexpr)
 {

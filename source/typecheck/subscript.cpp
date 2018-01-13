@@ -8,8 +8,6 @@
 
 #include "ir/type.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);

@@ -5,8 +5,6 @@
 #include "sst.h"
 #include "codegen.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 CGResult sst::ConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this->loc);
