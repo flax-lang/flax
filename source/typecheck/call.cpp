@@ -576,15 +576,6 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 	}
 }
 
-sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> FnCallArgument {
-		return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs));
-	}));
-}
 
 
 
@@ -626,6 +617,46 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	return ret;
 }
 
+static std::vector<FnCallArgument> _typecheckArguments(sst::TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args)
+{
+	std::vector<FnCallArgument> ret;
+
+	for(auto arg : args)
+	{
+		if(auto splat = dcast(ast::SplatOp, arg.second))
+		{
+			if(!arg.first.empty())
+				error(arg.second->loc, "Splatted tuples cannot be passed as a named argument");
+
+			// get the type of the thing inside.
+			//* note: theoretically, this should be the only place in the compiler where we deal with splats explitily
+			//* and it should remain this way.
+
+			// TODO: handle splatting of arrays for varargs calls.
+
+			auto tuple = splat->expr->typecheck(fs);
+			if(!tuple->type->isTupleType())
+				error(arg.second->loc, "Splatting in a function is currently only supported for tuples, have type '%s'", tuple->type);
+
+			auto tty = tuple->type->toTupleType();
+			for(size_t i = 0; i < tty->getElementCount(); i++)
+			{
+				auto tdo = new sst::TupleDotOp(arg.second->loc, tty->getElementN(i));
+				tdo->index = i;
+				tdo->lhs = tuple;
+
+				auto fca = FnCallArgument(arg.second->loc, arg.first, tdo);
+				ret.push_back(fca);
+			}
+		}
+		else
+		{
+			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs)));
+		}
+	}
+
+	return ret;
+}
 
 
 sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
@@ -633,9 +664,15 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, util::map(this->args, [fs](auto e) -> FnCallArgument {
-		return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs));
-	}));
+	return this->typecheckWithArguments(fs, _typecheckArguments(fs, this->args));
+}
+
+sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	return this->typecheckWithArguments(fs, _typecheckArguments(fs, this->args));
 }
 
 

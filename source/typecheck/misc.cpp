@@ -387,6 +387,11 @@ sst::Stmt* ast::ImportStmt::typecheck(TCS* fs, fir::Type* inferred)
 	unexpected(this->loc, "import statement");
 }
 
+sst::Expr* ast::SplatOp::typecheck(TCS* fs, fir::Type* inferred)
+{
+	error(this, "Unable to typecheck splat op, this shouldn't happen!");
+}
+
 sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
 	return 0;
