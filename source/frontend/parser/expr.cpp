@@ -167,7 +167,7 @@ namespace parser
 
 	static int unaryPrecedence(const std::string& op)
 	{
-		if(op == "!" || op == "+" || op == "-" || op == "~" || op == "*" || op == "&")
+		if(op == "!" || op == "+" || op == "-" || op == "~" || op == "*" || op == "&" || op == "...")
 			return 950;
 
 		return -1;
@@ -207,6 +207,7 @@ namespace parser
 			// bitwise ~
 			// unary &
 			// unary *
+			// unary ... (splat)
 			// ^^ all have 950.
 
 			case TT::As:
@@ -420,6 +421,9 @@ namespace parser
 		Token opening = st.eat();
 		iceAssert(opening.type == TT::LParen);
 
+		if(st.front() == TT::RParen)
+			error(st.loc(), "Empty tuples are not supported");
+
 		Expr* within = parseExpr(st);
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
@@ -454,7 +458,8 @@ namespace parser
 
 
 		if(tk.type == TT::Exclamation || tk.type == TT::Plus || tk.type == TT::Minus
-			|| tk.type == TT::Tilde || tk.type == TT::Asterisk || tk.type == TT::Ampersand)
+			|| tk.type == TT::Tilde || tk.type == TT::Asterisk || tk.type == TT::Ampersand
+			|| tk.type == TT::Ellipsis)
 		{
 			op = tk.str();
 		}
@@ -478,8 +483,18 @@ namespace parser
 		}
 
 
+		if(op == "...")
+		{
+			st.eat();
 
-		if(!op.empty())
+			Expr* e = parseUnary(st);
+
+			auto ret = new SplatOp(tk.loc);
+			ret->expr = e;
+
+			return ret;
+		}
+		else if(!op.empty())
 		{
 			st.eat();
 

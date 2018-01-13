@@ -121,8 +121,8 @@
       <DisableSpecificWarnings>4624;4291;4141;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <CompileAs>CompileAsCpp</CompileAs>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <Optimization>Disabled</Optimization>
@@ -134,6 +134,7 @@
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AssemblyDebug>true</AssemblyDebug>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -162,8 +163,8 @@ rem exit 0</Command>
       <CompileAs>CompileAsCpp</CompileAs>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
       <Optimization>Enabled</Optimization>
     </ClCompile>
     <Link>
@@ -173,6 +174,7 @@ rem exit 0</Command>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMTD;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AssemblyDebug>false</AssemblyDebug>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -190,15 +192,14 @@ rem exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="source\**\*.cpp">
-      <Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </ClCompile>
-    <ClCompile Include="source\**\*.c">
-      <Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </ClCompile>
+    <ClCompile Include="source\**\*.cpp"><Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link></ClCompile>
+    <ClCompile Include="source\**\*.c"><Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link></ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="source\include\**\*.h">
+    <ClInclude Include="source\include\*.h">
+      <Link>source\include\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </ClInclude>
+    <ClInclude Include="source\include\ir\*.h">
       <Link>source\include\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </ClInclude>
     <ClInclude Include="source\external\**\*.h">
