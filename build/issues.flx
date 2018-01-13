@@ -28,13 +28,13 @@
 	5. String operators
 
 
-	6. Make function calls take the argument list as a tuple
-
-
 	7. 'cases' member of enums to enable runtime enumeration... of the enumeration.
 
 
 	8. Operator overloading for assignment and subscript/slice
+
+
+	9. Error stack trace to give more information. eg. error 'foo' (...), in typechecking of 'bar' (...), etc. etc.
 
 
 	10. Decomposition
@@ -137,41 +137,20 @@
 		So we do need to resolve overloads based on argument names, because swapping
 
 
-	6. wrt tuples: https://www.reddit.com/r/ProgrammingLanguages/comments/7o5fs0/languages_with_better_tuple_support/
+	5. wrt. tuples:
+		well that's all done and over with. Tuples can be splatted in arbitrary locations at function callsites, but are treated as a positional argument.
+		So, you cannot have named arguments before the splatted tuple, and any named arguments after the fact must not conflict with the positionally-
+		-specified arguments that came from the splatted tuple.
 
-		They can be useful, but I feel that wherever you're using named tuples a lot, you'd be better served by a struct. I guess?
+		You can splat more than one tuple per callsite, and there really isn't much of an implementation issue because we expand the splat op in-place when
+		typechecking parameters, so that we get a bunch of sst::TupleDotOps in the typechecking, and the actual overload-resolution-thingy doesn't know
+		the difference.
 
-		Do an RFC on the IRC channel I guess.
+		It might be useful to have the error stack trace thing now, since it is helpful to tell the user that the call resolution failure was due to a
+		splat of a mismatching tuple type.
 
-		RFC concluded: anonymous structs are mostly better than named tuples. But we should change FIR to do function calls with tuples (since it
-		has no notion of named arguments); instead of having things littered around to convert <> tuples, just have everybody use tuples.
-
-		Part 2 (currently being worked on): allow 'splatting' tuples to decompose them into their constitutent values. This would need to be done
-		sooner rather than later in the compiler pipeline, because we don't have facilities to handle multiple values from a single AST/SST node,
-		and frankly I don't think we should.
-
-		How tuple splatting works is that if the target (mostly function arguments) accepts multiple values, then we need to *special-case* this
-		to expand the tuple, basically.
-
-		We would allow splatting a tuple to fill in function parameters at a callsite, potentially partially but only being the last argument -- similar
-		to the rules for varargs.
-
-		eg.
-
-		fn foo(a: T, b: U, c: V, d: W) { ... }
-
-		let one = (T, U, V, W)
-		foo(...one)
-
-		let two = (V, W)
-		foo(T, U, ...two)
-
-		any other combination would be invalid. Given that all positional arguments must come before named arguments, and tuple-splat-args must be
-		the last argument, and tuple-splat-args cannot be named, <> using tuple-splat-args necessitates not using named arguments, which I think
-		is a fair trade-off.
-
-		I'm not sure if we can cast tuples to each other implicitly, but if not it needs to happen for this thing to be user-friendly enough not to
-		be 1. obnoxious to use and hence 2. not used at all.
+		In the near future, probably. We need a way to make the output not overly verbose (see: c++ template madness), but at the same time provide some
+		useful information.
 
 
 	6. do a location stack trace on error, since we already have a location stack.
@@ -187,6 +166,9 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+	(e91b4a2)
+	- add splatting of tuples in function calls; can have multiple tuples
 
 	(9e3356d)
 	- improve robustness by making range literals (X...Y) parse as binary operators instead of hacky postfix unary ops.

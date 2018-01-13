@@ -29,7 +29,7 @@ namespace parser
 			{
 				st.eat();
 				auto t = st.eat();
-				if(t == TT::Underscore || t == TT::Identifier)
+				if(t == TT::Identifier)
 					ret->importAs = util::to_string(t.text);
 
 				else
