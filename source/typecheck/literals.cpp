@@ -10,8 +10,6 @@
 
 using TCS = sst::TypecheckState;
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::Expr* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);

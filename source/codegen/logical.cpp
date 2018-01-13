@@ -6,8 +6,6 @@
 #include "codegen.h"
 #include "typecheck.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 namespace cgn
 {
 	static CGResult doLogicalOr(CodegenState* cs, sst::BinaryOp* b)

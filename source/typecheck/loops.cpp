@@ -8,9 +8,6 @@
 
 #include "ir/type.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
-
 sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);

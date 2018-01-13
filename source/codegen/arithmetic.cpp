@@ -6,9 +6,6 @@
 #include "codegen.h"
 #include "typecheck.h"
 
-
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 bool isBitwiseOp(std::string op)
 {
 	return (op == "|" || op == "&" || op == "^" || op == "<<" || op == ">>");

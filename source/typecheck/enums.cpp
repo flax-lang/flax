@@ -9,8 +9,6 @@
 #include "ir/type.h"
 
 using TCS = sst::TypecheckState;
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 
 /*
 	ok, here's some documentation of how enumerations work

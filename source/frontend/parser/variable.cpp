@@ -10,85 +10,6 @@ using namespace lexer;
 
 namespace parser
 {
-	// std::vector<ast::DecompMapping> parseArrayDecomp(State& st)
-	// {
-	// 	using TT = lexer::TokenType;
-	// 	iceAssert(st.front() == TT::LSquare);
-	// 	st.pop();
-
-	// 	std::vector<ast::DecompMapping> ret;
-
-	// 	size_t index = 0;
-	// 	while(st.front() != TT::RSquare)
-	// 	{
-	// 		std::string id;
-	// 		bool ref = false;
-
-	// 		if(st.front() == TT::Ampersand)
-	// 			ref = true, st.pop();
-
-	// 		if(st.front() == TT::LParen)
-	// 		{
-	// 			error(st, "Nesting tuple bindings inside array decompositions is not supported yet");
-	// 		}
-	// 		else if(st.front() == TT::Identifier)
-	// 		{
-	// 			mapping[index] = std::make_tuple(id, ref, st.loc());
-	// 			index++;
-
-	// 			if(ref && id == "_")
-	// 				error(st, "Invalid combination of '&' and '_' in array decomposition");
-
-	// 			st.eat();
-	// 		}
-	// 		else if(st.front() == TT::Ellipsis)
-	// 		{
-	// 			st.eat();
-
-	// 			// check if we're binding
-	// 			if(st.front() == TT::Ampersand || st.front() == TT::Identifier)
-	// 			{
-	// 				// yes we are
-	// 				if(st.front() == TT::Ampersand)
-	// 				{
-	// 					ref = true;
-	// 					st.pop();
-	// 					if(st.front() != TT::Identifier || st.front().str() == "_")
-	// 						expectedAfter(st, "identifier", "'&' in binding", st.front().str());
-	// 				}
-
-	// 				iceAssert(st.front() == TT::Identifier);
-	// 				id = st.front().str();
-
-	// 				mapping[-1] = std::make_tuple(id, ref, st.loc());
-	// 				st.pop();
-	// 			}
-	// 			else if(st.front() != TT::RSquare)
-	// 			{
-	// 				error("Ellipsis binding must be last in decomposition, found '%s' instead of expected ']'", st.front().str().c_str());
-	// 			}
-	// 		}
-	// 		else
-	// 		{
-	// 			error(st, "Unexpected token '%s' in array decomposition", st.front().str());
-	// 		}
-
-	// 		if(st.front() == TT::Comma)
-	// 		{
-	// 			st.eat();
-	// 			if(st.front() == TT::RSquare)
-	// 				error(st, "Trailing commas are not allowed");
-
-	// 			continue;
-	// 		}
-	// 	}
-
-	// 	iceAssert(st.eat() == TT::RSquare);
-	// 	return mapping;
-	// }
-
-
-
 	static ast::DecompMapping recursivelyParseDecomp(State& st)
 	{
 		using TT = lexer::TokenType;
@@ -99,8 +20,6 @@ namespace parser
 			outer.array = true;
 
 		bool didRest = false;
-		debuglog("enter\n");
-
 		while(st.front() != (outer.array ? TT::RSquare : TT::RParen))
 		{
 			ast::DecompMapping inside;
@@ -142,8 +61,6 @@ namespace parser
 					error(st.loc(), "Invalid combination of '_' and '&'");
 
 				outer.inner.push_back(inside);
-
-				debuglog("found '%s'\n", inside.name);
 			}
 			else
 			{
@@ -163,7 +80,6 @@ namespace parser
 		iceAssert(st.front() == (outer.array ? TT::RSquare : TT::RParen));
 		st.pop();
 
-		debuglog("leave\n");
 		return outer;
 	}
 

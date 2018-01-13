@@ -8,8 +8,6 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 namespace sst
 {
 	fir::Type* TypecheckState::inferCorrectTypeForLiteral(Expr* expr)

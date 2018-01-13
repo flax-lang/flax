@@ -8,8 +8,6 @@
 
 #include "ir/type.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 static bool isBuiltinType(fir::Type* ty)
 {
 	return (ty->isConstantNumberType()

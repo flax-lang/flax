@@ -56,12 +56,26 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 		error(this, hs, "Cannot assign value of type '%s' to expected type '%s'", rt, lt);
 	}
 
-	auto ret = new sst::AssignOp(this->loc);
-	ret->op = this->op;
-	ret->left = l;
-	ret->right = r;
+	//* note: check for the special case of assigning to a tuple literal, to allow the (a, b) = (b, a) swapping idiom
+	if(auto tuple = dcast(sst::LiteralTuple, l))
+	{
+		auto ret = new sst::TupleAssignOp(this->loc);
+		for(auto v : tuple->values)
+			ret->lefts.push_back(v);
 
-	return ret;
+		ret->right = r;
+
+		return ret;
+	}
+	else
+	{
+		auto ret = new sst::AssignOp(this->loc);
+		ret->op = this->op;
+		ret->left = l;
+		ret->right = r;
+
+		return ret;
+	}
 }
 
 

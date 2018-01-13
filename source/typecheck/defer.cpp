@@ -7,7 +7,6 @@
 #include "typecheck.h"
 
 using TCS = sst::TypecheckState;
-#define dcast(t, v)		dynamic_cast<t*>(v)
 
 sst::Stmt* ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
 {
