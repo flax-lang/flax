@@ -6,8 +6,6 @@
 #include "codegen.h"
 #include "typecheck.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);

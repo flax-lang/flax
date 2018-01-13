@@ -11,8 +11,6 @@
 
 using TCS = sst::TypecheckState;
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);

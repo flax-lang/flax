@@ -5,12 +5,32 @@
 #include "sst.h"
 #include "codegen.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::AssignOp::AssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
+sst::TupleAssignOp::TupleAssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
+
+
+static void _handleRCAssign(cgn::CodegenState* cs, fir::Type* lt, fir::Type* rt, CGResult lr, CGResult rr)
+{
+	if(cs->isRefCountedType(lt))
+	{
+		if(rr.kind == CGResult::VK::LValue)
+			cs->performRefCountingAssignment(lr, rr, false);
+
+		else
+			cs->moveRefCountedValue(lr, rr, false);
+	}
+	else
+	{
+		cs->irb.Store(rr.value, lr.pointer);
+	}
+}
+
 
 CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
+	cs->pushLoc(this->loc);
+	defer(cs->popLoc());
+
 	auto lr = this->left->codegen(cs);
 	auto lt = lr.value->getType();
 
@@ -101,8 +121,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(rr.value == 0)
 	{
-		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr.value->getType(),
-			lt);
+		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr.value->getType(), lt);
 	}
 
 	// ok then
@@ -112,22 +131,82 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(lr.pointer);
 	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());
 
+	_handleRCAssign(cs, lt, rt, lr, rr);
 
-	if(cs->isRefCountedType(lt))
+	return CGResult(0);
+}
+
+
+
+
+
+CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this->loc);
+	defer(cs->popLoc());
+
+	auto tuple = this->right->codegen(cs).value;
+	if(!tuple->getType()->isTupleType())
+		error(this->right, "Expected tuple type in assignment to tuple on left-hand-side; found type '%s' instead", tuple->getType());
+
+	auto tty = tuple->getType()->toTupleType();
+
+	std::vector<CGResult> results;
+
+	size_t idx = 0;
+	for(auto v : this->lefts)
 	{
-		if(rr.kind == CGResult::VK::LValue)
-			cs->performRefCountingAssignment(lr, rr, false);
+		auto res = v->codegen(cs, tty->getElementN(idx));
+		if(res.kind != CGResult::VK::LValue)
+			error(v, "Cannot assign to non-lvalue expression in tuple assignment");
 
-		else
-			cs->moveRefCountedValue(lr, rr, false);
+		if(!res.pointer)
+			error(v, "didn't get pointer???");
+
+
+		iceAssert(res.pointer);
+		results.push_back(res);
+
+		idx++;
 	}
-	else
+
+	for(size_t i = 0; i < idx; i++)
 	{
-		cs->irb.Store(rr.value, lr.pointer);
+		auto lr = results[i];
+		auto val = cs->irb.ExtractValue(tuple, { i });
+
+		auto rr = cs->oneWayAutocast(CGResult(val, 0), lr.value->getType());
+		if(!rr.value || rr.value->getType() != lr.value->getType())
+		{
+			error(this->right, "Mismatched types in assignment to tuple element %d; assigning type '%s' to '%s'",
+				val->getType(), lr.value->getType());
+		}
+
+		_handleRCAssign(cs, tty->getElementN(i), rr.value->getType(), lr, rr);
 	}
 
 	return CGResult(0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

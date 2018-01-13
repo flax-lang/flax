@@ -7,8 +7,6 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 #define BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME	"__alloc_checkneg"
 
 

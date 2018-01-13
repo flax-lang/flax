@@ -5,8 +5,6 @@
 #include "sst.h"
 #include "codegen.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 // just a tmp thing
 static bool operator == (const sst::IfStmt::Case& a, const sst::IfStmt::Case& b)
 {

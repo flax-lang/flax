@@ -25,6 +25,8 @@ template <typename... Ts>
 #define TAB_WIDTH	4
 
 
+#define dcast(t, v)		dynamic_cast<t*>(v)
+
 namespace util
 {
 	#ifndef STRING_VIEW_TYPE

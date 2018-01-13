@@ -9,7 +9,6 @@
 #include "ir/type.h"
 
 using TCS = sst::TypecheckState;
-#define dcast(t, v)		dynamic_cast<t*>(v)
 
 sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {

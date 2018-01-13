@@ -7,8 +7,6 @@
 #include "codegen.h"
 #include "typecheck.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 namespace cgn
 {
 	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantValue* cv)

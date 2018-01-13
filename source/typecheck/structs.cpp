@@ -8,8 +8,6 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
 sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);

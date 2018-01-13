@@ -12,7 +12,6 @@
 #include <set>
 
 using TCS = sst::TypecheckState;
-#define dcast(t, v)		dynamic_cast<t*>(v)
 
 namespace sst
 {
