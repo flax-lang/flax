@@ -171,14 +171,21 @@ namespace ast
 		bool noMangle = false;
 	};
 
-	struct TupleDecompMapping
+
+	struct DecompMapping
 	{
 		Location loc;
 		std::string name;
 		bool ref = false;
+		bool array = false;
 
-		std::vector<TupleDecompMapping> inner;
+		std::vector<DecompMapping> inner;
+
+		// for array decompositions, this will hold the rest.
+		std::string restName;
+		bool restRef = false;
 	};
+
 
 	struct TupleDecompVarDefn : Stmt
 	{
@@ -189,7 +196,7 @@ namespace ast
 
 		bool immut = false;
 		Expr* initialiser = 0;
-		std::vector<TupleDecompMapping> mappings;
+		DecompMapping bindings;
 	};
 
 	struct ArrayDecompVarDefn : Stmt
@@ -202,7 +209,7 @@ namespace ast
 		bool immut = false;
 		Expr* initialiser = 0;
 
-		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
+		DecompMapping bindings;
 	};
 
 	struct IfStmt : Stmt
@@ -278,18 +285,7 @@ namespace ast
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		Expr* array = 0;
-		std::vector<TupleDecompMapping> mappings;
-	};
-
-	struct ForArrayDecompLoop : ForLoop
-	{
-		ForArrayDecompLoop(const Location& l) : ForLoop(l) { }
-		~ForArrayDecompLoop() { }
-
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-
-		Expr* array = 0;
-		std::map<size_t, std::tuple<std::string, bool, Location>> mapping;
+		DecompMapping bindings;
 	};
 
 

@@ -92,7 +92,7 @@ namespace parser
 				if(tokens[i] == TT::As)
 				{
 					i++;
-					if(tokens[i] == TT::Underscore || tokens[i] == TT::Identifier)
+					if(tokens[i] == TT::Identifier)
 						impAs = tokens[i].str();
 
 					else

@@ -12,26 +12,7 @@ fn prod(a: int, b: int, c: int, d: int, e: int, f: int) -> int => a*b*c*d*e*f
 
 @entry fn main()
 {
-	let tup = (1, 2, 3, 4, 5, 6)
-	printf("prod = %d\n", prod(...tup))
-
-	let tup1 = (1, 2, 3)
-	let tup2 = (4, 5, 6)
-
-	let p1 = prod(1, 2, 3, ...tup2)
-	let p2 = prod(...tup1, 4, 5, 6)
-	let p3 = prod(...tup1, ...tup2)
-
-	struct vec3
-	{
-		var x: int
-		var y: int
-		var z: int
-	}
-
-	let v3 = vec3(...tup2)
-
-	printf("p1 = %d; p2 = %d; p3 = %d\n", p1, p2, p3)
+	let (a, (b, [x, (y, k, ...), j, ... ], c)) = (1, 2)
 }
 
 

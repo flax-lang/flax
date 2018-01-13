@@ -146,23 +146,7 @@ namespace parser
 	{
 		iceAssert(st.front() == TT::LParen);
 		auto ret = new ast::ForTupleDecompLoop(st.ploc());
-		ret->mappings = parseTupleDecomp(st);
-
-		if(st.front() != TT::Identifier || st.front().str() != "in")
-			expected(st.loc(), "'in' in for loop", st.front().str());
-
-		st.eat();
-
-		// get the array.
-		ret->array = parseExpr(st);
-		return ret;
-	}
-
-	static ast::ForArrayDecompLoop* parseForArrayLoop(State& st)
-	{
-		iceAssert(st.front() == TT::LSquare);
-		auto ret = new ast::ForArrayDecompLoop(st.ploc());
-		ret->mapping = parseArrayDecomp(st);
+		ret->bindings = parseTupleDecomp(st);
 
 		if(st.front() != TT::Identifier || st.front().str() != "in")
 			expected(st.loc(), "'in' in for loop", st.front().str());
@@ -201,14 +185,11 @@ namespace parser
 		if(st.front() == TT::LParen)
 			ret = parseForTupleLoop(st);
 
-		else if(st.front() == TT::LSquare)
-			ret = parseForArrayLoop(st);
-
 		else if(st.front() == TT::Identifier)
 			ret = parseForeachLoop(st);
 
 		else
-			expectedAfter(st.loc(), "'(', '[', or identifier", "'for'", st.front().str());
+			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
 		st.skipWS();
 		ret->body = parseBracedBlock(st);

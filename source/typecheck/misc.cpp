@@ -394,21 +394,19 @@ sst::Expr* ast::SplatOp::typecheck(TCS* fs, fir::Type* inferred)
 
 sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
+	iceAssert(0 && "not implemented");
 	return 0;
 }
 
 sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
 {
-	return 0;
-}
-
-sst::Stmt* ast::ForArrayDecompLoop::typecheck(TCS* fs, fir::Type* inferred)
-{
+	iceAssert(0 && "not implemented");
 	return 0;
 }
 
 sst::Stmt* ast::ForTupleDecompLoop::typecheck(TCS* fs, fir::Type* inferred)
 {
+	iceAssert(0 && "not implemented");
 	return 0;
 }
 
