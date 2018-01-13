@@ -22,6 +22,9 @@
 	3. Optional arguments.
 
 
+	4. Public and private imports (ie. do we re-export our imports (currently the default), or do we keep them to ourselves (the new default)
+
+
 	5. String operators
 
 
@@ -59,9 +62,6 @@
 /*
 	! THINGS TO FIX
 
-	1. Importing the same module under multiple names should not be allowed.
-		Right now it fails and produces unexpected behaviour -- I think only the first import is considered,
-		but no errors are thrown.
 */
 
 
@@ -146,6 +146,33 @@
 		RFC concluded: anonymous structs are mostly better than named tuples. But we should change FIR to do function calls with tuples (since it
 		has no notion of named arguments); instead of having things littered around to convert <> tuples, just have everybody use tuples.
 
+		Part 2 (currently being worked on): allow 'splatting' tuples to decompose them into their constitutent values. This would need to be done
+		sooner rather than later in the compiler pipeline, because we don't have facilities to handle multiple values from a single AST/SST node,
+		and frankly I don't think we should.
+
+		How tuple splatting works is that if the target (mostly function arguments) accepts multiple values, then we need to *special-case* this
+		to expand the tuple, basically.
+
+		We would allow splatting a tuple to fill in function parameters at a callsite, potentially partially but only being the last argument -- similar
+		to the rules for varargs.
+
+		eg.
+
+		fn foo(a: T, b: U, c: V, d: W) { ... }
+
+		let one = (T, U, V, W)
+		foo(...one)
+
+		let two = (V, W)
+		foo(T, U, ...two)
+
+		any other combination would be invalid. Given that all positional arguments must come before named arguments, and tuple-splat-args must be
+		the last argument, and tuple-splat-args cannot be named, <> using tuple-splat-args necessitates not using named arguments, which I think
+		is a fair trade-off.
+
+		I'm not sure if we can cast tuples to each other implicitly, but if not it needs to happen for this thing to be user-friendly enough not to
+		be 1. obnoxious to use and hence 2. not used at all.
+
 
 	6. do a location stack trace on error, since we already have a location stack.
 
@@ -160,6 +187,12 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+	(9e3356d)
+	- improve robustness by making range literals (X...Y) parse as binary operators instead of hacky postfix unary ops.
+
+	(7cb117f)
+	- fix a bug that prevented parsing of function types taking 0 parameters, ie. () -> T
 
 	(4eaae34)
 	- fix custom unary operators for certain cases ('@' was not being done properly, amongst other things)

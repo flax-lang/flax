@@ -32,8 +32,7 @@ namespace parser
 				id = "_";
 				st.pop();
 
-				if(ref)
-					error(st, "Invalid combination of '&' and '_' in array decomposition");
+				if(ref) error(st, "Invalid combination of '&' and '_' in array decomposition");
 			}
 			else if(st.front() == TT::Identifier)
 			{

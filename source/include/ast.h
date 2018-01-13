@@ -508,6 +508,19 @@ namespace ast
 		Expr* end = 0;
 	};
 
+	struct SplatOp : Expr
+	{
+		SplatOp(const Location& l) : Expr(l) { }
+		~SplatOp() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+	};
+
+
+
+
 
 	struct FunctionCall : Expr
 	{
