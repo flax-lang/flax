@@ -49,30 +49,19 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			res = CGResult(cs->getDefaultValue(this->type));
 
 		fir::Value* val = checkStore(res.value);
-		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, this->immutable, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		if(refcounted)
-		{
-			if(res.kind == CGResult::VK::LValue)
-				cs->performRefCountingAssignment(CGResult(val, alloc), res, true);
+		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
+		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-			else
-				cs->moveRefCountedValue(CGResult(val, alloc), res, true);
-		}
+		cs->autoAssignRefCountedValue(CGResult(val, alloc), res, true, true);
 
-		if(!refcounted)
-		{
-			alloc->makeNotImmutable();
-			cs->irb.Store(val, alloc);
-
-			if(this->immutable)
-				alloc->makeImmutable();
-		}
+		//* here:
+		if(this->immutable)
+			alloc->makeImmutable();
 
 		cs->leaveGlobalInitFunction(rest);
 
 		cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-		// cs->vtree->values[this->id.name].push_back(CGResult(0, alloc, CGResult::VK::LValue));
 
 		return CGResult(0, alloc);
 	}
@@ -111,20 +100,10 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	iceAssert(alloc);
+
 	if(this->init)
-	{
-		if(refcounted)
-		{
-			if(res.kind == CGResult::VK::LValue)
-				cs->performRefCountingAssignment(CGResult(val, alloc), res, true);
+		cs->autoAssignRefCountedValue(CGResult(val, alloc), res, true, !this->immutable);
 
-			else
-				cs->moveRefCountedValue(CGResult(val, alloc), res, true);
-		}
-
-		if(!this->immutable)
-			cs->irb.Store(val, alloc);
-	}
 
 	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
 
@@ -162,17 +141,9 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					// auto r = cs->findValueInTree(this->name);
-					// if(r.value || r.pointer)
-					// {
-					// 	defn = r;
-					// }
-					// else
-					// {
-						exitless_error(this, "Failed to codegen variable definition for '%s'", this->name);
-						info(this->def, "Offending definition is here:");
-						doTheExit();
-					// }
+					exitless_error(this, "Failed to codegen variable definition for '%s'", this->name);
+					info(this->def, "Offending definition is here:");
+					doTheExit();
 				}
 
 				defn = it->second;

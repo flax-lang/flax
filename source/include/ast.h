@@ -5,6 +5,7 @@
 #pragma once
 #include "defs.h"
 #include "sst_expr.h"
+#include "stcommon.h"
 #include "precompile.h"
 
 namespace pts
@@ -172,43 +173,15 @@ namespace ast
 	};
 
 
-	struct DecompMapping
+	struct DecompVarDefn : Stmt
 	{
-		Location loc;
-		std::string name;
-		bool ref = false;
-		bool array = false;
-
-		std::vector<DecompMapping> inner;
-
-		// for array decompositions, this will hold the rest.
-		std::string restName;
-		bool restRef = false;
-	};
-
-
-	struct TupleDecompVarDefn : Stmt
-	{
-		TupleDecompVarDefn(const Location& l) : Stmt(l) { }
-		~TupleDecompVarDefn() { }
+		DecompVarDefn(const Location& l) : Stmt(l) { }
+		~DecompVarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		bool immut = false;
 		Expr* initialiser = 0;
-		DecompMapping bindings;
-	};
-
-	struct ArrayDecompVarDefn : Stmt
-	{
-		ArrayDecompVarDefn(const Location& l) : Stmt(l) { }
-		~ArrayDecompVarDefn() { }
-
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-
-		bool immut = false;
-		Expr* initialiser = 0;
-
 		DecompMapping bindings;
 	};
 

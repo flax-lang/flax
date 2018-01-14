@@ -62,6 +62,13 @@
 /*
 	! THINGS TO FIX
 
+	1. Fix the char/i8 stupidity when handling strings. The way I see it, there are 2 options:
+		a) make 'char' redundant; strings are just i8 everywhere. if we want unicode, then it'll be a separate (ustring?) type.
+		b) make 'char' distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
+			for most things though.
+
+		Probaby going with option A.
+
 */
 
 
@@ -166,6 +173,9 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+	(f8d983c)
+	- allow assignment to tuples containing lvalues, to enable the tuple-swap idiom eg. (a, b) = (b, a)
 
 	(e91b4a2)
 	- add splatting of tuples in function calls; can have multiple tuples

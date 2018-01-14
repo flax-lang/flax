@@ -127,12 +127,8 @@ namespace array
 			fir::Value* origElm = cs->irb.PointerAdd(ptr, cs->irb.Load(counter));
 			fir::Value* clone = 0;
 
-
-			if(fn->getArgumentCount() == 1)
-				clone = cs->irb.Call(fn, cs->irb.Load(origElm));
-			else
-				clone = cs->irb.Call(fn, cs->irb.Load(origElm), fir::ConstantInt::getInt64(0));
-
+			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
+			clone = cs->irb.Call(fn, cs->irb.Load(origElm), fir::ConstantInt::getInt64(0));
 
 			// store clone
 			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.Load(counter));
