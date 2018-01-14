@@ -37,12 +37,6 @@
 	9. Error stack trace to give more information. eg. error 'foo' (...), in typechecking of 'bar' (...), etc. etc.
 
 
-	10. Decomposition
-		Include nested decomposition, eg. array of tuples and tuple of arrays. (maybe just the former and not the latter??)
-		eg. let [(a, b), (c, d), ...] = array				# type = (int, int)[]
-		or: let ([a, b, c, ...], [x, y, z, ...]) = tuple	# type = (int[], int[])
-
-
 	11. Splatting single value into decomposition declaration
 		eg. let (a, b) = ...10   <-- a == b == 10
 
@@ -173,6 +167,9 @@
 
 /*
 	* FIXED / IMPLEMENTED THINGS
+
+	(597b1f2)
+	- add array and tuple decomposition, and allow them to nest to arbitrarily ridiculous levels.
 
 	(f8d983c)
 	- allow assignment to tuples containing lvalues, to enable the tuple-swap idiom eg. (a, b) = (b, a)

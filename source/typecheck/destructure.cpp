@@ -123,6 +123,34 @@ sst::Stmt* ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	auto ret = new sst::DecompDefn(this->loc);
 
 	ret->immutable = this->immut;
+	if(auto splat = dcast(ast::SplatOp, this->initialiser))
+	{
+		if(this->bindings.array)
+		{
+			HighlightOptions ho; ho.caret = this->loc; ho.underlines.push_back(this->initialiser->loc);
+			error(this, ho, "Value splats can only be assigned to tuple decompositions");
+		}
+
+		bool isnest = false;
+		for(const auto& b : this->bindings.inner)
+		{
+			if(b.name.empty())
+			{
+				isnest = true;
+				break;
+			}
+		}
+
+		if(isnest)
+		{
+			HighlightOptions ho; ho.caret = this->loc; ho.underlines.push_back(this->initialiser->loc);
+			error(this, ho, "Value splats can only be assigned to single-level tuple decompositions; nesting is not allowed.");
+		}
+
+		// ok, at this point we should be fine.
+		this->initialiser = new ast::LitTuple(splat->loc, std::vector<ast::Expr*>(this->bindings.inner.size(), splat->expr));
+	}
+
 	ret->init = this->initialiser->typecheck(fs);
 
 	auto bindcopy = this->bindings;
