@@ -87,6 +87,9 @@ static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping& bind, fir
 
 		auto fake = new sst::VarDefn(bind.loc);
 
+		pushErrorLocation(fake);
+		defer(popErrorLocation());
+
 		fake->id = Identifier(bind.name, IdKind::Name);
 		fake->immutable = immut;
 
