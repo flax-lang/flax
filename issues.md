@@ -129,15 +129,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	typechecking parameters, so that we get a bunch of sst::TupleDotOps in the typechecking, and the actual overload-resolution-thingy doesn't know
 	the difference.
 
-	It might be useful to have the error stack trace thing now, since it is helpful to tell the user that the call resolution failure was due to a
-	splat of a mismatching tuple type.
-
-	In the near future, probably. We need a way to make the output not overly verbose (see: c++ template madness), but at the same time provide some
-	useful information.
-
-
-7. do a location stack trace on error, since we already have a location stack.
-
 
 8. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
 	https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
@@ -149,7 +140,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-(`b4dabf6`)
+`(81faedb)`
+- add error backtrace, but at a great cost...
+
+`(b4dabf6)`
 - add splatting for single values, to fill up single-level tuple destructures, eg. `let (a, b) = ...10; a == b == 10`
 
 `(597b1f2)`

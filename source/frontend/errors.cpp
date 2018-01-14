@@ -213,7 +213,7 @@ std::string __error_gen_part2(const HighlightOptions& ops)
 
 //! prevents re-entrant calling
 static bool isBacktracing = false;
-std::string __error_gen_backtrace(const char* type)
+std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type)
 {
 	std::string ret;
 
@@ -226,11 +226,11 @@ std::string __error_gen_backtrace(const char* type)
 	if(numlocs > 1)
 	{
 		int done = 0;
-		for(size_t i = numlocs - 1; i-- > 0;)
+		for(size_t i = numlocs; i-- > 0;)
 		{
 			// skip the boring stuff.
 			auto e = errorLocationStack[i];
-			if(dcast(ast::Block, e) || dcast(sst::Block, e))
+			if(dcast(ast::Block, e) || dcast(sst::Block, e) || ops.caret == e->loc)
 				continue;
 
 			std::string oper = (dcast(ast::Stmt, e) ? "typechecking" : "code generation");
@@ -242,10 +242,22 @@ std::string __error_gen_backtrace(const char* type)
 			if(done == MAX_BACKTRACE_DEPTH - 1 || i == 1)
 			{
 				// print the last one and quit
+				last:
+
 				ret += __error_gen(HighlightOptions(errorLocationStack[0]->loc), strprintf("In %s of %s here:",
 					oper, errorLocationStack[0]->readableName).c_str(), "Note");
 
 				break;
+			}
+			else if(done == 2 && i - MAX_BACKTRACE_DEPTH > 1)
+			{
+				// ! ACHTUNG: GOTO !
+				// * REFACTOR SOON *
+
+				ret += strprintf("... skipping %d intermediaries...\n\n", numlocs - done - i);
+
+				// TODO: refactor this
+				goto last;
 			}
 		}
 	}
