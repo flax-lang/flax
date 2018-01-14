@@ -367,7 +367,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	// warn(this, "hi there");

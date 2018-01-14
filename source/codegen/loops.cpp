@@ -84,7 +84,7 @@ std::vector<sst::Block*> sst::WhileLoop::getBlocks()
 
 CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	//? this will change when we get iterators.

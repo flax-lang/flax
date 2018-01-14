@@ -8,7 +8,7 @@
 
 CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	auto start = cs->oneWayAutocast(this->start->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;

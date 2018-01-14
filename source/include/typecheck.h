@@ -92,7 +92,7 @@ namespace sst
 
 		std::vector<Location> locationStack;
 
-		void pushLoc(const Location& l);
+		// void pushLoc(const Location& l);
 		void pushLoc(ast::Stmt* stmt);
 
 		std::vector<FunctionDefn*> currentFunctionStack;

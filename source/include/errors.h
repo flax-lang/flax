@@ -68,10 +68,8 @@ inline void debuglog(const char* s, Ts... ts)
 
 
 
-namespace ast
-{
-	struct Expr;
-}
+namespace ast { struct Expr; }
+namespace sst { struct Expr; }
 
 
 struct HighlightOptions
@@ -86,7 +84,8 @@ struct HighlightOptions
 	HighlightOptions(const Location& c, std::vector<Location> u, bool dc) : caret(c), underlines(u), drawCaret(dc) { }
 };
 
-// Location getHighlightExtent(ast::Expr* e);
+void pushErrorLocation(Locatable* l);
+void popErrorLocation();
 
 std::string printContext(HighlightOptions ops);
 
@@ -98,6 +97,7 @@ namespace frontend
 
 std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type);
 std::string __error_gen_part2(const HighlightOptions& ops);
+std::string __error_gen_backtrace(const char* type);
 
 template <typename... Ts>
 std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, Ts... ts)
@@ -105,6 +105,7 @@ std::string __error_gen(const HighlightOptions& ops, const char* msg, const char
 	std::string ret = __error_gen_part1(ops, msg, type);
 	ret += tinyformat::format(msg, ts...);
 	ret += __error_gen_part2(ops);
+	ret += __error_gen_backtrace(type);
 
 	return ret;
 }

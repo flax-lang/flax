@@ -10,7 +10,7 @@
 
 sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto ret = new sst::RangeExpr(this->loc, fir::RangeType::get());

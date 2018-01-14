@@ -15,7 +15,7 @@ namespace sst
 {
 	struct Stmt : Locatable
 	{
-		Stmt(const Location& l) : Locatable(l) { }
+		Stmt(const Location& l) : Locatable(l, "statement") { }
 		virtual ~Stmt() { }
 
 		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0)
@@ -39,7 +39,7 @@ namespace sst
 
 	struct Expr : Stmt
 	{
-		Expr(const Location& l, fir::Type* t) : Stmt(l), type(t) { }
+		Expr(const Location& l, fir::Type* t) : Stmt(l), type(t) { this->readableName = "expression"; }
 		~Expr() { }
 
 		fir::Type* type = 0;

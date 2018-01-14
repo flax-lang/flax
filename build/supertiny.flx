@@ -18,7 +18,9 @@ fn prod(a: int, b: int, c: int, d: int, e: int, f: int) -> int => a*b*c*d*e*f
 
 	let (a, b) = ...30
 
-	printf("a = %d, b = %d\n", a, b)
+	if true { if true { if true { if true { if true { if true { if true {
+		printf("a = %d, b = %d\n", a, ao)
+	}}}}}}}
 }
 
 

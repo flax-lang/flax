@@ -116,7 +116,7 @@ static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping& bind, fir
 
 sst::Stmt* ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 
