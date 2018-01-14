@@ -174,7 +174,7 @@ namespace cgn
 		void performRefCountingAssignment(CGResult lhs, CGResult rhs, bool isInitial);
 		void moveRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial);
 
-		// void removeRefCountedValueIfExists(fir::Value* ptr);
+		void autoAssignRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial, bool performStore);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

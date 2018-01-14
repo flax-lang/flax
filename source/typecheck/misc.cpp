@@ -392,18 +392,6 @@ sst::Expr* ast::SplatOp::typecheck(TCS* fs, fir::Type* inferred)
 	error(this, "Unable to typecheck splat op, this shouldn't happen!");
 }
 
-sst::Stmt* ast::TupleDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
-{
-	iceAssert(0 && "not implemented");
-	return 0;
-}
-
-sst::Stmt* ast::ArrayDecompVarDefn::typecheck(TCS* fs, fir::Type* inferred)
-{
-	iceAssert(0 && "not implemented");
-	return 0;
-}
-
 sst::Stmt* ast::ForTupleDecompLoop::typecheck(TCS* fs, fir::Type* inferred)
 {
 	iceAssert(0 && "not implemented");

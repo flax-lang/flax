@@ -653,8 +653,11 @@ namespace parser
 				st.eat();
 				// x[N:M]
 				slcbegin = inside;
-				slcend = parseExpr(st);
 
+				if(st.front() != TT::RSquare)
+					slcend = parseExpr(st);
+
+				//* note: looks duplicated and wrong, but rest assured it's fine. if we get arr[x:], that's valid.
 				if(st.front() != TT::RSquare)
 					expectedAfter(st.loc(), "']'", "expression for slice operation", st.front().str());
 

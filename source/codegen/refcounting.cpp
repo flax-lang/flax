@@ -116,6 +116,23 @@ namespace cgn
 		}
 	}
 
+	void CodegenState::autoAssignRefCountedValue(CGResult lhs, CGResult rhs, bool isinit, bool performstore)
+	{
+		bool refcounted = this->isRefCountedType(rhs.value->getType());
+
+		if(refcounted)
+		{
+			if(rhs.kind == CGResult::VK::LValue)
+				this->performRefCountingAssignment(lhs, rhs, isinit);
+
+			else
+				this->moveRefCountedValue(lhs, rhs, isinit);
+		}
+
+		if(performstore)
+			this->irb.Store(rhs.value, lhs.pointer);
+	}
+
 
 
 

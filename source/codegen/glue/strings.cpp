@@ -35,7 +35,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getString()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64() }, fir::Type::getString()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -43,11 +43,11 @@ namespace string
 			cs->irb.setCurrentBlock(entry);
 
 			fir::Value* s1 = func->getArguments()[0];
-			iceAssert(s1);
+			fir::Value* cloneofs = func->getArguments()[1];
 
 			// get an empty string
-			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
-			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			fir::Value* lhslen = cs->irb.Subtract(cs->irb.GetStringLength(s1, "l1"), cloneofs);
+			fir::Value* lhsbuf = cs->irb.PointerAdd(cs->irb.GetStringData(s1, "d1"), cloneofs);
 
 
 			// space for null + refcount

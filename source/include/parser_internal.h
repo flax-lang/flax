@@ -181,8 +181,8 @@ namespace parser
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 	ast::OperatorOverloadDefn* parseOperatorOverload(State& st);
 
-	ast::DecompMapping parseArrayDecomp(State& st);
-	ast::DecompMapping parseTupleDecomp(State& st);
+	DecompMapping parseArrayDecomp(State& st);
+	DecompMapping parseTupleDecomp(State& st);
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
