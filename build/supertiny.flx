@@ -12,12 +12,9 @@ fn prod(a: int, b: int, c: int, d: int, e: int, f: int) -> int => a*b*c*d*e*f
 
 @entry fn main()
 {
-	var a = 1
-	var b = 2
-	var c = 3
+	let [ h, e, l, _, o, ... &xs ] = "Hello, World!"
 
-	(a, b, c) = (c, b, a)
-	printf("a = %d, b = %d, c = %d\n", a, b, c)
+	printf("%c%c%c%c%c%s\n", h, e, l, l, o, xs[3:].ptr)
 }
 
 

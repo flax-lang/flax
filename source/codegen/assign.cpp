@@ -9,23 +9,6 @@ sst::AssignOp::AssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
 sst::TupleAssignOp::TupleAssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
 
 
-static void _handleRCAssign(cgn::CodegenState* cs, fir::Type* lt, fir::Type* rt, CGResult lr, CGResult rr)
-{
-	if(cs->isRefCountedType(lt))
-	{
-		if(rr.kind == CGResult::VK::LValue)
-			cs->performRefCountingAssignment(lr, rr, false);
-
-		else
-			cs->moveRefCountedValue(lr, rr, false);
-	}
-	else
-	{
-		cs->irb.Store(rr.value, lr.pointer);
-	}
-}
-
-
 CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this->loc);
@@ -131,7 +114,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(lr.pointer);
 	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());
 
-	_handleRCAssign(cs, lt, rt, lr, rr);
+	cs->autoAssignRefCountedValue(lr, rr, false, true);
 
 	return CGResult(0);
 }
@@ -182,7 +165,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				val->getType(), lr.value->getType());
 		}
 
-		_handleRCAssign(cs, tty->getElementN(i), rr.value->getType(), lr, rr);
+		cs->autoAssignRefCountedValue(lr, rr, false, true);
 	}
 
 	return CGResult(0);

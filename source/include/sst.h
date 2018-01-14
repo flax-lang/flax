@@ -5,6 +5,7 @@
 #pragma once
 #include "defs.h"
 #include "sst_expr.h"
+#include "stcommon.h"
 
 namespace fir
 {
@@ -572,22 +573,17 @@ namespace sst
 
 
 
-	struct TupleDecompDefn : Stmt
+	struct DecompDefn : Stmt
 	{
-		TupleDecompDefn(const Location& l) : Stmt(l) { }
-		~TupleDecompDefn() { }
+		DecompDefn(const Location& l) : Stmt(l) { }
+		~DecompDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* init = 0;
+		bool immutable = false;
+		DecompMapping bindings;
 	};
-
-	struct ArrayDecompDefn : Stmt
-	{
-		ArrayDecompDefn(const Location& l) : Stmt(l) { }
-		~ArrayDecompDefn() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-	};
-
 
 
 
