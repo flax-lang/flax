@@ -10,7 +10,7 @@
 
 sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	fir::Type* elm = fs->convertParserTypeToFIR(this->allocTy);
@@ -40,7 +40,7 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 sst::Stmt* ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto ex = this->expr->typecheck(fs);

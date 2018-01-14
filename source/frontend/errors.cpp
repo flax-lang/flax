@@ -6,6 +6,7 @@
 #include "errors.h"
 
 #include "ast.h"
+#include "sst.h"
 #include "frontend.h"
 
 static std::string _convertTab()
@@ -144,6 +145,22 @@ std::string printContext(HighlightOptions ops)
 }
 
 
+static std::vector<Locatable*> errorLocationStack;
+void pushErrorLocation(Locatable* l)
+{
+	errorLocationStack.push_back(l);
+}
+
+void popErrorLocation()
+{
+	iceAssert(errorLocationStack.size() > 0);
+	errorLocationStack.pop_back();
+}
+
+
+
+
+
 std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type)
 {
 	std::string ret;
@@ -186,7 +203,54 @@ std::string __error_gen_part2(const HighlightOptions& ops)
 			ret += printContext(ops);
 	}
 
-	ret += "\n";
+	return ret + "\n";
+}
+
+
+
+
+#define MAX_BACKTRACE_DEPTH 4
+
+//! prevents re-entrant calling
+static bool isBacktracing = false;
+std::string __error_gen_backtrace(const char* type)
+{
+	std::string ret;
+
+	if(isBacktracing || strcmp(type, "Error")) return ret;
+
+	isBacktracing = true;
+
+	// give more things.
+	auto numlocs = errorLocationStack.size();
+	if(numlocs > 1)
+	{
+		int done = 0;
+		for(size_t i = numlocs - 1; i-- > 0;)
+		{
+			// skip the boring stuff.
+			auto e = errorLocationStack[i];
+			if(dcast(ast::Block, e) || dcast(sst::Block, e))
+				continue;
+
+			std::string oper = (dcast(ast::Stmt, e) ? "typechecking" : "code generation");
+			ret += __error_gen(HighlightOptions(errorLocationStack[i]->loc), strprintf("In %s of %s here:",
+				oper, e->readableName).c_str(), "Note");
+
+			done++;
+
+			if(done == MAX_BACKTRACE_DEPTH - 1 || i == 1)
+			{
+				// print the last one and quit
+				ret += __error_gen(HighlightOptions(errorLocationStack[0]->loc), strprintf("In %s of %s here:",
+					oper, errorLocationStack[0]->readableName).c_str(), "Note");
+
+				break;
+			}
+		}
+	}
+
+	isBacktracing = false;
 	return ret;
 }
 
@@ -196,179 +260,6 @@ std::string __error_gen_part2(const HighlightOptions& ops)
 
 
 
-
-
-void error(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(HighlightOptions(), msg, "Error", true, ap);
-	va_end(ap);
-	doTheExit();
-}
-
-void error(Locatable* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(relevantast ? relevantast->loc : Location()), msg, "Error", true, ap);
-	va_end(ap);
-	doTheExit();
-}
-
-void error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	if(ops.caret.fileID == 0)
-		ops.caret = relevantast ? relevantast->loc : Location();
-
-	__error_gen(ops, msg, "Error", true, ap);
-	va_end(ap);
-	doTheExit();
-}
-
-void error(const Location& loc, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(loc), msg, "Error", true, ap);
-	va_end(ap);
-	doTheExit();
-}
-
-
-
-void exitless_error(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(HighlightOptions(), msg, "Error", false, ap);
-	va_end(ap);
-}
-
-void exitless_error(Locatable* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(relevantast ? relevantast->loc : Location()), msg, "Error", false, ap);
-	va_end(ap);
-}
-
-void exitless_error(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	if(ops.caret.fileID == 0)
-		ops.caret = relevantast ? relevantast->loc : Location();
-
-	__error_gen(ops, msg, "Error", false, ap);
-	va_end(ap);
-}
-
-void exitless_error(const Location& loc, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(loc), msg, "Error", false, ap);
-	va_end(ap);
-}
-
-
-
-
-
-
-
-
-
-
-void warn(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(HighlightOptions(), msg, "Warning", false, ap);
-	va_end(ap);
-}
-
-void warn(Locatable* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(relevantast ? relevantast->loc : Location()), msg, "Warning", false, ap);
-	va_end(ap);
-}
-
-void warn(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	if(ops.caret.fileID == 0)
-		ops.caret = relevantast ? relevantast->loc : Location();
-
-	__error_gen(ops, msg, "Warning", false, ap);
-	va_end(ap);
-}
-
-void warn(const Location& loc, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(loc), msg, "Warning", false, ap);
-	va_end(ap);
-}
-
-
-
-
-
-
-void info(const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-	__error_gen(HighlightOptions(), msg, "Note", false, ap);
-	va_end(ap);
-}
-
-void info(Locatable* relevantast, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(relevantast ? relevantast->loc : Location()), msg, "Note", false, ap);
-	va_end(ap);
-}
-
-void info(Locatable* relevantast, HighlightOptions ops, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	if(ops.caret.fileID == 0)
-		ops.caret = relevantast ? relevantast->loc : Location();
-
-	__error_gen(ops, msg, "Note", false, ap);
-	va_end(ap);
-}
-
-void info(const Location& loc, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	__error_gen(HighlightOptions(loc), msg, "Note", false, ap);
-	va_end(ap);
-}
 
 
 

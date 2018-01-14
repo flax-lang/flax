@@ -102,7 +102,7 @@ namespace cgn
 		fir::Function* globalInitFunc = 0;
 		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
-		void pushLoc(const Location& loc);
+		// void pushLoc(const Location& loc);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 

@@ -5,13 +5,13 @@
 #include "sst.h"
 #include "codegen.h"
 
-sst::AssignOp::AssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
-sst::TupleAssignOp::TupleAssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { }
+sst::AssignOp::AssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { this->readableName = "assignment statement"; }
+sst::TupleAssignOp::TupleAssignOp(const Location& l) : Expr(l, fir::Type::getVoid()) { this->readableName = "destructuring assignment statement"; }
 
 
 CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	auto lr = this->left->codegen(cs);
@@ -125,7 +125,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	auto tuple = this->right->codegen(cs).value;

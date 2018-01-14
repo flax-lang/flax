@@ -127,54 +127,59 @@ namespace fir
 		Value* AggregateValue(Type* t, std::vector<Value*> values, std::string vname = "");
 		Value* CreateValue(Type* t, std::string vname = "");
 
-		Value* InsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname = "");
 		Value* ExtractValue(Value* val, std::vector<size_t> inds, std::string vname = "");
-
-		Value* InsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
 		Value* ExtractValueByName(Value* val, std::string mem, std::string vname = "");
+
+		[[nodiscard]] Value* InsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
+		[[nodiscard]] Value* InsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname = "");
 
 
 		Value* GetStringData(Value* str, std::string vname = "");
-		Value* SetStringData(Value* str, Value* val, std::string vname = "");
 		Value* GetStringLength(Value* str, std::string vname = "");
-		Value* SetStringLength(Value* str, Value* val, std::string vname = "");
 		Value* GetStringRefCount(Value* str, std::string vname = "");
+
+		[[nodiscard]] Value* SetStringLength(Value* str, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetStringData(Value* str, Value* val, std::string vname = "");
 		void SetStringRefCount(Value* str, Value* val, std::string vname = "");
 
-
 		Value* GetDynamicArrayData(Value* arr, std::string vname = "");
-		Value* SetDynamicArrayData(Value* arr, Value* val, std::string vname = "");
 		Value* GetDynamicArrayLength(Value* arr, std::string vname = "");
-		Value* SetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
 		Value* GetDynamicArrayCapacity(Value* arr, std::string vname = "");
-		Value* SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
 		Value* GetDynamicArrayRefCount(Value* arr, std::string vname = "");
+
+		[[nodiscard]] Value* SetDynamicArrayData(Value* arr, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
 		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
 
 
 		Value* GetArraySliceData(Value* arr, std::string vname = "");
-		Value* SetArraySliceData(Value* arr, Value* val, std::string vname = "");
 		Value* GetArraySliceLength(Value* arr, std::string vname = "");
-		Value* SetArraySliceLength(Value* arr, Value* val, std::string vname = "");
+
+		[[nodiscard]] Value* SetArraySliceData(Value* arr, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetArraySliceLength(Value* arr, Value* val, std::string vname = "");
 
 		Value* GetAnyTypeID(Value* any, std::string vname = "");
-		Value* SetAnyTypeID(Value* any, Value* val, std::string vname = "");
 		Value* GetAnyFlag(Value* any, std::string vname = "");
-		Value* SetAnyFlag(Value* any, Value* val, std::string vname = "");
 		Value* GetAnyData(Value* any, std::string vname = "");
-		Value* SetAnyData(Value* any, Value* val, std::string vname = "");
+
+		[[nodiscard]] Value* SetAnyFlag(Value* any, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetAnyData(Value* any, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetAnyTypeID(Value* any, Value* val, std::string vname = "");
 
 		Value* GetRangeLower(Value* range, std::string vname = "");
-		Value* SetRangeLower(Value* range, Value* val, std::string vname = "");
 		Value* GetRangeUpper(Value* range, std::string vname = "");
-		Value* SetRangeUpper(Value* range, Value* val, std::string vname = "");
 		Value* GetRangeStep(Value* range, std::string vname = "");
-		Value* SetRangeStep(Value* range, Value* step, std::string vname = "");
+
+		[[nodiscard]] Value* SetRangeLower(Value* range, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetRangeUpper(Value* range, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetRangeStep(Value* range, Value* step, std::string vname = "");
 
 		Value* GetEnumCaseIndex(Value* ecs, std::string vname = "");
-		Value* SetEnumCaseIndex(Value* ecs, Value* idx, std::string vname = "");
 		Value* GetEnumCaseValue(Value* ecs, std::string vname = "");
-		Value* SetEnumCaseValue(Value* ecs, Value* val, std::string vname = "");
+
+		[[nodiscard]] Value* SetEnumCaseIndex(Value* ecs, Value* idx, std::string vname = "");
+		[[nodiscard]] Value* SetEnumCaseValue(Value* ecs, Value* val, std::string vname = "");
 
 
 		void Unreachable();

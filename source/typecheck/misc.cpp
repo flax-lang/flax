@@ -12,18 +12,24 @@ using TCS = sst::TypecheckState;
 
 namespace sst
 {
-	void TypecheckState::pushLoc(const Location& l)
-	{
-		this->locationStack.push_back(l);
-	}
+	// void TypecheckState::pushLoc(const Location& l)
+	// {
+	// 	this->locationStack.push_back(l);
+	// }
 
 	void TypecheckState::pushLoc(ast::Stmt* stmt)
 	{
+		// this->pushLoc(stmt->loc);
+
 		this->locationStack.push_back(stmt->loc);
+
+		pushErrorLocation(stmt);
 	}
 
 	Location TypecheckState::popLoc()
 	{
+		popErrorLocation();
+
 		iceAssert(this->locationStack.size() > 0);
 		auto last = this->locationStack.back();
 		this->locationStack.pop_back();

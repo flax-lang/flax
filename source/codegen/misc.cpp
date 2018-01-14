@@ -83,18 +83,24 @@ namespace cgn
 
 
 
-	void CodegenState::pushLoc(const Location& l)
-	{
-		this->locationStack.push_back(l);
-	}
+	// void CodegenState::pushLoc(const Location& l)
+	// {
+	// 	pushErrorLocation(l);
+	// 	this->locationStack.push_back(l);
+	// }
 
 	void CodegenState::pushLoc(sst::Stmt* stmt)
 	{
 		this->locationStack.push_back(stmt->loc);
+		// this->pushLoc(stmt->loc);
+
+		pushErrorLocation(stmt);
 	}
 
 	void CodegenState::popLoc()
 	{
+		popErrorLocation();
+
 		iceAssert(this->locationStack.size() > 0);
 		this->locationStack.pop_back();
 	}

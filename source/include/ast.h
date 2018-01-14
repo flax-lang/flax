@@ -29,14 +29,14 @@ namespace ast
 {
 	struct Stmt : Locatable
 	{
-		Stmt(const Location& l) : Locatable(l) { }
+		Stmt(const Location& l) : Locatable(l, "statement") { }
 		virtual ~Stmt();
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
 	};
 
 	struct Expr : Stmt
 	{
-		Expr(const Location& l) : Stmt(l) { }
+		Expr(const Location& l) : Stmt(l) { this->readableName = "expression"; }
 		~Expr();
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
@@ -44,7 +44,7 @@ namespace ast
 
 	struct DeferredStmt : Stmt
 	{
-		DeferredStmt(const Location& l) : Stmt(l) { }
+		DeferredStmt(const Location& l) : Stmt(l) { this->readableName = "deferred statement"; }
 		~DeferredStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -57,7 +57,7 @@ namespace ast
 
 	struct ImportStmt : Stmt
 	{
-		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { }
+		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { this->readableName = "import statement"; }
 		~ImportStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -70,7 +70,7 @@ namespace ast
 
 	struct Block : Stmt
 	{
-		Block(const Location& l) : Stmt(l) { }
+		Block(const Location& l) : Stmt(l) { this->readableName = "block"; }
 		~Block() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -87,7 +87,7 @@ namespace ast
 
 	struct FuncDefn : Stmt
 	{
-		FuncDefn(const Location& l) : Stmt(l) { }
+		FuncDefn(const Location& l) : Stmt(l) { this->readableName = "function defintion"; }
 		~FuncDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -118,7 +118,7 @@ namespace ast
 
 	struct ForeignFuncDefn : Stmt
 	{
-		ForeignFuncDefn(const Location& l) : Stmt(l) { }
+		ForeignFuncDefn(const Location& l) : Stmt(l) { this->readableName = "foreign function definition"; }
 		~ForeignFuncDefn() { }
 
 		sst::FunctionDecl* generatedDecl = 0;
@@ -137,7 +137,7 @@ namespace ast
 
 	struct OperatorOverloadDefn : FuncDefn
 	{
-		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { }
+		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { this->readableName = "operator overload defintion"; }
 		~OperatorOverloadDefn() { }
 
 		void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer);
@@ -157,7 +157,7 @@ namespace ast
 
 	struct VarDefn : Stmt
 	{
-		VarDefn(const Location& l) : Stmt(l) { }
+		VarDefn(const Location& l) : Stmt(l) { this->readableName = "variable defintion"; }
 		~VarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -175,7 +175,7 @@ namespace ast
 
 	struct DecompVarDefn : Stmt
 	{
-		DecompVarDefn(const Location& l) : Stmt(l) { }
+		DecompVarDefn(const Location& l) : Stmt(l) { this->readableName = "destructuring variable defintion"; }
 		~DecompVarDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -187,7 +187,7 @@ namespace ast
 
 	struct IfStmt : Stmt
 	{
-		IfStmt(const Location& l) : Stmt(l) { }
+		IfStmt(const Location& l) : Stmt(l) { this->readableName = "if statement"; }
 		~IfStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -206,7 +206,7 @@ namespace ast
 
 	struct ReturnStmt : Stmt
 	{
-		ReturnStmt(const Location& l) : Stmt(l) { }
+		ReturnStmt(const Location& l) : Stmt(l) { this->readableName = "return statement"; }
 		~ReturnStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -216,7 +216,7 @@ namespace ast
 
 	struct WhileLoop : Stmt
 	{
-		WhileLoop(const Location& l) : Stmt(l) { }
+		WhileLoop(const Location& l) : Stmt(l) { this->readableName = "while loop"; }
 		~WhileLoop() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -229,7 +229,7 @@ namespace ast
 
 	struct ForLoop : Stmt
 	{
-		ForLoop(const Location& l) : Stmt(l) { }
+		ForLoop(const Location& l) : Stmt(l) { this->readableName = "for loop"; }
 		~ForLoop() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
@@ -239,7 +239,7 @@ namespace ast
 
 	struct ForeachLoop : ForLoop
 	{
-		ForeachLoop(const Location& l) : ForLoop(l) { }
+		ForeachLoop(const Location& l) : ForLoop(l) { this->readableName = "for loop"; }
 		~ForeachLoop() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -252,7 +252,7 @@ namespace ast
 
 	struct ForTupleDecompLoop : ForLoop
 	{
-		ForTupleDecompLoop(const Location& l) : ForLoop(l) { }
+		ForTupleDecompLoop(const Location& l) : ForLoop(l) { this->readableName = "for loop"; }
 		~ForTupleDecompLoop() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -264,7 +264,7 @@ namespace ast
 
 	struct BreakStmt : Stmt
 	{
-		BreakStmt(const Location& l) : Stmt(l) { }
+		BreakStmt(const Location& l) : Stmt(l) { this->readableName = "break statement"; }
 		~BreakStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -272,7 +272,7 @@ namespace ast
 
 	struct ContinueStmt : Stmt
 	{
-		ContinueStmt(const Location& l) : Stmt(l) { }
+		ContinueStmt(const Location& l) : Stmt(l) { this->readableName = "continue statement"; }
 		~ContinueStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -281,7 +281,7 @@ namespace ast
 
 	struct StaticStmt : Stmt
 	{
-		StaticStmt(Stmt* s) : Stmt(s->loc), actual(s) { }
+		StaticStmt(Stmt* s) : Stmt(s->loc), actual(s) { this->readableName = "static declaration"; }
 		~StaticStmt() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inf = 0) override { return this->actual->typecheck(fs, inf); }
@@ -292,7 +292,7 @@ namespace ast
 
 	struct TypeDefn : Stmt
 	{
-		TypeDefn(const Location& l) : Stmt(l) { }
+		TypeDefn(const Location& l) : Stmt(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
@@ -301,7 +301,7 @@ namespace ast
 
 	struct StructDefn : TypeDefn
 	{
-		StructDefn(const Location& l) : TypeDefn(l) { }
+		StructDefn(const Location& l) : TypeDefn(l) { this->readableName = "struct definition"; }
 		~StructDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -316,7 +316,7 @@ namespace ast
 
 	struct ClassDefn : TypeDefn
 	{
-		ClassDefn(const Location& l) : TypeDefn(l) { }
+		ClassDefn(const Location& l) : TypeDefn(l) { this->readableName = "class definition"; }
 		~ClassDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -335,7 +335,7 @@ namespace ast
 
 	struct EnumDefn : TypeDefn
 	{
-		EnumDefn(const Location& l) : TypeDefn(l) { }
+		EnumDefn(const Location& l) : TypeDefn(l) { this->readableName = "enum definition"; }
 		~EnumDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -354,7 +354,7 @@ namespace ast
 
 	struct TypeExpr : Expr
 	{
-		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { }
+		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { this->readableName = "<TYPE EXPRESSION>"; }
 		~TypeExpr() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -364,7 +364,7 @@ namespace ast
 
 	struct Ident : Expr
 	{
-		Ident(const Location& l, std::string n) : Expr(l), name(n) { }
+		Ident(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "identifier"; }
 		~Ident() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -376,7 +376,7 @@ namespace ast
 
 	struct RangeExpr : Expr
 	{
-		RangeExpr(const Location& loc) : Expr(loc) { }
+		RangeExpr(const Location& loc) : Expr(loc) { this->readableName = "range expression"; }
 		~RangeExpr() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -393,7 +393,7 @@ namespace ast
 
 	struct AllocOp : Expr
 	{
-		AllocOp(const Location& l) : Expr(l) { }
+		AllocOp(const Location& l) : Expr(l) { this->readableName = "alloc statement"; }
 		~AllocOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -406,7 +406,7 @@ namespace ast
 
 	struct DeallocOp : Stmt
 	{
-		DeallocOp(const Location& l) : Stmt(l) { }
+		DeallocOp(const Location& l) : Stmt(l) { this->readableName = "free statement"; }
 		~DeallocOp() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -417,7 +417,7 @@ namespace ast
 
 	struct BinaryOp : Expr
 	{
-		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { }
+		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
 		~BinaryOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -430,7 +430,7 @@ namespace ast
 
 	struct UnaryOp : Expr
 	{
-		UnaryOp(const Location& l) : Expr(l) { }
+		UnaryOp(const Location& l) : Expr(l) { this->readableName = "unary expression"; }
 		~UnaryOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -442,7 +442,7 @@ namespace ast
 
 	struct AssignOp : Expr
 	{
-		AssignOp(const Location& l) : Expr(l) { }
+		AssignOp(const Location& l) : Expr(l) { this->readableName = "assignment statement"; }
 		~AssignOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -466,7 +466,7 @@ namespace ast
 
 	struct SliceOp : Expr
 	{
-		SliceOp(const Location& l) : Expr(l) { }
+		SliceOp(const Location& l) : Expr(l) { this->readableName = "slice expression"; }
 		~SliceOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -479,7 +479,7 @@ namespace ast
 
 	struct SplatOp : Expr
 	{
-		SplatOp(const Location& l) : Expr(l) { }
+		SplatOp(const Location& l) : Expr(l) { this->readableName = "splat expression"; }
 		~SplatOp() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -493,7 +493,7 @@ namespace ast
 
 	struct FunctionCall : Expr
 	{
-		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { }
+		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "function call"; }
 		~FunctionCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -507,7 +507,7 @@ namespace ast
 
 	struct ExprCall : Expr
 	{
-		ExprCall(const Location& l) : Expr(l) { }
+		ExprCall(const Location& l) : Expr(l) { this->readableName = "function call"; }
 		~ExprCall() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -521,7 +521,7 @@ namespace ast
 
 	struct DotOperator : Expr
 	{
-		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { }
+		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { this->readableName = "dot operator"; }
 		~DotOperator() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -535,7 +535,7 @@ namespace ast
 
 	struct LitNumber : Expr
 	{
-		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { }
+		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -545,7 +545,7 @@ namespace ast
 
 	struct LitBool : Expr
 	{
-		LitBool(const Location& l, bool val) : Expr(l), value(val) { }
+		LitBool(const Location& l, bool val) : Expr(l), value(val) { this->readableName = "boolean literal"; }
 		~LitBool() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -555,7 +555,7 @@ namespace ast
 
 	struct LitString : Expr
 	{
-		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { }
+		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { this->readableName = "string literal"; }
 		~LitString() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -566,7 +566,7 @@ namespace ast
 
 	struct LitNull : Expr
 	{
-		LitNull(const Location& l) : Expr(l) { }
+		LitNull(const Location& l) : Expr(l) { this->readableName = "null literal"; }
 		~LitNull() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -574,7 +574,7 @@ namespace ast
 
 	struct LitTuple : Expr
 	{
-		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
+		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "tuple literal"; }
 		~LitTuple() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -584,7 +584,7 @@ namespace ast
 
 	struct LitArray : Expr
 	{
-		LitArray(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { }
+		LitArray(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "array literal"; }
 		~LitArray() { }
 
 		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
@@ -596,7 +596,7 @@ namespace ast
 
 	struct TopLevelBlock : Stmt
 	{
-		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { }
+		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { this->readableName = "namespace"; }
 		~TopLevelBlock() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;

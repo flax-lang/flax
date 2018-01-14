@@ -10,7 +10,7 @@ using TCS = sst::TypecheckState;
 
 sst::Stmt* ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	// disallow certain things from being deferred

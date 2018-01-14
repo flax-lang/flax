@@ -7,7 +7,7 @@
 
 CGResult sst::ConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	if(!this->target)
