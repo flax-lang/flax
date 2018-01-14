@@ -26,17 +26,17 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 8. Operator overloading for assignment and subscript/slice
 
 
-9. Error stack trace to give more information. eg. error 'foo' (...), in typechecking of 'bar' (...), etc. etc.
+9. Error stack trace to give more information. eg. `error 'foo' (...), in typechecking of 'bar' (...)`, etc. etc.
 
 
 13. Generic functions & types
 
 
 14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach
-	eg. index with 'foo[a, b, c]' instead of 'foo[a][b][c]'
+	eg. index with `foo[a, b, c]` instead of `foo[a][b][c]`
 
 
-16. [[noreturn]] for functions, so we don't error when no value is returned (eg. when calling abort())
+16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling abort())
 
 
 -----
@@ -44,9 +44,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### THINGS TO FIX
 
-1. Fix the char/i8 stupidity when handling strings. The way I see it, there are 2 options:
-	a) make 'char' redundant; strings are just i8 everywhere. if we want unicode, then it'll be a separate (ustring?) type.
-	b) make 'char' distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
+1. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
+	a) make `char` redundant; strings are just `i8` everywhere. if we want unicode, then it'll be a separate (`ustring`?) type.
+	b) make `char` distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
 		for most things though.
 
 	Probaby going with option A.
@@ -65,14 +65,14 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 2. Foreach loops where you take more than one thing at a time, like this, maybe:
-	for [ first, middle, last, ... ] in list { ... }
+	`for [ first, middle, last, ... ] in list { ... }`
 
 
-3. Variadic functions should take a slice of any.
+3. Variadic functions should take a slice of `any`.
 
 
 4. Type inference for single-expr functions? It's a little weird to have two arrows like this:
-	fn foo(a: T) -> T => a * a
+	`fn foo(a: T) -> T => a * a`
 
 	The type inference would require some re-working though, because to generate the declaration of the function we need the return type, but to
 	get the return type in this situation we need to typecheck the function body. Albeit it's a single function, there might still be
@@ -102,17 +102,20 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 	Finally, for optional arguments, it behaves much the same, except that you *must* refer to it by name to specify a value. For example:
 
-	fn foo(a: int, b: int = 3) => ...
+	`fn foo(a: int, b: int = 3) => ...`
 
-	* valid combinations:
+	```
+	// valid combinations:
 	foo(30)
 	foo(a: 30)
 	foo(30, b: 5)
 	foo(a: 30, b: 1)
 
-	* invalid combinations:
+	invalid combinations:
 	foo(a: 30, 1)		<-- cannot have positional arguments after named ones
 	foo(30, 7)			<-- must name the optional argument 'b'
+
+	```
 
 
 	Yep, that's about it for named args. I don't plan on supporting the whole 'internal/external name' thing that Swift has going on.
@@ -120,12 +123,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	just create a new variable, it's not going to kill the program.
 
 
-	EDIT:
-
-	So we do need to resolve overloads based on argument names, because swapping
-
-
-5. wrt. tuples:
+6. wrt. tuples:
 	well that's all done and over with. Tuples can be splatted in arbitrary locations at function callsites, but are treated as a positional argument.
 	So, you cannot have named arguments before the splatted tuple, and any named arguments after the fact must not conflict with the positionally-
 	-specified arguments that came from the splatted tuple.
@@ -141,10 +139,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	useful information.
 
 
-6. do a location stack trace on error, since we already have a location stack.
+7. do a location stack trace on error, since we already have a location stack.
 
 
-7. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
+8. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
 	https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
 
 
@@ -155,25 +153,25 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 (`b4dabf6`)
-- add splatting for single values, to fill up single-level tuple destructures, eg. let (a, b) = ...10; a == b == 10
+- add splatting for single values, to fill up single-level tuple destructures, eg. `let (a, b) = ...10; a == b == 10`
 
 `(597b1f2)`
 - add array and tuple decomposition, and allow them to nest to arbitrarily ridiculous levels.
 
 `(f8d983c)`
-- allow assignment to tuples containing lvalues, to enable the tuple-swap idiom eg. (a, b) = (b, a)
+- allow assignment to tuples containing lvalues, to enable the tuple-swap idiom eg. `(a, b) = (b, a)`
 
 `(e91b4a2)`
 - add splatting of tuples in function calls; can have multiple tuples
 
 `(9e3356d)`
-- improve robustness by making range literals (X...Y) parse as binary operators instead of hacky postfix unary ops.
+- improve robustness by making range literals `(X...Y)` parse as binary operators instead of hacky postfix unary ops.
 
 `(7cb117f)`
-- fix a bug that prevented parsing of function types taking 0 parameters, ie. () -> T
+- fix a bug that prevented parsing of function types taking 0 parameters, ie. `() -> T`
 
 `(4eaae34)`
-- fix custom unary operators for certain cases ('@' was not being done properly, amongst other things)
+- fix custom unary operators for certain cases (`@` was not being done properly, amongst other things)
 
 `(d06e235)`
 - add named arguments for all function calls, including methods, but excluding fn-pointer calls
@@ -197,7 +195,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 `(dcc28ba)`
 - fix member access on structs that were passed as arguments (ie. 'did not have pointer' -- solved by using ExtractValue in such cases)
-- fix method calling (same thing as above) -- but this time we need to use ImmutAlloc, because we need a 'this' pointer
+- fix method calling (same thing as above) -- but this time we need to use ImmutAlloc, because we need a `this` pointer
 - add basic operator overloading for binary, non-assigment operators.
 
 `(45e818e)`
@@ -215,7 +213,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 `(f3f8dbb)`
 - add ranges
 - add foreach loops on ranges, arrays, and strings
-- add '=>' syntax for single-statement blocks, eg. "if x == 0 => x += 4"
+- add '=>' syntax for single-statement blocks, eg. `if x == 0 => x += 4`
 
 `(dacc809)`
 - fix lexing/parsing of negative numerical literals
@@ -229,7 +227,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 `(e3a2b55)`
 - add alloc and dealloc
-- add dynamic array operators (pop(), back())
+- add dynamic array operators (`pop()`, `back()`)
 
 `(b7c6f74)`
 - add enums
