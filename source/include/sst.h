@@ -33,7 +33,7 @@ namespace sst
 
 	struct Defn : Stmt
 	{
-		Defn(const Location& l) : Stmt(l) { }
+		Defn(const Location& l) : Stmt(l) { this->readableName = "definition"; }
 		~Defn() { }
 
 		Identifier id;
@@ -44,14 +44,14 @@ namespace sst
 
 	struct TypeDefn : Defn
 	{
-		TypeDefn(const Location& l) : Defn(l) { }
+		TypeDefn(const Location& l) : Defn(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 	};
 
 
 	struct TypeExpr : Expr
 	{
-		TypeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		TypeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<TYPE EXPRESSION>"; }
 		~TypeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -59,7 +59,7 @@ namespace sst
 
 	struct RawValueExpr : Expr
 	{
-		RawValueExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		RawValueExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<RAW VALUE EXPRESSION>"; }
 		~RawValueExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->rawValue; }
@@ -71,7 +71,7 @@ namespace sst
 
 	struct Block : Stmt
 	{
-		Block(const Location& l) : Stmt(l) { }
+		Block(const Location& l) : Stmt(l) { this->readableName = "block"; }
 		~Block() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -87,7 +87,7 @@ namespace sst
 
 	struct IfStmt : Stmt, HasBlocks
 	{
-		IfStmt(const Location& l) : Stmt(l) { }
+		IfStmt(const Location& l) : Stmt(l) { this->readableName = "if statement"; }
 		~IfStmt() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -107,7 +107,7 @@ namespace sst
 
 	struct ReturnStmt : Stmt
 	{
-		ReturnStmt(const Location& l) : Stmt(l) { }
+		ReturnStmt(const Location& l) : Stmt(l) { this->readableName = "return statement"; }
 		~ReturnStmt() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -118,7 +118,7 @@ namespace sst
 
 	struct WhileLoop : Stmt, HasBlocks
 	{
-		WhileLoop(const Location& l) : Stmt(l) { }
+		WhileLoop(const Location& l) : Stmt(l) { this->readableName = "while loop"; }
 		~WhileLoop() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -133,7 +133,7 @@ namespace sst
 	struct VarDefn;
 	struct ForeachLoop : Stmt, HasBlocks
 	{
-		ForeachLoop(const Location& l) : Stmt(l) { }
+		ForeachLoop(const Location& l) : Stmt(l) { this->readableName = "for loop"; }
 		~ForeachLoop() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -148,7 +148,7 @@ namespace sst
 
 	struct BreakStmt : Stmt
 	{
-		BreakStmt(const Location& l) : Stmt(l) { }
+		BreakStmt(const Location& l) : Stmt(l) { this->readableName = "break statement"; }
 		~BreakStmt() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -156,7 +156,7 @@ namespace sst
 
 	struct ContinueStmt : Stmt
 	{
-		ContinueStmt(const Location& l) : Stmt(l) { }
+		ContinueStmt(const Location& l) : Stmt(l) { this->readableName = "continue statement"; }
 		~ContinueStmt() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -168,7 +168,7 @@ namespace sst
 
 	struct AllocOp : Expr
 	{
-		AllocOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		AllocOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "alloc statement"; }
 		~AllocOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -181,7 +181,7 @@ namespace sst
 
 	struct DeallocOp : Stmt
 	{
-		DeallocOp(const Location& l) : Stmt(l) { }
+		DeallocOp(const Location& l) : Stmt(l) { this->readableName = "free statement"; }
 		~DeallocOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -191,7 +191,7 @@ namespace sst
 	struct FunctionDefn;
 	struct BinaryOp : Expr
 	{
-		BinaryOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		BinaryOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "binary expression"; }
 		~BinaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -205,7 +205,7 @@ namespace sst
 
 	struct UnaryOp : Expr
 	{
-		UnaryOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		UnaryOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "unary expression"; }
 		~UnaryOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -245,7 +245,7 @@ namespace sst
 
 	struct SubscriptOp : Expr
 	{
-		SubscriptOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		SubscriptOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "subscript expression"; }
 		~SubscriptOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -262,7 +262,7 @@ namespace sst
 
 	struct SliceOp : Expr
 	{
-		SliceOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		SliceOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "slice expression"; }
 		~SliceOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -280,7 +280,7 @@ namespace sst
 
 	struct FunctionCall : Expr
 	{
-		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { }
+		FunctionCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "function call"; }
 		~FunctionCall() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -293,7 +293,7 @@ namespace sst
 
 	struct ExprCall : Expr
 	{
-		ExprCall(const Location& l, fir::Type* t) : Expr(l, t) { }
+		ExprCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "function call"; }
 		~ExprCall() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -304,7 +304,7 @@ namespace sst
 
 	struct ConstructorCall : Expr
 	{
-		ConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { }
+		ConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "constructor call"; }
 		~ConstructorCall() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -319,7 +319,7 @@ namespace sst
 	struct VarDefn;
 	struct VarRef : Expr
 	{
-		VarRef(const Location& l, fir::Type* t) : Expr(l, t) { }
+		VarRef(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "identifier"; }
 		~VarRef() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -330,7 +330,7 @@ namespace sst
 
 	struct ScopeExpr : Expr
 	{
-		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<SCOPE EXPRESSION>"; }
 		~ScopeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -340,7 +340,7 @@ namespace sst
 
 	struct FieldDotOp : Expr
 	{
-		FieldDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		FieldDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "field access"; }
 		~FieldDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -352,7 +352,7 @@ namespace sst
 
 	struct MethodDotOp : Expr
 	{
-		MethodDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		MethodDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "method call"; }
 		~MethodDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -363,7 +363,7 @@ namespace sst
 
 	struct TupleDotOp : Expr
 	{
-		TupleDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		TupleDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "tuple access"; }
 		~TupleDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -374,7 +374,7 @@ namespace sst
 
 	struct BuiltinDotOp : Expr
 	{
-		BuiltinDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		BuiltinDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "dot operator"; }
 		~BuiltinDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -389,7 +389,7 @@ namespace sst
 	struct EnumDefn;
 	struct EnumDotOp : Expr
 	{
-		EnumDotOp(const Location& l, fir::Type* t) : Expr(l, t) { }
+		EnumDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "enum case access"; }
 		~EnumDotOp() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -402,7 +402,7 @@ namespace sst
 
 	struct LiteralNumber : Expr
 	{
-		LiteralNumber(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralNumber(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "number literal"; }
 		~LiteralNumber() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -412,7 +412,7 @@ namespace sst
 
 	struct LiteralString : Expr
 	{
-		LiteralString(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralString(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "string literal"; }
 		~LiteralString() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -423,7 +423,7 @@ namespace sst
 
 	struct LiteralNull : Expr
 	{
-		LiteralNull(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralNull(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "null literal"; }
 		~LiteralNull() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -431,7 +431,7 @@ namespace sst
 
 	struct LiteralBool : Expr
 	{
-		LiteralBool(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralBool(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "boolean literal"; }
 		~LiteralBool() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -441,7 +441,7 @@ namespace sst
 
 	struct LiteralTuple : Expr
 	{
-		LiteralTuple(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralTuple(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "tuple literal"; }
 		~LiteralTuple() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -451,7 +451,7 @@ namespace sst
 
 	struct LiteralArray : Expr
 	{
-		LiteralArray(const Location& l, fir::Type* t) : Expr(l, t) { }
+		LiteralArray(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "array literal"; }
 		~LiteralArray() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -463,7 +463,7 @@ namespace sst
 
 	struct RangeExpr : Expr
 	{
-		RangeExpr(const Location& l, fir::Type* t) : Expr(l, t) { }
+		RangeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "range expression"; }
 		~RangeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -482,7 +482,7 @@ namespace sst
 
 	struct TreeDefn : Defn
 	{
-		TreeDefn(const Location& l) : Defn(l) { }
+		TreeDefn(const Location& l) : Defn(l) { this->readableName = "<TREE DEFINITION>"; }
 		~TreeDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -492,7 +492,7 @@ namespace sst
 
 	struct NamespaceDefn : Stmt
 	{
-		NamespaceDefn(const Location& l) : Stmt(l) { }
+		NamespaceDefn(const Location& l) : Stmt(l) { this->readableName = "namespace"; }
 		~NamespaceDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -503,7 +503,7 @@ namespace sst
 
 	struct ArgumentDefn : Defn
 	{
-		ArgumentDefn(const Location& l) : Defn(l) { }
+		ArgumentDefn(const Location& l) : Defn(l) { this->readableName = "<ARGUMENT DEFINITION>"; }
 		~ArgumentDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -511,7 +511,7 @@ namespace sst
 
 	struct VarDefn : Defn
 	{
-		VarDefn(const Location& l) : Defn(l) { }
+		VarDefn(const Location& l) : Defn(l) { this->readableName = "variable definition"; }
 		~VarDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -537,13 +537,13 @@ namespace sst
 		bool isVarArg = false;
 
 		protected:
-		FunctionDecl(const Location& l) : Defn(l) { }
+		FunctionDecl(const Location& l) : Defn(l) { this->readableName = "function declaration"; }
 		~FunctionDecl() { }
 	};
 
 	struct FunctionDefn : FunctionDecl
 	{
-		FunctionDefn(const Location& l) : FunctionDecl(l) { }
+		FunctionDefn(const Location& l) : FunctionDecl(l) { this->readableName = "function definition"; }
 		~FunctionDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -557,7 +557,7 @@ namespace sst
 
 	struct ForeignFuncDefn : FunctionDecl
 	{
-		ForeignFuncDefn(const Location& l) : FunctionDecl(l) { }
+		ForeignFuncDefn(const Location& l) : FunctionDecl(l) { this->readableName = "foreign function definition"; }
 		~ForeignFuncDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -565,7 +565,7 @@ namespace sst
 
 	struct OperatorOverloadDefn : FunctionDefn
 	{
-		OperatorOverloadDefn(const Location& l) : FunctionDefn(l) { }
+		OperatorOverloadDefn(const Location& l) : FunctionDefn(l) { this->readableName = "operator overload definition"; }
 		~OperatorOverloadDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -575,7 +575,7 @@ namespace sst
 
 	struct DecompDefn : Stmt
 	{
-		DecompDefn(const Location& l) : Stmt(l) { }
+		DecompDefn(const Location& l) : Stmt(l) { this->readableName = "destructuring variable definition"; }
 		~DecompDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -589,7 +589,7 @@ namespace sst
 
 	struct StructDefn : TypeDefn
 	{
-		StructDefn(const Location& l) : TypeDefn(l) { }
+		StructDefn(const Location& l) : TypeDefn(l) { this->readableName = "struct definition"; }
 		~StructDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -602,7 +602,7 @@ namespace sst
 
 	struct ClassDefn : StructDefn
 	{
-		ClassDefn(const Location& l) : StructDefn(l) { }
+		ClassDefn(const Location& l) : StructDefn(l) { this->readableName = "class definition"; }
 		~ClassDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -614,7 +614,7 @@ namespace sst
 
 	struct EnumCaseDefn : Defn
 	{
-		EnumCaseDefn(const Location& l) : Defn(l) { }
+		EnumCaseDefn(const Location& l) : Defn(l) { this->readableName = "enum case definition"; }
 		~EnumCaseDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
@@ -627,7 +627,7 @@ namespace sst
 
 	struct EnumDefn : TypeDefn
 	{
-		EnumDefn(const Location& l) : TypeDefn(l) { }
+		EnumDefn(const Location& l) : TypeDefn(l) { this->readableName = "enum definition"; }
 		~EnumDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;

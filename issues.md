@@ -26,9 +26,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 8. Operator overloading for assignment and subscript/slice
 
 
-9. Error stack trace to give more information. eg. `error 'foo' (...), in typechecking of 'bar' (...)`, etc. etc.
-
-
 13. Generic functions & types
 
 
@@ -36,7 +33,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	eg. index with `foo[a, b, c]` instead of `foo[a][b][c]`
 
 
-16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling abort())
+16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling `abort()`)
 
 
 -----
@@ -111,7 +108,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	foo(30, b: 5)
 	foo(a: 30, b: 1)
 
-	invalid combinations:
+	// invalid combinations:
 	foo(a: 30, 1)		<-- cannot have positional arguments after named ones
 	foo(30, 7)			<-- must name the optional argument 'b'
 

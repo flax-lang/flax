@@ -39,7 +39,7 @@ static bool isBuiltinOperator(std::string op)
 
 sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	if(this->kind == Kind::Invalid)
@@ -56,7 +56,7 @@ sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Ty
 
 void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	fs->pushLoc(this->loc);
+	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	// there's nothing different.

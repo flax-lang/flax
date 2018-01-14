@@ -130,7 +130,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 
 CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	if(this->counts.size() > 1)
@@ -144,7 +144,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::DeallocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this->loc);
+	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 

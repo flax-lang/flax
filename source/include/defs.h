@@ -167,9 +167,11 @@ struct Location
 
 struct Locatable
 {
-	Locatable(const Location& l) : loc(l) { }
+	Locatable(const Location& l, const std::string& readable) : loc(l), readableName(readable) { }
+	virtual ~Locatable() { }
 
 	Location loc;
+	std::string readableName;
 };
 
 enum class VisibilityLevel
