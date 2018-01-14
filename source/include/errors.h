@@ -97,7 +97,7 @@ namespace frontend
 
 std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type);
 std::string __error_gen_part2(const HighlightOptions& ops);
-std::string __error_gen_backtrace(const char* type);
+std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type);
 
 template <typename... Ts>
 std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, Ts... ts)
@@ -105,7 +105,7 @@ std::string __error_gen(const HighlightOptions& ops, const char* msg, const char
 	std::string ret = __error_gen_part1(ops, msg, type);
 	ret += tinyformat::format(msg, ts...);
 	ret += __error_gen_part2(ops);
-	ret += __error_gen_backtrace(type);
+	ret += __error_gen_backtrace(ops, type);
 
 	return ret;
 }
