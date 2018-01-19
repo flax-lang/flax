@@ -46,7 +46,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			res = this->init->codegen(cs, this->type);
 
 		else
-			res = CGResult(cs->getDefaultValue(this->type));
+			res = CGResult(cs->getDefaultValue(this->type), 0, CGResult::VK::LitRValue);
 
 		fir::Value* val = checkStore(res.value);
 
