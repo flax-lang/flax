@@ -54,5 +54,24 @@ CGResult sst::ConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(names) iceAssert(i == stry->getElementCount());
 	}
 
+	if(cs->isRefCountedType(stry))
+		cs->addRefCountedValue(value);
+
 	return CGResult(value);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

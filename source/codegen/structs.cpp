@@ -37,6 +37,9 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		meths.push_back(f);
 	}
 
+	for(auto sm : this->staticFields)
+		sm->codegen(cs);
+
 	for(auto sm : this->staticMethods)
 		sm->codegen(cs);
 
