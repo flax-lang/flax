@@ -7,20 +7,28 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-fn prod(a: int, b: int, c: int, d: int, e: int, f: int) -> int => a*b*c*d*e*f
+class Animal
+{
+	// init(sound: string, weight: f64)
+	// {
+
+	// }
+
+	var sound: string
+	var weight: f64
+	var cute: bool = true
+
+	static var x: string = "BAH"
+}
 
 
 @entry fn main()
 {
-	let [ h, e, l, _, o, ... &xs ] = "Hello, World!"
+	// let dog = Animal()
+	var dog: Animal
+	Animal.x = "hello"
 
-	printf("%c%c%c%c%c%s\n", h, e, l, l, o, xs[3:].ptr)
-
-	let (a, b) = ...30
-
-	if true { if true { if true {
-		printf("a = %d, b = %d\n", a, ao)
-	}}}
+	printf("%s\n", Animal.x)
 }
 
 

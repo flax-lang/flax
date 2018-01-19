@@ -48,6 +48,8 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
 		iceAssert(v);
 
+		if(v->init) error(v, "Struct fields cannot have inline initialisers");
+
 		defn->fields.push_back(v);
 		tys.push_back({ v->id.name, v->type });
 	}
@@ -133,14 +135,18 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 	}
 
-	// for(auto f : this->staticFields)
-	// {
-	// 	auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
-	// 	iceAssert(v);
+	for(auto f : this->staticFields)
+	{
+		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
+		iceAssert(v);
 
-	// 	defn->fields.push_back(v);
-	// 	tys.push_back({ v->id.name, v->type });
-	// }
+		defn->staticFields.push_back(v);
+		tys.push_back({ v->id.name, v->type });
+	}
+
+
+
+
 
 	fs->enterStructBody(defn);
 	{
