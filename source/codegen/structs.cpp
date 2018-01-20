@@ -37,6 +37,13 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		meths.push_back(f);
 	}
 
+	for(auto init : this->initialisers)
+	{
+		auto f = dynamic_cast<fir::Function*>(init->codegen(cs).value);
+		meths.push_back(f);
+	}
+
+
 	auto clsty = this->type->toClassType();
 	clsty->setMethods(meths);
 
@@ -49,6 +56,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	for(auto nt : this->nestedTypes)
 		nt->codegen(cs);
+
 
 	// basically we make a function.
 	auto restore = cs->irb.getCurrentBlock();

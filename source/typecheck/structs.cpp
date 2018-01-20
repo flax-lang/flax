@@ -222,6 +222,9 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	fs->pushTree(defn->id.name);
 
+	if(this->initialisers.empty())
+		error(this, "Class must have at least one initialiser");
+
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
