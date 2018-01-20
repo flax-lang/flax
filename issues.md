@@ -154,6 +154,12 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(f7a72b6)`
+- fix variable decompositions
+- enable the decomposition test we had.
+- disable searching beyond the current scope when resolving definitions, if we already found at least one thing here. Previous behaviour was wrong, and
+	screwed up shadowing things (would complain about ambiguous references, since we searched further up than we should've)
+
 `(1be1271)`
 - fix emitting `bool` in IR that was never caught because we never had a function taking `bool` args, thus we never mangled it.
 - add class constructors; all arguments must be named, and can only call declared init functions.
