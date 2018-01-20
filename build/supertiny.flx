@@ -23,6 +23,13 @@ class Animal
 		cute = isCute
 	}
 
+	init()
+	{
+		sound = "squish"
+		weight = 10
+		cute = false
+	}
+
 	var sound: string
 	var weight: f64
 	var cute: bool = true
