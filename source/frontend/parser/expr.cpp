@@ -138,6 +138,9 @@ namespace parser
 					error(st, "Export declaration must be the first non-comment line in the file");
 
 				default:
+					if(tok.type == TT::Identifier && tok.str() == "init")
+						return parseInitFunction(st);
+
 					return parseExpr(st);
 			}
 		}
@@ -759,6 +762,21 @@ namespace parser
 		return ret;
 	}
 
+	ast::SizeofOp* parseSizeof(State& st)
+	{
+		Token tok;
+		iceAssert((tok = st.eat()) == TT::Sizeof);
+		if(st.eat() != TT::LParen)
+			expectedAfter(st.ploc(), "'('", "sizeof", st.prev().str());
+
+		auto ret = new ast::SizeofOp(tok.loc);
+		ret->expr = parseExpr(st);
+
+		if(st.eat() != TT::RParen)
+			expectedAfter(st.ploc(), "')'", "expression in sizeof", st.prev().str());
+
+		return ret;
+	}
 
 
 
@@ -861,9 +879,8 @@ namespace parser
 				// case TT::Typeid:
 				// 	return parseTypeid(ps);
 
-				// case TT::Sizeof:
-				// 	return parseSizeof(ps);
-
+				case TT::Sizeof:
+					return parseSizeof(st);
 
 				case TT::Attr_Raw:
 					st.pop();

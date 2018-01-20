@@ -21,6 +21,8 @@ class Animal
 	static var x: string = "BAH"
 }
 
+struct Foo { var x: Bar* }
+struct Bar { var x: Foo* }
 
 @entry fn main()
 {
@@ -29,6 +31,9 @@ class Animal
 	Animal.x = "hello"
 
 	printf("%s\n", Animal.x)
+	printf("%d\n", dog.cute)
+
+	printf("sizeof(Bar) = %d\n", sizeof(Bar))
 }
 
 

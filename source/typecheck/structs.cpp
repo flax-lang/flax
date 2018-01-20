@@ -8,8 +8,62 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
-sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+#include <set>
+
+
+
+static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing)
 {
+	seeing.insert(strty);
+
+	if(field == strty)
+	{
+		exitless_error(floc, "Composite type '%s' cannot contain a field of its own type; use a pointer.", strty);
+		info(fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty);
+		doTheExit();
+	}
+	else if(seeing.find(field) != seeing.end())
+	{
+		exitless_error(floc, "Recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty);
+		info(fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty);
+		doTheExit();
+	}
+	else if(field->isClassType())
+	{
+		for(auto f : field->toClassType()->getElements())
+			_checkFieldRecursion(fs, field, f, floc, seeing);
+	}
+	else if(field->isStructType())
+	{
+		for(auto f : field->toStructType()->getElements())
+			_checkFieldRecursion(fs, field, f, floc, seeing);
+	}
+
+	// ok, we should be fine...?
+}
+
+static void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
+{
+	std::set<fir::Type*> seeing;
+	_checkFieldRecursion(fs, strty, field, floc, seeing);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+void ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+{
+	if(this->generatedDefn) return;
+
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -17,7 +71,6 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defn->id = Identifier(this->name, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
-
 
 	auto str = fir::StructType::createWithoutBody(defn->id);
 	defn->type = str;
@@ -29,9 +82,24 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		fs->typeDefnMap[str] = defn;
 	}
 
+	this->generatedDefn = defn;
+}
+
+sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	this->generateDeclaration(fs, infer);
+
+	auto defn = dcast(sst::StructDefn, this->generatedDefn);
+	iceAssert(defn);
+
+	auto str = defn->type->toStructType();
+	iceAssert(str);
+
+
 	fs->pushTree(defn->id.name);
-
-
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
@@ -52,6 +120,8 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		defn->fields.push_back(v);
 		tys.push_back({ v->id.name, v->type });
+
+		checkFieldRecursion(fs, str, v->type, v->loc);
 	}
 
 
@@ -65,7 +135,7 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			m->generateDeclaration(fs, str);
 			iceAssert(m->generatedDefn);
 
-			defn->methods.push_back(m->generatedDefn);
+			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
 		}
 
 		for(auto m : this->methods)
@@ -87,13 +157,17 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 
-
-
-
-
-
-sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
+	return 0;
+}
+
+
+
+void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+{
+	if(this->generatedDefn) return;
+
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -111,6 +185,22 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		fs->stree->addDefinition(this->name, defn);
 		fs->typeDefnMap[cls] = defn;
 	}
+
+	this->generatedDefn = defn;
+}
+
+sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	this->generateDeclaration(fs, infer);
+
+	auto defn = dcast(sst::ClassDefn, this->generatedDefn);
+	iceAssert(defn);
+
+	auto cls = defn->type->toClassType();
+	iceAssert(cls);
 
 	fs->pushTree(defn->id.name);
 
@@ -133,6 +223,8 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		defn->fields.push_back(v);
 		tys.push_back({ v->id.name, v->type });
+
+		checkFieldRecursion(fs, cls, v->type, v->loc);
 	}
 
 	for(auto f : this->staticFields)
@@ -155,7 +247,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			m->generateDeclaration(fs, cls);
 			iceAssert(m->generatedDefn);
 
-			defn->methods.push_back(m->generatedDefn);
+			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
 		}
 	}
 	fs->leaveStructBody();
@@ -166,7 +258,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		m->generateDeclaration(fs, 0);
 		iceAssert(m->generatedDefn);
 
-		defn->staticMethods.push_back(m->generatedDefn);
+		defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
 	}
 
 

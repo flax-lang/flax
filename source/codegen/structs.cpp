@@ -37,6 +37,10 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		meths.push_back(f);
 	}
 
+	auto clsty = this->type->toClassType();
+	clsty->setMethods(meths);
+
+
 	for(auto sm : this->staticFields)
 		sm->codegen(cs);
 
@@ -46,7 +50,33 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(auto nt : this->nestedTypes)
 		nt->codegen(cs);
 
-	this->type->toClassType()->setMethods(meths);
+	// basically we make a function.
+	auto restore = cs->irb.getCurrentBlock();
+	{
+		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_init", IdKind::Name),
+			fir::FunctionType::get({ this->type->getPointerTo() }, fir::Type::getVoid()),
+			fir::LinkageType::Internal);
+
+		fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+		cs->irb.setCurrentBlock(entry);
+
+		auto self = func->getArguments()[0];
+
+		for(auto fd : this->fields)
+		{
+			if(!fd->init) continue;
+
+			auto res = fd->init->codegen(cs, fd->type);
+
+			auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
+			cs->autoAssignRefCountedValue(CGResult(cs->irb.Load(elmptr), elmptr), res, true, true);
+		}
+
+		cs->irb.ReturnVoid();
+		this->inlineInitFunction = func;
+	}
+	cs->irb.setCurrentBlock(restore);
+
 
 	return CGResult(0);
 }

@@ -62,7 +62,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	// there's nothing different.
 	this->ast::FuncDefn::generateDeclaration(fs, infer);
 
-	auto defn = this->generatedDefn;
+	auto defn = dcast(sst::FunctionDefn, this->generatedDefn);
 	iceAssert(defn);
 
 

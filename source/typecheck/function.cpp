@@ -17,7 +17,8 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return 0;
 
 	this->generateDeclaration(fs, infer);
-	auto defn = this->generatedDefn;
+
+	auto defn = dcast(sst::FunctionDefn, this->generatedDefn);
 	iceAssert(defn);
 
 	fs->enterFunctionBody(defn);
