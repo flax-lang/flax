@@ -10,7 +10,7 @@ import "limits"
 import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
-// import "tests/scopes"
+import "tests/decomposition"
 import "tests/intlimits"
 
 fn runTests()
@@ -113,7 +113,7 @@ fn runTests()
 
 	// decomposition
 	libc.printf("%s%s", decomposeTitle, thinLine)
-	// doDecompositionTest()
+	test_decomposition.doDecompositionTest()
 	libc.printf("\n\n\n")
 
 

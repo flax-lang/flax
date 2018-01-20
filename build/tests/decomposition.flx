@@ -2,9 +2,12 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_decomposition
+
+import "libc" as _
+
 public fn doDecompositionTest()
 {
-
 	do {
 		printf("\n\n>> tuple decomposition\n")
 
@@ -13,7 +16,7 @@ public fn doDecompositionTest()
 
 		printf("x = %d, y = %p\n", x, y)
 
-		let (a, (b, c, ...)) = ("a", (30, 40, 50, 60))
+		let (a, (b, c, _, _)) = ("a", (30, 40, 50, 60))
 		printf("a = '%s', b = %d, c = %d\n", a, b, c)
 	}
 
