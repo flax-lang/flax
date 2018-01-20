@@ -133,18 +133,6 @@ std::string printContext(HighlightOptions ops)
 	return ret;
 }
 
-[[noreturn]] void doTheExit()
-{
-	fprintf(stderr, "There were errors, compilation cannot continue\n");
-
-	#ifdef NDEBUG
-		exit(1);
-	#else
-		abort();
-	#endif
-}
-
-
 static std::vector<Locatable*> errorLocationStack;
 void pushErrorLocation(Locatable* l)
 {
@@ -213,16 +201,19 @@ std::string __error_gen_part2(const HighlightOptions& ops)
 
 //! prevents re-entrant calling
 static bool isBacktracing = false;
-std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type)
+std::string __error_gen_backtrace(const HighlightOptions& ops)
 {
 	std::string ret;
 
-	if(isBacktracing || strcmp(type, "Error")) return ret;
+	if(isBacktracing) return ret;
 
 	isBacktracing = true;
 
 	// give more things.
 	auto numlocs = errorLocationStack.size();
+
+	std::vector<Location> seen;
+
 	if(numlocs > 1)
 	{
 		int done = 0;
@@ -230,16 +221,16 @@ std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type)
 		{
 			// skip the boring stuff.
 			auto e = errorLocationStack[i];
-			if(dcast(ast::Block, e) || dcast(sst::Block, e) || ops.caret == e->loc)
+			if(dcast(ast::Block, e) || dcast(sst::Block, e) || ops.caret == e->loc || std::find(seen.begin(), seen.end(), e->loc) != seen.end())
 				continue;
 
 			std::string oper = (dcast(ast::Stmt, e) ? "typechecking" : "code generation");
-			ret += __error_gen(HighlightOptions(errorLocationStack[i]->loc), strprintf("In %s of %s here:",
-				oper, e->readableName).c_str(), "Note");
+			ret += __error_gen(HighlightOptions(e->loc), strprintf("In %s of %s here:",
+				oper, e->readableName).c_str(), "Note", false);
 
 			done++;
 
-
+			seen.push_back(e->loc);
 
 			int skip = numlocs - done - i;
 			if(done == 2 && i - MAX_BACKTRACE_DEPTH > 1 && skip > 0)
@@ -255,6 +246,21 @@ std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type)
 	return ret;
 }
 
+
+
+[[noreturn]] void doTheExit(bool trace)
+{
+	if(trace)
+		fprintf(stderr, "%s", __error_gen_backtrace(HighlightOptions()).c_str());
+
+	fprintf(stderr, "There were errors, compilation cannot continue\n");
+
+	#ifdef NDEBUG
+		exit(1);
+	#else
+		abort();
+	#endif
+}
 
 
 

@@ -97,65 +97,66 @@ namespace frontend
 
 std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type);
 std::string __error_gen_part2(const HighlightOptions& ops);
-std::string __error_gen_backtrace(const HighlightOptions& ops, const char* type);
+std::string __error_gen_backtrace(const HighlightOptions& ops);
 
 template <typename... Ts>
-std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, Ts... ts)
+std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, bool dotrace, Ts... ts)
 {
 	std::string ret = __error_gen_part1(ops, msg, type);
 	ret += tinyformat::format(msg, ts...);
 	ret += __error_gen_part2(ops);
-	ret += __error_gen_backtrace(ops, type);
+
+	if(dotrace) ret += __error_gen_backtrace(ops);
 
 	return ret;
 }
 
 
-#define ERROR_FUNCTION(name, type, attr, doexit)																				\
-template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)														\
-{ fputs(__error_gen(HighlightOptions(), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }							\
-																																\
-template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)											\
-{ fputs(__error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }	\
-																																\
-template <typename... Ts> [[attr]] void name (const Location& l, const char* fmt, Ts... ts)										\
-{ fputs(__error_gen(HighlightOptions(l), fmt, type, ts...).c_str(), stderr); if(doexit) doTheExit(); }							\
-																																\
-template <typename... Ts> [[attr]] void name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)				\
-{																																\
-	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());														\
-	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);																	\
-	if(doexit) doTheExit();																										\
-}																																\
-																																\
-template <typename... Ts> [[attr]] void name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)					\
-{																																\
-	if(ops.caret.fileID == 0) ops.caret = (e ? e->loc : Location());															\
-	fputs(__error_gen(ops, fmt, type, ts...).c_str(), stderr);																	\
-	if(doexit) doTheExit();																										\
+#define ERROR_FUNCTION(name, type, attr, doexit)                                                                                            \
+template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)                                                                    \
+{ fputs(__error_gen(HighlightOptions(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }							\
+																																			\
+template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)                                                      \
+{ fputs(__error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }   \
+																																			\
+template <typename... Ts> [[attr]] void name (const Location& l, const char* fmt, Ts... ts)                                                 \
+{ fputs(__error_gen(HighlightOptions(l), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }							\
+																																			\
+template <typename... Ts> [[attr]] void name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)                       	\
+{                                                                                                                                       	\
+	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());                                                             	\
+	fputs(__error_gen(ops, fmt, type, doexit, ts...).c_str(), stderr);                                                                  	\
+	if(doexit) doTheExit(false);                                                                                                            \
+}                                                                                                                                           \
+																																		    \
+template <typename... Ts> [[attr]] void name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)                                \
+{                                                                                                                                           \
+	if(ops.caret.fileID == 0) ops.caret = (e ? e->loc : Location());                                                                        \
+	fputs(__error_gen(ops, fmt, type, doexit, ts...).c_str(), stderr);                                                                      \
+	if(doexit) doTheExit(false);                                                                                                            \
 }
 
 
-#define STRING_ERROR_FUNCTION(name, type)																			\
-template <typename... Ts> std::string name (const char* fmt, Ts... ts)												\
-{ return __error_gen(HighlightOptions(), fmt, type, ts...); }														\
+#define STRING_ERROR_FUNCTION(name, type)                                                                           \
+template <typename... Ts> std::string name (const char* fmt, Ts... ts)                                              \
+{ return __error_gen(HighlightOptions(), fmt, type, false, ts...); }                                                \
 																													\
-template <typename... Ts> std::string name (Locatable* e, const char* fmt, Ts... ts)								\
-{ return __error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, ts...); }								\
+template <typename... Ts> std::string name (Locatable* e, const char* fmt, Ts... ts)                                \
+{ return __error_gen(HighlightOptions(e ? e->loc : Location()), fmt, type, false, ts...); }                         \
 																													\
-template <typename... Ts> std::string name (const Location& l, const char* fmt, Ts... ts)							\
-{ return __error_gen(HighlightOptions(l), fmt, type, ts...); }														\
+template <typename... Ts> std::string name (const Location& l, const char* fmt, Ts... ts)                           \
+{ return __error_gen(HighlightOptions(l), fmt, type, false, ts...); }                                               \
 																													\
-template <typename... Ts> std::string name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)		\
-{																													\
-	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());											\
-	return __error_gen(ops, fmt, type, ts...);																		\
-}																													\
+template <typename... Ts> std::string name (const Location& l, HighlightOptions ops, const char* fmt, Ts... ts)     \
+{                                                                                                                   \
+	if(ops.caret.fileID == 0) ops.caret = (l.fileID != 0 ? l : Location());                                         \
+	return __error_gen(ops, fmt, type, false, ts...);                                                               \
+}                                                                                                                   \
 																													\
-template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)			\
-{																													\
-	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();													\
-	return __error_gen(ops, fmt, type, ts...);																		\
+template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, const char* fmt, Ts... ts)          \
+{                                                                                                                   \
+	if(ops.caret.fileID == 0) ops.caret = e ? e->loc : Location();                                                  \
+	return __error_gen(ops, fmt, type, false, ts...);                                                               \
 }
 
 

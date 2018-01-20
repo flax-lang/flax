@@ -462,10 +462,11 @@ namespace sst
 
 			if(!cand)
 			{
-				exitless_error(this->loc(), "Class '%s' has no initialiser matching the given arguments", cls->id.name);
-				exitless_error(this->loc(), "%s", errs.errorStr);
+				exitless_error(this->loc(), "Failed to find matching initialiser for class '%s': %s", cls->id.name, errs.errorStr);
 				for(auto inf : errs.infoStrs)
-					info(inf.first, "%s", inf.second);
+					fprintf(stderr, "%s", inf.second.c_str());
+
+				doTheExit();
 			}
 
 			return cand;

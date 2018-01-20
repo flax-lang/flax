@@ -55,6 +55,10 @@ static std::string mangleType(fir::Type* t)
 	{
 		return lentypestr(t->encodedStr());
 	}
+	if(t->isBoolType())
+	{
+		return lentypestr(t->encodedStr());
+	}
 	else if(t->isArrayType())
 	{
 		return "FA" + lentypestr(mangleType(t->getArrayElementType())) + std::to_string(t->toArrayType()->getArraySize());
