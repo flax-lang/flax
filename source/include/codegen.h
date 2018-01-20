@@ -3,7 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
+
 #include "defs.h"
+#include "stcommon.h"
 #include "ir/irbuilder.h"
 
 namespace fir
@@ -102,7 +104,6 @@ namespace cgn
 		fir::Function* globalInitFunc = 0;
 		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
-		// void pushLoc(const Location& loc);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 
@@ -125,7 +126,6 @@ namespace cgn
 		void enterBreakableBody(ControlFlowPoint cfp);
 		ControlFlowPoint leaveBreakableBody();
 
-		// CGResult findValueInTree(std::string name, ValueTree* vt = 0);
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
@@ -147,6 +147,8 @@ namespace cgn
 		fir::IRBlock* enterGlobalInitFunction();
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();
+
+		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
 
 		enum class OperatorFn
 		{

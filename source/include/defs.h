@@ -9,7 +9,7 @@
 
 #include "precompile.h"
 
-[[noreturn]] void doTheExit();
+[[noreturn]] void doTheExit(bool trace = true);
 
 template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)

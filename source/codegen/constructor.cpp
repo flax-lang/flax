@@ -67,8 +67,42 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto cls = this->target->type;
-	return CGResult(cs->irb.CreateValue(cls));
+	auto cls = this->classty->type;
+	auto self = cs->irb.StackAlloc(cls);
+
+	auto initfn = this->classty->inlineInitFunction;
+	iceAssert(initfn);
+
+	auto constrfn = dcast(fir::Function, this->target->codegen(cs, infer).value);
+	iceAssert(constrfn);
+
+	{
+		auto fake = new sst::RawValueExpr(this->loc, cls->getPointerTo());
+		fake->rawValue = CGResult(self);
+
+		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake));
+	}
+
+
+	if(this->arguments.size() != constrfn->getArgumentCount())
+	{
+		exitless_error(this, "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
+			cls, constrfn->getArgumentCount(), this->arguments.size());
+
+		info(this->target, "Constructor was defined here:");
+		doTheExit();
+	}
+
+	std::vector<fir::Value*> args = cs->codegenAndArrangeFunctionCallArguments(this->target, constrfn->getType(), this->arguments);
+
+	cs->irb.Call(initfn, self);
+	cs->irb.Call(constrfn, args);
+
+	auto value = cs->irb.Load(self);
+	if(cs->isRefCountedType(cls))
+		cs->addRefCountedValue(value);
+
+	return CGResult(value, self);
 }
 
 

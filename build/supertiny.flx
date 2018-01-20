@@ -15,6 +15,14 @@ class Animal
 		self.weight = weight * 2
 	}
 
+	init(isCute: bool)
+	{
+		self.sound = "what does the fox say?"
+		self.weight = 30.49
+
+		cute = isCute
+	}
+
 	var sound: string
 	var weight: f64
 	var cute: bool = true
@@ -24,11 +32,11 @@ class Animal
 
 @entry fn main()
 {
-	let dog = Animal(sound: "woof", weight: 40)
+	let dog = Animal(isCute: false)
 	Animal.x = "hello"
 
 	printf("%s\n", Animal.x)
-	printf("%d\n", dog.cute)
+	printf("%s / %d / %f\n", dog.sound, dog.cute, dog.weight)
 }
 
 
