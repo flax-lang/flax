@@ -83,7 +83,7 @@ namespace parser
 		}
 		else
 		{
-			returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			returnType = 0;
 		}
 
 		return std::make_tuple(args, generics, returnType, isvar, varloc);
@@ -102,6 +102,10 @@ namespace parser
 		Location loc;
 		bool isvar = false;
 		std::tie(defn->args, defn->generics, defn->returnType, isvar, loc) = parseFunctionLookingDecl(st);
+
+		if(defn->returnType == 0)
+			defn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+
 		return std::make_tuple(defn, isvar, loc);
 	}
 
@@ -153,7 +157,26 @@ namespace parser
 	}
 
 
+	ast::InitFunctionDefn* parseInitFunction(State& st)
+	{
+		iceAssert(st.front().str() == "init");
+		st.pop();
 
+		auto [ args, generics, retty, isvar, loc ] = parseFunctionLookingDecl(st);
+		if(generics.size() > 0)
+			error(loc, "Class initialiser functions cannot be generic");
+
+		else if(retty != 0)
+			error(loc, "Class initialisers cannot have a return type");
+
+		// ok loh
+		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(loc);
+		ret->args = args;
+		ret->name = "init";
+		ret->body = parseBracedBlock(st);
+
+		return ret;
+	}
 
 
 

@@ -20,6 +20,7 @@ namespace fir
 
 namespace sst
 {
+	struct Defn;
 	struct TypecheckState;
 	struct FunctionDefn;
 	struct FunctionDecl;
@@ -52,7 +53,15 @@ namespace ast
 		Stmt* actual = 0;
 	};
 
+	struct Declarable : Stmt
+	{
+		Declarable(const Location& l) : Stmt(l) { this->readableName = "<DECLARABLE>"; }
+		~Declarable() { }
 
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) = 0;
+
+		sst::Defn* generatedDefn = 0;
+	};
 
 
 	struct ImportStmt : Stmt
@@ -85,15 +94,13 @@ namespace ast
 
 
 
-	struct FuncDefn : Stmt
+	struct FuncDefn : Declarable
 	{
-		FuncDefn(const Location& l) : Stmt(l) { this->readableName = "function defintion"; }
+		FuncDefn(const Location& l) : Declarable(l) { this->readableName = "function defintion"; }
 		~FuncDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-
-		sst::FunctionDefn* generatedDefn = 0;
-		void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer);
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		struct Arg
 		{
@@ -114,6 +121,21 @@ namespace ast
 
 		bool isEntry = false;
 		bool noMangle = false;
+	};
+
+	struct InitFunctionDefn : Stmt
+	{
+		InitFunctionDefn(const Location& l) : Stmt(l) { this->readableName = "class initialiser definition"; }
+		~InitFunctionDefn() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		using Arg = FuncDefn::Arg;
+
+		std::string name;
+		std::vector<Arg> args;
+
+		Block* body = 0;
 	};
 
 	struct ForeignFuncDefn : Stmt
@@ -290,12 +312,11 @@ namespace ast
 	};
 
 
-	struct TypeDefn : Stmt
+	struct TypeDefn : Declarable
 	{
-		TypeDefn(const Location& l) : Stmt(l) { this->readableName = "type definition"; }
+		TypeDefn(const Location& l) : Declarable(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
@@ -305,6 +326,7 @@ namespace ast
 		~StructDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::string name;
 		std::map<std::string, TypeConstraints_t> generics;
@@ -320,9 +342,12 @@ namespace ast
 		~ClassDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::string name;
 		std::map<std::string, TypeConstraints_t> generics;
+
+		std::vector<FuncDefn*> initialisers;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
@@ -339,6 +364,7 @@ namespace ast
 		~EnumDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		struct Case
 		{
@@ -413,6 +439,14 @@ namespace ast
 		Expr* expr = 0;
 	};
 
+	struct SizeofOp : Expr
+	{
+		SizeofOp(const Location& l) : Expr(l) { this->readableName = "sizeof expression"; }
+		~SizeofOp() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		Expr* expr = 0;
+	};
 
 
 	struct BinaryOp : Expr

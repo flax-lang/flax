@@ -189,7 +189,10 @@ namespace parser
 	ast::StructDefn* parseStruct(State& st);
 	ast::StaticStmt* parseStaticStmt(State& st);
 
+	ast::InitFunctionDefn* parseInitFunction(State& st);
+
 	ast::DeallocOp* parseDealloc(State& st);
+	ast::SizeofOp* parseSizeof(State& st);
 
 	ast::Block* parseBracedBlock(State& st);
 

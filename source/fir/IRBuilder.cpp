@@ -1220,6 +1220,9 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
 
+		else if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+			error("use the other function for struct types");
+
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
 		iceAssert(elmIndex->getType()->isIntegerType() && "elmIndex is not integer type");
 

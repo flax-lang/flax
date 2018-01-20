@@ -47,8 +47,11 @@ namespace sst
 	}
 
 
-	fir::Type* TypecheckState::convertParserTypeToFIR(pts::Type* pt)
+	fir::Type* TypecheckState::convertParserTypeToFIR(pts::Type* pt, bool allowFail)
 	{
+		//* note: 'allowFail' allows failure when we *don't find anything*
+		//* but if we find something _wrong_, then we will always fail.
+
 		#define convert(...)	(this->convertParserTypeToFIR)(__VA_ARGS__)
 
 		if(pt->isNamedType())
@@ -71,6 +74,7 @@ namespace sst
 						auto tyd = dcast(TypeDefn, d);
 						if(!tyd)
 						{
+							//* example of something 'wrong'
 							exitless_error(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name);
 							info(d, "'%s' was defined here:", d->id.name);
 
@@ -80,7 +84,8 @@ namespace sst
 						return tyd->type;
 					}
 
-					error(this->loc(), "No such type '%s' defined", name);
+					if(allowFail)   return 0;
+					else            error(this->loc(), "No such type '%s' defined", name);
 				}
 				else
 				{
@@ -113,7 +118,11 @@ namespace sst
 					}
 
 					auto begin = this->recursivelyFindTreeUpwards(scopes.front());
-					if(!begin) error(this->loc(), "No such scope '%s'", scopes.front());
+					if(!begin)
+					{
+						if(allowFail)   return 0;
+						else            error(this->loc(), "No such scope '%s'", scopes.front());
+					}
 
 					std::string prev = scopes.front();
 					scopes.pop_front();
@@ -122,7 +131,10 @@ namespace sst
 					{
 						auto it = begin->subtrees.find(scopes.front());
 						if(it == begin->subtrees.end())
-							error(this->loc(), "No such entity '%s' in scope '%s'", scopes.front(), prev);
+						{
+							if(allowFail)   return 0;
+							else            error(this->loc(), "No such entity '%s' in scope '%s'", scopes.front(), prev);
+						}
 
 						prev = scopes.front();
 						scopes.pop_front();
@@ -134,7 +146,8 @@ namespace sst
 					auto defs = begin->getDefinitionsWithName(actual);
 					if(defs.empty())
 					{
-						error(this->loc(), "No type named '%s' in scope '%s'", actual, begin->name);
+						if(allowFail)   return 0;
+						else            error(this->loc(), "No type named '%s' in scope '%s'", actual, begin->name);
 					}
 					else if(defs.size() > 1)
 					{
