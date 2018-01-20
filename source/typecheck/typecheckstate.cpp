@@ -362,6 +362,7 @@ namespace sst
 					exitless_error(defn, "Duplicate definition of %s '%s'", kind, defn->id.name);
 				}
 				info(def, "Conflicting definition here:");
+				info("Functions cannot be overloaded based on argument names alone");
 			}
 		}
 

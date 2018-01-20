@@ -9,10 +9,11 @@ import "math" as _
 
 class Animal
 {
-	// init(sound: string, weight: f64)
-	// {
-
-	// }
+	init(sound: string, weight: f64)
+	{
+		self.sound = sound
+		self.weight = weight * 2
+	}
 
 	var sound: string
 	var weight: f64
@@ -21,19 +22,13 @@ class Animal
 	static var x: string = "BAH"
 }
 
-struct Foo { var x: Bar* }
-struct Bar { var x: Foo* }
-
 @entry fn main()
 {
-	// let dog = Animal()
-	var dog: Animal
+	let dog = Animal(sound: "woof", weight: 40)
 	Animal.x = "hello"
 
 	printf("%s\n", Animal.x)
 	printf("%d\n", dog.cute)
-
-	printf("sizeof(Bar) = %d\n", sizeof(Bar))
 }
 
 

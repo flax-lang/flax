@@ -5,7 +5,7 @@
 #include "sst.h"
 #include "codegen.h"
 
-CGResult sst::ConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
@@ -62,6 +62,14 @@ CGResult sst::ConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto cls = this->target->type;
+	return CGResult(cs->irb.CreateValue(cls));
+}
 
 
 

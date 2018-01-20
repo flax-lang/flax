@@ -162,7 +162,7 @@ namespace sst
 		Defn* resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments,
 			PrettyError* errs, bool allowImplicitSelf);
 
-		TypeDefn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs);
+		Defn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs);
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,

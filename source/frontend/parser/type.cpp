@@ -38,7 +38,7 @@ namespace parser
 		auto blk = parseBracedBlock(st);
 		for(auto s : blk->statements)
 		{
-			if(auto v = dynamic_cast<VarDefn*>(s))
+			if(auto v = dcast(VarDefn, s))
 			{
 				if(v->type == pts::InferredType::get())
 					error(v, "Struct fields must have types explicitly specified");
@@ -48,13 +48,17 @@ namespace parser
 
 				defn->fields.push_back(v);
 			}
-			else if(auto f = dynamic_cast<FuncDefn*>(s))
+			else if(auto f = dcast(FuncDefn, s))
 			{
 				defn->methods.push_back(f);
 			}
-			else if(auto t = dynamic_cast<TypeDefn*>(s))
+			else if(auto t = dcast(TypeDefn, s))
 			{
 				defn->nestedTypes.push_back(t);
+			}
+			else if(dcast(InitFunctionDefn, s))
+			{
+				error(s, "Structs cannot have user-defined initialisers");
 			}
 			else
 			{
@@ -97,31 +101,35 @@ namespace parser
 		auto blk = parseBracedBlock(st);
 		for(auto s : blk->statements)
 		{
-			if(auto v = dynamic_cast<VarDefn*>(s))
+			if(auto v = dcast(VarDefn, s))
 			{
 				if(v->type == pts::InferredType::get())
 					error(v, "Class fields must have types explicitly specified");
 
 				defn->fields.push_back(v);
 			}
-			else if(auto f = dynamic_cast<FuncDefn*>(s))
+			else if(auto f = dcast(FuncDefn, s))
 			{
 				defn->methods.push_back(f);
 			}
-			else if(auto t = dynamic_cast<TypeDefn*>(s))
+			else if(auto t = dcast(TypeDefn, s))
 			{
 				defn->nestedTypes.push_back(t);
 			}
-			else if(auto st = dynamic_cast<StaticStmt*>(s))
+			else if(auto st = dcast(StaticStmt, s))
 			{
-				if(auto fn = dynamic_cast<FuncDefn*>(st->actual))
+				if(auto fn = dcast(FuncDefn, st->actual))
 					defn->staticMethods.push_back(fn);
 
-				else if(auto vr = dynamic_cast<VarDefn*>(st->actual))
+				else if(auto vr = dcast(VarDefn, st->actual))
 					defn->staticFields.push_back(vr);
 
 				else
 					error(st, "Unsupported static statement in class body");
+			}
+			else if(auto init = dcast(InitFunctionDefn, s))
+			{
+				defn->initialisers.push_back(init);
 			}
 			else
 			{
@@ -231,7 +239,7 @@ namespace parser
 		st.eat();
 
 		auto stmt = parseStmt(st);
-		if(dynamic_cast<FuncDefn*>(stmt) || dynamic_cast<VarDefn*>(stmt))
+		if(dcast(FuncDefn, stmt) || dcast(VarDefn, stmt))
 			return new StaticStmt(stmt);
 
 		else

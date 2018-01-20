@@ -159,7 +159,25 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	return 0;
+	//* so here's the thing
+	//* basically this init function thingy is just a normal function definition
+	//* but due to the way the AST was built, and because it's actually slightly less messy IMO,
+	//* we return a separate AST type that does not inherit from FuncDefn.
+
+	//* so, to reduce code dupe and make it less stupid, we actually make a fake FuncDefn from ourselves,
+	//* and typecheck that, returning that as the result.
+
+	//* we don't want to be carrying too many distinct types around in SST nodes.
+
+
+	auto fake = new ast::FuncDefn(this->loc);
+
+	fake->name = "@init";
+	fake->args = this->args;
+	fake->body = this->body;
+	fake->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+
+	return fake->typecheck(fs, infer);
 }
 
 
@@ -248,6 +266,14 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			iceAssert(m->generatedDefn);
 
 			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+		}
+
+		for(auto it : this->initialisers)
+		{
+			auto initdefn = dcast(sst::FunctionDefn, it->typecheck(fs, cls));
+			iceAssert(initdefn);
+
+			defn->initialisers.push_back(initdefn);
 		}
 	}
 	fs->leaveStructBody();
