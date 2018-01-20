@@ -587,8 +587,11 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 		{
 			// ok, great... I guess?
 			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);
+
+			ret->target = fnd;
 			ret->arguments = arguments;
-			ret->target = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
+			ret->classty = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
+
 			iceAssert(ret->target);
 
 			return ret;
