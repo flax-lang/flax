@@ -57,7 +57,7 @@ static void checkTuple(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 
 		if(rhs.pointer)
 		{
-			auto gep = cs->irb.ConstGEP2(rhs.pointer, 0, i);
+			auto gep = cs->irb.StructGEP(rhs.pointer, i);
 			v = CGResult(cs->irb.Load(gep), gep);
 		}
 		else
@@ -133,13 +133,14 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 	else
 	{
 		auto array = rhs.value;
+		fir::Value* arrlen = 0;
+
 		auto numbinds = fir::ConstantInt::getInt64(bind.inner.size());
 		{
 			//* note: 'true' means we're performing a decomposition, so print a more appropriate error message on bounds failure.
 			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
 			iceAssert(checkf);
 
-			fir::Value* arrlen = 0;
 			if(rt->isArrayType())               arrlen = fir::ConstantInt::getInt64(rt->toArrayType()->getArraySize());
 			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
 			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetDynamicArrayLength(array);
@@ -198,7 +199,7 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 				{
 					auto sty = fir::ArraySliceType::get(rt->getArrayElementType());
 
-					auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
+					auto remaining = cs->irb.Subtract(arrlen, numbinds);
 
 					auto slice = cs->irb.CreateValue(sty);
 					slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(data, numbinds));
@@ -246,6 +247,12 @@ static void generateBinding(cgn::CodegenState* cs, DecompMapping& bind, CGResult
 
 		if(bind.ref && !allowref)
 			error(bind.loc, "Cannot bind to value of type '%s' by reference", rt);
+
+		if(bind.ref)
+		{
+			rhs.value = rhs.pointer;
+			rhs.pointer = 0;
+		}
 
 		handleDefn(cs, bind.createdDefn, rhs);
 	}

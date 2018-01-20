@@ -96,7 +96,6 @@ namespace fir
 		Value* ImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-		Value* GetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname = "");
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
 		Value* GetStructMember(Value* ptr, std::string memberName);

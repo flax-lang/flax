@@ -1086,20 +1086,20 @@ namespace fir
 
 
 	// structs and tuples have the same member names.
-	template <typename T>
-	static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* ptr, Value* ptrIndex, size_t memberIndex)
-	{
-		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
+	// template <typename T>
+	// static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* ptr, Value* ptrIndex, size_t memberIndex)
+	// {
+	// 	iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, false, parent,
-			type->getElementN(memberIndex)->getPointerTo(), { ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
+	// 	Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, false, parent,
+	// 		type->getElementN(memberIndex)->getPointerTo(), { ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
 
-		// disallow storing to members of immut structs
-		if(ptr->isImmutable())
-			instr->realOutput->makeImmutable();
+	// 	// disallow storing to members of immut structs
+	// 	if(ptr->isImmutable())
+	// 		instr->realOutput->makeImmutable();
 
-		return instr;
-	}
+	// 	return instr;
+	// }
 
 	template <typename T>
 	static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* structPtr, size_t memberIndex)
@@ -1115,32 +1115,6 @@ namespace fir
 
 		return instr;
 	}
-
-
-	Value* IRBuilder::GetPointerToConstStructMember(Value* ptr, Value* ptrIndex, size_t memberIndex, std::string vname)
-	{
-		iceAssert(ptr->getType()->isPointerType() && "ptr is not a pointer");
-		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not an integer type");
-
-		// todo: consolidate
-		if(StructType* st = dynamic_cast<StructType*>(ptr->getType()->getPointerElementType()))
-		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, ptr, ptrIndex, memberIndex), vname);
-		}
-		else if(ClassType* st = dynamic_cast<ClassType*>(ptr->getType()->getPointerElementType()))
-		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, ptr, ptrIndex, memberIndex), vname);
-		}
-		else if(TupleType* tt = dynamic_cast<TupleType*>(ptr->getType()->getPointerElementType()))
-		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, ptr, ptrIndex, memberIndex), vname);
-		}
-		else
-		{
-			error("type '%s' is not a valid type to GEP into", ptr->getType()->getPointerElementType());
-		}
-	}
-
 
 
 
