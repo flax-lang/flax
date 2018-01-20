@@ -41,7 +41,21 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### THINGS TO FIX
 
-1. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
+1. The 'default-value' thing when we create temporaries or other stuff needs to be fixed; classes that do not have an initialiser taking 0 arguments
+	cannot be 'default-value'-ed. This is basically like any other langauge eg. C++ when it comes to this.
+
+	Also, we need to enforce classes having at least one initialiser. Not entirely sure how we're going to be dealing with private/protected/public
+	visibility on these yet. If we do do anything, it's basically just going to be enforced by the compiler, just like immutability...
+
+	Oh well.
+
+
+2. We need to be calling the inline-initialiser glue function from class constructors. Right now, I think it's a better idea to just insert a manual
+	call to it when we *create* the value, rather than insert a call to it from within user-defined constructors itself. It'll be slightly less messy,
+	but we need to remember to call the inline-init glue function whenever we create a class from anywhere. Probably should put that in a helper function.
+
+
+3. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
 	a) make `char` redundant; strings are just `i8` everywhere. if we want unicode, then it'll be a separate (`ustring`?) type.
 	b) make `char` distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
 		for most things though.

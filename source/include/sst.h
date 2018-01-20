@@ -332,7 +332,8 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		ClassDefn* target = 0;
+		ClassDefn* classty = 0;
+		FunctionDefn* target = 0;
 		std::vector<FnCallArgument> arguments;
 	};
 
