@@ -100,7 +100,7 @@ namespace parser
 			if(auto v = dynamic_cast<VarDefn*>(s))
 			{
 				if(v->type == pts::InferredType::get())
-					error(v, "Struct fields must have types explicitly specified");
+					error(v, "Class fields must have types explicitly specified");
 
 				defn->fields.push_back(v);
 			}

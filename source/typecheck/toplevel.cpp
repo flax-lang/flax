@@ -211,12 +211,12 @@ namespace sst
 }
 
 
-static void visitFunctions(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
+static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 {
 	for(auto stmt : ns->statements)
 	{
-		if(auto fd = dynamic_cast<ast::FuncDefn*>(stmt))
-			fd->generateDeclaration(fs, 0);
+		if(auto decl = dynamic_cast<ast::Declarable*>(stmt))
+			decl->generateDeclaration(fs, 0);
 
 		else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
 			ffd->typecheck(fs);
@@ -224,23 +224,9 @@ static void visitFunctions(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 		else if(auto ns = dynamic_cast<ast::TopLevelBlock*>(stmt))
 		{
 			fs->pushTree(ns->name);
-			visitFunctions(fs, ns);
+			visitDeclarables(fs, ns);
 			fs->popTree();
 		}
-	}
-}
-
-static bool _isType(ast::Stmt* stmt)
-{
-	return (dynamic_cast<ast::StructDefn*>(stmt) || dynamic_cast<ast::ClassDefn*>(stmt) || dynamic_cast<ast::EnumDefn*>(stmt));
-}
-
-static void visitTypes(sst::TypecheckState* fs, ast::TopLevelBlock* ns, sst::NamespaceDefn* ret)
-{
-	for(auto stmt : ns->statements)
-	{
-		if(_isType(stmt))
-			ret->statements.push_back(stmt->typecheck(fs));
 	}
 }
 
@@ -262,15 +248,15 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 		//* but, we need all types to be visible, so we can use them in the function declarations
 		//* we'll see next -- if not then it breaks
-		visitTypes(fs, this, ret);
+		// visitTypes(fs, this, ret);
 
-		visitFunctions(fs, this);
+		visitDeclarables(fs, this);
 	}
 
 
 	for(auto stmt : this->statements)
 	{
-		if(dynamic_cast<ast::ImportStmt*>(stmt) || _isType(stmt))
+		if(dynamic_cast<ast::ImportStmt*>(stmt))
 			continue;
 
 		ret->statements.push_back(stmt->typecheck(fs));

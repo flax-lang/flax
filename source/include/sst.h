@@ -10,6 +10,7 @@
 namespace fir
 {
 	struct Type;
+	struct Function;
 	struct FunctionType;
 	struct ConstantValue;
 }
@@ -164,7 +165,15 @@ namespace sst
 
 
 
+	struct SizeofOp : Expr
+	{
+		SizeofOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "sizeof expression"; }
+		~SizeofOp() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		fir::Type* typeToSize = 0;
+	};
 
 	struct AllocOp : Expr
 	{
@@ -606,6 +615,9 @@ namespace sst
 		~ClassDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		fir::Function* inlineInitFunction = 0;
+		std::vector<FunctionDefn*> initialisers;
 
 		std::vector<VarDefn*> staticFields;
 		std::vector<FunctionDefn*> staticMethods;

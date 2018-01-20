@@ -4,7 +4,6 @@
 
 #include "sst.h"
 #include "codegen.h"
-#include "platform.h"
 
 CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {

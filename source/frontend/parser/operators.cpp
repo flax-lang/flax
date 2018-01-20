@@ -39,27 +39,13 @@ namespace parser
 		ret->symbol = parseOperatorTokens(st);
 
 
-		// check whether we can support this
-		// TODO: when we actually do this, we need to check the parser state to see if it knows about this
-		// TODO: *new* thing.
-		//* when we do a parseUnary(), it expects a certain set of operators only. If you suddenly declare
-		//* say '%' as a prefix unary operator, the parser won't know that, and will throw an error. So, if
-		//* you're overloading an operator in a way that changes its parsing behaviour, you need to declare
-		//* it beforehand.
-
-		//* the parser will probably do a pre-pass, in the same pass as we do for imports, to look for operator
-		//* declarations -- so we enforce that they must be at the top of the file, and are not constrained by
-		//* scope.
-
-		//* this shouldn't introduce any conflicts; we already handle unary + and - along with their binary versions,
-		//* so introducting something like unary % or binary ++ or something should be perfectly fine, and we'll
-		//* just use overload resolution to prevent calling the wrong thing. make sense?? probably not.
-
-		//! needs to be actually done.
 
 
 		bool isvar = false;
 		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
+
+		if(ret->returnType == 0)
+			ret->returnType = pts::NamedType::create(VOID_TYPE_STRING);
 
 		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
 

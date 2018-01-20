@@ -140,6 +140,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(b7fb307)`
+- add static fields in classes, with working initialisers
+
 `(81faedb)`
 - add error backtrace, but at a great cost...
 

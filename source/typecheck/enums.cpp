@@ -8,8 +8,6 @@
 
 #include "ir/type.h"
 
-using TCS = sst::TypecheckState;
-
 /*
 	ok, here's some documentation of how enumerations work
 	they're basically strong enums, unlike C enums.
@@ -26,8 +24,10 @@ using TCS = sst::TypecheckState;
 */
 
 
-sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+void ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
+	if(this->generatedDefn) return;
+
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -37,6 +37,21 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defn->visibility = this->visibility;
 
 	fs->stree->addDefinition(this->name, defn);
+
+	this->generatedDefn = defn;
+}
+
+
+sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	this->generateDeclaration(fs, infer);
+
+	auto defn = dcast(sst::EnumDefn, this->generatedDefn);
+	iceAssert(defn);
+
 
 	fs->pushTree(defn->id.name);
 	defer(fs->popTree());

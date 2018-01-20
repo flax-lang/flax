@@ -141,7 +141,7 @@ namespace sst
 		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, const std::string& op, sst::FunctionDefn** overloadFn = 0);
 
 		// things that i might want to make non-methods someday
-		fir::Type* convertParserTypeToFIR(pts::Type* pt);
+		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
