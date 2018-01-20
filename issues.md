@@ -154,6 +154,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(1be1271)`
+- fix emitting `bool` in IR that was never caught because we never had a function taking `bool` args, thus we never mangled it.
+- add class constructors; all arguments must be named, and can only call declared init functions.
+
 `(c6a204a)`
 - add order-independent type usage, a-la functions. This allows `A` to refer to `B` and `A` to simultaneously refer to `B`.
 - fix detection (rather add it) of recursive definitions, eg. `struct A { var x: A }`, or `struct A { var x: B }; struct B { var x: A }`
