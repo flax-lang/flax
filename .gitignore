@@ -67,6 +67,8 @@ CMakeLists.txt
 
 source_old
 
+codealike.json
+
 build/test
 build/tester
 build/supertiny

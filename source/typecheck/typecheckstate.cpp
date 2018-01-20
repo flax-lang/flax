@@ -312,7 +312,10 @@ namespace sst
 		while(tree)
 		{
 			auto fns = tree->getDefinitionsWithName(name);
-			ret.insert(ret.end(), fns.begin(), fns.end());
+
+			if(fns.size() > 0)
+				return fns;
+				// ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
 		}
