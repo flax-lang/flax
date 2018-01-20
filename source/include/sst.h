@@ -311,14 +311,28 @@ namespace sst
 		std::vector<Expr*> arguments;
 	};
 
-	struct ConstructorCall : Expr
+
+	struct StructDefn;
+	struct ClassDefn;
+	struct StructConstructorCall : Expr
 	{
-		ConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "constructor call"; }
-		~ConstructorCall() { }
+		StructConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "struct constructor call"; }
+		~StructConstructorCall() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		TypeDefn* target = 0;
+		StructDefn* target = 0;
+		std::vector<FnCallArgument> arguments;
+	};
+
+	struct ClassConstructorCall : Expr
+	{
+		ClassConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "class constructor call"; }
+		~ClassConstructorCall() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		ClassDefn* target = 0;
 		std::vector<FnCallArgument> arguments;
 	};
 

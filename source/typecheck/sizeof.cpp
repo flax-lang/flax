@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "pts.h"
+#include "errors.h"
 #include "ir/type.h"
 #include "typecheck.h"
 
@@ -20,6 +21,10 @@ sst::Expr* ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		if(auto ty = fs->convertParserTypeToFIR(pts::NamedType::create(id->name), true))
 			out = ty;
+	}
+	else if(auto n = dcast(ast::LitNumber, this->expr))
+	{
+		error(this->expr, "Literal numbers cannot be sized");
 	}
 
 	if(!out)

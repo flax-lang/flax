@@ -159,7 +159,8 @@ namespace parser
 
 	ast::InitFunctionDefn* parseInitFunction(State& st)
 	{
-		iceAssert(st.front().str() == "init");
+		Token tok;
+		iceAssert((tok = st.front()).str() == "init");
 		st.pop();
 
 		auto [ args, generics, retty, isvar, loc ] = parseFunctionLookingDecl(st);
@@ -170,9 +171,8 @@ namespace parser
 			error(loc, "Class initialisers cannot have a return type");
 
 		// ok loh
-		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(loc);
+		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(tok.loc);
 		ret->args = args;
-		ret->name = "init";
 		ret->body = parseBracedBlock(st);
 
 		return ret;
