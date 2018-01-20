@@ -439,11 +439,38 @@ namespace sst
 
 
 
-	TypeDefn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs)
+	Defn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs)
 	{
 		iceAssert(errs);
 
-		if(auto str = dcast(StructDefn, typedf))
+		//! ACHTUNG: DO NOT REARRANGE !
+		//* NOTE: ClassDefn inherits from StructDefn *
+
+		if(auto cls = dcast(ClassDefn, typedf))
+		{
+			// class initialisers must be called with named arguments only.
+			for(const auto& arg : arguments)
+			{
+				if(arg.name.empty())
+					error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name);
+			}
+
+			PrettyError errs;
+			auto cand = this->resolveFunctionFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
+				return dcast(sst::Defn, e);
+			}), arguments, &errs, true);
+
+			if(!cand)
+			{
+				exitless_error(this->loc(), "Class '%s' has no initialiser matching the given arguments", cls->id.name);
+				exitless_error(this->loc(), "%s", errs.errorStr);
+				for(auto inf : errs.infoStrs)
+					info(inf.first, "%s", inf.second);
+			}
+
+			return cand;
+		}
+		else if(auto str = dcast(StructDefn, typedf))
 		{
 			// ok, structs get named arguments, and no un-named arguments.
 			// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
@@ -543,11 +570,11 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 
 	iceAssert(target);
 
-	if(auto typedf = dcast(sst::TypeDefn, target))
+	if(auto strdf = dcast(sst::StructDefn, target))
 	{
-		auto ret = new sst::ConstructorCall(this->loc, typedf->type);
+		auto ret = new sst::StructConstructorCall(this->loc, strdf->type);
 
-		ret->target = typedf;
+		ret->target = strdf;
 		ret->arguments = arguments;
 
 		return ret;
@@ -555,6 +582,19 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 	else
 	{
 		iceAssert(target->type->isFunctionType());
+
+		if(auto fnd = dcast(sst::FunctionDefn, target); fnd && fnd->id.name == "@init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
+		{
+			// ok, great... I guess?
+			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);
+			ret->arguments = arguments;
+			ret->target = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
+			iceAssert(ret->target);
+
+			return ret;
+		}
+
+
 
 		auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
 		ret->name = this->name;

@@ -132,7 +132,6 @@ namespace ast
 
 		using Arg = FuncDefn::Arg;
 
-		std::string name;
 		std::vector<Arg> args;
 
 		Block* body = 0;
@@ -347,7 +346,7 @@ namespace ast
 		std::string name;
 		std::map<std::string, TypeConstraints_t> generics;
 
-		std::vector<FuncDefn*> initialisers;
+		std::vector<InitFunctionDefn*> initialisers;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
