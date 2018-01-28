@@ -168,6 +168,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(00586be)`
+- add barebones inheritance on classes. Barebones-ness is explained in `rants.md`
+
 `(f7a72b6)`
 - fix variable decompositions
 - enable the decomposition test we had.
