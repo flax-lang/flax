@@ -30,22 +30,23 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(this->type && this->type->isClassType());
 
 	std::vector<fir::Function*> meths;
+	std::vector<fir::Function*> inits;
+
 
 	for(auto method : this->methods)
 	{
 		auto f = dynamic_cast<fir::Function*>(method->codegen(cs).value);
 		meths.push_back(f);
+
+		if(method->id.name == "init")
+			inits.push_back(f);
 	}
 
-	for(auto init : this->initialisers)
-	{
-		auto f = dynamic_cast<fir::Function*>(init->codegen(cs).value);
-		meths.push_back(f);
-	}
 
 
 	auto clsty = this->type->toClassType();
 	clsty->setMethods(meths);
+	clsty->setInitialiserFunctions(inits);
 
 
 	for(auto sm : this->staticFields)
@@ -82,6 +83,8 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		cs->irb.ReturnVoid();
 		this->inlineInitFunction = func;
+
+		clsty->setInlineInitialiser(func);
 	}
 	cs->irb.setCurrentBlock(restore);
 

@@ -12,7 +12,7 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(std::vector<Type*> args, Type* ret, bool iscva)
+	FunctionType::FunctionType(const std::vector<Type*>& args, Type* ret, bool iscva)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;
@@ -26,7 +26,7 @@ namespace fir
 
 
 	// functions
-	FunctionType* FunctionType::getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::getCVariadicFunc(const std::vector<Type*>& args, Type* ret, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -36,7 +36,7 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc)
 	{
 		std::vector<Type*> dargs;
 		for(auto a : args)
@@ -50,7 +50,7 @@ namespace fir
 
 
 
-	FunctionType* FunctionType::get(std::vector<Type*> args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::get(const std::vector<Type*>& args, Type* ret, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -60,7 +60,7 @@ namespace fir
 		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
 	}
 
-	FunctionType* FunctionType::get(std::initializer_list<Type*> args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::get(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc)
 	{
 		std::vector<Type*> dargs;
 		for(auto a : args)

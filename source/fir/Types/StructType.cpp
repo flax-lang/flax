@@ -10,7 +10,7 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, bool ispacked)
+	StructType::StructType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked)
 	{
 		this->structName = name;
 		this->isTypePacked = ispacked;
@@ -18,7 +18,7 @@ namespace fir
 		this->setBody(mems);
 	}
 
-	StructType* StructType::create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members, FTContext* tc, bool packed)
+	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, FTContext* tc, bool packed)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
@@ -109,21 +109,21 @@ namespace fir
 		return this->typeList[n];
 	}
 
-	Type* StructType::getElement(std::string name)
+	Type* StructType::getElement(const std::string& name)
 	{
 		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
 
 		return this->structMembers[name];
 	}
 
-	size_t StructType::getElementIndex(std::string name)
+	size_t StructType::getElementIndex(const std::string& name)
 	{
 		iceAssert(this->structMembers.find(name) != this->structMembers.end() && "no such member");
 
 		return this->indexMap[name];
 	}
 
-	bool StructType::hasElementWithName(std::string name)
+	bool StructType::hasElementWithName(const std::string& name)
 	{
 		return this->indexMap.find(name) != this->indexMap.end();
 	}
@@ -134,7 +134,7 @@ namespace fir
 	}
 
 
-	void StructType::setBody(std::vector<std::pair<std::string, Type*>> members)
+	void StructType::setBody(const std::vector<std::pair<std::string, Type*>>& members)
 	{
 		size_t i = 0;
 		for(auto p : members)

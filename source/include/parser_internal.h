@@ -147,6 +147,44 @@ namespace parser
 		}
 
 
+		void enterFunctionBody()
+		{
+			this->bodyNesting.push_back(1);
+		}
+
+		void leaveFunctionBody()
+		{
+			iceAssert(this->bodyNesting.size() > 0 && this->bodyNesting.back() == 1);
+			this->bodyNesting.pop_back();
+		}
+
+		bool isInFunctionBody()
+		{
+			iceAssert(this->bodyNesting.size() > 0);
+			return this->bodyNesting.back() == 1;
+		}
+
+
+
+		void enterStructBody()
+		{
+			this->bodyNesting.push_back(2);
+		}
+
+		void leaveStructBody()
+		{
+			iceAssert(this->bodyNesting.size() > 0 && this->bodyNesting.back() == 2);
+			this->bodyNesting.pop_back();
+		}
+
+		bool isInStructBody()
+		{
+			iceAssert(this->bodyNesting.size() > 0);
+			return this->bodyNesting.back() == 2;
+		}
+
+
+
 		// implicitly coerce to location, so we can
 		// error(st, ...)
 		operator const Location&() const
@@ -161,6 +199,10 @@ namespace parser
 		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		private:
+			// 1 = inside function
+			// 2 = inside struct
+			std::vector<int> bodyNesting;
+
 			size_t index = 0;
 			const lexer::TokenList& tokens;
 	};
@@ -187,7 +229,7 @@ namespace parser
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
 	ast::StructDefn* parseStruct(State& st);
-	ast::StaticStmt* parseStaticStmt(State& st);
+	ast::StaticDecl* parseStaticDecl(State& st);
 
 	ast::InitFunctionDefn* parseInitFunction(State& st);
 

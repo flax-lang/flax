@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	TupleType::TupleType(std::vector<Type*> mems) : members(mems)
+	TupleType::TupleType(const std::vector<Type*>& mems) : members(mems)
 	{
 	}
 
@@ -48,12 +48,12 @@ namespace fir
 
 
 
-	TupleType* TupleType::get(std::initializer_list<Type*> mems, FTContext* tc)
+	TupleType* TupleType::get(const std::initializer_list<Type*>& mems, FTContext* tc)
 	{
 		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()), tc);
 	}
 
-	TupleType* TupleType::get(std::vector<Type*> mems, FTContext* tc)
+	TupleType* TupleType::get(const std::vector<Type*>& mems, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");

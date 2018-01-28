@@ -181,7 +181,7 @@ std::string Identifier::mangledName() const
 
 namespace tinyformat
 {
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, VisibilityLevel vl)
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl)
 	{
 		switch(vl)
 		{
@@ -190,6 +190,11 @@ namespace tinyformat
 			case VisibilityLevel::Private:	out << "private"; break;
 			case VisibilityLevel::Internal:	out << "internal"; break;
 		}
+	}
+
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id)
+	{
+		out << id.str();
 	}
 }
 
