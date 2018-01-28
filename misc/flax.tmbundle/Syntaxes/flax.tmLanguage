@@ -641,7 +641,7 @@
 					<key>comment</key>
 					<string>other keyword</string>
 					<key>match</key>
-					<string>\b(associativity|didSet|get|inout|mutating|none|nonmutating|operator|override|set|unowned((un)?safe)?|weak|willSet)\b</string>
+					<string>\b(open|virtual|operator|override|unowned((un)?safe)?|weak)\b</string>
 					<key>name</key>
 					<string>keyword.other.flax</string>
 				</dict>

@@ -584,7 +584,9 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 	{
 		iceAssert(target->type->isFunctionType());
 
-		if(auto fnd = dcast(sst::FunctionDefn, target); fnd && fnd->id.name == "@init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
+		//* note: we check for this->name != "init" because when we explicitly call an init function, we don't want the extra stuff that
+		//* comes with that -- we'll just treat it as a normal function call.
+		if(auto fnd = dcast(sst::FunctionDefn, target); this->name != "init" && fnd && fnd->id.name == "init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
 		{
 			// ok, great... I guess?
 			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);

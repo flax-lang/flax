@@ -29,6 +29,7 @@ namespace ast
 {
 	struct Stmt;
 	struct FuncDefn;
+	struct FunctionCall;
 }
 
 namespace sst
@@ -145,6 +146,8 @@ namespace sst
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
+
+		// Expr* typecheckClassMethodCall(ClassDefn* cls, ast::FunctionCall* call);
 
 		struct PrettyError
 		{

@@ -197,7 +197,7 @@ std::string __error_gen_part2(const HighlightOptions& ops)
 
 
 
-#define MAX_BACKTRACE_DEPTH 2
+#define MAX_BACKTRACE_DEPTH 0
 
 //! prevents re-entrant calling
 static bool isBacktracing = false;
@@ -205,7 +205,7 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 {
 	std::string ret;
 
-	if(isBacktracing) return ret;
+	if(isBacktracing || MAX_BACKTRACE_DEPTH == 0) return ret;
 
 	isBacktracing = true;
 

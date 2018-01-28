@@ -35,6 +35,8 @@ namespace parser
 		if(st.front() != TT::LBrace)
 			expectedAfter(st, "'{'", "'struct'", st.front().str());
 
+		st.enterStructBody();
+
 		auto blk = parseBracedBlock(st);
 		for(auto s : blk->statements)
 		{
@@ -69,6 +71,7 @@ namespace parser
 		for(auto s : blk->deferredStatements)
 			error(s, "Unsupported expression or statement in struct body");
 
+		st.leaveStructBody();
 		return defn;
 	}
 
@@ -95,8 +98,31 @@ namespace parser
 		}
 
 		st.skipWS();
+		if(st.front() == TT::Colon)
+		{
+			// the inheritance list.
+			st.eat();
+
+			while(true)
+			{
+				defn->bases.push_back(parseType(st));
+				if(st.front() == TT::Comma)
+				{
+					st.pop();
+					continue;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		st.skipWS();
 		if(st.front() != TT::LBrace)
 			expectedAfter(st, "'{'", "'class'", st.front().str());
+
+		st.enterStructBody();
 
 		auto blk = parseBracedBlock(st);
 		for(auto s : blk->statements)
@@ -116,7 +142,7 @@ namespace parser
 			{
 				defn->nestedTypes.push_back(t);
 			}
-			else if(auto st = dcast(StaticStmt, s))
+			else if(auto st = dcast(StaticDecl, s))
 			{
 				if(auto fn = dcast(FuncDefn, st->actual))
 					defn->staticMethods.push_back(fn);
@@ -140,6 +166,7 @@ namespace parser
 		for(auto s : blk->deferredStatements)
 			error(s, "Unsupported expression or statement in class body");
 
+		st.leaveStructBody();
 		return defn;
 	}
 
@@ -233,14 +260,14 @@ namespace parser
 
 
 
-	StaticStmt* parseStaticStmt(State& st)
+	StaticDecl* parseStaticDecl(State& st)
 	{
 		iceAssert(st.front() == TT::Static);
 		st.eat();
 
 		auto stmt = parseStmt(st);
 		if(dcast(FuncDefn, stmt) || dcast(VarDefn, stmt))
-			return new StaticStmt(stmt);
+			return new StaticDecl(stmt);
 
 		else
 			error(stmt, "'static' can only be used on function and field definitions inside class bodies");

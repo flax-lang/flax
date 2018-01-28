@@ -10,8 +10,10 @@
 namespace fir
 {
 	struct Type;
-	struct Function;
+	struct ClassType;
 	struct FunctionType;
+
+	struct Function;
 	struct ConstantValue;
 }
 
@@ -630,6 +632,9 @@ namespace sst
 		~ClassDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+
+		ClassDefn* baseClass = 0;
 
 		fir::Function* inlineInitFunction = 0;
 		std::vector<FunctionDefn*> initialisers;

@@ -77,15 +77,15 @@ namespace fir
 		friend FTContext* createFTContext();
 
 		// stuff
-		static Type* fromBuiltin(std::string builtin, FTContext* tc = 0);
+		static Type* fromBuiltin(const std::string& builtin, FTContext* tc = 0);
 
 		static bool areTypesEqual(Type* a, Type* b);
 
-		static std::string typeListToString(std::vector<Type*> types);
-		static std::string typeListToString(std::initializer_list<Type*> types);
+		static std::string typeListToString(const std::vector<Type*>& types);
+		static std::string typeListToString(const std::initializer_list<Type*>& types);
 
-		static bool areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b);
-		static bool areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b);
+		static bool areTypeListsEqual(const std::vector<Type*>& a, const std::vector<Type*>& b);
+		static bool areTypeListsEqual(const std::initializer_list<Type*>& a, const std::initializer_list<Type*>& b);
 
 		// various
 		virtual std::string str() = 0;
@@ -438,15 +438,15 @@ namespace fir
 
 		// protected constructor
 		protected:
-		TupleType(std::vector<Type*> mems);
+		TupleType(const std::vector<Type*>& mems);
 		virtual ~TupleType() override { }
 
 		// fields (protected)
 		std::vector<Type*> members;
 
 		public:
-		static TupleType* get(std::initializer_list<Type*> members, FTContext* tc = 0);
-		static TupleType* get(std::vector<Type*> members, FTContext* tc = 0);
+		static TupleType* get(const std::initializer_list<Type*>& members, FTContext* tc = 0);
+		static TupleType* get(const std::vector<Type*>& members, FTContext* tc = 0);
 	};
 
 
@@ -460,12 +460,12 @@ namespace fir
 		Identifier getTypeName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
-		Type* getElement(std::string name);
-		bool hasElementWithName(std::string name);
-		size_t getElementIndex(std::string name);
+		Type* getElement(const std::string& name);
+		bool hasElementWithName(const std::string& name);
+		size_t getElementIndex(const std::string& name);
 		std::vector<Type*> getElements();
 
-		void setBody(std::vector<std::pair<std::string, Type*>> members);
+		void setBody(const std::vector<std::pair<std::string, Type*>>& members);
 
 
 
@@ -475,7 +475,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		StructType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, bool ispacked);
+		StructType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked);
 		virtual ~StructType() override { }
 
 		// fields (protected)
@@ -488,7 +488,7 @@ namespace fir
 		// static funcs
 		public:
 		static StructType* createWithoutBody(const Identifier& name, FTContext* tc = 0, bool isPacked = false);
-		static StructType* create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members, FTContext* tc = 0,
+		static StructType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, FTContext* tc = 0,
 			bool isPacked = false);
 	};
 
@@ -504,17 +504,26 @@ namespace fir
 		Identifier getTypeName();
 		size_t getElementCount();
 		Type* getElementN(size_t n);
-		Type* getElement(std::string name);
-		bool hasElementWithName(std::string name);
-		size_t getElementIndex(std::string name);
+		Type* getElement(const std::string& name);
+		bool hasElementWithName(const std::string& name);
+		size_t getElementIndex(const std::string& name);
 		std::vector<Type*> getElements();
 
 		std::vector<Function*> getMethods();
 		std::vector<Function*> getMethodsWithName(std::string id);
 		Function* getMethodWithType(FunctionType* ftype);
 
-		void setMembers(std::vector<std::pair<std::string, Type*>> members);
-		void setMethods(std::vector<Function*> methods);
+		std::vector<Function*> getInitialiserFunctions();
+		void setInitialiserFunctions(const std::vector<Function*>& list);
+
+		Function* getInlineInitialiser();
+		void setInlineInitialiser(Function* fn);
+
+		void setMembers(const std::vector<std::pair<std::string, Type*>>& members);
+		void setMethods(const std::vector<Function*>& methods);
+
+		ClassType* getBaseClass();
+		void setBaseClass(ClassType* ty);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -522,23 +531,29 @@ namespace fir
 
 		// protected constructor
 		protected:
-		ClassType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, std::vector<Function*> methods);
+		ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
+			const std::vector<Function*>& inits);
+
 		virtual ~ClassType() override { }
 
 		// fields (protected)
 		Identifier className;
 		std::vector<Type*> typeList;
 		std::vector<Function*> methodList;
+		std::vector<Function*> initialiserList;
 
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> classMembers;
 		std::unordered_map<std::string, std::vector<Function*>> classMethodMap;
 
+		ClassType* baseClass = 0;
+		Function* inlineInitialiser = 0;
+
 		// static funcs
 		public:
 		static ClassType* createWithoutBody(const Identifier& name, FTContext* tc = 0);
-		static ClassType* create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members,
-			std::vector<Function*> methods, FTContext* tc = 0);
+		static ClassType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
+			const std::vector<Function*>& methods, const std::vector<Function*>& inits, FTContext* tc = 0);
 	};
 
 
@@ -698,7 +713,7 @@ namespace fir
 
 		// protected constructor
 		protected:
-		FunctionType(std::vector<Type*> args, Type* ret, bool iscva);
+		FunctionType(const std::vector<Type*>& args, Type* ret, bool iscva);
 		virtual ~FunctionType() override { }
 
 		// fields (protected)
@@ -709,11 +724,11 @@ namespace fir
 
 		// static funcs
 		public:
-		static FunctionType* getCVariadicFunc(std::vector<Type*> args, Type* ret, FTContext* tc = 0);
-		static FunctionType* getCVariadicFunc(std::initializer_list<Type*> args, Type* ret, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(const std::vector<Type*>& args, Type* ret, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc = 0);
 
-		static FunctionType* get(std::vector<Type*> args, Type* ret, FTContext* tc = 0);
-		static FunctionType* get(std::initializer_list<Type*> args, Type* ret, FTContext* tc = 0);
+		static FunctionType* get(const std::vector<Type*>& args, Type* ret, FTContext* tc = 0);
+		static FunctionType* get(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc = 0);
 	};
 
 

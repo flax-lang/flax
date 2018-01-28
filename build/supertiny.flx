@@ -9,42 +9,53 @@ import "math" as _
 
 class Animal
 {
-	init(sound: string, weight: f64)
+	init(w: f64)
 	{
-		self.sound = sound
-		self.weight = weight * 2
+		self.weight = w
 	}
 
-	init(isCute: bool)
+	fn makeNoise()
 	{
-		self.sound = "what does the fox say?"
-		self.weight = 30.49
-
-		cute = isCute
+		printf("some generic sound\n")
 	}
 
-	init()
-	{
-		sound = "squish"
-		weight = 10
-		cute = false
-	}
 
-	var sound: string
 	var weight: f64
 	var cute: bool = true
-
-	static var x: string = "BAH"
 }
+
+class Dog : Animal
+{
+	init()
+	{
+		init(300)
+		printf("make dog (w = %f)\n", self.weight)
+	}
+
+	init(w: f64)
+	{
+		self.weight = w
+	}
+
+	fn makeNoise()
+	{
+		printf("bark bark (%f)\n", self.weight)
+	}
+}
+
 
 @entry fn main()
 {
-	let dog = Animal(isCute: false)
-	Animal.x = "hello"
-
-	printf("%s\n", Animal.x)
-	printf("%s / %d / %f\n", dog.sound, dog.cute, dog.weight)
+	let dog = Dog()
+	dog.makeNoise()
 }
+
+
+
+
+
+
+
 
 
 

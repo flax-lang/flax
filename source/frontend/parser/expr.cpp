@@ -107,8 +107,7 @@ namespace parser
 					return parseEnum(st);
 
 				case TT::Static:
-					st.pop();
-					return new StaticStmt(parseStmt(st));
+					return parseStaticDecl(st);
 
 				case TT::Dealloc:
 					return parseDealloc(st);
@@ -138,7 +137,7 @@ namespace parser
 					error(st, "Export declaration must be the first non-comment line in the file");
 
 				default:
-					if(tok.type == TT::Identifier && tok.str() == "init")
+					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
 						return parseInitFunction(st);
 
 					return parseExpr(st);

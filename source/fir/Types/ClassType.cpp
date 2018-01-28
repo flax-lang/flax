@@ -11,22 +11,24 @@
 namespace fir
 {
 	// structs
-	ClassType::ClassType(const Identifier& name, std::vector<std::pair<std::string, Type*>> mems, std::vector<Function*> methods)
+	ClassType::ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
+		const std::vector<Function*>& inits)
 	{
 		this->className = name;
 
 		this->setMembers(mems);
 		this->setMethods(methods);
+		this->setInitialiserFunctions(inits);
 	}
 
 
-	ClassType* ClassType::create(const Identifier& name, std::vector<std::pair<std::string, Type*>> members,
-		std::vector<Function*> methods, FTContext* tc)
+	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
+		const std::vector<Function*>& methods, const std::vector<Function*>& inits, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
-		ClassType* type = new ClassType(name, members, methods);
+		ClassType* type = new ClassType(name, members, methods, inits);
 
 		// special: need to check if new type has the same name
 		for(auto t : tc->typeCache)
@@ -64,7 +66,7 @@ namespace fir
 		}
 
 		// if not, create a new one.
-		return ClassType::create(name, { }, { }, tc);
+		return ClassType::create(name, { }, { }, { }, tc);
 	}
 
 
@@ -113,24 +115,74 @@ namespace fir
 		return this->typeList[n];
 	}
 
-	Type* ClassType::getElement(std::string name)
+	Type* ClassType::getElement(const std::string& name)
 	{
-		iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
+		auto cls = this;
+		while(cls->classMembers.find(name) == cls->classMembers.end())
+			cls = cls->baseClass;
 
-		return this->classMembers[name];
+		iceAssert(cls && "no such member");
+		return cls->classMembers[name];
+
+		// iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
+
+		// return this->classMembers[name];
 	}
 
-	size_t ClassType::getElementIndex(std::string name)
-	{
-		iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
 
-		return this->indexMap[name];
+
+	size_t ClassType::getElementIndex(const std::string& name)
+	{
+		auto cls = this;
+		while(cls->classMembers.find(name) == cls->classMembers.end())
+			cls = cls->baseClass;
+
+		iceAssert(cls && "no such member");
+
+		// debuglog("index of %s = %d\n", name, cls->indexMap[name]);
+
+		return cls->indexMap[name];
+		// iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
+
+		// return this->indexMap[name];
 	}
 
-	bool ClassType::hasElementWithName(std::string name)
+	void ClassType::setMembers(const std::vector<std::pair<std::string, Type*>>& members)
 	{
-		return this->indexMap.find(name) != this->indexMap.end();
+		size_t i = 0;
+		{
+			auto cls = this->baseClass;
+			while(cls)
+			{
+				i += cls->getElementCount();
+				cls = cls->baseClass;
+			}
+		}
+
+
+		for(auto p : members)
+		{
+			this->classMembers[p.first] = p.second;
+			this->indexMap[p.first] = i;
+			this->typeList.push_back(p.second);
+
+			i++;
+		}
 	}
+
+	bool ClassType::hasElementWithName(const std::string& name)
+	{
+		auto cls = this;
+		while(cls->classMembers.find(name) == cls->classMembers.end())
+			cls = cls->baseClass;
+
+		return cls != 0;
+
+
+		// return this->indexMap.find(name) != this->indexMap.end();
+	}
+
+
 
 	std::vector<Type*> ClassType::getElements()
 	{
@@ -138,6 +190,10 @@ namespace fir
 	}
 
 
+	std::vector<Function*> ClassType::getInitialiserFunctions()
+	{
+		return this->initialiserList;
+	}
 
 	std::vector<Function*> ClassType::getMethods()
 	{
@@ -167,26 +223,46 @@ namespace fir
 	}
 
 
-	void ClassType::setMembers(std::vector<std::pair<std::string, Type*>> members)
-	{
-		size_t i = 0;
-		for(auto p : members)
-		{
-			this->classMembers[p.first] = p.second;
-			this->indexMap[p.first] = i;
-			this->typeList.push_back(p.second);
-
-			i++;
-		}
-	}
-
-	void ClassType::setMethods(std::vector<Function*> methods)
+	void ClassType::setMethods(const std::vector<Function*>& methods)
 	{
 		for(auto m : methods)
 		{
 			this->methodList.push_back(m);
 			this->classMethodMap[m->getName().name].push_back(m);
 		}
+	}
+
+
+	void ClassType::setInitialiserFunctions(const std::vector<Function*>& inits)
+	{
+		for(auto m : inits)
+		{
+			this->initialiserList.push_back(m);
+			this->classMethodMap[m->getName().name].push_back(m);
+		}
+	}
+
+
+	ClassType* ClassType::getBaseClass()
+	{
+		return this->baseClass;
+	}
+
+	void ClassType::setBaseClass(ClassType* ty)
+	{
+		this->baseClass = ty;
+	}
+
+
+
+	Function* ClassType::getInlineInitialiser()
+	{
+		return this->inlineInitialiser;
+	}
+
+	void ClassType::setInlineInitialiser(Function* fn)
+	{
+		this->inlineInitialiser = fn;
 	}
 }
 

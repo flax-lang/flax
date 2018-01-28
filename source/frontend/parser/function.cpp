@@ -122,7 +122,12 @@ namespace parser
 		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
 			expected(st, "'{' to begin function body", st.front().str());
 
-		defn->body = parseBracedBlock(st);
+		st.enterFunctionBody();
+		{
+			defn->body = parseBracedBlock(st);
+		}
+		st.leaveFunctionBody();
+
 		return defn;
 	}
 
@@ -173,7 +178,12 @@ namespace parser
 		// ok loh
 		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(tok.loc);
 		ret->args = args;
-		ret->body = parseBracedBlock(st);
+
+		st.enterFunctionBody();
+		{
+			ret->body = parseBracedBlock(st);
+		}
+		st.leaveFunctionBody();
 
 		return ret;
 	}
