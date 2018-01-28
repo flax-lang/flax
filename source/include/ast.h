@@ -123,18 +123,21 @@ namespace ast
 		bool noMangle = false;
 	};
 
-	struct InitFunctionDefn : Stmt
+	struct InitFunctionDefn : Declarable
 	{
-		InitFunctionDefn(const Location& l) : Stmt(l) { this->readableName = "class initialiser definition"; }
+		InitFunctionDefn(const Location& l) : Declarable(l) { this->readableName = "class initialiser definition"; }
 		~InitFunctionDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		using Arg = FuncDefn::Arg;
 
 		std::vector<Arg> args;
 
 		Block* body = 0;
+
+		FuncDefn* actualDefn = 0;
 	};
 
 	struct ForeignFuncDefn : Stmt
@@ -300,14 +303,26 @@ namespace ast
 	};
 
 
-	struct StaticStmt : Stmt
+	struct StaticDecl : Stmt
 	{
-		StaticStmt(Stmt* s) : Stmt(s->loc), actual(s) { this->readableName = "static declaration"; }
-		~StaticStmt() { }
+		StaticDecl(Stmt* s) : Stmt(s->loc), actual(s) { this->readableName = "static declaration"; }
+		~StaticDecl() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inf = 0) override { return this->actual->typecheck(fs, inf); }
 
 		Stmt* actual = 0;
+	};
+
+
+	struct VirtualDecl : Stmt
+	{
+		VirtualDecl(Stmt* s) : Stmt(s->loc), actual(s) { this->readableName = "virtual declaration"; }
+		~VirtualDecl() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inf = 0) override { return this->actual->typecheck(fs, inf); }
+
+		Stmt* actual = 0;
+		bool isOverride = false;
 	};
 
 
@@ -328,6 +343,7 @@ namespace ast
 		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::string name;
+		std::vector<pts::Type*> bases;
 		std::map<std::string, TypeConstraints_t> generics;
 
 		std::vector<VarDefn*> fields;
@@ -344,6 +360,7 @@ namespace ast
 		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::string name;
+		std::vector<pts::Type*> bases;
 		std::map<std::string, TypeConstraints_t> generics;
 
 		std::vector<InitFunctionDefn*> initialisers;

@@ -159,6 +159,12 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
+	return this->actualDefn->typecheck(fs, infer);
+}
+
+
+void ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+{
 	//* so here's the thing
 	//* basically this init function thingy is just a normal function definition
 	//* but due to the way the AST was built, and because it's actually slightly less messy IMO,
@@ -170,14 +176,15 @@ sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* 
 	//* we don't want to be carrying too many distinct types around in SST nodes.
 
 
-	auto fake = new ast::FuncDefn(this->loc);
+	this->actualDefn = new ast::FuncDefn(this->loc);
 
-	fake->name = "@init";
-	fake->args = this->args;
-	fake->body = this->body;
-	fake->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+	this->actualDefn->name = "init";
+	this->actualDefn->args = this->args;
+	this->actualDefn->body = this->body;
+	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
 
-	return fake->typecheck(fs, infer);
+	this->actualDefn->generateDeclaration(fs, infer);
+	this->generatedDefn = this->actualDefn->generatedDefn;
 }
 
 
@@ -196,6 +203,24 @@ void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* inf
 
 	auto cls = fir::ClassType::createWithoutBody(defn->id);
 	defn->type = cls;
+
+	if(this->bases.size() > 0)
+	{
+		auto base = fs->convertParserTypeToFIR(this->bases[0]);
+		if(!base->isClassType())
+			error(this, "Class '%s' can only inherit from a class, which '%s' is not", this->name, base);
+
+		cls->setBaseClass(base->toClassType());
+
+		if(this->bases.size() > 1)
+			error(this, "Cannot inherit from more than one class");
+
+		auto basedef = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
+		iceAssert(basedef);
+
+		defn->baseClass = basedef;
+	}
+
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
@@ -228,7 +253,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
-
 	for(auto t : this->nestedTypes)
 	{
 		auto st = dynamic_cast<sst::TypeDefn*>(t->typecheck(fs));
@@ -246,6 +270,27 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		tys.push_back({ v->id.name, v->type });
 
 		checkFieldRecursion(fs, cls, v->type, v->loc);
+
+		std::function<void (sst::ClassDefn*, sst::VarDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::VarDefn* fld) -> auto {
+			while(cls)
+			{
+				for(auto bf : cls->fields)
+				{
+					if(bf->id.name == fld->id.name)
+					{
+						exitless_error(fld, "Redefinition of field '%s' (with type '%s'), when it exists in the base class '%s'", fld->id.name, fld->type, cls->id);
+
+						info(bf, "'%s' was previously defined in the base class here:", fld->id.name);
+						info(cls, "Base class '%s' was defined here:", cls->id);
+						doTheExit();
+					}
+				}
+
+				cls = cls->baseClass;
+			}
+		};
+
+		checkDupe(defn->baseClass, v);
 	}
 
 	for(auto f : this->staticFields)
@@ -265,6 +310,9 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		for(auto m : this->methods)
 		{
+			if(m->name == "init")
+				error(m, "Cannot have methods named 'init' in a class.");
+
 			m->generateDeclaration(fs, cls);
 			iceAssert(m->generatedDefn);
 
@@ -273,10 +321,19 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		for(auto it : this->initialisers)
 		{
-			auto initdefn = dcast(sst::FunctionDefn, it->typecheck(fs, cls));
-			iceAssert(initdefn);
+			// auto initdefn = dcast(sst::FunctionDefn, it->typecheck(fs, cls));
+			// iceAssert(initdefn);
 
-			defn->initialisers.push_back(initdefn);
+			// defn->initialisers.push_back(initdefn);
+			// defn->methods.push_back(dcast(sst::FunctionDefn, initdefn));
+
+			it->generateDeclaration(fs, cls);
+
+			auto gd = dcast(sst::FunctionDefn, it->generatedDefn);
+			iceAssert(gd);
+
+			defn->methods.push_back(gd);
+			defn->initialisers.push_back(gd);
 		}
 	}
 	fs->leaveStructBody();
@@ -295,6 +352,9 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->enterStructBody(defn);
 	{
 		for(auto m : this->methods)
+			m->typecheck(fs, cls);
+
+		for(auto m : this->initialisers)
 			m->typecheck(fs, cls);
 	}
 	fs->leaveStructBody();

@@ -71,6 +71,61 @@ namespace lexer
 	}
 
 
+	static std::unordered_map<util::string_view, TokenType> keywordMap;
+	static void initKeywordMap()
+	{
+		if(keywordMap.size() > 0) return;
+
+		keywordMap["as"]        = TokenType::As;
+		keywordMap["do"]        = TokenType::Do;
+		keywordMap["if"]        = TokenType::If;
+		keywordMap["is"]        = TokenType::Is;
+		keywordMap["let"]       = TokenType::Val;
+		keywordMap["var"]       = TokenType::Var;
+		keywordMap["get"]       = TokenType::Get;
+		keywordMap["set"]       = TokenType::Set;
+		keywordMap["for"]       = TokenType::For;
+		keywordMap["fn"]        = TokenType::Func;
+		keywordMap["else"]      = TokenType::Else;
+		keywordMap["true"]      = TokenType::True;
+		keywordMap["enum"]      = TokenType::Enum;
+		keywordMap["null"]      = TokenType::Null;
+		keywordMap["case"]      = TokenType::Case;
+		keywordMap["defer"]     = TokenType::Defer;
+		keywordMap["alloc"]     = TokenType::Alloc;
+		keywordMap["false"]     = TokenType::False;
+		keywordMap["while"]     = TokenType::While;
+		keywordMap["break"]     = TokenType::Break;
+		keywordMap["class"]     = TokenType::Class;
+		keywordMap["struct"]    = TokenType::Struct;
+		keywordMap["import"]    = TokenType::Import;
+		keywordMap["public"]    = TokenType::Public;
+		keywordMap["switch"]    = TokenType::Switch;
+		keywordMap["return"]    = TokenType::Return;
+		keywordMap["export"]    = TokenType::Export;
+		keywordMap["sizeof"]    = TokenType::Sizeof;
+		keywordMap["typeof"]    = TokenType::Typeof;
+		keywordMap["typeid"]    = TokenType::Typeid;
+		keywordMap["static"]    = TokenType::Static;
+		keywordMap["free"]      = TokenType::Dealloc;
+		keywordMap["private"]   = TokenType::Private;
+		keywordMap["virtual"]   = TokenType::Virtual;
+		keywordMap["internal"]  = TokenType::Internal;
+		keywordMap["override"]  = TokenType::Override;
+		keywordMap["protocol"]  = TokenType::Protocol;
+		keywordMap["operator"]  = TokenType::Operator;
+		keywordMap["continue"]  = TokenType::Continue;
+		keywordMap["typealias"] = TokenType::TypeAlias;
+		keywordMap["extension"] = TokenType::Extension;
+		keywordMap["namespace"] = TokenType::Namespace;
+		keywordMap["ffi"]       = TokenType::ForeignFunc;
+	}
+
+
+
+
+
+
 	TokenType getNextToken(const util::FastVector<string_view>& lines, size_t* line, size_t* offset, const string_view& whole,
 		Location& pos, Token* out, bool crlf)
 	{
@@ -496,58 +551,17 @@ namespace lexer
 			size_t identLength = utf8iscategory(stream.data(), stream.size(),
 				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
 
-			bool isExclamation = (stream.size() - identLength > 0) && stream.substr(identLength).front() == '!';
-
+			// bool isExclamation = (stream.size() - identLength > 0) && stream.substr(identLength).front() == '!';
 
 			read = identLength;
 			tok.text = stream.substr(0, identLength);
 
-			// make this a little better maybe?
-			// check for keywords
-			if(compare(tok.text, "class"))				tok.type = TokenType::Class;
-			else if(compare(tok.text, "struct"))		tok.type = TokenType::Struct;
-			else if(compare(tok.text, "fn"))			tok.type = TokenType::Func;
-			else if(compare(tok.text, "import"))		tok.type = TokenType::Import;
-			else if(compare(tok.text, "export"))		tok.type = TokenType::Export;
-			else if(compare(tok.text, "var"))			tok.type = TokenType::Var;
-			else if(compare(tok.text, "let"))			tok.type = TokenType::Val;
-			else if(compare(tok.text, "for"))			tok.type = TokenType::For;
-			else if(compare(tok.text, "while"))			tok.type = TokenType::While;
-			else if(compare(tok.text, "if"))			tok.type = TokenType::If;
-			else if(compare(tok.text, "else"))			tok.type = TokenType::Else;
-			else if(compare(tok.text, "return"))		tok.type = TokenType::Return;
-			else if(compare(tok.text, "is"))			tok.type = TokenType::Is;
-			else if(compare(tok.text, "switch"))		tok.type = TokenType::Switch;
-			else if(compare(tok.text, "case"))			tok.type = TokenType::Case;
-			else if(compare(tok.text, "enum"))			tok.type = TokenType::Enum;
-			else if(compare(tok.text, "ffi"))			tok.type = TokenType::ForeignFunc;
-			else if(compare(tok.text, "true"))			tok.type = TokenType::True;
-			else if(compare(tok.text, "false"))			tok.type = TokenType::False;
-			else if(compare(tok.text, "static"))		tok.type = TokenType::Static;
-			else if(compare(tok.text, "break"))			tok.type = TokenType::Break;
-			else if(compare(tok.text, "continue"))		tok.type = TokenType::Continue;
-			else if(compare(tok.text, "do"))			tok.type = TokenType::Do;
-			else if(compare(tok.text, "defer"))			tok.type = TokenType::Defer;
-			else if(compare(tok.text, "public"))		tok.type = TokenType::Public;
-			else if(compare(tok.text, "private"))		tok.type = TokenType::Private;
-			else if(compare(tok.text, "internal"))		tok.type = TokenType::Internal;
-			else if(compare(tok.text, "alloc"))			tok.type = TokenType::Alloc;
-			else if(compare(tok.text, "free"))			tok.type = TokenType::Dealloc;
-			else if(compare(tok.text, "typeof"))		tok.type = TokenType::Typeof;
-			else if(compare(tok.text, "typeid"))		tok.type = TokenType::Typeid;
-			else if(compare(tok.text, "sizeof"))		tok.type = TokenType::Sizeof;
-			else if(compare(tok.text, "get"))			tok.type = TokenType::Get;
-			else if(compare(tok.text, "set"))			tok.type = TokenType::Set;
-			else if(compare(tok.text, "null"))			tok.type = TokenType::Null;
-			else if(compare(tok.text, "namespace"))		tok.type = TokenType::Namespace;
-			else if(compare(tok.text, "extension"))		tok.type = TokenType::Extension;
-			else if(compare(tok.text, "typealias"))		tok.type = TokenType::TypeAlias;
-			else if(compare(tok.text, "protocol"))		tok.type = TokenType::Protocol;
-			else if(compare(tok.text, "override"))		tok.type = TokenType::Override;
-			else if(compare(tok.text, "operator"))		tok.type = TokenType::Operator;
-			else if(compare(tok.text, "as"))			{ tok.type = TokenType::As; if(isExclamation) { read++; tok.type = TokenType::AsExclamation; } }
+			initKeywordMap();
+			if(auto it = keywordMap.find(tok.text); it != keywordMap.end())
+				tok.type = it->second;
 
-			else										tok.type = TokenType::Identifier;
+			else
+				tok.type = TokenType::Identifier;
 		}
 		else if(!stream.empty() && stream[0] == '"')
 		{
@@ -649,35 +663,35 @@ namespace lexer
 				switch(stream[0])
 				{
 					// for single-char things
-					case '\n':	tok.type = TokenType::NewLine;		break;
-					case '{':	tok.type = TokenType::LBrace;		break;
-					case '}':	tok.type = TokenType::RBrace;		break;
-					case '(':	tok.type = TokenType::LParen;		break;
-					case ')':	tok.type = TokenType::RParen;		break;
-					case '[':	tok.type = TokenType::LSquare;		break;
-					case ']':	tok.type = TokenType::RSquare;		break;
-					case '<':	tok.type = TokenType::LAngle;		break;
-					case '>':	tok.type = TokenType::RAngle;		break;
-					case '+':	tok.type = TokenType::Plus;			break;
-					case '-':	tok.type = TokenType::Minus;		break;
-					case '*':	tok.type = TokenType::Asterisk;		break;
-					case '/':	tok.type = TokenType::Divide;		break;
-					case '\'':	tok.type = TokenType::SQuote;		break;
-					case '.':	tok.type = TokenType::Period;		break;
-					case ',':	tok.type = TokenType::Comma;		break;
-					case ':':	tok.type = TokenType::Colon;		break;
-					case '=':	tok.type = TokenType::Equal;		break;
-					case '?':	tok.type = TokenType::Question;		break;
-					case '!':	tok.type = TokenType::Exclamation;	break;
-					case ';':	tok.type = TokenType::Semicolon;	break;
-					case '&':	tok.type = TokenType::Ampersand;	break;
-					case '%':	tok.type = TokenType::Percent;		break;
-					case '|':	tok.type = TokenType::Pipe;			break;
-					case '@':	tok.type = TokenType::At;			break;
-					case '#':	tok.type = TokenType::Pound;		break;
-					case '~':	tok.type = TokenType::Tilde;		break;
-					case '^':	tok.type = TokenType::Caret;		break;
-					case '$':	tok.type = TokenType::Dollar;		break;
+					case '\n':  tok.type = TokenType::NewLine;      break;
+					case '{':   tok.type = TokenType::LBrace;       break;
+					case '}':   tok.type = TokenType::RBrace;       break;
+					case '(':   tok.type = TokenType::LParen;       break;
+					case ')':   tok.type = TokenType::RParen;       break;
+					case '[':   tok.type = TokenType::LSquare;      break;
+					case ']':   tok.type = TokenType::RSquare;      break;
+					case '<':   tok.type = TokenType::LAngle;       break;
+					case '>':   tok.type = TokenType::RAngle;       break;
+					case '+':   tok.type = TokenType::Plus;         break;
+					case '-':   tok.type = TokenType::Minus;        break;
+					case '*':   tok.type = TokenType::Asterisk;     break;
+					case '/':   tok.type = TokenType::Divide;       break;
+					case '\'':  tok.type = TokenType::SQuote;       break;
+					case '.':   tok.type = TokenType::Period;       break;
+					case ',':   tok.type = TokenType::Comma;        break;
+					case ':':   tok.type = TokenType::Colon;        break;
+					case '=':   tok.type = TokenType::Equal;        break;
+					case '?':   tok.type = TokenType::Question;     break;
+					case '!':   tok.type = TokenType::Exclamation;  break;
+					case ';':   tok.type = TokenType::Semicolon;    break;
+					case '&':   tok.type = TokenType::Ampersand;    break;
+					case '%':   tok.type = TokenType::Percent;      break;
+					case '|':   tok.type = TokenType::Pipe;         break;
+					case '@':   tok.type = TokenType::At;           break;
+					case '#':   tok.type = TokenType::Pound;        break;
+					case '~':   tok.type = TokenType::Tilde;        break;
+					case '^':   tok.type = TokenType::Caret;        break;
+					case '$':   tok.type = TokenType::Dollar;       break;
 
 					default:
 						error(tok.loc, "Unknown token '%c'", stream[0]);

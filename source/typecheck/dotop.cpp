@@ -222,7 +222,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 
 			if(mcands.empty() && vcands.empty())
-				error(fc, "No method or field named '%s' in struct '%s'", fc->name, str->id.name);
+				error(fc, "No method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
 
 
 			TCS::PrettyError errs;
@@ -275,17 +275,30 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		else if(auto fld = dcast(ast::Ident, dotop->right))
 		{
 			auto name = fld->name;
-			for(auto f : str->fields)
-			{
-				if(f->id.name == name)
-				{
-					auto ret = new sst::FieldDotOp(dotop->loc, f->type);
-					ret->lhs = lhs;
-					ret->rhsIdent = name;
 
-					return ret;
+			{
+				auto copy = str;
+
+				while(copy)
+				{
+					for(auto f : copy->fields)
+					{
+						if(f->id.name == name)
+						{
+							auto ret = new sst::FieldDotOp(dotop->loc, f->type);
+							ret->lhs = lhs;
+							ret->rhsIdent = name;
+
+							return ret;
+						}
+					}
+
+					// ok, we didn't find it.
+					if(auto cls = dcast(sst::ClassDefn, copy); cls && cls->baseClass)
+						copy = cls->baseClass;
 				}
 			}
+
 
 			// check for method references
 			std::vector<sst::FunctionDefn*> meths;
@@ -352,7 +365,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 		}
 		else
 		{
-			error(dotop->right, "Unsupported right-side expression for dot-operator on struct '%s'", str->id.name);
+			error(dotop->right, "Unsupported right-side expression for dot-operator on struct/class '%s'", str->id.name);
 		}
 	}
 	else

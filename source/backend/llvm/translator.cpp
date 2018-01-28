@@ -91,8 +91,23 @@ namespace backend
 			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
 			std::vector<llvm::Type*> lmems;
-			for(auto a : ct->getElements())
-				lmems.push_back(typeToLlvm(a, mod));
+
+			std::function<void (fir::ClassType*, std::vector<llvm::Type*>*)> addMembers
+				= [&addMembers, &mod](fir::ClassType* cls, std::vector<llvm::Type*>* mems) -> auto {
+
+				if(!cls)
+					return;
+
+				addMembers(cls->getBaseClass(), mems);
+
+				for(auto f : cls->getElements())
+					mems->push_back(typeToLlvm(f, mod));
+			};
+
+			addMembers(ct, &lmems);
+
+			// for(auto a : ct->getElements())
+			// 	lmems.push_back(typeToLlvm(a, mod));
 
 			createdTypes[ct->getTypeName()]->setBody(lmems);
 			return createdTypes[ct->getTypeName()];

@@ -221,12 +221,12 @@ namespace fir
 
 
 
-	std::string Type::typeListToString(std::initializer_list<Type*> types)
+	std::string Type::typeListToString(const std::initializer_list<Type*>& types)
 	{
 		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
 	}
 
-	std::string Type::typeListToString(std::vector<Type*> types)
+	std::string Type::typeListToString(const std::vector<Type*>& types)
 	{
 		// print types
 		std::string str = "{ ";
@@ -240,7 +240,7 @@ namespace fir
 	}
 
 
-	bool Type::areTypeListsEqual(std::vector<Type*> a, std::vector<Type*> b)
+	bool Type::areTypeListsEqual(const std::vector<Type*>& a, const std::vector<Type*>& b)
 	{
 		if(a.size() != b.size()) return false;
 		if(a.size() == 0 && b.size() == 0) return true;
@@ -254,7 +254,7 @@ namespace fir
 		return true;
 	}
 
-	bool Type::areTypeListsEqual(std::initializer_list<Type*> a, std::initializer_list<Type*> b)
+	bool Type::areTypeListsEqual(const std::initializer_list<Type*>& a, const std::initializer_list<Type*>& b)
 	{
 		return areTypeListsEqual(std::vector<Type*>(a.begin(), a.end()), std::vector<Type*>(b.begin(), b.end()));
 	}
@@ -334,48 +334,48 @@ namespace fir
 	}
 
 
-	Type* Type::fromBuiltin(std::string builtin, FTContext* tc)
+	Type* Type::fromBuiltin(const std::string& builtin, FTContext* tc)
 	{
 		if(!tc) tc = getDefaultFTContext();
 		iceAssert(tc && "null type context");
 
 
 		int indirections = 0;
-		builtin = pts::unwrapPointerType(builtin, &indirections);
+		auto copy = pts::unwrapPointerType(builtin, &indirections);
 
 		Type* real = 0;
 
-		if(builtin == INT8_TYPE_STRING)				real = Type::getInt8(tc);
-		else if(builtin == INT16_TYPE_STRING)		real = Type::getInt16(tc);
-		else if(builtin == INT32_TYPE_STRING)		real = Type::getInt32(tc);
-		else if(builtin == INT64_TYPE_STRING)		real = Type::getInt64(tc);
-		else if(builtin == INT128_TYPE_STRING)		real = Type::getInt128(tc);
+		if(copy == INT8_TYPE_STRING)            real = Type::getInt8(tc);
+		else if(copy == INT16_TYPE_STRING)      real = Type::getInt16(tc);
+		else if(copy == INT32_TYPE_STRING)      real = Type::getInt32(tc);
+		else if(copy == INT64_TYPE_STRING)      real = Type::getInt64(tc);
+		else if(copy == INT128_TYPE_STRING)     real = Type::getInt128(tc);
 
-		else if(builtin == UINT8_TYPE_STRING)		real = Type::getUint8(tc);
-		else if(builtin == UINT16_TYPE_STRING)		real = Type::getUint16(tc);
-		else if(builtin == UINT32_TYPE_STRING)		real = Type::getUint32(tc);
-		else if(builtin == UINT64_TYPE_STRING)		real = Type::getUint64(tc);
-		else if(builtin == UINT128_TYPE_STRING)		real = Type::getUint128(tc);
+		else if(copy == UINT8_TYPE_STRING)      real = Type::getUint8(tc);
+		else if(copy == UINT16_TYPE_STRING)     real = Type::getUint16(tc);
+		else if(copy == UINT32_TYPE_STRING)     real = Type::getUint32(tc);
+		else if(copy == UINT64_TYPE_STRING)     real = Type::getUint64(tc);
+		else if(copy == UINT128_TYPE_STRING)    real = Type::getUint128(tc);
 
-		else if(builtin == FLOAT32_TYPE_STRING)		real = Type::getFloat32(tc);
-		else if(builtin == FLOAT64_TYPE_STRING)		real = Type::getFloat64(tc);
-		else if(builtin == FLOAT80_TYPE_STRING)		real = Type::getFloat80(tc);
-		else if(builtin == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
+		else if(copy == FLOAT32_TYPE_STRING)    real = Type::getFloat32(tc);
+		else if(copy == FLOAT64_TYPE_STRING)    real = Type::getFloat64(tc);
+		else if(copy == FLOAT80_TYPE_STRING)    real = Type::getFloat80(tc);
+		else if(copy == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
 
-		else if(builtin == STRING_TYPE_STRING)		real = Type::getString();
-		else if(builtin == CHARACTER_TYPE_STRING)	real = Type::getChar();
+		else if(copy == STRING_TYPE_STRING)     real = Type::getString();
+		else if(copy == CHARACTER_TYPE_STRING)  real = Type::getChar();
 
-		else if(builtin == BOOL_TYPE_STRING)		real = Type::getBool(tc);
-		else if(builtin == VOID_TYPE_STRING)		real = Type::getVoid(tc);
+		else if(copy == BOOL_TYPE_STRING)       real = Type::getBool(tc);
+		else if(copy == VOID_TYPE_STRING)       real = Type::getVoid(tc);
 
 		// unspecified things
-		else if(builtin == INTUNSPEC_TYPE_STRING)	real = Type::getInt64(tc);
-		else if(builtin == UINTUNSPEC_TYPE_STRING)	real = Type::getUint64(tc);
+		else if(copy == INTUNSPEC_TYPE_STRING)  real = Type::getInt64(tc);
+		else if(copy == UINTUNSPEC_TYPE_STRING) real = Type::getUint64(tc);
 
-		else if(builtin == FLOAT_TYPE_STRING)		real = Type::getFloat32(tc);
-		else if(builtin == DOUBLE_TYPE_STRING)		real = Type::getFloat64(tc);
+		else if(copy == FLOAT_TYPE_STRING)      real = Type::getFloat32(tc);
+		else if(copy == DOUBLE_TYPE_STRING)     real = Type::getFloat64(tc);
 
-		else if(builtin == ANY_TYPE_STRING)			real = Type::getAny(tc);
+		else if(copy == ANY_TYPE_STRING)        real = Type::getAny(tc);
 
 		else return 0;
 

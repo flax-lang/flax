@@ -156,6 +156,32 @@ namespace cgn
 
 			return arr;
 		}
+		else if(type->isClassType())
+		{
+			// first need to check if we have any initialisers with 0 parameters.
+			auto cls = type->toClassType();
+
+			fir::Function* ifn = 0;
+			for(auto init : cls->getInitialiserFunctions())
+			{
+				//* note: count == 1 because of 'self'
+				if(init->getArgumentCount() == 1)
+				{
+					ifn = init;
+					break;
+				}
+			}
+
+			if(ifn == 0)
+				error(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments", cls->getTypeName());
+
+			// ok, we call it.
+			auto self = this->irb.StackAlloc(cls);
+			this->irb.Call(cls->getInlineInitialiser(), self);
+			this->irb.Call(ifn, self);
+
+			return this->irb.Load(self);
+		}
 
 		return fir::ConstantValue::getZeroValue(type);
 	}

@@ -47,11 +47,16 @@
 
 #include "../external/mpreal/mpreal.h"
 
+struct Identifier;
 enum class VisibilityLevel;
 
 namespace fir { struct Type; }
-namespace tinyformat { void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty); }
-namespace tinyformat { void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, VisibilityLevel vl); }
+namespace tinyformat
+{
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
+	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
+}
 
 #define TINYFORMAT_ERROR(x)
 #include "../external/tinyformat/tinyformat.h"
