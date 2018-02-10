@@ -413,10 +413,15 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			fs->teleportToScope(news);
 			ret = ec->typecheckWithArguments(fs, args);
 		}
-		else
+		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
 			fs->teleportToScope(news);
 			ret = dot->right->typecheck(fs);
+		}
+		else
+		{
+			error(dot->right, "Unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
+				util::serialiseScope(news));
 		}
 
 
