@@ -168,6 +168,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(1830146)`
+- add `using X as Y` (but where `Y` currently cannot be `_`, and `X` must be a namespace of some kind)
+
 `(23b51a5)`
 - fix edge cases in dot operator, where `Some_Namespace.1234` would just typecheck 'correctly' and return `1234` as the value; we now report an error.
 

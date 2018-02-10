@@ -72,9 +72,12 @@ namespace NS1
 
 @entry fn main()
 {
-	using NS1.NSS1 as NS2
+	do {
+		using NS1.NSS1 as _
+		foobar()
+	}
 
-	NS2.foobar()
+	// foobar()
 }
 
 
