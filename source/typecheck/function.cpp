@@ -115,14 +115,6 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 			iceAssert(decl->id.name == defn->id.name);
 
 			return fs->isDuplicateOverload(defn->params, decl->params);
-
-			// check the typelists, then
-			// bool ret = fir::Type::areTypeListsEqual(
-			// 	util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
-			// 	util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
-			// );
-
-			// return ret;
 		}
 		else
 		{
