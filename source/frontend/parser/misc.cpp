@@ -10,9 +10,9 @@ using namespace lexer;
 
 namespace parser
 {
+	using TT = lexer::TokenType;
 	ImportStmt* parseImport(State& st)
 	{
-		using TT = lexer::TokenType;
 		iceAssert(st.eat() == TT::Import);
 
 		if(st.frontAfterWS() != TT::StringLiteral)
@@ -38,6 +38,64 @@ namespace parser
 
 			return ret;
 		}
+	}
+
+	UsingStmt* parseUsingStmt(State& st)
+	{
+		iceAssert(st.eat() == TT::Using);
+
+		auto ret = new ast::UsingStmt(st.ploc());
+
+		//* so the deal is, we can't use 'parseExpr' here to parse the thing we want to 'use', because "X as Y" parses
+		//* as a cast instead.
+
+		//* so, we parse it manually, including handling the dot operator stuff.
+		// TODO: fix this maybe? more robustness would be good.
+
+		if(st.front() != TT::Identifier)
+			expectedAfter(st.loc(), "identifier", "'using'", st.front().str());
+
+		std::vector<std::pair<std::string, Location>> names;
+		while(st.front() == TT::Identifier)
+		{
+			names.push_back({ st.eat().str(), st.ploc() });
+			if(st.front() == TT::Period)
+			{
+				st.eat();
+				continue;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		// ok, convert the names into a series of dot-op + identifier nesting nonsenses.
+		if(names.size() == 1)
+		{
+			ret->expr = new ast::Ident(names[0].second, names[0].first);
+		}
+		else
+		{
+			auto a = new ast::Ident(names[0].second, names[0].first);
+			auto b = new ast::Ident(names[1].second, names[1].first);
+
+			auto left = new ast::DotOperator(names[0].second, a, b);
+			for(size_t i = 2; i < names.size(); i++)
+				left = new ast::DotOperator(names[i].second, left, new ast::Ident(names[i].second, names[i].first));
+
+			ret->expr = left;
+		}
+
+		if(st.front() != TT::As)
+			expectedAfter(st.loc(), "'as'", "scope in 'using'", st.front().str());
+
+		st.eat();
+		if(st.front() != TT::Identifier)
+			expectedAfter(st.loc(), "identifier", "'as' in 'using' declaration", st.front().str());
+
+		ret->useAs = st.eat().str();
+		return ret;
 	}
 }
 

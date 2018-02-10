@@ -118,6 +118,9 @@ namespace parser
 				case TT::Operator:
 					return parseOperatorOverload(st);
 
+				case TT::Using:
+					return parseUsingStmt(st);
+
 				case TT::Protocol:
 				case TT::Override:
 				case TT::Extension:
@@ -341,7 +344,7 @@ namespace parser
 			if(op == ".")
 			{
 				loc.col = lhs->loc.col;
-				loc.len = rhs->loc.col - lhs->loc.col + 1;
+				loc.len = rhs->loc.col - lhs->loc.col + 1; //! is this correct??? or this?    + rhs->loc.len;
 
 				lhs = new DotOperator(loc, dynamic_cast<Expr*>(lhs), rhs);
 			}
@@ -370,7 +373,7 @@ namespace parser
 
 				lhs = ret;
 			}
-			else if(isAssignOp(op))
+			else if(Operator::isAssignment(op))
 			{
 				auto newlhs = new AssignOp(loc);
 
@@ -818,6 +821,7 @@ namespace parser
 				case TT::Func:
 				case TT::Enum:
 				case TT::Class:
+				case TT::Using:
 				case TT::Static:
 				case TT::Struct:
 				case TT::Public:

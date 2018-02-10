@@ -97,6 +97,7 @@ namespace lexer
 		keywordMap["while"]     = TokenType::While;
 		keywordMap["break"]     = TokenType::Break;
 		keywordMap["class"]     = TokenType::Class;
+		keywordMap["using"]     = TokenType::Using;
 		keywordMap["struct"]    = TokenType::Struct;
 		keywordMap["import"]    = TokenType::Import;
 		keywordMap["public"]    = TokenType::Public;
@@ -740,7 +741,7 @@ namespace lexer
 			(*offset) = 0;
 		}
 
-		// printf("token %s: %d // %d\n", tok.text.to_string().c_str(), tok.pin.col, pos.col);
+		// debuglog("token %s: %d // %d\n", util::to_string(tok.text), tok.loc.col, pos.col);
 
 		prevType = tok.type;
 		prevID = tok.loc.fileID;
