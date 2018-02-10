@@ -67,11 +67,12 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 
 fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const std::string& op, sst::FunctionDefn** overloadFn)
 {
-	if(op == "||" || op == "&&" || op == "!")
+	if(op == Operator::LogicalOr || op == Operator::LogicalAnd || op == Operator::LogicalNot)
 	{
 		return fir::Type::getBool();
 	}
-	else if(op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=")
+	else if(op == Operator::CompareEQ || op == Operator::CompareNEQ || op == Operator::CompareLT || op == Operator::CompareGT
+		|| op == Operator::CompareLEQ || op == Operator::CompareGEQ)
 	{
 		return fir::Type::getBool();
 	}
@@ -79,7 +80,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 	{
 		return right;
 	}
-	else if(op == "+")
+	else if(op == Operator::Plus)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() + right->toConstantNumberType()->getValue());
@@ -108,7 +109,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 		else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
 			return right;
 	}
-	else if(op == "-")
+	else if(op == Operator::Minus)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() - right->toConstantNumberType()->getValue());
@@ -125,7 +126,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 		else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
 			return right;
 	}
-	else if(op == "*")
+	else if(op == Operator::Multiply)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() * right->toConstantNumberType()->getValue());
@@ -137,7 +138,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 			return (left->isConstantNumberType() ? right : left);
 
 	}
-	else if(op == "/")
+	else if(op == Operator::Divide)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() / right->toConstantNumberType()->getValue());
@@ -148,7 +149,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
 			return (left->isConstantNumberType() ? right : left);
 	}
-	else if(op == "%")
+	else if(op == Operator::Modulo)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 		{
@@ -192,7 +193,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 
 sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
-	iceAssert(!isAssignOp(this->op));
+	iceAssert(!Operator::isAssignment(this->op));
 
 	// TODO: infer the types properly for literal numbers
 	// this has always been a thorn, dammit
@@ -251,7 +252,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 
 
-	if(this->op == "!")
+	if(this->op == Operator::LogicalNot)
 	{
 		// check if we're convertible to bool
 		if(!t->isBoolType())
@@ -259,7 +260,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 		out = fir::Type::getBool();
 	}
-	else if(this->op == "+" || this->op == "-")
+	else if(this->op == Operator::UnaryPlus || this->op == Operator::UnaryMinus)
 	{
 		if(t->isConstantNumberType())
 			out = (op == "-" ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
@@ -272,7 +273,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 		out = t;
 	}
-	else if(this->op == "~")
+	else if(this->op == Operator::BitwiseNot)
 	{
 		if(t->isConstantNumberType())
 			error(this, "Bitwise operations are not supported on literal numbers");
@@ -285,14 +286,14 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 		out = t;
 	}
-	else if(this->op == "*")
+	else if(this->op == Operator::PointerDeref)
 	{
 		if(!t->isPointerType())
 			error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t);
 
 		out = t->getPointerElementType();
 	}
-	else if(this->op == "&")
+	else if(this->op == Operator::AddressOf)
 	{
 		if(t->isFunctionType())
 			error(this, "Cannot take the address of a function; use it as a value type");

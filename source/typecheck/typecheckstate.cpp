@@ -218,6 +218,32 @@ namespace sst
 		// ok, we should be at the topmost level now
 		iceAssert(tree);
 
+		//! we're changing the behaviour subtly from how it used to function.
+		//* previously, we would always skip the first 'scope', under the assumption that it would be the name of the current module anyway.
+		//* however, the new behaviour is that, if the number of scopes passed in is 1 (one), we teleport directly to that scope, assuming an
+		//* implied module scope.
+
+		//* if the number of scopes passed is 0, we teleport to the top level scope (as we do now).
+
+		// TODO: investigate if this is the right thing to do...?
+
+		if(scope.empty())
+		{
+			this->stree = tree;
+			return;
+		}
+		else if(scope.size() == 1)
+		{
+			auto s = scope[0];
+			if(tree->subtrees[s] == 0)
+				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+
+			this->stree = tree->subtrees[s];
+			return;
+		}
+
+
+
 		for(size_t i = 1; i < scope.size(); i++)
 		{
 			auto s = scope[i];

@@ -280,7 +280,96 @@ namespace parser
 
 
 
+namespace Operator
+{
+	const std::string Plus                      = "+";
+	const std::string Minus                     = "-";
+	const std::string Multiply                  = "*";
+	const std::string Divide                    = "-";
+	const std::string Modulo                    = "%";
 
+	const std::string UnaryPlus                 = "+";
+	const std::string UnaryMinus                = "-";
+
+	const std::string PointerDeref              = "*";
+	const std::string AddressOf                 = "&";
+
+	const std::string BitwiseNot                = "~";
+	const std::string BitwiseAnd                = "&";
+	const std::string BitwiseOr                 = "|";
+	const std::string BitwiseXor                = "^";
+	const std::string BitwiseShiftLeft          = "<<";
+	const std::string BitwiseShiftRight         = ">>";
+
+	const std::string LogicalNot                = "!";
+	const std::string LogicalAnd                = "&&";
+	const std::string LogicalOr                 = "||";
+
+	const std::string CompareEQ                 = "==";
+	const std::string CompareNEQ                = "!=";
+	const std::string CompareLT                 = "<";
+	const std::string CompareLEQ                = "<=";
+	const std::string CompareGT                 = ">";
+	const std::string CompareGEQ                = ">=";
+
+	const std::string Assign                    = "=";
+	const std::string PlusEquals                = "+=";
+	const std::string MinusEquals               = "-=";
+	const std::string MultiplyEquals            = "*=";
+	const std::string DivideEquals              = "/=";
+	const std::string ModuloEquals              = "%=";
+	const std::string BitwiseShiftLeftEquals    = "<<=";
+	const std::string BitwiseShiftRightEquals   = ">>=";
+	const std::string BitwiseXorEquals          = "^=";
+	const std::string BitwiseAndEquals          = "&=";
+	const std::string BitwiseOrEquals           = "|=";
+
+
+	bool isArithmetic(const std::string& op)
+	{
+		return (op == Operator::Plus || op == Operator::Minus || op == Operator::Multiply || op == Operator::Divide || op == Operator::Modulo);
+	}
+
+	bool isBitwise(const std::string& op)
+	{
+		return (op == Operator::BitwiseAnd || op == Operator::BitwiseOr || op == Operator::BitwiseXor
+			|| op == Operator::BitwiseShiftLeft || op == Operator::BitwiseShiftRight);
+	}
+
+	bool isAssignment(const std::string& op)
+	{
+		return (op == Operator::Assign || op == Operator::PlusEquals || op == Operator::MinusEquals || op == Operator::MultiplyEquals
+			|| op == Operator::DivideEquals || op == Operator::ModuloEquals || op == Operator::BitwiseShiftLeftEquals
+			|| op == Operator::BitwiseShiftRightEquals || op == Operator::BitwiseAndEquals || op == Operator::BitwiseOrEquals
+			|| op == Operator::BitwiseXorEquals);
+	}
+
+	bool isComparison(const std::string& op)
+	{
+		return (op == Operator::CompareEQ || op == Operator::CompareNEQ || op == Operator::CompareLT || op == Operator::CompareGT
+			|| op == Operator::CompareLEQ || op == Operator::CompareGEQ);
+	}
+
+
+	std::string getNonAssignmentVersion(const std::string& op)
+	{
+		if(op == Operator::PlusEquals)                      return Operator::Plus;
+		else if(op == Operator::MinusEquals)                return Operator::Minus;
+		else if(op == Operator::MultiplyEquals)             return Operator::Multiply;
+		else if(op == Operator::DivideEquals)               return Operator::Divide;
+		else if(op == Operator::ModuloEquals)               return Operator::Modulo;
+		else if(op == Operator::BitwiseShiftLeftEquals)     return Operator::BitwiseShiftLeft;
+		else if(op == Operator::BitwiseShiftRightEquals)    return Operator::BitwiseShiftRight;
+		else if(op == Operator::BitwiseAndEquals)           return Operator::BitwiseAnd;
+		else if(op == Operator::BitwiseOrEquals)            return Operator::BitwiseOr;
+		else if(op == Operator::BitwiseXorEquals)           return Operator::BitwiseXor;
+
+		error("no");
+	}
+
+
+
+}
 
 
 

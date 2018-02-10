@@ -24,9 +24,9 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 	auto rt = r->type;
 
 	bool skipCheck = false;
-	if(this->op != "=")
+	if(this->op != Operator::Assign)
 	{
-		auto nonass = getNonAssignOp(this->op);
+		auto nonass = Operator::getNonAssignmentVersion(this->op);
 		if(fs->getBinaryOpResultType(lt, rt, nonass) == 0)
 		{
 			error(this, "Unsupported operator '%s' between types '%s' and '%s', in compound assignment operator '%s'",

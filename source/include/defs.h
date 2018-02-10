@@ -371,10 +371,6 @@ namespace util
 	};
 }
 
-bool isAssignOp(std::string op);
-bool isBitwiseOp(std::string op);
-bool isCompareOp(std::string op);
-std::string getNonAssignOp(std::string op);
 
 
 
@@ -407,6 +403,66 @@ std::string strprintf(const char* fmt, Ts... ts)
 #define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
 #define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
 #define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
+
+
+
+
+namespace Operator
+{
+	extern const std::string Plus;
+	extern const std::string Minus;
+	extern const std::string Multiply;
+	extern const std::string Divide;
+	extern const std::string Modulo;
+
+	extern const std::string UnaryPlus;
+	extern const std::string UnaryMinus;
+
+	extern const std::string PointerDeref;
+	extern const std::string AddressOf;
+
+	extern const std::string BitwiseNot;
+	extern const std::string BitwiseAnd;
+	extern const std::string BitwiseOr;
+	extern const std::string BitwiseXor;
+	extern const std::string BitwiseShiftLeft;
+	extern const std::string BitwiseShiftRight;
+
+	extern const std::string LogicalNot;
+	extern const std::string LogicalAnd;
+	extern const std::string LogicalOr;
+
+	extern const std::string CompareEQ;
+	extern const std::string CompareNEQ;
+	extern const std::string CompareLT;
+	extern const std::string CompareLEQ;
+	extern const std::string CompareGT;
+	extern const std::string CompareGEQ;
+
+	extern const std::string Assign;
+	extern const std::string PlusEquals;
+	extern const std::string MinusEquals;
+	extern const std::string MultiplyEquals;
+	extern const std::string DivideEquals;
+	extern const std::string ModuloEquals;
+	extern const std::string BitwiseShiftLeftEquals;
+	extern const std::string BitwiseShiftRightEquals;
+	extern const std::string BitwiseXorEquals;
+	extern const std::string BitwiseAndEquals;
+	extern const std::string BitwiseOrEquals;
+
+
+	std::string getNonAssignmentVersion(const std::string& op);
+	bool isArithmetic(const std::string& op);
+	bool isComparison(const std::string& op);
+	bool isAssignment(const std::string& op);
+	bool isBitwise(const std::string& op);
+}
+
+
+
+
+
 
 
 

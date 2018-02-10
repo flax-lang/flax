@@ -27,12 +27,41 @@ static bool isBuiltinType(fir::Type* ty)
 
 static bool isBuiltinOperator(std::string op)
 {
-	return (op == "+" || op == "-" || op == "*" || op == "/" || op == "%" || op == "<<"
-		|| op == ">>" || op == "=" || op == "<" || op == ">" || op == "<=" || op == ">="
-		|| op == "==" || op == "!="	|| op == "&" || op == "|" || op == "^" || op == "||"
-		|| op == "&&" || op == "+=" || op == "-=" || op == "*=" || op == "/=" || op == "%="
-		|| op == "<<=" || op == ">>=" || op == "&=" || op == "|=" || op == "^=" || op == "."
-		|| op == "cast");
+	return (op == Operator::Plus ||
+			op == Operator::Minus ||
+			op == Operator::Multiply ||
+			op == Operator::Divide ||
+			op == Operator::Modulo ||
+			op == Operator::UnaryPlus ||
+			op == Operator::UnaryMinus ||
+			op == Operator::PointerDeref ||
+			op == Operator::AddressOf ||
+			op == Operator::BitwiseNot ||
+			op == Operator::BitwiseAnd ||
+			op == Operator::BitwiseOr ||
+			op == Operator::BitwiseXor ||
+			op == Operator::BitwiseShiftLeft ||
+			op == Operator::BitwiseShiftRight ||
+			op == Operator::LogicalNot ||
+			op == Operator::LogicalAnd ||
+			op == Operator::LogicalOr ||
+			op == Operator::CompareEQ ||
+			op == Operator::CompareNEQ ||
+			op == Operator::CompareLT ||
+			op == Operator::CompareLEQ ||
+			op == Operator::CompareGT ||
+			op == Operator::CompareGEQ ||
+			op == Operator::Assign ||
+			op == Operator::PlusEquals ||
+			op == Operator::MinusEquals ||
+			op == Operator::MultiplyEquals ||
+			op == Operator::DivideEquals ||
+			op == Operator::ModuloEquals ||
+			op == Operator::BitwiseShiftLeftEquals ||
+			op == Operator::BitwiseShiftRightEquals ||
+			op == Operator::BitwiseAndEquals ||
+			op == Operator::BitwiseOrEquals ||
+			op == "cast" || op == ".");
 }
 
 
@@ -76,7 +105,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
 				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
-		else if(!isAssignOp(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
+		else if(!Operator::isAssignment(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
 			 && isBuiltinOperator(this->symbol))
 		{
 			exitless_error(this, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
@@ -101,7 +130,7 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	}
 
 	// ok, further checks.
-	if(isAssignOp(this->symbol))
+	if(Operator::isAssignment(this->symbol))
 	{
 		if(!ft->getReturnType()->isVoidType())
 		{

@@ -7,62 +7,74 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-class Animal
+// class Animal
+// {
+// 	init(w: f64)
+// 	{
+// 		self.weight = w
+// 	}
+
+// 	fn makeNoise()
+// 	{
+// 		printf("some generic sound\n")
+// 	}
+
+
+// 	var weight: f64
+// 	var cute: bool = true
+// }
+
+// class Dog : Animal
+// {
+// 	init()
+// 	{
+// 		init(300)
+// 		printf("make dog (w = %f)\n", self.weight)
+// 	}
+
+// 	init(w: f64)
+// 	{
+// 		weight = w
+// 	}
+
+// 	fn makeNoise()
+// 	{
+// 		printf("bark bark (%f)\n", self.weight)
+// 	}
+
+// 	var tail: int
+// }
+
+// class Dalmation : Dog
+// {
+// 	init()
+// 	{
+// 	}
+
+// 	fn makeNoise()
+// 	{
+// 		printf("fetch or something\n")
+// 	}
+
+// 	var numSpots: int
+// }
+
+namespace NS1
 {
-	init(w: f64)
+	namespace NSS1
 	{
-		self.weight = w
+		fn foobar()
+		{
+			printf("Hello, world!\n")
+		}
 	}
-
-	fn makeNoise()
-	{
-		printf("some generic sound\n")
-	}
-
-
-	var weight: f64
-	var cute: bool = true
-}
-
-class Dog : Animal
-{
-	init()
-	{
-		init(300)
-		printf("make dog (w = %f)\n", self.weight)
-	}
-
-	init(w: f64)
-	{
-		weight = w
-	}
-
-	fn makeNoise()
-	{
-		printf("bark bark (%f)\n", self.weight)
-	}
-
-	var tail: int
-}
-
-class Dalmation : Dog
-{
-	init()
-	{
-	}
-
-	fn makeNoise()
-	{
-		printf("fetch or something\n")
-	}
-
-	var numSpots: int
 }
 
 @entry fn main()
 {
-	let dog = Dalmation()
-	dog.makeNoise()
+	using NS1.NSS1 as NS2
+
+	NS2.foobar()
 }
 
 

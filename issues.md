@@ -168,6 +168,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(23b51a5)`
+- fix edge cases in dot operator, where `Some_Namespace.1234` would just typecheck 'correctly' and return `1234` as the value; we now report an error.
+
 `(00586be)`
 - add barebones inheritance on classes. Barebones-ness is explained in `rants.md`
 
