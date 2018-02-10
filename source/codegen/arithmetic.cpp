@@ -6,64 +6,27 @@
 #include "codegen.h"
 #include "typecheck.h"
 
-bool isBitwiseOp(std::string op)
-{
-	return (op == "|" || op == "&" || op == "^" || op == "<<" || op == ">>");
-}
-
-bool isAssignOp(std::string op)
-{
-	return (op == "=" || op == "+=" || op == "-=" || op == "*=" || op == "/=" || op == "%=" || op == "<<="
-		|| op == ">>=" || op == "&=" || op == "|=" || op == "^=");
-}
-
-bool isCompareOp(std::string op)
-{
-	return (op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=");
-}
-
-
-std::string getNonAssignOp(std::string op)
-{
-	if(op == "+=")			return "+";
-	else if(op == "-=")		return "-";
-	else if(op == "*=")		return "*";
-	else if(op == "/=")		return "/";
-	else if(op == "%=")		return "%";
-	else if(op == "<<=")	return "<<";
-	else if(op == ">>=")	return ">>";
-	else if(op == "&=")		return "&";
-	else if(op == "|=")		return "|";
-	else if(op == "^=")		return "^";
-
-	error("no");
-}
-
-
-
 namespace sst
 {
 	// not a constable, but whether it's "const"-able
-	bool constable(std::string op)
+	static bool constable(const std::string& op)
 	{
-		return (op == "+" || op == "-" || op == "*" || op == "/" || op == "%"
-			|| op == "==" || op == "!=" || op == "<" || op == ">" || op == "<=" || op == ">=");
+		return Operator::isArithmetic(op) || Operator::isComparison(op);
 	}
 
 	template <typename T>
 	static T doConstantThings(T l, T r, std::string op)
 	{
-		if(op == "+")		return l + r;
-		else if(op == "-")	return l - r;
-		else if(op == "*")	return l * r;
-		else if(op == "/")	return l / r;
-		// else if(op == "%")	return l % r;
-		else if(op == "==")	return l == r;
-		else if(op == "!=")	return l != r;
-		else if(op == "<")	return l < r;
-		else if(op == ">")	return l > r;
-		else if(op == "<=")	return l <= r;
-		else if(op == ">=")	return l >= r;
+		if(op == Operator::Plus)            return l + r;
+		else if(op == Operator::Minus)      return l - r;
+		else if(op == Operator::Multiply)   return l * r;
+		else if(op == Operator::Divide)     return l / r;
+		else if(op == Operator::CompareEQ)  return l == r;
+		else if(op == Operator::CompareNEQ) return l != r;
+		else if(op == Operator::CompareLT)  return l < r;
+		else if(op == Operator::CompareGT)  return l > r;
+		else if(op == Operator::CompareLEQ) return l <= r;
+		else if(op == Operator::CompareGEQ) return l >= r;
 
 		error("not supported in const op");
 	}
@@ -71,7 +34,7 @@ namespace sst
 
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
-		iceAssert(!isAssignOp(this->op));
+		iceAssert(!Operator::isAssignment(this->op));
 
 		if(this->op == "cast")
 		{
@@ -102,7 +65,7 @@ namespace sst
 		}
 
 
-		if(this->op == "&&" || this->op == "||")
+		if(this->op == Operator::LogicalAnd || this->op == Operator::LogicalOr)
 			return cs->performLogicalBinaryOperation(this);
 
 
@@ -132,7 +95,7 @@ namespace sst
 				}
 
 				auto res = doConstantThings(lnum, rnum, this->op);
-				if(isCompareOp(op))
+				if(Operator::isComparison(op))
 					return CGResult(fir::ConstantBool::get((bool) res));
 
 				else
@@ -210,7 +173,7 @@ namespace sst
 		}
 
 
-		if(this->op == "!")
+		if(this->op == Operator::LogicalNot)
 		{
 			iceAssert(ty->isBoolType());
 			if(auto c = dcast(fir::ConstantInt, val))
@@ -223,11 +186,11 @@ namespace sst
 				return CGResult(cs->irb.LogicalNot(val));
 			}
 		}
-		else if(this->op == "+")
+		else if(this->op == Operator::UnaryPlus)
 		{
 			return ex;
 		}
-		else if(this->op == "-")
+		else if(this->op == Operator::UnaryMinus)
 		{
 			if(auto ci = dcast(fir::ConstantInt, val))
 			{
@@ -247,12 +210,12 @@ namespace sst
 				return CGResult(cs->irb.Negate(val));
 			}
 		}
-		else if(this->op == "*")
+		else if(this->op == Operator::PointerDeref)
 		{
 			iceAssert(ty->isPointerType());
 			return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
 		}
-		else if(this->op == "&")
+		else if(this->op == Operator::AddressOf)
 		{
 			if(ex.kind != CGResult::VK::LValue)
 				error(this, "Cannot take address of a non-lvalue");
@@ -265,7 +228,7 @@ namespace sst
 
 			return CGResult(ex.pointer);
 		}
-		else if(this->op == "~")
+		else if(this->op == Operator::BitwiseNot)
 		{
 			iceAssert(ty->isIntegerType() && !ty->isSignedIntType());
 			if(auto ci = dcast(fir::ConstantInt, val))
@@ -311,31 +274,29 @@ namespace cgn
 		auto [ rv, rp ] = std::make_pair(r.value, r.pointer);
 
 
-		if(isCompareOp(op))
+		if(Operator::isComparison(op))
 		{
 			// do comparison
 			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
 				|| (lt->isCharType() && rt->isCharType()))
 			{
-
-				if(op == "==")	return CGResult(this->irb.ICmpEQ(lv, rv));
-				if(op == "!=")	return CGResult(this->irb.ICmpNEQ(lv, rv));
-				if(op == ">")	return CGResult(this->irb.ICmpGT(lv, rv));
-				if(op == ">=")	return CGResult(this->irb.ICmpGEQ(lv, rv));
-				if(op == "<")	return CGResult(this->irb.ICmpLT(lv, rv));
-				if(op == "<=")	return CGResult(this->irb.ICmpLEQ(lv, rv));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lv, rv));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lv, rv));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lv, rv));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lv, rv));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lv, rv));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lv, rv));
 
 				error("no");
 			}
 			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
 			{
-
-				if(op == "==")	return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
-				if(op == "!=")	return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
-				if(op == ">")	return CGResult(this->irb.FCmpGT_ORD(lv, rv));
-				if(op == ">=")	return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
-				if(op == "<")	return CGResult(this->irb.FCmpLT_ORD(lv, rv));
-				if(op == "<=")	return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGT_ORD(lv, rv));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLT_ORD(lv, rv));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
 
 				error("no");
 			}
@@ -346,24 +307,23 @@ namespace cgn
 
 				if(lr.value->getType()->isFloatingPointType())
 				{
-
-					if(op == "==")	return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
-					if(op == "!=")	return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
-					if(op == ">")	return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
-					if(op == ">=")	return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
-					if(op == "<")	return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
-					if(op == "<=")	return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
 
 					error("no");
 				}
 				else
 				{
-					if(op == "==")	return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
-					if(op == "!=")	return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
-					if(op == ">")	return CGResult(this->irb.ICmpGT(lr.value, rr.value));
-					if(op == ">=")	return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
-					if(op == "<")	return CGResult(this->irb.ICmpLT(lr.value, rr.value));
-					if(op == "<=")	return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(lr.value, rr.value));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
 
 					error("no");
 				}
@@ -375,12 +335,12 @@ namespace cgn
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
-				if(op == "==")	return CGResult(this->irb.ICmpEQ(res, zero));
-				if(op == "!=")	return CGResult(this->irb.ICmpNEQ(res, zero));
-				if(op == ">")	return CGResult(this->irb.ICmpGT(res, zero));
-				if(op == ">=")	return CGResult(this->irb.ICmpGEQ(res, zero));
-				if(op == "<")	return CGResult(this->irb.ICmpLT(res, zero));
-				if(op == "<=")	return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(res, zero));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(res, zero));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(res, zero));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(res, zero));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(res, zero));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(res, zero));
 
 				error("no");
 			}
@@ -389,12 +349,12 @@ namespace cgn
 				auto li = this->irb.GetEnumCaseIndex(lv);
 				auto ri = this->irb.GetEnumCaseIndex(rv);
 
-				if(op == "==")	return CGResult(this->irb.ICmpEQ(li, ri));
-				if(op == "!=")	return CGResult(this->irb.ICmpNEQ(li, ri));
-				if(op == ">")	return CGResult(this->irb.ICmpGT(li, ri));
-				if(op == ">=")	return CGResult(this->irb.ICmpGEQ(li, ri));
-				if(op == "<")	return CGResult(this->irb.ICmpLT(li, ri));
-				if(op == "<=")	return CGResult(this->irb.ICmpLEQ(li, ri));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(li, ri));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(li, ri));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(li, ri));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(li, ri));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(li, ri));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(li, ri));
 
 				error("no");
 			}
@@ -406,12 +366,12 @@ namespace cgn
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
-				if(op == "==")	return CGResult(this->irb.ICmpEQ(res, zero));
-				if(op == "!=")	return CGResult(this->irb.ICmpNEQ(res, zero));
-				if(op == ">")	return CGResult(this->irb.ICmpGT(res, zero));
-				if(op == ">=")	return CGResult(this->irb.ICmpGEQ(res, zero));
-				if(op == "<")	return CGResult(this->irb.ICmpLT(res, zero));
-				if(op == "<=")	return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(res, zero));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(res, zero));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(res, zero));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(res, zero));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(res, zero));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(res, zero));
 
 				error("no");
 			}
@@ -443,7 +403,7 @@ namespace cgn
 			}
 			else if(lt->isStringType() && rt->isStringType())
 			{
-				if(op != "+")
+				if(op != Operator::Plus)
 					unsupportedError(lhs.first, lt, rhs.first, rt);
 
 				#if 0
@@ -497,7 +457,7 @@ namespace cgn
 			else if(lt->isDynamicArrayType() && rt->isDynamicArrayType() && lt->getArrayElementType() == rt->getArrayElementType())
 			{
 				// check what we're doing
-				if(op != "+")
+				if(op != Operator::Plus)
 					unsupportedError(lhs.first, lt, rhs.first, rt);
 
 				// ok, do the append

@@ -302,6 +302,16 @@ namespace ast
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 	};
 
+	struct UsingStmt : Stmt
+	{
+		UsingStmt(const Location& l) : Stmt(l) { this->readableName = "using statement"; }
+		~UsingStmt() { }
+
+		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+		std::string useAs;
+	};
 
 	struct StaticDecl : Stmt
 	{

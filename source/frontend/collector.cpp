@@ -30,43 +30,28 @@ namespace frontend
 		for(auto file : files)
 		{
 			// parse it all
-			// TODO: seems to parse operator declarations twice, investigate
 			auto opers = parser::parseOperators(frontend::getFileTokens(file));
 
 			{
 				// TODO: clean this up maybe.
-				for(const auto& op : std::get<0>(opers))
-				{
-					if(auto it = state.binaryOps.find(op.first); it != state.binaryOps.end())
+				auto checkDupes = [](const std::unordered_map<std::string, parser::CustomOperatorDecl>& existing,
+					const std::unordered_map<std::string, parser::CustomOperatorDecl>& newops, const std::string& kind) {
+
+					for(const auto& op : newops)
 					{
-						exitless_error(op.second.loc, "Duplicate declaration for infix operator '%s'", op.second.symbol);
+						if(auto it = existing.find(op.first); it != existing.end())
+						{
+							exitless_error(op.second.loc, "Duplicate declaration for %s operator '%s'", kind, op.second.symbol);
 
-						info(it->second.loc, "Previous declaration was here:");
-						doTheExit();
+							info(it->second.loc, "Previous declaration was here:");
+							doTheExit();
+						}
 					}
-				}
+				};
 
-				for(const auto& op : std::get<1>(opers))
-				{
-					if(auto it = state.prefixOps.find(op.first); it != state.prefixOps.end())
-					{
-						exitless_error(op.second.loc, "Duplicate declaration for prefix operator '%s'", op.second.symbol);
-
-						info(it->second.loc, "Previous declaration was here:");
-						doTheExit();
-					}
-				}
-
-				for(const auto& op : std::get<2>(opers))
-				{
-					if(auto it = state.binaryOps.find(op.first); it != state.binaryOps.end())
-					{
-						exitless_error(op.second.loc, "Duplicate declaration for postfix operator '%s'", op.second.symbol);
-
-						info(it->second.loc, "Previous declaration was here:");
-						doTheExit();
-					}
-				}
+				checkDupes(state.binaryOps, std::get<0>(opers), "infix");
+				checkDupes(state.prefixOps, std::get<1>(opers), "prefix");
+				checkDupes(state.postfixOps, std::get<2>(opers), "postfix");
 
 				for(const auto& op : std::get<0>(opers))
 					state.binaryOps[op.first] = op.second;

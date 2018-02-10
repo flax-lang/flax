@@ -11,7 +11,10 @@
 template <typename... Ts>
 inline void debuglog(const char* s, Ts... ts)
 {
-	tinyformat::format(std::cerr, s, ts...);
+	std::string s1 = s;
+	s1 += "\n";
+
+	tinyformat::format(std::cerr, s1.c_str(), ts...);
 }
 
 

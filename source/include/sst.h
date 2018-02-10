@@ -166,6 +166,16 @@ namespace sst
 	};
 
 
+	// TODO: refactor the compiler so we don't need this kind of cruft
+	struct DummyStmt : Stmt
+	{
+		DummyStmt(const Location& l) : Stmt(l) { this->readableName = "<DUMMY STATEMENT>"; }
+		~DummyStmt() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
+	};
+
+
 
 	struct SizeofOp : Expr
 	{

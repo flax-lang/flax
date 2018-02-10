@@ -49,16 +49,16 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto rr = this->right->codegen(cs, lt);
 	auto rt = rr.value->getType();
 
-	if(this->op != "=")
+	if(this->op != Operator::Assign)
 	{
 		// ok it's a compound assignment
 		// auto [ newl, newr ] = cs->autoCastValueTypes(lr, rr);
-		auto nonass = getNonAssignOp(this->op);
+		auto nonass = Operator::getNonAssignmentVersion(this->op);
 
 		// some things -- if we're doing +=, and the types are supported, then just call the actual
 		// append function, instead of doing the + first then assigning it.
 
-		if(nonass == "+")
+		if(nonass == Operator::Plus)
 		{
 			if(lt->isDynamicArrayType() && lt == rt)
 			{
