@@ -261,37 +261,43 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		defn->nestedTypes.push_back(st);
 	}
 
-	for(auto f : this->fields)
+
+	fs->enterStructBody(defn);
 	{
-		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
-		iceAssert(v);
+		for(auto f : this->fields)
+		{
+			auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
+			iceAssert(v);
 
-		defn->fields.push_back(v);
-		tys.push_back({ v->id.name, v->type });
+			defn->fields.push_back(v);
+			tys.push_back({ v->id.name, v->type });
 
-		checkFieldRecursion(fs, cls, v->type, v->loc);
+			checkFieldRecursion(fs, cls, v->type, v->loc);
 
-		std::function<void (sst::ClassDefn*, sst::VarDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::VarDefn* fld) -> auto {
-			while(cls)
-			{
-				for(auto bf : cls->fields)
+			std::function<void (sst::ClassDefn*, sst::VarDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::VarDefn* fld) -> auto {
+				while(cls)
 				{
-					if(bf->id.name == fld->id.name)
+					for(auto bf : cls->fields)
 					{
-						exitless_error(fld, "Redefinition of field '%s' (with type '%s'), when it exists in the base class '%s'", fld->id.name, fld->type, cls->id);
+						if(bf->id.name == fld->id.name)
+						{
+							exitless_error(fld, "Redefinition of field '%s' (with type '%s'), when it exists in the base class '%s'", fld->id.name, fld->type, cls->id);
 
-						info(bf, "'%s' was previously defined in the base class here:", fld->id.name);
-						info(cls, "Base class '%s' was defined here:", cls->id);
-						doTheExit();
+							info(bf, "'%s' was previously defined in the base class here:", fld->id.name);
+							info(cls, "Base class '%s' was defined here:", cls->id);
+							doTheExit();
+						}
 					}
+
+					cls = cls->baseClass;
 				}
+			};
 
-				cls = cls->baseClass;
-			}
-		};
-
-		checkDupe(defn->baseClass, v);
+			checkDupe(defn->baseClass, v);
+		}
 	}
+	fs->leaveStructBody();
+
 
 	for(auto f : this->staticFields)
 	{
@@ -321,12 +327,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		for(auto it : this->initialisers)
 		{
-			// auto initdefn = dcast(sst::FunctionDefn, it->typecheck(fs, cls));
-			// iceAssert(initdefn);
-
-			// defn->initialisers.push_back(initdefn);
-			// defn->methods.push_back(dcast(sst::FunctionDefn, initdefn));
-
 			it->generateDeclaration(fs, cls);
 
 			auto gd = dcast(sst::FunctionDefn, it->generatedDefn);
@@ -338,6 +338,8 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 	fs->leaveStructBody();
 
+
+
 	for(auto m : this->staticMethods)
 	{
 		// infer is 0 because this is a static thing
@@ -346,7 +348,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
 	}
-
 
 	//* again, same deal here.
 	fs->enterStructBody(defn);

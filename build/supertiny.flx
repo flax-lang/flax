@@ -7,100 +7,65 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-// class Animal
-// {
-// 	init(w: f64)
-// 	{
-// 		self.weight = w
-// 	}
-
-// 	fn makeNoise()
-// 	{
-// 		printf("some generic sound\n")
-// 	}
-
-
-// 	var weight: f64
-// 	var cute: bool = true
-// }
-
-// class Dog : Animal
-// {
-// 	init()
-// 	{
-// 		init(300)
-// 		printf("make dog (w = %f)\n", self.weight)
-// 	}
-
-// 	init(w: f64)
-// 	{
-// 		weight = w
-// 	}
-
-// 	fn makeNoise()
-// 	{
-// 		printf("bark bark (%f)\n", self.weight)
-// 	}
-
-// 	var tail: int
-// }
-
-// class Dalmation : Dog
-// {
-// 	init()
-// 	{
-// 	}
-
-// 	fn makeNoise()
-// 	{
-// 		printf("fetch or something\n")
-// 	}
-
-// 	var numSpots: int
-// }
-
-namespace NS1
+class Animal
 {
-	namespace NSS1
+	init(w: f64)
 	{
-		fn foobar()
-		{
-			printf("Hello, world!\n")
-		}
-		enum Enumeration: int
-		{
-			case One = 10
-			case Two = 20
-			case Three = 30
-		}
+		self.weight = w
 	}
+
+	fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog : Animal
+{
+	init()
+	{
+		init(300)
+		printf("make dog (w = %f)\n", self.weight)
+	}
+
+	init(w: f64)
+	{
+		self.weight = w
+	}
+
+	fn makeNoise()
+	{
+		printf("bark bark (%f)\n", self.weight)
+	}
+
+	var tail: int
+}
+
+class Dalmation : Dog
+{
+	init()
+	{
+		self.weight = 30
+		printf("make dalmation\n")
+	}
+
+	fn makeNoise()
+	{
+		printf("fetch or something %f\n", self.weight)
+	}
+
+	var numSpots: int
 }
 
 
 @entry fn main()
 {
-	do {
-		using NS1.NSS1.Enumeration as _
-		let k = Two
-		printf("k = %d, %d\n", k)
-	}
-
-	/*
-		TODO for tomorrow:
-
-		1. figure out how to properly handle accessing enum cases (and this applies to static class members as well) when the type definition
-			is nested in a namespace (as above, NS1.Enumeration)
-
-			i know what the issue is, which is that once we have a namespace on the left, we will always end up returning a ScopeExpr, unless we
-			encounter a global variable.
-
-			what we *need* to do is to find a way to return a type definition from something like NS1.Enumeration, so (NS1.Enumeration).One will be
-			able to find the EnumDefn on the left.
-
-		2. using an enum (a: as something else, and b: as _)
-	 */
-
-	// foobar()
+	let dog = Dalmation()
+	dog.makeNoise()
 }
 
 
