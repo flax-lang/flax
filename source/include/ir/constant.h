@@ -148,6 +148,22 @@ namespace fir
 		std::vector<ConstantValue*> members;
 	};
 
+	struct ConstantEnumCase : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantEnumCase* get(EnumType* en, ConstantInt* index, ConstantValue* value);
+
+		ConstantInt* getIndex();
+		ConstantValue* getValue();
+
+		protected:
+		ConstantEnumCase(EnumType* en, ConstantInt* index, ConstantValue* value);
+
+		ConstantInt* index = 0;
+		ConstantValue* value = 0;
+	};
+
 	struct ConstantString : ConstantValue
 	{
 		friend struct Module;

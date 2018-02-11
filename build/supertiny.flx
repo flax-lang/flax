@@ -80,7 +80,8 @@ namespace NS1
 @entry fn main()
 {
 	do {
-		let k = NS1.NSS1.Enumeration.One
+		using NS1.NSS1.Enumeration as _
+		let k = Two
 		printf("k = %d, %d\n", k)
 	}
 

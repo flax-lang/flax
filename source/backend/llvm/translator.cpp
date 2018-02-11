@@ -252,7 +252,7 @@ namespace backend
 		auto ret = cachedConstants[c];
 		if(ret) return ret;
 
-		if(fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(c))
+		if(fir::ConstantInt* ci = dcast(fir::ConstantInt, c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			if(ci->getType()->toPrimitiveType()->isSigned())
@@ -264,22 +264,22 @@ namespace backend
 				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
 		}
-		else if(fir::ConstantChar* cc = dynamic_cast<fir::ConstantChar*>(c))
+		else if(fir::ConstantChar* cc = dcast(fir::ConstantChar, c))
 		{
 			llvm::Type* ct = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
-		else if(fir::ConstantBool* cc = dynamic_cast<fir::ConstantBool*>(c))
+		else if(fir::ConstantBool* cc = dcast(fir::ConstantBool, c))
 		{
 			llvm::Type* ct = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
-		else if(fir::ConstantFP* cf = dynamic_cast<fir::ConstantFP*>(c))
+		else if(fir::ConstantFP* cf = dcast(fir::ConstantFP, c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(fir::ConstantArray* ca = dynamic_cast<fir::ConstantArray*>(c))
+		else if(fir::ConstantArray* ca = dcast(fir::ConstantArray, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
 
@@ -291,7 +291,7 @@ namespace backend
 
 			return cachedConstants[c] = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
 		}
-		else if(fir::ConstantTuple* ct = dynamic_cast<fir::ConstantTuple*>(c))
+		else if(fir::ConstantTuple* ct = dcast(fir::ConstantTuple, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
 
@@ -303,7 +303,15 @@ namespace backend
 
 			return cachedConstants[c] = llvm::ConstantStruct::getAnon(LLVMBackend::getLLVMContext(), vals);
 		}
-		else if(fir::ConstantString* cs = dynamic_cast<fir::ConstantString*>(c))
+		else if(fir::ConstantEnumCase* cec = dcast(fir::ConstantEnumCase, c))
+		{
+			auto ty = typeToLlvm(cec->getType(), mod);
+			iceAssert(ty->isStructTy());
+
+			return cachedConstants[c] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
+				constToLlvm(cec->getIndex(), mod), constToLlvm(cec->getValue(), mod));
+		}
+		else if(fir::ConstantString* cs = dcast(fir::ConstantString, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const string");
 
@@ -345,14 +353,14 @@ namespace backend
 			cachedConstants[c] = ret;
 			return ret;
 		}
-		else if(fir::ConstantArraySlice* cas = dynamic_cast<fir::ConstantArraySlice*>(c))
+		else if(fir::ConstantArraySlice* cas = dcast(fir::ConstantArraySlice, c))
 		{
 			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), mod), constToLlvm(cas->getLength(), mod) };
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
 			return cachedConstants[c] = ret;
 		}
-		else if(fir::ConstantDynamicArray* cda = dynamic_cast<fir::ConstantDynamicArray*>(c))
+		else if(fir::ConstantDynamicArray* cda = dcast(fir::ConstantDynamicArray, c))
 		{
 			if(cda->getArray())
 			{
@@ -392,7 +400,7 @@ namespace backend
 				return cachedConstants[c] = ret;
 			}
 		}
-		else if(dynamic_cast<fir::ConstantStruct*>(c))
+		else if(dcast(fir::ConstantStruct, c))
 		{
 			_error_and_exit("notsup const struct");
 		}
@@ -442,7 +450,7 @@ namespace backend
 
 		std::function<llvm::Value* (fir::Value*)> getValue = [&valueMap, &module, firmod](fir::Value* fv) -> llvm::Value*
 		{
-			if(fir::GlobalVariable* gv = dynamic_cast<fir::GlobalVariable*>(fv))
+			if(fir::GlobalVariable* gv = dcast(fir::GlobalVariable, fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
@@ -452,13 +460,13 @@ namespace backend
 				return lgv;
 			}
 			// we must do this because function now derives from constantvalue
-			else if(dynamic_cast<fir::Function*>(fv))
+			else if(dcast(fir::Function, fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
 				if(!ret) error("!ret fn (id = %zu)", fv->id);
 				return ret;
 			}
-			else if(fir::ConstantValue* cv = dynamic_cast<fir::ConstantValue*>(fv))
+			else if(fir::ConstantValue* cv = dcast(fir::ConstantValue, fv))
 			{
 				return constToLlvm(cv, module);
 			}
@@ -1447,7 +1455,7 @@ namespace backend
 							iceAssert(inst->operands.size() == 1);
 							llvm::Type* t = typeToLlvm(inst->operands[0]->getType(), module);
 
-							auto phi = dynamic_cast<fir::PHINode*>(inst->realOutput);
+							auto phi = dcast(fir::PHINode, inst->realOutput);
 							iceAssert(phi);
 
 							llvm::PHINode* ret = builder.CreatePHI(t, phi->getValues().size());
@@ -1462,7 +1470,7 @@ namespace backend
 						case fir::OpKind::Value_CallFunction:
 						{
 							iceAssert(inst->operands.size() >= 1);
-							fir::Function* fn = dynamic_cast<fir::Function*>(inst->operands[0]);
+							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
 							iceAssert(fn);
 
 							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
@@ -1683,7 +1691,7 @@ namespace backend
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
 
-							fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[1]);
+							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
 							iceAssert(ci);
 
 
@@ -1808,7 +1816,7 @@ namespace backend
 							std::vector<unsigned int> inds;
 							for(size_t i = 2; i < inst->operands.size(); i++)
 							{
-								fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[i]);
+								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
 								inds.push_back(ci->getUnsignedValue());
@@ -1844,7 +1852,7 @@ namespace backend
 							std::vector<unsigned int> inds;
 							for(size_t i = 1; i < inst->operands.size(); i++)
 							{
-								fir::ConstantInt* ci = dynamic_cast<fir::ConstantInt*>(inst->operands[i]);
+								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
 								inds.push_back(ci->getUnsignedValue());

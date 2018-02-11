@@ -478,19 +478,23 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
-					for(auto [ n, c ] : enm->cases)
-					{
-						if(c->id.name == vr->name)
-						{
-							auto ret = new sst::EnumDotOp(vr->loc, enm->type);
-							ret->caseName = vr->name;
-							ret->enumeration = enm;
+					// for(auto [ n, c ] : enm->cases)
+					// {
+					// 	if(c->id.name == vr->name)
+					// 	{
+					// 		auto ret = new sst::EnumDotOp(vr->loc, enm->type);
+					// 		ret->caseName = vr->name;
+					// 		ret->enumeration = enm;
 
-							return ret;
-						}
-					}
+					// 		return ret;
+					// 	}
+					// }
 
-					error(vr, "Enumeration '%s' has no case named '%s'", enm->id.name, vr->name);
+					// error(vr, "Enumeration '%s' has no case named '%s'", enm->id.name, vr->name);
+
+					iceAssert(vr->def && enm->cases[vr->name] == vr->def);
+					info(vr, "%s", vr->type);
+					return vr;
 				}
 				else
 				{

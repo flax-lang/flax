@@ -59,6 +59,7 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
 	else					defn->memberType = fir::Type::getInt64();
 
+	auto ety = fir::EnumType::get(defn->id, defn->memberType);
 
 	size_t index = 0;
 	for(auto cs : this->cases)
@@ -76,7 +77,7 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto ecd = new sst::EnumCaseDefn(cs.loc);
 		ecd->id = Identifier(cs.name, IdKind::Name);
 		ecd->id.scope = fs->getCurrentScope();
-		ecd->type = defn->memberType;
+		ecd->type = ety;
 		ecd->parentEnum = defn;
 		ecd->val = val;
 		ecd->index = index++;
@@ -85,7 +86,6 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		fs->stree->addDefinition(cs.name, ecd);
 	}
 
-	auto ety = fir::EnumType::get(defn->id, defn->memberType);
 	defn->type = ety;
 
 	return defn;

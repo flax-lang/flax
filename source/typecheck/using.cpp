@@ -15,52 +15,64 @@ sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	// check what kind of expression we have.
 	auto user = this->expr->typecheck(fs);
-	if(auto enumdef = dcast(sst::EnumDefn, user))
-	{
-		error("enums not supported yet");
-	}
-	else if(!dcast(sst::ScopeExpr, user) && !dcast(sst::VarRef, user))
-	{
+	if(!dcast(sst::ScopeExpr, user) && !dcast(sst::VarRef, user))
 		error(this->expr, "Unsupported expression on left-side of 'using' declaration");
+
+
+	// check for enumerations -- we need to handle those a little specially.
+	// due to the magic of good code architecture, (haha, who am i kidding, it's pure luck)
+	// if the LHS is a dot operator of any kind, we'll resolve it appropriately -- getting a VarRef to an EnumDefn if it is an enum,
+	// and only getting ScopeExpr if it's really a namespace reference.
+
+
+	if(auto vr = dcast(sst::VarRef, user); vr && vr->def && dcast(sst::EnumDefn, vr->def))
+	{
+		auto enrd = dcast(sst::EnumDefn, vr->def);
+
+		auto scopes = enrd->id.scope;
+		scopes.push_back(enrd->id.name);
+
+		if(this->useAs == "_")
+			fs->importScopeContentsIntoExistingScope(scopes, fs->stree->getScope());
+
+		else
+			fs->importScopeContentsIntoNewScope(scopes, fs->getCurrentScope(), this->useAs);
+	}
+	else
+	{
+		std::vector<std::string> scopes;
+		if(auto se = dcast(sst::ScopeExpr, user))
+			scopes = se->scope;
+
+		else if(auto vr = dcast(sst::VarRef, user))
+			scopes = { vr->name };
+
+
+		if(this->useAs == "_")
+			fs->importScopeContentsIntoExistingScope(scopes, fs->stree->getScope());
+
+		else
+			fs->importScopeContentsIntoNewScope(scopes, fs->getCurrentScope(), this->useAs);
 	}
 
 
+	return new sst::DummyStmt(this->loc);
+}
 
 
-	std::vector<std::string> scopes;
-	if(auto se = dcast(sst::ScopeExpr, user))
+
+
+namespace sst
+{
+	void TypecheckState::importScopeContentsIntoExistingScope(const std::vector<std::string>& sfrom, const std::vector<std::string>& sto)
 	{
-		scopes = se->scope;
-	}
-	else if(auto vr = dcast(sst::VarRef, user))
-	{
-		scopes = { vr->name };
-	}
-
-	auto restore = fs->getCurrentScope();
-	fs->teleportToScope(scopes);
-
-	auto tree = fs->stree;
-
-	// add a thing in the current scope?
-	auto treedef = new sst::TreeDefn(this->loc);
-	treedef->tree = tree;
-
-	fs->teleportToScope(restore);
-
-	if(this->useAs == "_")
-	{
-		// we need to copy all the definitions from 'tree' into the current stree.
-		// but, while doing so we need to check for duplicates having the same name.
-		// this will get messy.
-
 		std::function<void (sst::StateTree* from, sst::StateTree* to)> recursivelyCopyTreeContents = [&](sst::StateTree* from, sst::StateTree* to) -> void {
 			for(const auto& ds : from->getAllDefinitions())
 			{
 				for(auto d : ds.second)
 				{
 					//* note: the lambda we pass in can assume that the names are the same, because we only call it when we get things of the same name.
-					auto conflicts = fs->checkForShadowingOrConflictingDefinition(d, "definition", [&d](sst::TypecheckState* fs, sst::Defn* other) -> bool {
+					auto conflicts = this->checkForShadowingOrConflictingDefinition(d, "definition", [&d](sst::TypecheckState* fs, sst::Defn* other) -> bool {
 						if(auto fn = dcast(sst::FunctionDecl, other); fn && dcast(sst::FunctionDecl, d))
 						{
 							auto fn1 = dcast(sst::FunctionDecl, d);
@@ -94,32 +106,33 @@ sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			}
 		};
 
-		recursivelyCopyTreeContents(tree, fs->stree);
+		auto fromtree = this->getTreeOfScope(sfrom);
+		auto totree = this->getTreeOfScope(sto);
+
+		recursivelyCopyTreeContents(fromtree, totree);
 	}
-	else
+
+	void TypecheckState::importScopeContentsIntoNewScope(const std::vector<std::string>& sfrom, const std::vector<std::string>& stoParent,
+		const std::string& name)
 	{
-		if(auto defs = fs->stree->getDefinitionsWithName(this->useAs); !defs.empty())
+		auto parent = this->getTreeOfScope(stoParent);
+
+		if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
 		{
-			exitless_error(this, "Cannot use scope '%s' as '%s' in current scope; one or more conflicting definitions exist");
+			exitless_error(this->loc(), "Cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
+				util::serialiseScope(sfrom), util::serialiseScope(stoParent), name);
+
 			for(const auto& d : defs)
 				info(d, "Conflicting definition here:");
 
 			doTheExit();
 		}
 
-		fs->stree->addDefinition(this->useAs, treedef);
-	}
+		// add a thing in the current scope
+		auto treedef = new sst::TreeDefn(this->loc());
+		treedef->tree = this->getTreeOfScope(sfrom);
 
-	return new sst::DummyStmt(this->loc);
-}
-
-
-
-
-namespace sst
-{
-	void importScopeContentsIntoAnotherScope(const std::vector<std::string>& from, const std::vector<std::string>& to)
-	{
+		parent->addDefinition(name, treedef);
 	}
 }
 
