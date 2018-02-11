@@ -134,6 +134,7 @@ namespace sst
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
 		void teleportToScope(const std::vector<std::string>& scope);
+		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name, StateTree* tree = 0);
 		bool checkForShadowingOrConflictingDefinition(Defn* def, const std::string& kind,
@@ -147,8 +148,11 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
-		//* basically does the work that makes 'using' actually 'use' stuff.
-		void importScopeContentsIntoAnotherScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
+		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
+		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
+
+		//* kind of like the above, but subtly different in that we create a *new scope* named _name_ in the scope _toParent_
+		void importScopeContentsIntoNewScope(const std::vector<std::string>& from, const std::vector<std::string>& toParent, const std::string& name);
 
 
 		// Expr* typecheckClassMethodCall(ClassDefn* cls, ast::FunctionCall* call);
