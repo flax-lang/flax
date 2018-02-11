@@ -168,6 +168,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(8123b13)`
+- add `using X as _` that works like import -- it copies the entities in `X` to the current scope.
+
 `(1830146)`
 - add `using X as Y` (but where `Y` currently cannot be `_`, and `X` must be a namespace of some kind)
 
