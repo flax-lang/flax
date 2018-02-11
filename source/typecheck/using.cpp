@@ -24,6 +24,9 @@ sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this->expr, "Unsupported expression on left-side of 'using' declaration");
 	}
 
+
+
+
 	std::vector<std::string> scopes;
 	if(auto se = dcast(sst::ScopeExpr, user))
 	{
@@ -111,6 +114,14 @@ sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 }
 
 
+
+
+namespace sst
+{
+	void importScopeContentsIntoAnotherScope(const std::vector<std::string>& from, const std::vector<std::string>& to)
+	{
+	}
+}
 
 
 

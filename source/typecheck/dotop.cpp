@@ -376,16 +376,8 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 
 
-
-
-sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
+static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left)
 {
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	// warn(this, "hi there");
-	auto lhs = this->left->typecheck(fs);
-
 	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news) -> sst::Expr* {
 
 		if(auto id = dcast(ast::Ident, dot->right))
@@ -434,57 +426,26 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 
 
 
-	if(auto ident = dcast(sst::VarRef, lhs))
+	if(auto ident = dcast(sst::VarRef, left))
 	{
-		auto defs = fs->getDefinitionsWithName(ident->name);
-		if(defs.empty())
-		{
-			error(lhs, "No namespace or type with name '%s' in scope '%s' / %s", ident->name, fs->serialiseCurrentScope());
-		}
-		else if(defs.size() > 1)
-		{
-			exitless_error(lhs, "Ambiguous reference to entity with name '%s'", ident->name);
-			for(auto d : defs)
-				info(d, "Possible reference:");
-
-			doTheExit();
-		}
-
-		auto def = defs[0];
-
-
+		auto def = ident->def;
+		iceAssert(def);
 
 		if(auto td = dcast(sst::TreeDefn, def))
 		{
 			auto newscope = td->tree->getScope();
 			auto oldscope = fs->getCurrentScope();
 
-			auto expr = checkRhs(fs, this, oldscope, newscope);
+			auto expr = checkRhs(fs, dot, oldscope, newscope);
 
 			// check the thing
-			if(auto vr = dcast(sst::VarRef, expr))
+			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 			{
-				// check for global vars
-				auto vrs = fs->stree->getDefinitionsWithName(vr->name);
+				newscope.push_back(vr->name);
+				auto ret = new sst::ScopeExpr(dot->loc, fir::Type::getVoid());
+				ret->scope = newscope;
 
-				// must make sure it's a var/func defn and not a namespace one
-				if(vrs.size() == 1 && (dynamic_cast<sst::VarDefn*>(vrs[0]) || dynamic_cast<sst::FunctionDefn*>(vrs[0])))
-				{
-					vr->def = vrs[0];
-					return vr;
-				}
-				else if(vrs.size() > 1)
-				{
-					error(this, "Ambiguous reference to entity '%s' in namespace '%s'", vr->name, td->tree->name);
-				}
-				else
-				{
-					newscope.push_back(vr->name);
-					auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
-					ret->scope = newscope;
-
-					return ret;
-				}
+				return ret;
 			}
 			else
 			{
@@ -502,7 +463,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 				fs->teleportToScope(newscope);
 				defer(fs->teleportToScope(oldscope));
 
-				return checkRhs(fs, this, oldscope, newscope);
+				return checkRhs(fs, dot, oldscope, newscope);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
@@ -513,7 +474,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 				fs->teleportToScope(newscope);
 				defer(fs->teleportToScope(oldscope));
 
-				auto rhs = checkRhs(fs, this, oldscope, newscope);
+				auto rhs = checkRhs(fs, dot, oldscope, newscope);
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
@@ -538,7 +499,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			}
 			else
 			{
-				error(this, "Static access is not supported on type '%s'", def->type);
+				error(dot, "Static access is not supported on type '%s'", def->type);
 			}
 		}
 		else
@@ -546,7 +507,7 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			// note: fallthrough to call to doExpressionDotOp()
 		}
 	}
-	else if(auto scp = dcast(sst::ScopeExpr, lhs))
+	else if(auto scp = dcast(sst::ScopeExpr, left))
 	{
 		auto oldscope = fs->getCurrentScope();
 		auto newscope = scp->scope;
@@ -554,17 +515,12 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 		fs->teleportToScope(newscope);
 		defer(fs->teleportToScope(oldscope));
 
-		auto expr = checkRhs(fs, this, oldscope, newscope);
+		auto expr = checkRhs(fs, dot, oldscope, newscope);
 
-
-		if(auto vr = dcast(sst::VarRef, expr))
+		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 		{
-			// if it's a global, stop with the scopeexpr and return now.
-			if(dynamic_cast<sst::VarDefn*>(vr->def) || dynamic_cast<sst::FunctionDefn*>(vr->def))
-				return vr;
-
 			newscope.push_back(vr->name);
-			auto ret = new sst::ScopeExpr(this->loc, fir::Type::getVoid());
+			auto ret = new sst::ScopeExpr(dot->loc, fir::Type::getVoid());
 			ret->scope = newscope;
 
 			return ret;
@@ -574,6 +530,22 @@ sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 			return expr;
 		}
 	}
+
+	return 0;
+}
+
+
+
+sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	// warn(this, "hi there");
+	auto lhs = this->left->typecheck(fs);
+
+	auto ret = doStaticDotOp(fs, this, lhs);
+	if(ret) return ret;
 
 	// catch-all, probably.
 	return doExpressionDotOp(fs, this, infer);
