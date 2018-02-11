@@ -209,7 +209,7 @@ namespace sst
 		return std::vector<std::string>(scope.begin(), scope.end());
 	}
 
-	void TypecheckState::teleportToScope(const std::vector<std::string>& scope)
+	StateTree* TypecheckState::getTreeOfScope(const std::vector<std::string>& scope)
 	{
 		StateTree* tree = this->stree;
 		while(tree->parent)
@@ -229,8 +229,7 @@ namespace sst
 
 		if(scope.empty())
 		{
-			this->stree = tree;
-			return;
+			return tree;
 		}
 		else if(scope.size() == 1)
 		{
@@ -238,8 +237,7 @@ namespace sst
 			if(tree->subtrees[s] == 0)
 				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 
-			this->stree = tree->subtrees[s];
-			return;
+			return tree->subtrees[s];
 		}
 
 
@@ -254,7 +252,12 @@ namespace sst
 			tree = tree->subtrees[s];
 		}
 
-		this->stree = tree;
+		return tree;
+	}
+
+	void TypecheckState::teleportToScope(const std::vector<std::string>& scope)
+	{
+		this->stree = this->getTreeOfScope(scope);
 	}
 
 

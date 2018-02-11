@@ -75,30 +75,39 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	this->value = dcast(fir::ConstantValue, v);
-	return CGResult(this->value);
+
+	{
+		auto ty = this->parentEnum->type;
+		auto ret = fir::ConstantEnumCase::get(ty->toEnumType(), fir::ConstantInt::getInt64(this->index), this->value);
+
+		cs->valueMap[this] = CGResult(ret);
+	}
+
+	return cs->valueMap[this];
 }
 
 
 CGResult sst::EnumDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this);
-	defer(cs->popLoc());
+	iceAssert("no" && 0);
+	// cs->pushLoc(this);
+	// defer(cs->popLoc());
 
-	auto enr = this->enumeration;
-	iceAssert(enr);
+	// auto enr = this->enumeration;
+	// iceAssert(enr);
 
-	auto ecd = enr->cases[this->caseName];
-	iceAssert(ecd);
+	// auto ecd = enr->cases[this->caseName];
+	// iceAssert(ecd);
 
-	// ok, return the thing
-	auto ty = enr->type;
-	info(this, "type = %s", ty);
+	// // ok, return the thing
+	// auto ty = enr->type;
+	// // info(this, "type = %s", ty);
 
-	auto ret = cs->irb.CreateValue(ty);
-	ret = cs->irb.SetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));
-	ret = cs->irb.SetEnumCaseValue(ret, ecd->value);
+	// auto ret = cs->irb.CreateValue(ty);
+	// ret = cs->irb.SetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));
+	// ret = cs->irb.SetEnumCaseValue(ret, ecd->value);
 
-	return CGResult(ret);
+	// return CGResult(ret);
 }
 
 

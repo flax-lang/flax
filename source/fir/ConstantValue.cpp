@@ -307,6 +307,29 @@ namespace fir
 
 
 
+	ConstantEnumCase* ConstantEnumCase::get(EnumType* et, ConstantInt* index, ConstantValue* value)
+	{
+		return new ConstantEnumCase(et, index, value);
+	}
+
+	ConstantInt* ConstantEnumCase::getIndex()
+	{
+		return this->index;
+	}
+
+	ConstantValue* ConstantEnumCase::getValue()
+	{
+		return this->value;
+	}
+
+	// well this is stupid.
+	ConstantEnumCase::ConstantEnumCase(EnumType* et, ConstantInt* index, ConstantValue* value) : fir::ConstantValue(et)
+	{
+		this->index = index;
+		this->value = value;
+	}
+
+
 
 
 
