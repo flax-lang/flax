@@ -147,6 +147,10 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
+		//* basically does the work that makes 'using' actually 'use' stuff.
+		void importScopeContentsIntoAnotherScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
+
+
 		// Expr* typecheckClassMethodCall(ClassDefn* cls, ast::FunctionCall* call);
 
 		struct PrettyError

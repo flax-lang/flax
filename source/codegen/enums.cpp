@@ -61,7 +61,7 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto base = this->parentEnum->memberType;
 
 	fir::Value* v = 0;
-	if(this->value)
+	if(this->val)
 	{
 		v = this->val->codegen(cs, base).value;
 		iceAssert(v);
@@ -92,6 +92,7 @@ CGResult sst::EnumDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok, return the thing
 	auto ty = enr->type;
+	info(this, "type = %s", ty);
 
 	auto ret = cs->irb.CreateValue(ty);
 	ret = cs->irb.SetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));

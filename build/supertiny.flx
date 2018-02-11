@@ -67,15 +67,37 @@ namespace NS1
 		{
 			printf("Hello, world!\n")
 		}
+		enum Enumeration: int
+		{
+			case One = 10
+			case Two = 20
+			case Three = 30
+		}
 	}
 }
+
 
 @entry fn main()
 {
 	do {
-		using NS1.NSS1 as _
-		foobar()
+		let k = NS1.NSS1.Enumeration.One
+		printf("k = %d, %d\n", k)
 	}
+
+	/*
+		TODO for tomorrow:
+
+		1. figure out how to properly handle accessing enum cases (and this applies to static class members as well) when the type definition
+			is nested in a namespace (as above, NS1.Enumeration)
+
+			i know what the issue is, which is that once we have a namespace on the left, we will always end up returning a ScopeExpr, unless we
+			encounter a global variable.
+
+			what we *need* to do is to find a way to return a type definition from something like NS1.Enumeration, so (NS1.Enumeration).One will be
+			able to find the EnumDefn on the left.
+
+		2. using an enum (a: as something else, and b: as _)
+	 */
 
 	// foobar()
 }
