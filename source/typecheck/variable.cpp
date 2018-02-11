@@ -139,7 +139,8 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	// debuglog("check %s -- %p\n", util::serialiseScope(defn->id.scope), fs->stree);
 
-	fs->stree->addDefinition(this->name, defn);
+	if(!fs->isInStructBody())
+		fs->stree->addDefinition(this->name, defn);
 
 	return defn;
 }
