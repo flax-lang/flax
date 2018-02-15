@@ -11,7 +11,7 @@ class Animal
 {
 	init(w: f64)
 	{
-		self.weight = w
+		weight = w
 	}
 
 	fn makeNoise()
@@ -65,7 +65,9 @@ class Dalmation : Dog
 @entry fn main()
 {
 	let dog = Dalmation()
-	Dalmation.makeNoise(&dog)
+	dog.makeNoise()
+
+	let k = Animal.weight
 }
 
 
