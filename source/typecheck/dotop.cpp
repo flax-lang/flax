@@ -460,9 +460,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				auto newscope = cls->id.scope;
 				newscope.push_back(cls->id.name);
 
-				fs->teleportToScope(newscope);
-				defer(fs->teleportToScope(oldscope));
-
 				return checkRhs(fs, dot, oldscope, newscope);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
@@ -470,9 +467,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				auto oldscope = fs->getCurrentScope();
 				auto newscope = enm->id.scope;
 				newscope.push_back(enm->id.name);
-
-				fs->teleportToScope(newscope);
-				defer(fs->teleportToScope(oldscope));
 
 				auto rhs = checkRhs(fs, dot, oldscope, newscope);
 
@@ -515,9 +509,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 	{
 		auto oldscope = fs->getCurrentScope();
 		auto newscope = scp->scope;
-
-		fs->teleportToScope(newscope);
-		defer(fs->teleportToScope(oldscope));
 
 		auto expr = checkRhs(fs, dot, oldscope, newscope);
 

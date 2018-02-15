@@ -65,7 +65,7 @@ class Dalmation : Dog
 @entry fn main()
 {
 	let dog = Dalmation()
-	dog.makeNoise()
+	Dalmation.makeNoise(&dog)
 }
 
 
