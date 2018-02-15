@@ -105,23 +105,10 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dynamic_cast<sst::TypeDefn*>(t->typecheck(fs));
+		auto st = dcast(sst::TypeDefn, t->typecheck(fs));
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
-	}
-
-	for(auto f : this->fields)
-	{
-		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
-		iceAssert(v);
-
-		if(v->init) error(v, "Struct fields cannot have inline initialisers");
-
-		defn->fields.push_back(v);
-		tys.push_back({ v->id.name, v->type });
-
-		checkFieldRecursion(fs, str, v->type, v->loc);
 	}
 
 
@@ -130,6 +117,19 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	//* treatment anyway, apart from living in a special namespace -- so this should really be fine.
 	fs->enterStructBody(defn);
 	{
+		for(auto f : this->fields)
+		{
+			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs));
+			iceAssert(v);
+
+			if(v->init) error(v, "Struct fields cannot have inline initialisers");
+
+			defn->fields.push_back(v);
+			tys.push_back({ v->id.name, v->type });
+
+			checkFieldRecursion(fs, str, v->type, v->loc);
+		}
+
 		for(auto m : this->methods)
 		{
 			m->generateDeclaration(fs, str);
@@ -255,7 +255,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dynamic_cast<sst::TypeDefn*>(t->typecheck(fs));
+		auto st = dcast(sst::TypeDefn, t->typecheck(fs));
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
@@ -266,7 +266,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		for(auto f : this->fields)
 		{
-			auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
+			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs));
 			iceAssert(v);
 
 			defn->fields.push_back(v);
@@ -274,14 +274,14 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			checkFieldRecursion(fs, cls, v->type, v->loc);
 
-			std::function<void (sst::ClassDefn*, sst::VarDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::VarDefn* fld) -> auto {
+			std::function<void (sst::ClassDefn*, sst::StructFieldDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::StructFieldDefn* fld) -> auto {
 				while(cls)
 				{
 					for(auto bf : cls->fields)
 					{
 						if(bf->id.name == fld->id.name)
 						{
-							exitless_error(fld, "Redefinition of field '%s' (with type '%s'), when it exists in the base class '%s'", fld->id.name, fld->type, cls->id);
+							exitless_error(fld, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'", fld->id.name, fld->type, cls->id);
 
 							info(bf, "'%s' was previously defined in the base class here:", fld->id.name);
 							info(cls, "Base class '%s' was defined here:", cls->id);
@@ -295,29 +295,11 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			checkDupe(defn->baseClass, v);
 		}
-	}
-	fs->leaveStructBody();
 
-
-	for(auto f : this->staticFields)
-	{
-		auto v = dynamic_cast<sst::VarDefn*>(f->typecheck(fs));
-		iceAssert(v);
-
-		defn->staticFields.push_back(v);
-		tys.push_back({ v->id.name, v->type });
-	}
-
-
-
-
-
-	fs->enterStructBody(defn);
-	{
 		for(auto m : this->methods)
 		{
 			if(m->name == "init")
-				error(m, "Cannot have methods named 'init' in a class.");
+				error(m, "Cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
 
 			m->generateDeclaration(fs, cls);
 			iceAssert(m->generatedDefn);
@@ -339,17 +321,34 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->leaveStructBody();
 
 
-
-	for(auto m : this->staticMethods)
+	//* do all the static stuff together
 	{
-		// infer is 0 because this is a static thing
-		m->generateDeclaration(fs, 0);
-		iceAssert(m->generatedDefn);
+		for(auto f : this->staticFields)
+		{
+			auto v = dcast(sst::VarDefn, f->typecheck(fs));
+			iceAssert(v);
 
-		defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+			defn->staticFields.push_back(v);
+			tys.push_back({ v->id.name, v->type });
+		}
+
+		for(auto m : this->staticMethods)
+		{
+			// infer is 0 because this is a static thing
+			m->generateDeclaration(fs, 0);
+			iceAssert(m->generatedDefn);
+
+			defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+		}
+
+		for(auto m : this->staticMethods)
+		{
+			m->typecheck(fs);
+		}
 	}
 
-	//* again, same deal here.
+
+	// once we get all the proper declarations and such, create the function bodies.
 	fs->enterStructBody(defn);
 	{
 		for(auto m : this->methods)
@@ -359,11 +358,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			m->typecheck(fs, cls);
 	}
 	fs->leaveStructBody();
-
-
-
-	for(auto m : this->staticMethods)
-		m->typecheck(fs);
 
 
 

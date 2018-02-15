@@ -166,6 +166,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(e885c8f)`
+- fix regression wrt. scoping and telporting in dot-ops (ref `rants.md` dated 30/11/17)
+
 `(c94a6c1)`
 - add `using ENUM as X`, where `X` can also be `_`.
 

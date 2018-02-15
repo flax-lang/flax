@@ -622,6 +622,17 @@ namespace sst
 	};
 
 
+	struct StructFieldDefn : VarDefn
+	{
+		StructFieldDefn(const Location& l) : VarDefn(l) { }
+		~StructFieldDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
+
+		TypeDefn* parentType = 0;
+	};
+
+
 
 	struct StructDefn : TypeDefn
 	{
@@ -630,7 +641,7 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::vector<VarDefn*> fields;
+		std::vector<StructFieldDefn*> fields;
 		std::vector<FunctionDefn*> methods;
 		std::vector<TypeDefn*> nestedTypes;
 	};
