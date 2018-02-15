@@ -61,6 +61,16 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			auto def = vs.front();
 			iceAssert(def);
+
+			if(auto fld = dcast(sst::StructFieldDefn, def); fld && !fs->isInStructBody())
+			{
+				exitless_error(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+					this->name, fld->parentType->id.name);
+
+				info(def, "Field '%s' was defined here:", def->id.name);
+				doTheExit();
+			}
+			else
 			{
 				auto ret = new sst::VarRef(this->loc, def->type);
 				ret->name = this->name;
@@ -92,7 +102,20 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	// ok, then.
-	auto defn = new sst::VarDefn(this->loc);
+	sst::VarDefn* defn = 0;
+	if(fs->isInStructBody())
+	{
+		auto fld = new sst::StructFieldDefn(this->loc);
+		fld->parentType = fs->getCurrentStructBody();
+
+		defn = fld;
+	}
+	else
+	{
+		defn = new sst::VarDefn(this->loc);
+	}
+
+	iceAssert(defn);
 	defn->id = Identifier(this->name, IdKind::Name);
 	defn->id.scope = fs->getCurrentScope();
 
@@ -103,22 +126,14 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	if(this->type != pts::InferredType::get())
-	{
 		defn->type = fs->convertParserTypeToFIR(this->type);
-	}
-	else
-	{
-		if(!this->initialiser)
-			error(this, "Initialiser is required for type inference");
-	}
 
-	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [this](TCS* fs, sst::Defn* other) -> bool {
-		if(auto v = dcast(sst::Defn, other))
-			return v->id.name == this->name;
+	else if(!this->initialiser)
+		error(this, "Initialiser is required for type inference");
 
-		else
-			return true;
-	});
+
+
+	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [this](TCS* fs, sst::Defn* other) -> bool { return true; });
 
 	// check the defn
 	if(this->initialiser)
@@ -137,10 +152,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 	}
 
-	// debuglog("check %s -- %p\n", util::serialiseScope(defn->id.scope), fs->stree);
-
-	if(!fs->isInStructBody())
-		fs->stree->addDefinition(this->name, defn);
+	fs->stree->addDefinition(this->name, defn);
 
 	return defn;
 }
