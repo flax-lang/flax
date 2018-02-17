@@ -223,6 +223,23 @@ namespace fir
 	}
 
 
+	bool ClassType::isInParentHierarchy(Type* base)
+	{
+		auto target = dcast(ClassType, base);
+		if(!target) return false;
+
+		auto cls = this;
+		while(cls)
+		{
+			if(target == cls) return true;
+
+			cls = cls->baseClass;
+		}
+
+		return false;
+	}
+
+
 	void ClassType::setMethods(const std::vector<Function*>& methods)
 	{
 		for(auto m : methods)
