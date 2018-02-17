@@ -525,6 +525,8 @@ namespace fir
 		ClassType* getBaseClass();
 		void setBaseClass(ClassType* ty);
 
+		bool isInParentHierarchy(Type* base);
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;

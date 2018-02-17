@@ -214,11 +214,35 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				return fs->resolveFunctionFromCandidates(cands, ts, errs, false);
 			};
 
-			std::vector<sst::Defn*> mcands = util::filter(util::map(str->methods, [](sst::FunctionDefn* fd) -> sst::Defn* { return fd; }),
-				[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+			std::vector<sst::Defn*> mcands;
+			{
+				auto base = str;
+				while(base)
+				{
+					auto cds = util::filter(util::map(base->methods, [](sst::FunctionDefn* fd) -> sst::Defn* { return fd; }),
+						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
 
-			std::vector<sst::Defn*> vcands = util::filter(util::map(str->fields, [](sst::VarDefn* fd) -> sst::Defn* { return fd; }),
-				[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+					mcands.insert(mcands.end(), cds.begin(), cds.end());
+
+					if(auto cls = dcast(sst::ClassDefn, base))
+						base = cls->baseClass;
+				}
+			}
+
+			std::vector<sst::Defn*> vcands;
+			{
+				auto base = str;
+				while(base)
+				{
+					auto cds = util::filter(util::map(str->fields, [](sst::VarDefn* fd) -> sst::Defn* { return fd; }),
+						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+
+					vcands.insert(vcands.end(), cds.begin(), cds.end());
+
+					if(auto cls = dcast(sst::ClassDefn, base))
+						base = cls->baseClass;
+				}
+			}
 
 
 			if(mcands.empty() && vcands.empty())

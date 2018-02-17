@@ -632,6 +632,14 @@ namespace sst
 		TypeDefn* parentType = 0;
 	};
 
+	struct ClassInitialiserDefn : FunctionDefn
+	{
+		ClassInitialiserDefn(const Location& l) : FunctionDefn(l) { }
+		~ClassInitialiserDefn() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->FunctionDefn::_codegen(cs, inferred); }
+	};
+
 
 
 	struct StructDefn : TypeDefn

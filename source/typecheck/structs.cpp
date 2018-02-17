@@ -305,6 +305,32 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			iceAssert(m->generatedDefn);
 
 			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+
+			//* check for what would be called 'method hiding' in c++ -- ie. methods in the derived class with exactly the same type signature as
+			//* the base class method.
+
+			// TODO: code dupe with the field hiding thing we have above. simplify??
+			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
+				while(cls)
+				{
+					for(auto bf : cls->methods)
+					{
+						if(bf->id.name == meth->id.name)
+						{
+							exitless_error(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'", meth->id.name,
+								meth->type, cls->id);
+
+							info(bf, "'%s' was previously defined in the base class here:", meth->id.name);
+							info(cls, "Base class '%s' was defined here:", cls->id);
+							doTheExit();
+						}
+					}
+
+					cls = cls->baseClass;
+				}
+			};
+
+			checkDupe(defn->baseClass, dcast(sst::FunctionDefn, m->generatedDefn));
 		}
 
 		for(auto it : this->initialisers)
@@ -316,6 +342,39 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			defn->methods.push_back(gd);
 			defn->initialisers.push_back(gd);
+		}
+
+
+		// copy all the things from the superclass into ourselves.
+		if(defn->baseClass)
+		{
+			// basically, the only things we want to import from the base class are fields and methods -- not initialisers.
+			// base-class-constructors must be called using `super(...)` syntax.
+
+			auto scp = defn->baseClass->id.scope + defn->baseClass->id.name;
+			auto tree = fs->getTreeOfScope(scp);
+
+			std::function<void (sst::StateTree*, sst::StateTree*)> recursivelyImport = [&](sst::StateTree* from, sst::StateTree* to) -> void {
+
+				for(auto [ file, defs ] : from->getAllDefinitions())
+				{
+					for(auto def : defs)
+					{
+						if(!dcast(sst::ClassInitialiserDefn, def))
+							to->addDefinition(file, def->id.name, def);
+					}
+				}
+
+				for(auto sub : from->subtrees)
+				{
+					if(to->subtrees.find(sub.first) == to->subtrees.end())
+						to->subtrees[sub.first] = new sst::StateTree(sub.first, sub.second->topLevelFilename, to);
+
+					recursivelyImport(sub.second, to->subtrees[sub.first]);
+				}
+			};
+
+			recursivelyImport(tree, fs->stree);
 		}
 	}
 	fs->leaveStructBody();
@@ -349,7 +408,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	// once we get all the proper declarations and such, create the function bodies.
-	fs->enterStructBody(defn);
 	{
 		for(auto m : this->methods)
 			m->typecheck(fs, cls);
@@ -357,7 +415,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		for(auto m : this->initialisers)
 			m->typecheck(fs, cls);
 	}
-	fs->leaveStructBody();
 
 
 

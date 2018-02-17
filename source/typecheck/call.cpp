@@ -66,6 +66,14 @@ namespace sst
 			return 4;
 		}
 
+		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
+		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
+			&& from->getPointerElementType()->toClassType()->isInParentHierarchy(to->getPointerElementType()))
+		{
+			// cast from a derived class pointer to a base class pointer
+			return 2;
+		}
+
 		return -1;
 	}
 

@@ -16,6 +16,7 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->generics.size() > 0)
 		return 0;
 
+
 	this->generateDeclaration(fs, infer);
 
 	auto defn = dcast(sst::FunctionDefn, this->generatedDefn);
@@ -67,7 +68,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	}
 
 	using Param = sst::FunctionDefn::Param;
-	auto defn = new sst::FunctionDefn(this->loc);
+	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
 
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;

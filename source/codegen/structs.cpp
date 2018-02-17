@@ -35,7 +35,9 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	for(auto method : this->methods)
 	{
-		auto f = dynamic_cast<fir::Function*>(method->codegen(cs).value);
+		auto res = method->codegen(cs);
+
+		auto f = dynamic_cast<fir::Function*>(res.value);
 		meths.push_back(f);
 
 		if(method->id.name == "init")
