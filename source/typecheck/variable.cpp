@@ -62,15 +62,22 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			auto def = vs.front();
 			iceAssert(def);
 
-			if(auto fld = dcast(sst::StructFieldDefn, def); fld && !fs->isInStructBody())
+			if(auto fld = dcast(sst::StructFieldDefn, def))
 			{
-				exitless_error(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
-					this->name, fld->parentType->id.name);
+				// check that we're actually in a method def.
+				//* this is superior to the previous 'isInStructBody()' approach, because this will properly handle defining nested functions
+				//* -- those are technically "in" a function body, but they're certainly not methods.
+				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
+				{
+					exitless_error(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+						this->name, fld->parentType->id.name);
 
-				info(def, "Field '%s' was defined here:", def->id.name);
-				doTheExit();
+					info(def, "Field '%s' was defined here:", def->id.name);
+					doTheExit();
+				}
 			}
-			else
+
+
 			{
 				auto ret = new sst::VarRef(this->loc, def->type);
 				ret->name = this->name;
@@ -132,7 +139,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this, "Initialiser is required for type inference");
 
 
-
+	//* for variables, as long as the name matches, we conflict.
 	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [this](TCS* fs, sst::Defn* other) -> bool { return true; });
 
 	// check the defn

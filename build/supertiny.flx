@@ -34,13 +34,13 @@ class Dog : Animal
 
 	init(w: f64)
 	{
-		self.weight = w
+		weight = w
 	}
 
-	fn makeNoise()
-	{
-		printf("bark bark (%f)\n", self.weight)
-	}
+	// fn makeNoise()
+	// {
+	// 	printf("bark bark (%f)\n", self.weight)
+	// }
 
 	var tail: int
 }
@@ -49,14 +49,16 @@ class Dalmation : Dog
 {
 	init()
 	{
-		self.weight = 30
+		weight = 30
 		printf("make dalmation\n")
 	}
 
-	fn makeNoise()
-	{
-		printf("fetch or something %f\n", self.weight)
-	}
+	// fn makeNoise()
+	// {
+	// 	printf("fetch or something %f\n", self.weight)
+	// }
+
+	fn dogstuff() { makeNoise() }
 
 	var numSpots: int
 }
@@ -66,8 +68,9 @@ class Dalmation : Dog
 {
 	let dog = Dalmation()
 	dog.makeNoise()
+	dog.dogstuff()
 
-	let k = Animal.weight
+	printf("weight = %f\n", dog.weight)
 }
 
 

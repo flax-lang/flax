@@ -72,7 +72,7 @@ namespace sst
 				for(auto d : ds.second)
 				{
 					//* note: the lambda we pass in can assume that the names are the same, because we only call it when we get things of the same name.
-					auto conflicts = this->checkForShadowingOrConflictingDefinition(d, "definition", [&d](sst::TypecheckState* fs, sst::Defn* other) -> bool {
+					auto conflicts = this->checkForShadowingOrConflictingDefinition(d, "entity", [&d](sst::TypecheckState* fs, sst::Defn* other) -> bool {
 						if(auto fn = dcast(sst::FunctionDecl, other); fn && dcast(sst::FunctionDecl, d))
 						{
 							auto fn1 = dcast(sst::FunctionDecl, d);
