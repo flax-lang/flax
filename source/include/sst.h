@@ -187,6 +187,7 @@ namespace sst
 		fir::Type* typeToSize = 0;
 	};
 
+	struct FunctionDefn;
 	struct AllocOp : Expr
 	{
 		AllocOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "alloc statement"; }
@@ -196,6 +197,9 @@ namespace sst
 
 		fir::Type* elmType = 0;
 		std::vector<Expr*> counts;
+		std::vector<FnCallArgument> arguments;
+
+		Defn* constructor = 0;
 
 		bool isRaw = false;
 	};
@@ -209,7 +213,6 @@ namespace sst
 		Expr* expr = 0;
 	};
 
-	struct FunctionDefn;
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "binary expression"; }
@@ -349,7 +352,13 @@ namespace sst
 		std::vector<FnCallArgument> arguments;
 	};
 
+	struct BaseClassConstructorCall : ClassConstructorCall
+	{
+		BaseClassConstructorCall(const Location& l, fir::Type* t) : ClassConstructorCall(l, t) { this->readableName = "base class constructor call"; }
+		~BaseClassConstructorCall() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
 
 
 	struct VarDefn;
@@ -395,6 +404,17 @@ namespace sst
 
 		Expr* lhs = 0;
 		Expr* call = 0;
+	};
+
+	struct VirtualMethodCall : Expr
+	{
+		VirtualMethodCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "virtual method call"; }
+		~VirtualMethodCall() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		FunctionCall* call = 0;
+
 	};
 
 	struct TupleDotOp : Expr
@@ -589,6 +609,9 @@ namespace sst
 		Block* body = 0;
 		bool needReturnVoid = false;
 		fir::Type* parentTypeForMethod = 0;
+
+		bool isVirtual = false;
+		bool isOverride = false;
 	};
 
 	struct ForeignFuncDefn : FunctionDecl

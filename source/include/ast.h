@@ -121,6 +121,10 @@ namespace ast
 
 		bool isEntry = false;
 		bool noMangle = false;
+
+
+		bool isVirtual = false;
+		bool isOverride = false;
 	};
 
 	struct InitFunctionDefn : Declarable
@@ -134,6 +138,9 @@ namespace ast
 		using Arg = FuncDefn::Arg;
 
 		std::vector<Arg> args;
+
+		bool didCallSuper = false;
+		std::vector<std::pair<std::string, Expr*>> superArgs;
 
 		Block* body = 0;
 
@@ -452,6 +459,7 @@ namespace ast
 
 		pts::Type* allocTy = 0;
 		std::vector<Expr*> counts;
+		std::vector<std::pair<std::string, Expr*>> args;
 
 		bool isRaw = false;
 	};

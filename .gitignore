@@ -59,6 +59,8 @@ bug-repro
 
 .vscode
 
+countloc.bat
+
 prof.svg
 prof_with_square.svg
 build/cmake-output

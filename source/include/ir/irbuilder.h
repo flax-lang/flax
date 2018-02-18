@@ -86,6 +86,8 @@ namespace fir
 
 		Value* CallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname = "");
 
+		Value* CallVirtualMethod(Function* method, std::vector<Value*> args, std::string vname = "");
+
 		Value* Return(Value* v);
 		Value* ReturnVoid();
 
@@ -123,7 +125,7 @@ namespace fir
 		Value* PointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
-		Value* AggregateValue(Type* t, std::vector<Value*> values, std::string vname = "");
+		// Value* AggregateValue(Type* t, std::vector<Value*> values, std::string vname = "");
 		Value* CreateValue(Type* t, std::string vname = "");
 
 		Value* ExtractValue(Value* val, std::vector<size_t> inds, std::string vname = "");

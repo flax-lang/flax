@@ -20,58 +20,15 @@ namespace sst
 	struct Stmt;
 	struct Defn;
 	struct Block;
+	struct TypeDefn;
 	struct BinaryOp;
 	struct StateTree;
+	struct FunctionDefn;
 	struct DefinitionTree;
 }
 
 namespace cgn
 {
-	struct CodegenState;
-
-	namespace glue
-	{
-		#define ALLOCATE_MEMORY_FUNC						"malloc"
-		#define REALLOCATE_MEMORY_FUNC						"realloc"
-		#define FREE_MEMORY_FUNC							"free"
-
-		namespace string
-		{
-			fir::Function* getCloneFunction(CodegenState* cs);
-			fir::Function* getAppendFunction(CodegenState* cs);
-			fir::Function* getCompareFunction(CodegenState* cs);
-			fir::Function* getCharAppendFunction(CodegenState* cs);
-			fir::Function* getBoundsCheckFunction(CodegenState* cs);
-			fir::Function* getUnicodeLengthFunction(CodegenState* cs);
-			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
-			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
-			fir::Function* getCheckLiteralWriteFunction(CodegenState* cs);
-		}
-
-		namespace array
-		{
-			fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
-			fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition);
-			fir::Function* getElementAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getSetElementsToDefaultValueFunction(CodegenState* cs, fir::Type* elmType);
-			fir::Function* getCompareFunction(CodegenState* cs, fir::Type* arrtype, fir::Function* opf);
-			fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-		}
-
-		namespace misc
-		{
-			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
-		}
-	}
-
 	struct ControlFlowPoint
 	{
 		ControlFlowPoint(sst::Block* b, fir::IRBlock* bp, fir::IRBlock* cp) :
@@ -104,12 +61,16 @@ namespace cgn
 		fir::Function* globalInitFunc = 0;
 		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
+		std::unordered_map<fir::Function*, fir::Type*> methodList;
+
+		std::unordered_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 
 		Location loc();
 
-		void enterMethodBody(fir::Value* self);
+		void enterMethodBody(fir::Function* method, fir::Value* self);
 		void leaveMethodBody();
 
 		bool isInMethodBody();
@@ -134,6 +95,9 @@ namespace cgn
 		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);
 
 		fir::Value* getDefaultValue(fir::Type* type);
+
+		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
+		void constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, fir::Value* selfptr, const std::vector<FnCallArgument>& args);
 
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
 		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);

@@ -1514,6 +1514,12 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::Value_CallVirtualMethod:
+						{
+							iceAssert(0);
+							break;
+						}
+
 						case fir::OpKind::Value_Return:
 						{
 							llvm::Value* ret = 0;

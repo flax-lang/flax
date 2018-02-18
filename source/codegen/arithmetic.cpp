@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "gluecode.h"
 #include "typecheck.h"
 
 namespace sst

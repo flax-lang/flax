@@ -11,10 +11,11 @@ class Animal
 {
 	init(w: f64)
 	{
+		printf("make animal w = %f\n", w)
 		weight = w
 	}
 
-	fn makeNoise()
+	virtual fn makeNoise()
 	{
 		printf("some generic sound\n")
 	}
@@ -26,39 +27,35 @@ class Animal
 
 class Dog : Animal
 {
-	init()
+	init() : super(w: 300)
 	{
-		init(300)
-		printf("make dog (w = %f)\n", self.weight)
+		printf("make dog (w = %f)\n", weight)
 	}
 
-	init(w: f64)
+	override fn makeNoise()
 	{
-		weight = w
+		printf("bark bark (%f)\n", weight)
 	}
 
-	// fn makeNoise()
-	// {
-	// 	printf("bark bark (%f)\n", self.weight)
-	// }
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
 
 	var tail: int
 }
 
 class Dalmation : Dog
 {
-	init()
+	init() : super()
 	{
-		weight = 30
 		printf("make dalmation\n")
 	}
 
-	// fn makeNoise()
-	// {
-	// 	printf("fetch or something %f\n", self.weight)
-	// }
-
-	fn dogstuff() { makeNoise() }
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
 
 	var numSpots: int
 }
@@ -66,9 +63,10 @@ class Dalmation : Dog
 
 @entry fn main()
 {
-	let dog = Dalmation()
+	let dog = alloc(Dog)
+
 	dog.makeNoise()
-	dog.dogstuff()
+	dog.wag()
 
 	printf("weight = %f\n", dog.weight)
 }

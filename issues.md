@@ -39,6 +39,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### THINGS TO FIX
 
+1. Either refactor `iceAssert` to still do stuff while in release mode, or move code with side-effects out of assertion conditions.
+
 3. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
 	a) make `char` redundant; strings are just `i8` everywhere. if we want unicode, then it'll be a separate (`ustring`?) type.
 	b) make `char` distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
@@ -63,6 +65,16 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	```
 
 -----
+
+
+### THINGS TO NOTE
+
+1. For calling `alloc` on a class or struct type, the arguments to the constructor are only evaluated once. For classes, the constructor itself is
+	called for every element in the array, but the arguments to that constructor, again, are only evaluated once at the beginning.
+
+
+
+------
 
 
 ### THINGS TO INVESTIGATE
@@ -160,11 +172,20 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	immediately obvious use-case I can think of for this right now, but hopefully it'll come eventually.
 
 
+10. Arguments-after-varargs (see https://youtu.be/mGe5d6dPHAU?t=1379)
+	Basically, allow passing named parameters after var-args.
+
+
 -----
 
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(ba4de52)`
+- re-worked method detection (whether we're in a method or a normal function) to handle the edge case of nested function defs (specifically in a method)
+- make base-class declarations visible in derived classes, including via implicit-self
+- method hiding detection -- it is illegal to have a method in a derived class with the same signature as a method in the base class (without virtual)
 
 `(e885c8f)`
 - fix regression wrt. scoping and telporting in dot-ops (ref `rants.md` dated 30/11/17)

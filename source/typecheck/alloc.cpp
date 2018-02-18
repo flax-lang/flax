@@ -27,10 +27,44 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return c;
 	});
 
+	// check for initialiser.
+	if(!elm->isClassType() && !elm->isStructType() && this->args.size() > 0)
+		error(this, "Cannot provide arguments to non-struct type '%s'", elm);
+
+
 	fir::Type* resType = (this->isRaw || counts.empty() ?
 		elm->getPointerTo() : fir::DynamicArrayType::get(elm));
 
 	auto ret = new sst::AllocOp(this->loc, resType);
+
+
+	// ok, check if we're a struct.
+	if((elm->isStructType() || elm->isClassType()))
+	{
+		auto cdf = fs->typeDefnMap[elm];
+		iceAssert(cdf);
+
+		using Param = sst::FunctionDecl::Param;
+		sst::TypecheckState::PrettyError errs;
+
+		auto arguments = fs->typecheckCallArguments(this->args);
+		auto constructor = fs->resolveConstructorCall(cdf, util::map(arguments, [](FnCallArgument a) -> Param {
+			return Param { a.name, a.loc, a.value->type };
+		}), &errs);
+
+		if(!constructor)
+		{
+			exitless_error(this, "%s", errs.errorStr);
+			for(auto i : errs.infoStrs)
+				info(i.first, "%s", i.second);
+
+			doTheExit();
+		}
+
+		ret->constructor = constructor;
+		ret->arguments = arguments;
+	}
+
 	ret->elmType = elm;
 	ret->counts = counts;
 	ret->isRaw = this->isRaw;

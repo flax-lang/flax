@@ -371,12 +371,58 @@ namespace sst
 		}
 		else if(finals.size() > 1)
 		{
-			errs->errorStr += strbold("Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size());
+			// check if all of the targets we found are virtual, and that they belong to the same class.
 
-			for(auto f : finals)
-				errs->infoStrs.push_back({ f->loc, strinfo(f, "Possible target") });
+			bool virt = true;
+			fir::ClassType* self = 0;
 
-			return 0;
+			Defn* ret = finals[0];
+			for(auto def : finals)
+			{
+				if(auto fd = dcast(sst::FunctionDefn, def); fd && fd->isVirtual)
+				{
+					iceAssert(fd->parentTypeForMethod);
+					iceAssert(fd->parentTypeForMethod->isClassType());
+
+					if(!self)
+					{
+						self = fd->parentTypeForMethod->toClassType();
+					}
+					else
+					{
+						// check if they're co/contra variant
+						auto ty = fd->parentTypeForMethod->toClassType();
+
+						//* here we're just checking that 'ty' and 'self' are part of the same class hierarchy -- we don't really care the method
+						//* that we resolve being at the lowest or highest level of that hierarchy.
+
+						if(!ty->isInParentHierarchy(self) && !self->isInParentHierarchy(ty))
+						{
+							virt = false;
+							break;
+						}
+					}
+				}
+				else
+				{
+					virt = false;
+					break;
+				}
+			}
+
+			if(virt)
+			{
+				return ret;
+			}
+			else
+			{
+				errs->errorStr += strbold("Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size());
+
+				for(auto f : finals)
+					errs->infoStrs.push_back({ f->loc, strinfo(f, "Possible target") });
+
+				return 0;
+			}
 		}
 		else
 		{
@@ -670,7 +716,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	return ret;
 }
 
-static std::vector<FnCallArgument> _typecheckArguments(sst::TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args)
+std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const std::vector<std::pair<std::string, ast::Expr*>>& args)
 {
 	std::vector<FnCallArgument> ret;
 
@@ -687,7 +733,7 @@ static std::vector<FnCallArgument> _typecheckArguments(sst::TypecheckState* fs, 
 
 			// TODO: handle splatting of arrays for varargs calls.
 
-			auto tuple = splat->expr->typecheck(fs);
+			auto tuple = splat->expr->typecheck(this);
 			if(!tuple->type->isTupleType())
 				error(arg.second->loc, "Splatting in a function is currently only supported for tuples, have type '%s'", tuple->type);
 
@@ -704,7 +750,7 @@ static std::vector<FnCallArgument> _typecheckArguments(sst::TypecheckState* fs, 
 		}
 		else
 		{
-			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs)));
+			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this)));
 		}
 	}
 
@@ -717,7 +763,7 @@ sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, _typecheckArguments(fs, this->args));
+	return this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args));
 }
 
 sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
@@ -725,7 +771,7 @@ sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, _typecheckArguments(fs, this->args));
+	return this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args));
 }
 
 

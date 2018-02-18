@@ -46,7 +46,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	if(this->parentTypeForMethod)
-		cs->enterMethodBody(fn->getArguments()[0]);
+		cs->enterMethodBody(fn, fn->getArguments()[0]);
 
 	for(auto a : this->arguments)
 		a->codegen(cs);

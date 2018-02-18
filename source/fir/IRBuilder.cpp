@@ -908,6 +908,9 @@ namespace fir
 	}
 
 
+	// static void checkCallArguments(Function* fn
+
+
 	Value* IRBuilder::Call(Function* fn, std::vector<Value*> args, std::string vname)
 	{
 		// in theory we should still check, but i'm lazy right now
@@ -964,7 +967,20 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+	Value* IRBuilder::CallVirtualMethod(Function* method, std::vector<Value*> args, std::string vname)
+	{
+		// args[0] must be the self, for obvious reasons.
+		auto ty = args[0]->getType();
+		iceAssert(ty->isPointerType() && ty->getPointerElementType()->isClassType());
 
+		auto self = ty->getPointerElementType()->toClassType();
+		iceAssert(self);
+
+		// ok, now we get the method index.
+		size_t index = self->getVirtualMethodIndex(method);
+
+		return 0;
+	}
 
 
 

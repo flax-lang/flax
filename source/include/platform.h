@@ -10,6 +10,10 @@
 
 namespace platform
 {
+	#define ALLOCATE_MEMORY_FUNC						"malloc"
+	#define REALLOCATE_MEMORY_FUNC						"realloc"
+	#define FREE_MEMORY_FUNC							"free"
+
 
 	#ifdef _WIN32
 		#define WIN32_LEAN_AND_MEAN 1
