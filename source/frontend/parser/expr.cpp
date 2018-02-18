@@ -121,8 +121,32 @@ namespace parser
 				case TT::Using:
 					return parseUsingStmt(st);
 
+				case TT::Virtual: {
+					st.eat();
+
+					if(st.front() == TT::Override)
+						error(st.loc(), "'override' implies 'virtual', just use 'override'");
+
+					auto ret = parseFunction(st);
+					ret->isVirtual = true;
+
+					return ret;
+				}
+
+				case TT::Override: {
+					st.eat();
+
+					if(st.front() == TT::Virtual)
+						error(st.loc(), "'override' implies 'virtual', just use 'override'");
+
+					auto ret = parseFunction(st);
+					ret->isOverride = true;
+					ret->isVirtual = true;      // override implies virtual but virtual need not imply override
+
+					return ret;
+				}
+
 				case TT::Protocol:
-				case TT::Override:
 				case TT::Extension:
 				case TT::TypeAlias:
 					error(st, "notsup");
@@ -520,7 +544,7 @@ namespace parser
 	}
 
 
-	static std::vector<std::pair<std::string, Expr*>> parseCallArgumentList(State& st)
+	std::vector<std::pair<std::string, Expr*>> parseCallArgumentList(State& st)
 	{
 		std::vector<std::pair<std::string, Expr*>> ret;
 
@@ -719,8 +743,18 @@ namespace parser
 		if(st.front() == TT::Comma)
 		{
 			st.eat();
+			ret->args = parseCallArgumentList(st);
+		}
+		else if(st.eat() != TT::RParen)
+		{
+			expectedAfter(st.ploc(), "')'", "alloc", st.prev().str());
+		}
 
-			while(st.front() != TT::RParen)
+
+		if(st.front() == TT::LSquare)
+		{
+			st.eat();
+			while(st.front() != TT::RSquare)
 			{
 				ret->counts.push_back(parseExpr(st));
 				if(st.front() == TT::Comma)
@@ -730,11 +764,9 @@ namespace parser
 					expected(st.loc(), "',' or ')' in dimension list for alloc expression", st.front().str());
 			}
 
-			iceAssert(st.front() == TT::RParen);
+			if(st.eat() != TT::RSquare)
+				expectedAfter(st.ploc(), "']'", "'alloc(...)'", st.prev().str());
 		}
-
-		if(st.eat() != TT::RParen)
-			expectedAfter(st.ploc(), "')'", "'alloc'", st.prev().str());
 
 		return ret;
 	}

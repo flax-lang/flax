@@ -179,6 +179,20 @@ namespace parser
 		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(tok.loc);
 		ret->args = args;
 
+		// check for super-class args.
+		if(st.front() == TT::Colon)
+		{
+			st.eat();
+			if(st.eat().str() != "super")
+				expectedAfter(st.ploc(), "'super'", "':' in init function definition", st.prev().str());
+
+			if(st.eat() != TT::LParen)
+				expectedAfter(st.ploc(), "'('", "'super' in call to base-class initialiser", st.prev().str());
+
+			ret->superArgs = parseCallArgumentList(st);
+			ret->didCallSuper = true;
+		}
+
 		st.enterFunctionBody();
 		{
 			ret->body = parseBracedBlock(st);

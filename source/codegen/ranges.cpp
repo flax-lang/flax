@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "gluecode.h"
 
 CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {

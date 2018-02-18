@@ -6,30 +6,32 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME		"__array_boundscheck"
-#define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME	"__array_boundscheckdecomp"
+#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME        "__array_boundscheck"
+#define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME "__array_boundscheckdecomp"
 
-#define BUILTIN_ARRAY_CMP_FUNC_NAME					"__array_compare"
+#define BUILTIN_ARRAY_CMP_FUNC_NAME                 "__array_compare"
 
-#define BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME		"__array_setelementsdefault"
+#define BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME     "__array_setelementsdefault"
+#define BUILTIN_ARRAY_SET_ELEMENTS_NAME             "__array_setelements"
+#define BUILTIN_ARRAY_CALL_CLASS_CONSTRUCTOR        "__array_callclassinit"
 
-#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME			"__darray_clone"
-#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME			"__darray_append"
-#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME	"__darray_appendelement"
-#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME			"__darray_popback"
-#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME	"__darray_combinetwo"
+#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME            "__darray_clone"
+#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME           "__darray_append"
+#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME   "__darray_appendelement"
+#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME         "__darray_popback"
+#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME    "__darray_combinetwo"
 
-#define BUILTIN_DYNARRAY_RESERVE_ENOUGH_NAME		"__darray_reservesufficient"
-#define BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME			"__darray_reserveextra"
+#define BUILTIN_DYNARRAY_RESERVE_ENOUGH_NAME        "__darray_reservesufficient"
+#define BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME         "__darray_reserveextra"
 
-#define BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME	"__darray_recursiverefcount"
+#define BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME    "__darray_recursiverefcount"
 
-#define BUILTIN_SLICE_CLONE_FUNC_NAME				"__slice_clone"
-#define BUILTIN_SLICE_APPEND_FUNC_NAME				"__slice_append"
-#define BUILTIN_SLICE_APPEND_ELEMENT_FUNC_NAME		"__slice_appendelement"
+#define BUILTIN_SLICE_CLONE_FUNC_NAME               "__slice_clone"
+#define BUILTIN_SLICE_APPEND_FUNC_NAME              "__slice_append"
+#define BUILTIN_SLICE_APPEND_ELEMENT_FUNC_NAME      "__slice_appendelement"
 
-#define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME		"__loop_incr_refcount"
-#define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME		"__loop_decr_refcount"
+#define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME        "__loop_incr_refcount"
+#define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME        "__loop_decr_refcount"
 
 
 namespace cgn {
@@ -691,7 +693,9 @@ namespace array
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 					fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getInt64());
-					cs->irb.Store(fir::ConstantInt::getInt64(0), ctrPtr);
+
+					// already set to 0 internally
+					// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrPtr);
 
 					fir::Value* s2len = cs->irb.GetDynamicArrayLength(s2);
 					cs->irb.UnCondBranch(cond);
@@ -798,6 +802,138 @@ namespace array
 	}
 
 
+	fir::Function* getCallClassConstructorOnElementsFunction(CodegenState* cs, fir::ClassType* cls, sst::FunctionDefn* constr,
+		const std::vector<FnCallArgument>& args)
+	{
+		iceAssert(cls);
+
+		auto name = BUILTIN_ARRAY_CALL_CLASS_CONSTRUCTOR + std::string("_") + cls->encodedStr();
+		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ cls->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			// ok: the real difference with the one below is that we need to call the constructor function on every element.
+
+			fir::Value* arrdata = func->getArguments()[0];
+			fir::Value* len = func->getArguments()[1];
+
+
+			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
+			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
+
+			// already set to 0 internally
+			// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrptr);
+
+			cs->irb.UnCondBranch(check);
+			cs->irb.setCurrentBlock(check);
+			{
+				auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrptr), len);
+				cs->irb.CondBranch(cond, body, merge);
+			}
+
+			cs->irb.setCurrentBlock(body);
+			{
+				auto ctr = cs->irb.Load(ctrptr);
+				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
+
+				cs->constructClassWithArguments(cls, constr, ptr, args);
+
+				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+
+				cs->irb.UnCondBranch(check);
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			cs->irb.ReturnVoid();
+
+
+
+
+			cs->irb.setCurrentBlock(restore);
+			fn = func;
+		}
+
+		return fn;
+	}
+
+
+	fir::Function* getSetElementsToValueFunction(CodegenState* cs, fir::Type* elmType)
+	{
+		iceAssert(elmType);
+
+		auto name = BUILTIN_ARRAY_SET_ELEMENTS_NAME + std::string("_") + elmType->encodedStr();
+		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+				fir::FunctionType::get({ elmType->getPointerTo(), fir::Type::getInt64(), elmType }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* arrdata = func->getArguments()[0];
+			fir::Value* len = func->getArguments()[1];
+			fir::Value* value = func->getArguments()[2];
+
+			iceAssert(value);
+			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
+			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+
+			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
+
+			// already set to 0 internally
+			// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrptr);
+
+			cs->irb.UnCondBranch(check);
+			cs->irb.setCurrentBlock(check);
+			{
+				auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrptr), len);
+				cs->irb.CondBranch(cond, body, merge);
+			}
+
+			cs->irb.setCurrentBlock(body);
+			{
+				auto ctr = cs->irb.Load(ctrptr);
+				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
+
+				cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value, 0, CGResult::VK::LitRValue), true, true);
+
+				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+
+				cs->irb.UnCondBranch(check);
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			cs->irb.ReturnVoid();
+
+
+			cs->irb.setCurrentBlock(restore);
+			fn = func;
+		}
+
+		return fn;
+	}
+
+
 	fir::Function* getSetElementsToDefaultValueFunction(CodegenState* cs, fir::Type* elmType)
 	{
 		iceAssert(elmType);
@@ -817,36 +953,21 @@ namespace array
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
 
-			fir::Value* arrdata = func->getArguments()[0];
-			fir::Value* len = func->getArguments()[1];
+			fir::Value* value = 0;
 
+			if(elmType->isClassType())
+				value = cs->irb.CreateValue(elmType);
 
-			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
-			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+			else
+				value = cs->getDefaultValue(elmType);
 
-			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
-			cs->irb.Store(fir::ConstantInt::getInt64(0), ctrptr);
+			iceAssert(value);
 
-			cs->irb.UnCondBranch(check);
-			cs->irb.setCurrentBlock(check);
-			{
-				auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrptr), len);
-				cs->irb.CondBranch(cond, body, merge);
-			}
+			auto setfn = getSetElementsToValueFunction(cs, elmType);
+			iceAssert(setfn);
 
-			cs->irb.setCurrentBlock(body);
-			{
-				auto ctr = cs->irb.Load(ctrptr);
-				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
+			cs->irb.Call(setfn, func->getArguments()[0], func->getArguments()[1], value);
 
-				cs->irb.Store(cs->getDefaultValue(elmType), ptr);
-				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
-
-				cs->irb.UnCondBranch(check);
-			}
-
-			cs->irb.setCurrentBlock(merge);
 			cs->irb.ReturnVoid();
 
 
@@ -1181,7 +1302,9 @@ namespace array
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 					auto idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
-					cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
+
+					// already set to 0 internally
+					// cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
 
 					cs->irb.UnCondBranch(check);
 					cs->irb.setCurrentBlock(check);
@@ -1364,7 +1487,9 @@ namespace array
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 			auto idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
-			cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
+
+			// already set to 0 internally
+			// cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
 
 			cs->irb.UnCondBranch(check);
 			cs->irb.setCurrentBlock(check);

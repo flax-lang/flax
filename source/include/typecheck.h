@@ -154,8 +154,7 @@ namespace sst
 		//* kind of like the above, but subtly different in that we create a *new scope* named _name_ in the scope _toParent_
 		void importScopeContentsIntoNewScope(const std::vector<std::string>& from, const std::vector<std::string>& toParent, const std::string& name);
 
-
-		// Expr* typecheckClassMethodCall(ClassDefn* cls, ast::FunctionCall* call);
+		std::vector<FnCallArgument> typecheckCallArguments(const std::vector<std::pair<std::string, ast::Expr*>>& args);
 
 		struct PrettyError
 		{

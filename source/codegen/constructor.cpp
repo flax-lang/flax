@@ -5,6 +5,84 @@
 #include "sst.h"
 #include "codegen.h"
 
+fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args)
+{
+	fir::Value* value = this->irb.CreateValue(str);
+
+	// set the arguments.
+	if(args.size() > 0)
+	{
+		bool names = !args[0].name.empty();
+
+		// i just keeps track of the index in case we're not using names.
+		size_t i = 0;
+		for(const auto& arg : args)
+		{
+			if(names)
+			{
+				iceAssert(str->hasElementWithName(arg.name));
+				auto elmty = str->getElement(arg.name);
+
+				value = this->irb.InsertValueByName(value, arg.name, arg.value->codegen(this, elmty).value);
+			}
+			else
+			{
+				iceAssert(str->getElementCount() > i);
+				auto elmty = str->getElementN(i);
+
+				value = this->irb.InsertValue(value, { i }, arg.value->codegen(this, elmty).value);
+			}
+
+			i++;
+		}
+
+		if(names) iceAssert(i == str->getElementCount());
+	}
+
+	if(this->isRefCountedType(str))
+		this->addRefCountedValue(value);
+
+	return value;
+}
+
+
+
+void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr,
+	fir::Value* selfptr, const std::vector<FnCallArgument>& args)
+{
+	auto initfn = cls->getInlineInitialiser();
+	iceAssert(initfn);
+
+	auto constrfn = dcast(fir::Function, constr->codegen(this, cls).value);
+	iceAssert(constrfn);
+
+	// make a copy
+	auto arguments = args;
+	{
+		auto fake = new sst::RawValueExpr(this->loc(), cls->getPointerTo());
+		fake->rawValue = CGResult(selfptr);
+
+		arguments.insert(arguments.begin(), FnCallArgument(this->loc(), "self", fake));
+	}
+
+
+	if(arguments.size() != constrfn->getArgumentCount())
+	{
+		exitless_error(this->loc(), "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
+			(fir::Type*) cls, constrfn->getArgumentCount(), arguments.size());
+
+		info(constr, "Constructor was defined here:");
+		doTheExit();
+	}
+
+	std::vector<fir::Value*> vargs = this->codegenAndArrangeFunctionCallArguments(constr, constrfn->getType(), arguments);
+
+	this->irb.Call(initfn, selfptr);
+	this->irb.Call(constrfn, vargs);
+}
+
+
+
 CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -18,47 +96,16 @@ CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* 
 	//* and ofc expect consistency, but we should have already typechecked that previously.
 
 	StructDefn* str = dcast(StructDefn, this->target);
-	if(!str) error(this, "Non-struct type '%s' not supported in constructor call (yet?)", this->target->id.name);
+	if(!str) error(this, "Non-struct type '%s' not supported in constructor call", this->target->id.name);
 
 	// great. now we just make the thing.
-	fir::StructType* stry = str->type->toStructType();
-	fir::Value* value = cs->irb.CreateValue(str->type);
-
-	// set the arguments.
-	if(this->arguments.size() > 0)
-	{
-		bool names = !this->arguments[0].name.empty();
-
-		// i just keeps track of the index in case we're not using names.
-		size_t i = 0;
-		for(const auto& arg : this->arguments)
-		{
-			if(names)
-			{
-				iceAssert(stry->hasElementWithName(arg.name));
-				auto elmty = stry->getElement(arg.name);
-
-				value = cs->irb.InsertValueByName(value, arg.name, arg.value->codegen(cs, elmty).value);
-			}
-			else
-			{
-				iceAssert(stry->getElementCount() > i);
-				auto elmty = stry->getElementN(i);
-
-				value = cs->irb.InsertValue(value, { i }, arg.value->codegen(cs, elmty).value);
-			}
-
-			i++;
-		}
-
-		if(names) iceAssert(i == stry->getElementCount());
-	}
-
-	if(cs->isRefCountedType(stry))
-		cs->addRefCountedValue(value);
+	fir::Value* value = cs->getConstructedStructValue(str->type->toStructType(), this->arguments);
 
 	return CGResult(value);
 }
+
+
+
 
 
 
@@ -70,33 +117,7 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	auto cls = this->classty->type;
 	auto self = cs->irb.StackAlloc(cls);
 
-	auto initfn = this->classty->inlineInitFunction;
-	iceAssert(initfn);
-
-	auto constrfn = dcast(fir::Function, this->target->codegen(cs, infer).value);
-	iceAssert(constrfn);
-
-	{
-		auto fake = new sst::RawValueExpr(this->loc, cls->getPointerTo());
-		fake->rawValue = CGResult(self);
-
-		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake));
-	}
-
-
-	if(this->arguments.size() != constrfn->getArgumentCount())
-	{
-		exitless_error(this, "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
-			cls, constrfn->getArgumentCount(), this->arguments.size());
-
-		info(this->target, "Constructor was defined here:");
-		doTheExit();
-	}
-
-	std::vector<fir::Value*> args = cs->codegenAndArrangeFunctionCallArguments(this->target, constrfn->getType(), this->arguments);
-
-	cs->irb.Call(initfn, self);
-	cs->irb.Call(constrfn, args);
+	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments);
 
 	auto value = cs->irb.Load(self);
 	if(cs->isRefCountedType(cls))
@@ -106,6 +127,28 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 }
 
 
+
+CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto cls = this->classty->type;
+	auto self = cs->getMethodSelf();
+
+	iceAssert(self->getType()->isPointerType() && self->getType()->getPointerElementType()->isClassType());
+
+	auto selfty = self->getType()->getPointerElementType()->toClassType();
+	iceAssert(selfty->getBaseClass());
+
+	selfty = selfty->getBaseClass();
+	self = cs->irb.PointerTypeCast(self, selfty->getPointerTo());
+
+	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments);
+	auto value = cs->irb.Load(self);
+
+	return CGResult(value, self);
+}
 
 
 

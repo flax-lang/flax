@@ -4,13 +4,21 @@
 
 #include "errors.h"
 #include "codegen.h"
+#include "platform.h"
 #include "typecheck.h"
 
 namespace cgn
 {
-	void CodegenState::enterMethodBody(fir::Value* self)
+	void CodegenState::enterMethodBody(fir::Function* method, fir::Value* self)
 	{
 		this->methodSelfStack.push_back(self);
+
+		iceAssert(self->getType()->isPointerType());
+
+		auto ty = self->getType()->getPointerElementType();
+		iceAssert(ty->isClassType() || ty->isStructType());
+
+		this->methodList[method] = ty;
 	}
 
 	void CodegenState::leaveMethodBody()
@@ -21,7 +29,8 @@ namespace cgn
 
 	bool CodegenState::isInMethodBody()
 	{
-		return this->methodSelfStack.size() > 0;
+		return this->methodSelfStack.size() > 0 && this->functionStack.size() > 0
+			&& this->methodList.find(this->functionStack.back()) != this->methodList.end();
 	}
 
 	fir::Value* CodegenState::getMethodSelf()
