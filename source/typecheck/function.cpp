@@ -108,6 +108,19 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	defn->global = !fs->isInFunctionBody();
 
+	defn->isVirtual = this->isVirtual;
+	defn->isOverride = this->isOverride;
+
+	if(!defn->parentTypeForMethod && defn->isVirtual)
+	{
+		error(defn, "Only methods can be marked 'virtual' or 'override' at this point in time");
+	}
+	else if(defn->parentTypeForMethod && !defn->parentTypeForMethod->isClassType())
+	{
+		error(defn, "Only methods of a class (which '%s' is not) can be marked 'virtual' or 'override'",
+			defn->parentTypeForMethod->toClassType()->getTypeName());
+	}
+
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))

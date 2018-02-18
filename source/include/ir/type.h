@@ -527,6 +527,9 @@ namespace fir
 
 		bool isInParentHierarchy(Type* base);
 
+		void addVirtualMethod(Function* method);
+		size_t getVirtualMethodIndex(Function* method);
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
@@ -547,6 +550,11 @@ namespace fir
 		std::unordered_map<std::string, size_t> indexMap;
 		std::unordered_map<std::string, Type*> classMembers;
 		std::unordered_map<std::string, std::vector<Function*>> classMethodMap;
+
+		//* how it works is that we will add in the mappings from the base class,
+		//* and for our own matching virtual methods, we'll map to the same index.
+		size_t virtualMethodCount = 0;
+		std::unordered_map<Function*, size_t> virtualMethods;
 
 		ClassType* baseClass = 0;
 		Function* inlineInitialiser = 0;

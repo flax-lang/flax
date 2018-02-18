@@ -268,7 +268,61 @@ namespace fir
 	void ClassType::setBaseClass(ClassType* ty)
 	{
 		this->baseClass = ty;
+
+		//* keeps things simple.
+		iceAssert(this->virtualMethods.empty() || !"cannot set base class after adding virtual methods");
+
+		this->virtualMethods = this->baseClass->virtualMethods;
+		this->virtualMethodCount = this->baseClass->virtualMethodCount;
 	}
+
+	void ClassType::addVirtualMethod(Function* method)
+	{
+		//* what this does is compare the arguments without the first parameter,
+		//* since that's going to be the self parameter, and that's going to be different
+		auto matching = [](Function* a, Function* b) -> bool {
+			auto ap = a->getType()->toFunctionType()->getArgumentTypes();
+			auto bp = b->getType()->toFunctionType()->getArgumentTypes();
+
+			ap.erase(ap.begin());
+			bp.erase(bp.begin());
+
+			return Type::areTypeListsEqual(ap, bp);
+		};
+
+		// check every member of the current mapping -- not the fastest method i admit.
+		bool found = false;
+		for(auto vm : this->virtualMethods)
+		{
+			if(matching(vm.first, method))
+			{
+				found = true;
+				this->virtualMethods[method] = vm.second;
+				break;
+			}
+		}
+
+		if(!found)
+		{
+			// just make a new one.
+			this->virtualMethods[method] = this->virtualMethodCount;
+			this->virtualMethodCount++;
+		}
+	}
+
+	size_t ClassType::getVirtualMethodIndex(Function* method)
+	{
+		if(auto it = this->virtualMethods.find(method); it != this->virtualMethods.end())
+		{
+			return it->second;
+		}
+		else
+		{
+			error("No such method named '%s' matching signature '%s' in virtual method table of class '%s'",
+				method->getName().name, method->getType(), this->getTypeName().name);
+		}
+	}
+
 
 
 

@@ -14,7 +14,8 @@ inline void debuglog(const char* s, Ts... ts)
 	std::string s1 = s;
 	s1 += "\n";
 
-	tinyformat::format(std::cerr, s1.c_str(), ts...);
+	auto out = tinyformat::format(s1.c_str(), ts...);
+	fprintf(stderr, "%s", out.c_str());
 }
 
 

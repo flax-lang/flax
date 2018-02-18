@@ -231,7 +231,36 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+CGResult sst::VirtualMethodCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
 
+	iceAssert(this->call && this->call->target);
+
+	auto fd = dcast(sst::FunctionDefn, this->call->target);
+	iceAssert(fd);
+
+	if(!fd->isVirtual || !fd->parentTypeForMethod)
+	{
+		exitless_error(this, "Somehow attempting to call a non-virtual method '%s' in a virtual manner", fd->id.name);
+		info(fd, "Function was defined here:");
+
+		doTheExit();
+	}
+
+	// ok, now that everything is in place...
+	auto fn = dcast(fir::Function, fd->codegen(cs).value);
+	iceAssert(fn);
+
+	auto ft = fn->getType()->toFunctionType();
+	iceAssert(ft);
+
+	// ok...
+
+
+	return CGResult(0);
+}
 
 
 

@@ -4,6 +4,7 @@
 
 #include "errors.h"
 #include "codegen.h"
+#include "gluecode.h"
 #include "typecheck.h"
 
 CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)

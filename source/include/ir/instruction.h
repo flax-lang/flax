@@ -99,6 +99,7 @@ namespace fir
 		Value_StackAlloc,
 		Value_CallFunction,
 		Value_CallFunctionPointer,
+		Value_CallVirtualMethod,
 		Value_Return,
 		Value_PointerAddition,
 		Value_PointerSubtraction,

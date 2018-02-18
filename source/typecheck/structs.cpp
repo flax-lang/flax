@@ -159,7 +159,55 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	return this->actualDefn->typecheck(fs, infer);
+	iceAssert(infer && infer->isClassType());
+	auto cls = infer->toClassType();
+
+	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls));
+
+	if(cls->getBaseClass() && !this->didCallSuper)
+	{
+		error(this, "Initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
+			cls->getBaseClass()->getTypeName().name);
+	}
+	else if(!cls->getBaseClass() && this->didCallSuper)
+	{
+		error(this, "Cannot call base class initialiser for class '%s' when it does not inherit from a base class",
+			cls->getTypeName().name);
+	}
+	else if(cls->getBaseClass() && this->didCallSuper)
+	{
+		auto base = cls->getBaseClass();
+		auto call = new sst::BaseClassConstructorCall(this->loc, base);
+
+		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
+		iceAssert(call->classty);
+
+		auto baseargs = fs->typecheckCallArguments(this->superArgs);
+
+		sst::TypecheckState::PrettyError errs;
+		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
+			[](FnCallArgument a) -> sst::FunctionDecl::Param {
+				return sst::FunctionDecl::Param { a.name, a.loc, a.value->type };
+		}), &errs);
+
+		if(!constr)
+		{
+			exitless_error(this, "%s", errs.errorStr);
+			for(auto i : errs.infoStrs)
+				info(i.first, "%s", i.second);
+
+			doTheExit();
+		}
+
+		call->arguments = baseargs;
+		call->target = dcast(sst::FunctionDefn, constr);
+		iceAssert(call->target);
+
+		// insert it as the first thing.
+		ret->body->statements.insert(ret->body->statements.begin(), call);
+	}
+
+	return ret;
 }
 
 
@@ -175,6 +223,7 @@ void ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Ty
 
 	//* we don't want to be carrying too many distinct types around in SST nodes.
 
+	iceAssert(infer);
 
 	this->actualDefn = new ast::FuncDefn(this->loc);
 
@@ -310,19 +359,54 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			//* the base class method.
 
 			// TODO: code dupe with the field hiding thing we have above. simplify??
-			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
+			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&checkDupe, &fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
 				while(cls)
 				{
 					for(auto bf : cls->methods)
 					{
-						if(bf->id.name == meth->id.name)
-						{
-							exitless_error(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'", meth->id.name,
-								meth->type, cls->id);
+						// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
+						// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
 
-							info(bf, "'%s' was previously defined in the base class here:", meth->id.name);
-							info(cls, "Base class '%s' was defined here:", cls->id);
-							doTheExit();
+						// note: we're passing by copy here intentionally so we can erase the first one.
+						auto compareMethods = [&fs](std::vector<sst::FunctionDecl::Param> a, std::vector<sst::FunctionDecl::Param> b) -> bool {
+							iceAssert(a.size() > 0 && b.size() > 0);
+							a.erase(a.begin());
+							b.erase(b.begin());
+
+							return fs->isDuplicateOverload(a, b);
+						};
+
+
+						if(bf->id.name == meth->id.name && compareMethods(bf->params, meth->params))
+						{
+							// check for virtual functions.
+							//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also
+							//* 'isVirtual'.
+
+							// nice comprehensive error messages, I hope.
+							if(!meth->isOverride)
+							{
+								exitless_error(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'", meth->id.name,
+									meth->type, cls->id);
+
+								if(bf->isVirtual)
+								{
+									info(bf, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name);
+								}
+								else
+								{
+									info(bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name);
+									info("To override it, define '%s' as a virtual method", bf->id.name);
+								}
+								doTheExit();
+							}
+							else if(!bf->isVirtual)
+							{
+								exitless_error(meth, "Cannot override non-virtual method '%s'", bf->id.name);
+								info(bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name);
+								info("To override it, define '%s' as a virtual method", bf->id.name);
+								doTheExit();
+							}
 						}
 					}
 

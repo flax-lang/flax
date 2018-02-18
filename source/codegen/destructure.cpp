@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "gluecode.h"
 
 static void generateBinding(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut, bool allowref);
 static void checkTuple(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut);

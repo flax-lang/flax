@@ -12,6 +12,7 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type && this->type->isStructType());
+	cs->typeDefnMap[this->type] = this;
 
 	for(auto method : this->methods)
 		method->codegen(cs);
@@ -28,9 +29,13 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type && this->type->isClassType());
+	cs->typeDefnMap[this->type] = this;
 
 	std::vector<fir::Function*> meths;
 	std::vector<fir::Function*> inits;
+
+
+	auto clsty = this->type->toClassType();
 
 
 	for(auto method : this->methods)
@@ -42,11 +47,13 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(method->id.name == "init")
 			inits.push_back(f);
+
+		if(method->isVirtual)
+			clsty->addVirtualMethod(f);
 	}
 
 
 
-	auto clsty = this->type->toClassType();
 	clsty->setMethods(meths);
 	clsty->setInitialiserFunctions(inits);
 
@@ -73,14 +80,37 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		auto self = func->getArguments()[0];
 
+		// make sure we call the base init first.
+		if(clsty->getBaseClass())
+		{
+			auto bii = clsty->getBaseClass()->getInlineInitialiser();
+			iceAssert(bii);
+
+			cs->irb.Call(bii, cs->irb.PointerTypeCast(self, clsty->getBaseClass()->getPointerTo()));
+		}
+
 		for(auto fd : this->fields)
 		{
-			if(!fd->init) continue;
+			if(fd->init)
+			{
+				auto res = fd->init->codegen(cs, fd->type);
 
-			auto res = fd->init->codegen(cs, fd->type);
-
-			auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
-			cs->autoAssignRefCountedValue(CGResult(cs->irb.Load(elmptr), elmptr), res, true, true);
+				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
+				cs->autoAssignRefCountedValue(CGResult(0, elmptr), res, true, true);
+			}
+			else
+			{
+				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
+				if(fd->type->isClassType())
+				{
+					cs->irb.Store(cs->irb.CreateValue(fd->type), elmptr);
+				}
+				else
+				{
+					cs->autoAssignRefCountedValue(CGResult(0, elmptr), CGResult(cs->getDefaultValue(fd->type), 0, CGResult::VK::LitRValue),
+						true, true);
+				}
+			}
 		}
 
 		cs->irb.ReturnVoid();

@@ -54,10 +54,35 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 }
 
 
-static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std::vector<sst::Expr*> counts, bool isRaw)
+static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc, fir::Type* type, std::vector<sst::Expr*> counts, bool isRaw)
 {
 	auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 	iceAssert(mallocf);
+
+	auto callSetFunction = [&cs](fir::Type* type, sst::AllocOp* alloc, fir::Value* ptr, fir::Value* count) -> void {
+
+		if(type->isClassType())
+		{
+			auto constr = dcast(sst::FunctionDefn, alloc->constructor);
+			iceAssert(constr);
+
+			auto setfn = cgn::glue::array::getCallClassConstructorOnElementsFunction(cs, type->toClassType(), constr, alloc->arguments);
+			iceAssert(setfn);
+
+			cs->irb.Call(setfn, ptr, count);
+		}
+		else if(type->isStructType())
+		{
+			auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
+
+			auto setfn = cgn::glue::array::getSetElementsToValueFunction(cs, type);
+			iceAssert(setfn);
+
+			cs->irb.Call(setfn, ptr, count, value);
+		}
+	};
+
+
 
 	if(counts.empty() || isRaw)
 	{
@@ -68,8 +93,11 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 
 		auto sz = cs->irb.Multiply(cs->irb.Sizeof(type), cnt);
 		auto mem = cs->irb.Call(mallocf, sz);
+		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
 
-		return cs->irb.PointerTypeCast(mem, type->getPointerTo());
+		callSetFunction(type, alloc, mem, cnt);
+
+		return mem;
 	}
 	else
 	{
@@ -89,12 +117,8 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, fir::Type* type, std
 		auto mem = cs->irb.PointerAdd(cs->irb.Call(mallocf, alloclen), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
 
-
 		// make them valid things
-		auto setf = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, type);
-		iceAssert(setf);
-
-		cs->irb.Call(setf, mem, count);
+		callSetFunction(type, alloc, mem, count);
 
 		// ok, now return the array we created.
 		{
@@ -136,7 +160,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->counts.size() > 1)
 		error(this, "Multi-dimensional arrays are not supported yet.");
 
-	auto result = performAllocation(cs, this->elmType, this->counts, this->isRaw);
+	auto result = performAllocation(cs, this, this->elmType, this->counts, this->isRaw);
 	return CGResult(result, 0, CGResult::VK::LitRValue);
 }
 
