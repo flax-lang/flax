@@ -6,9 +6,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### FEATURES TO IMPLEMENT
 
 
-1. Class inheritance and virtual methods
-
-
 3. Optional arguments.
 
 
@@ -16,6 +13,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 5. String operators
+
+
+6. Foreach loop on tuples, and `for (A, B, ...), i in X` where `i` is the current iteration index
 
 
 7. 'cases' member of enums to enable runtime enumeration... of the enumeration.
@@ -201,6 +201,14 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(3eb36eb)`
+- fix the completely uncaught disaster of mismatched comparison ops in binary arithmetic
+- fix bug where we were double-offsetting the indices in insertvalue and extractvalue (for classes)
+- fix certain cases in codegen where our `TypeDefn` wasn't code-generated yet, leading to a whole host of failures. // ! STILL NOT ROBUST
+- fix typo in operator for division, causing it not to work properly (typoed `-` instead of `/`)
+- change pointer syntax to use `&T` vs `T*`. fyi, `&T[]` parses intuitively as `(&T)[]`; use `&(T[])` to get `T[]*` of old
+- change syntax of `alloc` (some time ago actually) to allow passing arguments to constructors; new syntax is `alloc(T, arg1, arg2, ...) [N1, N2, ...]`
 
 `(6dc5ed5)`
 - fix the behaviour of foreach loops such that they don't unnecessarily make values (and in the case of classes, call the constructor) for the loop variable
