@@ -323,7 +323,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			checkFieldRecursion(fs, cls, v->type, v->loc);
 
-			std::function<void (sst::ClassDefn*, sst::StructFieldDefn*)> checkDupe = [&checkDupe](sst::ClassDefn* cls, sst::StructFieldDefn* fld) -> auto {
+			std::function<void (sst::ClassDefn*, sst::StructFieldDefn*)> checkDupe = [](sst::ClassDefn* cls, sst::StructFieldDefn* fld) -> auto {
 				while(cls)
 				{
 					for(auto bf : cls->fields)
