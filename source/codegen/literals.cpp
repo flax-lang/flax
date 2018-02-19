@@ -144,7 +144,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			// set the refcount to -1
-			cs->irb.Store(fir::ConstantInt::getInt64(-1), cs->irb.ConstGEP2(array, 0, 0));
+			cs->irb.Store(fir::ConstantInt::getInt64(-1), cs->irb.PointerTypeCast(cs->irb.ConstGEP2(array, 0, 0),
+				fir::Type::getInt64Ptr()));
 
 			// ok -- basically unroll the loop, except there's no loop -- so we're just...
 			// doing a thing.
