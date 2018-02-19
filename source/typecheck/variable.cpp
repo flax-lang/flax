@@ -140,7 +140,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	//* for variables, as long as the name matches, we conflict.
-	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [this](TCS* fs, sst::Defn* other) -> bool { return true; });
+	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [](TCS* fs, sst::Defn* other) -> bool { return true; });
 
 	// check the defn
 	if(this->initialiser)

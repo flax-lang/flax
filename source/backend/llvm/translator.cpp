@@ -1550,6 +1550,7 @@ namespace backend
 							iceAssert(ft);
 							llvm::Value* ret = builder.CreateCall(ft, fptr, args);
 
+							addValueToMap(ret, inst->realOutput);
 							break;
 						}
 

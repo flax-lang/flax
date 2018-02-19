@@ -171,7 +171,7 @@ namespace ast
 		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { this->readableName = "operator overload defintion"; }
 		~OperatorOverloadDefn() { }
 
-		void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer);
+		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		enum class Kind

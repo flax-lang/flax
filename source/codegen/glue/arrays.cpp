@@ -433,7 +433,8 @@ namespace array
 		fir::Value* refCountSize = fir::ConstantInt::getInt64(REFCOUNT_SIZE);
 		fir::Value* refcnt = 0;
 
-		auto curblk = cs->irb.getCurrentBlock();
+		// auto curblk = cs->irb.getCurrentBlock();
+
 		fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
 		fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
 		// fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
@@ -778,7 +779,7 @@ namespace array
 
 				// we should be ok, now copy.
 				fir::Value* ptr = cs->irb.GetDynamicArrayData(s1);
-				auto origptr = ptr;
+				// auto origptr = ptr;
 				ptr = cs->irb.PointerAdd(ptr, origlen);
 
 				cs->irb.Store(s2, ptr);
@@ -1358,9 +1359,6 @@ namespace array
 				// ok. if we're incrementing, then we're done -- but if we're decrementing, we may need to free the memory.
 				if(!incr)
 				{
-					auto mem = cs->irb.PointerAdd(cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()),
-						fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
 					fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
