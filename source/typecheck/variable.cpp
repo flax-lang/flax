@@ -157,7 +157,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			defn->type = t;
 		}
-		else if(fs->getOverloadDistance({ defn->type }, { defn->init->type }) < 0)
+		else if(fs->getCastDistance(defn->init->type, defn->type) < 0)
 		{
 			error(defn->init, "Cannot assign a value of type '%s' to a variable with type '%s'",
 				defn->init->type, defn->type);

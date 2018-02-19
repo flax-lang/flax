@@ -341,7 +341,13 @@ namespace backend
 			vals.reserve(ca->getValues().size());
 
 			for(auto con : ca->getValues())
-				vals.push_back(llvm::ConstantExpr::getBitCast(constToLlvm(con, valueMap, mod), arrt->getArrayElementType()));
+			{
+				auto c = constToLlvm(con, valueMap, mod);
+				if(c->getType() != arrt->getArrayElementType())
+					c = llvm::ConstantExpr::getBitCast(c, arrt->getArrayElementType());
+
+				vals.push_back(c);
+			}
 
 			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
 		}

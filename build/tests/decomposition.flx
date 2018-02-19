@@ -33,15 +33,15 @@ public fn doDecompositionTest()
 
 		do {
 
-			var arr: string[]
-			arr += "hello"
-			arr += "world"
-			arr += "bouys"
+			var arr2: string[]
+			arr2 += "hello"
+			arr2 += "world"
+			arr2 += "bouys"
 
-			let [ a, ... &b ] = arr
+			let [ a, ... &b ] = arr2
 
 			// can bind directly, if you're that kind of person...
-			let [ ... &c ] = arr
+			let [ ... &c ] = arr2
 			printf("a = %s, b = %d, c = %d\n", a, b.length, c.length)
 		}
 

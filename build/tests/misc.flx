@@ -30,7 +30,7 @@ fn cts<T : StringConvertible>(thing: T) -> string
 	return thing.toString()
 }
 
-fn pt<T>(a: T, b: T*) -> T
+fn pt<T>(a: T, b: &T) -> T
 {
 	return a
 }
@@ -118,7 +118,7 @@ public fn miscellaneousTests()
 
 	do {
 		var bar = (10, 20)
-		var foo: (float, float)**[10]**[3]**
+		var foo: &&(&&(&&(float, float)[10])[3])
 	}
 
 	do {

@@ -1403,7 +1403,7 @@ namespace fir
 
 		size_t ind = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n);
-		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n) + 1; //! vtable
+		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n);
 		else                        iceAssert(0);
 
 		return this->InsertValue(val, { ind }, elm, vname);
@@ -1418,7 +1418,7 @@ namespace fir
 
 		size_t ind = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n);
-		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n) + 1; //! vtable
+		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n);
 		else                        iceAssert(0);
 
 		return this->ExtractValue(val, { ind }, vname);

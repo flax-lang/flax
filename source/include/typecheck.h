@@ -76,6 +76,8 @@ namespace sst
 		StateTree* base = 0;
 		NamespaceDefn* topLevel = 0;
 		std::unordered_set<std::string> thingsImported;
+
+		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
 
 	struct TypecheckState
@@ -161,6 +163,8 @@ namespace sst
 			std::string errorStr;
 			std::vector<std::pair<Location, std::string>> infoStrs;
 		};
+
+		int getCastDistance(fir::Type* from, fir::Type* to);
 
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		int getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);

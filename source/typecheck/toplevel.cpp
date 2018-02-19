@@ -206,6 +206,8 @@ namespace sst
 		tns->name = file.moduleName;
 
 		fs->dtree->topLevel = tns;
+
+		fs->dtree->typeDefnMap = fs->typeDefnMap;
 		return fs->dtree;
 	}
 }

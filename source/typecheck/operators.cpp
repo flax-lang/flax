@@ -88,6 +88,9 @@ void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	if(this->generatedDefn)
+		return;
+
 	// there's nothing different.
 	this->ast::FuncDefn::generateDeclaration(fs, infer);
 

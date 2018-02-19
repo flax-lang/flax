@@ -10,6 +10,9 @@ import "limits"
 import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
+// import "tests/forloops"
+import "tests/scopes"
+import "tests/defertest"
 import "tests/decomposition"
 import "tests/intlimits"
 
@@ -39,7 +42,7 @@ fn runTests()
 		var n = 1
 		while n < 20
 		{
-			libc.printf("%lld", test_fib.doRecursiveFib(n))
+			libc.printf("%d", test_fib.doRecursiveFib(n))
 			n += 1
 
 			if n != 20
@@ -49,7 +52,6 @@ fn runTests()
 		}
 		libc.printf("\n\n\n")
 	}
-
 
 	// fizzbuzz
 	libc.printf("%s%s", fizzbuzzTitle, thinLine)
@@ -65,7 +67,7 @@ fn runTests()
 
 	// scopes
 	libc.printf("%s%s", scopeTitle, thinLine)
-	// doScopeTest("__llvm_jit__build/test")
+	test_scopes.doScopeTest("__llvm_jit__build/test")
 	libc.printf("\n\n\n")
 
 
@@ -95,7 +97,7 @@ fn runTests()
 
 	// defer semantics
 	libc.printf("%s%s", deferTitle, thinLine)
-	// doDeferTest()
+	test_defer.doDeferTest()
 	libc.printf("\n\n\n")
 
 
@@ -119,7 +121,7 @@ fn runTests()
 
 	// for-loops
 	libc.printf("%s%s", forLoopTitle, thinLine)
-	// doForLoopTest()
+	// test_forloops.doForLoopTest()
 	libc.printf("\n\n\n")
 
 
@@ -145,7 +147,7 @@ fn runTests()
 
 
 
-@entry fn main(argc: i32, argv: i8**) -> int
+@entry fn main(argc: i32, argv: &&i8) -> int
 {
 	runTests()
 

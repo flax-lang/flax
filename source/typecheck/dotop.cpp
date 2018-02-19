@@ -511,7 +511,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 					// error(vr, "Enumeration '%s' has no case named '%s'", enm->id.name, vr->name);
 
 					iceAssert(vr->def && enm->cases[vr->name] == vr->def);
-					info(vr, "%s", vr->type);
 					return vr;
 				}
 				else

@@ -285,7 +285,7 @@ namespace Operator
 	const std::string Plus                      = "+";
 	const std::string Minus                     = "-";
 	const std::string Multiply                  = "*";
-	const std::string Divide                    = "-";
+	const std::string Divide                    = "/";
 	const std::string Modulo                    = "%";
 
 	const std::string UnaryPlus                 = "+";

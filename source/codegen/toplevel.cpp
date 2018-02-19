@@ -24,6 +24,8 @@ namespace cgn
 		cs->stree = dtr->base;
 		cs->module = mod;
 
+		cs->typeDefnMap = dtr->typeDefnMap;
+
 		// cs->vtree = new ValueTree(dtr->base->name, 0);
 
 		cs->pushLoc(dtr->topLevel);
