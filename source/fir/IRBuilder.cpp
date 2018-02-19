@@ -967,19 +967,19 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CallVirtualMethod(Function* method, std::vector<Value*> args, std::string vname)
+	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, std::vector<Value*> args, std::string vname)
 	{
 		// args[0] must be the self, for obvious reasons.
 		auto ty = args[0]->getType();
 		iceAssert(ty->isPointerType() && ty->getPointerElementType()->isClassType());
 
 		auto self = ty->getPointerElementType()->toClassType();
-		iceAssert(self);
+		iceAssert(self && self == cls);
 
-		// ok, now we get the method index.
-		size_t index = self->getVirtualMethodIndex(method);
+		Instruction* instr = new Instruction(OpKind::Value_CallVirtualMethod, true, this->currentBlock, ft->getReturnType(),
+			(Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getInt64(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
 
-		return 0;
+		return this->addInstruction(instr, vname);
 	}
 
 
@@ -1176,8 +1176,9 @@ namespace fir
 		{
 			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
 
+			//! '+1' is for vtable.
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-				ct->getElement(memberName)->getPointerTo(), { structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName)) });
+				ct->getElement(memberName)->getPointerTo(), { structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) });
 
 			if(structPtr->isImmutable())
 				instr->realOutput->immut = true;
@@ -1189,6 +1190,24 @@ namespace fir
 			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType());
 		}
 	}
+
+
+
+	void IRBuilder::SetVtable(Value* ptr, Value* table, std::string vname)
+	{
+		auto ty = ptr->getType();
+		if(!ty->isPointerType())                        error("'%s' is not a pointer type", ty);
+		if(!ty->getPointerElementType()->isClassType()) error("'%s' is not a pointer-to-class type", ty);
+		if(table->getType() != fir::Type::getInt8Ptr()) error("expected i8* for vtable, got '%s'", table->getType());
+
+		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
+			fir::Type::getInt8Ptr()->getPointerTo(), { ptr, ConstantInt::getUint64(0) });
+
+		auto gep = this->addInstruction(instr, vname);
+
+		this->Store(table, gep);
+	}
+
 
 
 
@@ -1238,6 +1257,9 @@ namespace fir
 
 		if(!ptrIndex->getType()->isIntegerType())
 			error("ptrIndex is not an integer type (got '%s')", ptrIndex->getType());
+
+		if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+			error("use the other function for struct types");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, false, this->currentBlock, ptr->getType(), { ptr, ptrIndex });
 
@@ -1333,9 +1355,12 @@ namespace fir
 				elm->getType(), et);
 		}
 
+		int ofs = 0;
+		if(t->isClassType()) ofs = 1;   //! to account for vtable
+
 		std::vector<Value*> args = { val, elm };
 		for(auto id : inds)
-			args.push_back(fir::ConstantInt::getInt64(id));
+			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 		// note: no sideeffects, since we return a new aggregate
 		Instruction* instr = new Instruction(OpKind::Value_InsertValue, false, this->currentBlock, t, args);
@@ -1356,9 +1381,12 @@ namespace fir
 
 		iceAssert(et);
 
+		int ofs = 0;
+		if(t->isClassType()) ofs = 1;   //! to account for vtable
+
 		std::vector<Value*> args = { val };
 		for(auto id : inds)
-			args.push_back(fir::ConstantInt::getInt64(id));
+			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 
 		// note: no sideeffects, since we return a new aggregate
@@ -1375,7 +1403,7 @@ namespace fir
 
 		size_t ind = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n);
-		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n);
+		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n) + 1; //! vtable
 		else                        iceAssert(0);
 
 		return this->InsertValue(val, { ind }, elm, vname);
@@ -1390,15 +1418,11 @@ namespace fir
 
 		size_t ind = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n);
-		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n);
+		else if(t->isClassType())   ind = t->toClassType()->getElementIndex(n) + 1; //! vtable
 		else                        iceAssert(0);
 
 		return this->ExtractValue(val, { ind }, vname);
 	}
-
-
-
-
 
 
 

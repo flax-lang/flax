@@ -24,6 +24,7 @@ namespace sst
 	struct BinaryOp;
 	struct StateTree;
 	struct FunctionDefn;
+	struct FunctionCall;
 	struct DefinitionTree;
 }
 
@@ -97,7 +98,10 @@ namespace cgn
 		fir::Value* getDefaultValue(fir::Type* type);
 
 		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
-		void constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, fir::Value* selfptr, const std::vector<FnCallArgument>& args);
+		void constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, fir::Value* selfptr, const std::vector<FnCallArgument>& args,
+			bool callInlineInitialiser);
+
+		fir::Value* callVirtualMethod(sst::FunctionCall* call);
 
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
 		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);
@@ -112,7 +116,11 @@ namespace cgn
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();
 
+		std::unordered_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
+
 		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
+		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(fir::FunctionType* ft, const std::vector<FnCallArgument>& args,
+			const std::unordered_map<std::string, size_t>& nameIndexMap);
 
 		enum class OperatorFn
 		{

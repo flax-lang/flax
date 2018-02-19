@@ -106,8 +106,8 @@ namespace backend
 
 			addMembers(ct, &lmems);
 
-			// for(auto a : ct->getElements())
-			// 	lmems.push_back(typeToLlvm(a, mod));
+			// insert the vtable at the front.
+			lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));
 
 			createdTypes[ct->getTypeName()]->setBody(lmems);
 			return createdTypes[ct->getTypeName()];
@@ -129,7 +129,7 @@ namespace backend
 			for(auto a : ft->getArgumentTypes())
 				largs.push_back(typeToLlvm(a, mod));
 
-			// note(workaround): THIS IS A HACK.
+			//! note(workaround): THIS IS A HACK.
 			// we *ALWAYS* return a pointer to function, because llvm is stupid.
 			// when we create an llvm::Function using this type, we always dereference the pointer type.
 			// however, everywhere else (eg. function variables, parameters, etc.) we need pointers, because
@@ -244,9 +244,61 @@ namespace backend
 
 
 
+	static llvm::Function* translateFunctionDecl(fir::Function* ffn, std::unordered_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
+	{
+		if(auto it = valueMap.find(ffn->id); it != valueMap.end())
+			return llvm::cast<llvm::Function>(it->second);
+
+		llvm::GlobalValue::LinkageTypes link;
+		switch(ffn->linkageType)
+		{
+			case fir::LinkageType::External:
+				link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
+				break;
+
+			case fir::LinkageType::Internal:
+				link = llvm::GlobalValue::LinkageTypes::InternalLinkage;
+				break;
+
+			case fir::LinkageType::ExternalWeak:
+				link = llvm::GlobalValue::LinkageTypes::ExternalWeakLinkage;
+				break;
+
+			default:
+				error("enotsup");
+		}
 
 
-	static llvm::Constant* constToLlvm(fir::ConstantValue* c, llvm::Module* mod)
+		llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), mod)->getPointerElementType());
+		llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), mod);
+
+		if(ffn->isAlwaysInlined())
+			func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
+
+		valueMap[ffn->id] = func;
+
+		size_t i = 0;
+		for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
+		{
+			valueMap[ffn->getArguments()[i]->id] = it;
+
+			// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
+		}
+
+		// sort the blocklist first
+		std::sort(ffn->getBlockList().begin(), ffn->getBlockList().end(), [](fir::IRBlock* a, fir::IRBlock* b) -> bool {
+			return a->id < b->id; });
+
+		for(auto b : ffn->getBlockList())
+		{
+			llvm::BasicBlock* bb = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), b->getName().mangled(), func);
+			valueMap[b->id] = bb;
+		}
+
+		return func;
+	}
+
+	static llvm::Constant* constToLlvm(fir::ConstantValue* c, std::unordered_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
 	{
 		iceAssert(c);
 		auto ret = cachedConstants[c];
@@ -283,13 +335,15 @@ namespace backend
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
 
+			auto arrt = llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod));
+
 			std::vector<llvm::Constant*> vals;
 			vals.reserve(ca->getValues().size());
 
 			for(auto con : ca->getValues())
-				vals.push_back(constToLlvm(con, mod));
+				vals.push_back(llvm::ConstantExpr::getBitCast(constToLlvm(con, valueMap, mod), arrt->getArrayElementType()));
 
-			return cachedConstants[c] = llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod)), vals);
+			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
 		}
 		else if(fir::ConstantTuple* ct = dcast(fir::ConstantTuple, c))
 		{
@@ -299,7 +353,7 @@ namespace backend
 			vals.reserve(ct->getValues().size());
 
 			for(auto v : ct->getValues())
-				vals.push_back(constToLlvm(v, mod));
+				vals.push_back(constToLlvm(v, valueMap, mod));
 
 			return cachedConstants[c] = llvm::ConstantStruct::getAnon(LLVMBackend::getLLVMContext(), vals);
 		}
@@ -309,7 +363,7 @@ namespace backend
 			iceAssert(ty->isStructTy());
 
 			return cachedConstants[c] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
-				constToLlvm(cec->getIndex(), mod), constToLlvm(cec->getValue(), mod));
+				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
 		else if(fir::ConstantString* cs = dcast(fir::ConstantString, c))
 		{
@@ -355,7 +409,7 @@ namespace backend
 		}
 		else if(fir::ConstantArraySlice* cas = dcast(fir::ConstantArraySlice, c))
 		{
-			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), mod), constToLlvm(cas->getLength(), mod) };
+			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), valueMap, mod), constToLlvm(cas->getLength(), valueMap, mod) };
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
 			return cachedConstants[c] = ret;
@@ -364,7 +418,7 @@ namespace backend
 		{
 			if(cda->getArray())
 			{
-				llvm::Constant* constArray = constToLlvm(cda->getArray(), mod);
+				llvm::Constant* constArray = constToLlvm(cda->getArray(), valueMap, mod);
 				iceAssert(constArray);
 
 				// don't make it immutable. this probably puts the global variable in the .data segment, instead of the
@@ -386,19 +440,23 @@ namespace backend
 
 				auto flen = fir::ConstantInt::getInt64(cda->getArray()->getType()->toArrayType()->getArraySize());
 				auto fcap = fir::ConstantInt::getInt64(-1);
-				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, mod), constToLlvm(fcap, mod) };
+				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod) };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
 				return cachedConstants[c] = ret;
 			}
 			else
 			{
-				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), mod), constToLlvm(cda->getLength(), mod),
-					constToLlvm(cda->getCapacity(), mod) };
+				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), valueMap, mod), constToLlvm(cda->getLength(), valueMap, mod),
+					constToLlvm(cda->getCapacity(), valueMap, mod) };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
 				return cachedConstants[c] = ret;
 			}
+		}
+		else if(auto fn = dcast(fir::Function, c))
+		{
+			return translateFunctionDecl(fn, valueMap, mod);
 		}
 		else if(dcast(fir::ConstantStruct, c))
 		{
@@ -436,12 +494,15 @@ namespace backend
 
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
+		auto& gc = LLVMBackend::getLLVMContext();
+
 		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 
 		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
-		llvm::IRBuilder<> builder(LLVMBackend::getLLVMContext());
+		llvm::IRBuilder<> builder(gc);
+
 
 		createdTypes.clear();
 		cachedConstants.clear();
@@ -468,7 +529,7 @@ namespace backend
 			}
 			else if(fir::ConstantValue* cv = dcast(fir::ConstantValue, fv))
 			{
-				return constToLlvm(cv, module);
+				return constToLlvm(cv, valueMap, module);
 			}
 			else
 			{
@@ -510,11 +571,11 @@ namespace backend
 		{
 			std::string id = "_FV_STR" + std::to_string(strn);
 
-			llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), string.first, true);
+			llvm::Constant* cstr = llvm::ConstantDataArray::getString(gc, string.first, true);
 			llvm::Constant* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, id);
 
-			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0);
+			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(gc), 0);
 
 			std::vector<llvm::Constant*> ix { zconst, zconst };
 			gv = llvm::ConstantExpr::getInBoundsGetElementPtr(gv->getType()->getPointerElementType(), gv, ix);
@@ -530,7 +591,7 @@ namespace backend
 			llvm::Type* ty = typeToLlvm(global.second->getType()->getPointerElementType(), module);
 
 			if(global.second->getInitialValue() != 0)
-				initval = constToLlvm(global.second->getInitialValue(), module);
+				initval = constToLlvm(global.second->getInitialValue(), valueMap, module);
 
 			else
 				initval = llvm::Constant::getNullValue(ty);
@@ -550,7 +611,6 @@ namespace backend
 
 		for(auto intr : firmod->_getIntrinsicFunctions())
 		{
-			auto& gc = LLVMBackend::getLLVMContext();
 			llvm::Constant* fn = 0;
 
 			if(intr.first.str() == "memcpy")
@@ -585,7 +645,7 @@ namespace backend
 				// ok... now make the function, right here.
 				{
 					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
-					llvm::BasicBlock* entry = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "entry", func);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(gc, "entry", func);
 
 					builder.SetInsertPoint(entry);
 
@@ -627,9 +687,9 @@ namespace backend
 					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
 					builder.CreateStore(zeroconst, ctr);
 
-					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "loopcond", func);
-					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "loopbody", func);
-					llvm::BasicBlock* merge = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "merge", func);
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(gc, "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(gc, "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(gc, "merge", func);
 
 
 					// explicit branch to loopcond
@@ -675,7 +735,7 @@ namespace backend
 				// ok... now make the function, right here.
 				{
 					func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
-					llvm::BasicBlock* entry = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "entry", func);
+					llvm::BasicBlock* entry = llvm::BasicBlock::Create(gc, "entry", func);
 
 					builder.SetInsertPoint(entry);
 
@@ -704,9 +764,9 @@ namespace backend
 					builder.CreateStore(func->arg_begin(), num);
 
 
-					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "loopcond", func);
-					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "loopbody", func);
-					llvm::BasicBlock* merge = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "merge", func);
+					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(gc, "loopcond", func);
+					llvm::BasicBlock* loopbody = llvm::BasicBlock::Create(gc, "loopbody", func);
+					llvm::BasicBlock* merge = llvm::BasicBlock::Create(gc, "merge", func);
 
 
 					// explicit branch to loopcond
@@ -746,58 +806,7 @@ namespace backend
 		// fprintf(stderr, "translating module %s\n", this->moduleName.c_str());
 		for(auto f : firmod->_getFunctions())
 		{
-			fir::Function* ffn = f.second;
-
-			// if(isGenericInAnyWay(ffn->getType()))
-				// continue;
-
-			llvm::GlobalValue::LinkageTypes link;
-			switch(ffn->linkageType)
-			{
-				case fir::LinkageType::External:
-					link = llvm::GlobalValue::LinkageTypes::ExternalLinkage;
-					break;
-
-				case fir::LinkageType::Internal:
-					link = llvm::GlobalValue::LinkageTypes::InternalLinkage;
-					break;
-
-				case fir::LinkageType::ExternalWeak:
-					link = llvm::GlobalValue::LinkageTypes::ExternalWeakLinkage;
-					break;
-
-				default:
-					error("enotsup");
-			}
-
-
-			llvm::FunctionType* ftype = llvm::cast<llvm::FunctionType>(typeToLlvm(ffn->getType(), module)->getPointerElementType());
-			llvm::Function* func = llvm::Function::Create(ftype, link, ffn->getName().mangled(), module);
-
-			if(ffn->isAlwaysInlined())
-				func->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
-
-			valueMap[ffn->id] = func;
-
-			size_t i = 0;
-			for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
-			{
-				valueMap[ffn->getArguments()[i]->id] = it;
-
-				// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
-			}
-
-			// sort the blocklist first
-			std::sort(ffn->getBlockList().begin(), ffn->getBlockList().end(), [](fir::IRBlock* a, fir::IRBlock* b) -> bool {
-				return a->id < b->id; });
-
-			for(auto b : ffn->getBlockList())
-			{
-				llvm::BasicBlock* bb = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), b->getName().mangled(), func);
-				valueMap[b->id] = bb;
-
-				// fprintf(stderr, "adding block %zu\n", b->id);
-			}
+			translateFunctionDecl(f.second, valueMap, module);
 		}
 
 
@@ -1295,8 +1304,8 @@ namespace backend
 							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
 							else	r2 = builder.CreateICmpULE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), false);
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(gc), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(gc), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1313,8 +1322,8 @@ namespace backend
 							llvm::Value* r1 = builder.CreateFCmpOGE(a, b);
 							llvm::Value* r2 = builder.CreateFCmpOLE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), false);
+							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(gc), false);
+							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(gc), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1516,7 +1525,31 @@ namespace backend
 
 						case fir::OpKind::Value_CallVirtualMethod:
 						{
-							iceAssert(0);
+							// args are: 0. class, 1. index, 2. functiontype, 3...N args
+							auto clsty = inst->operands[0]->getType()->toClassType();
+							iceAssert(clsty);
+
+							std::vector<llvm::Value*> args;
+							for(size_t i = 3; i < inst->operands.size(); i++)
+								args.push_back(getValue(inst->operands[i]));
+
+							llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
+
+							vtable = builder.CreateBitOrPointerCast(vtable,
+								llvm::ArrayType::get(llvm::FunctionType::get(llvm::Type::getVoidTy(gc), false)->getPointerTo(),
+								clsty->getVirtualMethodCount())->getPointerTo());
+
+							auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
+								0, dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+
+							auto ffty = inst->operands[2]->getType()->toFunctionType();
+
+							fptr = builder.CreateBitOrPointerCast(builder.CreateLoad(fptr), typeToLlvm(ffty, module));
+
+							llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(typeToLlvm(ffty, module)->getPointerElementType());
+							iceAssert(ft);
+							llvm::Value* ret = builder.CreateCall(ft, fptr, args);
+
 							break;
 						}
 
@@ -1695,23 +1728,10 @@ namespace backend
 						{
 							// equivalent to GEP(ptr*, 0, memberIndex)
 							iceAssert(inst->operands.size() == 2);
-							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* ptr = getOperand(inst, 0);
 
 							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
 							iceAssert(ci);
-
-
-							// todo: hack
-							llvm::Value* ptr = a;
-							// if(a->getType()->isPointerTy())
-							// {
-							// 	// nothing
-							// }
-							// else
-							// {
-							// 	ptr = builder.CreateAlloca(a->getType());
-							// 	builder.CreateStore(a, ptr);
-							// }
 
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->getUnsignedValue());
 							addValueToMap(ret, inst->realOutput);
@@ -1725,6 +1745,8 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
+							iceAssert(!inst->operands[0]->getType()->isClassType() && !inst->operands[0]->getType()->isStructType());
+
 							llvm::Value* ret = builder.CreateGEP(a, b);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1735,6 +1757,8 @@ namespace backend
 							// equivalent to GEP(ptr*, index)
 							iceAssert(inst->operands.size() == 3);
 							llvm::Value* a = getOperand(inst, 0);
+
+							iceAssert(!inst->operands[0]->getType()->isClassType() && !inst->operands[0]->getType()->isStructType());
 
 							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
 							llvm::Value* ret = builder.CreateGEP(a, indices);
@@ -1753,7 +1777,7 @@ namespace backend
 							iceAssert(t);
 
 							llvm::Value* gep = builder.CreateConstGEP1_64(llvm::ConstantPointerNull::get(t->getPointerTo()), 1);
-							gep = builder.CreatePtrToInt(gep, llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							gep = builder.CreatePtrToInt(gep, llvm::Type::getInt64Ty(gc));
 
 							addValueToMap(gep, inst->realOutput);
 							break;
@@ -1920,7 +1944,6 @@ namespace backend
 							llvm::Value* dp = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = LLVMBackend::getLLVMContext();
 							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
 							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
 
@@ -1941,7 +1964,7 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(gc));
 
 							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
 							addValueToMap(ret, inst->realOutput);
@@ -1956,7 +1979,7 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							llvm::Value* ret = builder.CreateInsertValue(a, b, 1);
 							addValueToMap(ret, inst->realOutput);
@@ -1971,12 +1994,11 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							llvm::Value* dp = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = LLVMBackend::getLLVMContext();
 							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
 							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
 							builder.CreateStore(b, ptr);
@@ -2042,7 +2064,7 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							int ind = 0;
 							if(inst->opKind == fir::OpKind::DynamicArray_SetLength)
@@ -2067,7 +2089,6 @@ namespace backend
 							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = LLVMBackend::getLLVMContext();
 							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
 							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
 
@@ -2084,12 +2105,11 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
 
 							// refcount lies 8 bytes behind.
-							auto& gc = LLVMBackend::getLLVMContext();
 							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
 							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
 
@@ -2152,7 +2172,7 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							llvm::Value* ret = builder.CreateInsertValue(a, b, 1);
 							addValueToMap(ret, inst->realOutput);
@@ -2252,7 +2272,7 @@ namespace backend
 							iceAssert(a->getType()->isPointerTy());
 							iceAssert(a->getType()->getPointerElementType()->isStructTy());
 
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							int ind = 0;
 							if(inst->opKind == fir::OpKind::Any_SetTypeID)

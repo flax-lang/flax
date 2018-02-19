@@ -406,17 +406,6 @@ namespace sst
 		Expr* call = 0;
 	};
 
-	struct VirtualMethodCall : Expr
-	{
-		VirtualMethodCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "virtual method call"; }
-		~VirtualMethodCall() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		FunctionCall* call = 0;
-
-	};
-
 	struct TupleDotOp : Expr
 	{
 		TupleDotOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "tuple access"; }
