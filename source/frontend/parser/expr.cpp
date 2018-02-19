@@ -760,7 +760,7 @@ namespace parser
 				if(st.front() == TT::Comma)
 					st.eat();
 
-				else if(st.front() != TT::RParen)
+				else if(st.front() != TT::RSquare)
 					expected(st.loc(), "',' or ')' in dimension list for alloc expression", st.front().str());
 			}
 

@@ -104,7 +104,7 @@ namespace backend
 
 		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
 
-		// this->linkedModule->print(llvm::errs(), 0);
+		this->linkedModule->print(llvm::errs(), 0);
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
 			exitless_error("\nLLVM Module verification failed");
