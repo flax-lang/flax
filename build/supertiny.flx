@@ -11,7 +11,7 @@ class Animal
 {
 	init(w: f64)
 	{
-		printf("make animal w = %f\n", w)
+		// printf("make animal w = %f\n", w)
 		weight = w
 	}
 
@@ -29,7 +29,7 @@ class Dog : Animal
 {
 	init() : super(w: 300)
 	{
-		printf("make dog (w = %f)\n", weight)
+		// printf("make dog (w = %f)\n", weight)
 	}
 
 	override fn makeNoise()
@@ -63,10 +63,12 @@ class Dalmation : Dog
 
 @entry fn main()
 {
-	let dog = alloc(Dalmation)
+	let dogs = alloc(Dalmation) [3]
 
-	dog.makeNoise()
-	dog.wag()
+	for dog in dogs {
+		dog.makeNoise()
+		dog.wag()
+	}
 }
 
 

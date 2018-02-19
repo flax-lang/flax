@@ -192,10 +192,6 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		// codegen the thing. if we used '_', then there's nothing to codegen.
 		if(this->var)
 		{
-			auto ptr = this->var->codegen(cs).pointer;
-			iceAssert(ptr);
-
-			// get the data.
 			fir::Value* val = 0;
 			if(array->getType()->isRangeType())
 				val = cs->irb.Load(idxptr);
@@ -215,9 +211,11 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			else
 				iceAssert(0);
 
-			ptr->makeNotImmutable();
-			cs->irb.Store(val, ptr);
-			ptr->makeImmutable();
+			auto init = new sst::RawValueExpr(this->var->loc, val->getType());
+			init->rawValue = CGResult(val);
+
+			this->var->init = init;
+			this->var->codegen(cs);
 		}
 
 
