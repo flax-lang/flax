@@ -664,6 +664,9 @@ namespace sst
 		std::vector<StructFieldDefn*> fields;
 		std::vector<FunctionDefn*> methods;
 		std::vector<TypeDefn*> nestedTypes;
+
+		std::vector<VarDefn*> staticFields;
+		std::vector<FunctionDefn*> staticMethods;
 	};
 
 
@@ -679,9 +682,6 @@ namespace sst
 
 		fir::Function* inlineInitFunction = 0;
 		std::vector<FunctionDefn*> initialisers;
-
-		std::vector<VarDefn*> staticFields;
-		std::vector<FunctionDefn*> staticMethods;
 	};
 
 

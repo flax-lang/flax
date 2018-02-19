@@ -365,6 +365,10 @@ namespace ast
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
+
+		std::vector<VarDefn*> staticFields;
+		std::vector<FuncDefn*> staticMethods;
+
 		std::vector<TypeDefn*> nestedTypes;
 	};
 

@@ -202,6 +202,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(6dc5ed5)`
+- fix the behaviour of foreach loops such that they don't unnecessarily make values (and in the case of classes, call the constructor) for the loop variable
+
 `(f7568e9)`
 - add dynamic dispatch for virtual methods (WOO)
 - probably fix some low-key bugs somewhere

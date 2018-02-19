@@ -75,6 +75,8 @@ void ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* in
 	auto str = fir::StructType::createWithoutBody(defn->id);
 	defn->type = str;
 
+	fs->checkForShadowingOrConflictingDefinition(defn, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
@@ -142,6 +144,32 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			m->typecheck(fs, str);
 	}
 	fs->leaveStructBody();
+
+
+	{
+		for(auto f : this->staticFields)
+		{
+			auto v = dcast(sst::VarDefn, f->typecheck(fs));
+			iceAssert(v);
+
+			defn->staticFields.push_back(v);
+			tys.push_back({ v->id.name, v->type });
+		}
+
+		for(auto m : this->staticMethods)
+		{
+			// infer is 0 because this is a static thing
+			m->generateDeclaration(fs, 0);
+			iceAssert(m->generatedDefn);
+
+			defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+		}
+
+		for(auto m : this->staticMethods)
+		{
+			m->typecheck(fs);
+		}
+	}
 
 
 	str->setBody(tys);
@@ -270,6 +298,7 @@ void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* inf
 		defn->baseClass = basedef;
 	}
 
+	fs->checkForShadowingOrConflictingDefinition(defn, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
@@ -359,7 +388,7 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			//* the base class method.
 
 			// TODO: code dupe with the field hiding thing we have above. simplify??
-			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&checkDupe, &fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
+			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
 				while(cls)
 				{
 					for(auto bf : cls->methods)
