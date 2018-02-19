@@ -202,6 +202,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(f7568e9)`
+- add dynamic dispatch for virtual methods (WOO)
+- probably fix some low-key bugs somewhere
+
 `(7268a2c)`
 - enforce calling superclass constructor (via `init(...) : super(...)`) in class constructor definitions
 - fix semantics, by calling superclass inline-init function in derived-class inline-init function
