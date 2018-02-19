@@ -271,19 +271,14 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 		td->visibility = this->visibility;
 
+		fs->checkForShadowingOrConflictingDefinition(td, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; }, tree->parent);
+
 		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
-		// warn("add def for '%s' (%p) into '%s' (%p)", this->name, td, tree->parent->name, tree->parent);
 	}
 
-	// if(tree->parent)
-	// 	tree->parent->addDefinition(tree->topLevelFilename, this->name, ret);
 
 	if(this->name != "")
 		fs->popTree();
-
-	// ret->id = Identifier(this->name, IdKind::Name);
-	// ret->id.scope = fs->getCurrentScope();
-	// ret->visibility = this->visibility;
 
 	ret->name = this->name;
 
