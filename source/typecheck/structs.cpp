@@ -153,7 +153,6 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			iceAssert(v);
 
 			defn->staticFields.push_back(v);
-			tys.push_back({ v->id.name, v->type });
 		}
 
 		for(auto m : this->staticMethods)
@@ -501,7 +500,6 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			iceAssert(v);
 
 			defn->staticFields.push_back(v);
-			tys.push_back({ v->id.name, v->type });
 		}
 
 		for(auto m : this->staticMethods)

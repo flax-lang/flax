@@ -2,16 +2,11 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_forloops
+import "libc" as _
+
 public fn doForLoopTest()
 {
-	do {
-		printf("\n\n>> C-style for loops\n")
-		for (i, k, v) = (1, 0, 30); k < 40 && v > 13; i += 1, k += 10, v -= 3
-		{
-			printf("i = %d, k = %d, v = %d\n", i, k, v)
-		}
-	}
-
 	do {
 		printf("\n>> ranges\n")
 

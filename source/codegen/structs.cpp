@@ -12,7 +12,7 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type && this->type->isStructType());
-	cs->typeDefnMap[this->type] = this;
+	// cs->typeDefnMap[this->type] = this;
 
 	for(auto nt : this->nestedTypes)
 		nt->codegen(cs);
@@ -35,7 +35,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type && this->type->isClassType());
-	cs->typeDefnMap[this->type] = this;
+	// cs->typeDefnMap[this->type] = this;
 
 	std::vector<fir::Function*> meths;
 	std::vector<fir::Function*> inits;

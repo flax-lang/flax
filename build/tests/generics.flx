@@ -125,7 +125,7 @@ fn arrtest<T>(b: T, x: T[]) -> T
 	return b
 }
 
-fn foo(a: f64*, b: f64*[])
+fn foo(a: &f64, b: &f64[])
 {
 	arrtest(a, b)
 }
@@ -149,7 +149,7 @@ public fn doGenericsTest()
 	SomeNS.ngen("foo")
 
 
-	let x = alloc[5] f64*
+	let x = alloc[5] &f64
 	let y = 50.3;
 	arrtest(&y, x)
 }

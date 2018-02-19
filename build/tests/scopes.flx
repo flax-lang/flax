@@ -2,38 +2,46 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_scopes
+
+import "libc" as _
+import "math"
+
+
+@operator prefix 900 √
+
+operator prefix √ (x: f64) -> f64 { return math.sqrt(x) }
+
 class Orr
 {
+	init() { }
+
 	static var Another = 76
-	var bar: int = 311
+	var bar: int = 371
 }
 
 class Something
 {
+	init() { }
+
+	fn somefoo() -> Orr => Orr()
+
 	static var Or: Orr
 	var oor: int = 400
 
-	fn somefoo() -> Orr
-	{
-		return Orr()
-	}
+
 
 	class Inside
 	{
+		init() { }
+
+		fn insideFoo() -> int => 10
+		static fn staticInside() -> int => 23
+
 		static var Another = 511
-
-		fn insideFoo() -> int
-		{
-			return 10
-		}
-
-		static fn staticInside() -> int
-		{
-			return 23
-		}
 	}
 
-	enum InsideEnum
+	enum InsideEnum : i64
 	{
 		case None
 		case Single
@@ -45,7 +53,7 @@ class Something
 	}
 }
 
-enum OutsideEnum
+enum OutsideEnum : i64
 {
 	case Zero
 	case One
@@ -54,7 +62,7 @@ enum OutsideEnum
 	case Four
 }
 
-enum StrongEnum
+enum StrongEnum : i64
 {
 	case Red
 	case Green
@@ -64,6 +72,8 @@ enum StrongEnum
 
 class Sheep
 {
+	init() { }
+
 	var thing: int = 43
 	var foo: Something
 
@@ -85,21 +95,26 @@ namespace n1
 
 		class DeepClass
 		{
+			init() { }
+
 			class DeeperClass
 			{
-				static fn deepStatic() -> int { 23 }
+				init() { }
+
+				static fn deepStatic() -> int => 23
 			}
 		}
 	}
 }
 
+
 public fn doScopeTest(argv: string)
 {
-	var x = argv.raw + 1
+	var x = argv.ptr + 1
 
 	let p = 64.4 ÷ 4.1
 
-	let m = Math.√(41.5)
+	let m = √(41.5)
 
 	let mmx = Something.Inside.Another
 	let another = 4
@@ -112,7 +127,7 @@ public fn doScopeTest(argv: string)
 	printf("gg.0: %d, gg.1: %.2f\n", (4, 50).0, gg.1)
 
 	printf("[%d]\n", foo.oor)
-	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, Math.π())
+	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, math.π)
 
 
 	let x1: int = OutsideEnum.Three as int

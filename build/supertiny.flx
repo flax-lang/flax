@@ -63,12 +63,14 @@ class Dalmation : Dog
 
 @entry fn main()
 {
-	let dogs = alloc(Dalmation) [3]
+	let k = 3.3 / 4.7
+	printf("k = %.2f\n", k)
+	// let dogs = alloc(Dalmation) [3]
 
-	for dog in dogs {
-		dog.makeNoise()
-		dog.wag()
-	}
+	// for dog in dogs {
+	// 	dog.makeNoise()
+	// 	dog.wag()
+	// }
 }
 
 
