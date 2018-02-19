@@ -42,7 +42,7 @@ class Dog : Animal
 		printf("wagging tail of length %d\n", tail)
 	}
 
-	var tail: int
+	var tail: int = 37
 }
 
 class Dalmation : Dog
@@ -63,12 +63,10 @@ class Dalmation : Dog
 
 @entry fn main()
 {
-	let dog = alloc(Dog)
+	let dog = alloc(Dalmation)
 
 	dog.makeNoise()
 	dog.wag()
-
-	printf("weight = %f\n", dog.weight)
 }
 
 

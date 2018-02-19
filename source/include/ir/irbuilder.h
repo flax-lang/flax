@@ -86,7 +86,7 @@ namespace fir
 
 		Value* CallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname = "");
 
-		Value* CallVirtualMethod(Function* method, std::vector<Value*> args, std::string vname = "");
+		Value* CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, std::vector<Value*> args, std::string vname = "");
 
 		Value* Return(Value* v);
 		Value* ReturnVoid();
@@ -109,6 +109,8 @@ namespace fir
 		// equivalent to GEP(ptr*, ptrIndex, elmIndex)
 		Value* GEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname = "");
 		Value* ConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname = "");
+
+		void SetVtable(Value* ptr, Value* table, std::string vname = "");
 
 		void CondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void UnCondBranch(IRBlock* target);

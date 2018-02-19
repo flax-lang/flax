@@ -51,13 +51,25 @@ namespace fir
 
 
 
+	GlobalVariable* Module::getOrCreateVirtualTableForClass(ClassType* cls)
+	{
+		if(this->vtables.find(cls) == this->vtables.end())
+		{
+			auto fmethods = std::vector<fir::Function*>(cls->virtualMethodCount);
+			auto methods = std::vector<fir::ConstantValue*>(cls->virtualMethodCount);
 
+			for(auto meth : cls->reverseVirtualMethodMap)
+				methods[meth.first] = meth.second, fmethods[meth.first] = meth.second;
 
+			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
+			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangledName(), IdKind::Name),
+				table->getType(), table, true, LinkageType::External);
 
+			this->vtables[cls] = { fmethods, vtab };
+		}
 
-
-
-
+		return this->vtables[cls].second;
+	}
 
 
 

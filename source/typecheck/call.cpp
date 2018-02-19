@@ -656,22 +656,24 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 
 
 
-		auto ret = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
-		ret->name = this->name;
-		ret->target = target;
-		ret->arguments = arguments;
-
-		// check if it's a method call
-		// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
-		// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
-
-		// so, if it was really an implicit call, it remains set
-		// if it was a dot-op call, it gets set back to false by the dotop checking.
+		auto call = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
+		call->name = this->name;
+		call->target = target;
+		call->arguments = arguments;
 
 		if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
-			ret->isImplicitMethodCall = true;
+		{
+			// check if it's a method call
+			// if so, indicate. here, we set 'isImplicitMethodCall' to true, as an assumption.
+			// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
 
-		return ret;
+			// so, if it was really an implicit call, it remains set
+			// if it was a dot-op call, it gets set back to false by the dotop checking.
+
+			call->isImplicitMethodCall = true;
+		}
+
+		return call;
 	}
 }
 

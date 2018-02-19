@@ -37,6 +37,15 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto clsty = this->type->toClassType();
 
+	//* this looks stupid, but in 'setbaseclass' we update the virtual methods of the current class.
+	//* since when we previously set the base class there were no virtual methods (we were still typechecking),
+	//* we need to do it again.
+	if(this->baseClass)
+	{
+		this->baseClass->codegen(cs);
+		clsty->setBaseClass(clsty->getBaseClass());
+	}
+
 
 	for(auto method : this->methods)
 	{
@@ -87,6 +96,12 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(bii);
 
 			cs->irb.Call(bii, cs->irb.PointerTypeCast(self, clsty->getBaseClass()->getPointerTo()));
+		}
+
+		// set our vtable
+		{
+			auto vtable = cs->irb.PointerTypeCast(cs->module->getOrCreateVirtualTableForClass(clsty), fir::Type::getInt8Ptr());
+			cs->irb.SetVtable(self, vtable);
 		}
 
 		for(auto fd : this->fields)
@@ -308,6 +323,51 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 	else
 		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty, name);
 }
+
+
+
+
+fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
+{
+	auto fd = dcast(sst::FunctionDefn, call->target);
+	iceAssert(fd);
+
+	auto cls = fd->parentTypeForMethod->toClassType();
+	iceAssert(cls);
+
+
+	if(call->isImplicitMethodCall)
+	{
+		iceAssert(this->isInMethodBody() && fd->parentTypeForMethod);
+
+		auto fake = new sst::RawValueExpr(call->loc, fd->parentTypeForMethod->getPointerTo());
+		fake->rawValue = CGResult(this->getMethodSelf());
+
+		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake));
+	}
+
+	iceAssert(fd->type->isFunctionType());
+
+	auto ft = fd->type->toFunctionType();
+	auto args = this->codegenAndArrangeFunctionCallArguments(ft, call->arguments, this->getNameIndexMap(fd));
+
+	auto idx = cls->getVirtualMethodIndex(call->name, ft);
+	return this->irb.CallVirtualMethod(cls, ft, idx, args);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

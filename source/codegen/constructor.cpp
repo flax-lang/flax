@@ -48,7 +48,7 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 
 
 void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr,
-	fir::Value* selfptr, const std::vector<FnCallArgument>& args)
+	fir::Value* selfptr, const std::vector<FnCallArgument>& args, bool callInlineInit)
 {
 	auto initfn = cls->getInlineInitialiser();
 	iceAssert(initfn);
@@ -77,7 +77,9 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 
 	std::vector<fir::Value*> vargs = this->codegenAndArrangeFunctionCallArguments(constr, constrfn->getType(), arguments);
 
-	this->irb.Call(initfn, selfptr);
+	if(callInlineInit)
+		this->irb.Call(initfn, selfptr);
+
 	this->irb.Call(constrfn, vargs);
 }
 
@@ -117,7 +119,7 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	auto cls = this->classty->type;
 	auto self = cs->irb.StackAlloc(cls);
 
-	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments);
+	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments, true);
 
 	auto value = cs->irb.Load(self);
 	if(cs->isRefCountedType(cls))
@@ -144,7 +146,8 @@ CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Typ
 	selfty = selfty->getBaseClass();
 	self = cs->irb.PointerTypeCast(self, selfty->getPointerTo());
 
-	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments);
+	//* note: we don't call the inline initialiser of the base class, because the inline initialiser of our own class would've already called it.
+	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments, false);
 	auto value = cs->irb.Load(self);
 
 	return CGResult(value, self);
