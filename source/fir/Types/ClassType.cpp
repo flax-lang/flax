@@ -123,10 +123,6 @@ namespace fir
 
 		iceAssert(cls && "no such member");
 		return cls->classMembers[name];
-
-		// iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
-
-		// return this->classMembers[name];
 	}
 
 
@@ -270,34 +266,49 @@ namespace fir
 		this->baseClass = ty;
 
 		//* keeps things simple.
-		iceAssert(this->virtualMethods.empty() || !"cannot set base class after adding virtual methods");
+		iceAssert(this->virtualMethodMap.empty() || !"cannot set base class after adding virtual methods");
 
-		this->virtualMethods = this->baseClass->virtualMethods;
+		this->virtualMethodMap = this->baseClass->virtualMethodMap;
 		this->virtualMethodCount = this->baseClass->virtualMethodCount;
+		this->reverseVirtualMethodMap = this->baseClass->reverseVirtualMethodMap;
 	}
 
 	void ClassType::addVirtualMethod(Function* method)
 	{
 		//* what this does is compare the arguments without the first parameter,
 		//* since that's going to be the self parameter, and that's going to be different
-		auto matching = [](Function* a, Function* b) -> bool {
-			auto ap = a->getType()->toFunctionType()->getArgumentTypes();
-			auto bp = b->getType()->toFunctionType()->getArgumentTypes();
+		auto withoutself = [](std::vector<Type*> p) -> std::vector<Type*> {
+			p.erase(p.begin());
 
-			ap.erase(ap.begin());
-			bp.erase(bp.begin());
-
-			return Type::areTypeListsEqual(ap, bp);
+			return p;
 		};
+
+		auto matching = [&withoutself](const std::vector<Type*>& a, FunctionType* ft) -> bool {
+			auto bp = withoutself(ft->getArgumentTypes());
+
+			//* note: we don't call withoutself on 'a' because we expect that to already have been done
+			//* before it was added.
+			return Type::areTypeListsEqual(a, bp);
+		};
+
+		//* note: the 'reverse' virtual method map is to allow us, at translation time, to easily create the vtable without
+		//* unnecessary searching. When we set a base class, we copy its 'reverse' map; thus, if we don't override anything,
+		//* our vtable will just refer to the methods in the base class.
+
+		//* but if we do override something, we just set the method in our 'reverse' map, which is what we'll use to build
+		//* the vtable. simple?
+
+		auto list = method->getType()->toFunctionType()->getArgumentTypes();
 
 		// check every member of the current mapping -- not the fastest method i admit.
 		bool found = false;
-		for(auto vm : this->virtualMethods)
+		for(auto vm : this->virtualMethodMap)
 		{
-			if(matching(vm.first, method))
+			if(vm.first.first == method->getName().name && matching(vm.first.second, method->getType()->toFunctionType()))
 			{
 				found = true;
-				this->virtualMethods[method] = vm.second;
+				this->virtualMethodMap[{ method->getName().name, withoutself(list) }] = vm.second;
+				this->reverseVirtualMethodMap[vm.second] = method;
 				break;
 			}
 		}
@@ -305,25 +316,36 @@ namespace fir
 		if(!found)
 		{
 			// just make a new one.
-			this->virtualMethods[method] = this->virtualMethodCount;
+			this->virtualMethodMap[{ method->getName().name, withoutself(list) }] = this->virtualMethodCount;
+			this->reverseVirtualMethodMap[this->virtualMethodCount] = method;
 			this->virtualMethodCount++;
 		}
 	}
 
-	size_t ClassType::getVirtualMethodIndex(Function* method)
+	size_t ClassType::getVirtualMethodIndex(const std::string& name, FunctionType* ft)
 	{
-		if(auto it = this->virtualMethods.find(method); it != this->virtualMethods.end())
+		auto withoutself = [](std::vector<Type*> p) -> std::vector<Type*> {
+			p.erase(p.begin());
+			return p;
+		};
+
+		auto list = ft->getArgumentTypes();
+
+		if(auto it = this->virtualMethodMap.find({ name, withoutself(list) }); it != this->virtualMethodMap.end())
 		{
 			return it->second;
 		}
 		else
 		{
 			error("No such method named '%s' matching signature '%s' in virtual method table of class '%s'",
-				method->getName().name, method->getType(), this->getTypeName().name);
+				name, (Type*) ft, this->getTypeName().name);
 		}
 	}
 
-
+	size_t ClassType::getVirtualMethodCount()
+	{
+		return this->virtualMethodCount;
+	}
 
 
 	Function* ClassType::getInlineInitialiser()

@@ -5,24 +5,42 @@
 #include "sst.h"
 #include "codegen.h"
 
+std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
+{
+	std::unordered_map<std::string, size_t> idxmap;
+
+	for(size_t i = 0; i < fd->params.size(); i++)
+		idxmap[fd->params[i].name] = i;
+
+	return idxmap;
+}
+
+
+
 std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft,
 	const std::vector<FnCallArgument>& arguments)
+{
+	std::unordered_map<std::string, size_t> idxmap;
+	if(auto fd = dcast(sst::FunctionDefn, target))
+		idxmap = this->getNameIndexMap(fd);
+
+	return this->codegenAndArrangeFunctionCallArguments(ft, arguments, idxmap);
+}
+
+
+
+
+std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(fir::FunctionType* ft,
+	const std::vector<FnCallArgument>& arguments, const std::unordered_map<std::string, size_t>& idxmap)
 {
 	// do this so we can index directly.
 	auto numArgs = ft->getArgumentTypes().size();
 	auto ret = std::vector<fir::Value*>(arguments.size());
 
-	std::unordered_map<std::string, size_t> idxmap;
-	if(auto fd = dcast(sst::FunctionDefn, target))
-	{
-		for(size_t i = 0; i < fd->params.size(); i++)
-			idxmap[fd->params[i].name] = i;
-	}
-
 	size_t counter = 0;
 	for(auto arg : arguments)
 	{
-		size_t i = (arg.name == "" ? counter : idxmap[arg.name]);
+		size_t i = (arg.name == "" ? counter : idxmap.find(arg.name)->second);
 
 		fir::Type* inf = 0;
 		if(i < numArgs)
@@ -111,6 +129,11 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		iceAssert(defn.value);
 		vf = defn.value;
+	}
+	else if(auto fd = dcast(FunctionDefn, this->target); fd && fd->isVirtual)
+	{
+		// ok then.
+		return CGResult(cs->callVirtualMethod(this));
 	}
 	else
 	{
@@ -230,37 +253,6 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
-
-CGResult sst::VirtualMethodCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
-{
-	cs->pushLoc(this);
-	defer(cs->popLoc());
-
-	iceAssert(this->call && this->call->target);
-
-	auto fd = dcast(sst::FunctionDefn, this->call->target);
-	iceAssert(fd);
-
-	if(!fd->isVirtual || !fd->parentTypeForMethod)
-	{
-		exitless_error(this, "Somehow attempting to call a non-virtual method '%s' in a virtual manner", fd->id.name);
-		info(fd, "Function was defined here:");
-
-		doTheExit();
-	}
-
-	// ok, now that everything is in place...
-	auto fn = dcast(fir::Function, fd->codegen(cs).value);
-	iceAssert(fn);
-
-	auto ft = fn->getType()->toFunctionType();
-	iceAssert(ft);
-
-	// ok...
-
-
-	return CGResult(0);
-}
 
 
 

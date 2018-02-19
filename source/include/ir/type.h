@@ -499,6 +499,7 @@ namespace fir
 	struct ClassType : Type
 	{
 		friend struct Type;
+		friend struct Module;
 
 		// methods
 		Identifier getTypeName();
@@ -528,7 +529,9 @@ namespace fir
 		bool isInParentHierarchy(Type* base);
 
 		void addVirtualMethod(Function* method);
-		size_t getVirtualMethodIndex(Function* method);
+		size_t getVirtualMethodIndex(const std::string& name, FunctionType* ft);
+
+		size_t getVirtualMethodCount();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -553,8 +556,15 @@ namespace fir
 
 		//* how it works is that we will add in the mappings from the base class,
 		//* and for our own matching virtual methods, we'll map to the same index.
+
+
 		size_t virtualMethodCount = 0;
-		std::unordered_map<Function*, size_t> virtualMethods;
+		// std::unordered_map<Function*, size_t> virtualMethodMap;
+		std::unordered_map<size_t, Function*> reverseVirtualMethodMap;
+
+		//* note: we do it this way (where we *EXCLUDE THE SELF POINTER*), because it's just easier -- to compare, and everything.
+		//* we really don't have a use for mapping a fir::Function to an index, only the other way.
+		std::map<std::pair<std::string, std::vector<Type*>>, size_t> virtualMethodMap;
 
 		ClassType* baseClass = 0;
 		Function* inlineInitialiser = 0;

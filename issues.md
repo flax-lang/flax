@@ -41,6 +41,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 1. Either refactor `iceAssert` to still do stuff while in release mode, or move code with side-effects out of assertion conditions.
 
+2. There are still some instances where we explicitly 'initialise' a class equivalent to `memset(0)` -- see *THINGS TO NOTE* below.
+
 3. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
 	a) make `char` redundant; strings are just `i8` everywhere. if we want unicode, then it'll be a separate (`ustring`?) type.
 	b) make `char` distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
@@ -74,26 +76,44 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 
+
+
 ------
 
 
 ### THINGS TO INVESTIGATE
 
-1. Should slices be a 'weak' reference to the elements?
+
+1. Certain cases we still allow a zeroinitialised class to exist:
+	A. When growing a dynamic array, the new elements are zeroinitialised instead of having a value set (for non-class types, they get their default value)
+	B. When initialising a field in a struct, if not explicitly assigned to it is left as it is -- which should be the zeroinitialiser
+	C. When initialising a field in a class without an inline initialiser, we explicitly set it to 0.
+
+	We either document this properly, or change the behaviour. I don't really want to devolve into the C++ style of forcing super-explicit initialiser
+	syntax. However, we can enforce setting a value by forcing an inline initialiser for classes.
+
+	For structs, we have 2 options -- 1: screw it, just make a zeroinit class if they appear in a struct; 2: only allow initialising structs with
+	constructers that specify a value for any class types.
+
+	For the former, I'm more inclined to do that, but the latter is more 'correct', as it were. Unfortunately, that would also mean disallowing
+	`var foo: SomeStruct` without an initialiser...
+
+
+2. Should slices be a 'weak' reference to the elements?
 	ie. should making a slice of a dynamic array increase the refcount of the elements of the dynamic array?
 	Right now, we don't increment the reference count -- ie. we've implemented weak slices.
 
 	Do we want strong slices?
 
 
-2. Foreach loops where you take more than one thing at a time, like this, maybe:
+3. Foreach loops where you take more than one thing at a time, like this, maybe:
 	`for [ first, middle, last, ... ] in list { ... }`
 
 
-3. Variadic functions should take a slice of `any`.
+4. Variadic functions should take a slice of `any`.
 
 
-4. Type inference for single-expr functions? It's a little weird to have two arrows like this:
+5. Type inference for single-expr functions? It's a little weird to have two arrows like this:
 	`fn foo(a: T) -> T => a * a`
 
 	The type inference would require some re-working though, because to generate the declaration of the function we need the return type, but to
@@ -106,7 +126,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	It's not really a high-priority thing anyway.
 
 
-5. wrt. named parameters:
+6. wrt. named parameters:
 
 	there are two cases of named parameters being used; first in a type constructor, and second in a regular function call.
 
@@ -145,7 +165,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	just create a new variable, it's not going to kill the program.
 
 
-6. wrt. tuples:
+7. wrt. tuples:
 	well that's all done and over with. Tuples can be splatted in arbitrary locations at function callsites, but are treated as a positional argument.
 	So, you cannot have named arguments before the splatted tuple, and any named arguments after the fact must not conflict with the positionally-
 	-specified arguments that came from the splatted tuple.
@@ -181,6 +201,11 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(7268a2c)`
+- enforce calling superclass constructor (via `init(...) : super(...)`) in class constructor definitions
+- fix semantics, by calling superclass inline-init function in derived-class inline-init function
+- refactor code internally to pull stuff out more.
 
 `(ba4de52)`
 - re-worked method detection (whether we're in a method or a normal function) to handle the edge case of nested function defs (specifically in a method)

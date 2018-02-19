@@ -27,6 +27,14 @@ std::vector<T> operator + (const std::vector<T>& vec, const T& elm)
 	return copy;
 }
 
+template <typename T>
+std::vector<T> operator + (const T& elm, const std::vector<T>& vec)
+{
+	auto copy = vec;
+
+	copy.insert(copy.begin(), elm);
+	return copy;
+}
 
 #define __nothing
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))

@@ -849,7 +849,7 @@ namespace array
 				auto ctr = cs->irb.Load(ctrptr);
 				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
 
-				cs->constructClassWithArguments(cls, constr, ptr, args);
+				cs->constructClassWithArguments(cls, constr, ptr, args, true);
 
 				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
 
