@@ -214,6 +214,9 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			auto init = new sst::RawValueExpr(this->var->loc, val->getType());
 			init->rawValue = CGResult(val);
 
+			if(cs->isRefCountedType(val->getType()))
+				cs->addRefCountedValue(val);
+
 			this->var->init = init;
 			this->var->codegen(cs);
 		}
