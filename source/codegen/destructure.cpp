@@ -120,7 +120,7 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 			else
 			{
 				// make string.
-				auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
+				// auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
 
 				auto clonef = cgn::glue::string::getCloneFunction(cs);
 				iceAssert(clonef);
