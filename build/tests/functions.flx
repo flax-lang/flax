@@ -62,14 +62,14 @@ fn et1(a: int) -> int
 
 class SomeStruct
 {
-	var f: (SomeStruct*, int) -> int
+	var f: (&SomeStruct, int) -> int
 	fn fun(a: string) -> int
 	{
 		printf("method: %s\n", a)
 		return 40
 	}
 
-	static fn sfn(self: SomeStruct*, a: int) -> int
+	static fn sfn(self: &SomeStruct, a: int) -> int
 	{
 		printf("static: %p, %d\n", self, a);
 		return a;
@@ -174,7 +174,7 @@ public fn doFunctionTest()
 
 
 
-fn each(arr: int*, length: int, f: (int) -> void)
+fn each(arr: &int, length: int, f: (int) -> void)
 {
 	var i = 0
 

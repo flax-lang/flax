@@ -284,9 +284,6 @@ namespace parser
 		using TT = lexer::TokenType;
 		auto ret = base;
 
-		while(st.front() == TT::Asterisk)
-			ret = new pts::PointerType(ret), st.pop();
-
 		if(st.front() == TT::LSquare)
 		{
 			// parse an array of some kind
@@ -332,7 +329,7 @@ namespace parser
 			}
 		}
 
-		if(st.front() == TT::LSquare || st.front() == TT::Asterisk)
+		if(st.front() == TT::LSquare)
 			return parseTypeIndirections(st, ret);
 
 		else
@@ -342,7 +339,19 @@ namespace parser
 	pts::Type* parseType(State& st)
 	{
 		using TT = lexer::TokenType;
-		if(st.front() == TT::Identifier)
+		if(st.front() == TT::Ampersand)
+		{
+			st.pop();
+			return new pts::PointerType(parseType(st));
+		}
+		else if(st.front() == TT::LogicalAnd)
+		{
+			// lmao.
+
+			st.pop();
+			return new pts::PointerType(new pts::PointerType(parseType(st)));
+		}
+		else if(st.front() == TT::Identifier)
 		{
 			std::string s = st.eat().str();
 

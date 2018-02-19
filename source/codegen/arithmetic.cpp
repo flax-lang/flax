@@ -51,6 +51,17 @@ namespace sst
 				return CGResult(cs->unwrapConstantNumber(cn->getValue(), target));
 				// return _csdoConstantCast(this, cn, target);
 			}
+			else if(vt->isEnumType())
+			{
+				auto res = cs->irb.AppropriateCast(cs->irb.GetEnumCaseValue(value), target);
+
+				if(!res)
+				{
+					error(this, "Case type of '%s' is '%s', cannot cast to type '%s'", vt, vt->toEnumType()->getCaseType(), target);
+				}
+
+				return CGResult(res);
+			}
 			else
 			{
 				auto res = cs->irb.AppropriateCast(value, target);
@@ -281,23 +292,23 @@ namespace cgn
 			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
 				|| (lt->isCharType() && rt->isCharType()))
 			{
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lv, rv));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lv, rv));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lv, rv));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lv, rv));
 				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lv, rv));
 				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lv, rv));
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lv, rv));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lv, rv));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lv, rv));
 
 				error("no");
 			}
 			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
 			{
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGT_ORD(lv, rv));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLT_ORD(lv, rv));
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lv, rv));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lv, rv));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
 
 				error("no");
 			}
@@ -308,23 +319,23 @@ namespace cgn
 
 				if(lr.value->getType()->isFloatingPointType())
 				{
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
 
 					error("no");
 				}
 				else
 				{
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(lr.value, rr.value));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(lr.value, rr.value));
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr.value, rr.value));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr.value, rr.value));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
 
 					error("no");
 				}
@@ -336,12 +347,12 @@ namespace cgn
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(res, zero));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(res, zero));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(res, zero));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(res, zero));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(res, zero));
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(res, zero));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(res, zero));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(res, zero));
 
 				error("no");
 			}
@@ -350,12 +361,12 @@ namespace cgn
 				auto li = this->irb.GetEnumCaseIndex(lv);
 				auto ri = this->irb.GetEnumCaseIndex(rv);
 
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(li, ri));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(li, ri));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(li, ri));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(li, ri));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(li, ri));
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(li, ri));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(li, ri));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(li, ri));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(li, ri));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(li, ri));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(li, ri));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(li, ri));
 
 				error("no");
 			}
@@ -367,12 +378,12 @@ namespace cgn
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
 
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpEQ(res, zero));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpNEQ(res, zero));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGT(res, zero));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpGEQ(res, zero));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLT(res, zero));
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(res, zero));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(res, zero));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(res, zero));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(res, zero));
 
 				error("no");
 			}

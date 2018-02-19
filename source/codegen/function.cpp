@@ -67,6 +67,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(this->body->statements.size() == 1);
 			auto last = this->body->statements[0]->cachedResult;
+			last = cs->oneWayAutocast(last, this->returnType);
 
 			cs->irb.Return(last.value);
 		}

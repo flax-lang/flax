@@ -916,7 +916,7 @@ namespace array
 				auto ctr = cs->irb.Load(ctrptr);
 				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
 
-				cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value, 0, CGResult::VK::LitRValue), true, true);
+				cs->autoAssignRefCountedValue(CGResult(cs->irb.Load(ptr), ptr), CGResult(value, 0, CGResult::VK::LitRValue), true, true);
 
 				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
 

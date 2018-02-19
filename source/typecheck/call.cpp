@@ -15,7 +15,7 @@ using TCS = sst::TypecheckState;
 
 namespace sst
 {
-	static int getCastDistance(fir::Type* from, fir::Type* to)
+	int TypecheckState::getCastDistance(fir::Type* from, fir::Type* to)
 	{
 		if(from == to) return 0;
 
@@ -81,7 +81,7 @@ namespace sst
 
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
-	static int computeOverloadDistance(const Location& fnLoc, std::vector<FunctionDecl::Param> target,
+	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, std::vector<FunctionDecl::Param> target,
 		std::vector<FunctionDecl::Param> args, bool cvararg, Location* loc, std::string* estr, Defn* candidate)
 	{
 		iceAssert(estr);
@@ -175,7 +175,7 @@ namespace sst
 		// handle the positional arguments
 		for(size_t i = 0; i < std::min(target.size(), positional.size()); i++)
 		{
-			auto d = getCastDistance(args[i].type, target[i].type);
+			auto d = fs->getCastDistance(args[i].type, target[i].type);
 			if(d == -1)
 			{
 				*estr = strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'",
@@ -202,7 +202,7 @@ namespace sst
 				return -1;
 			}
 
-			int d = getCastDistance(narg.type, target[ind].type);
+			int d = fs->getCastDistance(narg.type, target[ind].type);
 			if(d == -1)
 			{
 				*estr = strprintf("Mismatched argument type in named argument '%s': no valid cast from given type '%s' to expected type '%s'",
@@ -247,7 +247,7 @@ namespace sst
 				for(size_t i = target.size(); i < args.size(); i++)
 				{
 					auto ty = args[i].type;
-					auto dist = getCastDistance(ty, elmTy);
+					auto dist = fs->getCastDistance(ty, elmTy);
 					if(dist == -1)
 					{
 						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
@@ -272,7 +272,7 @@ namespace sst
 
 		using Param = FunctionDefn::Param;
 
-		return computeOverloadDistance(this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }),
+		return computeOverloadDistance(this, this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }),
 			util::map(b, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }), false, &eloc, &estr, 0);
 	}
 
@@ -322,7 +322,7 @@ namespace sst
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
 					args.insert(args.begin(), Param { "", Location(), def->parentTypeForMethod->getPointerTo() });
 
-				dist = computeOverloadDistance(cand->loc, fn->params,
+				dist = computeOverloadDistance(this, cand->loc, fn->params,
 					args, fn->isVarArg, &fails[fn].first, &fails[fn].second, cand);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
@@ -343,7 +343,7 @@ namespace sst
 				}
 
 				auto prms = ft->getArgumentTypes();
-				dist = computeOverloadDistance(cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param { "", Location(), t }; }),
+				dist = computeOverloadDistance(this, cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param { "", Location(), t }; }),
 					arguments, false, &fails[vr].first, &fails[vr].second, cand);
 			}
 
@@ -705,7 +705,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	std::string estr;
 
 	auto ft = target->type->toFunctionType();
-	int dist = sst::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
+	int dist = sst::computeOverloadDistance(fs, this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
 		return Param { "", Location(), t }; }), ts, false, &eloc, &estr, 0);
 
 	if(!estr.empty() || dist == -1)

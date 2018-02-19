@@ -90,6 +90,8 @@ CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* 
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	this->target->codegen(cs);
+
 	if(!this->target)
 		error(this, "Failed to find target type of constructor call");
 
@@ -116,6 +118,8 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	this->classty->codegen(cs);
+
 	auto cls = this->classty->type;
 	auto self = cs->irb.StackAlloc(cls);
 
@@ -134,6 +138,8 @@ CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Typ
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
+
+	this->classty->codegen(cs);
 
 	auto cls = this->classty->type;
 	auto self = cs->getMethodSelf();

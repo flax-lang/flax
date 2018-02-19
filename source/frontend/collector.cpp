@@ -103,8 +103,18 @@ namespace frontend
 		auto dtr = dtrees[full];
 		iceAssert(dtr && dtr->topLevel);
 
-		return cgn::codegen(dtr);
+		for(auto dt : dtrees)
+		{
+			for(auto def : dt.second->typeDefnMap)
+			{
+				if(auto it = dtr->typeDefnMap.find(def.first); it != dtr->typeDefnMap.end())
+					iceAssert(it->second == def.second);
 
+				dtr->typeDefnMap[def.first] = def.second;
+			}
+		}
+
+		return cgn::codegen(dtr);
 	}
 }
 

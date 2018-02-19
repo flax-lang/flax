@@ -159,7 +159,7 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 		auto stmt = fn->body->statements.front();
 		if(auto expr = dcast(sst::Expr, stmt); expr)
 		{
-			if(expr->type != expected)
+			if(this->getCastDistance(expr->type, expected) < 0)
 				error(expr, "Found expression of type '%s' in single-expression function, when function returns type '%s'", expr->type, expected);
 
 			// ok.

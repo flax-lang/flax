@@ -167,6 +167,8 @@ namespace cgn
 		}
 		else if(type->isClassType())
 		{
+			this->typeDefnMap[type]->codegen(this);
+
 			// first need to check if we have any initialisers with 0 parameters.
 			auto cls = type->toClassType();
 
