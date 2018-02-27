@@ -2,11 +2,14 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "pts.h"
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
 
 #include "ir/type.h"
+
+
 
 sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
@@ -14,14 +17,12 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	defer(fs->popLoc());
 
 	auto ret = new sst::ForeachLoop(this->loc);
-
 	auto n = fs->getAnonymousScopeName();
 
 	fs->pushTree(n);
 	defer(fs->popTree());
 
 
-	// check the array
 	ret->array = this->array->typecheck(fs);
 
 	fir::Type* elmty = 0;
@@ -37,25 +38,20 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	else
 		error(this->array, "Invalid type '%s' in foreach loop", ret->array->type);
 
-	if(this->var != "_")
-	{
-		auto fake = new sst::VarDefn(this->varloc);
-		fake->id = Identifier(this->var, IdKind::Name);
-		fake->id.scope = fs->getCurrentScope();
+	iceAssert(elmty);
+	bool allowref = !(ret->array->type->isStringType() || ret->array->type->isRangeType());
 
-		{
-			fs->stree->addDefinition(this->var, fake);
-		}
-
-		fake->type = elmty;
-		fake->immutable = true;
-		ret->var = fake;
-	}
-	else
+	if(!this->indexVar.empty())
 	{
-		ret->var = 0;
+		auto fake = new ast::VarDefn(this->loc);
+		fake->name = this->indexVar;
+		fake->type = pts::NamedType::create(INT64_TYPE_STRING);
+
+		ret->indexVar = dcast(sst::VarDefn, fake->typecheck(fs));
+		iceAssert(ret->indexVar);
 	}
 
+	ret->mappings = fs->typecheckDecompositions(this->bindings, elmty, true, allowref);
 
 	fs->enterBreakableBody();
 	{
@@ -66,7 +62,6 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 	return ret;
 }
-
 
 
 

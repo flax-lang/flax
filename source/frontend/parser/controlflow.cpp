@@ -142,54 +142,53 @@ namespace parser
 
 
 
-	static ast::ForTupleDecompLoop* parseForTupleLoop(State& st)
+
+	ast::Stmt* parseForLoop(State& st)
 	{
-		iceAssert(st.front() == TT::LParen);
-		auto ret = new ast::ForTupleDecompLoop(st.ploc());
-		ret->bindings = parseTupleDecomp(st);
+		iceAssert(st.eat() == TT::For);
+
+		if(!match(st.front(), TT::Identifier, TT::LParen))
+			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
+
+		auto ret = new ast::ForeachLoop(st.ploc());
+
+		if(st.front() == TT::LParen)
+		{
+			ret->bindings = parseTupleDecomp(st);
+		}
+		else if(st.front() == TT::Ampersand || st.front() == TT::Identifier)
+		{
+			if(st.front() == TT::Ampersand)
+				ret->bindings.ref = true, st.pop();
+
+			ret->bindings.loc = st.loc();
+			ret->bindings.name = st.eat().str();
+		}
+		else
+		{
+			expectedAfter(st.loc(), "one or more variable bindings", "'for'", st.front().str());
+		}
+
+		// check for the comma for the index variable
+		if(st.front() == TT::Comma)
+		{
+			st.pop();
+			if(st.front() != TT::Identifier)
+				expectedAfter(st.loc(), "identifier for index binding", "',' in for loop", st.front().str());
+
+			else if(st.front().str() == "_")
+				error("Redundant use of '_' in binding for index variable in for loop; omit the binding entirely to ignore the index variable");
+
+			ret->indexVar = st.eat().str();
+		}
 
 		if(st.front() != TT::Identifier || st.front().str() != "in")
-			expected(st.loc(), "'in' in for loop", st.front().str());
+			expected(st.loc(), "'in' in for-loop", st.front().str());
 
 		st.eat();
 
 		// get the array.
 		ret->array = parseExpr(st);
-		return ret;
-	}
-
-	static ast::ForeachLoop* parseForeachLoop(State& st)
-	{
-		iceAssert(st.front() == TT::Identifier);
-		auto ret = new ast::ForeachLoop(st.ploc());
-
-		auto vl = st.loc();
-		ret->var = st.eat().str();
-
-		if(st.front() != TT::Identifier || st.front().str() != "in")
-			expected(st.loc(), "'in' in for loop", st.front().str());
-
-		st.eat();
-
-		ret->varloc = vl;
-		ret->array = parseExpr(st);
-		return ret;
-	}
-
-
-	ast::Stmt* parseForLoop(State& st)
-	{
-		iceAssert(st.eat() == TT::For);
-		ast::ForLoop* ret = 0;
-
-		if(st.front() == TT::LParen)
-			ret = parseForTupleLoop(st);
-
-		else if(st.front() == TT::Identifier)
-			ret = parseForeachLoop(st);
-
-		else
-			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
 		st.skipWS();
 		ret->body = parseBracedBlock(st);

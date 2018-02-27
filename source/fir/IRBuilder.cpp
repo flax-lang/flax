@@ -1601,6 +1601,33 @@ namespace fir
 
 
 
+	Value* IRBuilder::GetDynamicArrayRefCountPointer(Value* arr, std::string vname)
+	{
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_GetRefCountPtr, false, this->currentBlock,
+			fir::Type::getInt64Ptr(), { arr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::SetDynamicArrayRefCountPointer(Value* arr, Value* val, std::string vname)
+	{
+		if(!arr->getType()->isDynamicArrayType())
+			error("arr is not a dynamic array type (got '%s')", arr->getType());
+
+		if(val->getType() != fir::Type::getInt64()->getPointerTo())
+			error("val is not an int64 pointer");
+
+		Instruction* instr = new Instruction(OpKind::DynamicArray_SetRefCountPtr, true, this->currentBlock,
+			arr->getType(), { arr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
 	Value* IRBuilder::GetDynamicArrayRefCount(Value* arr, std::string vname)
 	{
 		if(!arr->getType()->isDynamicArrayType())

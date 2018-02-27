@@ -161,10 +161,14 @@ namespace backend
 		else if(type->isDynamicArrayType())
 		{
 			fir::DynamicArrayType* llat = type->toDynamicArrayType();
-			std::vector<llvm::Type*> mems;
-			mems.push_back(typeToLlvm(llat->getElementType()->getPointerTo(), mod));
-			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
-			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
+			std::vector<llvm::Type*> mems = {
+				typeToLlvm(llat->getElementType()->getPointerTo(), mod),
+				llvm::IntegerType::getInt64Ty(gc),
+				llvm::IntegerType::getInt64Ty(gc),
+
+				// refcount
+				llvm::IntegerType::getInt64PtrTy(gc)
+			};
 
 			return llvm::StructType::get(gc, mems, false);
 		}
@@ -446,7 +450,7 @@ namespace backend
 
 				auto flen = fir::ConstantInt::getInt64(cda->getArray()->getType()->toArrayType()->getArraySize());
 				auto fcap = fir::ConstantInt::getInt64(-1);
-				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod) };
+				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod), zconst };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
 				return cachedConstants[c] = ret;
@@ -454,7 +458,7 @@ namespace backend
 			else
 			{
 				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), valueMap, mod), constToLlvm(cda->getLength(), valueMap, mod),
-					constToLlvm(cda->getCapacity(), valueMap, mod) };
+					constToLlvm(cda->getCapacity(), valueMap, mod), llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0) };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
 				return cachedConstants[c] = ret;
@@ -2025,6 +2029,7 @@ namespace backend
 						case fir::OpKind::DynamicArray_GetData:
 						case fir::OpKind::DynamicArray_GetLength:
 						case fir::OpKind::DynamicArray_GetCapacity:
+						case fir::OpKind::DynamicArray_GetRefCountPtr:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -2036,8 +2041,10 @@ namespace backend
 								ind = 0;
 							else if(inst->opKind == fir::OpKind::DynamicArray_GetLength)
 								ind = 1;
-							else
+							else if(inst->opKind == fir::OpKind::DynamicArray_GetCapacity)
 								ind = 2;
+							else
+								ind = 3;
 
 							llvm::Value* ret = builder.CreateExtractValue(a, ind);
 							addValueToMap(ret, inst->realOutput);
@@ -2061,6 +2068,20 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::DynamicArray_SetRefCountPtr:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getOperand(inst, 1);
+
+							iceAssert(a->getType()->isStructTy());
+							iceAssert(b->getType() == llvm::Type::getInt64PtrTy(gc));
+
+							llvm::Value* ret = builder.CreateInsertValue(a, b, 3);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
 
 						case fir::OpKind::DynamicArray_SetLength:
 						case fir::OpKind::DynamicArray_SetCapacity:
@@ -2090,16 +2111,9 @@ namespace backend
 							iceAssert(inst->operands.size() == 1);
 
 							llvm::Value* a = getOperand(inst, 0);
-
 							iceAssert(a->getType()->isStructTy());
 
-							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
-
-							// refcount lies 8 bytes behind.
-							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
-							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
-
-							llvm::Value* ret = builder.CreateLoad(rcp);
+							llvm::Value* ret = builder.CreateLoad(builder.CreateExtractValue(a, 3));
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -2114,13 +2128,7 @@ namespace backend
 							iceAssert(a->getType()->isStructTy());
 							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
-							llvm::Value* ptr = builder.CreateExtractValue(a, 0);
-
-							// refcount lies 8 bytes behind.
-							llvm::Value* rcp = builder.CreatePointerCast(ptr, llvm::Type::getInt64PtrTy(gc));
-							rcp = builder.CreateInBoundsGEP(rcp, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
-
-							builder.CreateStore(b, rcp);
+							builder.CreateStore(b, builder.CreateExtractValue(a, 3));
 
 							break;
 						}

@@ -149,12 +149,14 @@ namespace fir
 		Value* GetDynamicArrayLength(Value* arr, std::string vname = "");
 		Value* GetDynamicArrayCapacity(Value* arr, std::string vname = "");
 		Value* GetDynamicArrayRefCount(Value* arr, std::string vname = "");
+		Value* GetDynamicArrayRefCountPointer(Value* arr, std::string vname = "");
 
 		[[nodiscard]] Value* SetDynamicArrayData(Value* arr, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
-		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetDynamicArrayRefCountPointer(Value* arr, Value* ptr, std::string vname = "");
 
+		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
 
 		Value* GetArraySliceData(Value* arr, std::string vname = "");
 		Value* GetArraySliceLength(Value* arr, std::string vname = "");

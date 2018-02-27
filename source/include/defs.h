@@ -36,6 +36,26 @@ std::vector<T> operator + (const T& elm, const std::vector<T>& vec)
 	return copy;
 }
 
+
+
+template <typename T>
+bool match(const T& first)
+{
+	return true;
+}
+
+template <typename T, typename U>
+bool match(const T& first, const U& second)
+{
+	return (first == second);
+}
+
+template <typename T, typename U, typename... Args>
+bool match(const T& first, const U& second, const Args&... comps)
+{
+	return (first == second) || match(first, comps...);
+}
+
 #define __nothing
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 

@@ -65,12 +65,12 @@ class Dalmation : Dog
 {
 	let k = 3.3 / 4.7
 	printf("k = %.2f\n", k)
-	// let dogs = alloc(Dalmation) [3]
 
-	// for dog in dogs {
-	// 	dog.makeNoise()
-	// 	dog.wag()
-	// }
+	let dogs = [ (0, "zero"), (1, "one"), (2, "two"), (3, "three"), (4, "four"), (5, "five") ]
+
+	for (num, str), i in dogs {
+		printf("%d: %s = %d\n", i, str, num)
+	}
 }
 
 
