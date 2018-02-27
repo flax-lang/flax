@@ -6,9 +6,6 @@
 #include "codegen.h"
 #include "gluecode.h"
 
-static void generateBinding(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut, bool allowref);
-static void checkTuple(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut);
-static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut);
 
 
 CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -16,7 +13,7 @@ CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	generateBinding(cs, this->bindings, this->init->codegen(cs), this->immutable, true);
+	cs->generateDecompositionBindings(this->bindings, this->init->codegen(cs), this->immutable, true);
 
 	return CGResult(0);
 }
@@ -35,14 +32,17 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 	if(cs->isRefCountedType(res.value->getType()))
 		cs->addRefCountedValue(res.value);
 
-	auto v = new sst::RawValueExpr(defn->loc, res.value->getType());
-	v->rawValue = res;
+	if(defn)
+	{
+		auto v = new sst::RawValueExpr(defn->loc, res.value->getType());
+		v->rawValue = res;
 
-	defn->init = v;
-	defn->codegen(cs);
+		defn->init = v;
+		defn->codegen(cs);
+	}
 }
 
-static void checkTuple(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut)
+static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs, bool immut)
 {
 	iceAssert(!bind.array);
 
@@ -66,11 +66,11 @@ static void checkTuple(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 			v = CGResult(cs->irb.ExtractValue(rhs.value, { i }), 0);
 		}
 
-		generateBinding(cs, bind.inner[i], v, immut, true);
+		cs->generateDecompositionBindings(bind.inner[i], v, immut, true);
 	}
 }
 
-static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut)
+static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs, bool immut)
 {
 	iceAssert(bind.array);
 
@@ -98,7 +98,7 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 			for(auto& b : bind.inner)
 			{
 				auto v = CGResult(cs->irb.Load(cs->irb.PointerAdd(strdat, fir::ConstantInt::getInt64(idx))), 0);
-				generateBinding(cs, b, v, immut, false);
+				cs->generateDecompositionBindings(b, v, immut, false);
 
 				idx++;
 			}
@@ -164,7 +164,7 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 			for(auto& b : bind.inner)
 			{
 				auto v = CGResult(cs->irb.ExtractValue(array, { idx }), 0);
-				generateBinding(cs, b, v, immut, false);
+				cs->generateDecompositionBindings(b, v, immut, false);
 
 				idx++;
 			}
@@ -189,7 +189,7 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getInt64(idx));
 
 				auto v = CGResult(cs->irb.Load(ptr), ptr);
-				generateBinding(cs, b, v, immut, true);
+				cs->generateDecompositionBindings(b, v, immut, true);
 
 				idx++;
 			}
@@ -238,14 +238,12 @@ static void checkArray(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs,
 	}
 }
 
-static void generateBinding(cgn::CodegenState* cs, DecompMapping& bind, CGResult rhs, bool immut, bool allowref)
+void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool immut, bool allowref)
 {
 	auto rt = rhs.value->getType();
 
 	if(!bind.name.empty())
 	{
-		iceAssert(!bind.ref || (bind.ref ^ (bind.name == "_")));
-
 		if(bind.ref && !allowref)
 			error(bind.loc, "Cannot bind to value of type '%s' by reference", rt);
 
@@ -255,15 +253,15 @@ static void generateBinding(cgn::CodegenState* cs, DecompMapping& bind, CGResult
 			rhs.pointer = 0;
 		}
 
-		handleDefn(cs, bind.createdDefn, rhs);
+		handleDefn(this, bind.createdDefn, rhs);
 	}
 	else if(bind.array)
 	{
-		checkArray(cs, bind, rhs, immut);
+		checkArray(this, bind, rhs, immut);
 	}
 	else
 	{
-		checkTuple(cs, bind, rhs, immut);
+		checkTuple(this, bind, rhs, immut);
 	}
 }
 

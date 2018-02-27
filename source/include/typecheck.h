@@ -158,6 +158,8 @@ namespace sst
 
 		std::vector<FnCallArgument> typecheckCallArguments(const std::vector<std::pair<std::string, ast::Expr*>>& args);
 
+		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
+
 		struct PrettyError
 		{
 			std::string errorStr;
