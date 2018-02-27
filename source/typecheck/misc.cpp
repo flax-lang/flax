@@ -22,9 +22,3 @@ sst::Expr* ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	error(this, "Unable to typecheck splat op, this shouldn't happen!");
 }
-
-sst::Stmt* ast::ForTupleDecompLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
-{
-	iceAssert(0 && "not implemented");
-	return 0;
-}

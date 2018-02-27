@@ -82,6 +82,12 @@ std::vector<sst::Block*> sst::WhileLoop::getBlocks()
 
 
 
+
+
+
+
+
+
 CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
 	cs->pushLoc(this);
@@ -109,6 +115,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		merge:
 			.. continue ..
 	*/
+	auto prevblock = cs->irb.getCurrentBlock();
 
 	auto check = cs->irb.addNewBlockAfter("check", cs->irb.getCurrentBlock());
 	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());
@@ -116,7 +123,9 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 	fir::Value* end = 0;
 	fir::Value* step = 0;
+
 	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
+	fir::Value* iterptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
 	auto [ array, arrayptr, _ ] = this->array->codegen(cs);
 	if(array->getType()->isRangeType())
@@ -170,7 +179,6 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->irb.UnCondBranch(check);
 	cs->irb.setCurrentBlock(check);
 
-
 	//! here's some special shit where we handle ranges with start > end
 	fir::Value* cond = 0;
 	if(array->getType()->isRangeType())
@@ -189,33 +197,35 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 	cs->irb.setCurrentBlock(loop);
 	{
-		// codegen the thing. if we used '_', then there's nothing to codegen.
-		if(this->var)
+		fir::Value* theptr = 0;
+		if(array->getType()->isRangeType())
+			theptr = idxptr;
+
+		else if(array->getType()->isDynamicArrayType())
+			theptr = cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(array), cs->irb.Load(idxptr));
+
+		else if(array->getType()->isArraySliceType())
+			theptr = cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr));
+
+		else if(array->getType()->isStringType())
+			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr)), fir::Type::getChar()->getPointerTo());
+
+		else if(array->getType()->isArrayType())
+			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr));
+
+		else
+			iceAssert(0);
+
+		auto res = CGResult(cs->irb.Load(theptr), theptr);
+		cs->generateDecompositionBindings(this->mappings, res, array->isImmutable(), !(array->getType()->isRangeType() || array->getType()->isStringType()));
+
+		if(this->indexVar)
 		{
-			fir::Value* val = 0;
-			if(array->getType()->isRangeType())
-				val = cs->irb.Load(idxptr);
+			auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
+			idx->rawValue = CGResult(cs->irb.Load(iterptr));
 
-			else if(array->getType()->isDynamicArrayType())
-				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(array), cs->irb.Load(idxptr)));
-
-			else if(array->getType()->isArraySliceType())
-				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr)));
-
-			else if(array->getType()->isStringType())
-				val = cs->irb.Bitcast(cs->irb.Load(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr))), fir::Type::getChar());
-
-			else if(array->getType()->isArrayType())
-				val = cs->irb.Load(cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr)));
-
-			else
-				iceAssert(0);
-
-			auto init = new sst::RawValueExpr(this->var->loc, val->getType());
-			init->rawValue = CGResult(val);
-
-			this->var->init = init;
-			this->var->codegen(cs);
+			this->indexVar->init = idx;
+			this->indexVar->codegen(cs);
 		}
 
 
@@ -229,6 +239,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		// increment the index
 		cs->irb.Store(cs->irb.Add(cs->irb.Load(idxptr), step), idxptr);
+		cs->irb.Store(cs->irb.Add(cs->irb.Load(iterptr), fir::ConstantInt::getInt64(1)), iterptr);
+
 		cs->irb.UnCondBranch(check);
 	}
 

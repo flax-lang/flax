@@ -271,21 +271,14 @@ namespace array
 			cap->addIncoming(origcap, entry);
 			cap->addIncoming(/*origlen*/ origcap, insane);
 
-
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
 			fir::Value* actuallen = cs->irb.Multiply(cap, cs->irb.Sizeof(arrtype->getElementType()));
-
-			// space for refcount
-			actuallen = cs->irb.Add(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
 
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.Call(mallocf, actuallen);
-			newptr = cs->irb.PointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -294,6 +287,14 @@ namespace array
 			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			newarr = cs->irb.SetDynamicArrayLength(newarr, cs->irb.Subtract(origlen, startIndex));
 			newarr = cs->irb.SetDynamicArrayCapacity(newarr, cap);
+
+			// allocate memory for the refcount
+			{
+				fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
+				newarr = cs->irb.SetDynamicArrayRefCountPointer(newarr, rcptr);
+			}
+
 			cs->irb.SetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 
@@ -363,15 +364,10 @@ namespace array
 			// get size in bytes, since cap is in elements
 			fir::Value* actuallen = cs->irb.Multiply(origlen, cs->irb.Sizeof(arrtype->getElementType()));
 
-			// refcount space
-			actuallen = cs->irb.Add(actuallen, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
 			fir::Value* newptr = cs->irb.Call(mallocf, actuallen);
-			newptr = cs->irb.PointerAdd(newptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 			fir::Type* elmType = arrtype->getElementType();
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
@@ -383,6 +379,14 @@ namespace array
 			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
 			newarr = cs->irb.SetDynamicArrayLength(newarr, newlen);
 			newarr = cs->irb.SetDynamicArrayCapacity(newarr, newlen);
+
+			// allocate memory for the refcount
+			{
+				fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
+				newarr = cs->irb.SetDynamicArrayRefCountPointer(newarr, rcptr);
+			}
+
 			cs->irb.SetDynamicArrayRefCount(newarr, fir::ConstantInt::getInt64(1));
 
 
@@ -430,15 +434,10 @@ namespace array
 		fir::Value* ptr = cs->irb.GetDynamicArrayData(arr, "ptr");
 		fir::Value* len = cs->irb.GetDynamicArrayLength(arr, "len");
 		fir::Value* cap = cs->irb.GetDynamicArrayCapacity(arr, "cap");
-		fir::Value* refCountSize = fir::ConstantInt::getInt64(REFCOUNT_SIZE);
-		fir::Value* refcnt = 0;
-
-		// auto curblk = cs->irb.getCurrentBlock();
 
 		fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
 		fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
-		// fir::IRBlock* trampoline = cs->irb.addNewBlockInFunction("trampoline", func);
-		fir::IRBlock* newblk = cs->irb.addNewBlockInFunction("newblock", func);
+		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("growblock", func);
 		fir::IRBlock* freeold = cs->irb.addNewBlockInFunction("freeold", func);
 		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
 
@@ -455,11 +454,10 @@ namespace array
 				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
-				auto allocsz = cs->irb.Add(cs->irb.Multiply(needed, elmsize), refCountSize);
+				auto allocsz = cs->irb.Multiply(needed, elmsize);
 				auto rawdata = cs->irb.Call(mallocf, allocsz);
 
-				auto dataptr = cs->irb.PointerAdd(cs->irb.PointerTypeCast(rawdata, fir::Type::getInt64Ptr()), fir::ConstantInt::getInt64(1));
-				dataptr = cs->irb.PointerTypeCast(dataptr, elmtype->getPointerTo());
+				auto dataptr = cs->irb.PointerTypeCast(rawdata, elmtype->getPointerTo());
 
 				auto setfn = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, elmtype);
 				cs->irb.Call(setfn, dataptr, needed);
@@ -467,6 +465,18 @@ namespace array
 				auto ret = cs->irb.SetDynamicArrayData(arr, dataptr);
 				ret = cs->irb.SetDynamicArrayLength(ret, needed);
 				ret = cs->irb.SetDynamicArrayCapacity(ret, needed);
+
+				// allocate memory for the refcount
+				{
+					fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+					rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
+
+					ret = cs->irb.SetDynamicArrayRefCountPointer(ret, rcptr);
+				}
+
+				cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
+
+
 
 				#if DEBUG_ARRAY_ALLOCATION
 				{
@@ -477,17 +487,11 @@ namespace array
 				#endif
 
 
-				cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
-
 				nullPhi = ret;
 			}
 
-
-
 			cs->irb.UnCondBranch(mergeblk);
-
 			cs->irb.setCurrentBlock(notnull);
-			refcnt = cs->irb.GetDynamicArrayRefCount(arr);
 		}
 
 
@@ -499,14 +503,14 @@ namespace array
 		// for when the 'dynamic' array came from a literal. same as the usual stuff
 		// capacity will be -1, in this case.
 
-		cs->irb.CondBranch(cond, newblk, mergeblk);
+		cs->irb.CondBranch(cond, growblk, mergeblk);
 
 		// return a phi node.
 		fir::Value* growPhi = 0;
 
 
 		// grows to the nearest power of two from (len + required)
-		cs->irb.setCurrentBlock(newblk);
+		cs->irb.setCurrentBlock(growblk);
 		{
 			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
 			iceAssert(p2func);
@@ -529,24 +533,11 @@ namespace array
 			}
 			#else
 			{
-				/*
-					* Because this shit has caused me a lot of trouble, here's some documentation on the semantics of this allocation
-					* job:
-
-					1. 'ptr' points to the start of the array, which is 8 bytes ahead of the actual allocated address.
-					2. We allocate nextpow2 + 8 bytes of memory
-					3. We set the returned pointer (mallocptr) to be 8 bytes ahead.
-					4. Memcpy only sees numElements * sizeof(element)
-				*/
-
-
 				fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
 				auto malloclen = cs->irb.Multiply(nextpow2, elmsize);
-				auto mallocptr = cs->irb.Call(mallocf, cs->irb.Add(malloclen, refCountSize));
-				mallocptr = cs->irb.PointerAdd(mallocptr, refCountSize);
-
+				auto mallocptr = cs->irb.Call(mallocf, malloclen);
 
 				fir::Value* oldptr = cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr());
 
@@ -564,12 +555,8 @@ namespace array
 
 			iceAssert(newptr);
 
-
 			fir::Value* ret = cs->irb.SetDynamicArrayData(arr, newptr);
 			ret = cs->irb.SetDynamicArrayCapacity(ret, nextpow2);
-
-			iceAssert(refcnt);
-			cs->irb.SetDynamicArrayRefCount(ret, refcnt);
 
 			#if DEBUG_ARRAY_ALLOCATION
 			{
@@ -597,14 +584,14 @@ namespace array
 		}
 
 
-		// makes a new memory piece, to the nearest power of two from (len + required)
+		// free the old memory if we did grow stuff.
 		cs->irb.setCurrentBlock(freeold);
 		{
 			// free the old memory
 			fir::Function* freef = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 			iceAssert(freef);
 
-			cs->irb.Call(freef, cs->irb.PointerSub(cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()), refCountSize));
+			cs->irb.Call(freef, cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()));
 
 			#if DEBUG_ARRAY_ALLOCATION
 			{
@@ -624,7 +611,7 @@ namespace array
 			auto phi = cs->irb.CreatePHINode(arr->getType());
 			phi->addIncoming(arr, cb);
 			phi->addIncoming(nullPhi, isnull);
-			phi->addIncoming(growPhi, newblk);
+			phi->addIncoming(growPhi, growblk);
 			phi->addIncoming(growPhi, freeold);
 
 			return phi;
@@ -1255,9 +1242,6 @@ namespace array
 
 		It's quite clever, I know.
 
-		One thing to note is that, because this deals exclusively with dynamic arrays, the 'ptr' passed to it is not the true memory pointer,
-		but rather the pointer to the first element -- so it must pass (ptr - 8) to free().
-
 		Oops, a last-minute addition and i'm too lazy to rewrite the above;
 		We now handle both incrementing and decrementing, to greatly simplify all the code. Incrementing simply ignores the part where we free things.
 	*/
@@ -1283,7 +1267,6 @@ namespace array
 			auto ptr = cs->irb.GetDynamicArrayData(arr);
 			auto len = cs->irb.GetDynamicArrayLength(arr);
 			auto cap = cs->irb.GetDynamicArrayCapacity(arr);
-			auto refc = cs->irb.GetDynamicArrayRefCount(arr);
 
 
 			// we combine these a little bit more than maybe you're expecting, but that's because fundamentally we're really
@@ -1343,9 +1326,32 @@ namespace array
 					cs->irb.setCurrentBlock(merge);
 				}
 
-				// here it's the same thing regardless of nest.
-				if(incr)	cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Add(refc, fir::ConstantInt::getInt64(1)));
-				else		cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Subtract(refc, fir::ConstantInt::getInt64(1)));
+				// here we check whether we actually have a refcount pointer. If we don't, then we're a literal, and there's no need to change
+				// the refcount anyway.
+				// make the blocks
+				auto prevblk = cs->irb.getCurrentBlock();
+				auto dorc = cs->irb.addNewBlockInFunction("dorc", cs->irb.getCurrentFunction());
+				auto dontrc = cs->irb.addNewBlockInFunction("dontrcliteral", cs->irb.getCurrentFunction());
+				{
+					auto rcp = cs->irb.GetDynamicArrayRefCountPointer(arr);
+					auto cond = cs->irb.ICmpNEQ(cs->irb.PointerToIntCast(rcp, fir::Type::getInt64()), fir::ConstantInt::getInt64(0));
+
+					cs->irb.CondBranch(cond, dorc, dontrc);
+				}
+
+				fir::Value* therefc = 0;
+				cs->irb.setCurrentBlock(dorc);
+				{
+					// here it's the same thing regardless of nest.
+					therefc = cs->irb.GetDynamicArrayRefCount(arr);
+
+					if(incr)	cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Add(therefc, fir::ConstantInt::getInt64(1)));
+					else		cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Subtract(therefc, fir::ConstantInt::getInt64(1)));
+
+					cs->irb.UnCondBranch(dontrc);
+				}
+
+				cs->irb.setCurrentBlock(dontrc);
 
 				#if DEBUG_ARRAY_REFCOUNTING
 				{
@@ -1362,28 +1368,32 @@ namespace array
 					fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
+					auto zv = fir::ConstantInt::getInt64(0);
+
 					//! NOTE: what we want to happen here is for us to free the memory, but only if refcnt == 0 && capacity >= 0
 					//* so our condition is (REFCOUNT == 0) & (CAP >= 0)
 
-					auto zv = fir::ConstantInt::getInt64(0);
-					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(refc, zv), cs->irb.ICmpGEQ(cap, zv));
+					auto shouldfree = cs->irb.CreatePHINode(fir::Type::getInt64());
+					shouldfree->addIncoming(therefc, dorc);
+					shouldfree->addIncoming(fir::ConstantInt::getInt64(-1), prevblk);
+
+					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(shouldfree, zv), cs->irb.ICmpGEQ(cap, zv));
 					cs->irb.CondBranch(dofree, dealloc, merge);
 
 					cs->irb.setCurrentBlock(dealloc);
 					{
 						ptr = cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr());
-						ptr = cs->irb.PointerSub(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 
 						auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 						iceAssert(freefn);
 
 						cs->irb.Call(freefn, ptr);
+						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetDynamicArrayRefCountPointer(arr), fir::Type::getInt8Ptr()));
 
 						#if DEBUG_ARRAY_ALLOCATION
 						{
 							fir::Value* tmpstr = cs->module->createGlobalString("freed arr: (ptr: %p)\n");
-							cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr,
-								cs->irb.PointerAdd(ptr, fir::ConstantInt::getInt64(REFCOUNT_SIZE)) });
+							cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
 						}
 						#endif
 

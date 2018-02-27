@@ -275,20 +275,9 @@ namespace ast
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
-		Location varloc;
-
-		std::string var;
 		Expr* array = 0;
-	};
 
-	struct ForTupleDecompLoop : ForLoop
-	{
-		ForTupleDecompLoop(const Location& l) : ForLoop(l) { this->readableName = "for loop"; }
-		~ForTupleDecompLoop() { }
-
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-
-		Expr* array = 0;
+		std::string indexVar;
 		DecompMapping bindings;
 	};
 

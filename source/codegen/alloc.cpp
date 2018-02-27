@@ -113,8 +113,9 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		cs->irb.Call(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
 
 		// ok, now we have a length -- allocate enough memory for length * sizeof(elm) + refcount size
-		auto alloclen = cs->irb.Add(cs->irb.Multiply(count, cs->irb.Sizeof(type)), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-		auto mem = cs->irb.PointerAdd(cs->irb.Call(mallocf, alloclen), fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+		auto alloclen = cs->irb.Multiply(count, cs->irb.Sizeof(type));
+		auto mem = cs->irb.Call(mallocf, alloclen);
+
 		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
 
 		// make them valid things
@@ -126,6 +127,13 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			ret = cs->irb.SetDynamicArrayData(ret, mem);
 			ret = cs->irb.SetDynamicArrayLength(ret, count);
 			ret = cs->irb.SetDynamicArrayCapacity(ret, count);
+
+			// allocate memory for the refcount
+			{
+				fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+				rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
+				ret = cs->irb.SetDynamicArrayRefCountPointer(ret, rcptr);
+			}
 
 			cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
 

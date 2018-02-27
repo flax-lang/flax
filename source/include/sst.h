@@ -142,9 +142,10 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 		virtual std::vector<Block*> getBlocks() override;
 
-		VarDefn* var = 0;
-		Expr* array = 0;
+		VarDefn* indexVar = 0;
+		DecompMapping mappings;
 
+		Expr* array = 0;
 		Block* body = 0;
 	};
 

@@ -186,9 +186,6 @@ namespace fir
 			for(auto i : phi->getValues())
 				nodes += strprintf("[$%s -> %%%zu], ", i.first->getName().name, i.second->id);
 
-			nodes.pop_back();
-			nodes.pop_back();
-
 			ops += nodes;
 		}
 		else
