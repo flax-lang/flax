@@ -63,6 +63,17 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 		k = ...      // will not compile
 	```
 
+
+5. URGENT!
+	A. change array type syntax to use `[T: N]` (a-la rust) to prevent ambiguity between `&(T[N])` vs `(&T)[N]`
+		so it's either `&[T]` or `[&T]`, no ambiguity. for fixed arrays, we use `[T: N]`, dynamic arrays get `[T]`, slices get `[T:]`
+
+	B. start using char slices (`[char:]`) instead of strings -- these don't own memory, and thus don't incur the reference counting overhead of strings.
+		create a builtin-alias for `[char:]` as `str` (again, like rust).
+
+	C. Thus, we also need to fix the issue that slicing a string (`string[:]`)
+		gives us back a string instead of a slice of char.
+
 -----
 
 
@@ -198,6 +209,12 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(b48e10f)`
+- change `alloc` syntax to be like this: `alloc TYPE (ARGS...) [N, M, ...] { BODY }`, where, importantly, `BODY` is code that will be run on each element in
+	the allocated array, with bindings `it` (mutable, for obvious reasons), and `i` (immutable, again obviously) representing the current element and the index
+	respectively.
+- unfortunately what we said about how `&T[]` parses was completely wrong; it parses as `&(T[])` instead.
 
 `(b89aa2c)`
 - fix how we did refcounts for arrays; instead of being 8 bytes behind the data pointer like we were doing for strings, they're now just stored in a separate
