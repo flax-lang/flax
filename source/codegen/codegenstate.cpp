@@ -121,24 +121,27 @@ namespace cgn
 	}
 
 
-	// CGResult CodegenState::findValueInTree(std::string name, ValueTree* vtr)
-	// {
-	// 	ValueTree* tree = (vtr ? vtr : this->vtree);
-	// 	iceAssert(tree);
+	void CodegenState::createWhileLoop(const std::function<void (fir::IRBlock*, fir::IRBlock*)>& docheck, const std::function<void ()>& dobody)
+	{
+		fir::IRBlock* check = this->irb.addNewBlockInFunction("check", this->irb.getCurrentFunction());
+		fir::IRBlock* body = this->irb.addNewBlockInFunction("body", this->irb.getCurrentFunction());
+		fir::IRBlock* merge = this->irb.addNewBlockInFunction("merge", this->irb.getCurrentFunction());
 
-	// 	while(tree)
-	// 	{
-	// 		auto& vs = tree->values[name];
-	// 		iceAssert(vs.size() <= 1);
+		this->irb.UnCondBranch(check);
+		this->irb.setCurrentBlock(check);
 
-	// 		if(vs.size() > 0)
-	// 			return vs[0];
+		//* we expect this to do its own branching.
+		docheck(body, merge);
 
-	// 		tree = tree->parent;
-	// 	}
+		this->irb.setCurrentBlock(body);
+		dobody();
 
-	// 	return CGResult(0);
-	// }
+		//* but not the body.
+		this->irb.UnCondBranch(check);
+
+		//* back to regularly scheduled programming
+		this->irb.setCurrentBlock(merge);
+	}
 
 
 

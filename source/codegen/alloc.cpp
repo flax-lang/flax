@@ -59,26 +59,71 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 	auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 	iceAssert(mallocf);
 
-	auto callSetFunction = [&cs](fir::Type* type, sst::AllocOp* alloc, fir::Value* ptr, fir::Value* count) -> void {
+	auto callSetFunction = [cs](fir::Type* type, sst::AllocOp* alloc, fir::Value* ptr, fir::Value* count) -> void {
 
-		if(type->isClassType())
+		auto callUserCode = [cs, alloc](fir::Value* elmp, fir::Value* idxp) {
+			iceAssert(alloc->initBlockIdx);
+			iceAssert(alloc->initBlockVar);
+
+			// ok, then. create the variables:
+			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(cs->irb.Load(idxp)));
+			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(cs->irb.Load(elmp)));
+
+			alloc->initBlock->codegen(cs);
+		};
+
+
+
 		{
-			auto constr = dcast(sst::FunctionDefn, alloc->constructor);
-			iceAssert(constr);
+			auto arrp = ptr;
+			auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
 
-			auto setfn = cgn::glue::array::getCallClassConstructorOnElementsFunction(cs, type->toClassType(), constr, alloc->arguments);
-			iceAssert(setfn);
+			auto actuallyStore = [cs, type, alloc](fir::Value* ptr) -> void {
 
-			cs->irb.Call(setfn, ptr, count);
-		}
-		else if(type->isStructType())
-		{
-			auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
+				if(type->isClassType())
+				{
+					auto constr = dcast(sst::FunctionDefn, alloc->constructor);
+					iceAssert(constr);
 
-			auto setfn = cgn::glue::array::getSetElementsToValueFunction(cs, type);
-			iceAssert(setfn);
+					//! here, the arguments are called once per element.
+					cs->constructClassWithArguments(type->toClassType(), constr, ptr, alloc->arguments, true);
+				}
+				else if(type->isStructType())
+				{
+					auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
+					cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value), true, true);
+				}
+				else
+				{
+					auto value = cs->getDefaultValue(type);
+					cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value), true, true);
+				}
+			};
 
-			cs->irb.Call(setfn, ptr, count, value);
+
+			if(alloc->counts.empty())
+			{
+				actuallyStore(arrp);
+			}
+			else
+			{
+				cs->createWhileLoop([cs, ctrp, count](auto pass, auto fail) {
+					auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrp), count);
+					cs->irb.CondBranch(cond, pass, fail);
+				},
+				[cs, callUserCode, actuallyStore, alloc, type, ctrp, arrp]() {
+
+					auto ctr = cs->irb.Load(ctrp);
+					auto ptr = cs->irb.PointerAdd(arrp, ctr);
+
+					actuallyStore(ptr);
+
+					if(alloc->initBlock)
+						callUserCode(ptr, ctrp);
+
+					cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+				});
+			}
 		}
 	};
 

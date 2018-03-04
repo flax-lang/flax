@@ -729,27 +729,21 @@ namespace parser
 		iceAssert(st.front() == TT::Alloc);
 		auto loc = st.eat().loc;
 
-		if(st.eat() != TT::LParen)
-			expectedAfter(st.loc(), "'('", "'alloc'", st.front().str());
-
-		// ok, there are 2 forms here:
-		// 1. alloc(T)
-		// 2. alloc(T, N, ...)
+		// if(st.eat() != TT::LAngle)
+		// 	expectedAfter(st.loc(), "'<'", "'alloc'", st.prev().str());
 
 		auto ret = new ast::AllocOp(loc);
 		ret->isRaw = raw;
 		ret->allocTy = parseType(st);
 
-		if(st.front() == TT::Comma)
-		{
-			st.eat();
-			ret->args = parseCallArgumentList(st);
-		}
-		else if(st.eat() != TT::RParen)
-		{
-			expectedAfter(st.ploc(), "')'", "alloc", st.prev().str());
-		}
+		// if(st.eat() != TT::RAngle)
+		// 	expectedAfter(st.loc(), "'>'", "type in 'alloc'", st.prev().str());
 
+
+		if(st.eat() != TT::LParen)
+			error(st.ploc(), "Expected '(' after type in 'alloc' expression for arguments");
+
+		ret->args = parseCallArgumentList(st);
 
 		if(st.front() == TT::LSquare)
 		{
@@ -766,7 +760,19 @@ namespace parser
 
 			if(st.eat() != TT::RSquare)
 				expectedAfter(st.ploc(), "']'", "'alloc(...)'", st.prev().str());
+
+			if(ret->counts.empty())
+				error(st.ploc(), "Dimension list in 'alloc' cannot be empty");
 		}
+
+		if(st.front() == TT::LBrace)
+		{
+			if(raw) error(st.loc(), "Initialisation body cannot be used with raw array allocations");
+
+			// ok, get it
+			ret->initBody = parseBracedBlock(st);
+		}
+
 
 		return ret;
 	}

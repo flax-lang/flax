@@ -132,6 +132,10 @@ namespace cgn
 			UserDefined
 		};
 
+		void addVariableUsingStorage(sst::VarDefn* var, fir::Value* ptr, CGResult val);
+
+		void createWhileLoop(const std::function<void (fir::IRBlock*, fir::IRBlock*)>& check, const std::function<void ()>& body);
+
 		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op);
 
 		bool isRefCountedType(fir::Type* type);

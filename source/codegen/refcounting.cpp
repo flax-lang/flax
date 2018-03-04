@@ -65,30 +65,22 @@ namespace cgn
 
 	void CodegenState::moveRefCountedValue(CGResult lhs, CGResult rhs, bool initial)
 	{
-		auto rv = rhs.value;
-		auto lv = lhs.value;
+		// decrement the lhs refcount (only if not initial)
 
-		iceAssert(this->isRefCountedType(lv->getType()));
-		iceAssert(this->isRefCountedType(rv->getType()));
-
+		if(!initial)
 		{
-			// decrement the lhs refcount (only if not initial)
+			iceAssert(lhs.value);
+			this->decrementRefCount(lhs.value);
 
-			if(!initial)
-			{
-				iceAssert(lv);
-				this->decrementRefCount(lv);
-
-				// then do the store
-				iceAssert(lhs.pointer);
-				this->irb.Store(rv, lhs.pointer);
-			}
-
-			// then, remove the rhs from any refcounting table
-			// but don't change the refcount itself.
-			if(rhs.kind != CGResult::VK::LitRValue)
-				this->removeRefCountedValue(rv);
+			// then do the store
+			iceAssert(lhs.pointer);
+			this->irb.Store(rhs.value, lhs.pointer);
 		}
+
+		// then, remove the rhs from any refcounting table
+		// but don't change the refcount itself.
+		if(rhs.kind != CGResult::VK::LitRValue)
+			this->removeRefCountedValue(rhs.value);
 	}
 
 	void CodegenState::performRefCountingAssignment(CGResult lhs, CGResult rhs, bool initial)
