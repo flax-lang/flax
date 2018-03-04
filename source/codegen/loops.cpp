@@ -226,6 +226,9 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 			this->indexVar->init = idx;
 			this->indexVar->codegen(cs);
+
+			if(cs->isRefCountedType(res.value->getType()))
+				cs->addRefCountedValue(res.value);
 		}
 
 
