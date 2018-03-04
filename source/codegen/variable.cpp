@@ -88,7 +88,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(!val) val = cs->getDefaultValue(this->type);
 
 
-
 	val = checkStore(val);
 
 	if(this->immutable)
@@ -103,16 +102,30 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(alloc);
 
-	if(this->init)
-		cs->autoAssignRefCountedValue(CGResult(val, alloc), res, true, !this->immutable);
-
-
-	cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-
-	if(refcounted) cs->addRefCountedPointer(alloc);
+	cs->addVariableUsingStorage(this, alloc, res);
 
 	return CGResult(0, alloc);
 }
+
+void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc, CGResult val)
+{
+	iceAssert(alloc);
+	this->valueMap[var] = CGResult(0, alloc, CGResult::VK::LValue);
+
+	if(val.value || val.pointer)
+		this->autoAssignRefCountedValue(CGResult(0, alloc), val, true, !var->immutable);
+
+	if(this->isRefCountedType(var->type))
+		this->addRefCountedPointer(alloc);
+}
+
+
+
+
+
+
+
+
 
 
 CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)

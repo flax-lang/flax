@@ -202,6 +202,10 @@ namespace sst
 
 		Defn* constructor = 0;
 
+		VarDefn* initBlockVar = 0;
+		VarDefn* initBlockIdx = 0;
+		Block* initBlock = 0;
+
 		bool isRaw = false;
 	};
 

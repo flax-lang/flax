@@ -454,6 +454,8 @@ namespace ast
 		std::vector<Expr*> counts;
 		std::vector<std::pair<std::string, Expr*>> args;
 
+		Block* initBody = 0;
+
 		bool isRaw = false;
 	};
 
