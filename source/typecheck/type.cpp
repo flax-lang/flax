@@ -54,6 +54,8 @@ namespace sst
 
 		#define convert(...)	(this->convertParserTypeToFIR)(__VA_ARGS__)
 
+		iceAssert(pt);
+
 		if(pt->isNamedType())
 		{
 			auto builtin = fir::Type::fromBuiltin(pt->toNamedType()->str());

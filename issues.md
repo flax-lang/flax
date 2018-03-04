@@ -15,10 +15,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 5. String operators
 
 
-6. Foreach loop on tuples, and `for (A, B, ...), i in X` where `i` is the current iteration index
-
-
-7. 'cases' member of enums to enable runtime enumeration... of the enumeration.
+7. 'cases' member of enums to enable runtime enumeration of... the enumeration.
 
 
 8. Operator overloading for assignment and subscript/slice
@@ -63,7 +60,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 		make_immutable(k)
 
-		k = 30      // will not compile
+		k = ...      // will not compile
 	```
 
 -----
@@ -201,6 +198,13 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(b89aa2c)`
+- fix how we did refcounts for arrays; instead of being 8 bytes behind the data pointer like we were doing for strings, they're now just stored in a separate
+	pointer in the dynamic array struct itself. added code in appropriate places to detect null-ness of this pointer, as well as allocating + freeing it
+	appropriately.
+- add for loops with tuple destructuring (in theory arbitrary destructuring, since we use the existing framework for such things).
+- add iteration count binding for for-loops; `for (a, b), it in foo { it == 1, 2, ... }`
 
 `(3eb36eb)`
 - fix the completely uncaught disaster of mismatched comparison ops in binary arithmetic

@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+#include "pts.h"
 
 #include "ir/type.h"
 
@@ -64,6 +65,43 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		ret->constructor = constructor;
 		ret->arguments = arguments;
 	}
+	else if(!this->args.empty())
+	{
+		if(this->args.size() > 1) error(this, "Expected 1 argument in alloc expression for non-struct type '%s' (for value-copy-initialisation), but found %d arguments instead", this->args.size());
+
+		auto args = fs->typecheckCallArguments(this->args);
+		if(args[0].value->type != elm)
+			error(this, "Expected argument of type '%s' for value-copy-initialisation in alloc expression, but found '%s' instead", elm, args[0].value->type);
+
+		// ok loh
+		ret->arguments = args;
+	}
+
+	if(this->initBody)
+	{
+		iceAssert(!this->isRaw && this->counts.size() > 0);
+
+		// ok, make a fake vardefn and insert it first.
+		auto fake = new ast::VarDefn(this->initBody->loc);
+		fake->type = this->allocTy;
+		fake->name = "it";
+
+		auto fake2 = new ast::VarDefn(this->initBody->loc);
+		fake2->type = pts::NamedType::create(INT64_TYPE_STRING);
+		fake2->name = "i";
+
+		// make a temp scope to enclose it, I guess
+		fs->pushTree(fs->getAnonymousScopeName());
+		{
+			ret->initBlockVar = dcast(sst::VarDefn, fake->typecheck(fs));
+			ret->initBlockIdx = dcast(sst::VarDefn, fake2->typecheck(fs));
+			ret->initBlock = dcast(sst::Block, this->initBody->typecheck(fs));
+
+			iceAssert(ret->initBlockVar && ret->initBlockIdx && ret->initBlock);
+		}
+		fs->popTree();
+	}
+
 
 	ret->elmType = elm;
 	ret->counts = counts;
