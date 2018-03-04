@@ -69,17 +69,6 @@ class Dalmation : Dog
 
 @entry fn main()
 {
-	// if false
-	// {
-	// 	let k = 3.3 / 4.7
-	// 	printf("k = %.2f\n", k)
-
-	// 	let dogs = [ (0, "zero"), (1, "one"), (2, "two"), (3, "three"), (4, "four"), (5, "five") ]
-
-	// 	for (num, str), i in dogs {
-	// 		printf("%d: %s = %d\n", i, str, num)
-	// 	}
-	// }
 
 	// don't question.
 	srand(284811)
