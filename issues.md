@@ -201,6 +201,11 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(d9133a8)`
+- change type syntax to be `[T]` for dynamic arrays, `[T:]` for slices, and `[T: N]` for fixed arrays
+- change strings to return `[char:]` instead of making a copy of the string. This allows mutation... at your own risk (for literal strings??)
+- add `str` as an alias for the aforementioned `[char:]`
+
 `(b48e10f)`
 - change `alloc` syntax to be like this: `alloc TYPE (ARGS...) [N, M, ...] { BODY }`, where, importantly, `BODY` is code that will be run on each element in
 	the allocated array, with bindings `it` (mutable, for obvious reasons), and `i` (immutable, again obviously) representing the current element and the index
