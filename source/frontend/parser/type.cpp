@@ -276,65 +276,65 @@ namespace parser
 
 
 
+	// static pts::Type* parseTypeIndirections(State& st, pts::Type* base)
+	// {
+	// 	using TT = lexer::TokenType;
+	// 	auto ret = base;
+
+	// 	if(st.front() == TT::LSquare)
+	// 	{
+	// 		// parse an array of some kind
+	// 		st.pop();
+
+	// 		if(st.front() == TT::RSquare)
+	// 		{
+	// 			st.eat();
+	// 			ret = new pts::DynamicArrayType(ret);
+	// 		}
+	// 		else if(st.front() == TT::Ellipsis)
+	// 		{
+	// 			st.pop();
+	// 			if(st.eat() != TT::RSquare)
+	// 				expectedAfter(st, "closing ']'", "variadic array type", st.prev().str());
+
+	// 			ret = new pts::VariadicArrayType(ret);
+	// 		}
+	// 		else if(st.front() == TT::Number)
+	// 		{
+	// 			long sz = std::stol(st.front().str());
+	// 			if(sz <= 0)
+	// 				expected(st, "positive, non-zero size for fixed array", st.front().str());
+
+	// 			st.pop();
+	// 			if(st.eat() != TT::RSquare)
+	// 				expectedAfter(st, "closing ']'", "array type", st.front().str());
+
+	// 			ret = new pts::FixedArrayType(ret, sz);
+	// 		}
+	// 		else if(st.front() == TT::Colon)
+	// 		{
+	// 			st.pop();
+	// 			if(st.eat() != TT::RSquare)
+	// 				expectedAfter(st, "closing ']'", "slice type", st.prev().str());
+
+	// 			ret = new pts::ArraySliceType(ret);
+	// 		}
+	// 		else
+	// 		{
+	// 			error(st, "Unexpected token '%s' after opening '['; expected some kind of array type",
+	// 				st.front().str());
+	// 		}
+	// 	}
+
+	// 	if(st.front() == TT::LSquare)
+	// 		return parseTypeIndirections(st, ret);
+
+	// 	else
+	// 		return ret;
+	// }
 
 
 
-	static pts::Type* parseTypeIndirections(State& st, pts::Type* base)
-	{
-		using TT = lexer::TokenType;
-		auto ret = base;
-
-		if(st.front() == TT::LSquare)
-		{
-			// parse an array of some kind
-			st.pop();
-
-			if(st.front() == TT::RSquare)
-			{
-				st.eat();
-				ret = new pts::DynamicArrayType(ret);
-			}
-			else if(st.front() == TT::Ellipsis)
-			{
-				st.pop();
-				if(st.eat() != TT::RSquare)
-					expectedAfter(st, "closing ']'", "variadic array type", st.prev().str());
-
-				ret = new pts::VariadicArrayType(ret);
-			}
-			else if(st.front() == TT::Number)
-			{
-				long sz = std::stol(st.front().str());
-				if(sz <= 0)
-					expected(st, "positive, non-zero size for fixed array", st.front().str());
-
-				st.pop();
-				if(st.eat() != TT::RSquare)
-					expectedAfter(st, "closing ']'", "array type", st.front().str());
-
-				ret = new pts::FixedArrayType(ret, sz);
-			}
-			else if(st.front() == TT::Colon)
-			{
-				st.pop();
-				if(st.eat() != TT::RSquare)
-					expectedAfter(st, "closing ']'", "slice type", st.prev().str());
-
-				ret = new pts::ArraySliceType(ret);
-			}
-			else
-			{
-				error(st, "Unexpected token '%s' after opening '['; expected some kind of array type",
-					st.front().str());
-			}
-		}
-
-		if(st.front() == TT::LSquare)
-			return parseTypeIndirections(st, ret);
-
-		else
-			return ret;
-	}
 
 	pts::Type* parseType(State& st)
 	{
@@ -350,6 +350,52 @@ namespace parser
 
 			st.pop();
 			return new pts::PointerType(new pts::PointerType(parseType(st)));
+		}
+		else if(st.front() == TT::LSquare)
+		{
+			// [T] is a dynamic array
+			// [T:] is a slice
+			// [T: N] is a fixed array of size 'N'
+
+			st.pop();
+			auto elm = parseType(st);
+
+			if(st.front() == TT::Colon)
+			{
+				st.pop();
+				if(st.front() == TT::RSquare)
+				{
+					st.pop();
+					return new pts::ArraySliceType(elm);
+				}
+				else if(st.front() != TT::Number)
+				{
+					expected(st, "positive, non-zero size for fixed array", st.front().str());
+				}
+
+
+				{
+					long sz = std::stol(st.front().str());
+					if(sz <= 0)
+						expected(st, "positive, non-zero size for fixed array", st.front().str());
+
+					st.pop();
+					if(st.eat() != TT::RSquare)
+						expectedAfter(st, "closing ']'", "array type", st.front().str());
+
+					return new pts::FixedArrayType(elm, sz);
+				}
+			}
+			else if(st.front() == TT::RSquare)
+			{
+				// dynamic array.
+				st.pop();
+				return new pts::DynamicArrayType(elm);
+			}
+			else
+			{
+				expected(st.loc(), "']' in array type specifier", st.front().str());
+			}
 		}
 		else if(st.front() == TT::Identifier)
 		{
@@ -427,12 +473,14 @@ namespace parser
 
 
 			// check for indirections
-			return parseTypeIndirections(st, nt);
+			return nt;
 		}
-		else if(st.front() == TT::LParen)
+		else if(auto isfn = (st.front() == TT::Func); st.front() == TT::LParen || st.front() == TT::Func)
 		{
 			// tuple or function
 			st.pop();
+
+			if(isfn) st.pop();
 
 			// parse a tuple.
 			std::vector<pts::Type*> types;
@@ -451,12 +499,16 @@ namespace parser
 			}
 
 			if(st.eat().type != TT::RParen)
-			{
-				expected(st, "')' to end tuple type specifier", st.prev().str());
-			}
+				expected(st, "')' to end type list", st.prev().str());
 
-			// check if it's actually a function type
-			if(st.front() != TT::RightArrow)
+
+			if(isfn)
+			{
+				// eat the arrow, parse the type
+				st.eat();
+				return new pts::FunctionType(types, parseType(st));
+			}
+			else
 			{
 				// this *should* allow us to 'group' types together
 				// eg. ((i64, i64) -> i64)[] would allow us to create an array of functions
@@ -466,19 +518,9 @@ namespace parser
 					error(st, "Empty tuples '()' are not supported");
 
 				else if(types.size() == 1)
-					return parseTypeIndirections(st, types[0]);
+					return types[0];
 
-				auto tup = new pts::TupleType(types);
-				return parseTypeIndirections(st, tup);
-			}
-			else
-			{
-				// eat the arrow, parse the type
-				st.eat();
-				auto rty = parseType(st);
-
-				auto ft = new pts::FunctionType(types, rty);
-				return parseTypeIndirections(st, ft);
+				return new pts::TupleType(types);
 			}
 		}
 		else

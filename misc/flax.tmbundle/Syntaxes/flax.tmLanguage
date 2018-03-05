@@ -839,7 +839,7 @@
 			<key>comment</key>
 			<string>Primitive types</string>
 			<key>match</key>
-			<string>\b(((u|i)(8|16|32|64|128))|(u?)int|intptr|f(32|64|80|128)|float|double|bool|void|string|char|any|Type|ffi|ustring|rune|value)\b</string>
+			<string>\b(((u|i)(8|16|32|64|128))|(u?)int|intptr|f(32|64|80|128)|float|double|bool|void|str|string|char|any|Type|ffi|ustring|rune|value)\b</string>
 			<key>name</key>
 			<string>support.type.flax</string>
 		</dict>

@@ -64,15 +64,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	```
 
 
-5. URGENT!
-	A. change array type syntax to use `[T: N]` (a-la rust) to prevent ambiguity between `&(T[N])` vs `(&T)[N]`
-		so it's either `&[T]` or `[&T]`, no ambiguity. for fixed arrays, we use `[T: N]`, dynamic arrays get `[T]`, slices get `[T:]`
-
-	B. start using char slices (`[char:]`) instead of strings -- these don't own memory, and thus don't incur the reference counting overhead of strings.
-		create a builtin-alias for `[char:]` as `str` (again, like rust).
-
-	C. Thus, we also need to fix the issue that slicing a string (`string[:]`)
-		gives us back a string instead of a slice of char.
 
 -----
 

@@ -174,49 +174,8 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(ty->isStringType())
 	{
-		// do it manually, since we want to get a string instead of char[]
-		// and also we don't want to be stupid, so slices make copies!!
-		// todo: might want to change
-		checkSliceOperation(cs, this, length, this->cgBegin, this->cgEnd, this->begin, this->end);
-
-
-		// ok
-		fir::Value* srcptr = cs->irb.PointerAdd(cs->irb.GetStringData(lhs), this->cgBegin);
-		fir::Value* newlen = cs->irb.Subtract(this->cgEnd, this->cgBegin);
-
-		fir::Value* data = 0;
-		{
-			// space for null + refcount
-			size_t i64Size = 8;
-			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + i64Size));
-
-			// now malloc.
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
-
-			// move it forward (skip the refcount)
-			data = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(i64Size));
-
-
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.Call(memcpyf, { data, srcptr, cs->irb.IntSizeCast(newlen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			// null terminator
-			cs->irb.Store(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(data, newlen));
-		}
-
-		// ok, now fix it
-		fir::Value* str = cs->irb.CreateValue(fir::StringType::get());
-		str = cs->irb.SetStringData(str, data);
-		str = cs->irb.SetStringLength(str, newlen);
-
-		cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
-
-		cs->addRefCountedValue(str);
-		return CGResult(str);
+		return performSliceOperation(cs, this, fir::Type::getChar(), lhs, cs->irb.GetStringData(lhs),
+			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else
 	{

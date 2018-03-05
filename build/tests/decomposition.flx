@@ -33,7 +33,7 @@ public fn doDecompositionTest()
 
 		do {
 
-			var arr2: string[]
+			var arr2: [string]
 			arr2 += "hello"
 			arr2 += "world"
 			arr2 += "bouys"

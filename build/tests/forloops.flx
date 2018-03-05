@@ -26,7 +26,7 @@ public fn doForLoopTest()
 		printf("\n>> for-in array\n")
 
 		let x = [ (1, "a"), (2, "b"), (3, "c"), (4, "d") ]
-		let fixed: (int, int)[3] = [ (10, 2), (7, 3), (3, 2) ]
+		let fixed: [(int, int): 3] = [ (10, 2), (7, 3), (3, 2) ]
 
 		for (a, b), i in x
 		{
