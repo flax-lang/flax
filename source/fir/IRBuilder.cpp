@@ -1433,7 +1433,7 @@ namespace fir
 			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::Type::getInt8()->getPointerTo(), { str });
+			fir::Type::getChar()->getPointerTo(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1443,8 +1443,8 @@ namespace fir
 		if(!str->getType()->isStringType())
 			error("str is not a string type (got '%s')", str->getType());
 
-		if(val->getType() != fir::Type::getInt8Ptr())
-			error("val is not an int8*");
+		if(val->getType() != fir::Type::getChar()->getPointerTo())
+			error("val is not a char*");
 
 		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getString(), { str, val });
 
