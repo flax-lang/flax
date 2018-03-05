@@ -149,7 +149,10 @@ namespace string
 			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
 
 			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getInt8Ptr());
+
 			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
+			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getInt8Ptr());
 
 			// ok. combine the lengths
 			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
@@ -165,6 +168,7 @@ namespace string
 
 			// move it forward (skip the refcount)
 			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			buf = cs->irb.PointerTypeCast(buf, fir::Type::getInt8Ptr());
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -191,7 +195,7 @@ namespace string
 			// ok, now fix it
 			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
 
-			str = cs->irb.SetStringData(str, buf);
+			str = cs->irb.SetStringData(str, cs->irb.PointerTypeCast(buf, fir::Type::getChar()->getPointerTo()));
 			str = cs->irb.SetStringLength(str, newlen);
 			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
 
@@ -337,10 +341,10 @@ namespace string
 			*/
 
 			{
-				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getChar()->getPointerTo());
 				cs->irb.Store(cs->irb.GetStringData(s1, "s1"), str1p);
 
-				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getChar()->getPointerTo());
 				cs->irb.Store(cs->irb.GetStringData(s2, "s2"), str2p);
 
 
@@ -425,7 +429,7 @@ namespace string
 			// if ptr is 0, we exit early.
 			{
 				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getChar()->getPointerTo()));
 
 				cs->irb.CondBranch(cond, merge, getref);
 			}
@@ -502,7 +506,7 @@ namespace string
 			cs->irb.setCurrentBlock(entry);
 			{
 				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getChar()->getPointerTo()));
 
 				cs->irb.CondBranch(cond, merge, checkneg);
 			}
@@ -541,7 +545,7 @@ namespace string
 
 				// call free on the buffer.
 				fir::Value* bufp = cs->irb.GetStringData(func->getArguments()[0]);
-
+				bufp = cs->irb.PointerTypeCast(bufp, fir::Type::getInt8Ptr());
 
 				#if DEBUG_STRING_ALLOCATION
 				{

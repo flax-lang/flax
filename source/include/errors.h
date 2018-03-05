@@ -56,6 +56,7 @@ inline void debuglog(const char* s, Ts... ts)
 
 #define STRING_TYPE_STRING				"string"
 #define CHARACTER_TYPE_STRING			"char"
+#define CHARACTER_SLICE_TYPE_STRING		"str"
 
 #define UNICODE_STRING_TYPE_STRING		"ustring"
 #define UNICODE_CHARACTER_TYPE_STRING	"rune"

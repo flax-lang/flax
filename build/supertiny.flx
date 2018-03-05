@@ -75,8 +75,8 @@ class Dalmation : Dog
 
 	// fn test() -> f64 { printf("hi\n"); return 31.51 }
 
-	let dogs = alloc &Dog () [5] {
-		it = alloc Dog ()
+	let dogs = alloc &Dog [5] {
+		it = alloc Dog
 	}
 
 	for dog, i in dogs {

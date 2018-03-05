@@ -52,7 +52,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				res = fir::Type::getInt64();
 
 			else if(vr->name == "ptr")
-				res = fir::Type::getInt8Ptr();
+				res = fir::Type::getChar()->getPointerTo();
 
 			if(res)
 			{

@@ -739,11 +739,15 @@ namespace parser
 		// if(st.eat() != TT::RAngle)
 		// 	expectedAfter(st.loc(), "'>'", "type in 'alloc'", st.prev().str());
 
+		if(st.front() == TT::LParen)
+		{
+			st.pop();
+			ret->args = parseCallArgumentList(st);
 
-		if(st.eat() != TT::LParen)
-			error(st.ploc(), "Expected '(' after type in 'alloc' expression for arguments");
+			if(ret->args.empty())
+				info(st.loc(), "Empty argument list in alloc expression () can be omitted");
+		}
 
-		ret->args = parseCallArgumentList(st);
 
 		if(st.front() == TT::LSquare)
 		{

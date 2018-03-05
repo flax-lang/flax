@@ -345,37 +345,39 @@ namespace fir
 
 		Type* real = 0;
 
-		if(copy == INT8_TYPE_STRING)            real = Type::getInt8(tc);
-		else if(copy == INT16_TYPE_STRING)      real = Type::getInt16(tc);
-		else if(copy == INT32_TYPE_STRING)      real = Type::getInt32(tc);
-		else if(copy == INT64_TYPE_STRING)      real = Type::getInt64(tc);
-		else if(copy == INT128_TYPE_STRING)     real = Type::getInt128(tc);
+		if(copy == INT8_TYPE_STRING)                    real = Type::getInt8(tc);
+		else if(copy == INT16_TYPE_STRING)              real = Type::getInt16(tc);
+		else if(copy == INT32_TYPE_STRING)              real = Type::getInt32(tc);
+		else if(copy == INT64_TYPE_STRING)              real = Type::getInt64(tc);
+		else if(copy == INT128_TYPE_STRING)             real = Type::getInt128(tc);
 
-		else if(copy == UINT8_TYPE_STRING)      real = Type::getUint8(tc);
-		else if(copy == UINT16_TYPE_STRING)     real = Type::getUint16(tc);
-		else if(copy == UINT32_TYPE_STRING)     real = Type::getUint32(tc);
-		else if(copy == UINT64_TYPE_STRING)     real = Type::getUint64(tc);
-		else if(copy == UINT128_TYPE_STRING)    real = Type::getUint128(tc);
+		else if(copy == UINT8_TYPE_STRING)              real = Type::getUint8(tc);
+		else if(copy == UINT16_TYPE_STRING)             real = Type::getUint16(tc);
+		else if(copy == UINT32_TYPE_STRING)             real = Type::getUint32(tc);
+		else if(copy == UINT64_TYPE_STRING)             real = Type::getUint64(tc);
+		else if(copy == UINT128_TYPE_STRING)            real = Type::getUint128(tc);
 
-		else if(copy == FLOAT32_TYPE_STRING)    real = Type::getFloat32(tc);
-		else if(copy == FLOAT64_TYPE_STRING)    real = Type::getFloat64(tc);
-		else if(copy == FLOAT80_TYPE_STRING)    real = Type::getFloat80(tc);
-		else if(copy == FLOAT128_TYPE_STRING)	real = Type::getFloat128(tc);
+		else if(copy == FLOAT32_TYPE_STRING)            real = Type::getFloat32(tc);
+		else if(copy == FLOAT64_TYPE_STRING)            real = Type::getFloat64(tc);
+		else if(copy == FLOAT80_TYPE_STRING)            real = Type::getFloat80(tc);
+		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128(tc);
 
-		else if(copy == STRING_TYPE_STRING)     real = Type::getString();
-		else if(copy == CHARACTER_TYPE_STRING)  real = Type::getChar();
+		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
+		else if(copy == CHARACTER_TYPE_STRING)          real = Type::getChar();
 
-		else if(copy == BOOL_TYPE_STRING)       real = Type::getBool(tc);
-		else if(copy == VOID_TYPE_STRING)       real = Type::getVoid(tc);
+		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar());
+
+		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool(tc);
+		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid(tc);
 
 		// unspecified things
-		else if(copy == INTUNSPEC_TYPE_STRING)  real = Type::getInt64(tc);
-		else if(copy == UINTUNSPEC_TYPE_STRING) real = Type::getUint64(tc);
+		else if(copy == INTUNSPEC_TYPE_STRING)          real = Type::getInt64(tc);
+		else if(copy == UINTUNSPEC_TYPE_STRING)         real = Type::getUint64(tc);
 
-		else if(copy == FLOAT_TYPE_STRING)      real = Type::getFloat32(tc);
-		else if(copy == DOUBLE_TYPE_STRING)     real = Type::getFloat64(tc);
+		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32(tc);
+		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64(tc);
 
-		else if(copy == ANY_TYPE_STRING)        real = Type::getAny(tc);
+		else if(copy == ANY_TYPE_STRING)                real = Type::getAny(tc);
 
 		else return 0;
 
