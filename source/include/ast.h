@@ -110,7 +110,7 @@ namespace ast
 		};
 
 		std::string name;
-		std::map<std::string, TypeConstraints_t> generics;
+		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<Arg> args;
 		pts::Type* returnType = 0;
@@ -350,7 +350,7 @@ namespace ast
 
 		std::string name;
 		std::vector<pts::Type*> bases;
-		std::map<std::string, TypeConstraints_t> generics;
+		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
@@ -371,7 +371,7 @@ namespace ast
 
 		std::string name;
 		std::vector<pts::Type*> bases;
-		std::map<std::string, TypeConstraints_t> generics;
+		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<InitFunctionDefn*> initialisers;
 

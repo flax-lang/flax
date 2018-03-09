@@ -498,7 +498,29 @@ namespace Operator
 
 
 
+// https://stackoverflow.com/questions/28367913/how-to-stdhash-an-unordered-stdpair
 
+template<typename T>
+void _hash_combine(std::size_t& seed, const T& key)
+{
+	std::hash<T> hasher;
+	seed ^= hasher(key) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+namespace std
+{
+	template<typename T1, typename T2>
+	struct hash<std::pair<T1, T2>>
+	{
+		size_t operator () (const std::pair<T1, T2>& p) const
+		{
+			size_t seed = 0;
+			_hash_combine(seed, p.first);
+			_hash_combine(seed, p.second);
+			return seed;
+		}
+	};
+}
 
 
 
