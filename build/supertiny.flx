@@ -67,6 +67,23 @@ class Dalmation : Dog
 }
 
 
+struct LinkedList<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &T
+		var next: &T
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+}
+
+
 @entry fn main()
 {
 
@@ -82,6 +99,8 @@ class Dalmation : Dog
 	for dog, i in dogs {
 		printf("%d: %s\n", i, dog.name)
 	}
+
+	var list: LinkedList<T: int>
 }
 
 

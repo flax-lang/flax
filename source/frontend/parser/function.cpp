@@ -13,11 +13,11 @@ using TT = lexer::TokenType;
 namespace parser
 {
 	// declared in parser/operators.cpp (because we use it there)
-	std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
+	std::tuple<std::vector<FuncDefn::Arg>, std::unordered_map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
 	{
 		pts::Type* returnType = 0;
 		std::vector<FuncDefn::Arg> args;
-		std::map<std::string, TypeConstraints_t> generics;
+		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -212,9 +212,9 @@ namespace parser
 
 
 
-	std::map<std::string, TypeConstraints_t> parseGenericTypeList(State& st)
+	std::unordered_map<std::string, TypeConstraints_t> parseGenericTypeList(State& st)
 	{
-		std::map<std::string, TypeConstraints_t> ret;
+		std::unordered_map<std::string, TypeConstraints_t> ret;
 
 		while(st.front().type != TT::RAngle)
 		{

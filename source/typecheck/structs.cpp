@@ -62,7 +62,7 @@ static void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::
 
 void ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	if(this->generatedDefn) return;
+	if(this->generatedDefn || this->generics.size() > 0) return;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -91,6 +91,12 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	if(this->generics.size() > 0)
+	{
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		return new sst::DummyStmt(this->loc);
+	}
 
 	this->generateDeclaration(fs, infer);
 
@@ -267,7 +273,7 @@ void ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Ty
 
 void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	if(this->generatedDefn) return;
+	if(this->generatedDefn || this->generics.size() > 0) return;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -313,6 +319,12 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	if(this->generics.size() > 0)
+	{
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		return new sst::DummyStmt(this->loc);
+	}
 
 	this->generateDeclaration(fs, infer);
 

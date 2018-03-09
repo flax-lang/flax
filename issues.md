@@ -70,10 +70,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### THINGS TO NOTE
 
-1. For calling `alloc` on a class or struct type, the arguments to the constructor are only evaluated once. For classes, the constructor itself is
-	called for every element in the array, but the arguments to that constructor, again, are only evaluated once at the beginning.
-
-
 
 
 

@@ -13,7 +13,7 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	std::tuple<std::vector<FuncDefn::Arg>, std::map<std::string, TypeConstraints_t>, pts::Type*, bool, Location>
+	std::tuple<std::vector<FuncDefn::Arg>, std::unordered_map<std::string, TypeConstraints_t>, pts::Type*, bool, Location>
 	parseFunctionLookingDecl(State& st);
 
 	OperatorOverloadDefn* parseOperatorOverload(State& st)
