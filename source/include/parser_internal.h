@@ -255,7 +255,7 @@ namespace parser
 	ast::Stmt* parseBreak(State& st);
 	ast::Stmt* parseContinue(State& st);
 
-	std::map<std::string, TypeConstraints_t> parseGenericTypeList(State& st);
+	std::unordered_map<std::string, TypeConstraints_t> parseGenericTypeList(State& st);
 
 
 

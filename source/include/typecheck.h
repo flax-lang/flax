@@ -45,6 +45,7 @@ namespace sst
 
 		std::unordered_map<std::string, StateTree*> subtrees;
 		std::unordered_map<std::string, std::vector<ast::Stmt*>> unresolvedGenericDefs;
+		std::unordered_map<std::pair<ast::Stmt*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
 		using DefnMap = std::unordered_map<std::string, std::vector<Defn*>>;
 

@@ -14,7 +14,10 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	if(this->generics.size() > 0)
-		return 0;
+	{
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		return new sst::DummyStmt(this->loc);
+	}
 
 
 	this->generateDeclaration(fs, infer);
