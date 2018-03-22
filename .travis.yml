@@ -6,14 +6,14 @@ sudo: false
 addons:
     apt:
         sources:
-        - llvm-toolchain-trusty-$LLVM_VERSION
+        - llvm-toolchain-trusty-5.0
         - ubuntu-toolchain-r-test
             
         packages:
-        - g++-$GCC_VERSION
-        - llvm-$LLVM_VERSION
-        - llvm-$LLVM_VERSION-dev
-        - libllvm$LLVM_VERSION
+        - g++-7
+        - llvm-5.0
+        - llvm-5.0-dev
+        - libllvm5.0
         - libmpfr-dev
         - libmpfr4
 
