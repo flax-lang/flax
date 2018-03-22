@@ -5,6 +5,7 @@ sudo: required
 
 install:
     - echo "LLVM $LLVM_VERSION"
+    - echo "GCC $GCC_VERSION"
     - sudo echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-$LLVM_VERSION main" | sudo tee -a /etc/apt/sources.list
     - sudo echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-$LLVM_VERSION main" | sudo tee -a /etc/apt/sources.list
     - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -13,7 +14,7 @@ install:
     - sudo apt-get -o Dpkg::Options::="--force-overwrite" --force-yes install g++-6 llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION
 
 script:
-    - CXX=g++-6 CC=gcc-6 make -j2 ci
+    - CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make -j ci
 
 notifications:
     email: false
