@@ -100,7 +100,7 @@ struct LinkedList<T>
 		printf("%d: %s\n", i, dog.name)
 	}
 
-	var list: LinkedList<T: int>
+	// var list: LinkedList<T: int>
 }
 
 
