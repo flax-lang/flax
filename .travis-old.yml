@@ -14,7 +14,7 @@ install:
     - sudo apt-get -o Dpkg::Options::="--force-overwrite" --force-yes install g++-$GCC_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION libmpfr-dev libmpfr4
 
 script:
-    - CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make -j ci
+    - CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci
 
 notifications:
     email: false
