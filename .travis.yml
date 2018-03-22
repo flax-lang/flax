@@ -11,7 +11,7 @@ install:
     - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
     - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
     - sudo apt-get --force-yes update
-    - sudo apt-get -o Dpkg::Options::="--force-overwrite" --force-yes install g++-6 llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION
+    - sudo apt-get -o Dpkg::Options::="--force-overwrite" --force-yes install g++-$GCC_VERSION llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION
 
 script:
     - CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make -j ci
