@@ -1,7 +1,13 @@
 language: cpp
 compiler: clang
-dist: trusty
-sudo: false
+
+matrix:
+    include:
+    - os: linux
+      dist: trusty
+      sudo: false
+    - os: osx
+      osx_image: xcode9.2
 
 addons:
     apt:
@@ -17,8 +23,12 @@ addons:
         - libmpfr-dev
         - libmpfr4
 
+before_install:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew install llvm@5 mpfr; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; cd $(brew --cellar)/llvm/llvm@5; ls; patch -p1 < $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff; fi
+
 script:
-    - CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; make; else; CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci; fi
 
 notifications:
     email: false
