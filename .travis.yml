@@ -25,8 +25,9 @@ addons:
 
 before_script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        brew install llvm@5 mpfr;
-        cd $(brew --cellar)/llvm/llvm@5;
+        brew install llvm@5;
+        brew upgrade mpfr;
+        cd $(brew --cellar)/llvm@5/*;
         patch -p1 < $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff;
       fi
 
