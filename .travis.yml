@@ -24,11 +24,11 @@ addons:
         - libmpfr4
 
 before_install:
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew install llvm@5 mpfr; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; cd $(brew --cellar)/llvm/llvm@5; ls; patch -p1 < $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install llvm@5 mpfr; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd $(brew --cellar)/llvm/llvm@5; ls; patch -p1 < $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff; fi
 
 script:
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; make; else; CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then make; else; CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci; fi
 
 notifications:
     email: false
