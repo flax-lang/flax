@@ -28,8 +28,8 @@ before_script:
         brew install llvm@5;
         brew upgrade mpfr;
         cd $(brew --cellar)/llvm@5/*;
-        ls -R include;
-        patch -p1 < $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff;
+        cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./
+        patch -p1 < llvm-5.0.0-5.0.1-patch.diff;
       fi
 
 script:
