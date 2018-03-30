@@ -35,7 +35,7 @@ before_script:
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then make osx;
+        then LLVM_CONFIG=llvm-config make osx;
         else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
       fi
 
