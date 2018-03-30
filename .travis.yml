@@ -35,7 +35,7 @@ before_script:
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then PATH="/usr/local/opt/llvm@5/bin:$PATH"' make osx;
+        then PATH="/usr/local/opt/llvm@5/bin:$PATH" make osx;
         else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
       fi
 
