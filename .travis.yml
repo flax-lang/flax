@@ -27,6 +27,7 @@ before_script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
         brew install llvm@5;
         brew upgrade mpfr;
+        brew link --force llvm@5;
         cd $(brew --cellar)/llvm@5/*;
         cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
         patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
@@ -35,7 +36,7 @@ before_script:
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then LLVM_CONFIG=llvm-config make osx;
+        then make osx;
         else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
       fi
 
