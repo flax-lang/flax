@@ -30,7 +30,7 @@ before_script:
         cd $(brew --cellar)/llvm@5/*;
         cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
         ls;
-        patch -p1 < llvm-5.0.0-5.0.1-patch.diff;
+        patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
       fi
 
 script:
