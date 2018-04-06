@@ -134,7 +134,11 @@ namespace cgn
 		}
 
 		// else
-		if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
+		if(fromType->isNullType() && target->isPointerType())
+		{
+			return CGResult(this->irb.PointerTypeCast(from.value, target));
+		}
+		else if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
 			&& target->getBitWidth() >= fromType->getBitWidth())
 		{
 			return CGResult(this->irb.IntSizeCast(from.value, target));
@@ -179,6 +183,14 @@ namespace cgn
 		auto rt = rhs.value->getType();
 		if(lt == rt || (lt->isConstantNumberType() && rt->isConstantNumberType()))
 			return { lhs, rhs };
+
+		// prefer to cast the void pointer to the other one, not the other way around.
+		if(lt->isNullType() && rt->isPointerType())
+			return std::make_pair(CGResult(this->irb.PointerTypeCast(lhs.value, rt)), CGResult(rhs.value));
+
+		else if(lt->isPointerType() && rt->isNullType())
+			return std::make_pair(CGResult(lhs.value), CGResult(this->irb.PointerTypeCast(rhs.value, lt)));
+
 
 		if(lt->isConstantNumberType() && !rt->isConstantNumberType())
 		{

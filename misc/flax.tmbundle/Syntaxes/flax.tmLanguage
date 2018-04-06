@@ -928,7 +928,7 @@
 		<key>access-modifier</key>
 		<dict>
 			<key>match</key>
-			<string>\b(public|internal|private)\b</string>
+			<string>\b(public|internal|private|mut)\b</string>
 			<key>name</key>
 			<string>storage.modifier.attribute.flax</string>
 		</dict>

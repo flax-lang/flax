@@ -614,7 +614,7 @@ namespace fir
 
 	bool Type::isPointerType()
 	{
-		return dynamic_cast<PointerType*>(this) != 0;
+		return dynamic_cast<PointerType*>(this) || dynamic_cast<NullType*>(this);
 	}
 
 	bool Type::isVoidType()

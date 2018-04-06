@@ -292,23 +292,17 @@ namespace cgn
 			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
 				|| (lt->isCharType() && rt->isCharType()))
 			{
+				// we should cast these to be similar-ish.
+				auto [ a, b ] = this->autoCastValueTypes(l, r);
+				lv = a.value;
+				rv = b.value;
+
 				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lv, rv));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lv, rv));
 				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lv, rv));
 				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lv, rv));
 				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lv, rv));
 				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lv, rv));
-
-				error("no");
-			}
-			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
-			{
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lv, rv));
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lv, rv));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lv, rv));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lv, rv));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lv, rv));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lv, rv));
 
 				error("no");
 			}
