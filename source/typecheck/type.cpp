@@ -65,11 +65,72 @@ namespace sst
 			}
 			else
 			{
-				auto name = pt->toNamedType()->str();
+				auto name = pt->toNamedType()->name;
 
-				if(name.find(".") == std::string::npos)
-				{
-					auto defs = this->getDefinitionsWithName(name);
+				auto returnTheThing = [this, pt](StateTree* tree, const std::string& name, bool scoped, bool allowFail) -> fir::Type* {
+
+					if(auto gmt = this->findGenericTypeMapping(name, true))
+						return gmt;
+
+					std::vector<Defn*> defs;
+
+					if(scoped)  defs = tree->getDefinitionsWithName(name);
+					else        defs = this->getDefinitionsWithName(name);
+
+					if(defs.empty())
+					{
+						// try generic defs.
+						StateTree* str = this->stree;
+						std::vector<ast::Stmt*> gdefs;
+						while((gdefs = str->getUnresolvedGenericDefnsWithName(name)).size() == 0 && str)
+							str = (scoped ? 0 : str->parent);   // if we're scoped, we can't go upwards.
+
+						if(gdefs.empty())
+						{
+							if(allowFail)   return 0;
+							else            error(this->loc(), "No type named '%s' in scope '%s'", name, tree->name);
+						}
+						else if(gdefs.size() > 1)
+						{
+							exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope", name);
+							for(auto d : gdefs)
+								info(d, "Possible reference:");
+
+							doTheExit();
+						}
+
+
+						// TODO: not re-entrant either.
+						auto restore = this->stree;
+						this->stree = tree;
+						{
+							auto gdef = gdefs[0];
+							iceAssert(gdef);
+
+							auto atd = dcast(ast::TypeDefn, gdef);
+							if(!atd) error(this->loc(), "Entity '%s' is not a type", name);
+
+							// right, now we instantiate it.
+							std::unordered_map<std::string, fir::Type*> mapping;
+							for(auto mp : pt->toNamedType()->genericMapping)
+								mapping[mp.first] = this->convertParserTypeToFIR(mp.second, allowFail);
+
+							auto td = this->instantiateGenericType(atd, mapping);
+							iceAssert(td);
+
+							this->stree = restore;
+							return td->type;
+						}
+					}
+					else if(defs.size() > 1)
+					{
+						exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
+						for(auto d : defs)
+							info(d, "Possible reference:");
+
+						doTheExit();
+					}
+
 
 					for(auto d : defs)
 					{
@@ -86,8 +147,13 @@ namespace sst
 						return tyd->type;
 					}
 
-					if(allowFail)   return 0;
-					else            error(this->loc(), "No such type '%s' defined", name);
+					iceAssert(0);
+				};
+
+
+				if(name.find(".") == std::string::npos)
+				{
+					return returnTheThing(this->stree, name, false, allowFail);
 				}
 				else
 				{
@@ -144,34 +210,7 @@ namespace sst
 						begin = it->second;
 					}
 
-					// find the definitions.
-					auto defs = begin->getDefinitionsWithName(actual);
-					if(defs.empty())
-					{
-						if(allowFail)   return 0;
-						else            error(this->loc(), "No type named '%s' in scope '%s'", actual, begin->name);
-					}
-					else if(defs.size() > 1)
-					{
-						exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", actual, begin->name);
-						for(auto d : defs)
-							info(d, "Possible reference:");
-
-						doTheExit();
-					}
-
-					auto def = defs[0];
-					if(auto tyd = dcast(TypeDefn, def))
-					{
-						return tyd->type;
-					}
-					else
-					{
-						exitless_error(this->loc(), "Definition of '%s' cannot be used as a type", def->id.name);
-						info(def, "'%s' was defined here:", def->id.name);
-
-						doTheExit();
-					}
+					return returnTheThing(begin, actual, true, allowFail);
 				}
 			}
 		}

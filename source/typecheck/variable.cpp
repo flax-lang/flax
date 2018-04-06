@@ -110,7 +110,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	// ok, then.
 	sst::VarDefn* defn = 0;
-	if(fs->isInStructBody())
+	if(fs->isInStructBody() && !fs->isInFunctionBody())
 	{
 		auto fld = new sst::StructFieldDefn(this->loc);
 		fld->parentType = fs->getCurrentStructBody();

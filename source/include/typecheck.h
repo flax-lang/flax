@@ -28,6 +28,7 @@ namespace pts
 namespace ast
 {
 	struct Stmt;
+	struct TypeDefn;
 	struct FuncDefn;
 	struct FunctionCall;
 }
@@ -66,6 +67,8 @@ namespace sst
 		DefnMap getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
+		std::vector<ast::Stmt*> getUnresolvedGenericDefnsWithName(const std::string& name);
+
 		void addDefinition(const std::string& name, Defn* def);
 		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def);
 	};
@@ -99,8 +102,10 @@ namespace sst
 		// void pushLoc(const Location& l);
 		void pushLoc(ast::Stmt* stmt);
 
+		std::vector<int> bodyStack;
 		std::vector<FunctionDefn*> currentFunctionStack;
 		bool isInFunctionBody();
+
 
 		FunctionDefn* getCurrentFunction();
 		void enterFunctionBody(FunctionDefn* fn);
@@ -112,6 +117,14 @@ namespace sst
 		bool isInStructBody();
 		void enterStructBody(TypeDefn* str);
 		void leaveStructBody();
+
+
+		std::vector<std::unordered_map<std::string, fir::Type*>> genericTypeContextStack;
+		void pushGenericTypeContext();
+		fir::Type* findGenericTypeMapping(const std::string& name, bool allowFail);
+		void addGenericTypeMapping(const std::string& name, fir::Type* ty);
+		void removeGenericTypeMapping(const std::string& name);
+		void popGenericTypeContext();
 
 
 		int breakableBodyNest = 0;
@@ -150,6 +163,9 @@ namespace sst
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
+
+		//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
+		TypeDefn* instantiateGenericType(ast::TypeDefn* type, const std::unordered_map<std::string, fir::Type*>& mappings);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);

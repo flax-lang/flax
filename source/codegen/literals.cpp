@@ -215,7 +215,11 @@ CGResult sst::LiteralNull::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantValue::getNull(), 0, CGResult::VK::LitRValue);
+	fir::Value* val = 0;
+	if(infer)   val = fir::ConstantValue::getZeroValue(infer);
+	else        val = fir::ConstantValue::getNull();
+
+	return CGResult(val, 0, CGResult::VK::LitRValue);
 }
 
 CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
