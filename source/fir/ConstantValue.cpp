@@ -27,7 +27,7 @@ namespace fir
 
 	ConstantValue* ConstantValue::getNull()
 	{
-		auto ret = new ConstantValue(fir::Type::getVoid()->getPointerTo());
+		auto ret = new ConstantValue(fir::Type::getNull());
 		return ret;
 	}
 

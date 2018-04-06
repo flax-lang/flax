@@ -144,7 +144,7 @@ namespace backend
 		}
 		else if(type->isPointerType())
 		{
-			if(type == fir::Type::getVoidPtr())
+			if(type == fir::Type::getVoidPtr() || type->isNullType())
 				return llvm::Type::getInt8PtrTy(gc);
 
 			else
@@ -153,10 +153,6 @@ namespace backend
 		else if(type->isVoidType())
 		{
 			return llvm::Type::getVoidTy(gc);
-		}
-		else if(type->isNullType())
-		{
-			return llvm::Type::getVoidTy(gc)->getPointerTo();
 		}
 		else if(type->isDynamicArrayType())
 		{

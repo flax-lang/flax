@@ -226,6 +226,9 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 					if(auto cls = dcast(sst::ClassDefn, base))
 						base = cls->baseClass;
+
+					else
+						base = 0;
 				}
 			}
 
@@ -241,6 +244,9 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 					if(auto cls = dcast(sst::ClassDefn, base))
 						base = cls->baseClass;
+
+					else
+						base = 0;
 				}
 			}
 

@@ -337,7 +337,9 @@ namespace ast
 		TypeDefn(const Location& l) : Declarable(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 
+		std::string name;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+		std::unordered_map<std::string, TypeConstraints_t> generics;
 	};
 
 	struct StructDefn : TypeDefn
@@ -348,9 +350,7 @@ namespace ast
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
-		std::string name;
 		std::vector<pts::Type*> bases;
-		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;
@@ -369,9 +369,7 @@ namespace ast
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
-		std::string name;
 		std::vector<pts::Type*> bases;
-		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<InitFunctionDefn*> initialisers;
 
@@ -399,7 +397,6 @@ namespace ast
 			Expr* value = 0;
 		};
 
-		std::string name;
 		std::vector<Case> cases;
 		pts::Type* memberType = 0;
 	};

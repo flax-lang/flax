@@ -197,6 +197,11 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`??`
+- fix bug where we couldn't do methods in structs.
+- fix bug where we treated variable declarations inside method bodies as field declarations
+- fix bug where we were infinite-looping on method/field stuff on structs
+
 `(d9133a8)`
 - change type syntax to be `[T]` for dynamic arrays, `[T:]` for slices, and `[T: N]` for fixed arrays
 - change strings to return `[char:]` instead of making a copy of the string. This allows mutation... at your own risk (for literal strings??)

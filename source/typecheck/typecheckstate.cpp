@@ -43,10 +43,12 @@ namespace sst
 		return this->locationStack.back();
 	}
 
-
+	#define BODY_FUNC       1
+	#define BODY_STRUCT     2
 	void TypecheckState::enterFunctionBody(FunctionDefn* fn)
 	{
 		this->currentFunctionStack.push_back(fn);
+		this->bodyStack.push_back(BODY_FUNC);
 	}
 
 	void TypecheckState::leaveFunctionBody()
@@ -55,6 +57,9 @@ namespace sst
 			error(this->loc(), "Not inside function");
 
 		this->currentFunctionStack.pop_back();
+
+		iceAssert(this->bodyStack.back() == BODY_FUNC);
+		this->bodyStack.pop_back();
 	}
 
 	FunctionDefn* TypecheckState::getCurrentFunction()
@@ -67,7 +72,7 @@ namespace sst
 
 	bool TypecheckState::isInFunctionBody()
 	{
-		return this->currentFunctionStack.size() > 0;
+		return this->currentFunctionStack.size() > 0 && this->bodyStack.back() == BODY_FUNC;
 	}
 
 
@@ -82,12 +87,13 @@ namespace sst
 
 	bool TypecheckState::isInStructBody()
 	{
-		return this->structBodyStack.size() > 0;
+		return this->structBodyStack.size() > 0 && this->bodyStack.back() == BODY_STRUCT;
 	}
 
 	void TypecheckState::enterStructBody(TypeDefn* str)
 	{
 		this->structBodyStack.push_back(str);
+		this->bodyStack.push_back(BODY_STRUCT);
 	}
 
 	void TypecheckState::leaveStructBody()
@@ -96,6 +102,9 @@ namespace sst
 			error(this->loc(), "Not inside struct body");
 
 		this->structBodyStack.pop_back();
+
+		iceAssert(this->bodyStack.back() == BODY_STRUCT);
+		this->bodyStack.pop_back();
 	}
 
 
@@ -281,6 +290,11 @@ namespace sst
 		}
 
 		return ret;
+	}
+
+	std::vector<ast::Stmt*> StateTree::getUnresolvedGenericDefnsWithName(const std::string& name)
+	{
+		return this->unresolvedGenericDefs[name];
 	}
 
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def)

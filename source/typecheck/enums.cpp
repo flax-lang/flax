@@ -26,7 +26,7 @@
 
 void ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	if(this->generatedDefn) return;
+	if(this->generatedDefn || this->generics.size() > 0) return;
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -46,6 +46,12 @@ sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	if(this->generics.size() > 0)
+	{
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		return new sst::DummyStmt(this->loc);
+	}
 
 	this->generateDeclaration(fs, infer);
 
