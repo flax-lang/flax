@@ -116,7 +116,7 @@ namespace cgn
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();
 
-		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool immut, bool allowref);
+		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 
 		std::unordered_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
 

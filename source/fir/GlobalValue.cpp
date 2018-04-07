@@ -9,7 +9,7 @@
 
 namespace fir
 {
-	GlobalValue::GlobalValue(Module* m, Type* type, LinkageType linkage) : ConstantValue(type->getPointerTo())
+	GlobalValue::GlobalValue(Module* m, Type* type, LinkageType linkage, bool mut) : ConstantValue(mut ? type->getMutablePointerTo() : type->getPointerTo())
 	{
 		this->linkageType = linkage;
 		this->parentModule = m;
@@ -17,10 +17,9 @@ namespace fir
 
 
 	GlobalVariable::GlobalVariable(const Identifier& name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
-		: GlobalValue(module, type, lt)
+		: GlobalValue(module, type, lt, !immutable)
 	{
 		this->ident = name;
-		this->immut = immutable;
 		this->initValue = initValue;
 	}
 

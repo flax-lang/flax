@@ -34,7 +34,7 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	fir::Type* resType = (this->isRaw || counts.empty() ?
-		elm->getPointerTo() : fir::DynamicArrayType::get(elm));
+		(this->isMutable ? elm->getMutablePointerTo() : elm->getPointerTo()) : fir::DynamicArrayType::get(elm));
 
 	auto ret = new sst::AllocOp(this->loc, resType);
 
@@ -103,9 +103,10 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 
-	ret->elmType = elm;
-	ret->counts = counts;
-	ret->isRaw = this->isRaw;
+	ret->elmType    = elm;
+	ret->counts     = counts;
+	ret->isRaw      = this->isRaw;
+	ret->isMutable  = this->isMutable;
 
 	return ret;
 }

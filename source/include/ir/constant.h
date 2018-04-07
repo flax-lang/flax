@@ -238,7 +238,7 @@ namespace fir
 		Module* getParentModule() { return this->parentModule; }
 
 		protected:
-		GlobalValue(Module* mod, Type* type, LinkageType linkage);
+		GlobalValue(Module* mod, Type* type, LinkageType linkage, bool mut = false);
 
 		Module* parentModule = 0;
 	};

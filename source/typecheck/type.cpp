@@ -216,7 +216,11 @@ namespace sst
 		}
 		else if(pt->isPointerType())
 		{
-			return convert(pt->toPointerType()->base)->getPointerTo();
+			if(pt->toPointerType()->isMutable)
+				return convert(pt->toPointerType()->base)->getMutablePointerTo();
+
+			else
+				return convert(pt->toPointerType()->base)->getPointerTo();
 		}
 		else if(pt->isTupleType())
 		{

@@ -866,7 +866,6 @@ namespace fir
 
 		Instruction* instr = new Instruction(OpKind::Value_Load, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
 		auto ret = this->addInstruction(instr, vname);
-		if(ptr->isImmutable()) ret->makeImmutable();
 
 		return ret;
 	}
@@ -876,11 +875,23 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not pointer type (got '%s')", ptr->getType());
 
-		if(v->getType()->getPointerTo() != ptr->getType())
-			error("ptr is not a pointer to type of value (storing '%s' into '%s')", v->getType(), ptr->getType());
+		if(ptr->getType()->isImmutablePointer())
+			error("Cannot store value to immutable pointer type '%s'", ptr->getType());
 
-		if(ptr->isImmutable())
-			error("Cannot store value to immutable alloc (id: %zu)", ptr->id);
+		auto vt = v->getType();
+		auto pt = ptr->getType()->getPointerElementType();
+
+		if(v->getType() != ptr->getType()->getPointerElementType())
+		{
+			//* here, we know that the storage pointer is mutable. there's a special edge-case we need to catch:
+			//* if we're storing a value of type &T to a & &mut T, or a &mut T to a & &T.
+			//* in those cases, the mutability of the base type doesn't matter at all. At the LLVM level, we don't even make a distinction,
+			//* so we can safely pass this onto the translation layer without worrying about it.
+
+			// if((vt->isPointerType() && pt->isPointerType() && vt->getPointerElementType() == pt->getPointerElementType()) == false)
+			error("ptr is not a pointer to type of value (base types '%s' -> '%s' differ)", v->getType(), ptr->getType()->getPointerElementType());
+		}
+
 
 		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { v, ptr });
 		return this->addInstruction(instr, "");
@@ -924,21 +935,28 @@ namespace fir
 
 			for(size_t i = 0; i < args.size(); i++)
 			{
+				auto at = args[i]->getType();
 				auto target = fn->getArguments()[i]->getType();
 
 				// special case
-				if(args[i]->getType()->isDynamicArrayType() && target->isDynamicArrayType() &&
-					target->toDynamicArrayType()->isFunctionVariadic() != args[i]->getType()->toDynamicArrayType()->isFunctionVariadic())
+				if(at->isDynamicArrayType() && target->isDynamicArrayType() &&
+					target->toDynamicArrayType()->isFunctionVariadic() != at->toDynamicArrayType()->isFunctionVariadic())
 				{
 					// silently cast, because they're the same thing
 					// the distinction is solely for the type system's benefit
 					args[i] = this->Bitcast(args[i], target);
 				}
+				else if(at->isPointerType() && target->isPointerType() && at->getPointerElementType() == target->getPointerElementType() &&
+					at->isMutablePointer() && target->isImmutablePointer())
+				{
+					// this is ok. at the llvm level the cast should reduce to a no-op.
+					args[i] = this->PointerTypeCast(args[i], target);
+				}
 
-				if(args[i]->getType() != target)
+				if(at != target)
 				{
 					error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
-						fn->getArguments()[i]->getType(), args[i]->getType());
+						fn->getArguments()[i]->getType(), at);
 				}
 			}
 		}
@@ -1043,7 +1061,7 @@ namespace fir
 
 	Value* IRBuilder::StackAlloc(Type* type, std::string vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getPointerTo(),
+		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
 		// we need to 'lift' the allocation up to the entry block of the function
@@ -1069,13 +1087,10 @@ namespace fir
 	Value* IRBuilder::ImmutStackAlloc(Type* type, Value* v, std::string vname)
 	{
 		Value* ret = this->StackAlloc(type, vname);
-		ret->immut = false;		// for now
-
-		// same lifting shit as above
-
 		this->Store(v, ret);
-		ret->immut = true;
 
+		// now make it immutable.
+		ret->setType(type->getPointerTo());
 		return ret;
 	}
 
@@ -1122,12 +1137,11 @@ namespace fir
 	{
 		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent,
-			type->getElementN(memberIndex)->getPointerTo(), { structPtr, ConstantInt::getUint64(memberIndex) });
+		bool mut = structPtr->getType()->isMutablePointer();
 
-		// disallow storing to members of immut structs
-		if(structPtr->isImmutable())
-			instr->realOutput->makeImmutable();
+		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent,
+			mut ? type->getElementN(memberIndex)->getMutablePointerTo() : type->getElementN(memberIndex)->getPointerTo(),
+			{ structPtr, ConstantInt::getUint64(memberIndex) });
 
 		return instr;
 	}
@@ -1162,13 +1176,14 @@ namespace fir
 		iceAssert(structPtr->getType()->isPointerType() && "ptr is not pointer");
 		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
 		{
+			auto spt = structPtr->getType();
+			auto memt = st->getElement(memberName);
+
 			iceAssert(st->hasElementWithName(memberName) && "no element with such name");
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-				st->getElement(memberName)->getPointerTo(), { structPtr, ConstantInt::getUint64(st->getElementIndex(memberName)) });
-
-			if(structPtr->isImmutable())
-				instr->realOutput->immut = true;
+				spt->isMutablePointer() ? memt->getMutablePointerTo() : memt->getPointerTo(),
+				{ structPtr, ConstantInt::getUint64(st->getElementIndex(memberName)) });
 
 			return this->addInstruction(instr, memberName);
 		}
@@ -1176,12 +1191,14 @@ namespace fir
 		{
 			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
 
+			auto cpt = structPtr->getType();
+			auto memt = ct->getElement(memberName);
+
 			//! '+1' is for vtable.
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-				ct->getElement(memberName)->getPointerTo(), { structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) });
+				cpt->isMutablePointer() ? memt->getMutablePointerTo() : memt->getPointerTo(),
+				{ structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) });
 
-			if(structPtr->isImmutable())
-				instr->realOutput->immut = true;
 
 			return this->addInstruction(instr, memberName);
 		}
@@ -1201,7 +1218,7 @@ namespace fir
 		if(table->getType() != fir::Type::getInt8Ptr()) error("expected i8* for vtable, got '%s'", table->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-			fir::Type::getInt8Ptr()->getPointerTo(), { ptr, ConstantInt::getUint64(0) });
+			fir::Type::getInt8Ptr()->getMutablePointerTo(), { ptr, ConstantInt::getUint64(0) });
 
 		auto gep = this->addInstruction(instr, vname);
 
@@ -1240,11 +1257,10 @@ namespace fir
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
 
 
-		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, false, this->currentBlock, retType, { ptr, ptrIndex, elmIndex });
+		if(ptr->getType()->isMutablePointer())
+			retType = retType->getMutablePointerVersion();
 
-		// disallow storing to members of immut arrays
-		if(ptr->isImmutable())
-			instr->realOutput->immut = true;
+		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, false, this->currentBlock, retType, { ptr, ptrIndex, elmIndex });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1262,11 +1278,6 @@ namespace fir
 			error("use the other function for struct types");
 
 		Instruction* instr = new Instruction(OpKind::Value_GetPointer, false, this->currentBlock, ptr->getType(), { ptr, ptrIndex });
-
-		// disallow storing to members of immut arrays
-		if(ptr->isImmutable())
-			instr->realOutput->immut = true;
-
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1291,7 +1302,6 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
 			{ ConstantValue::getZeroValue(t) });
 
-		instr->realOutput->makeImmutable();
 		return this->addInstruction(instr, vname);
 	}
 

@@ -82,14 +82,14 @@ struct LinkedList<T>
 
 	var count: int
 
-	fn insert(thing: T)
+	mut fn insert(thing: T)
 	{
-		var nn = alloc Node (data: thing, prev: null, next: null)
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
 		if head == null { head = nn; tail = nn }
 		else
 		{
-			var ot = tail
+			var ot = (tail as &mut Node)
 			tail = nn
 
 			nn.prev = ot
@@ -103,6 +103,17 @@ struct LinkedList<T>
 
 @entry fn main()
 {
+	/*
+		Things to fix:
+
+		1. handling of mutating operations on dynamic arrays
+		2. possibly allow overloading mutable and non-mutable methods with the same signature?
+
+	*/
+
+
+
+
 
 	// // don't question.
 	// srand(284811)

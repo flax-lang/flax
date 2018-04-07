@@ -13,7 +13,7 @@ CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	cs->generateDecompositionBindings(this->bindings, this->init->codegen(cs), this->immutable, true);
+	cs->generateDecompositionBindings(this->bindings, this->init->codegen(cs), true);
 
 	return CGResult(0);
 }
@@ -42,7 +42,7 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 	}
 }
 
-static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs, bool immut)
+static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs)
 {
 	iceAssert(!bind.array);
 
@@ -66,11 +66,11 @@ static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			v = CGResult(cs->irb.ExtractValue(rhs.value, { i }), 0);
 		}
 
-		cs->generateDecompositionBindings(bind.inner[i], v, immut, true);
+		cs->generateDecompositionBindings(bind.inner[i], v, true);
 	}
 }
 
-static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs, bool immut)
+static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResult rhs)
 {
 	iceAssert(bind.array);
 
@@ -98,7 +98,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			for(auto& b : bind.inner)
 			{
 				auto v = CGResult(cs->irb.Load(cs->irb.PointerAdd(strdat, fir::ConstantInt::getInt64(idx))), 0);
-				cs->generateDecompositionBindings(b, v, immut, false);
+				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
 			}
@@ -164,7 +164,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			for(auto& b : bind.inner)
 			{
 				auto v = CGResult(cs->irb.ExtractValue(array, { idx }), 0);
-				cs->generateDecompositionBindings(b, v, immut, false);
+				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
 			}
@@ -189,7 +189,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getInt64(idx));
 
 				auto v = CGResult(cs->irb.Load(ptr), ptr);
-				cs->generateDecompositionBindings(b, v, immut, true);
+				cs->generateDecompositionBindings(b, v, true);
 
 				idx++;
 			}
@@ -238,7 +238,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	}
 }
 
-void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool immut, bool allowref)
+void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref)
 {
 	auto rt = rhs.value->getType();
 
@@ -257,11 +257,11 @@ void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind,
 	}
 	else if(bind.array)
 	{
-		checkArray(this, bind, rhs, immut);
+		checkArray(this, bind, rhs);
 	}
 	else
 	{
-		checkTuple(this, bind, rhs, immut);
+		checkTuple(this, bind, rhs);
 	}
 }
 

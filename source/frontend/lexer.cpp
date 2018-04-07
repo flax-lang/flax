@@ -108,6 +108,7 @@ namespace lexer
 		keywordMap["typeof"]    = TokenType::Typeof;
 		keywordMap["typeid"]    = TokenType::Typeid;
 		keywordMap["static"]    = TokenType::Static;
+		keywordMap["mut"]       = TokenType::Mutable;
 		keywordMap["free"]      = TokenType::Dealloc;
 		keywordMap["private"]   = TokenType::Private;
 		keywordMap["virtual"]   = TokenType::Virtual;

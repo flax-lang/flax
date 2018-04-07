@@ -25,7 +25,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		error(this, hs, "Cannot assign to non-lvalue (most likely a temporary) expression");
 	}
 
-	if(lr.value->isImmutable() || (lr.pointer && lr.pointer->isImmutable()))
+	if(lr.pointer && lr.pointer->getType()->isImmutablePointer())
 	{
 		HighlightOptions hs;
 		hs.underlines.push_back(this->left->loc);

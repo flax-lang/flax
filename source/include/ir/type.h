@@ -93,7 +93,11 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) = 0;
 
 		Type* getPointerTo(FTContext* tc = 0);
+		Type* getMutablePointerTo(FTContext* tc = 0);
 		Type* getPointerElementType(FTContext* tc = 0);
+
+		Type* getMutablePointerVersion(FTContext* tc = 0);
+		Type* getImmutablePointerVersion(FTContext* tc = 0);
 
 		// note: works for all array types, be it dynamic, fixed, or slices
 		Type* getArrayElementType();
@@ -147,6 +151,8 @@ namespace fir
 		bool isNullType();
 		bool isBoolType();
 
+		bool isMutablePointer();
+		bool isImmutablePointer();
 		bool isConstantNumberType();
 
 		size_t getBitWidth();
@@ -195,6 +201,18 @@ namespace fir
 		static PointerType* getUint64Ptr(FTContext* tc = 0);
 		static PointerType* getUint128Ptr(FTContext* tc = 0);
 
+		static PointerType* getMutInt8Ptr(FTContext* tc = 0);
+		static PointerType* getMutInt16Ptr(FTContext* tc = 0);
+		static PointerType* getMutInt32Ptr(FTContext* tc = 0);
+		static PointerType* getMutInt64Ptr(FTContext* tc = 0);
+		static PointerType* getMutInt128Ptr(FTContext* tc = 0);
+
+		static PointerType* getMutUint8Ptr(FTContext* tc = 0);
+		static PointerType* getMutUint16Ptr(FTContext* tc = 0);
+		static PointerType* getMutUint32Ptr(FTContext* tc = 0);
+		static PointerType* getMutUint64Ptr(FTContext* tc = 0);
+		static PointerType* getMutUint128Ptr(FTContext* tc = 0);
+
 		static CharType* getChar(FTContext* tc = 0);
 		static StringType* getString(FTContext* tc = 0);
 		static RangeType* getRange(FTContext* tc = 0);
@@ -215,6 +233,7 @@ namespace fir
 		size_t id = 0;
 
 		PointerType* pointerTo = 0;
+		PointerType* mutablePointerTo = 0;
 
 		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
 		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);
@@ -396,14 +415,20 @@ namespace fir
 
 		virtual bool isTypeEqual(Type* other) override;
 
+		PointerType* getMutable(FTContext* tc = 0);
+		PointerType* getImmutable(FTContext* tc = 0);
+
+		bool isMutable();
+
 		// protected constructor
 		protected:
-		PointerType(Type* base);
+		PointerType(Type* base, bool mut);
 		virtual ~PointerType() override { }
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 
 		Type* baseType = 0;
+		bool isPtrMutable = false;
 
 		// static funcs
 		public:

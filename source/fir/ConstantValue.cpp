@@ -14,7 +14,6 @@ namespace fir
 	ConstantValue::ConstantValue(Type* t) : Value(t)
 	{
 		// nothing.
-		this->makeImmutable();
 	}
 
 	ConstantValue* ConstantValue::getZeroValue(Type* type)

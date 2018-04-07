@@ -44,7 +44,6 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterFunction(fn);
 	defer(cs->leaveFunction());
 
-
 	if(this->parentTypeForMethod)
 		cs->enterMethodBody(fn, fn->getArguments()[0]);
 
