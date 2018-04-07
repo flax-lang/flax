@@ -49,10 +49,6 @@ namespace fir
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
 
-		bool isImmutable() { return this->immut; }
-		void makeImmutable() { this->immut = true; }
-		void makeNotImmutable() { this->immut = false; }
-
 		std::vector<Value*>& getUsers() { return this->users; }
 
 		Instruction* getSource() { return this->source; }
@@ -64,8 +60,6 @@ namespace fir
 		virtual ~Value() { }
 
 		// fields
-		bool immut = 0;
-
 		Identifier ident;
 		Type* valueType;
 		Instruction* source;

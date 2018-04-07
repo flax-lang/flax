@@ -65,6 +65,11 @@ namespace sst
 		{
 			return 4;
 		}
+		else if(from->isMutablePointer() && to->isImmutablePointer() && from->getPointerElementType() == to->getPointerElementType())
+		{
+			// cast from a mutable pointer type to an immutable one can be implicit.
+			return 1;
+		}
 
 		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
 		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()

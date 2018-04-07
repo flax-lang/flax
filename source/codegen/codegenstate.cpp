@@ -191,6 +191,7 @@ namespace cgn
 
 			// ok, we call it.
 			auto self = this->irb.StackAlloc(cls);
+
 			this->irb.Call(cls->getInlineInitialiser(), self);
 			this->irb.Call(ifn, self);
 

@@ -267,19 +267,54 @@ namespace fir
 		iceAssert(tc && "null type context");
 
 		// cache the pointer internally
-		if (!pointerTo) {
-			PointerType* newType = new PointerType(this);
+		if(!this->pointerTo)
+		{
+			PointerType* newType = new PointerType(this, false);
 			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
 
-			iceAssert(newType);
 			// the type shouldn't be in the global cache at this point yet
 			iceAssert(normalised == newType);
 
-			pointerTo = normalised;
+			this->pointerTo = normalised;
 		}
 
-		return pointerTo;
+		return this->pointerTo;
 	}
+
+
+	Type* Type::getMutablePointerTo(FTContext* tc)
+	{
+		if(!tc) tc = getDefaultFTContext();
+		iceAssert(tc && "null type context");
+
+		// cache the pointer internally
+		if(!this->mutablePointerTo)
+		{
+			PointerType* newType = new PointerType(this, true);
+			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
+
+			// the type shouldn't be in the global cache at this point yet
+			iceAssert(normalised == newType);
+
+			this->mutablePointerTo = normalised;
+		}
+
+		return this->mutablePointerTo;
+	}
+
+
+	Type* Type::getMutablePointerVersion(FTContext* tc)
+	{
+		iceAssert(this->isPointerType() && "not pointer type");
+		return this->toPointerType()->getMutable(tc);
+	}
+
+	Type* Type::getImmutablePointerVersion(FTContext* tc)
+	{
+		iceAssert(this->isPointerType() && "not pointer type");
+		return this->toPointerType()->getImmutable(tc);
+	}
+
 
 	Type* Type::getPointerElementType(FTContext* tc)
 	{
@@ -294,6 +329,7 @@ namespace fir
 		iceAssert(ptrthis);
 
 		Type* newType = ptrthis->baseType;
+
 		// ptrthis could only have been obtained by calling getPointerTo
 		// on an already normalised type, so this should not be needed
 		// newType = tc->normaliseType(newType);
@@ -672,8 +708,15 @@ namespace fir
 		return this == fir::Type::getBool();
 	}
 
+	bool Type::isMutablePointer()
+	{
+		return this->isPointerType() && this->toPointerType()->isMutable();
+	}
 
-
+	bool Type::isImmutablePointer()
+	{
+		return this->isPointerType() && !this->toPointerType()->isMutable();
+	}
 
 
 
@@ -821,6 +864,63 @@ namespace fir
 	{
 		return PointerType::getUint128Ptr(tc);
 	}
+
+
+
+
+	PointerType* Type::getMutInt8Ptr(FTContext* tc)
+	{
+		return PointerType::getInt8Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutInt16Ptr(FTContext* tc)
+	{
+		return PointerType::getInt16Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutInt32Ptr(FTContext* tc)
+	{
+		return PointerType::getInt32Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutInt64Ptr(FTContext* tc)
+	{
+		return PointerType::getInt64Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutInt128Ptr(FTContext* tc)
+	{
+		return PointerType::getInt128Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutUint8Ptr(FTContext* tc)
+	{
+		return PointerType::getUint8Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutUint16Ptr(FTContext* tc)
+	{
+		return PointerType::getUint16Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutUint32Ptr(FTContext* tc)
+	{
+		return PointerType::getUint32Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutUint64Ptr(FTContext* tc)
+	{
+		return PointerType::getUint64Ptr(tc)->getMutable();
+	}
+
+	PointerType* Type::getMutUint128Ptr(FTContext* tc)
+	{
+		return PointerType::getUint128Ptr(tc)->getMutable();
+	}
+
+
+
+
 
 	RangeType* Type::getRange(FTContext* tc)
 	{

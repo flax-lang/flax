@@ -61,9 +61,12 @@ namespace fir
 			for(auto meth : cls->reverseVirtualMethodMap)
 				methods[meth.first] = meth.second, fmethods[meth.first] = meth.second;
 
+			//! ACHTUNG !
+			// TODO: should we make the vtable immutable?
+
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
 			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangledName(), IdKind::Name),
-				table->getType(), table, true, LinkageType::External);
+				table->getType(), table, false, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
 		}
@@ -353,21 +356,21 @@ namespace fir
 		if(id == "memcpy")
 		{
 			name = Identifier("memcpy", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
 			name = Identifier("memmove", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
+			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
 			name = Identifier("memset", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8(),
+			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}

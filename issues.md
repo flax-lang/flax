@@ -197,7 +197,13 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`??`
+`(??)`
+- overhaul the mutability system to be similar to Rust; now, pointers can indicate whether the memory they point to is mutable, and `let` vs `var` only
+	determines whether the variable itself can be modified. Use `&mut T` for the new thing.
+- allow `mut` to be used with methods; if it is present, then a mutable `self` is passed in, otherwise an immutable `self` is passed.
+
+`(ec9adb2)`
+- add generic types for structs -- presumably works for classes and stuff as well.
 - fix bug where we couldn't do methods in structs.
 - fix bug where we treated variable declarations inside method bodies as field declarations
 - fix bug where we were infinite-looping on method/field stuff on structs

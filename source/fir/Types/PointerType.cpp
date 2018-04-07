@@ -6,10 +6,30 @@
 
 namespace fir
 {
-	PointerType::PointerType(Type* base)
+	PointerType::PointerType(Type* base, bool mut)
 	{
 		this->baseType = base;
+		this->isPtrMutable = mut;
 	}
+
+	PointerType* PointerType::getMutable(FTContext* tc)
+	{
+		if(this->isPtrMutable) return this;
+		return this->baseType->getMutablePointerTo()->toPointerType();
+	}
+
+	PointerType* PointerType::getImmutable(FTContext* tc)
+	{
+		if(!this->isPtrMutable) return this;
+		return this->baseType->getPointerTo()->toPointerType();
+	}
+
+
+	bool PointerType::isMutable()
+	{
+		return this->isPtrMutable;
+	}
+
 
 
 	PointerType* PointerType::getInt8Ptr(FTContext* tc)
@@ -72,12 +92,12 @@ namespace fir
 	// various
 	std::string PointerType::str()
 	{
-		return this->baseType->str() + "*";
+		return (this->isPtrMutable ? "&mut " : "&") + this->baseType->str();
 	}
 
 	std::string PointerType::encodedStr()
 	{
-		return this->baseType->encodedStr() + "P";
+		return this->baseType->encodedStr() + (this->isPtrMutable ? "MP" : "P");
 	}
 
 
@@ -85,11 +105,9 @@ namespace fir
 	{
 		PointerType* po = dynamic_cast<PointerType*>(other);
 		if(!po) return false;
-		return this->baseType->isTypeEqual(po->baseType);
+
+		return this->baseType->isTypeEqual(po->baseType) && (this->isPtrMutable == po->isPtrMutable);
 	}
-
-
-
 }
 
 

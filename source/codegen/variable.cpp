@@ -53,13 +53,12 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::Value* val = checkStore(res.value);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
-		fir::Value* alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
+		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		cs->autoAssignRefCountedValue(CGResult(val, alloc), res, true, true);
 
-		//* here:
-		if(this->immutable)
-			alloc->makeImmutable();
+		// go and fix the thing.
+		if(this->immutable) alloc->setType(alloc->getType()->getImmutablePointerVersion());
 
 		cs->leaveGlobalInitFunction(rest);
 
@@ -80,6 +79,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->init)
 	{
 		res = this->init->codegen(cs, this->type);
+		res = cs->oneWayAutocast(res, this->type);
 		iceAssert(res.value);
 
 		val = res.value;

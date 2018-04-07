@@ -208,8 +208,10 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
 
-				if(meths)
-					ts.insert(ts.begin(), Param { "",fc->loc, str->type->getPointerTo() });
+				//! note: here we always presume it's mutable, since:
+				//* 1. we right now cannot overload based on the mutating aspect of the method
+				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
+				if(meths) ts.insert(ts.begin(), Param { "",fc->loc, str->type->getMutablePointerTo() });
 
 				return fs->resolveFunctionFromCandidates(cands, ts, errs, false);
 			};

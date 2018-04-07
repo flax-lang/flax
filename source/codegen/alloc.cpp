@@ -138,9 +138,13 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 		auto sz = cs->irb.Multiply(cs->irb.Sizeof(type), cnt);
 		auto mem = cs->irb.Call(mallocf, sz);
-		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
+		mem = cs->irb.PointerTypeCast(mem, type->getMutablePointerTo());
 
 		callSetFunction(type, alloc, mem, cnt);
+
+		// check if we were supposed to be immutable
+		if(!alloc->isMutable)
+			mem = cs->irb.PointerTypeCast(mem, mem->getType()->getImmutablePointerVersion());
 
 		return mem;
 	}
@@ -161,7 +165,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		auto alloclen = cs->irb.Multiply(count, cs->irb.Sizeof(type));
 		auto mem = cs->irb.Call(mallocf, alloclen);
 
-		mem = cs->irb.PointerTypeCast(mem, type->getPointerTo());
+		mem = cs->irb.PointerTypeCast(mem, type->getMutablePointerTo());
 
 		// make them valid things
 		callSetFunction(type, alloc, mem, count);
@@ -188,6 +192,10 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, mem, count, count });
 			}
 			#endif
+
+			// check if we were supposed to be immutable
+			if(!alloc->isMutable)
+				ret = cs->irb.PointerTypeCast(ret, ret->getType()->getImmutablePointerVersion());
 
 			return ret;
 		}

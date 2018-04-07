@@ -217,7 +217,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			iceAssert(0);
 
 		auto res = CGResult(cs->irb.Load(theptr), theptr);
-		cs->generateDecompositionBindings(this->mappings, res, array->isImmutable(), !(array->getType()->isRangeType() || array->getType()->isStringType()));
+		cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
 
 		if(this->indexVar)
 		{

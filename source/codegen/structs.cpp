@@ -87,7 +87,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto restore = cs->irb.getCurrentBlock();
 	{
 		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_init", IdKind::Name),
-			fir::FunctionType::get({ this->type->getPointerTo() }, fir::Type::getVoid()),
+			fir::FunctionType::get({ this->type->getMutablePointerTo() }, fir::Type::getVoid()),
 			fir::LinkageType::Internal);
 
 		fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -101,7 +101,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto bii = clsty->getBaseClass()->getInlineInitialiser();
 			iceAssert(bii);
 
-			cs->irb.Call(bii, cs->irb.PointerTypeCast(self, clsty->getBaseClass()->getPointerTo()));
+			cs->irb.Call(bii, cs->irb.PointerTypeCast(self, clsty->getBaseClass()->getMutablePointerTo()));
 		}
 
 		// set our vtable

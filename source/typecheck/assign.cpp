@@ -46,7 +46,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 			warn(this, "nofit");
 	}
 
-	if(!skipCheck && lt != rt)
+	if(!skipCheck && lt != rt && fs->getCastDistance(rt, lt) < 0)
 	{
 		HighlightOptions hs;
 		// hs.drawCaret = false;
