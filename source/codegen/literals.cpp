@@ -168,7 +168,6 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.SetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
 			aa = cs->irb.SetDynamicArrayRefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
-			aa->makeImmutable();
 			return CGResult(aa, 0, CGResult::VK::LitRValue);
 		}
 	}

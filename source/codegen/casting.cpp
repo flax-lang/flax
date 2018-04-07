@@ -171,6 +171,11 @@ namespace cgn
 			auto ret = this->irb.PointerTypeCast(from.value, target);
 			return CGResult(ret);
 		}
+		else if(fromType->getPointerElementType() == target->getPointerElementType() && fromType->isMutablePointer() && target->isImmutablePointer())
+		{
+			auto ret = this->irb.PointerTypeCast(from.value, target);
+			return CGResult(ret);
+		}
 
 		// nope.
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);

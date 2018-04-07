@@ -149,10 +149,10 @@ namespace string
 			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
 
 			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
-			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getInt8Ptr());
+			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getMutInt8Ptr());
 
 			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
-			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getInt8Ptr());
+			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr());
 
 			// ok. combine the lengths
 			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
@@ -168,7 +168,7 @@ namespace string
 
 			// move it forward (skip the refcount)
 			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-			buf = cs->irb.PointerTypeCast(buf, fir::Type::getInt8Ptr());
+			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr()->getMutablePointerVersion());
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -545,7 +545,7 @@ namespace string
 
 				// call free on the buffer.
 				fir::Value* bufp = cs->irb.GetStringData(func->getArguments()[0]);
-				bufp = cs->irb.PointerTypeCast(bufp, fir::Type::getInt8Ptr());
+				bufp = cs->irb.PointerTypeCast(bufp, fir::Type::getMutInt8Ptr());
 
 				#if DEBUG_STRING_ALLOCATION
 				{

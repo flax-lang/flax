@@ -79,7 +79,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	if(infer)
 	{
 		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-		auto p = Param { "self", this->loc, infer->getPointerTo() };
+		auto p = Param { "self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()) };
 
 		ps.push_back(p);
 		ptys.push_back(p.type);
@@ -113,6 +113,7 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	defn->isVirtual = this->isVirtual;
 	defn->isOverride = this->isOverride;
+	defn->isMutating = this->isMutating;
 
 	if(defn->isVirtual && !defn->parentTypeForMethod)
 	{
@@ -122,6 +123,10 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	{
 		error(defn, "Only methods of a class (which '%s' is not) can be marked 'virtual' or 'override'",
 			defn->parentTypeForMethod->str());
+	}
+	else if(defn->isMutating && !defn->parentTypeForMethod)
+	{
+		error(defn, "Only methods of a type can be marked as mutating with 'mut'");
 	}
 
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {

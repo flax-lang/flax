@@ -121,10 +121,11 @@ namespace pts
 	struct PointerType : Type
 	{
 		virtual ~PointerType() { }
-		explicit PointerType(pts::Type* b) : base(b) { }
+		explicit PointerType(pts::Type* b, bool mut) : base(b), isMutable(mut) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
+		bool isMutable = false;
 	};
 
 

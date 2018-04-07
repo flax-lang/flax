@@ -238,6 +238,7 @@ namespace sst
 			else if(!ex.pointer)
 				error(this, "Have lvalue without storage?");
 
+
 			return CGResult(ex.pointer);
 		}
 		else if(this->op == Operator::BitwiseNot)

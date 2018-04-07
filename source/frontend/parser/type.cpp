@@ -342,14 +342,24 @@ namespace parser
 		if(st.front() == TT::Ampersand)
 		{
 			st.pop();
-			return new pts::PointerType(parseType(st));
+
+			// check for mutability.
+			bool mut = st.front() == TT::Mutable;
+			if(mut) st.pop();
+
+			return new pts::PointerType(parseType(st), mut);
 		}
 		else if(st.front() == TT::LogicalAnd)
 		{
 			// lmao.
 
 			st.pop();
-			return new pts::PointerType(new pts::PointerType(parseType(st)));
+			bool mut = st.front() == TT::Mutable;
+			if(mut) st.pop();
+
+			//* note: above handles cases like & (&mut T)
+			//* so, the outer pointer is never mutable, but the inner one might be.
+			return new pts::PointerType(new pts::PointerType(parseType(st), mut), false);
 		}
 		else if(st.front() == TT::LSquare)
 		{

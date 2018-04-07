@@ -122,6 +122,7 @@ namespace ast
 		bool isEntry = false;
 		bool noMangle = false;
 
+		bool isMutating = false;
 
 		bool isVirtual = false;
 		bool isOverride = false;
@@ -454,6 +455,7 @@ namespace ast
 		Block* initBody = 0;
 
 		bool isRaw = false;
+		bool isMutable = false;
 	};
 
 	struct DeallocOp : Stmt

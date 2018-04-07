@@ -54,6 +54,45 @@ namespace parser
 
 		st.skipWS();
 
+		std::function<ast::Stmt* (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers](bool mut, bool virt, bool ovrd) -> ast::Stmt* {
+			if(st.front() == TT::Mutable)
+			{
+				if(mut) error(st.loc(), "Duplicate 'mut' modifier");
+
+				st.eat();
+				return checkMethodModifiers(true, virt, ovrd);
+			}
+			else if(st.front() == TT::Virtual)
+			{
+				if(virt) error(st.loc(), "Duplicate 'virtual' modifier");
+				if(ovrd) error(st.loc(), "'override' implies 'virtual', just use 'override'");
+
+				st.eat();
+
+				//* but virtual does not imply override
+				return checkMethodModifiers(mut, true, ovrd);
+			}
+			else if(st.front() == TT::Override)
+			{
+				if(ovrd) error(st.loc(), "Duplicate 'override' modifier");
+				if(virt) error(st.loc(), "'override' implies 'virtual', just use 'override'");
+
+				st.eat();
+
+				//* override implies virtual
+				return checkMethodModifiers(mut, true, true);
+			}
+			else
+			{
+				auto ret = parseFunction(st);
+				ret->isVirtual = virt;
+				ret->isOverride = ovrd;
+				ret->isMutating = mut;
+
+				return ret;
+			}
+		};
+
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
@@ -68,6 +107,8 @@ namespace parser
 
 				case TT::ForeignFunc:
 					return parseForeignFunction(st);
+
+
 
 				case TT::Public:
 				case TT::Private:
@@ -121,30 +162,10 @@ namespace parser
 				case TT::Using:
 					return parseUsingStmt(st);
 
-				case TT::Virtual: {
-					st.eat();
-
-					if(st.front() == TT::Override)
-						error(st.loc(), "'override' implies 'virtual', just use 'override'");
-
-					auto ret = parseFunction(st);
-					ret->isVirtual = true;
-
-					return ret;
-				}
-
-				case TT::Override: {
-					st.eat();
-
-					if(st.front() == TT::Virtual)
-						error(st.loc(), "'override' implies 'virtual', just use 'override'");
-
-					auto ret = parseFunction(st);
-					ret->isOverride = true;
-					ret->isVirtual = true;      // override implies virtual but virtual need not imply override
-
-					return ret;
-				}
+				case TT::Mutable:
+				case TT::Virtual:
+				case TT::Override:
+					return checkMethodModifiers(false, false, false);
 
 				case TT::Protocol:
 				case TT::Extension:
@@ -729,15 +750,13 @@ namespace parser
 		iceAssert(st.front() == TT::Alloc);
 		auto loc = st.eat().loc;
 
-		// if(st.eat() != TT::LAngle)
-		// 	expectedAfter(st.loc(), "'<'", "'alloc'", st.prev().str());
-
 		auto ret = new ast::AllocOp(loc);
+
+		if(st.front() == TT::Mutable)
+			ret->isMutable = true, st.pop();
+
 		ret->isRaw = raw;
 		ret->allocTy = parseType(st);
-
-		// if(st.eat() != TT::RAngle)
-		// 	expectedAfter(st.loc(), "'>'", "type in 'alloc'", st.prev().str());
 
 		if(st.front() == TT::LParen)
 		{

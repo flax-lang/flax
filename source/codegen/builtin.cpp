@@ -56,9 +56,6 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(res.kind != CGResult::VK::LValue)
 				error(this->lhs, "Cannot call 'pop()' on an rvalue");
 
-			else if(res.value->isImmutable())
-				error(this->lhs, "Cannot call 'pop()' on an immutable value");
-
 			else if(ty->isArrayType())
 				error(this->lhs, "Cannot call 'pop()' on an array type ('%s')", ty);
 

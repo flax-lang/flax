@@ -207,6 +207,7 @@ namespace sst
 		Block* initBlock = 0;
 
 		bool isRaw = false;
+		bool isMutable = false;
 	};
 
 	struct DeallocOp : Stmt
@@ -606,6 +607,7 @@ namespace sst
 
 		bool isVirtual = false;
 		bool isOverride = false;
+		bool isMutating = false;
 	};
 
 	struct ForeignFuncDefn : FunctionDecl
