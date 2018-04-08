@@ -457,7 +457,7 @@ namespace array
 				auto allocsz = cs->irb.Multiply(needed, elmsize);
 				auto rawdata = cs->irb.Call(mallocf, allocsz);
 
-				auto dataptr = cs->irb.PointerTypeCast(rawdata, elmtype->getPointerTo());
+				auto dataptr = cs->irb.PointerTypeCast(rawdata, elmtype->getMutablePointerTo());
 
 				auto setfn = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, elmtype);
 				cs->irb.Call(setfn, dataptr, needed);
@@ -539,7 +539,7 @@ namespace array
 				auto malloclen = cs->irb.Multiply(nextpow2, elmsize);
 				auto mallocptr = cs->irb.Call(mallocf, malloclen);
 
-				fir::Value* oldptr = cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr());
+				fir::Value* oldptr = cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr());
 
 				// do a memcopy
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -548,7 +548,6 @@ namespace array
 				cs->irb.Call(memcpyf, { mallocptr, oldptr, copylen,
 					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 
-				iceAssert(mallocptr->getType() == fir::Type::getInt8Ptr());
 				newptr = cs->irb.PointerTypeCast(mallocptr, ptr->getType());
 			}
 			#endif
@@ -870,7 +869,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ elmType->getPointerTo(), fir::Type::getInt64(), elmType }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getInt64(), elmType }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 

@@ -412,6 +412,17 @@ namespace ast
 		pts::Type* type = 0;
 	};
 
+	// a bit of a strange thing, but basically it's a kind of cast.
+	struct MutabilityTypeExpr : Expr
+	{
+		MutabilityTypeExpr(const Location& l, bool m) : Expr(l), mut(m) { this->readableName = "<TYPE EXPRESSION>"; }
+		~MutabilityTypeExpr() { }
+
+		virtual sst::Expr* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		bool mut;
+	};
+
 	struct Ident : Expr
 	{
 		Ident(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "identifier"; }

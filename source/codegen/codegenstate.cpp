@@ -154,7 +154,7 @@ namespace cgn
 		else if(type->isDynamicArrayType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
-			arr = this->irb.SetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
+			arr = this->irb.SetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
 			arr = this->irb.SetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
 			arr = this->irb.SetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
 
@@ -208,7 +208,7 @@ namespace cgn
 		if(name == ALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == FREE_MEMORY_FUNC)
 		{
@@ -218,7 +218,7 @@ namespace cgn
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{

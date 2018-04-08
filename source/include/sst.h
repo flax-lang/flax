@@ -24,6 +24,11 @@ namespace cgn
 
 namespace sst
 {
+	//! ACHTUNG !
+	//* note: this is the thing that everyone calls to check the mutability of a slice of something
+	//* defined in typecheck/slice.cpp
+	bool getMutabilityOfSliceOfType(fir::Type* ty);
+
 	struct StateTree;
 	struct Block;
 

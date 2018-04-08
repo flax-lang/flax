@@ -424,7 +424,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpEQ(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp eq instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp eq instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -432,7 +438,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpNEQ(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp neq instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp neq instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -440,7 +452,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpGT(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp gt instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp gt instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -448,7 +466,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpLT(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp lt instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp lt instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -456,7 +480,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpGEQ(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp geq instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp geq instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -464,7 +494,13 @@ namespace fir
 
 	Value* IRBuilder::ICmpLEQ(Value* a, Value* b, std::string vname)
 	{
-		iceAssert(a->getType() == b->getType() && "creating icmp leq instruction with non-equal types");
+		//* note: allows comparing mutable and immutable pointers.
+		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
+			&& a->getType()->getPointerElementType() == b->getType()->getPointerElementType()))
+		{
+			error("creating icmp leq instruction with non-equal types");
+		}
+
 		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(this->context),
 			{ a, b });
 		return this->addInstruction(instr, vname);
@@ -953,10 +989,10 @@ namespace fir
 					args[i] = this->PointerTypeCast(args[i], target);
 				}
 
-				if(at != target)
+				if(args[i]->getType() != target)
 				{
 					error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
-						fn->getArguments()[i]->getType(), at);
+						fn->getArguments()[i]->getType(), args[i]->getType());
 				}
 			}
 		}
@@ -1443,7 +1479,7 @@ namespace fir
 			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::Type::getChar()->getPointerTo(), { str });
+			fir::Type::getChar()->getMutablePointerTo(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1453,7 +1489,10 @@ namespace fir
 		if(!str->getType()->isStringType())
 			error("str is not a string type (got '%s')", str->getType());
 
-		if(val->getType() != fir::Type::getChar()->getPointerTo())
+		else if(!val->getType()->isPointerType())
+			error("val is not a pointer type");
+
+		if(val->getType()->getPointerElementType() != fir::Type::getChar())
 			error("val is not a char*");
 
 		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getString(), { str, val });
@@ -1532,7 +1571,7 @@ namespace fir
 			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_GetData, false, this->currentBlock,
-			arr->getType()->toDynamicArrayType()->getElementType()->getPointerTo(), { arr });
+			arr->getType()->toDynamicArrayType()->getElementType()->getMutablePointerTo(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1543,10 +1582,10 @@ namespace fir
 			error("arr is not a dynamic array type (got '%s')", arr->getType());
 
 		auto t = arr->getType()->toDynamicArrayType()->getElementType();
-		if(val->getType() != t->getPointerTo())
+		if(val->getType() != t->getMutablePointerTo())
 		{
 			error("val is not a pointer to elm type (need '%s', have '%s')",
-				t->getPointerTo(), val->getType());
+				t->getMutablePointerTo(), val->getType());
 		}
 
 		Instruction* instr = new Instruction(OpKind::DynamicArray_SetData, true, this->currentBlock,
@@ -1680,8 +1719,11 @@ namespace fir
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
 
+		auto st = slc->getType()->toArraySliceType();
+		auto et = st->getElementType();
+
 		Instruction* instr = new Instruction(OpKind::ArraySlice_GetData, false, this->currentBlock,
-			slc->getType()->toArraySliceType()->getElementType()->getPointerTo(), { slc });
+			st->isMutable() ? et->getMutablePointerTo() : et->getPointerTo(), { slc });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1691,9 +1733,12 @@ namespace fir
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
 
-		auto et = slc->getType()->toArraySliceType()->getElementType();
-		if(val->getType() != et->getPointerTo())
-			error("val is not a pointer to elm type (need '%s', have '%s')", et->getPointerTo(), val->getType());
+		auto st = slc->getType()->toArraySliceType();
+		auto et = st->getElementType();
+		auto pt = (st->isMutable() ? et->getMutablePointerTo() : et->getPointerTo());
+
+		if(val->getType() != pt)
+			error("val is not a pointer to elm type (need '%s', have '%s')", pt, val->getType());
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
 			slc->getType(), { slc, val });

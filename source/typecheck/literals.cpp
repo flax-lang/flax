@@ -124,7 +124,8 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
 			infer = fir::DynamicArrayType::get(fir::VoidType::get());
 		}
-			// error(this, "Unable to infer type for empty array literal");
+
+		// error(this, "Unable to infer type for empty array literal");
 
 		// okay.
 		if(infer->isArrayType())
@@ -183,20 +184,21 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			vals.push_back(e);
 		}
 
-		// note: try and prefer dynamic arrays.
+		//* note: prefer slices by default.
+		// this behaviour changed as of 08/04/2018
 		if(this->raw || (infer && infer->isArrayType()))
 		{
 			type = fir::ArrayType::get(elmty, this->values.size());
 		}
-		else if(infer == 0 || infer->isDynamicArrayType())
+		else if(infer->isDynamicArrayType())
 		{
 			// do something
 			type = fir::DynamicArrayType::get(elmty);
 		}
-		else if(infer->isArraySliceType())
+		else if(infer == 0 || infer->isArraySliceType())
 		{
-			// do something
-			type = fir::ArraySliceType::get(elmty);
+			// slices from a constant array generally should remain immutable.
+			type = fir::ArraySliceType::get(elmty, false);
 		}
 		else
 		{

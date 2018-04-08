@@ -401,7 +401,7 @@ namespace fir
 		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
 		else if(copy == CHARACTER_TYPE_STRING)          real = Type::getChar();
 
-		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar());
+		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar(), true);
 
 		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool(tc);
 		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid(tc);

@@ -62,18 +62,12 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		return CGResult(array, ret, CGResult::VK::LitRValue);
 	}
-	else if(this->type->isArraySliceType())
-	{
-		// TODO: support this
-		error(this, "Array literal cannot be coerced into an array slice");
-	}
-	else if(this->type->isDynamicArrayType())
+	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
 	{
 		// ok, this can basically be anything.
 		// no restrictions.
 
-		auto darty = this->type->toDynamicArrayType();
-		auto elmty = darty->getElementType();
+		auto elmty = this->type->getArrayElementType();
 
 		if(this->values.empty())
 		{
@@ -99,8 +93,10 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				elmty = infer->getArrayElementType();
 
 				auto z = fir::ConstantInt::getInt64(0);
-				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z),
-					0, CGResult::VK::LitRValue);
+
+				//* note: it's clearly a null pointer, so it must be immutable.
+				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z), 0, CGResult::VK::LitRValue);
 			}
 			else
 			{
@@ -160,8 +156,9 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 
 		// return it
+		if(this->type->isDynamicArrayType())
 		{
-			auto aa = cs->irb.CreateValue(darty);
+			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
 			aa = cs->irb.SetDynamicArrayData(aa, cs->irb.ConstGEP2(array, 0, 0));
 			aa = cs->irb.SetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
@@ -169,6 +166,19 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.SetDynamicArrayRefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
 			return CGResult(aa, 0, CGResult::VK::LitRValue);
+		}
+		else if(this->type->isArraySliceType())
+		{
+			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
+
+			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(array, 0, 0), elmty->getPointerTo()));
+			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getInt64(this->values.size()));
+
+			return CGResult(aa, 0, CGResult::VK::LitRValue);
+		}
+		else
+		{
+			error(this, "what???");
 		}
 	}
 	else
