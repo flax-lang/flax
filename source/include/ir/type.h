@@ -703,21 +703,26 @@ namespace fir
 		// methods
 		Type* getElementType();
 
+		bool isMutable();
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
 		protected:
-		ArraySliceType(Type* elmType);
+		ArraySliceType(Type* elmType, bool mut);
 		virtual ~ArraySliceType() override { }
 
 		// fields
+		bool isSliceMutable;
 		Type* arrayElementType;
 
 		// static funcs
 		public:
-		static ArraySliceType* get(Type* elementType, FTContext* tc = 0);
+		static ArraySliceType* get(Type* elementType, bool mut, FTContext* tc = 0);
+		static ArraySliceType* getMutable(Type* elementType, FTContext* tc = 0);
+		static ArraySliceType* getImmutable(Type* elementType, FTContext* tc = 0);
 	};
 
 

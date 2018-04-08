@@ -12,6 +12,11 @@ sst::Expr* ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred
 	return ret;
 }
 
+sst::Expr* ast::MutabilityTypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+{
+	error(this, "Unable to typecheck mutability cast, this shouldn't happen!");
+}
+
 sst::Stmt* ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	// nothing to check??

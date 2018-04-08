@@ -76,13 +76,16 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 
 
-static CGResult performSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Type* elmType, fir::Value* array, fir::Value* data, fir::Value* maxlen,
-	fir::Value* beginIndex, fir::Value* endIndex, sst::Expr* bexpr, sst::Expr* eexpr)
+static CGResult performSliceOperation(cgn::CodegenState* cs, sst::SliceOp* user, bool check, fir::Type* elmType, fir::Value* data,
+	fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex, sst::Expr* bexpr, sst::Expr* eexpr)
 {
-	checkSliceOperation(cs, user, maxlen, beginIndex, endIndex, bexpr, eexpr);
+	if(check)
+		checkSliceOperation(cs, user, maxlen, beginIndex, endIndex, bexpr, eexpr);
 
 	// ok, make the slice
-	fir::Type* slct = fir::ArraySliceType::get(elmType);
+	fir::Type* slct = user->type;
+	iceAssert(slct->isArraySliceType());
+
 	fir::Value* slice = cs->irb.CreateValue(slct, "slice");
 
 	// FINALLY.
@@ -92,15 +95,6 @@ static CGResult performSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fi
 
 	slice = cs->irb.SetArraySliceData(slice, newptr);
 	slice = cs->irb.SetArraySliceLength(slice, newlen);
-
-	// if(cs->isRefCountedType(elmType) || array->getType()->isDynamicArrayType())
-	// {
-	// 	// increment the refcounts for the strings
-	// 	fir::Function* incrfn = cgn::glue::array::getIncrementArrayRefCountFunction(cs, fir::DynamicArrayType::get(elmType));
-	// 	iceAssert(incrfn);
-
-	// 	cs->irb.Call(incrfn, array);
-	// }
 
 	// slices are rvalues
 	return CGResult(slice);
@@ -131,10 +125,14 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(ty->isArraySliceType())	length = cs->irb.GetArraySliceLength(lhs, "orig_len");
 	else if(ty->isStringType())		length = cs->irb.GetStringLength(lhs, "orig_len");
 	else if(ty->isArrayType())		length = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize());
+	else if(ty->isPointerType())    length = fir::ConstantInt::getInt64(0);
 	else							error(this, "unsupported type '%s'", ty);
 
 	iceAssert(length);
 	{
+		if(ty->isPointerType() && !this->end)
+			error(this, "Slicing operation on pointers requires an ending index");
+
 		if(this->begin)	this->cgBegin = this->begin->codegen(cs).value;
 		else			this->cgBegin = fir::ConstantInt::getInt64(0);
 
@@ -148,11 +146,30 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	this->cgBegin->setName("begin");
 	this->cgEnd->setName("end");
 
-	if(ty->isDynamicArrayType())
-	{
-		// make that shit happen
+	/*
+		as a reminder:
 
-		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.GetDynamicArrayData(lhs),
+		performSliceOperation(  cgn::CodegenState* cs,
+								sst::Expr* user,
+								bool check,
+								fir::Type* elmType,
+								fir::Value* data,
+								fir::Value* maxlen,
+								fir::Value* beginIndex,
+								fir::Value* endIndex,
+								sst::Expr* bexpr,
+								sst::Expr* eexpr)
+	 */
+
+	//* note: mutability determination is done at the typechecking phase.
+	if(ty->isPointerType())
+	{
+		return performSliceOperation(cs, this, false, ty->getPointerElementType(), lhs,
+			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+	}
+	else if(ty->isDynamicArrayType())
+	{
+		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetDynamicArrayData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isArrayType())
@@ -164,17 +181,17 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		fir::Value* data = cs->irb.ConstGEP2(lhsptr, 0, 0);
 
-		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, data,
+		return performSliceOperation(cs, this, true, ty->getArrayElementType(), data,
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isArraySliceType())
 	{
-		return performSliceOperation(cs, this, ty->getArrayElementType(), lhs, cs->irb.GetArraySliceData(lhs),
+		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetArraySliceData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isStringType())
 	{
-		return performSliceOperation(cs, this, fir::Type::getChar(), lhs, cs->irb.GetStringData(lhs),
+		return performSliceOperation(cs, this, true, fir::Type::getChar(), cs->irb.GetStringData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else

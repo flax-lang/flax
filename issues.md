@@ -201,6 +201,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 - overhaul the mutability system to be similar to Rust; now, pointers can indicate whether the memory they point to is mutable, and `let` vs `var` only
 	determines whether the variable itself can be modified. Use `&mut T` for the new thing.
 - allow `mut` to be used with methods; if it is present, then a mutable `self` is passed in, otherwise an immutable `self` is passed.
+- add casting to `mut`: `foo as mut` or `foo as !mut` to cast an immutable pointer/slice to a mutable one, and vice versa.
+- distinguish mutable and non-mutable slices, some rules about which things become mutable when sliced and which don't.
 
 `(ec9adb2)`
 - add generic types for structs -- presumably works for classes and stuff as well.

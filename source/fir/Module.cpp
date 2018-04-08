@@ -363,7 +363,7 @@ namespace fir
 		else if(id == "memmove")
 		{
 			name = Identifier("memmove", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
+			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
 				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}

@@ -371,7 +371,24 @@ namespace parser
 			Expr* rhs = 0;
 			if(op == "cast")
 			{
-				rhs = new TypeExpr(loc, parseType(st));
+				if(st.front() == TT::Mutable || (st.front() == TT::Exclamation && st.lookahead(1) == TT::Mutable))
+				{
+					if(st.front() == TT::Mutable)
+					{
+						st.pop();
+						rhs = new MutabilityTypeExpr(loc, true);
+					}
+					else
+					{
+						st.pop();
+						st.pop();
+						rhs = new MutabilityTypeExpr(loc, false);
+					}
+				}
+				else
+				{
+					rhs = new TypeExpr(loc, parseType(st));
+				}
 			}
 			else
 			{

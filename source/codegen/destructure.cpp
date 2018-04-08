@@ -75,6 +75,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	iceAssert(bind.array);
 
 	auto rt = rhs.value->getType();
+	bool shouldSliceBeMutable = sst::getMutabilityOfSliceOfType(rt);
 
 	if(!rt->isArrayType() && !rt->isDynamicArrayType() && !rt->isArraySliceType() && !rt->isStringType())
 		error(bind.loc, "Expected array type in destructuring declaration; found type '%s' instead", rt);
@@ -91,8 +92,8 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			cs->irb.Call(checkf, rhs.value, numbinds, strloc);
 		}
 
-		//* note: special-case this, because 1. we want to return chars, but 2. strings are supposed to be immutable.
-		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetStringData(rhs.value), fir::CharType::get()->getPointerTo());
+		//* note: special-case this, because 1. we want to return chars
+		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetStringData(rhs.value), fir::CharType::get()->getMutablePointerTo());
 		{
 			size_t idx = 0;
 			for(auto& b : bind.inner)
@@ -111,7 +112,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				// make a slice of char.
 				auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
 
-				auto slice = cs->irb.CreateValue(fir::ArraySliceType::get(fir::CharType::get()));
+				auto slice = cs->irb.CreateValue(fir::ArraySliceType::get(fir::CharType::get(), shouldSliceBeMutable));
 				slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(strdat, numbinds));
 				slice = cs->irb.SetArraySliceLength(slice, remaining);
 
@@ -198,7 +199,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			{
 				if(bind.restRef)
 				{
-					auto sty = fir::ArraySliceType::get(rt->getArrayElementType());
+					auto sty = fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable);
 
 					auto remaining = cs->irb.Subtract(arrlen, numbinds);
 
@@ -217,7 +218,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 					fir::Value* clonee = 0;
 					if(rt->isArrayType())
 					{
-						clonee = cs->irb.CreateValue(fir::ArraySliceType::get(rt->getArrayElementType()));
+						clonee = cs->irb.CreateValue(fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable));
 						clonee = cs->irb.SetArraySliceData(clonee, data);
 						clonee = cs->irb.SetArraySliceLength(clonee, fir::ConstantInt::getInt64(rt->toArrayType()->getArraySize()));
 					}

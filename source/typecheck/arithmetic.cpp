@@ -199,7 +199,40 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	// this has always been a thorn, dammit
 
 	auto l = this->left->typecheck(fs, inferred);
-	auto r = this->right->typecheck(fs, inferred);
+
+	sst::Expr* r = 0;
+
+	//* this checks for the cast like this: `foo as mut` or `foo as !mut`
+	//* the former makes an immutable thing mutable, and the latter vice versa.
+	if(auto mte = dcast(MutabilityTypeExpr, this->right))
+	{
+		// see what the left side type is.
+		if(l->type->isPointerType())
+		{
+			if(l->type->isMutablePointer() == mte->mut)
+				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
+
+			if(mte->mut)    r = new sst::TypeExpr(mte->loc, l->type->getMutablePointerVersion());
+			else            r = new sst::TypeExpr(mte->loc, l->type->getImmutablePointerVersion());
+		}
+		else if(l->type->isArraySliceType())
+		{
+			if(l->type->toArraySliceType()->isMutable() == mte->mut)
+				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
+
+			r = new sst::TypeExpr(mte->loc, fir::ArraySliceType::get(l->type->getArrayElementType(), mte->mut));
+		}
+		else
+		{
+			error(this, "Invalid cast: type '%s' does not distinguish between mutable and immutable variants", l->type);
+		}
+	}
+	else
+	{
+		r = this->right->typecheck(fs, inferred);
+	}
+
+	iceAssert(l && r);
 
 	auto lt = l->type;
 	auto rt = r->type;
