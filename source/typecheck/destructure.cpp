@@ -46,7 +46,8 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 			fake->id = Identifier(bind->restName, IdKind::Name);
 			fake->immutable = immut;
 
-			if(bind->restRef)    fake->type = fir::ArraySliceType::get(fir::Type::getChar());
+			//* note: see typecheck/slices.cpp for mutability rules.
+			if(bind->restRef)   fake->type = fir::ArraySliceType::get(fir::Type::getChar(), sst::getMutabilityOfSliceOfType(rhs));
 			else                fake->type = fir::Type::getString();
 
 			fs->stree->addDefinition(bind->restName, fake);
@@ -66,8 +67,9 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 			fake->id = Identifier(bind->restName, IdKind::Name);
 			fake->immutable = immut;
 
+			//* note: see typecheck/slices.cpp for mutability rules.
 			if(bind->restRef || rhs->isArraySliceType())
-				fake->type = fir::ArraySliceType::get(rhs->getArrayElementType());
+				fake->type = fir::ArraySliceType::get(rhs->getArrayElementType(), sst::getMutabilityOfSliceOfType(rhs));
 
 			else
 				fake->type = fir::DynamicArrayType::get(rhs->getArrayElementType());

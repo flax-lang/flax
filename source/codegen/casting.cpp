@@ -159,7 +159,9 @@ namespace cgn
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
 			// ok, then
-			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType()));
+			//! ACHTUNG !
+			//* note: see typecheck/slice.cpp -- slices of dynamic arrays are always mutable.
+			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), true));
 			ret = this->irb.SetArraySliceData(ret, this->irb.GetDynamicArrayData(from.value));
 			ret = this->irb.SetArraySliceLength(ret, this->irb.GetDynamicArrayLength(from.value));
 
