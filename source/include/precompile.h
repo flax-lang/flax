@@ -2,8 +2,8 @@
 // Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-
-#ifndef PRECOMPILE_H
+#pragma once
+#if !defined(PRECOMPILE_H) && !defined(DO_NOT_INCLUDE_PRECOMPILE)
 #define PRECOMPILE_H
 
 #include <stdio.h>

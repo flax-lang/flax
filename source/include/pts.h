@@ -175,10 +175,11 @@ namespace pts
 	struct ArraySliceType : Type
 	{
 		virtual ~ArraySliceType() { }
-		explicit ArraySliceType(pts::Type* b) : base(b) { }
+		explicit ArraySliceType(pts::Type* b, bool m) : base(b), mut(m) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
+		bool mut = false;
 	};
 
 

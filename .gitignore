@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+*.pdb
 
 
 
@@ -39,6 +40,9 @@ run
 *.sublime-*
 build/sysroot
 .modifydates
+
+# this is a generated file, so we ignore it.
+source/unity.cpp
 
 build/test
 build/gltest
