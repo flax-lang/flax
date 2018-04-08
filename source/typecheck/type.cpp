@@ -232,9 +232,7 @@ namespace sst
 		}
 		else if(pt->isArraySliceType())
 		{
-			//* note: since we're not slicing something, we can't be sure whether it should be immutable or mutable.
-			//* so, we 'play safe' and make it immutable.
-			return fir::ArraySliceType::get(convert(pt->toArraySliceType()->base), false);
+			return fir::ArraySliceType::get(convert(pt->toArraySliceType()->base), pt->toArraySliceType()->mut);
 		}
 		else if(pt->isDynamicArrayType())
 		{

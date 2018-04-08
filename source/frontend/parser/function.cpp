@@ -146,7 +146,7 @@ namespace parser
 		auto ffn = new ForeignFuncDefn(st.loc());
 
 		// copy the things over
-		auto [ defn, isvar, _ ] = parseFunctionDecl(st);
+		auto [ defn, isvar, __ ] = parseFunctionDecl(st);
 		if(!defn->generics.empty())
 			error(ffn->loc, "Foreign functions cannot be generic");
 

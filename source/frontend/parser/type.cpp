@@ -368,6 +368,11 @@ namespace parser
 			// [T: N] is a fixed array of size 'N'
 
 			st.pop();
+
+			bool mut = false;
+			if(st.front() == TT::Mutable)
+				mut = true, st.pop();
+
 			auto elm = parseType(st);
 
 			if(st.front() == TT::Colon)
@@ -376,14 +381,13 @@ namespace parser
 				if(st.front() == TT::RSquare)
 				{
 					st.pop();
-					return new pts::ArraySliceType(elm);
+					return new pts::ArraySliceType(elm, mut);
 				}
 				else if(st.front() != TT::Number)
 				{
 					expected(st, "positive, non-zero size for fixed array", st.front().str());
 				}
-
-
+				else
 				{
 					long sz = std::stol(st.front().str());
 					if(sz <= 0)
@@ -393,12 +397,16 @@ namespace parser
 					if(st.eat() != TT::RSquare)
 						expectedAfter(st, "closing ']'", "array type", st.front().str());
 
+					//! ACHTUNG !
+					// TODO: support mutable arrays??
 					return new pts::FixedArrayType(elm, sz);
 				}
 			}
 			else if(st.front() == TT::RSquare)
 			{
 				// dynamic array.
+				if(mut) error(st.loc(), "Dynamic arrays are always mutable, specifying 'mut' is unnecessary");
+
 				st.pop();
 				return new pts::DynamicArrayType(elm);
 			}
