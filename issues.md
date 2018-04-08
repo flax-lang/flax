@@ -198,6 +198,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- add `[mut T:]` syntax for specifying mutable slices; otherwise they will be immutable. If using type inference, then they'll be inferred depending on
+	what is sliced.
+
+`(f824a97)`
 - overhaul the mutability system to be similar to Rust; now, pointers can indicate whether the memory they point to is mutable, and `let` vs `var` only
 	determines whether the variable itself can be modified. Use `&mut T` for the new thing.
 - allow `mut` to be used with methods; if it is present, then a mutable `self` is passed in, otherwise an immutable `self` is passed.
