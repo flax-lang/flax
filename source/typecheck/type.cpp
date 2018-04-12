@@ -148,6 +148,7 @@ namespace sst
 					}
 
 					iceAssert(0);
+					return 0;
 				};
 
 
