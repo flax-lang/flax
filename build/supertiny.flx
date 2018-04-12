@@ -89,7 +89,7 @@ struct LinkedList<T>
 		if head == null { head = nn; tail = nn }
 		else
 		{
-			var ot = (tail as &mut Node)
+			var ot = tail as mut
 			tail = nn
 
 			nn.prev = ot
@@ -99,6 +99,16 @@ struct LinkedList<T>
 		count += 1
 	}
 }
+
+
+let x: &Foo = null
+let y = *x
+
+struct Foo
+{
+	var a: int
+}
+
 
 
 @entry fn main()
@@ -111,6 +121,7 @@ struct LinkedList<T>
 
 	*/
 
+	var k: Foo
 
 
 

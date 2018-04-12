@@ -111,7 +111,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 					auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrp), count);
 					cs->irb.CondBranch(cond, pass, fail);
 				},
-				[cs, callUserCode, actuallyStore, alloc, type, ctrp, arrp]() {
+				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
 
 					auto ctr = cs->irb.Load(ctrp);
 					auto ptr = cs->irb.PointerAdd(arrp, ctr);
