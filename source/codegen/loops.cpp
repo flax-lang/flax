@@ -115,7 +115,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		merge:
 			.. continue ..
 	*/
-	auto prevblock = cs->irb.getCurrentBlock();
+
+	// auto prevblock = cs->irb.getCurrentBlock();
 
 	auto check = cs->irb.addNewBlockAfter("check", cs->irb.getCurrentBlock());
 	auto loop = cs->irb.addNewBlockAfter("loop", cs->irb.getCurrentBlock());

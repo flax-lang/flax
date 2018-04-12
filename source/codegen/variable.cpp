@@ -35,7 +35,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(auto it = cs->typeDefnMap.find(this->type); it != cs->typeDefnMap.end())
 		it->second->codegen(cs);
 
-	bool refcounted = cs->isRefCountedType(this->type);
+	// bool refcounted = cs->isRefCountedType(this->type);
 
 	if(this->global)
 	{
