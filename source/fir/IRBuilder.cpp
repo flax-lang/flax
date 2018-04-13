@@ -915,9 +915,9 @@ namespace fir
 			error("Cannot store value to immutable pointer type '%s'", ptr->getType());
 
 		auto vt = v->getType();
-		auto pt = ptr->getType()->getPointerElementType();
+		auto pt = ptr->getType();
 
-		if(v->getType() != ptr->getType()->getPointerElementType())
+		if(vt != pt->getPointerElementType())
 		{
 			//* here, we know that the storage pointer is mutable. there's a special edge-case we need to catch:
 			//* if we're storing a value of type &T to a & &mut T, or a &mut T to a & &T.
@@ -925,7 +925,7 @@ namespace fir
 			//* so we can safely pass this onto the translation layer without worrying about it.
 
 			// if((vt->isPointerType() && pt->isPointerType() && vt->getPointerElementType() == pt->getPointerElementType()) == false)
-			error("ptr is not a pointer to type of value (base types '%s' -> '%s' differ)", v->getType(), ptr->getType()->getPointerElementType());
+			error("ptr is not a pointer to type of value (base types '%s' -> '%s' differ)", vt, pt->getPointerElementType());
 		}
 
 
