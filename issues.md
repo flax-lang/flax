@@ -177,11 +177,31 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 11. Optimisation: use interned strings for comparison (and for use as keys in all the hashmaps we have), hopefully allowing a large-ish speedup since
 	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
 
+
+12. Constructor-style syntax for builtin types, eg. `string("foo")` since string literals are now of type `[mut char:]`
+
+
+13. Make string refcounting not obscene, and move to the `refcount-pointer-is-a-separate-thing` scheme that we switched to for dynamic arrays. The current
+	system seems way too fragile.
+
+
+14. Flesh out the builtin methods for arrays/strings. In particular, do we want to keep allowing `+` and `+=` to work on arrays? Seems a bit dubious. We
+	already encounter the issue where we do `[string] + [char:]`, which can be seen as trying to append a string literal `[char:]` to an array of strings,
+	which doesn't work.
+
 -----
 
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(??)`
+- fix type-printing for the new array syntax (finally)
+- string literals now have a type of `[char:]`, with the appropriate implicit casts in place from `string` and to `&i8`
+- add implicit casting for tuple types if their elements can also be implicitly casted (trivial)
+- fix an issue re: constant slices in the llvm translator backend (everything was null)
+- distinguish appending and construct-from-two-ing for strings in the runtime-glue-code; will probably use `realloc` to implement mutating via append for
+	strings once we get the shitty refcount madness sorted out.
 
 `(81a0eb7)`
 - add `[mut T:]` syntax for specifying mutable slices; otherwise they will be immutable. If using type inference, then they'll be inferred depending on

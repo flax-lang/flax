@@ -63,7 +63,7 @@ sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		ret->value = this->value->typecheck(fs, retty);
 
-		if(ret->value->type != retty)
+		if(ret->value->type != retty && fs->getCastDistance(ret->value->type, retty) < 1)
 		{
 			HighlightOptions hs;
 			hs.underlines.push_back(this->value->loc);

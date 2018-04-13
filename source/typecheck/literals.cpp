@@ -99,7 +99,7 @@ sst::Expr* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 	}
 	else
 	{
-		ty = fir::Type::getString();
+		ty = fir::ArraySliceType::get(fir::Type::getChar(), false);
 	}
 
 	auto ret = new sst::LiteralString(this->loc, ty);

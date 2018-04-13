@@ -8,17 +8,20 @@
 
 // generate runtime glue code
 
-#define BUILTIN_STRINGREF_INCR_FUNC_NAME			"__stringref_incr"
-#define BUILTIN_STRINGREF_DECR_FUNC_NAME			"__stringref_decr"
+#define BUILTIN_STRINGREF_INCR_FUNC_NAME            "__stringref_incr"
+#define BUILTIN_STRINGREF_DECR_FUNC_NAME            "__stringref_decr"
 
-#define BUILTIN_STRING_CLONE_FUNC_NAME				"__string_clone"
-#define BUILTIN_STRING_APPEND_FUNC_NAME				"__string_append"
-#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME		"__string_appendchar"
-#define BUILTIN_STRING_CMP_FUNC_NAME				"__string_compare"
-#define BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME		"__string_ulength"
+#define BUILTIN_STRING_CLONE_FUNC_NAME              "__string_clone"
+#define BUILTIN_STRING_APPEND_FUNC_NAME             "__string_append"
+#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME        "__string_appendchar"
+#define BUILTIN_STRING_CMP_FUNC_NAME                "__string_compare"
+#define BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME     "__string_ulength"
 
-#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME		"__string_checkliteralmodify"
-#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME		"__string_boundscheck"
+#define BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME      "__string_combinetwo"
+#define BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME     "__string_combinechar"
+
+#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME      "__string_checkliteralmodify"
+#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME       "__string_boundscheck"
 
 
 // namespace cgn::glue::string
@@ -106,17 +109,16 @@ namespace string
 
 
 
-
-	fir::Function* getAppendFunction(CodegenState* cs)
+	fir::Function* getConstructFromTwoFunction(CodegenState* cs)
 	{
-		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
+		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME, IdKind::Name));
 
 		if(!appendf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::ArraySliceType::get(fir::Type::getChar(), false), fir::ArraySliceType::get(fir::Type::getChar(), false) },
 				fir::Type::getString()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -129,29 +131,16 @@ namespace string
 
 
 
-			// add two strings
-			// steps:
-			//
-			// 1. get the size of the left string
-			// 2. get the size of the right string
-			// 3. add them together
-			// 4. malloc a string of that size + 1
-			// 5. make a new string
-			// 6. set the buffer to the malloced buffer
-			// 7. set the length to a + b
-			// 8. return.
-
-
 			iceAssert(s1);
 			iceAssert(s2);
 
-			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
-			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
+			fir::Value* lhslen = cs->irb.GetArraySliceLength(s1, "l1");
+			fir::Value* rhslen = cs->irb.GetArraySliceLength(s2, "l2");
 
-			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			fir::Value* lhsbuf = cs->irb.GetArraySliceData(s1, "d1");
 			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getMutInt8Ptr());
 
-			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
+			fir::Value* rhsbuf = cs->irb.GetArraySliceData(s2, "d2");
 			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr());
 
 			// ok. combine the lengths
@@ -168,7 +157,7 @@ namespace string
 
 			// move it forward (skip the refcount)
 			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr()->getMutablePointerVersion());
+			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
 
 			// now memcpy
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
@@ -209,6 +198,165 @@ namespace string
 		return appendf;
 	}
 
+
+
+
+	fir::Function* getConstructWithCharFunction(CodegenState* cs)
+	{
+		fir::Function* thefn = cs->module->getFunction(Identifier(BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME, IdKind::Name));
+
+		if(!thefn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::ArraySliceType::get(fir::Type::getChar(), false), fir::Type::getChar() },
+				fir::Type::getString()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* ch = func->getArguments()[1];
+
+			iceAssert(s1);
+			iceAssert(ch);
+
+			// so, we just do a cheaty thing, we call the constructFromTwo function.
+			auto chptr = cs->irb.ImmutStackAlloc(fir::Type::getChar(), ch);
+			auto chslc = cs->irb.CreateValue(fir::ArraySliceType::get(fir::Type::getChar(), false));
+			{
+				chslc = cs->irb.SetArraySliceData(chslc, chptr);
+				chslc = cs->irb.SetArraySliceLength(chslc, fir::ConstantInt::getInt64(1));
+			}
+
+			auto cftfn = getConstructFromTwoFunction(cs);
+			iceAssert(cftfn);
+
+			cs->irb.Return(cs->irb.Call(cftfn, cs->irb.CreateSliceFromString(s1, false), chslc));
+
+			thefn = func;
+			cs->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(thefn);
+		return thefn;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	fir::Function* getAppendFunction(CodegenState* cs)
+	{
+		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
+
+		if(!appendf)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
+				fir::Type::getString()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			fir::Value* s1 = func->getArguments()[0];
+			fir::Value* s2 = func->getArguments()[1];
+
+
+			iceAssert(s1);
+			iceAssert(s2);
+
+			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
+			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
+			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
+
+			// space for null + refcount
+			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
+
+			// TODO: should we use realloc instead?
+			//* possibly, once we fix the refcount madness it'll be less of a shitshow.
+			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
+			iceAssert(mallocf);
+
+			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
+
+			// move it forward (skip the refcount)
+			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
+			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
+
+
+			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
+			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getMutInt8Ptr());
+
+			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
+			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr());
+
+			// now memcpy
+			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
+			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+
+			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
+			cs->irb.Call(memcpyf, { offsetbuf, rhsbuf, cs->irb.IntSizeCast(rhslen, fir::Type::getInt64()),
+				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+
+			// null terminator
+			fir::Value* nt = cs->irb.GetPointer(offsetbuf, rhslen);
+			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
+
+			#if DEBUG_STRING_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("append string: malloc(%d): (ptr: %p)\n");
+				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
+			}
+			#endif
+
+			// ok, now fix it
+			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
+
+			str = cs->irb.SetStringData(str, cs->irb.PointerTypeCast(buf, fir::Type::getChar()->getPointerTo()));
+			str = cs->irb.SetStringLength(str, newlen);
+
+			cs->irb.SetStringRefCount(str, cs->irb.GetStringRefCount(s1));
+
+			cs->irb.Return(str);
+
+			appendf = func;
+			cs->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(appendf);
+		return appendf;
+	}
+
+
 	fir::Function* getCharAppendFunction(CodegenState* cs)
 	{
 		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name));
@@ -229,18 +377,6 @@ namespace string
 			fir::Value* s1 = func->getArguments()[0];
 			fir::Value* s2 = func->getArguments()[1];
 
-			// add a char to a string
-			// steps:
-			//
-			// 1. get the size of the left string
-			// 2. malloc a string of that size + 1
-			// 3. make a new string
-			// 4. set the buffer to the malloced buffer
-			// 5. memcpy.
-			// 6. set the length to a + b
-			// 7. return.
-
-
 			iceAssert(s1);
 			iceAssert(s2);
 
@@ -251,7 +387,8 @@ namespace string
 			// space for null (1) + refcount (i64size) + the char (another 1)
 			fir::Value* malloclen = cs->irb.Add(lhslen, fir::ConstantInt::getInt64(2 + REFCOUNT_SIZE));
 
-			// now malloc.
+
+			// TODO: same issue with appending a string, maybe use realloc.
 			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 			iceAssert(mallocf);
 
@@ -291,7 +428,8 @@ namespace string
 
 			str = cs->irb.SetStringData(str, buf);
 			str = cs->irb.SetStringLength(str, cs->irb.Add(lhslen, fir::ConstantInt::getInt64(1)));
-			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
+
+			cs->irb.SetStringRefCount(str, cs->irb.GetStringRefCount(s1));
 
 			cs->irb.Return(str);
 

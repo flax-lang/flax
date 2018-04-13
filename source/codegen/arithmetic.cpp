@@ -289,29 +289,27 @@ namespace cgn
 
 		if(Operator::isComparison(op))
 		{
+			auto [ lr, rr ] = this->autoCastValueTypes(l, r);
+			iceAssert(lr.value && rr.value);
+			auto [ lt, rt ] = std::make_pair(lr.value->getType(), rr.value->getType());
+
 			// do comparison
 			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
 				|| (lt->isCharType() && rt->isCharType()))
 			{
 				// we should cast these to be similar-ish.
-				auto [ a, b ] = this->autoCastValueTypes(l, r);
-				lv = a.value;
-				rv = b.value;
 
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lv, rv));
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lv, rv));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lv, rv));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lv, rv));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lv, rv));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lv, rv));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr.value, rr.value));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr.value, rr.value));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
 
 				error("no");
 			}
 			else if((lt->isPrimitiveType() && rt->isConstantNumberType()) || (lt->isConstantNumberType() && rt->isPrimitiveType()))
 			{
-				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
-				iceAssert(lr.value && rr.value);
-
 				if(lr.value->getType()->isFloatingPointType())
 				{
 					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
@@ -365,10 +363,10 @@ namespace cgn
 
 				error("no");
 			}
-			else if(lt->isDynamicArrayType() && lt == rt)
+			else if((lt->isDynamicArrayType() || lt->isArraySliceType()) && lt == rt)
 			{
 				//! use opf when we have operator overloads
-				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt->toDynamicArrayType(), 0);
+				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt, 0);
 				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
 				fir::Value* zero = fir::ConstantInt::getInt64(0);
@@ -427,14 +425,35 @@ namespace cgn
 				#endif
 
 
-				auto appfn = cgn::glue::string::getAppendFunction(this);
-				auto res = this->irb.Call(appfn, lv, rv);
+				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, false), this->irb.CreateSliceFromString(rv, false));
+				this->addRefCountedValue(res);
+
+				return CGResult(res);
+			}
+			else if((lt->isStringType() && rt->isCharSliceType()) || (lt->isCharSliceType() && rt->isStringType()))
+			{
+				if(op != Operator::Plus)
+					unsupportedError(lhs.first, lt, rhs.first, rt);
+
+				// make life easier
+				if(lt->isCharSliceType())
+				{
+					std::swap(lt, rt);
+					std::swap(lv, rv);
+				}
+
+				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, false), rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
 			}
 			else if((lt->isStringType() && rt->isCharType()) || (lt->isCharType() && rt->isStringType()))
 			{
+				if(op != Operator::Plus)
+					unsupportedError(lhs.first, lt, rhs.first, rt);
+
 				// make life easier
 				if(lt->isCharType())
 				{
@@ -455,7 +474,7 @@ namespace cgn
 				#endif
 
 
-				auto appfn = cgn::glue::string::getCharAppendFunction(this);
+				auto appfn = cgn::glue::string::getConstructWithCharFunction(this);
 				auto res = this->irb.Call(appfn, lv, rv);
 				this->addRefCountedValue(res);
 

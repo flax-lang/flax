@@ -63,11 +63,25 @@ namespace sst
 		}
 		else if(from->isStringType() && to == fir::Type::getInt8Ptr())
 		{
-			return 4;
+			return 5;
+		}
+		else if(from->isStringType() && to->isCharSliceType())
+		{
+			return 3;
+		}
+		else if(from->isCharSliceType() && to == fir::Type::getInt8Ptr())
+		{
+			return 3;
 		}
 		else if(from->isMutablePointer() && to->isImmutablePointer() && from->getPointerElementType() == to->getPointerElementType())
 		{
 			// cast from a mutable pointer type to an immutable one can be implicit.
+			return 1;
+		}
+		else if(from->isArraySliceType() && to->isArraySliceType() && (from->getArrayElementType() == to->getArrayElementType())
+			&& from->toArraySliceType()->isMutable() && !to->toArraySliceType()->isMutable())
+		{
+			// same with slices -- cast from mutable slice to immut slice can be implicit.
 			return 1;
 		}
 
@@ -77,6 +91,28 @@ namespace sst
 		{
 			// cast from a derived class pointer to a base class pointer
 			return 2;
+		}
+		else if(from->isNullType() && to->isPointerType())
+		{
+			return 1;
+		}
+		else if(from->isTupleType() && to->isTupleType() && from->toTupleType()->getElementCount() == to->toTupleType()->getElementCount())
+		{
+			int sum = 0;
+
+			auto ftt = from->toTupleType();
+			auto ttt = to->toTupleType();
+
+			for(size_t i = 0; i < ttt->getElementCount(); i++)
+			{
+				if(int k = this->getCastDistance(ftt->getElementN(i), ttt->getElementN(i)); k < 0)
+					return -1;
+
+				else
+					sum += k;
+			}
+
+			return sum;
 		}
 
 		return -1;

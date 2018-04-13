@@ -142,7 +142,7 @@ namespace backend
 			fir::ArrayType* at = type->toArrayType();
 			return llvm::ArrayType::get(typeToLlvm(at->getElementType(), mod), at->getArraySize());
 		}
-		else if(type->isPointerType())
+		else if(type->isPointerType() || type->isNullType())
 		{
 			if(type == fir::Type::getVoidPtr() || type->isNullType())
 				return llvm::Type::getInt8PtrTy(gc);
@@ -467,6 +467,10 @@ namespace backend
 		else if(dcast(fir::ConstantStruct, c))
 		{
 			_error_and_exit("notsup const struct");
+		}
+		else if(auto it = valueMap.find(c->id); it != valueMap.end() && llvm::isa<llvm::Constant>(it->second))
+		{
+			return llvm::cast<llvm::Constant>(it->second);
 		}
 		else
 		{

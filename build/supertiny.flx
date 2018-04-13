@@ -101,8 +101,6 @@ struct LinkedList<T>
 }
 
 
-let x: &Foo = null
-let y = *x
 
 struct Foo
 {

@@ -73,13 +73,23 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			// TODO: Extension support here
 			fir::Type* res = 0;
 			if(vr->name == "length" || vr->name == "count")
+			{
 				res = fir::Type::getInt64();
-
+			}
 			else if(type->isDynamicArrayType() && (vr->name == "capacity" || vr->name == "rc"))
+			{
 				res = fir::Type::getInt64();
-
+			}
 			else if(vr->name == "ptr")
-				res = fir::Type::getInt8Ptr();
+			{
+				res = type->getArrayElementType()->getPointerTo();
+				if(type->isDynamicArrayType())
+					res = res->getMutablePointerVersion();
+
+				else if(type->isArraySliceType() && type->toArraySliceType()->isMutable())
+					res = res->getMutablePointerVersion();
+			}
+
 
 
 			if(res)

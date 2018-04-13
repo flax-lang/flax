@@ -192,7 +192,7 @@ rem exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="source\**\*.cpp"><Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link></ClCompile>
+    <ClCompile Include="source\**\*.cpp" Exclude="source\unity.cpp"><Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link></ClCompile>
     <ClCompile Include="source\**\*.c"><Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link></ClCompile>
   </ItemGroup>
   <ItemGroup>

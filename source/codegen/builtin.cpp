@@ -187,7 +187,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 
-	error(this, "No such property '%s' on type '%s'", this->name, ty);
+	error(this, "No such property or builtin method '%s' on type '%s'", this->name, ty);
 }
 
 

@@ -20,12 +20,12 @@ namespace fir
 
 	std::string DynamicArrayType::str()
 	{
-		return this->arrayElementType->str() + (this->isVariadic ? "[...]" : "[]");
+		return "[" + this->arrayElementType->str() + (this->isVariadic ? "...]" : "]");
 	}
 
 	std::string DynamicArrayType::encodedStr()
 	{
-		return this->arrayElementType->encodedStr() + (this->isVariadic ? "[...]" : "[]");
+		return "[" + this->arrayElementType->encodedStr() + (this->isVariadic ? "...]" : "]");
 	}
 
 	bool DynamicArrayType::isFunctionVariadic()
