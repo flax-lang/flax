@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	ArraySliceType::ArraySliceType(Type* elmType, bool mut) : arrayElementType(elmType), isSliceMutable(mut)
+	ArraySliceType::ArraySliceType(Type* elmType, bool mut) : isSliceMutable(mut), arrayElementType(elmType)
 	{
 		iceAssert(this->arrayElementType);
 	}
