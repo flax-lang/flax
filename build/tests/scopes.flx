@@ -86,8 +86,8 @@ namespace n1
 	{
 		var m: Sheep
 
-		var tup: (string, int)
-		fn nest() -> (string, int)
+		var tup: (str, int)
+		fn nest() -> (str, int)
 		{
 			printf("nested\n");
 			return ("TUPLE ONE", 591)
@@ -108,7 +108,7 @@ namespace n1
 }
 
 
-public fn doScopeTest(argv: string)
+public fn doScopeTest(argv: str)
 {
 	var x = argv.ptr + 1
 
@@ -141,7 +141,7 @@ public fn doScopeTest(argv: string)
 	let t1 = n1.n2.m.foo.somefoo().bar
 	let t2 = n1.n2.nest().0.length
 
-	n1.n2.tup.0 = "HELLO, WORLD" + "!"
+	n1.n2.tup.0 = "HELLO, WORLD!" //string("HELLO, WORLD") + "!"
 	printf("tup: %s\n", n1.n2.tup.0)
 
 	printf("t1 = %d, t2 = %d\n", t1, t2)

@@ -253,7 +253,10 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		return CGResult(fir::ConstantString::get(this->str), 0, CGResult::VK::LitRValue);
+		auto str = cs->module->createGlobalString(this->str);
+		auto slc = fir::ConstantArraySlice::get(fir::ArraySliceType::get(fir::Type::getChar(), false), str, fir::ConstantInt::getInt64(this->str.length()));
+
+		return CGResult(slc, 0, CGResult::VK::LitRValue);
 	}
 }
 

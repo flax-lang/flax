@@ -401,7 +401,7 @@ namespace fir
 		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
 		else if(copy == CHARACTER_TYPE_STRING)          real = Type::getChar();
 
-		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar(), true);
+		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar(), false);
 
 		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool(tc);
 		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid(tc);
@@ -650,7 +650,7 @@ namespace fir
 
 	bool Type::isPointerType()
 	{
-		return dynamic_cast<PointerType*>(this) || dynamic_cast<NullType*>(this);
+		return dynamic_cast<PointerType*>(this);
 	}
 
 	bool Type::isVoidType()
@@ -718,6 +718,10 @@ namespace fir
 		return this->isPointerType() && !this->toPointerType()->isMutable();
 	}
 
+	bool Type::isCharSliceType()
+	{
+		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getChar();
+	}
 
 
 

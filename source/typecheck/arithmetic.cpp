@@ -94,6 +94,9 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 		else if((left->isStringType() && right->isCharType()) || (left->isCharType() && right->isStringType()))
 			return fir::Type::getString();
 
+		else if((left->isStringType() && right->isCharSliceType()) || (left->isCharSliceType() && right->isStringType()))
+			return fir::Type::getString();
+
 		else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
 			return left;
 

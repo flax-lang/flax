@@ -77,6 +77,11 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 			// auto-convert strings into char* when passing to va_args
 			val = this->irb.GetStringData(val);
 		}
+		else if(val->getType()->isCharSliceType())
+		{
+			// same, auto-convert char slices to char*
+			val = this->irb.GetArraySliceData(val);
+		}
 
 
 		// args.push_back(val);

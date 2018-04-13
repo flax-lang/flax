@@ -52,6 +52,8 @@ namespace cgn
 			fir::Function* getCharAppendFunction(CodegenState* cs);
 			fir::Function* getBoundsCheckFunction(CodegenState* cs);
 			fir::Function* getUnicodeLengthFunction(CodegenState* cs);
+			fir::Function* getConstructFromTwoFunction(CodegenState* cs);
+			fir::Function* getConstructWithCharFunction(CodegenState* cs);
 			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
 			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
 			fir::Function* getCheckLiteralWriteFunction(CodegenState* cs);

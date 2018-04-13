@@ -97,6 +97,8 @@ namespace fir
 		Value* StackAlloc(Type* type, std::string vname = "");
 		Value* ImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
+		Value* CreateSliceFromString(Value* str, bool mut, std::string vname = "");
+
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
