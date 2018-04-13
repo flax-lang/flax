@@ -58,7 +58,12 @@ bool match(const T& first, const U& second, const Args&... comps)
 }
 
 #define __nothing
+
+#ifdef NDEBUG
+#define iceAssert(x)        ((void) (x))
+#else
 #define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#endif
 
 #define TAB_WIDTH	4
 

@@ -246,8 +246,6 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 	return ret;
 }
 
-
-
 [[noreturn]] void doTheExit(bool trace)
 {
 	if(trace)

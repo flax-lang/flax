@@ -13,7 +13,9 @@ namespace parser
 	using TT = lexer::TokenType;
 	StructDefn* parseStruct(State& st)
 	{
-		iceAssert(st.eat() == TT::Struct);
+		iceAssert(st.front() == TT::Struct);
+		st.eat();
+
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'struct'", st.front().str());
 
@@ -79,7 +81,9 @@ namespace parser
 
 	ClassDefn* parseClass(State& st)
 	{
-		iceAssert(st.eat() == TT::Class);
+		iceAssert(st.front() == TT::Class);
+		st.eat();
+
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'struct'", st.front().str());
 
@@ -173,7 +177,9 @@ namespace parser
 
 	EnumDefn* parseEnum(State& st)
 	{
-		iceAssert(st.eat() == TT::Enum);
+		iceAssert(st.front() == TT::Enum);
+		st.eat();
+
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'enum'", st.front().str());
 

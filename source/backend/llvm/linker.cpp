@@ -76,9 +76,9 @@ namespace backend
 
 	void LLVMBackend::performCompilation()
 	{
-		iceAssert(llvm::InitializeNativeTarget() == 0);
-		iceAssert(llvm::InitializeNativeTargetAsmParser() == 0);
-		iceAssert(llvm::InitializeNativeTargetAsmPrinter() == 0);
+		llvm::InitializeNativeTarget();
+		llvm::InitializeNativeTargetAsmParser();
+		llvm::InitializeNativeTargetAsmPrinter();
 
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
 

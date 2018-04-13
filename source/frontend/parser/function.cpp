@@ -92,7 +92,9 @@ namespace parser
 
 	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
 	{
-		iceAssert(st.eat() == TT::Func);
+		iceAssert(st.front() == TT::Func);
+		st.eat();
+
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'fn'", st.front().str());
 
@@ -164,9 +166,8 @@ namespace parser
 
 	ast::InitFunctionDefn* parseInitFunction(State& st)
 	{
-		Token tok;
-		iceAssert((tok = st.front()).str() == "init");
-		st.pop();
+		Token tok = st.pop();
+		iceAssert(tok.str() == "init");
 
 		auto [ args, generics, retty, isvar, loc ] = parseFunctionLookingDecl(st);
 		if(generics.size() > 0)
@@ -260,7 +261,8 @@ namespace parser
 			}
 		}
 
-		iceAssert(st.eat().type == TT::RAngle);
+		iceAssert(st.front().type == TT::RAngle);
+		st.eat();
 
 		return ret;
 	}

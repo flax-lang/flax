@@ -145,7 +145,8 @@ namespace parser
 
 	ast::Stmt* parseForLoop(State& st)
 	{
-		iceAssert(st.eat() == TT::For);
+		iceAssert(st.front() == TT::For);
+		st.eat();
 
 		if(!match(st.front(), TT::Identifier, TT::LParen))
 			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());

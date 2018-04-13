@@ -89,7 +89,7 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::EnumDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	iceAssert("no" && 0);
+	error("unsupported");
 	// cs->pushLoc(this);
 	// defer(cs->popLoc());
 
