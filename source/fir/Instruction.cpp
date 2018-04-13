@@ -26,7 +26,7 @@ namespace fir
 	Value* Instruction::getResult()
 	{
 		if(this->realOutput) return this->realOutput;
-		iceAssert(0 && "Calling getActualValue() when not in function! (no real value)");
+		error("Calling getActualValue() when not in function! (no real value)");
 	}
 
 	bool Instruction::hasSideEffects()

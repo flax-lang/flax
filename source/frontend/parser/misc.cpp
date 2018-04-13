@@ -13,7 +13,8 @@ namespace parser
 	using TT = lexer::TokenType;
 	ImportStmt* parseImport(State& st)
 	{
-		iceAssert(st.eat() == TT::Import);
+		iceAssert(st.front() == TT::Import);
+		st.eat();
 
 		if(st.frontAfterWS() != TT::StringLiteral)
 			expectedAfter(st, "string literal", "'import' for module specifier", st.frontAfterWS().str());
@@ -42,7 +43,8 @@ namespace parser
 
 	UsingStmt* parseUsingStmt(State& st)
 	{
-		iceAssert(st.eat() == TT::Using);
+		iceAssert(st.front() == TT::Using);
+		st.eat();
 
 		auto ret = new ast::UsingStmt(st.ploc());
 

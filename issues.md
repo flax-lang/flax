@@ -36,8 +36,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### THINGS TO FIX
 
-1. Either refactor `iceAssert` to still do stuff while in release mode, or move code with side-effects out of assertion conditions.
-
 2. There are still some instances where we explicitly 'initialise' a class equivalent to `memset(0)` -- see *THINGS TO NOTE* below.
 
 3. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
@@ -196,6 +194,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- remove all code with side effects (mostly `eat()` stuff in the parser) from within asserts.
+
+`(e9ebbb0)`
 - fix type-printing for the new array syntax (finally)
 - string literals now have a type of `[char:]`, with the appropriate implicit casts in place from `string` and to `&i8`
 - add implicit casting for tuple types if their elements can also be implicitly casted (trivial)

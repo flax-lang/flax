@@ -78,7 +78,9 @@ namespace parser
 		if(name != "")
 		{
 			// expect "namespace FOO { ... }"
-			iceAssert(st.eat() == TT::Identifier);
+			iceAssert(st.front() == TT::Identifier);
+			st.eat();
+
 			if(st.eat() != TT::LBrace)
 				expected(st.ploc(), "'{' to start namespace declaration", st.prev().str());
 		}
