@@ -24,7 +24,7 @@ namespace fir
 	Value* Argument::getActualValue()
 	{
 		if(this->realValue) return this->realValue;
-		iceAssert(0 && "Calling getActualValue() when not in function! (no real value)");
+		error("Calling getActualValue() when not in function! (no real value)");
 	}
 
 	Function* Argument::getParentFunction()

@@ -22,7 +22,7 @@ namespace fir
 	{
 		if(this->valueType) return this->valueType;
 
-		iceAssert(0 && "Value has no type????");
+		error("Value has no type????");
 	}
 
 	bool Value::hasName()

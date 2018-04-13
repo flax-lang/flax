@@ -56,11 +56,11 @@ namespace backend
 				else if(pt->getFloatingPointBitWidth() == 128)
 					return llvm::Type::getFP128Ty(gc);
 
-				iceAssert(0);
+				error("what");
 			}
 			else
 			{
-				iceAssert(0);
+				error("what");
 			}
 		}
 		else if(type->isStructType())

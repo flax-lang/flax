@@ -325,7 +325,7 @@ namespace parser
 			case TT::ShiftRightEq:
 			case TT::ShiftLeft:
 			case TT::ShiftRight:
-				iceAssert(0);	// note: handled above, should not reach here
+				error("no");
 				break;
 
 			default:
@@ -617,7 +617,8 @@ namespace parser
 				expected(st, "',' or ')' in function call argument list", st.front().str());
 		}
 
-		iceAssert(st.pop().type == TT::RParen);
+		iceAssert(st.front().type == TT::RParen);
+		st.pop();
 
 		return ret;
 	}
@@ -844,8 +845,9 @@ namespace parser
 
 	ast::SizeofOp* parseSizeof(State& st)
 	{
-		Token tok;
-		iceAssert((tok = st.eat()) == TT::Sizeof);
+		Token tok = st.eat();
+		iceAssert(tok == TT::Sizeof);
+
 		if(st.eat() != TT::LParen)
 			expectedAfter(st.ploc(), "'('", "sizeof", st.prev().str());
 
