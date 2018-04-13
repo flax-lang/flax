@@ -140,7 +140,7 @@ $compileFlags = @(
     "$projectDir\source\unity.cpp"
 )
 
-If ($BuildType -eq "Release") 
+If ($BuildType -eq "Release")
 {
     $optimisationFlags = @(
         "/O2",

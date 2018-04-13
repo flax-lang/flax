@@ -94,13 +94,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	`var foo: SomeStruct` without an initialiser...
 
 
-2. Should slices be a 'weak' reference to the elements?
-	ie. should making a slice of a dynamic array increase the refcount of the elements of the dynamic array?
-	Right now, we don't increment the reference count -- ie. we've implemented weak slices.
-
-	Do we want strong slices?
-
-
 3. Foreach loops where you take more than one thing at a time, like this, maybe:
 	`for [ first, middle, last, ... ] in list { ... }`
 
@@ -160,16 +153,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	just create a new variable, it's not going to kill the program.
 
 
-7. wrt. tuples:
-	well that's all done and over with. Tuples can be splatted in arbitrary locations at function callsites, but are treated as a positional argument.
-	So, you cannot have named arguments before the splatted tuple, and any named arguments after the fact must not conflict with the positionally-
-	-specified arguments that came from the splatted tuple.
-
-	You can splat more than one tuple per callsite, and there really isn't much of an implementation issue because we expand the splat op in-place when
-	typechecking parameters, so that we get a bunch of sst::TupleDotOps in the typechecking, and the actual overload-resolution-thingy doesn't know
-	the difference.
-
-
 8. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
 	https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
 
@@ -191,13 +174,16 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	Basically, allow passing named parameters after var-args.
 
 
+11. Optimisation: use interned strings for comparison (and for use as keys in all the hashmaps we have), hopefully allowing a large-ish speedup since
+	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
+
 -----
 
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(81a0eb7)`
 - add `[mut T:]` syntax for specifying mutable slices; otherwise they will be immutable. If using type inference, then they'll be inferred depending on
 	what is sliced.
 
