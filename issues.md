@@ -194,6 +194,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- make init methods always mutable, for obvious reasons. Also, virtual stuff still works and didn't break, which is a plus.
+
+`(7107d5e)`
 - remove all code with side effects (mostly `eat()` stuff in the parser) from within asserts.
 
 `(e9ebbb0)`
