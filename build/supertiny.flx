@@ -106,7 +106,6 @@ struct LinkedList<T>
 	/*
 		Things to fix:
 
-		1. handling of mutating operations on dynamic arrays
 		2. possibly allow overloading mutable and non-mutable methods with the same signature?
 
 	*/
