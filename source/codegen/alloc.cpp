@@ -193,9 +193,6 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			}
 			#endif
 
-			// check if we were supposed to be immutable
-			if(!alloc->isMutable)
-				ret = cs->irb.PointerTypeCast(ret, ret->getType()->getImmutablePointerVersion());
 
 			return ret;
 		}
