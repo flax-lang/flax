@@ -110,7 +110,7 @@ fn runTests()
 	// slices
 	libc.printf("%s%s", slicesTitle, thinLine)
 	test_slices.doSlicesTest()
-	libc.printf("\n\n\n"
+	libc.printf("\n\n\n")
 
 
 	// decomposition

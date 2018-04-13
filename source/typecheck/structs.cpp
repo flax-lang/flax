@@ -265,6 +265,9 @@ void ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Ty
 	this->actualDefn->body = this->body;
 	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
 
+	//* note: constructors will always mutate, definitely.
+	this->actualDefn->isMutating = true;
+
 	this->actualDefn->generateDeclaration(fs, infer);
 	this->generatedDefn = this->actualDefn->generatedDefn;
 }
