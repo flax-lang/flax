@@ -145,6 +145,8 @@ namespace fir
 		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
+		bool isCharSliceType();
+
 		bool isPrimitiveType();
 		bool isPointerType();
 		bool isVoidType();

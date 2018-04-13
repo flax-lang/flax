@@ -220,6 +220,11 @@ namespace fir
 				{
 					ops += cb->getValue() ? "true" : "false";
 				}
+				else if(ConstantArraySlice* cas = dynamic_cast<ConstantArraySlice*>(op))
+				{
+					ops += "(const slice %" + std::to_string(op->id) + ", %" + std::to_string(cas->getData()->id) + ", %"
+						+ std::to_string(cas->getLength()->id) + " :: " + op->getType()->str();
+				}
 				else if(dynamic_cast<ConstantValue*>(op))
 				{
 					ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";

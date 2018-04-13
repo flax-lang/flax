@@ -24,12 +24,20 @@ namespace fir
 
 	std::string ArraySliceType::str()
 	{
-		return this->arrayElementType->str() + "[:]";
+		if(this->isCharSliceType())
+			return (this->isSliceMutable ? "mut str" : "str");
+
+		else
+			return (this->isSliceMutable ? "[mut " : "[") + this->arrayElementType->str() + ":]";
 	}
 
 	std::string ArraySliceType::encodedStr()
 	{
-		return this->arrayElementType->encodedStr() + "[:]";
+		if(this->isCharSliceType())
+			return (this->isSliceMutable ? "mut str" : "str");
+
+		else
+			return (this->isSliceMutable ? "[mut " : "[") + this->arrayElementType->encodedStr() + ":]";
 	}
 
 	bool ArraySliceType::isTypeEqual(Type* other)

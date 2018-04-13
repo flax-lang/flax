@@ -803,8 +803,8 @@ namespace fir
 
 	Value* IRBuilder::PointerTypeCast(Value* v, Type* targetType, std::string vname)
 	{
-		iceAssert(v->getType()->isPointerType() && "value is not pointer type");
-		iceAssert(targetType->isPointerType() && "target is not pointer type");
+		iceAssert((v->getType()->isPointerType() || v->getType()->isNullType()) && "value is not pointer type");
+		iceAssert((targetType->isPointerType() || targetType->isNullType()) && "target is not pointer type");
 
 		Instruction* instr = new Instruction(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
@@ -1128,6 +1128,20 @@ namespace fir
 		// now make it immutable.
 		ret->setType(type->getPointerTo());
 		return ret;
+	}
+
+
+	Value* IRBuilder::CreateSliceFromString(Value* str, bool mut, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("expected string type, found '%s' instead", str->getType());
+
+		// this is one of those compound thingies.
+		auto slc = this->CreateValue(fir::ArraySliceType::get(fir::Type::getChar(), mut));
+		slc = this->SetArraySliceData(slc, this->GetStringData(str));
+		slc = this->SetArraySliceLength(slc, this->GetStringLength(str));
+
+		return slc;
 	}
 
 

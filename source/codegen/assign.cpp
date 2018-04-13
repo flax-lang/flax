@@ -91,6 +91,36 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);
 			}
+			else if(lt->isStringType() && lt == rt)
+			{
+				// right then.
+				if(lr.kind != CGResult::VK::LValue)
+					error(this, "Cannot append to an r-value string");
+
+				iceAssert(lr.pointer);
+				auto appendf = cgn::glue::string::getAppendFunction(cs);
+
+				//? are there any ramifications for these actions for ref-counted things?
+				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+
+				cs->irb.Store(res, lr.pointer);
+				return CGResult(0);
+			}
+			else if(lt->isStringType() && rt->isCharType())
+			{
+				// right then.
+				if(lr.kind != CGResult::VK::LValue)
+					error(this, "Cannot append to an r-value string");
+
+				iceAssert(lr.pointer);
+				auto appendf = cgn::glue::string::getCharAppendFunction(cs);
+
+				//? are there any ramifications for these actions for ref-counted things?
+				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+
+				cs->irb.Store(res, lr.pointer);
+				return CGResult(0);
+			}
 		}
 
 

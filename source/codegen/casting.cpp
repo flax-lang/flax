@@ -152,9 +152,21 @@ namespace cgn
 		{
 			return CGResult(this->irb.FExtend(from.value, target));
 		}
+		else if(fromType->isCharSliceType() && target == fir::Type::getInt8Ptr())
+		{
+			return CGResult(this->irb.GetArraySliceData(from.value));
+		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
 			return CGResult(this->irb.GetStringData(from.value));
+		}
+		else if(fromType->isStringType() && target->isCharSliceType())
+		{
+			auto ret = this->irb.CreateValue(target);
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetStringData(from.value));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetStringLength(from.value));
+
+			return CGResult(ret);
 		}
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
@@ -178,8 +190,35 @@ namespace cgn
 			auto ret = this->irb.PointerTypeCast(from.value, target);
 			return CGResult(ret);
 		}
+		else if(fromType->isArraySliceType() && target->isArraySliceType() && (fromType->getArrayElementType() == target->getArrayElementType())
+			&& fromType->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
+		{
+			//* note: we can cheat, since at the llvm level there's no mutability distinction.
+			auto ret = this->irb.Bitcast(from.value, target);
+			return CGResult(ret);
+		}
+		else if(fromType->isTupleType() && target->isTupleType() && fromType->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
+		{
+			auto ftt = fromType->toTupleType();
+			auto ttt = target->toTupleType();
+
+			auto tuple = this->irb.CreateValue(target);
+
+			for(size_t i = 0; i < ttt->getElementCount(); i++)
+			{
+				auto res = this->oneWayAutocast(CGResult(this->irb.ExtractValue(from.value, { i })), ttt->getElementN(i));
+				if(res.value == 0) goto LABEL_failure;
+
+				tuple = this->irb.InsertValue(tuple, { i }, res.value);
+			}
+
+			return CGResult(tuple);
+		}
 
 		// nope.
+		//! ACHTUNG !
+		//* ew, goto.
+		LABEL_failure:
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
 		return CGResult(0);
 	}
