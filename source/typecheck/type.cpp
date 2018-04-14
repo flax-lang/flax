@@ -110,6 +110,9 @@ namespace sst
 							auto atd = dcast(ast::TypeDefn, gdef);
 							if(!atd) error(this->loc(), "Entity '%s' is not a type", name);
 
+							if(pt->toNamedType()->genericMapping.empty())
+								error(this->loc(), "Parametric type '%s' cannot be referenced without type parameters", pt->toNamedType()->name);
+
 							// right, now we instantiate it.
 							std::unordered_map<std::string, fir::Type*> mapping;
 							for(auto mp : pt->toNamedType()->genericMapping)

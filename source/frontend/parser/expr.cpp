@@ -649,6 +649,63 @@ namespace parser
 	}
 
 
+	static Expr* parseIdentifier(State& st)
+	{
+		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
+		std::string name = st.front().str();
+		st.pop();
+
+
+		//! ACHTUNG !
+		//* here begins the shitshow of generic angle-bracket parsing.
+
+		if(st.front() == TT::LAngle)
+		{
+			// step 1: store the current position so we can rewind later.
+			auto restore = st.getIndex();
+
+			// step 2: try and parse a generic mapping.
+
+			bool fail = false;
+			std::unordered_map<std::string, pts::Type*> mappings;
+			{
+				st.pop();
+
+				//* foo<> is an error regardless of whether we're doing expression parsing or call parsing.
+				if(st.front() == TT::RAngle)
+					error(st.loc(), "At least one type argument is required between angle brackets <>");
+
+				// step 2A: start parsing.
+				while(st.front() != TT::RAngle)
+				{
+					if(st.front() != TT::Identifier)
+					{
+						fail = true;
+						goto LABEL_die;
+					}
+
+					auto id = st.pop().str();
+					if(st.pop() != TT::Colon)
+					{
+						fail = true;
+						goto LABEL_die;
+					}
+
+
+				}
+
+			}
+
+		LABEL_die:
+
+			;
+		}
+
+		return new Ident(st.ploc(), name);
+	}
+
+
+
 	static Expr* parsePostfixUnary(State& st, Expr* lhs, Token op)
 	{
 		if(op.type == TT::LParen)
@@ -868,17 +925,6 @@ namespace parser
 		iceAssert(lhs);
 
 		return parseRhs(st, lhs, 0);
-	}
-
-
-
-	static Expr* parseIdentifier(State& st)
-	{
-		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
-		std::string name = st.front().str();
-		st.pop();
-
-		return new Ident(st.ploc(), name);
 	}
 
 

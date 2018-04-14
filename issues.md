@@ -193,7 +193,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(1b85906)`
 - make init methods always mutable, for obvious reasons. Also, virtual stuff still works and didn't break, which is a plus.
 
 `(7107d5e)`
