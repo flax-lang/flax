@@ -21,6 +21,7 @@ namespace fir
 namespace sst
 {
 	struct Defn;
+	struct TypeDefn;
 	struct TypecheckState;
 	struct FunctionDefn;
 	struct FunctionDecl;
@@ -58,9 +59,12 @@ namespace ast
 		Declarable(const Location& l) : Stmt(l) { this->readableName = "<DECLARABLE>"; }
 		~Declarable() { }
 
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) = 0;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) = 0;
 
-		sst::Defn* generatedDefn = 0;
+		// sst::Defn* generatedDefn = 0;
+
+		std::unordered_map<std::string, TypeConstraints_t> generics;
+		std::unordered_map<fir::Type*, std::pair<sst::Defn*, std::unordered_map<std::string, fir::Type*>>> genericVersions;
 	};
 
 
@@ -100,7 +104,7 @@ namespace ast
 		~FuncDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		struct Arg
 		{
@@ -110,7 +114,6 @@ namespace ast
 		};
 
 		std::string name;
-		std::unordered_map<std::string, TypeConstraints_t> generics;
 
 		std::vector<Arg> args;
 		pts::Type* returnType = 0;
@@ -134,7 +137,7 @@ namespace ast
 		~InitFunctionDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		using Arg = FuncDefn::Arg;
 
@@ -172,7 +175,7 @@ namespace ast
 		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { this->readableName = "operator overload defintion"; }
 		~OperatorOverloadDefn() { }
 
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		enum class Kind
@@ -340,7 +343,7 @@ namespace ast
 
 		std::string name;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
-		std::unordered_map<std::string, TypeConstraints_t> generics;
+		std::map<std::unordered_map<std::string, fir::Type*>, sst::TypeDefn*> genericVersions;
 	};
 
 	struct StructDefn : TypeDefn
@@ -349,7 +352,7 @@ namespace ast
 		~StructDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::vector<pts::Type*> bases;
 
@@ -368,7 +371,7 @@ namespace ast
 		~ClassDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		std::vector<pts::Type*> bases;
 
@@ -389,7 +392,7 @@ namespace ast
 		~EnumDefn() { }
 
 		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual void generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
 
 		struct Case
 		{

@@ -60,6 +60,7 @@ countloc
 .shake.lock
 bug-repro
 .clang_complete
+*.code-workspace
 
 .vscode
 

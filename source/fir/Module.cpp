@@ -230,7 +230,6 @@ namespace fir
 
 
 
-
 	GlobalVariable* Module::createGlobalString(std::string str)
 	{
 		static int stringId = 0;
@@ -241,8 +240,7 @@ namespace fir
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
 			Type::getInt8(), true, LinkageType::Internal, 0);
 
-		this->globalStrings[str] = gs;
-		return gs;
+		return (this->globalStrings[str] = gs);
 	}
 
 
