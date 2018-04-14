@@ -67,7 +67,7 @@ class Dalmation : Dog
 }
 
 
-struct LinkedList<T>
+class LinkedList<T>
 {
 	struct Node
 	{
@@ -81,6 +81,10 @@ struct LinkedList<T>
 	var tail: &Node
 
 	var count: int
+
+	init()
+	{
+	}
 
 	mut fn insert(thing: T)
 	{
@@ -98,14 +102,10 @@ struct LinkedList<T>
 
 		count += 1
 	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
 }
 
-
-
-struct Foo
-{
-	var a: int
-}
 
 
 
@@ -117,6 +117,13 @@ struct Foo
 		2. possibly allow overloading mutable and non-mutable methods with the same signature?
 
 	*/
+
+	do {
+		// fn foo<T>(a: T, b: T) -> T { return a + b }
+
+		// let k = foo<T: int>(10, 20)
+		// printf("k = %d\n", k)
+	}
 
 
 	do {
@@ -139,6 +146,8 @@ struct Foo
 
 	do {
 		var list: LinkedList<T: int>
+		printf("?? %d\n", LinkedList.hello())
+
 
 		list.insert(10)
 		list.insert(20)

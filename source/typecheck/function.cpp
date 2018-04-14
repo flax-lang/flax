@@ -19,10 +19,7 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return new sst::DummyStmt(this->loc);
 	}
 
-
-	this->generateDeclaration(fs, infer);
-
-	auto defn = dcast(sst::FunctionDefn, this->generatedDefn);
+	auto defn = dcast(sst::FunctionDefn, this->generateDeclaration(fs, infer));
 	iceAssert(defn);
 
 	fs->enterFunctionBody(defn);
@@ -56,23 +53,18 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	return defn;
 }
 
-void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
 {
-	if(this->generatedDefn)
-		return;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	if(this->generics.size() > 0)
 	{
 		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return;
+		return 0;
 	}
 
 	using Param = sst::FunctionDefn::Param;
-	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
-
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
 
@@ -83,8 +75,6 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 		ps.push_back(p);
 		ptys.push_back(p.type);
-
-		defn->parentTypeForMethod = infer;
 	}
 
 	for(auto t : this->args)
@@ -95,6 +85,19 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	}
 
 	fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
+	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
+
+	// ok, we can check the versions here:
+	if(auto it = this->genericVersions.find(fnType); it != this->genericVersions.end())
+		return it->second.first;
+
+
+	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
+	defn->type = fnType;
+
+	iceAssert(!infer || (infer->isStructType() || infer->isClassType()));
+	defn->parentTypeForMethod = infer;
+
 
 	defn->id = Identifier(this->name, IdKind::Function);
 	defn->id.scope = fs->getCurrentScope();
@@ -107,7 +110,6 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	defn->isEntry = this->isEntry;
 	defn->noMangle = this->noMangle;
 
-	defn->type = fir::FunctionType::get(ptys, retty);
 
 	defn->global = !fs->isInFunctionBody();
 
@@ -148,8 +150,12 @@ void ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 	if(conflicts)
 		error(this, "conflicting");
 
-	this->generatedDefn = defn;
 	fs->stree->addDefinition(this->name, defn);
+
+	// add to our versions.
+	this->genericVersions[fnType] = { defn, { } };
+
+	return defn;
 }
 
 

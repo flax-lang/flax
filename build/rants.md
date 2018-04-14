@@ -1,5 +1,10 @@
 # Random Rants
 
+
+## 14th April 2018
+### RE: Pointer Mutability II
+
+
 ## 7th April 2018
 ### RE: Generic Types, Mutability of Pointers
 

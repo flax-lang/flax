@@ -64,6 +64,8 @@ namespace sst
 		iceAssert(!type->generics.empty());
 
 		this->pushGenericTypeContext();
+
+
 		// TODO: this is not re-entrant, clearly. should we have a cleaner way of doing this?
 		for(auto map : mappings)
 		{
@@ -90,10 +92,32 @@ namespace sst
 		auto restore = type->generics;
 		type->generics.clear();
 
+		auto oldname = type->name;
+
+		auto mapToString = [&mappings]() -> std::string {
+			std::string ret;
+			for(auto m : mappings)
+				ret += (m.first + ":" + m.second->encodedStr()) + ",";
+
+			// shouldn't be empty.
+			iceAssert(ret.size() > 0);
+			return ret.substr(0, ret.length() - 1);
+		};
+
+		// we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
+		// type parameters.
+		// fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
+		type->name = oldname + "<" + mapToString() + ">";
+
+
 		auto ret = dcast(TypeDefn, type->typecheck(this));
 		iceAssert(ret);
 
 		type->generics = restore;
+		type->name = oldname;
+
+		type->genericVersions[mappings] = ret;
+
 		this->popGenericTypeContext();
 		return ret;
 	}
