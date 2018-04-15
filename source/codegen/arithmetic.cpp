@@ -286,7 +286,6 @@ namespace cgn
 		auto [ lv, lp ] = std::make_pair(l.value, l.pointer);
 		auto [ rv, rp ] = std::make_pair(r.value, r.pointer);
 
-
 		if(Operator::isComparison(op))
 		{
 			auto [ lr, rr ] = this->autoCastValueTypes(l, r);

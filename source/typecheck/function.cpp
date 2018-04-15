@@ -142,7 +142,6 @@ sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 
 	// add to our versions.
 	this->genericVersions.push_back({ defn, gmaps });
-
 	return defn;
 }
 

@@ -15,6 +15,8 @@
 
 #include <fstream>
 
+#pragma warning(push, 0)
+
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/Host.h"
@@ -34,6 +36,8 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
+
+#pragma warning(pop)
 
 #include <stdio.h>
 #include <fcntl.h>

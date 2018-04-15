@@ -232,7 +232,7 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 			seen.push_back(e->loc);
 
-			int skip = numlocs - done - i;
+			int64_t skip = (int64_t) numlocs - done - (int64_t) i;
 			if(done == 2 && i - MAX_BACKTRACE_DEPTH > 1 && skip > 0)
 			{
 				ret += strprintf("... skipping %d intermediarie%s...\n\n", skip, skip == 1 ? "" : "s");
