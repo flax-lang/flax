@@ -88,6 +88,10 @@ sst::Defn* ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* f
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
+	if(!success)    return 0;
+	else if(ret)    return ret;
+
 	// there's nothing different.
 	auto defn = dcast(sst::FunctionDefn, this->ast::FuncDefn::generateDeclaration(fs, infer, gmaps));
 	iceAssert(defn);
@@ -164,6 +168,8 @@ sst::Defn* ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* f
 
 	// ok, we should be good now.
 	(*thelist)[this->symbol].push_back(defn);
+	this->genericVersions.push_back({ defn, gmaps });
+
 	return defn;
 }
 
