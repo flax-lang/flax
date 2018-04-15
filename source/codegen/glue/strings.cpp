@@ -895,8 +895,8 @@ namespace string
 				// if statement
 				auto ch = cs->irb.Load(cs->irb.Load(ptrp));
 
-				auto mask = cs->irb.BitwiseAND(ch, fir::ConstantInt::getInt8(0xC0));
-				auto isch = cs->irb.ICmpNEQ(mask, fir::ConstantInt::getInt8(0x80));
+				auto mask = cs->irb.BitwiseAND(ch, fir::ConstantInt::getInt8((int8_t) 0xC0));
+				auto isch = cs->irb.ICmpNEQ(mask, fir::ConstantInt::getInt8((int8_t) 0x80));
 
 				fir::IRBlock* incr = cs->irb.addNewBlockInFunction("incr", func);
 				fir::IRBlock* skip = cs->irb.addNewBlockInFunction("skip", func);

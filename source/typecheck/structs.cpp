@@ -88,6 +88,7 @@ sst::Defn* ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Ty
 	}
 
 	this->genericVersions.push_back({ defn, gmaps });
+	return defn;
 }
 
 sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
@@ -233,6 +234,7 @@ sst::Defn* ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Typ
 	}
 
 	this->genericVersions.push_back({ defn, gmaps });
+	return defn;
 }
 
 sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)

@@ -155,7 +155,7 @@ namespace parser
 		return "";
 	}
 
-	int parseOperatorDecl(const lexer::TokenList& tokens, int idx, int* _kind, CustomOperatorDecl* out)
+	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t idx, int* _kind, CustomOperatorDecl* out)
 	{
 		iceAssert(tokens[idx] == TT::Attr_Operator);
 		const Token tok = tokens[idx];

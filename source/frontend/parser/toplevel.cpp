@@ -86,7 +86,8 @@ namespace parser
 		}
 
 		bool isFirst = true;
-		auto [ priv, tix ] = std::make_tuple(VisibilityLevel::Invalid, -1);
+		auto priv = VisibilityLevel::Invalid;
+		size_t tix = (size_t) -1;
 
 
 		// flags that determine whether or not 'import' and '@operator' things can still be done.

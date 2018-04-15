@@ -42,7 +42,7 @@ namespace parser
 		std::unordered_map<std::string, parser::CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
 
 	// strange api
-	int parseOperatorDecl(const lexer::TokenList& tokens, int i, int* kind, CustomOperatorDecl* out);
+	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t i, int* kind, CustomOperatorDecl* out);
 
 	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens);
 	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs);

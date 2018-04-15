@@ -146,7 +146,7 @@ class LinkedList<T>
 
 	do {
 		var list: LinkedList<T: int>
-		printf("?? %d\n", LinkedList.hello())
+		// printf("?? %d\n", LinkedList.hello())
 
 
 		list.insert(10)
