@@ -114,7 +114,7 @@ namespace sst
 								error(this->loc(), "Parametric type '%s' cannot be referenced without type parameters", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
-							std::unordered_map<std::string, fir::Type*> mapping;
+							TypeParamMap_t mapping;
 							for(auto mp : pt->toNamedType()->genericMapping)
 								mapping[mp.first] = this->convertParserTypeToFIR(mp.second, allowFail);
 

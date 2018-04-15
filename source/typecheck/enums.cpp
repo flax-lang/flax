@@ -24,12 +24,14 @@
 */
 
 
-void ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
-	if(this->generatedDefn || this->generics.size() > 0) return;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
+	if(!success)    return 0;
+	else if(ret)    return ret;
 
 	auto defn = new sst::EnumDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
@@ -38,26 +40,17 @@ void ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infe
 
 	fs->stree->addDefinition(this->name, defn);
 
-	this->generatedDefn = defn;
+	this->genericVersions.push_back({ defn, gmaps });
 }
 
 
-sst::Stmt* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generics.size() > 0)
-	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return new sst::DummyStmt(this->loc);
-	}
-
-	this->generateDeclaration(fs, infer);
-
-	auto defn = dcast(sst::EnumDefn, this->generatedDefn);
+	auto defn = dcast(sst::EnumDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
-
 
 	fs->pushTree(defn->id.name);
 	defer(fs->popTree());

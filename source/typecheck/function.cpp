@@ -8,18 +8,12 @@
 
 #include "ir/type.h"
 
-sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generics.size() > 0)
-	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return new sst::DummyStmt(this->loc);
-	}
-
-	auto defn = dcast(sst::FunctionDefn, this->generateDeclaration(fs, infer));
+	auto defn = dcast(sst::FunctionDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
 
 	fs->enterFunctionBody(defn);
@@ -53,16 +47,15 @@ sst::Stmt* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	return defn;
 }
 
-sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generics.size() > 0)
-	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return 0;
-	}
+	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
+	if(!success)    return 0;
+	else if(ret)    return ret;
+
 
 	using Param = sst::FunctionDefn::Param;
 	std::vector<Param> ps;
@@ -86,11 +79,6 @@ sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 
 	fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
 	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
-
-	// ok, we can check the versions here:
-	if(auto it = this->genericVersions.find(fnType); it != this->genericVersions.end())
-		return it->second.first;
-
 
 	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
 	defn->type = fnType;
@@ -153,7 +141,7 @@ sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	fs->stree->addDefinition(this->name, defn);
 
 	// add to our versions.
-	this->genericVersions[fnType] = { defn, { } };
+	this->genericVersions.push_back({ defn, gmaps });
 
 	return defn;
 }
@@ -164,7 +152,6 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* i
 {
 	if(this->generatedDecl)
 		return this->generatedDecl;
-
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
