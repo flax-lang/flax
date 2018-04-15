@@ -1615,6 +1615,339 @@
     <ClCompile Include="source\**\*.c">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\**\*.c">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\include\backend.h" />
@@ -1643,7 +1976,6 @@
     <ClInclude Include="source\include\sst_expr.h" />
     <ClInclude Include="source\include\stcommon.h" />
     <ClInclude Include="source\include\typecheck.h" />
-    <ClInclude Include="source\include\**\*.h" />
     <ClInclude Include="source\include\**\*.h" />
     <ClInclude Include="source\include\**\*.h" />
     <ClInclude Include="source\include\**\*.h" />
@@ -1812,6 +2144,43 @@
     <ClInclude Include="source\include\*.h" />
     <ClInclude Include="source\include\*.h" />
     <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\include\ir\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\external\**\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
+    <ClInclude Include="source\include\*.h" />
     <ClInclude Include="source\include\ir\*.h" />
     <ClInclude Include="source\include\ir\*.h" />
     <ClInclude Include="source\include\ir\*.h" />

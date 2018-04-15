@@ -129,6 +129,8 @@ namespace frontend
 				i++;
 
 			} while(flag);
+
+			// fprintf(stderr, "Processed %zu tokens (%zu lines)\n", i, curLine);
 		}
 
 		// p.finish();
