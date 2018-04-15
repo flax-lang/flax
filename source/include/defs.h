@@ -237,6 +237,7 @@ struct TypeConstraints_t
 	}
 };
 
+using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
 
 
 

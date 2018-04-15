@@ -655,6 +655,7 @@ namespace parser
 		std::string name = st.front().str();
 		st.pop();
 
+/*
 
 		//! ACHTUNG !
 		//* here begins the shitshow of generic angle-bracket parsing.
@@ -700,7 +701,7 @@ namespace parser
 
 			;
 		}
-
+ */
 		return new Ident(st.ploc(), name);
 	}
 

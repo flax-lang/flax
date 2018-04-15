@@ -39,17 +39,6 @@ namespace sst
 		virtual std::vector<Block*> getBlocks() = 0;
 	};
 
-	struct Defn : Stmt
-	{
-		Defn(const Location& l) : Stmt(l) { this->readableName = "definition"; }
-		~Defn() { }
-
-		Identifier id;
-		fir::Type* type = 0;
-		bool global = false;
-		VisibilityLevel visibility = VisibilityLevel::Internal;
-	};
-
 	struct TypeDefn : Defn
 	{
 		TypeDefn(const Location& l) : Defn(l) { this->readableName = "type definition"; }

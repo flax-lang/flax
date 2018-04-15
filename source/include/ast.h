@@ -20,7 +20,6 @@ namespace fir
 
 namespace sst
 {
-	struct Defn;
 	struct TypeDefn;
 	struct TypecheckState;
 	struct FunctionDefn;
@@ -59,12 +58,23 @@ namespace ast
 		Declarable(const Location& l) : Stmt(l) { this->readableName = "<DECLARABLE>"; }
 		~Declarable() { }
 
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) = 0;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
 
-		// sst::Defn* generatedDefn = 0;
+		//* anything with generic abilities must implement the version of generateDeclaration and typecheck that accommodates the mapping argument
+		//* if not we won't be able to know anything about anything.
+
+		//? the default typecheck method is implemented for Declarable (and marked final) in typecheck/misc.cpp, where it simply calls the generic typecheck
+		//? with an empty mapping. It is up to the individual AST during typechecking to verify `!gmaps.empty()` if `this->generics.size() > 0`.
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) final override;
+
+		std::pair<bool, sst::Defn*> checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps);
+		sst::Defn* getOrCreateDeclForTypechecking(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps);
+
+		std::string name;
 
 		std::unordered_map<std::string, TypeConstraints_t> generics;
-		std::unordered_map<fir::Type*, std::pair<sst::Defn*, std::unordered_map<std::string, fir::Type*>>> genericVersions;
+		std::vector<std::pair<sst::Defn*, TypeParamMap_t>> genericVersions;
 	};
 
 
@@ -103,8 +113,8 @@ namespace ast
 		FuncDefn(const Location& l) : Declarable(l) { this->readableName = "function defintion"; }
 		~FuncDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		struct Arg
 		{
@@ -113,7 +123,6 @@ namespace ast
 			pts::Type* type = 0;
 		};
 
-		std::string name;
 
 		std::vector<Arg> args;
 		pts::Type* returnType = 0;
@@ -136,8 +145,8 @@ namespace ast
 		InitFunctionDefn(const Location& l) : Declarable(l) { this->readableName = "class initialiser definition"; }
 		~InitFunctionDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		using Arg = FuncDefn::Arg;
 
@@ -175,8 +184,8 @@ namespace ast
 		OperatorOverloadDefn(const Location& l) : FuncDefn(l) { this->readableName = "operator overload defintion"; }
 		~OperatorOverloadDefn() { }
 
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		enum class Kind
 		{
@@ -341,9 +350,7 @@ namespace ast
 		TypeDefn(const Location& l) : Declarable(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 
-		std::string name;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
-		std::map<std::unordered_map<std::string, fir::Type*>, sst::TypeDefn*> genericVersions;
 	};
 
 	struct StructDefn : TypeDefn
@@ -351,8 +358,8 @@ namespace ast
 		StructDefn(const Location& l) : TypeDefn(l) { this->readableName = "struct definition"; }
 		~StructDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		std::vector<pts::Type*> bases;
 
@@ -370,8 +377,8 @@ namespace ast
 		ClassDefn(const Location& l) : TypeDefn(l) { this->readableName = "class definition"; }
 		~ClassDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		std::vector<pts::Type*> bases;
 
@@ -391,8 +398,8 @@ namespace ast
 		EnumDefn(const Location& l) : TypeDefn(l) { this->readableName = "enum definition"; }
 		~EnumDefn() { }
 
-		virtual sst::Stmt* typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer) override;
+		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
 		struct Case
 		{
