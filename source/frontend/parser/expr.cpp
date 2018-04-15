@@ -193,7 +193,6 @@ namespace parser
 		}
 
 		unexpected(st.loc(), "end of file");
-		iceAssert(0);
 	}
 
 

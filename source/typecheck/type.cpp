@@ -82,7 +82,7 @@ namespace sst
 						// try generic defs.
 						StateTree* str = this->stree;
 						std::vector<ast::Stmt*> gdefs;
-						while((gdefs = str->getUnresolvedGenericDefnsWithName(name)).size() == 0 && str)
+						while(str && (gdefs = str->getUnresolvedGenericDefnsWithName(name)).size() == 0)
 							str = (scoped ? 0 : str->parent);   // if we're scoped, we can't go upwards.
 
 						if(gdefs.empty())
