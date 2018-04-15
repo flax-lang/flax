@@ -83,7 +83,7 @@ satest: prep osxflags build
 tiny: prep osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run -o build/tiny build/tiny.flx
 
-ci: linux
+ci: prep test
 
 linux: prep jit
 
