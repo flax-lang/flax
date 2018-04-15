@@ -63,6 +63,7 @@ bug-repro
 *.code-workspace
 
 .vscode
+*.vcxproj.filters
 
 countloc.bat
 

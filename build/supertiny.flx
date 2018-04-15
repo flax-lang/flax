@@ -107,6 +107,7 @@ class LinkedList<T>
 }
 
 
+534 * 4 = 2136
 
 
 @entry fn main()
