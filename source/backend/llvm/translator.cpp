@@ -11,11 +11,12 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-
+#pragma warning(push, 0)
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
-// #include "llvm/Support/raw_ostream.h"
+
+#pragma warning(pop)
 
 #include "ir/module.h"
 #include "ir/constant.h"
@@ -40,7 +41,7 @@ namespace backend
 			// signed/unsigned is lost.
 			if(pt->isIntegerType())
 			{
-				return llvm::IntegerType::getIntNTy(gc, pt->getIntegerBitWidth());
+				return llvm::IntegerType::getIntNTy(gc, (unsigned int) pt->getIntegerBitWidth());
 			}
 			else if(pt->isFloatingPointType())
 			{
@@ -381,14 +382,14 @@ namespace backend
 			size_t origLen = cs->getValue().length();
 
 			std::string str = cs->getValue();
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
-			str.insert(str.begin(), 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
+			str.insert(str.begin(), (char) 0xFF);
 
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), str, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
@@ -856,7 +857,9 @@ namespace backend
 					(void) arg;
 
 					if(i != ffn->getArgumentCount())
+					{
 						DUMP_INSTR(",");
+					}
 				}
 
 				DUMP_INSTR(")");
@@ -1477,7 +1480,7 @@ namespace backend
 							auto phi = dcast(fir::PHINode, inst->realOutput);
 							iceAssert(phi);
 
-							llvm::PHINode* ret = builder.CreatePHI(t, phi->getValues().size());
+							llvm::PHINode* ret = builder.CreatePHI(t, (unsigned int) phi->getValues().size());
 
 							for(auto v : phi->getValues())
 								ret->addIncoming(getValue(v.second), llvm::cast<llvm::BasicBlock>(getValue(v.first)));
@@ -1550,7 +1553,7 @@ namespace backend
 								clsty->getVirtualMethodCount())->getPointerTo());
 
 							auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-								0, dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+								0, (unsigned int) dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
 
 							auto ffty = inst->operands[2]->getType()->toFunctionType();
 
@@ -1744,7 +1747,7 @@ namespace backend
 							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
 							iceAssert(ci);
 
-							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, ci->getUnsignedValue());
+							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, (unsigned int) ci->getUnsignedValue());
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -1860,7 +1863,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back(ci->getUnsignedValue());
+								inds.push_back((unsigned int) ci->getUnsignedValue());
 							}
 
 
@@ -1896,7 +1899,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back(ci->getUnsignedValue());
+								inds.push_back((unsigned int) ci->getUnsignedValue());
 							}
 
 							iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());

@@ -158,7 +158,7 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didRead = 0;
-			bool success = ReadFile(fd, buf, count, &didRead, 0);
+			bool success = ReadFile(fd, buf, (platform::DWORD) count, &didRead, 0);
 			if(!success)
 				_error_and_exit("Failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
 
@@ -172,7 +172,7 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didWrite = 0;
-			bool success = WriteFile(fd, buf, count, &didWrite, 0);
+			bool success = WriteFile(fd, buf, (platform::DWORD) count, &didWrite, 0);
 			if(!success)
 				_error_and_exit("Failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
 
