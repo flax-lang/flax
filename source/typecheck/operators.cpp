@@ -66,7 +66,7 @@ static bool isBuiltinOperator(std::string op)
 
 
 
-sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -77,24 +77,19 @@ sst::Stmt* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Ty
 	if(fs->isInStructBody())
 		error(this, "Operator overloads cannot be methods of a type.");
 
-	this->generateDeclaration(fs, infer);
+	this->generateDeclaration(fs, infer, { });
 
 	// call the superclass method.
-	return this->ast::FuncDefn::typecheck(fs, infer);
+	return this->ast::FuncDefn::typecheck(fs, infer, gmaps);
 }
 
-void ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generatedDefn)
-		return;
-
 	// there's nothing different.
-	this->ast::FuncDefn::generateDeclaration(fs, infer);
-
-	auto defn = dcast(sst::FunctionDefn, this->generatedDefn);
+	auto defn = dcast(sst::FunctionDefn, this->ast::FuncDefn::generateDeclaration(fs, infer, gmaps));
 	iceAssert(defn);
 
 

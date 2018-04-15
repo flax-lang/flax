@@ -57,8 +57,16 @@ namespace sst
 
 
 
+
+
+
+
+
+
+
+
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-	TypeDefn* TypecheckState::instantiateGenericType(ast::TypeDefn* type, const std::unordered_map<std::string, fir::Type*>& mappings)
+	TypeDefn* TypecheckState::instantiateGenericType(ast::TypeDefn* type, const TypeParamMap_t& mappings)
 	{
 		iceAssert(type);
 		iceAssert(!type->generics.empty());
@@ -66,7 +74,6 @@ namespace sst
 		this->pushGenericTypeContext();
 
 
-		// TODO: this is not re-entrant, clearly. should we have a cleaner way of doing this?
 		for(auto map : mappings)
 		{
 			int ptrs = 0;
@@ -89,9 +96,6 @@ namespace sst
 			this->addGenericTypeMapping(map.first, map.second);
 		}
 
-		auto restore = type->generics;
-		type->generics.clear();
-
 		auto oldname = type->name;
 
 		auto mapToString = [&mappings]() -> std::string {
@@ -104,24 +108,84 @@ namespace sst
 			return ret.substr(0, ret.length() - 1);
 		};
 
-		// we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
-		// type parameters.
-		// fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
+		// TODO: this is not re-entrant, clearly. should we have a cleaner way of doing this?
+		//* we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
+		//* type parameters.
+		//? fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
 		type->name = oldname + "<" + mapToString() + ">";
 
+		//* we **MUST** first call ::generateDeclaration if we're doing a generic thing.
+		//* with the mappings that we're using to instantiate it.
+		type->generateDeclaration(this, 0, mappings);
 
-		auto ret = dcast(TypeDefn, type->typecheck(this));
+		// now it is 'safe' to call typecheck.
+		auto ret = dcast(TypeDefn, type->typecheck(this, 0, mappings));
 		iceAssert(ret);
 
-		type->generics = restore;
 		type->name = oldname;
 
-		type->genericVersions[mappings] = ret;
 
 		this->popGenericTypeContext();
 		return ret;
 	}
 }
+
+
+
+
+//* these are just helper methods that abstract away the common error-checking
+std::pair<bool, sst::Defn*> ast::Declarable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
+{
+	if(this->generics.size() > 0 && gmaps.empty())
+	{
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		return { false, 0 };
+	}
+	else
+	{
+		//! ACHTUNG !
+		//* NOTE: this implies that we **MUST** call ::generateDeclaration with the appropriate maps *before* calling typecheck on the AST
+		//* if we're a generic thing.
+
+		// check whether we've done this before
+		for(const auto& gv : this->genericVersions)
+		{
+			if(gv.second == gmaps)
+				return { true, gv.first };
+		}
+
+		//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
+		//? the genericVersions list will have 1 entry which is just the type itself.
+		return { true, 0 };
+	}
+}
+
+sst::Defn* ast::Declarable::getOrCreateDeclForTypechecking(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+{
+	auto defn = this->generateDeclaration(fs, infer, gmaps);
+	if(!defn)
+	{
+		if(this->generics.empty())  error(this, "Failed to generate declaration for entity '%s'???", this->name);
+		else if(gmaps.empty())      error(this, "Function '%s' cannot be referenced without providing type parameters", this->name);
+		else                        error(this, "what???");
+	}
+
+	return defn;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -60,12 +60,15 @@ static void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::
 
 
 
-void ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
-	if(this->generatedDefn || this->generics.size() > 0) return;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
+	if(!success)    return 0;
+	else if(ret)    return ret;
+
 
 	auto defn = new sst::StructDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
@@ -84,23 +87,15 @@ void ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* in
 		fs->typeDefnMap[str] = defn;
 	}
 
-	this->generatedDefn = defn;
+	this->genericVersions.push_back({ defn, gmaps });
 }
 
-sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generics.size() > 0)
-	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return new sst::DummyStmt(this->loc);
-	}
-
-	this->generateDeclaration(fs, infer);
-
-	auto defn = dcast(sst::StructDefn, this->generatedDefn);
+	auto defn = dcast(sst::StructDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
 
 	auto str = defn->type->toStructType();
@@ -138,20 +133,22 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			checkFieldRecursion(fs, str, v->type, v->loc);
 		}
 
+		//* generate all the decls first so we can call methods out of order.
 		for(auto m : this->methods)
 		{
-			m->generateDeclaration(fs, str);
-			iceAssert(m->generatedDefn);
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, str, { }));
+			iceAssert(decl);
 
-			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+			defn->methods.push_back(decl);
 		}
 
 		for(auto m : this->methods)
-			m->typecheck(fs, str);
+			m->typecheck(fs, str, { });
 	}
 	fs->leaveStructBody();
 
 
+	// do static things.
 	{
 		for(auto f : this->staticFields)
 		{
@@ -161,18 +158,19 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			defn->staticFields.push_back(v);
 		}
 
+		// same deal so we can call them out of order.
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			m->generateDeclaration(fs, 0);
-			iceAssert(m->generatedDefn);
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }));
+			iceAssert(decl);
 
-			defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+			defn->staticMethods.push_back(decl);
 		}
 
 		for(auto m : this->staticMethods)
 		{
-			m->typecheck(fs);
+			m->typecheck(fs, 0, { });
 		}
 	}
 
@@ -189,97 +187,16 @@ sst::Stmt* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 
-
-sst::Stmt* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
-	iceAssert(infer && infer->isClassType());
-	auto cls = infer->toClassType();
-
-	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls));
-
-	if(cls->getBaseClass() && !this->didCallSuper)
-	{
-		error(this, "Initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
-			cls->getBaseClass()->getTypeName().name);
-	}
-	else if(!cls->getBaseClass() && this->didCallSuper)
-	{
-		error(this, "Cannot call base class initialiser for class '%s' when it does not inherit from a base class",
-			cls->getTypeName().name);
-	}
-	else if(cls->getBaseClass() && this->didCallSuper)
-	{
-		auto base = cls->getBaseClass();
-		auto call = new sst::BaseClassConstructorCall(this->loc, base);
-
-		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
-		iceAssert(call->classty);
-
-		auto baseargs = fs->typecheckCallArguments(this->superArgs);
-
-		sst::TypecheckState::PrettyError errs;
-		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
-			[](FnCallArgument a) -> sst::FunctionDecl::Param {
-				return sst::FunctionDecl::Param { a.name, a.loc, a.value->type };
-		}), &errs);
-
-		if(!constr)
-		{
-			exitless_error(this, "%s", errs.errorStr);
-			for(auto i : errs.infoStrs)
-				info(i.first, "%s", i.second);
-
-			doTheExit();
-		}
-
-		call->arguments = baseargs;
-		call->target = dcast(sst::FunctionDefn, constr);
-		iceAssert(call->target);
-
-		// insert it as the first thing.
-		ret->body->statements.insert(ret->body->statements.begin(), call);
-	}
-
-	return ret;
-}
-
-
-void ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
-{
-	//* so here's the thing
-	//* basically this init function thingy is just a normal function definition
-	//* but due to the way the AST was built, and because it's actually slightly less messy IMO,
-	//* we return a separate AST type that does not inherit from FuncDefn.
-
-	//* so, to reduce code dupe and make it less stupid, we actually make a fake FuncDefn from ourselves,
-	//* and typecheck that, returning that as the result.
-
-	//* we don't want to be carrying too many distinct types around in SST nodes.
-
-	iceAssert(infer);
-
-	this->actualDefn = new ast::FuncDefn(this->loc);
-
-	this->actualDefn->name = "init";
-	this->actualDefn->args = this->args;
-	this->actualDefn->body = this->body;
-	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
-
-	//* note: constructors will always mutate, definitely.
-	this->actualDefn->isMutating = true;
-
-	this->actualDefn->generateDeclaration(fs, infer);
-	this->generatedDefn = this->actualDefn->generatedDefn;
-}
-
-
-
-void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer)
-{
-	if(this->generatedDefn || this->generics.size() > 0) return;
-
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+
+	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
+	if(!success)    return 0;
+	else if(ret)    return ret;
+
 
 	auto defn = new sst::ClassDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
@@ -315,23 +232,15 @@ void ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* inf
 		fs->typeDefnMap[cls] = defn;
 	}
 
-	this->generatedDefn = defn;
+	this->genericVersions.push_back({ defn, gmaps });
 }
 
-sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(this->generics.size() > 0)
-	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-		return new sst::DummyStmt(this->loc);
-	}
-
-	this->generateDeclaration(fs, infer);
-
-	auto defn = dcast(sst::ClassDefn, this->generatedDefn);
+	auto defn = dcast(sst::ClassDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
 
 	auto cls = defn->type->toClassType();
@@ -393,10 +302,11 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			if(m->name == "init")
 				error(m, "Cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
 
-			m->generateDeclaration(fs, cls);
-			iceAssert(m->generatedDefn);
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, cls, { }));
+			iceAssert(decl);
 
-			defn->methods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+			defn->methods.push_back(decl);
+
 
 			//* check for what would be called 'method hiding' in c++ -- ie. methods in the derived class with exactly the same type signature as
 			//* the base class method.
@@ -457,18 +367,16 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			};
 
-			checkDupe(defn->baseClass, dcast(sst::FunctionDefn, m->generatedDefn));
+			checkDupe(defn->baseClass, decl);
 		}
 
 		for(auto it : this->initialisers)
 		{
-			it->generateDeclaration(fs, cls);
+			auto decl = dcast(sst::FunctionDefn, it->generateDeclaration(fs, cls, { }));
+			iceAssert(decl);
 
-			auto gd = dcast(sst::FunctionDefn, it->generatedDefn);
-			iceAssert(gd);
-
-			defn->methods.push_back(gd);
-			defn->initialisers.push_back(gd);
+			defn->methods.push_back(decl);
+			defn->initialisers.push_back(decl);
 		}
 
 
@@ -520,15 +428,15 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			m->generateDeclaration(fs, 0);
-			iceAssert(m->generatedDefn);
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }));
+			iceAssert(decl);
 
-			defn->staticMethods.push_back(dcast(sst::FunctionDefn, m->generatedDefn));
+			defn->staticMethods.push_back(decl);
 		}
 
 		for(auto m : this->staticMethods)
 		{
-			m->typecheck(fs);
+			m->typecheck(fs, 0, { });
 		}
 	}
 
@@ -536,10 +444,10 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// once we get all the proper declarations and such, create the function bodies.
 	{
 		for(auto m : this->methods)
-			m->typecheck(fs, cls);
+			m->typecheck(fs, cls, { });
 
 		for(auto m : this->initialisers)
-			m->typecheck(fs, cls);
+			m->typecheck(fs, cls, { });
 	}
 
 
@@ -553,6 +461,98 @@ sst::Stmt* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->popTree();
 
 	return defn;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+sst::Defn* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+{
+	iceAssert(infer && infer->isClassType());
+	auto cls = infer->toClassType();
+
+	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls, gmaps));
+
+	if(cls->getBaseClass() && !this->didCallSuper)
+	{
+		error(this, "Initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
+			cls->getBaseClass()->getTypeName().name);
+	}
+	else if(!cls->getBaseClass() && this->didCallSuper)
+	{
+		error(this, "Cannot call base class initialiser for class '%s' when it does not inherit from a base class",
+			cls->getTypeName().name);
+	}
+	else if(cls->getBaseClass() && this->didCallSuper)
+	{
+		auto base = cls->getBaseClass();
+		auto call = new sst::BaseClassConstructorCall(this->loc, base);
+
+		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
+		iceAssert(call->classty);
+
+		auto baseargs = fs->typecheckCallArguments(this->superArgs);
+
+		sst::TypecheckState::PrettyError errs;
+		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
+			[](FnCallArgument a) -> sst::FunctionDecl::Param {
+				return sst::FunctionDecl::Param { a.name, a.loc, a.value->type };
+		}), &errs);
+
+		if(!constr)
+		{
+			exitless_error(this, "%s", errs.errorStr);
+			for(auto i : errs.infoStrs)
+				info(i.first, "%s", i.second);
+
+			doTheExit();
+		}
+
+		call->arguments = baseargs;
+		call->target = dcast(sst::FunctionDefn, constr);
+		iceAssert(call->target);
+
+		// insert it as the first thing.
+		ret->body->statements.insert(ret->body->statements.begin(), call);
+	}
+
+	return ret;
+}
+
+
+sst::Defn* ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+{
+	//* so here's the thing
+	//* basically this init function thingy is just a normal function definition
+	//* but due to the way the AST was built, and because it's actually slightly less messy IMO,
+	//* we return a separate AST type that does not inherit from FuncDefn.
+
+	//* so, to reduce code dupe and make it less stupid, we actually make a fake FuncDefn from ourselves,
+	//* and typecheck that, returning that as the result.
+
+	//* we don't want to be carrying too many distinct types around in SST nodes.
+
+	iceAssert(infer);
+
+	this->actualDefn = new ast::FuncDefn(this->loc);
+
+	this->actualDefn->name = "init";
+	this->actualDefn->args = this->args;
+	this->actualDefn->body = this->body;
+	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+
+	//* note: constructors will always mutate, definitely.
+	this->actualDefn->isMutating = true;
+
+	return this->actualDefn->generateDeclaration(fs, infer, gmaps);
 }
 
 

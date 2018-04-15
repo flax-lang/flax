@@ -27,3 +27,8 @@ sst::Expr* ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	error(this, "Unable to typecheck splat op, this shouldn't happen!");
 }
+
+sst::Defn* ast::Declarable::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+{
+	return this->typecheck(fs, inferred, { });
+}

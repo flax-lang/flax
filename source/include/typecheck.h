@@ -119,7 +119,7 @@ namespace sst
 		void leaveStructBody();
 
 
-		std::vector<std::unordered_map<std::string, fir::Type*>> genericTypeContextStack;
+		std::vector<TypeParamMap_t> genericTypeContextStack;
 		void pushGenericTypeContext();
 		fir::Type* findGenericTypeMapping(const std::string& name, bool allowFail);
 		void addGenericTypeMapping(const std::string& name, fir::Type* ty);
@@ -158,7 +158,6 @@ namespace sst
 
 		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, const std::string& op, sst::FunctionDefn** overloadFn = 0);
 
-
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
@@ -166,7 +165,7 @@ namespace sst
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 		//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-		TypeDefn* instantiateGenericType(ast::TypeDefn* type, const std::unordered_map<std::string, fir::Type*>& mappings);
+		TypeDefn* instantiateGenericType(ast::TypeDefn* type, const TypeParamMap_t& mappings);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
