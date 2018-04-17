@@ -442,6 +442,10 @@ namespace ast
 
 		std::string name;
 		bool traverseUpwards = true;
+
+		// for these cases: Foo<T: int>(...) and Foo<T: int>.staticAccess
+		// where Foo is, respectively, a generic function and a generic type.
+		std::unordered_map<std::string, pts::Type*> mappings;
 	};
 
 
