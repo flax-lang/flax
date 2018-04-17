@@ -107,7 +107,6 @@ class LinkedList<T>
 }
 
 
-534 * 4 = 2136
 
 
 @entry fn main()
@@ -147,7 +146,7 @@ class LinkedList<T>
 
 	do {
 		var list: LinkedList<T: int>
-		// printf("?? %d\n", LinkedList.hello())
+		printf("?? %d\n", LinkedList<T: int>.hello())
 
 
 		list.insert(10)
