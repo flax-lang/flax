@@ -651,10 +651,9 @@ namespace parser
 	static Expr* parseIdentifier(State& st)
 	{
 		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
-		std::string name = st.front().str();
-		st.pop();
+		std::string name = st.pop().str();
 
-/*
+		auto ident = new Ident(st.ploc(), name);
 
 		//! ACHTUNG !
 		//* here begins the shitshow of generic angle-bracket parsing.
@@ -681,27 +680,49 @@ namespace parser
 					if(st.front() != TT::Identifier)
 					{
 						fail = true;
-						goto LABEL_die;
+						break;
 					}
 
 					auto id = st.pop().str();
 					if(st.pop() != TT::Colon)
 					{
 						fail = true;
-						goto LABEL_die;
+						break;
 					}
 
+					//? I think beyond this point we pretty much can't fail since we have the colon.
+					//? so, we shouldn't need to handle the case where we fail to parse a type here.
+					if(mappings.find(id) != mappings.end())
+						error(st.loc(), "Type parameter '%s' already exists in the type parameter list for entity '%s'", id, name);
 
+					auto ty = parseType(st);
+					mappings[id] = ty;
+
+					if(st.front() == TT::Comma)
+						st.pop();
+
+					else if(st.front() != TT::RAngle)
+						expected(st.loc(), "',' or '>' in type parameter list to entity '" + name + "'", st.front().str());
+
+					// ok, if we get an rangle we break out of the loop here.
 				}
 
+				if(fail)
+				{
+					st.rewindTo(restore);
+				}
+				else
+				{
+					iceAssert(st.front() == TT::RAngle);
+					st.pop();
+
+					ident->mappings = mappings;
+					ident->loc.len += (st.ploc().col - st.getTokenList()[restore].loc.col) + 1;
+				}
 			}
-
-		LABEL_die:
-
-			;
 		}
- */
-		return new Ident(st.ploc(), name);
+
+		return ident;
 	}
 
 
