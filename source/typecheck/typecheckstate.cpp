@@ -292,7 +292,7 @@ namespace sst
 		return ret;
 	}
 
-	std::vector<ast::Stmt*> StateTree::getUnresolvedGenericDefnsWithName(const std::string& name)
+	std::vector<ast::Parameterisable*> StateTree::getUnresolvedGenericDefnsWithName(const std::string& name)
 	{
 		return this->unresolvedGenericDefs[name];
 	}

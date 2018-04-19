@@ -66,14 +66,20 @@ namespace sst
 
 
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-	TypeDefn* TypecheckState::instantiateGenericType(ast::TypeDefn* type, const TypeParamMap_t& mappings)
+	Defn* TypecheckState::instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings, bool allowFail)
 	{
 		iceAssert(type);
 		iceAssert(!type->generics.empty());
 
+
 		this->pushGenericTypeContext();
+		defer(this->popGenericTypeContext());
 
 
+		//* allowFail is only allowed to forgive a failure when we're checking for type conformance to protocols or something like that.
+		//* we generally don't look into type or function bodies when checking stuff, and it'd be hard to check for something like this (eg.
+		//* T passes all the checks, but causes some kind of type-checking failure when substituted in)
+		// TODO: ??? do we want this to be the behaviour ???
 		for(auto map : mappings)
 		{
 			int ptrs = 0;
@@ -86,7 +92,14 @@ namespace sst
 
 			if(ptrs < type->generics[map.first].pointerDegree)
 			{
-				error(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s': replacement type has pointer degree %d, which is less than the required %d", map.second, map.first, type->name, ptrs, type->generics[map.first].pointerDegree);
+				if(allowFail)
+				{
+					return 0;
+				}
+				else
+				{
+					error(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s': replacement type has pointer degree %d, which is less than the required %d", map.second, map.first, type->name, ptrs, type->generics[map.first].pointerDegree);
+				}
 			}
 
 			// TODO: check if the type conforms to the protocols specified.
@@ -108,6 +121,7 @@ namespace sst
 			return ret.substr(0, ret.length() - 1);
 		};
 
+
 		// TODO: this is not re-entrant, clearly. should we have a cleaner way of doing this?
 		//* we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
 		//* type parameters.
@@ -124,8 +138,6 @@ namespace sst
 
 		type->name = oldname;
 
-
-		this->popGenericTypeContext();
 		return ret;
 	}
 }
@@ -134,7 +146,7 @@ namespace sst
 
 
 //* these are just helper methods that abstract away the common error-checking
-std::pair<bool, sst::Defn*> ast::Declarable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
+std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
 {
 	if(this->generics.size() > 0 && gmaps.empty())
 	{
@@ -160,13 +172,13 @@ std::pair<bool, sst::Defn*> ast::Declarable::checkForExistingDeclaration(sst::Ty
 	}
 }
 
-sst::Defn* ast::Declarable::getOrCreateDeclForTypechecking(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+sst::Defn* ast::Parameterisable::getOrCreateDeclForTypechecking(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	auto defn = this->generateDeclaration(fs, infer, gmaps);
 	if(!defn)
 	{
 		if(this->generics.empty())  error(this, "Failed to generate declaration for entity '%s'???", this->name);
-		else if(gmaps.empty())      error(this, "Function '%s' cannot be referenced without providing type parameters", this->name);
+		else if(gmaps.empty())      error(this, "Entity '%s' cannot be referenced without providing type parameters", this->name);
 		else                        error(this, "what???");
 	}
 

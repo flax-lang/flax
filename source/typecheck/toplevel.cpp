@@ -217,7 +217,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 {
 	for(auto stmt : ns->statements)
 	{
-		if(auto decl = dynamic_cast<ast::Declarable*>(stmt))
+		if(auto decl = dynamic_cast<ast::Parameterisable*>(stmt))
 			decl->generateDeclaration(fs, 0, { });
 
 		else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
@@ -262,7 +262,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 			continue;
 
 		//? generic things can't be typechecked like that, so we skip them.
-		else if(auto dc = dcast(ast::Declarable, stmt); dc && dc->generics.size() > 0)
+		else if(auto dc = dcast(ast::Parameterisable, stmt); dc && dc->generics.size() > 0)
 			continue;
 
 		ret->statements.push_back(stmt->typecheck(fs));
