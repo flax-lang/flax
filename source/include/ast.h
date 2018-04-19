@@ -8,6 +8,8 @@
 #include "stcommon.h"
 #include "precompile.h"
 
+#include <unordered_set>
+
 namespace pts
 {
 	struct Type;
@@ -53,10 +55,10 @@ namespace ast
 		Stmt* actual = 0;
 	};
 
-	struct Declarable : Stmt
+	struct Parameterisable : Stmt
 	{
-		Declarable(const Location& l) : Stmt(l) { this->readableName = "<DECLARABLE>"; }
-		~Declarable() { }
+		Parameterisable(const Location& l) : Stmt(l) { this->readableName = "<Parameterisable>"; }
+		~Parameterisable() { }
 
 		virtual sst::Defn* generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
 		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
@@ -64,7 +66,7 @@ namespace ast
 		//* anything with generic abilities must implement the version of generateDeclaration and typecheck that accommodates the mapping argument
 		//* if not we won't be able to know anything about anything.
 
-		//? the default typecheck method is implemented for Declarable (and marked final) in typecheck/misc.cpp, where it simply calls the generic typecheck
+		//? typecheck method is implemented for Parameterisable (and marked final) in typecheck/misc.cpp, where it simply calls the generic typecheck
 		//? with an empty mapping. It is up to the individual AST during typechecking to verify `!gmaps.empty()` if `this->generics.size() > 0`.
 		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) final override;
 
@@ -75,6 +77,9 @@ namespace ast
 
 		std::unordered_map<std::string, TypeConstraints_t> generics;
 		std::vector<std::pair<sst::Defn*, TypeParamMap_t>> genericVersions;
+
+		// kind of a hack.
+		std::unordered_set<sst::Defn*> finishedTypechecking;
 	};
 
 
@@ -108,9 +113,9 @@ namespace ast
 
 
 
-	struct FuncDefn : Declarable
+	struct FuncDefn : Parameterisable
 	{
-		FuncDefn(const Location& l) : Declarable(l) { this->readableName = "function defintion"; }
+		FuncDefn(const Location& l) : Parameterisable(l) { this->readableName = "function defintion"; }
 		~FuncDefn() { }
 
 		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
@@ -140,9 +145,9 @@ namespace ast
 		bool isOverride = false;
 	};
 
-	struct InitFunctionDefn : Declarable
+	struct InitFunctionDefn : Parameterisable
 	{
-		InitFunctionDefn(const Location& l) : Declarable(l) { this->readableName = "class initialiser definition"; }
+		InitFunctionDefn(const Location& l) : Parameterisable(l) { this->readableName = "class initialiser definition"; }
 		~InitFunctionDefn() { }
 
 		virtual sst::Defn* typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
@@ -345,9 +350,9 @@ namespace ast
 	};
 
 
-	struct TypeDefn : Declarable
+	struct TypeDefn : Parameterisable
 	{
-		TypeDefn(const Location& l) : Declarable(l) { this->readableName = "type definition"; }
+		TypeDefn(const Location& l) : Parameterisable(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
 
 		VisibilityLevel visibility = VisibilityLevel::Internal;

@@ -86,8 +86,60 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				return ret;
 			}
 		}
+		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
+		{
+			// ok, great...
+			if(this->mappings.empty())
+				error(this, "Parametric entity '%s' cannot be referenced without type arguments", this->name);
 
-		// debuglog("found nothing for '%s' in tree '%s' (%p)\n", this->name, tree->name, tree);
+			if(infer == 0 && gdefs.size() > 1)
+			{
+				exitless_error(this, "Ambiguous reference to parametric entity '%s'", this->name);
+				for(auto g : gdefs)
+					info(g, "Potential target here:");
+
+				doTheExit();
+			}
+
+			TypeParamMap_t gmaps;
+			for(const auto& p : this->mappings)
+				gmaps[p.first] = fs->convertParserTypeToFIR(p.second);
+
+			//? now if we have multiple things then we need to try them all, which can get real slow real quick.
+			//? unfortunately I see no better way to do this.
+			// TODO: find a better way to do this??
+
+			std::vector<sst::Defn*> pots;
+			for(const auto& gdef : gdefs)
+			{
+				// because we're trying multiple things potentially, allow failure.
+				auto d = fs->instantiateGenericEntity(gdef, gmaps, true);
+				if(d && (infer ? d->type == infer : true))
+					pots.push_back(d);
+			}
+
+			if(!pots.empty())
+			{
+				if(pots.size() > 1)
+				{
+					exitless_error(this, "Ambiguous reference to parametric entity '%s'", this->name);
+					for(auto p : pots)
+						info(p, "Potential target here:");
+
+					doTheExit();
+				}
+				else
+				{
+					// ok, great. just return that shit.
+					auto ret = new sst::VarRef(this->loc, pots[0]->type);
+					ret->name = this->name;
+					ret->def = pots[0];
+
+					return ret;
+				}
+			}
+			// else: just go up the tree and try again.
+		}
 
 		if(this->traverseUpwards)
 			tree = tree->parent;
@@ -97,7 +149,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "Reference to unknown variable '%s' (in scope '%s')", this->name, fs->serialiseCurrentScope());
+	error(this, "Reference to unknown entity '%s' (in scope '%s')", this->name, fs->serialiseCurrentScope());
 }
 
 

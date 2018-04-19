@@ -81,7 +81,7 @@ namespace sst
 					{
 						// try generic defs.
 						StateTree* str = this->stree;
-						std::vector<ast::Stmt*> gdefs;
+						std::vector<ast::Parameterisable*> gdefs;
 						while(str && (gdefs = str->getUnresolvedGenericDefnsWithName(name)).size() == 0)
 							str = (scoped ? 0 : str->parent);   // if we're scoped, we can't go upwards.
 
@@ -111,14 +111,15 @@ namespace sst
 							if(!atd) error(this->loc(), "Entity '%s' is not a type", name);
 
 							if(pt->toNamedType()->genericMapping.empty())
-								error(this->loc(), "Parametric type '%s' cannot be referenced without type parameters", pt->toNamedType()->name);
+								error(this->loc(), "Parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
 							TypeParamMap_t mapping;
 							for(auto mp : pt->toNamedType()->genericMapping)
 								mapping[mp.first] = this->convertParserTypeToFIR(mp.second, allowFail);
 
-							auto td = this->instantiateGenericType(atd, mapping);
+							// types generally cannot be overloaded, so it doesn't make sense for it to be SFINAE-ed.
+							auto td = this->instantiateGenericEntity(atd, mapping, false);
 							iceAssert(td);
 
 							this->stree = restore;

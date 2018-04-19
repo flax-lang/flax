@@ -99,6 +99,9 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 	auto defn = dcast(sst::StructDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
 
+	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
+		return defn;
+
 	auto str = defn->type->toStructType();
 	iceAssert(str);
 
@@ -177,9 +180,9 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 
 
 	str->setBody(tys);
-
 	fs->popTree();
 
+	this->finishedTypechecking.insert(defn);
 	return defn;
 }
 
@@ -244,6 +247,10 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 
 	auto defn = dcast(sst::ClassDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
+
+	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
+		return defn;
+
 
 	auto cls = defn->type->toClassType();
 	iceAssert(cls);
@@ -455,13 +462,9 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 
 
 	cls->setMembers(tys);
-
-
-
-
-
 	fs->popTree();
 
+	this->finishedTypechecking.insert(defn);
 	return defn;
 }
 
