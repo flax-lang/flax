@@ -31,6 +31,7 @@ namespace ast
 	struct TypeDefn;
 	struct FuncDefn;
 	struct FunctionCall;
+	struct Parameterisable;
 }
 
 namespace sst
@@ -45,8 +46,8 @@ namespace sst
 		StateTree* parent = 0;
 
 		std::unordered_map<std::string, StateTree*> subtrees;
-		std::unordered_map<std::string, std::vector<ast::Stmt*>> unresolvedGenericDefs;
-		std::unordered_map<std::pair<ast::Stmt*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
+		std::unordered_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
+		std::unordered_map<std::pair<ast::Parameterisable*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
 		using DefnMap = std::unordered_map<std::string, std::vector<Defn*>>;
 
@@ -67,7 +68,7 @@ namespace sst
 		DefnMap getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
-		std::vector<ast::Stmt*> getUnresolvedGenericDefnsWithName(const std::string& name);
+		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);
 
 		void addDefinition(const std::string& name, Defn* def);
 		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def);
@@ -164,8 +165,8 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
-		//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-		TypeDefn* instantiateGenericType(ast::TypeDefn* type, const TypeParamMap_t& mappings);
+		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
+		Defn* instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings, bool allowFail);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);

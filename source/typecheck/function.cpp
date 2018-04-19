@@ -16,6 +16,10 @@ sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	auto defn = dcast(sst::FunctionDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
 	iceAssert(defn);
 
+	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
+		return defn;
+
+
 	fs->enterFunctionBody(defn);
 	fs->pushTree(defn->id.mangledName());
 	{
@@ -44,6 +48,8 @@ sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 	// ok, do the check.
 	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
+
+	this->finishedTypechecking.insert(defn);
 	return defn;
 }
 
