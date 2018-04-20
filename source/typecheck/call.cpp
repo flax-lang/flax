@@ -434,7 +434,7 @@ namespace sst
 						// check if they're co/contra variant
 						auto ty = fd->parentTypeForMethod->toClassType();
 
-						//* here we're just checking that 'ty' and 'self' are part of the same class hierarchy -- we don't really care the method
+						//* here we're just checking that 'ty' and 'self' are part of the same class hierarchy -- we don't really care about the method
 						//* that we resolve being at the lowest or highest level of that hierarchy.
 
 						if(!ty->isInParentHierarchy(self) && !self->isInParentHierarchy(ty))

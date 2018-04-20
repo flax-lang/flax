@@ -166,9 +166,9 @@ struct TCResult
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
 	explicit TCResult(const std::string& m) : _kind(RK::Error)  { _emsg = strdup(m.c_str()); }
 
-	std::string error() { if(this->_kind != RK::Error)      { _error_and_exit("not error"); } return std::string(this->_emsg); }
-	sst::Expr* expr()   { if(this->_kind != RK::Expression) { _error_and_exit("not expr"); } return this->_ex; }
-	sst::Defn* defn()   { if(this->_kind != RK::Definition) { _error_and_exit("not defn"); } return this->_df; }
+	std::string error() { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return std::string(this->_emsg); }
+	sst::Expr* expr()   { if(this->_kind != RK::Expression) { _error_and_exit("not expr\n"); } return this->_ex; }
+	sst::Defn* defn()   { if(this->_kind != RK::Definition) { _error_and_exit("not defn\n"); } return this->_df; }
 
 	//* stmt() is the most general case -- definitions and expressions are both statements.
 	// note: we need the definition of sst::Stmt and sst::Expr to do safe dynamic casting, so it's in identifier.cpp.

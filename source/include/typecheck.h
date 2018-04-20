@@ -121,6 +121,8 @@ namespace sst
 
 
 		std::vector<TypeParamMap_t> genericTypeContextStack;
+		std::vector<TypeParamMap_t> getCurrentGenericContextStack();
+
 		void pushGenericTypeContext();
 		fir::Type* findGenericTypeMapping(const std::string& name, bool allowFail);
 		void addGenericTypeMapping(const std::string& name, fir::Type* ty);
