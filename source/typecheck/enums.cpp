@@ -24,14 +24,14 @@
 */
 
 
-sst::Defn* ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return 0;
-	else if(ret)    return ret;
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 	auto defn = new sst::EnumDefn(this->loc);
 	defn->id = Identifier(this->name, IdKind::Type);
@@ -41,16 +41,20 @@ sst::Defn* ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	fs->stree->addDefinition(this->name, defn);
 
 	this->genericVersions.push_back({ defn, gmaps });
-	return defn;
+	return TCResult(defn);
 }
 
 
-sst::Defn* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto defn = dcast(sst::EnumDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
+	auto tcr = this->generateDeclaration(fs, infer, gmaps);
+	if(tcr.isParametric())  return tcr;
+	else if(tcr.isError())  error(this, "Failed to generate declaration for enum '%s'", this->name);
+
+	auto defn = dcast(sst::EnumDefn, tcr.defn());
 	iceAssert(defn);
 
 	fs->pushTree(defn->id.name);
@@ -68,7 +72,7 @@ sst::Defn* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		if(cs.value)
 		{
 			iceAssert(defn->memberType);
-			val = cs.value->typecheck(fs, defn->memberType);
+			val = cs.value->typecheck(fs, defn->memberType).expr();
 
 			if(val->type != defn->memberType)
 				error(cs.value, "Mismatched type in enum case value; expected type '%s', but found type '%s'", defn->memberType, val->type);
@@ -88,7 +92,7 @@ sst::Defn* ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 	defn->type = ety;
 
-	return defn;
+	return TCResult(defn);
 }
 
 

@@ -8,13 +8,13 @@
 
 using TCS = sst::TypecheckState;
 
-sst::Stmt* ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	// disallow certain things from being deferred
-	auto ret = this->actual->typecheck(fs, infer);
+	auto ret = this->actual->typecheck(fs, infer).stmt();
 
 	std::function<void (const Location&, std::vector<sst::Stmt*>)> checkRecursively
 		= [&checkRecursively](const Location& loc, std::vector<sst::Stmt*> stmts) -> void
@@ -47,7 +47,7 @@ sst::Stmt* ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
 	else
 		checkRecursively(this->loc, { ret });
 
-	return ret;
+	return TCResult(ret);
 }
 
 

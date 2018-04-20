@@ -9,7 +9,7 @@
 
 #include "ir/type.h"
 
-sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -21,7 +21,7 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this, "Only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
 
 	std::vector<sst::Expr*> counts = util::map(this->counts, [fs](ast::Expr* e) -> auto {
-		auto c = e->typecheck(fs, fir::Type::getInt64());
+		auto c = e->typecheck(fs, fir::Type::getInt64()).expr();
 		if(!c->type->isIntegerType())
 			error(c, "Expected integer type ('i64') for alloc count, found '%s' instead", c->type);
 
@@ -93,9 +93,9 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		// make a temp scope to enclose it, I guess
 		fs->pushTree(fs->getAnonymousScopeName());
 		{
-			ret->initBlockVar = dcast(sst::VarDefn, fake->typecheck(fs));
-			ret->initBlockIdx = dcast(sst::VarDefn, fake2->typecheck(fs));
-			ret->initBlock = dcast(sst::Block, this->initBody->typecheck(fs));
+			ret->initBlockVar = dcast(sst::VarDefn, fake->typecheck(fs).defn());
+			ret->initBlockIdx = dcast(sst::VarDefn, fake2->typecheck(fs).defn());
+			ret->initBlock = dcast(sst::Block, this->initBody->typecheck(fs).stmt());
 
 			iceAssert(ret->initBlockVar && ret->initBlockIdx && ret->initBlock);
 		}
@@ -108,15 +108,15 @@ sst::Expr* ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	ret->isRaw      = this->isRaw;
 	ret->isMutable  = this->isMutable;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Stmt* ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ex = this->expr->typecheck(fs);
+	auto ex = this->expr->typecheck(fs).expr();
 	if(ex->type->isDynamicArrayType())
 		error(ex, "Dynamic arrays are reference-counted, and cannot be manually freed");
 
@@ -126,7 +126,7 @@ sst::Stmt* ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto ret = new sst::DeallocOp(this->loc);
 	ret->expr = ex;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

@@ -29,12 +29,12 @@ bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 		error("Type '%s' does not have mutable variants", ty);
 }
 
-sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto array = this->expr->typecheck(fs);
+	auto array = this->expr->typecheck(fs).expr();
 	auto ty = array->type;
 
 	fir::Type* elm = 0;
@@ -50,8 +50,8 @@ sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else
 		error(array, "Invalid type '%s' for slice operation", ty);
 
-	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getInt64()) : 0;
-	auto end = this->end ? this->end->typecheck(fs, fir::Type::getInt64()) : 0;
+	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getInt64()).expr() : 0;
+	auto end = this->end ? this->end->typecheck(fs, fir::Type::getInt64()).expr() : 0;
 
 	if(begin && !begin->type->isIntegerType())
 		error(begin, "Expected integer type for start index of slice; found '%s'", begin->type);
@@ -72,7 +72,7 @@ sst::Expr* ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	ret->begin = begin;
 	ret->end = end;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

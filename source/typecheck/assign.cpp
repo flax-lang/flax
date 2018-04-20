@@ -11,11 +11,11 @@
 
 using TCS = sst::TypecheckState;
 
-sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 {
 	// check the left side
-	auto l = this->left->typecheck(fs);
-	auto r = this->right->typecheck(fs, l->type);
+	auto l = this->left->typecheck(fs).expr();
+	auto r = this->right->typecheck(fs, l->type).expr();
 
 	if(r->type->isVoidType())	error(this->right, "Value has void type");
 
@@ -65,7 +65,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 
 		ret->right = r;
 
-		return ret;
+		return TCResult(ret);
 	}
 	else
 	{
@@ -74,7 +74,7 @@ sst::Expr* ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
 		ret->left = l;
 		ret->right = r;
 
-		return ret;
+		return TCResult(ret);
 	}
 }
 

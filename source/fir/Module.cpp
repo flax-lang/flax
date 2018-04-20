@@ -65,7 +65,7 @@ namespace fir
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangledName(), IdKind::Name),
+			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangled(), IdKind::Name),
 				table->getType(), table, false, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };

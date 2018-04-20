@@ -66,7 +66,7 @@ static bool isBuiltinOperator(std::string op)
 
 
 
-sst::Defn* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -83,17 +83,17 @@ sst::Defn* ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Ty
 	return this->ast::FuncDefn::typecheck(fs, infer, gmaps);
 }
 
-sst::Defn* ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return 0;
-	else if(ret)    return ret;
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 	// there's nothing different.
-	auto defn = dcast(sst::FunctionDefn, this->ast::FuncDefn::generateDeclaration(fs, infer, gmaps));
+	auto defn = dcast(sst::FunctionDefn, this->ast::FuncDefn::generateDeclaration(fs, infer, gmaps).defn());
 	iceAssert(defn);
 
 
@@ -170,7 +170,7 @@ sst::Defn* ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* f
 	(*thelist)[this->symbol].push_back(defn);
 	this->genericVersions.push_back({ defn, gmaps });
 
-	return defn;
+	return TCResult(defn);
 }
 
 

@@ -736,7 +736,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
 
-	auto target = this->callee->typecheck(fs);
+	auto target = this->callee->typecheck(fs).expr();
 	iceAssert(target);
 
 	if(!target->type->isFunctionType())
@@ -776,7 +776,7 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 
 			// TODO: handle splatting of arrays for varargs calls.
 
-			auto tuple = splat->expr->typecheck(this);
+			auto tuple = splat->expr->typecheck(this).expr();
 			if(!tuple->type->isTupleType())
 				error(arg.second->loc, "Splatting in a function is currently only supported for tuples, have type '%s'", tuple->type);
 
@@ -793,7 +793,7 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 		}
 		else
 		{
-			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this)));
+			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this).expr()));
 		}
 	}
 
@@ -801,20 +801,20 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 }
 
 
-sst::Expr* ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args));
+	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args)));
 }
 
-sst::Expr* ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args));
+	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args)));
 }
 
 

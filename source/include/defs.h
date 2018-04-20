@@ -101,6 +101,8 @@ namespace fir
 namespace sst
 {
 	struct Expr;
+	struct Stmt;
+	struct Defn;
 }
 
 enum class IdKind
@@ -131,6 +133,57 @@ struct Identifier
 	bool operator != (const Identifier& other) const { return !(other == *this); }
 };
 
+struct TCResult
+{
+	enum class RK
+	{
+		Invalid,
+
+		Statement,
+		Expression,
+		Definition,
+
+		Parametric,
+		Dummy,
+
+		Error
+	};
+
+	union {
+		sst::Stmt* _st;
+		sst::Expr* _ex;
+		sst::Defn* _df;
+		const char* _emsg;
+	};
+
+	RK _kind = RK::Invalid;
+
+	~TCResult() { if(this->isError() && this->_emsg) free((void*) this->_emsg); }
+
+	TCResult(RK k) :  _kind(k)                                  { _st = 0; }
+	explicit TCResult(sst::Stmt* s) : _kind(RK::Statement)      { _st = s; }
+	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
+	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
+	explicit TCResult(const std::string& m) : _kind(RK::Error)  { _emsg = strdup(m.c_str()); }
+
+	std::string error() { if(this->_kind != RK::Error)      { _error_and_exit("not error"); } return std::string(this->_emsg); }
+	sst::Expr* expr()   { if(this->_kind != RK::Expression) { _error_and_exit("not expr"); } return this->_ex; }
+	sst::Defn* defn()   { if(this->_kind != RK::Definition) { _error_and_exit("not defn"); } return this->_df; }
+
+	//* stmt() is the most general case -- definitions and expressions are both statements.
+	// note: we need the definition of sst::Stmt and sst::Expr to do safe dynamic casting, so it's in identifier.cpp.
+	sst::Stmt* stmt();
+
+	bool isError()      { return this->_kind == RK::Error; }
+	bool isStmt()       { return this->_kind == RK::Statement; }
+	bool isExpr()       { return this->_kind == RK::Expression; }
+	bool isDefn()       { return this->_kind == RK::Definition; }
+	bool isParametric() { return this->_kind == RK::Parametric; }
+	bool isDummy()      { return this->_kind == RK::Dummy; }
+
+	static TCResult getParametric() { return TCResult(RK::Parametric); }
+	static TCResult getDummy()      { return TCResult(RK::Dummy); }
+};
 
 struct CGResult
 {
@@ -155,16 +208,16 @@ struct CGResult
 
 	VK kind = VK::Invalid;
 
-	CGResult& operator = (const CGResult& other)
-	{
-		if(this == &other) return *this;
+	// CGResult& operator = (const CGResult& other)
+	// {
+	// 	if(this == &other) return *this;
 
-		this->kind = other.kind;
-		this->value = other.value;
-		this->pointer = other.pointer;
+	// 	this->kind = other.kind;
+	// 	this->value = other.value;
+	// 	this->pointer = other.pointer;
 
-		return *this;
-	}
+	// 	return *this;
+	// }
 };
 
 namespace std
@@ -249,6 +302,19 @@ namespace util
 		std::vector<K> ret;
 		for(auto i : input)
 			ret.push_back(fn(i));
+
+		return ret;
+	}
+
+	template <typename T, class UnaryOp, class Predicate, typename K = typename std::result_of<UnaryOp(T)>::type>
+	std::vector<K> mapFilter(std::vector<T> input, UnaryOp fn, Predicate cond)
+	{
+		std::vector<K> ret;
+		for(auto i : input)
+		{
+			auto k = fn(i);
+			if(cond(k)) ret.push_back(k);
+		}
 
 		return ret;
 	}

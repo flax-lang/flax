@@ -60,14 +60,14 @@ static void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::
 
 
 
-sst::Defn* ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return 0;
-	else if(ret)    return ret;
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 
 	auto defn = new sst::StructDefn(this->loc);
@@ -88,19 +88,23 @@ sst::Defn* ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Ty
 	}
 
 	this->genericVersions.push_back({ defn, gmaps });
-	return defn;
+	return TCResult(defn);
 }
 
-sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto defn = dcast(sst::StructDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
+	auto tcr = this->generateDeclaration(fs, infer, gmaps);
+	if(tcr.isParametric())  return tcr;
+	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for struct '%s'", this->name);
+
+	auto defn = dcast(sst::StructDefn, tcr.defn());
 	iceAssert(defn);
 
 	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
-		return defn;
+		return TCResult(defn);
 
 	auto str = defn->type->toStructType();
 	iceAssert(str);
@@ -112,7 +116,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dcast(sst::TypeDefn, t->typecheck(fs));
+		auto st = dcast(sst::TypeDefn, t->typecheck(fs).defn());
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
@@ -126,7 +130,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 	{
 		for(auto f : this->fields)
 		{
-			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs));
+			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs).defn());
 			iceAssert(v);
 
 			if(v->init) error(v, "Struct fields cannot have inline initialisers");
@@ -140,7 +144,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 		//* generate all the decls first so we can call methods out of order.
 		for(auto m : this->methods)
 		{
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, str, { }));
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, str, { }).defn());
 			iceAssert(decl);
 
 			defn->methods.push_back(decl);
@@ -156,7 +160,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 	{
 		for(auto f : this->staticFields)
 		{
-			auto v = dcast(sst::VarDefn, f->typecheck(fs));
+			auto v = dcast(sst::VarDefn, f->typecheck(fs).defn());
 			iceAssert(v);
 
 			defn->staticFields.push_back(v);
@@ -166,7 +170,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }));
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }).defn());
 			iceAssert(decl);
 
 			defn->staticMethods.push_back(decl);
@@ -183,7 +187,7 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 	fs->popTree();
 
 	this->finishedTypechecking.insert(defn);
-	return defn;
+	return TCResult(defn);
 }
 
 
@@ -191,15 +195,15 @@ sst::Defn* ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer,
 
 
 
-sst::Defn* ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return 0;
-	else if(ret)    return ret;
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 
 	auto defn = new sst::ClassDefn(this->loc);
@@ -237,20 +241,23 @@ sst::Defn* ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Typ
 	}
 
 	this->genericVersions.push_back({ defn, gmaps });
-	return defn;
+	return TCResult(defn);
 }
 
-sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto defn = dcast(sst::ClassDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
+	auto tcr = this->generateDeclaration(fs, infer, gmaps);
+	if(tcr.isParametric())  return tcr;
+	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
+
+	auto defn = dcast(sst::ClassDefn, tcr.defn());
 	iceAssert(defn);
 
 	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
-		return defn;
-
+		return TCResult(defn);
 
 	auto cls = defn->type->toClassType();
 	iceAssert(cls);
@@ -265,7 +272,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dcast(sst::TypeDefn, t->typecheck(fs));
+		auto st = dcast(sst::TypeDefn, t->typecheck(fs).defn());
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
@@ -276,7 +283,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 	{
 		for(auto f : this->fields)
 		{
-			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs));
+			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs).defn());
 			iceAssert(v);
 
 			defn->fields.push_back(v);
@@ -311,7 +318,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 			if(m->name == "init")
 				error(m, "Cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
 
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, cls, { }));
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, cls, { }).defn());
 			iceAssert(decl);
 
 			defn->methods.push_back(decl);
@@ -381,7 +388,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 
 		for(auto it : this->initialisers)
 		{
-			auto decl = dcast(sst::FunctionDefn, it->generateDeclaration(fs, cls, { }));
+			auto decl = dcast(sst::FunctionDefn, it->generateDeclaration(fs, cls, { }).defn());
 			iceAssert(decl);
 
 			defn->methods.push_back(decl);
@@ -428,7 +435,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 	{
 		for(auto f : this->staticFields)
 		{
-			auto v = dcast(sst::VarDefn, f->typecheck(fs));
+			auto v = dcast(sst::VarDefn, f->typecheck(fs).defn());
 			iceAssert(v);
 
 			defn->staticFields.push_back(v);
@@ -437,7 +444,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }));
+			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }).defn());
 			iceAssert(decl);
 
 			defn->staticMethods.push_back(decl);
@@ -465,7 +472,7 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 	fs->popTree();
 
 	this->finishedTypechecking.insert(defn);
-	return defn;
+	return TCResult(defn);
 }
 
 
@@ -479,12 +486,12 @@ sst::Defn* ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, 
 
 
 
-sst::Defn* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	iceAssert(infer && infer->isClassType());
 	auto cls = infer->toClassType();
 
-	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls, gmaps));
+	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls, gmaps).defn());
 
 	if(cls->getBaseClass() && !this->didCallSuper)
 	{
@@ -529,11 +536,11 @@ sst::Defn* ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* 
 		ret->body->statements.insert(ret->body->statements.begin(), call);
 	}
 
-	return ret;
+	return TCResult(ret);
 }
 
 
-sst::Defn* ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	//* so here's the thing
 	//* basically this init function thingy is just a normal function definition

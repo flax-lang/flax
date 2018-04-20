@@ -8,7 +8,7 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
-sst::Expr* ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -27,11 +27,10 @@ sst::Expr* ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this->expr, "Literal numbers cannot be sized");
 	}
 
-	if(!out)
-		out = this->expr->typecheck(fs)->type;
+	if(!out) out = this->expr->typecheck(fs).expr()->type;
 
 	iceAssert(out);
 	ret->typeToSize = out;
 
-	return ret;
+	return TCResult(ret);
 }

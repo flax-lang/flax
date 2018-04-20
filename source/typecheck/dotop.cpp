@@ -12,7 +12,7 @@ using TCS = sst::TypecheckState;
 
 static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type* infer)
 {
-	auto lhs = dotop->left->typecheck(fs);
+	auto lhs = dotop->left->typecheck(fs).expr();
 
 	// first we got to find the struct defn based on the type
 	auto type = lhs->type;
@@ -134,7 +134,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = fc->name;
-				tmp->args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs); });
+				tmp->args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs).expr(); });
 				tmp->isFunctionCall = true;
 
 				return tmp;
@@ -211,7 +211,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			// check methods first
 			using Param = sst::FunctionDefn::Param;
 			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
-				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs));
+				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr());
 			});
 
 			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param { e.name, e.loc, e.value->type }; });
@@ -435,14 +435,14 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		sst::Expr* ret = 0;
 		if(auto fc = dcast(ast::FunctionCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs)); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs).expr()); });
 
 			fs->teleportToScope(news);
 			ret = fc->typecheckWithArguments(fs, args);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs)); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs).expr()); });
 
 			fs->teleportToScope(news);
 			ret = ec->typecheckWithArguments(fs, args);
@@ -450,7 +450,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
 			fs->teleportToScope(news);
-			ret = dot->right->typecheck(fs);
+			ret = dot->right->typecheck(fs).expr();
 		}
 		else
 		{
@@ -572,19 +572,16 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 
 
-sst::Expr* ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// warn(this, "hi there");
-	auto lhs = this->left->typecheck(fs);
-
-	auto ret = doStaticDotOp(fs, this, lhs);
-	if(ret) return ret;
+	auto ret = doStaticDotOp(fs, this, this->left->typecheck(fs).expr());
+	if(ret) return TCResult(ret);
 
 	// catch-all, probably.
-	return doExpressionDotOp(fs, this, infer);
+	return TCResult(doExpressionDotOp(fs, this, infer));
 }
 
 

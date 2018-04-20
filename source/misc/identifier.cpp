@@ -4,6 +4,23 @@
 
 #include "defs.h"
 #include "ir/type.h"
+#include "sst.h"
+
+sst::Stmt* TCResult::stmt()
+{
+	switch(this->_kind)
+	{
+		case RK::Statement:     return this->_st;
+		case RK::Expression:    return this->_ex;
+		case RK::Definition:    return this->_df;
+		default:                _error_and_exit("not stmt");
+	}
+}
+
+
+
+
+
 
 std::string Identifier::str() const
 {
@@ -133,37 +150,65 @@ static std::string mangleType(fir::Type* t)
 
 static std::string _doMangle(const Identifier& id, bool includeScope)
 {
-	if(id.kind == IdKind::Name)
+	if(id.kind == IdKind::Name || id.kind == IdKind::Type)
 		return id.name;
 
-	std::string ret = "_F";
-
-	if(id.kind == IdKind::Function)					ret += "F";
-	else if(id.kind == IdKind::Type)					ret += "T";
-	else												ret += "U";
-
-	if(includeScope)
-		ret += mangleScopeOnly(id);
-
-	ret += lentypestr(id.name);
-
-	if(id.kind == IdKind::Function)
+	if(!includeScope)
 	{
-		ret += "_FA";
-		for(auto t : id.params)
-			ret += "_" + mangleType(t);
+		if(id.kind == IdKind::Function)
+		{
+			std::string ret = id.name + "(";
 
-		if(id.params.empty())
-			ret += "v";
+			if(id.params.empty())
+			{
+				ret += ")";
+			}
+			else
+			{
+				for(auto t : id.params)
+					ret += t->str() + ",";
+
+				ret = ret.substr(0, ret.length() - 1);
+			}
+
+			return ret;
+		}
+		else
+		{
+			iceAssert(false && "invalid");
+		}
 	}
+	else
+	{
+		std::string ret = "_F";
 
-	return ret;
+		if(id.kind == IdKind::Function)					ret += "F";
+		else if(id.kind == IdKind::Type)					ret += "T";
+		else												ret += "U";
+
+		if(includeScope)
+			ret += mangleScopeOnly(id);
+
+		ret += lentypestr(id.name);
+
+		if(id.kind == IdKind::Function)
+		{
+			ret += "_FA";
+			for(auto t : id.params)
+				ret += "_" + mangleType(t);
+
+			if(id.params.empty())
+				ret += "v";
+		}
+
+		return ret;
+	}
 }
 
 
 std::string Identifier::mangled() const
 {
-	return _doMangle(*this, false);
+	return _doMangle(*this, true);
 }
 
 std::string Identifier::mangledName() const

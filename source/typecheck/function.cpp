@@ -8,17 +8,20 @@
 
 #include "ir/type.h"
 
-sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto defn = dcast(sst::FunctionDefn, this->getOrCreateDeclForTypechecking(fs, infer, gmaps));
+	auto tcr = this->generateDeclaration(fs, infer, gmaps);
+	if(tcr.isParametric())  return tcr;
+	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
+
+	auto defn = dcast(sst::FunctionDefn, tcr.defn());
 	iceAssert(defn);
 
 	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
-		return defn;
-
+		return TCResult(defn);
 
 	fs->enterFunctionBody(defn);
 	fs->pushTree(defn->id.mangledName());
@@ -38,7 +41,7 @@ sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			defn->arguments.push_back(vd);
 		}
 
-		defn->body = dcast(sst::Block, this->body->typecheck(fs));
+		defn->body = dcast(sst::Block, this->body->typecheck(fs).stmt());
 		defn->body->isSingleExpr = this->body->isArrow;
 
 		iceAssert(defn->body);
@@ -50,17 +53,17 @@ sst::Defn* ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
 
 	this->finishedTypechecking.insert(defn);
-	return defn;
+	return TCResult(defn);
 }
 
-sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return 0;
-	else if(ret)    return ret;
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 
 	using Param = sst::FunctionDefn::Param;
@@ -148,15 +151,15 @@ sst::Defn* ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 
 	// add to our versions.
 	this->genericVersions.push_back({ defn, gmaps });
-	return defn;
+	return TCResult(defn);
 }
 
 
 
-sst::Stmt* ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	if(this->generatedDecl)
-		return this->generatedDecl;
+		return TCResult(this->generatedDecl);
 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -211,14 +214,15 @@ sst::Stmt* ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* i
 
 	this->generatedDecl = defn;
 	fs->stree->addDefinition(this->name, defn);
-	return defn;
+
+	return TCResult(defn);
 }
 
 
 
 
 
-sst::Stmt* ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -229,12 +233,26 @@ sst::Stmt* ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	ret->closingBrace = this->closingBrace;
 
 	for(auto stmt : this->statements)
-		ret->statements.push_back(stmt->typecheck(fs));
+	{
+		auto tcr = stmt->typecheck(fs);
+		if(tcr.isError())
+			return TCResult(tcr.error());
+
+		else if(!tcr.isParametric() && !tcr.isDummy())
+			ret->statements.push_back(tcr.stmt());
+	}
 
 	for(auto dstmt : this->deferredStatements)
-		ret->deferred.push_back(dstmt->typecheck(fs));
+	{
+		auto tcr = dstmt->typecheck(fs);
+		if(tcr.isError())
+			return TCResult(tcr.error());
 
-	return ret;
+		else if(!tcr.isParametric() && !tcr.isDummy())
+			ret->deferred.push_back(tcr.stmt());
+	}
+
+	return TCResult(ret);
 }
 
 
