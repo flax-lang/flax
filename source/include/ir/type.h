@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "identifier.h"
+#include "defs.h"
 #include "precompile.h"
 
 namespace fir

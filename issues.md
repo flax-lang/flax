@@ -193,6 +193,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- move to a `TCResult` thing for typechecking returns, cleans up generic types a bunch
+- fix a bug where we couldn't define generic types inside of a scope (eg. in a function)
+
 `(1b85906)`
 - make init methods always mutable, for obvious reasons. Also, virtual stuff still works and didn't break, which is a plus.
 

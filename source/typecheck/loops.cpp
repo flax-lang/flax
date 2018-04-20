@@ -9,9 +9,7 @@
 
 #include "ir/type.h"
 
-
-
-sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -23,7 +21,7 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	defer(fs->popTree());
 
 
-	ret->array = this->array->typecheck(fs);
+	ret->array = this->array->typecheck(fs).expr();
 
 	fir::Type* elmty = 0;
 	if(ret->array->type->isArrayType() || ret->array->type->isDynamicArrayType() || ret->array->type->isArraySliceType())
@@ -47,7 +45,7 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 		fake->name = this->indexVar;
 		fake->type = pts::NamedType::create(INT64_TYPE_STRING);
 
-		ret->indexVar = dcast(sst::VarDefn, fake->typecheck(fs));
+		ret->indexVar = dcast(sst::VarDefn, fake->typecheck(fs).defn());
 		iceAssert(ret->indexVar);
 	}
 
@@ -55,12 +53,12 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 	fs->enterBreakableBody();
 	{
-		ret->body = dcast(sst::Block, this->body->typecheck(fs));
+		ret->body = dcast(sst::Block, this->body->typecheck(fs).stmt());
 		iceAssert(ret->body);
 	}
 	fs->leaveBreakableBody();
 
-	return ret;
+	return TCResult(ret);
 }
 
 
@@ -87,7 +85,7 @@ sst::Stmt* ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 
 
-sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -102,19 +100,19 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 
 	fs->enterBreakableBody();
 	{
-		ret->body = dcast(sst::Block, this->body->typecheck(fs));
+		ret->body = dcast(sst::Block, this->body->typecheck(fs).stmt());
 		iceAssert(ret->body);
 	}
 	fs->leaveBreakableBody();
 
 	if(this->cond)
 	{
-		ret->cond = this->cond->typecheck(fs, fir::Type::getBool());
+		ret->cond = this->cond->typecheck(fs, fir::Type::getBool()).expr();
 		if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
 			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
 	}
 
-	return ret;
+	return TCResult(ret);
 }
 
 
@@ -131,7 +129,7 @@ sst::Stmt* ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 
 
 
-sst::Stmt* ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -142,10 +140,10 @@ sst::Stmt* ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else if(fs->isInDeferBlock())
 		error(this, "Cannot 'break' while inside a deferred block");
 
-	return new sst::BreakStmt(this->loc);
+	return TCResult(new sst::BreakStmt(this->loc));
 }
 
-sst::Stmt* ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -156,5 +154,16 @@ sst::Stmt* ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infe
 	else if(fs->isInDeferBlock())
 		error(this, "Cannot 'continue' while inside a deferred block");
 
-	return new sst::ContinueStmt(this->loc);
+	return TCResult(new sst::ContinueStmt(this->loc));
 }
+
+
+
+
+
+
+
+
+
+
+

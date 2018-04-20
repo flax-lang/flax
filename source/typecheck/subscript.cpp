@@ -8,13 +8,13 @@
 
 #include "ir/type.h"
 
-sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ls = this->expr->typecheck(fs);
-	auto rs = this->inside->typecheck(fs);
+	auto ls = this->expr->typecheck(fs).expr();
+	auto rs = this->inside->typecheck(fs).expr();
 
 	// check what's the type
 	auto lt = ls->type;
@@ -49,7 +49,7 @@ sst::Expr* ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	ret->expr = ls;
 	ret->inside = rs;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

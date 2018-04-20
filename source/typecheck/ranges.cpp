@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -16,20 +16,20 @@ sst::Expr* ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto ret = new sst::RangeExpr(this->loc, fir::RangeType::get());
 	ret->halfOpen = this->halfOpen;
 
-	ret->start = this->start->typecheck(fs, fir::Type::getInt64());
+	ret->start = this->start->typecheck(fs, fir::Type::getInt64()).expr();
 	if(!ret->start->type->isIntegerType())
 		error(ret->start, "Expected integer type in range expression (start), found '%s' instead", ret->start->type);
 
-	ret->end = this->end->typecheck(fs, fir::Type::getInt64());
+	ret->end = this->end->typecheck(fs, fir::Type::getInt64()).expr();
 	if(!ret->end->type->isIntegerType())
 		error(ret->end, "Expected integer type in range expression (end), found '%s' instead", ret->end->type);
 
 	if(this->step)
 	{
-		ret->step = this->step->typecheck(fs, fir::Type::getInt64());
+		ret->step = this->step->typecheck(fs, fir::Type::getInt64()).expr();
 		if(!ret->step->type->isIntegerType())
 			error(ret->step, "Expected integer type in range expression (step), found '%s' instead", ret->step->type);
 	}
 
-	return ret;
+	return TCResult(ret);
 }

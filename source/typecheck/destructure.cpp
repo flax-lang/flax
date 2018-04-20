@@ -129,7 +129,7 @@ DecompMapping sst::TypecheckState::typecheckDecompositions(const DecompMapping& 
 }
 
 
-sst::Stmt* ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -166,10 +166,10 @@ sst::Stmt* ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		this->initialiser = new ast::LitTuple(splat->loc, std::vector<ast::Expr*>(this->bindings.inner.size(), splat->expr));
 	}
 
-	ret->init = this->initialiser->typecheck(fs);
+	ret->init = this->initialiser->typecheck(fs).expr();
 	ret->bindings = fs->typecheckDecompositions(this->bindings, ret->init->type, this->immut, false);
 
-	return ret;
+	return TCResult(ret);
 }
 
 

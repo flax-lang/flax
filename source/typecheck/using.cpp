@@ -8,13 +8,13 @@
 
 #include "ir/type.h"
 
-sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	// check what kind of expression we have.
-	auto user = this->expr->typecheck(fs);
+	auto user = this->expr->typecheck(fs).expr();
 	if(!dcast(sst::ScopeExpr, user) && !dcast(sst::VarRef, user))
 		error(this->expr, "Unsupported expression on left-side of 'using' declaration");
 
@@ -56,7 +56,7 @@ sst::Stmt* ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 
-	return new sst::DummyStmt(this->loc);
+	return TCResult::getDummy();
 }
 
 

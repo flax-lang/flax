@@ -96,6 +96,8 @@ namespace sst
 			Block* body = 0;
 
 			std::vector<Stmt*> inits;
+
+			Case(Expr* c, Block* b, const std::vector<Stmt*>& i) : cond(c), body(b), inits(i) { }
 		};
 
 		std::vector<Case> cases;
@@ -159,18 +161,6 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
-
-
-	// TODO: refactor the compiler so we don't need this kind of cruft
-	struct DummyStmt : Stmt
-	{
-		DummyStmt(const Location& l) : Stmt(l) { this->readableName = "<DUMMY STATEMENT>"; }
-		~DummyStmt() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
-	};
-
-
 
 	struct SizeofOp : Expr
 	{
