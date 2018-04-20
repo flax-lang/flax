@@ -6,7 +6,7 @@
 
 namespace pts
 {
-	std::string unwrapPointerType(std::string type, int* _indirections)
+	std::string unwrapPointerType(const std::string& type, int* _indirections)
 	{
 		std::string sptr = "*";
 		size_t ptrStrLength = sptr.length();
@@ -129,12 +129,12 @@ namespace pts
 	}
 
 	static std::map<std::pair<std::string, std::map<std::string, Type*>>, NamedType*> map;
-	NamedType* NamedType::create(std::string s)
+	NamedType* NamedType::create(const std::string& s)
 	{
 		return NamedType::create(s, { });
 	}
 
-	NamedType* NamedType::create(std::string s, std::map<std::string, Type*> tm)
+	NamedType* NamedType::create(const std::string& s, const std::map<std::string, Type*>& tm)
 	{
 		if(map.find({ s, tm }) != map.end())
 			return map[{ s, tm }];

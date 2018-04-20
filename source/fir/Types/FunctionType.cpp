@@ -7,7 +7,7 @@
 
 namespace Codegen
 {
-	std::string unwrapPointerType(std::string, int*);
+	std::string unwrapPointerType(const std::string&, int*);
 }
 
 namespace fir

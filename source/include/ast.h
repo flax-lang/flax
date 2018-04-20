@@ -75,7 +75,7 @@ namespace ast
 		std::string name;
 
 		std::unordered_map<std::string, TypeConstraints_t> generics;
-		std::vector<std::pair<sst::Defn*, TypeParamMap_t>> genericVersions;
+		std::vector<std::pair<sst::Defn*, std::vector<TypeParamMap_t>>> genericVersions;
 
 		// kind of a hack.
 		std::unordered_set<sst::Defn*> finishedTypechecking;

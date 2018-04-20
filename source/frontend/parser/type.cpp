@@ -282,65 +282,6 @@ namespace parser
 
 
 
-	// static pts::Type* parseTypeIndirections(State& st, pts::Type* base)
-	// {
-	// 	using TT = lexer::TokenType;
-	// 	auto ret = base;
-
-	// 	if(st.front() == TT::LSquare)
-	// 	{
-	// 		// parse an array of some kind
-	// 		st.pop();
-
-	// 		if(st.front() == TT::RSquare)
-	// 		{
-	// 			st.eat();
-	// 			ret = new pts::DynamicArrayType(ret);
-	// 		}
-	// 		else if(st.front() == TT::Ellipsis)
-	// 		{
-	// 			st.pop();
-	// 			if(st.eat() != TT::RSquare)
-	// 				expectedAfter(st, "closing ']'", "variadic array type", st.prev().str());
-
-	// 			ret = new pts::VariadicArrayType(ret);
-	// 		}
-	// 		else if(st.front() == TT::Number)
-	// 		{
-	// 			long sz = std::stol(st.front().str());
-	// 			if(sz <= 0)
-	// 				expected(st, "positive, non-zero size for fixed array", st.front().str());
-
-	// 			st.pop();
-	// 			if(st.eat() != TT::RSquare)
-	// 				expectedAfter(st, "closing ']'", "array type", st.front().str());
-
-	// 			ret = new pts::FixedArrayType(ret, sz);
-	// 		}
-	// 		else if(st.front() == TT::Colon)
-	// 		{
-	// 			st.pop();
-	// 			if(st.eat() != TT::RSquare)
-	// 				expectedAfter(st, "closing ']'", "slice type", st.prev().str());
-
-	// 			ret = new pts::ArraySliceType(ret);
-	// 		}
-	// 		else
-	// 		{
-	// 			error(st, "Unexpected token '%s' after opening '['; expected some kind of array type",
-	// 				st.front().str());
-	// 		}
-	// 	}
-
-	// 	if(st.front() == TT::LSquare)
-	// 		return parseTypeIndirections(st, ret);
-
-	// 	else
-	// 		return ret;
-	// }
-
-
-
 
 	pts::Type* parseType(State& st)
 	{
@@ -445,9 +386,9 @@ namespace parser
 				}
 			}
 
-			auto nt = pts::NamedType::create(s);
 
 			// check generic mapping
+			std::map<std::string, pts::Type*> gmaps;
 			if(st.front() == TT::LAngle)
 			{
 				// ok
@@ -460,9 +401,10 @@ namespace parser
 						if(st.eat() != TT::Colon)
 							expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
 
-						pts::Type* mapped = parseType(st);
-						nt->genericMapping[ty] = mapped;
+						if(gmaps.find(ty) != gmaps.end())
+							error(st, "Duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
 
+						gmaps[ty] = parseType(st);
 
 						if(st.front() == TT::Comma)
 						{
@@ -496,8 +438,7 @@ namespace parser
 			}
 
 
-			// check for indirections
-			return nt;
+			return pts::NamedType::create(s, gmaps);
 		}
 		else if(auto isfn = (st.front() == TT::Func); st.front() == TT::LParen || st.front() == TT::Func)
 		{

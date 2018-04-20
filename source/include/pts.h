@@ -110,11 +110,11 @@ namespace pts
 
 		std::map<std::string, Type*> genericMapping;
 
-		static NamedType* create(std::string s);
-		static NamedType* create(std::string s, std::map<std::string, Type*> genericMapping);
+		static NamedType* create(const std::string& s);
+		static NamedType* create(const std::string& s, const std::map<std::string, Type*>& genericMapping);
 
 		private:
-		explicit NamedType(std::string n) : name(n) { }
+		explicit NamedType(const std::string& n) : name(n) { }
 	};
 
 
@@ -132,7 +132,7 @@ namespace pts
 	struct TupleType : Type
 	{
 		virtual ~TupleType() { }
-		explicit TupleType(std::vector<pts::Type*> ts) : types(ts) { }
+		explicit TupleType(const std::vector<pts::Type*>& ts) : types(ts) { }
 		virtual std::string str() override;
 
 		std::vector<pts::Type*> types;
@@ -186,18 +186,13 @@ namespace pts
 	struct FunctionType : Type
 	{
 		virtual ~FunctionType() { }
-		explicit FunctionType(std::vector<pts::Type*> args, pts::Type* ret) : argTypes(args), returnType(ret) { }
+		explicit FunctionType(const std::vector<pts::Type*>& args, pts::Type* ret) : argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
 		std::map<std::string, TypeConstraints_t> genericTypes;
 		std::vector<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};
-
-
-
-
-	pts::Type* parseType(std::string type);
 }
 
 
