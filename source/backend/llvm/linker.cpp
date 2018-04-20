@@ -86,6 +86,8 @@ namespace backend
 
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
 
+		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
+
 		auto mainModule = this->translateFIRtoLLVM(this->compiledData.module);
 		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
 

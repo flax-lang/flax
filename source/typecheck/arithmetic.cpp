@@ -194,14 +194,14 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 
 
 
-sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
 	iceAssert(!Operator::isAssignment(this->op));
 
 	// TODO: infer the types properly for literal numbers
 	// this has always been a thorn, dammit
 
-	auto l = this->left->typecheck(fs, inferred);
+	auto l = this->left->typecheck(fs, inferred).expr();
 
 	sst::Expr* r = 0;
 
@@ -232,7 +232,7 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	}
 	else
 	{
-		r = this->right->typecheck(fs, inferred);
+		r = this->right->typecheck(fs, inferred).expr();
 	}
 
 	iceAssert(l && r);
@@ -262,12 +262,12 @@ sst::Expr* ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 
 	ret->overloadedOpFunction = overloadFn;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 {
-	auto v = this->expr->typecheck(fs, inferred);
+	auto v = this->expr->typecheck(fs, inferred).expr();
 
 	auto t = v->type;
 	fir::Type* out = 0;
@@ -282,7 +282,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 			ret->expr = v;
 
 			ret->overloadedOpFunction = oper;
-			return ret;
+			return TCResult(ret);
 		}
 	}
 
@@ -346,7 +346,7 @@ sst::Expr* ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	ret->op = this->op;
 	ret->expr = v;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

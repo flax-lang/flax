@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -23,12 +23,8 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	for(auto c : this->cases)
 	{
-		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs); });
-		auto cs = Case {
-							c.cond->typecheck(fs),
-							dynamic_cast<sst::Block*>(c.body->typecheck(fs)),
-							inits
-						};
+		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs).stmt(); });
+		auto cs = Case(c.cond->typecheck(fs).expr(), dynamic_cast<sst::Block*>(c.body->typecheck(fs).stmt()), inits);
 
 		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
 			error(cs.cond, "Non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
@@ -40,14 +36,14 @@ sst::Stmt* ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->elseCase)
 	{
-		ret->elseCase = dynamic_cast<sst::Block*>(this->elseCase->typecheck(fs));
+		ret->elseCase = dynamic_cast<sst::Block*>(this->elseCase->typecheck(fs).stmt());
 		iceAssert(ret->elseCase);
 	}
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	auto ret = new sst::ReturnStmt(this->loc);
 
@@ -61,7 +57,7 @@ sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->value)
 	{
-		ret->value = this->value->typecheck(fs, retty);
+		ret->value = this->value->typecheck(fs, retty).expr();
 
 		if(ret->value->type != retty && fs->getCastDistance(ret->value->type, retty) < 1)
 		{
@@ -80,7 +76,7 @@ sst::Stmt* ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	ret->expectedType = retty;
-	return ret;
+	return TCResult(ret);
 }
 
 

@@ -108,18 +108,20 @@ class LinkedList<T>
 
 
 
-
 @entry fn main()
 {
 	/*
 		Things to fix:
 
+		1. nested types that are generic???
 		2. possibly allow overloading mutable and non-mutable methods with the same signature?
 
 	*/
 
+
+
 	do {
-		// fn foo<T>(a: T, b: T) -> T { return a + b }
+		fn foo<T>(a: T, b: T) -> T { return a + b }
 
 		// let k = foo<T: int>(10, 20)
 		// printf("k = %d\n", k)

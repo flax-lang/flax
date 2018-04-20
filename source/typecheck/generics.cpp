@@ -133,11 +133,10 @@ namespace sst
 		type->generateDeclaration(this, 0, mappings);
 
 		// now it is 'safe' to call typecheck.
-		auto ret = dcast(TypeDefn, type->typecheck(this, 0, mappings));
+		auto ret = dcast(Defn, type->typecheck(this, 0, mappings).defn());
 		iceAssert(ret);
 
 		type->name = oldname;
-
 		return ret;
 	}
 }
@@ -150,7 +149,9 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 {
 	if(this->generics.size() > 0 && gmaps.empty())
 	{
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
+			fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+
 		return { false, 0 };
 	}
 	else
@@ -171,20 +172,6 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 		return { true, 0 };
 	}
 }
-
-sst::Defn* ast::Parameterisable::getOrCreateDeclForTypechecking(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
-{
-	auto defn = this->generateDeclaration(fs, infer, gmaps);
-	if(!defn)
-	{
-		if(this->generics.empty())  error(this, "Failed to generate declaration for entity '%s'???", this->name);
-		else if(gmaps.empty())      error(this, "Entity '%s' cannot be referenced without providing type parameters", this->name);
-		else                        error(this, "what???");
-	}
-
-	return defn;
-}
-
 
 
 

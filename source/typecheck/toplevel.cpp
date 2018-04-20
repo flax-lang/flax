@@ -200,7 +200,7 @@ namespace sst
 			fs->dtree->thingsImported.insert(ithing.name);
 		}
 
-		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs));
+		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs).stmt());
 		iceAssert(tns);
 
 		tns->name = file.moduleName;
@@ -233,7 +233,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 }
 
 
-sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	auto ret = new sst::NamespaceDefn(this->loc);
 
@@ -261,11 +261,12 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		if(dcast(ast::ImportStmt, stmt))
 			continue;
 
-		//? generic things can't be typechecked like that, so we skip them.
-		else if(auto dc = dcast(ast::Parameterisable, stmt); dc && dc->generics.size() > 0)
-			continue;
+		auto tcr = stmt->typecheck(fs);
+		if(tcr.isError())
+			return TCResult(tcr.error());
 
-		ret->statements.push_back(stmt->typecheck(fs));
+		else if(!tcr.isParametric() && !tcr.isDummy())
+			ret->statements.push_back(tcr.stmt());
 	}
 
 	if(tree->parent)
@@ -288,7 +289,7 @@ sst::Stmt* ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	ret->name = this->name;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

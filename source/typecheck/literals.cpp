@@ -10,7 +10,7 @@
 
 using TCS = sst::TypecheckState;
 
-sst::Expr* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -19,19 +19,19 @@ sst::Expr* ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::Type::getConstantNumber(n));
 	ret->number = n;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	auto ret = new sst::LiteralNull(this->loc, fir::Type::getNull());
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -39,10 +39,10 @@ sst::Expr* ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 	auto ret = new sst::LiteralBool(this->loc, fir::Type::getBool());
 	ret->value = this->value;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -67,7 +67,7 @@ sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 	for(auto v : this->values)
 	{
 		auto inf = (infer ? infer->toTupleType()->getElementN(k) : 0);
-		auto expr = v->typecheck(fs, inf);
+		auto expr = v->typecheck(fs, inf).expr();
 
 		auto ty = expr->type;
 		if(expr->type->isConstantNumberType() && (!inf || !inf->isPrimitiveType()))
@@ -83,10 +83,10 @@ sst::Expr* ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 	auto ret = new sst::LiteralTuple(this->loc, fir::TupleType::get(fts));
 	ret->values = vals;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -106,10 +106,10 @@ sst::Expr* ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 	ret->isCString = this->isCString;
 	ret->str = this->str;
 
-	return ret;
+	return TCResult(ret);
 }
 
-sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -154,7 +154,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		for(auto v : this->values)
 		{
-			auto e = v->typecheck(fs, elmty);
+			auto e = v->typecheck(fs, elmty).expr();
 
 			if(!elmty)
 			{
@@ -209,7 +209,7 @@ sst::Expr* ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto ret = new sst::LiteralArray(this->loc, type);
 	ret->values = vals;
 
-	return ret;
+	return TCResult(ret);
 }
 
 

@@ -11,7 +11,7 @@
 
 using TCS = sst::TypecheckState;
 
-sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -47,7 +47,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					ret->name = this->name;
 					ret->def = v;
 
-					return ret;
+					return TCResult(ret);
 				}
 			}
 
@@ -83,7 +83,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				ret->name = this->name;
 				ret->def = def;
 
-				return ret;
+				return TCResult(ret);
 			}
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
@@ -135,7 +135,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					ret->name = this->name;
 					ret->def = pots[0];
 
-					return ret;
+					return TCResult(ret);
 				}
 			}
 			// else: just go up the tree and try again.
@@ -155,7 +155,7 @@ sst::Expr* ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 
-sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -197,7 +197,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// check the defn
 	if(this->initialiser)
 	{
-		defn->init = this->initialiser->typecheck(fs, defn->type);
+		defn->init = this->initialiser->typecheck(fs, defn->type).expr();
 		if(defn->init->type->isVoidType())
 			error(defn->init, "Value has void type");
 
@@ -218,7 +218,7 @@ sst::Stmt* ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	fs->stree->addDefinition(this->name, defn);
 
-	return defn;
+	return TCResult(defn);
 }
 
 
