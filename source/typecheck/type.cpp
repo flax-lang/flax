@@ -102,7 +102,10 @@ namespace sst
 
 						// TODO: not re-entrant either.
 						auto restore = this->stree;
-						this->stree = tree;
+
+						this->stree = (scoped ? this->stree : str);
+						iceAssert(this->stree);
+
 						{
 							auto gdef = gdefs[0];
 							iceAssert(gdef);

@@ -40,7 +40,7 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	fs->stree->addDefinition(this->name, defn);
 
-	this->genericVersions.push_back({ defn, gmaps });
+	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
 	return TCResult(defn);
 }
 

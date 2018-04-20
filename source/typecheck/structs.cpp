@@ -87,7 +87,15 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 		fs->typeDefnMap[str] = defn;
 	}
 
-	this->genericVersions.push_back({ defn, gmaps });
+
+	fs->pushTree(defn->id.name);
+	{
+		for(auto t : this->nestedTypes)
+			t->generateDeclaration(fs, 0, { });
+	}
+	fs->popTree();
+
+	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
 	return TCResult(defn);
 }
 
@@ -97,7 +105,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	defer(fs->popLoc());
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
-	if(tcr.isParametric())  return tcr;
+	if(tcr.isParametric())  {warn(this, "parametric"); return tcr;}
 	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for struct '%s'", this->name);
 
 	auto defn = dcast(sst::StructDefn, tcr.defn());
@@ -116,7 +124,11 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dcast(sst::TypeDefn, t->typecheck(fs).defn());
+		auto tcr = t->typecheck(fs);
+		if(tcr.isParametric())  continue;
+		if(tcr.isError())       error(t, "Failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
+
+		auto st = dcast(sst::TypeDefn, tcr.defn());
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
@@ -240,7 +252,14 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 		fs->typeDefnMap[cls] = defn;
 	}
 
-	this->genericVersions.push_back({ defn, gmaps });
+	fs->pushTree(defn->id.name);
+	{
+		for(auto t : this->nestedTypes)
+			t->generateDeclaration(fs, 0, { });
+	}
+	fs->popTree();
+
+	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
 	return TCResult(defn);
 }
 
@@ -270,13 +289,21 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
+	// for(auto t : this->nestedTypes)
+	// 	t->generateDeclaration(fs, 0, { });
+
 	for(auto t : this->nestedTypes)
 	{
-		auto st = dcast(sst::TypeDefn, t->typecheck(fs).defn());
+		auto tcr = t->typecheck(fs);
+		if(tcr.isParametric())  continue;
+		if(tcr.isError())       error(t, "Failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
+
+		auto st = dcast(sst::TypeDefn, tcr.defn());
 		iceAssert(st);
 
 		defn->nestedTypes.push_back(st);
 	}
+
 
 
 	fs->enterStructBody(defn);
@@ -320,6 +347,8 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, cls, { }).defn());
 			iceAssert(decl);
+
+			// info(decl, "inside '%s' -- %s", defn->id.str(), decl->type);
 
 			defn->methods.push_back(decl);
 

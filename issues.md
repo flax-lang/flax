@@ -194,6 +194,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- actually make generic types work, because we never tested them properly last time.
+- fixed a bug in `pts::NamedType` that didn't take the generic mapping into account -- also fixed related issue in the parser
+
+`(860b61e)`
 - move to a `TCResult` thing for typechecking returns, cleans up generic types a bunch
 - fix a bug where we couldn't define generic types inside of a scope (eg. in a function)
 

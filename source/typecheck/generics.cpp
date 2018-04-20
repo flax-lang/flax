@@ -10,6 +10,11 @@
 
 namespace sst
 {
+	std::vector<TypeParamMap_t> TypecheckState::getCurrentGenericContextStack()
+	{
+		return this->genericTypeContextStack;
+	}
+
 	void TypecheckState::pushGenericTypeContext()
 	{
 		this->genericTypeContextStack.push_back({ });
@@ -109,8 +114,6 @@ namespace sst
 			this->addGenericTypeMapping(map.first, map.second);
 		}
 
-		auto oldname = type->name;
-
 		auto mapToString = [&mappings]() -> std::string {
 			std::string ret;
 			for(auto m : mappings)
@@ -126,12 +129,13 @@ namespace sst
 		//* we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
 		//* type parameters.
 		//? fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
+
+		auto oldname = type->name;
 		type->name = oldname + "<" + mapToString() + ">";
 
 		//* we **MUST** first call ::generateDeclaration if we're doing a generic thing.
 		//* with the mappings that we're using to instantiate it.
 		type->generateDeclaration(this, 0, mappings);
-
 		// now it is 'safe' to call typecheck.
 		auto ret = dcast(Defn, type->typecheck(this, 0, mappings).defn());
 		iceAssert(ret);
@@ -157,13 +161,22 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 	else
 	{
 		//! ACHTUNG !
-		//* NOTE: this implies that we **MUST** call ::generateDeclaration with the appropriate maps *before* calling typecheck on the AST
-		//* if we're a generic thing.
+		//* IMPORTANT *
+		/*
+			? the reason we match the *ENTIRE* generic context stack when checking for an existing definition is because of nesting.
+			* if we only checked the current map, then for methods of generic types and/or nested, non-generic types inside generic types,
+			* we'd match an existing definition even though all the generic types are probably completely different.
 
-		// check whether we've done this before
+			* so, pretty much the only way to make sure we're absolutely certain it's the same context is to compare the entire type stack.
+
+			? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
+			? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
+			? the generic types match in the stack.
+		*/
+
 		for(const auto& gv : this->genericVersions)
 		{
-			if(gv.second == gmaps)
+			if(gv.second == fs->getCurrentGenericContextStack())
 				return { true, gv.first };
 		}
 

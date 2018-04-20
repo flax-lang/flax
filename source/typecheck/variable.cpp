@@ -218,6 +218,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	fs->stree->addDefinition(this->name, defn);
 
+	// warn(this, "my type is %s", defn->type);
+
 	return TCResult(defn);
 }
 
