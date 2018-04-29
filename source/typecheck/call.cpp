@@ -475,14 +475,20 @@ namespace sst
 	{
 		iceAssert(errs);
 
-		// return this->resolveFunctionFromCandidates(fs, arguments, errs);
-
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
 
 		std::vector<Defn*> fns;
 		StateTree* tree = this->stree;
 
+		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
+		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
+
+		//? I can't find any information about this behaviour in languages other than C++, because we need to have a certain set of
+		//? features for it to manifest -- 1. user-defined, explicit namespaces; 2. function overloading.
+
+		//* how it works in C++, and for now also in Flax, is that once we match *any* names in the current scope, we stop searching upwards
+		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
 		bool didVar = false;
 		while(tree)
 		{
@@ -518,6 +524,23 @@ namespace sst
 					doTheExit();
 				}
 			}
+
+			// include generic functions.
+			//* based on the thing above, we only need to search generic functions if we haven't found anything via name lookup alone.
+			if(fns.empty())
+			{
+				// if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
+				// {
+				// 	TypeParamMap_t gmaps;
+				// 	for(const auto& p : this->mappings)
+				// 		gmaps[p.first] = fs->convertParserTypeToFIR(p.second);
+
+				// 	auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false);
+				// 	if(res)
+				// 		return returnResult(res);
+				// }
+			}
+
 
 			if(travUp && fns.empty())
 				tree = tree->parent;
@@ -638,6 +661,14 @@ namespace sst
 		}
 	}
 }
+
+
+
+
+
+
+
+
 
 
 

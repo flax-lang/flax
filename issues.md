@@ -193,7 +193,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(c911408)`
 - actually make generic types work, because we never tested them properly last time.
 - fixed a bug in `pts::NamedType` that didn't take the generic mapping into account -- also fixed related issue in the parser
 

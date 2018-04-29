@@ -95,7 +95,7 @@ namespace sst
 					t = t->getPointerElementType(), ptrs++;
 			}
 
-			if(ptrs < type->generics[map.first].pointerDegree)
+			if(type->generics.find(map.first) != type->generics.end() && ptrs < type->generics[map.first].pointerDegree)
 			{
 				if(allowFail)
 				{
@@ -113,6 +113,50 @@ namespace sst
 			// ok, push the thing.
 			this->addGenericTypeMapping(map.first, map.second);
 		}
+
+
+
+		// check if we provided all the required mappings.
+		{
+			// TODO: make an elegant early-out for this situation?
+			for(const auto& [ name, constr ] : type->generics)
+			{
+				if(mappings.find(name) == mappings.end())
+				{
+					if(allowFail)
+					{
+						return 0;
+					}
+					else
+					{
+						exitless_error(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", type->name, name);
+						info(type, "'%s' was defined here:", type->name);
+						doTheExit();
+					}
+				}
+			}
+
+			// TODO: pretty lame, but look for things that don't exist.
+			for(const auto& [ name, t ] : mappings)
+			{
+				{
+				if(type->generics.find(name) == type->generics.end())
+					if(allowFail)
+					{
+						return 0;
+					}
+					else
+					{
+						exitless_error(this->loc(), "Parametric entity '%s' does not have an argument '%s'", type->name, name);
+						info(type, "'%s' was defined here:", type->name);
+						doTheExit();
+					}
+				}
+			}
+		}
+
+
+
 
 		auto mapToString = [&mappings]() -> std::string {
 			std::string ret;
@@ -142,6 +186,63 @@ namespace sst
 
 		type->name = oldname;
 		return ret;
+	}
+
+
+
+	Defn* TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+		const TypeParamMap_t& gmaps, fir::Type* infer, bool allowFailIfNoMapping)
+	{
+		if(gmaps.empty())
+		{
+			if(allowFailIfNoMapping)    return 0;
+			else                        error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name);
+		}
+
+		if(infer == 0 && gdefs.size() > 1)
+		{
+			exitless_error(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+			for(auto g : gdefs)
+				info(g, "Potential target here:");
+
+			doTheExit();
+		}
+
+
+		//? now if we have multiple things then we need to try them all, which can get real slow real quick.
+		//? unfortunately I see no better way to do this.
+		// TODO: find a better way to do this??
+
+		std::vector<sst::Defn*> pots;
+		for(const auto& gdef : gdefs)
+		{
+			// because we're trying multiple things potentially, allow failure.
+			auto d = this->instantiateGenericEntity(gdef, gmaps, true);
+			if(d && (infer ? d->type == infer : true))
+				pots.push_back(d);
+		}
+
+		if(!pots.empty())
+		{
+			if(pots.size() > 1)
+			{
+				exitless_error(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+				for(auto p : pots)
+					info(p, "Potential target here:");
+
+				doTheExit();
+			}
+			else
+			{
+				// ok, great. just return that shit.
+				iceAssert(pots[0]);
+				return pots[0];
+			}
+		}
+		else
+		{
+			return 0;
+		}
 	}
 }
 
