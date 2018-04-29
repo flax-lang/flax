@@ -20,6 +20,14 @@ sst::Stmt* TCResult::stmt()
 
 
 
+bool Identifier::operator == (const Identifier& other) const
+{
+	return (other.name == this->name) && (other.str() == this->str());
+}
+bool Identifier::operator != (const Identifier& other) const
+{
+	return !(other == *this);
+}
 
 
 std::string Identifier::str() const
