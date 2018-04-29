@@ -7,64 +7,64 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-// ffi fn srand(s: i32)
-// ffi fn rand() -> i32
+ffi fn srand(s: i32)
+ffi fn rand() -> i32
 
-// let names = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+let names = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
 
-// class Animal
-// {
-// 	init(w: f64)
-// 	{
-// 		// printf("make animal w = %f\n", w)
-// 		weight = w
-// 		name = names[rand() % names.length]
-// 	}
+class Animal
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names[rand() % names.length]
+	}
 
-// 	virtual fn makeNoise()
-// 	{
-// 		printf("some generic sound\n")
-// 	}
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
 
-// 	var name: str
-// 	var weight: f64
-// 	var cute: bool = true
-// }
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
 
-// class Dog : Animal
-// {
-// 	init() : super(w: 300)
-// 	{
-// 		// printf("make dog (w = %f)\n", weight)
-// 	}
+class Dog : Animal
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
 
-// 	override fn makeNoise()
-// 	{
-// 		printf("bark bark (%f)\n", weight)
-// 	}
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
 
-// 	virtual fn wag()
-// 	{
-// 		printf("wagging tail of length %d\n", tail)
-// 	}
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
 
-// 	var tail: int = 37
-// }
+	var tail: int = 37
+}
 
-// class Dalmation : Dog
-// {
-// 	init() : super()
-// 	{
-// 		printf("make dalmation\n")
-// 	}
+class Dalmation : Dog
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
 
-// 	override fn wag()
-// 	{
-// 		printf("dalmation wags %d\n", tail)
-// 	}
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
 
-// 	var numSpots: int
-// }
+	var numSpots: int
+}
 
 
 class LinkedList<T>
@@ -132,32 +132,50 @@ class LinkedList<T>
 
 	*/
 
+	//* hello there
+
+	/*
+		TODO list for when I finally feel like coding:
+
+		// 1. factor out the code in typecheck/variable.cpp that searches for generic stuff into a new thing
+		2. modify resolveFunction to take generic mapping information.
+		3. call that new thing from typecheck/call.cpp in resolveFunction.
+		4. if we're passed in the generic mappings, we can use similar logic (the variable thing) (that we factored out) to instantiate
+			the appropriate generic function.
+
+		5. for cases where we don't have explicit mappings, since resolveFunction already has the parameter types, we can call our type
+			inference algorithm from there, both for functions as well as type constructors -- both struct and class.
+
+		5b. for struct constructors, it should be a simple case of mapping the struct fields to the function call parameter 'format', if you will.
+			for classes we just pass in all the init functions as candidates, since those will just be generic over their parents' types.
+	*/
 
 
 	do {
 		// fn foo<T>(a: T, b: T) -> T { return a + b }
 
 		// let k = foo<T: int>(10, 20)
+
 		// printf("k = %d\n", k)
 	}
 
 
-	// do {
-	// 	// don't question.
-	// 	srand(284811)
+	do {
+		// don't question.
+		srand(284811)
 
-	// 	// fn test() -> f64 { printf("hi\n"); return 31.51 }
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
 
-	// 	let dogs = alloc &Dog [5] {
-	// 		if i % 2 == 1   { it = alloc Dalmation }
-	// 		else            { it = alloc Dog }
-	// 	}
+		let dogs = alloc &Dog [5] {
+			if i % 2 == 1   { it = alloc Dalmation }
+			else            { it = alloc Dog }
+		}
 
-	// 	for dog, i in dogs {
-	// 		printf("%d: %s - ", i, dog.name)
-	// 		dog.wag()
-	// 	}
-	// }
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
 
 
 

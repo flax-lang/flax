@@ -129,8 +129,8 @@ struct Identifier
 	std::string mangled() const;
 	std::string mangledName() const;
 
-	bool operator == (const Identifier& other) const { return other.str() == this->str(); }
-	bool operator != (const Identifier& other) const { return !(other == *this); }
+	bool operator == (const Identifier& other) const;
+	bool operator != (const Identifier& other) const;
 };
 
 struct TCResult

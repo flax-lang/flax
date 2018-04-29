@@ -19,6 +19,14 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->name == "_")
 		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
 
+	auto returnResult = [this](sst::Defn* def) -> TCResult {
+		auto ret = new sst::VarRef(this->loc, def->type);
+		ret->name = this->name;
+		ret->def = def;
+
+		return TCResult(ret);
+	};
+
 	// hm.
 	sst::StateTree* tree = fs->stree;
 	while(tree)
@@ -42,13 +50,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			for(auto v : vs)
 			{
 				if(v->type == infer)
-				{
-					auto ret = new sst::VarRef(this->loc, v->type);
-					ret->name = this->name;
-					ret->def = v;
-
-					return TCResult(ret);
-				}
+					return returnResult(v);
 			}
 
 			exitless_error(this, "No definition of '%s' matching type '%s'", this->name, infer);
@@ -77,68 +79,17 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 
-
-			{
-				auto ret = new sst::VarRef(this->loc, def->type);
-				ret->name = this->name;
-				ret->def = def;
-
-				return TCResult(ret);
-			}
+			return returnResult(def);
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
-			// ok, great...
-			if(this->mappings.empty())
-				error(this, "Parametric entity '%s' cannot be referenced without type arguments", this->name);
-
-			if(infer == 0 && gdefs.size() > 1)
-			{
-				exitless_error(this, "Ambiguous reference to parametric entity '%s'", this->name);
-				for(auto g : gdefs)
-					info(g, "Potential target here:");
-
-				doTheExit();
-			}
-
 			TypeParamMap_t gmaps;
 			for(const auto& p : this->mappings)
 				gmaps[p.first] = fs->convertParserTypeToFIR(p.second);
 
-			//? now if we have multiple things then we need to try them all, which can get real slow real quick.
-			//? unfortunately I see no better way to do this.
-			// TODO: find a better way to do this??
-
-			std::vector<sst::Defn*> pots;
-			for(const auto& gdef : gdefs)
-			{
-				// because we're trying multiple things potentially, allow failure.
-				auto d = fs->instantiateGenericEntity(gdef, gmaps, true);
-				if(d && (infer ? d->type == infer : true))
-					pots.push_back(d);
-			}
-
-			if(!pots.empty())
-			{
-				if(pots.size() > 1)
-				{
-					exitless_error(this, "Ambiguous reference to parametric entity '%s'", this->name);
-					for(auto p : pots)
-						info(p, "Potential target here:");
-
-					doTheExit();
-				}
-				else
-				{
-					// ok, great. just return that shit.
-					auto ret = new sst::VarRef(this->loc, pots[0]->type);
-					ret->name = this->name;
-					ret->def = pots[0];
-
-					return TCResult(ret);
-				}
-			}
-			// else: just go up the tree and try again.
+			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false);
+			if(res)
+				return returnResult(res);
 		}
 
 		if(this->traverseUpwards)

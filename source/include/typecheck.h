@@ -170,6 +170,9 @@ namespace sst
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
 		Defn* instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings, bool allowFail);
 
+		Defn* attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+			const TypeParamMap_t& mappings, fir::Type* infer, bool allowFailIfNoMapping);
+
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
 
