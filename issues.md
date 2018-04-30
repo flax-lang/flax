@@ -5,6 +5,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### FEATURES TO IMPLEMENT
 
+1. Constructor syntax for builtin types.
+
 
 3. Optional arguments.
 
@@ -174,9 +176,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 11. Optimisation: use interned strings for comparison (and for use as keys in all the hashmaps we have), hopefully allowing a large-ish speedup since
 	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
-
-
-12. Constructor-style syntax for builtin types, eg. `string("foo")` since string literals are now of type `[mut char:]`
 
 
 13. Make string refcounting not obscene, and move to the `refcount-pointer-is-a-separate-thing` scheme that we switched to for dynamic arrays. The current
