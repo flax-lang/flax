@@ -15,7 +15,9 @@
 
 #include <fstream>
 
-#pragma warning(push, 0)
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+#endif
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
@@ -37,7 +39,9 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-#pragma warning(pop)
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
 
 #include <stdio.h>
 #include <fcntl.h>

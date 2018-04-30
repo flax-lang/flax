@@ -11,12 +11,17 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#pragma warning(push, 0)
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+#endif
+
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 
-#pragma warning(pop)
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
 
 #include "ir/module.h"
 #include "ir/constant.h"
