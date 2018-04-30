@@ -85,6 +85,7 @@ namespace sst
 		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
 
+
 	struct TypecheckState
 	{
 		TypecheckState(StateTree* st) : dtree(new DefinitionTree(st)), stree(dtree->base) { }
@@ -169,10 +170,10 @@ namespace sst
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
-		Defn* instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings, bool allowFail);
+		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
 
-		Defn* attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-			const TypeParamMap_t& mappings, fir::Type* infer, bool allowFailIfNoMapping);
+		TCResult attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+			const TypeParamMap_t& mappings, fir::Type* infer);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
@@ -184,12 +185,6 @@ namespace sst
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
-		struct PrettyError
-		{
-			std::string errorStr;
-			std::vector<std::pair<Location, std::string>> infoStrs;
-		};
-
 		int getCastDistance(fir::Type* from, fir::Type* to);
 
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
@@ -198,12 +193,12 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
-		Defn* resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,  const TypeParamMap_t& gmaps,
+		TCResult resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
 			bool traverseUp);
-		Defn* resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,
-			const TypeParamMap_t& gmaps, bool allowImplicitSelf);
+		TCResult resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
+			bool allowImplicitSelf);
 
-		Defn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs, const TypeParamMap_t& gmaps);
+		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps);
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,

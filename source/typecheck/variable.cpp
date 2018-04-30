@@ -37,11 +37,13 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer == 0)
 			{
-				exitless_error(this, "Ambiguous reference to '%s'", this->name);
-				for(auto v : vs)
-					info(v, "Potential target here:");
+				PrettyError errs;
+				errs.addError(this, "Ambiguous reference to '%s'", this->name);
 
-				doTheExit();
+				for(auto v : vs)
+					errs.addInfo(v, "Potential target here:");
+
+				return TCResult(errs);
 			}
 
 
@@ -53,11 +55,12 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return returnResult(v);
 			}
 
-			exitless_error(this, "No definition of '%s' matching type '%s'", this->name, infer);
+			PrettyError errs;
+			errs.addError(this, "No definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
-				info(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
+				errs.addInfo(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
 
-			doTheExit();
+			return TCResult(errs);
 		}
 		else if(!vs.empty())
 		{
@@ -71,11 +74,12 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				//* -- those are technically "in" a function body, but they're certainly not methods.
 				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
 				{
-					exitless_error(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+					PrettyError errs;
+					errs.addError(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
 						this->name, fld->parentType->id.name);
 
-					info(def, "Field '%s' was defined here:", def->id.name);
-					doTheExit();
+					errs.addInfo(def, "Field '%s' was defined here:", def->id.name);
+					return TCResult(errs);
 				}
 			}
 
@@ -84,9 +88,10 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false);
-			if(res)
-				return returnResult(res);
+
+			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer);
+			if(res.isDefn())
+				return returnResult(res.defn());
 		}
 
 		if(this->traverseUpwards)

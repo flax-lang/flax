@@ -114,6 +114,31 @@ enum class IdKind
 	Type,
 };
 
+
+#define COLOUR_RESET			"\033[0m"
+#define COLOUR_BLACK			"\033[30m"			// Black
+#define COLOUR_RED				"\033[31m"			// Red
+#define COLOUR_GREEN			"\033[32m"			// Green
+#define COLOUR_YELLOW			"\033[33m"			// Yellow
+#define COLOUR_BLUE				"\033[34m"			// Blue
+#define COLOUR_MAGENTA			"\033[35m"			// Magenta
+#define COLOUR_CYAN				"\033[36m"			// Cyan
+#define COLOUR_WHITE			"\033[37m"			// White
+#define COLOUR_BLACK_BOLD		"\033[1m"			// Bold Black
+#define COLOUR_RED_BOLD			"\033[1m\033[31m"	// Bold Red
+#define COLOUR_GREEN_BOLD		"\033[1m\033[32m"	// Bold Green
+#define COLOUR_YELLOW_BOLD		"\033[1m\033[33m"	// Bold Yellow
+#define COLOUR_BLUE_BOLD		"\033[1m\033[34m"	// Bold Blue
+#define COLOUR_MAGENTA_BOLD		"\033[1m\033[35m"	// Bold Magenta
+#define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
+#define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
+#define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
+
+template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
+{
+	return strprintf("%s%s", COLOUR_RESET, COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + strprintf("%s", COLOUR_RESET);
+}
+
 struct Identifier
 {
 	Identifier() : name(""), kind(IdKind::Invalid) { }
@@ -132,6 +157,99 @@ struct Identifier
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const;
 };
+
+
+struct Location
+{
+	size_t fileID = 0;
+	size_t line = 0;
+	size_t col = 0;
+	size_t len = 0;
+
+	bool operator == (const Location& other) const
+	{
+		return this->col == other.col && this->line == other.line && this->len == other.len && this->fileID == other.fileID;
+	}
+
+	bool operator != (const Location& other) const
+	{
+		return !(*this == other);
+	}
+
+	std::string toString() const;
+};
+
+struct Locatable
+{
+	Locatable(const Location& l, const std::string& readable) : loc(l), readableName(readable) { }
+	virtual ~Locatable() { }
+
+	Location loc;
+	std::string readableName;
+};
+
+
+struct PrettyError
+{
+	PrettyError() { }
+
+	enum class Kind
+	{
+		Error,
+		Warning,
+		Info
+	};
+
+	template <typename... Ts>
+	static PrettyError error(const Location& l, const char* fmt, Ts... ts)
+	{
+		PrettyError errs;
+		errs.addError(l, fmt, ts...);
+		return errs;
+	}
+
+	template <typename... Ts>
+	static PrettyError error(Locatable* l, const char* fmt, Ts... ts) { return PrettyError::error(l->loc, fmt, ts...); }
+
+
+	template <typename... Ts>
+	void addError(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l->loc, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addErrorBefore(Locatable* l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l->loc, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addWarning(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l->loc, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addInfo(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l->loc, strbold(fmt, ts...) }); }
+
+
+
+
+	template <typename... Ts>
+	void addError(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addErrorBefore(const Location& l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addWarning(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l, strbold(fmt, ts...) }); }
+
+	template <typename... Ts>
+	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
+
+	bool hasErrors() { return this->_strs.size() > 0; }
+	void incorporate(const PrettyError& other)
+	{
+		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
+	}
+
+	std::vector<std::tuple<Kind, Location, std::string>> _strs;
+};
+
+
+
 
 struct TCResult
 {
@@ -153,22 +271,66 @@ struct TCResult
 		sst::Stmt* _st;
 		sst::Expr* _ex;
 		sst::Defn* _df;
-		const char* _emsg;
+		PrettyError* _pe;
 	};
 
 	RK _kind = RK::Invalid;
 
-	~TCResult() { if(this->isError() && this->_emsg) free((void*) this->_emsg); }
+	~TCResult() { if(this->isError() && this->_pe) delete this->_pe; }
 
 	TCResult(RK k) :  _kind(k)                                  { _st = 0; }
 	explicit TCResult(sst::Stmt* s) : _kind(RK::Statement)      { _st = s; }
 	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
-	explicit TCResult(const std::string& m) : _kind(RK::Error)  { _emsg = strdup(m.c_str()); }
+	explicit TCResult(const PrettyError& pe) : _kind(RK::Error) { _pe = new PrettyError(pe); }
 
-	std::string error() { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return std::string(this->_emsg); }
-	sst::Expr* expr()   { if(this->_kind != RK::Expression) { _error_and_exit("not expr\n"); } return this->_ex; }
-	sst::Defn* defn()   { if(this->_kind != RK::Definition) { _error_and_exit("not defn\n"); } return this->_df; }
+	TCResult(const TCResult& r)
+	{
+		this->_kind = r._kind;
+
+		if(this->isError())     this->_pe = new PrettyError(*r._pe);
+		else if(this->isStmt()) this->_st = r._st;
+		else if(this->isExpr()) this->_ex = r._ex;
+		else if(this->isDefn()) this->_df = r._df;
+	}
+
+	TCResult(TCResult&& r)
+	{
+		this->_kind = r._kind;
+
+		if(this->isError())     { this->_pe = r._pe; r._pe = 0; }
+		else if(this->isStmt()) { this->_st = r._st; r._st = 0; }
+		else if(this->isExpr()) { this->_ex = r._ex; r._ex = 0; }
+		else if(this->isDefn()) { this->_df = r._df; r._df = 0; }
+	}
+
+	TCResult& operator = (const TCResult& r)
+	{
+		TCResult tmp(r);
+		*this = std::move(tmp);
+		return *this;
+	}
+
+	TCResult& operator = (TCResult&& r)
+	{
+		if(&r != this)
+		{
+			if(this->isError())     { delete this->_pe; this->_pe = r._pe; r._pe = 0; }
+			else if(this->isStmt()) { this->_st = r._st; r._st = 0; }
+			else if(this->isExpr()) { this->_ex = r._ex; r._ex = 0; }
+			else if(this->isDefn()) { this->_df = r._df; r._df = 0; }
+		}
+
+		return *this;
+	}
+
+
+
+	PrettyError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
+
+
+	sst::Expr* expr();
+	sst::Defn* defn();
 
 	//* stmt() is the most general case -- definitions and expressions are both statements.
 	// note: we need the definition of sst::Stmt and sst::Expr to do safe dynamic casting, so it's in identifier.cpp.
@@ -199,25 +361,14 @@ struct CGResult
 	};
 
 	CGResult() : CGResult(0) { }
-	explicit CGResult(fir::Value* v) : value(v), pointer(0), kind(VK::RValue) { }
-	explicit CGResult(fir::Value* v, fir::Value* p) : value(v), pointer(p), kind(VK::RValue) { }
-	explicit CGResult(fir::Value* v, fir::Value* p, VK k) : value(v), pointer(p), kind(k) { }
+	explicit CGResult(fir::Value* v) noexcept : value(v), pointer(0), kind(VK::RValue) { }
+	explicit CGResult(fir::Value* v, fir::Value* p) noexcept : value(v), pointer(p), kind(VK::RValue) { }
+	explicit CGResult(fir::Value* v, fir::Value* p, VK k) noexcept : value(v), pointer(p), kind(k) { }
 
 	fir::Value* value = 0;
 	fir::Value* pointer = 0;
 
 	VK kind = VK::Invalid;
-
-	// CGResult& operator = (const CGResult& other)
-	// {
-	// 	if(this == &other) return *this;
-
-	// 	this->kind = other.kind;
-	// 	this->value = other.value;
-	// 	this->pointer = other.pointer;
-
-	// 	return *this;
-	// }
 };
 
 namespace std
@@ -241,34 +392,10 @@ namespace std
 	};
 }
 
-struct Location
-{
-	size_t fileID = 0;
-	size_t line = 0;
-	size_t col = 0;
-	size_t len = 0;
 
-	bool operator == (const Location& other) const
-	{
-		return this->col == other.col && this->line == other.line && this->len == other.len && this->fileID == other.fileID;
-	}
 
-	bool operator != (const Location& other) const
-	{
-		return !(*this == other);
-	}
+[[noreturn]] void postErrorsAndQuit(const PrettyError& error);
 
-	std::string toString() const;
-};
-
-struct Locatable
-{
-	Locatable(const Location& l, const std::string& readable) : loc(l), readableName(readable) { }
-	virtual ~Locatable() { }
-
-	Location loc;
-	std::string readableName;
-};
 
 enum class VisibilityLevel
 {
@@ -495,24 +622,6 @@ std::string strprintf(const char* fmt, Ts... ts)
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 
-#define COLOUR_RESET			"\033[0m"
-#define COLOUR_BLACK			"\033[30m"			// Black
-#define COLOUR_RED				"\033[31m"			// Red
-#define COLOUR_GREEN			"\033[32m"			// Green
-#define COLOUR_YELLOW			"\033[33m"			// Yellow
-#define COLOUR_BLUE				"\033[34m"			// Blue
-#define COLOUR_MAGENTA			"\033[35m"			// Magenta
-#define COLOUR_CYAN				"\033[36m"			// Cyan
-#define COLOUR_WHITE			"\033[37m"			// White
-#define COLOUR_BLACK_BOLD		"\033[1m"			// Bold Black
-#define COLOUR_RED_BOLD			"\033[1m\033[31m"	// Bold Red
-#define COLOUR_GREEN_BOLD		"\033[1m\033[32m"	// Bold Green
-#define COLOUR_YELLOW_BOLD		"\033[1m\033[33m"	// Bold Yellow
-#define COLOUR_BLUE_BOLD		"\033[1m\033[34m"	// Bold Blue
-#define COLOUR_MAGENTA_BOLD		"\033[1m\033[35m"	// Bold Magenta
-#define COLOUR_CYAN_BOLD		"\033[1m\033[36m"	// Bold Cyan
-#define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
-#define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
 
 
 

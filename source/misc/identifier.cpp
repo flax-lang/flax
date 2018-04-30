@@ -6,8 +6,17 @@
 #include "ir/type.h"
 #include "sst.h"
 
+
+//* so how this works is, instead of having to do manual checks and error-posting, since everyone uses this TCResult system,
+//* when we try to unwrap something we got from a typecheck and it's actually an error, we just post the error and quit.
+//? in theory this should work like it used to, probably.
+// TODO: investigate??
+
 sst::Stmt* TCResult::stmt()
 {
+	if(this->_kind == RK::Error)
+		postErrorsAndQuit(*this->_pe);
+
 	switch(this->_kind)
 	{
 		case RK::Statement:     return this->_st;
@@ -17,7 +26,27 @@ sst::Stmt* TCResult::stmt()
 	}
 }
 
+sst::Expr* TCResult::expr()
+{
+	if(this->_kind == RK::Error)
+		postErrorsAndQuit(*this->_pe);
 
+	if(this->_kind != RK::Expression)
+		_error_and_exit("not expr\n");
+
+	return this->_ex;
+}
+
+sst::Defn* TCResult::defn()
+{
+	if(this->_kind == RK::Error)
+		postErrorsAndQuit(*this->_pe);
+
+	if(this->_kind != RK::Definition)
+		_error_and_exit("not defn\n");
+
+	return this->_df;
+}
 
 
 bool Identifier::operator == (const Identifier& other) const

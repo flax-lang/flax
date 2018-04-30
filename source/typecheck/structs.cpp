@@ -542,23 +542,15 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 		auto baseargs = fs->typecheckCallArguments(this->superArgs);
 
-		sst::TypecheckState::PrettyError errs;
+		PrettyError errs;
 		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
 			[](FnCallArgument a) -> sst::FunctionDecl::Param {
 				return sst::FunctionDecl::Param { a.name, a.loc, a.value->type };
-		}), &errs, { });
+		}), { });
 
-		if(!constr)
-		{
-			exitless_error(this, "%s", errs.errorStr);
-			for(auto i : errs.infoStrs)
-				info(i.first, "%s", i.second);
-
-			doTheExit();
-		}
 
 		call->arguments = baseargs;
-		call->target = dcast(sst::FunctionDefn, constr);
+		call->target = dcast(sst::FunctionDefn, constr.defn());
 		iceAssert(call->target);
 
 		// insert it as the first thing.
