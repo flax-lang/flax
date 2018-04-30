@@ -368,8 +368,8 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, const std::string& kind,
-		std::function<bool (TypecheckState* fs, Defn* other)> doCheck, StateTree* tree)
+	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> doCheck,
+		StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
@@ -385,35 +385,95 @@ namespace sst
 				if(!didWarnAboutShadow)
 				{
 					didWarnAboutShadow = true;
-					warn(defn, "Definition of %s '%s' shadows one or more previous definitions", kind, defn->id.name);
-				}
+					warn(defn, "Definition of %s '%s' shadows one or more previous definitions", defn->getKind(), defn->id.name);
 
-				for(auto d : defs)
-					info(d, "Previously defined here:");
+					for(auto d : defs)
+						info(d, "Previously defined here:");
+				}
 			}
 
 			_tree = _tree->parent;
 		}
 
+		auto makeTheError = [](PrettyError* errs, Locatable* a, const std::string& n, const std::string& ak,
+			const std::vector<std::pair<Locatable*, std::string>>& conflicts) {
+
+			errs->addError(a, "Duplicate definition of '%s'", n);
+
+			bool first = true;
+
+			for(const auto& [ l, kind ] : conflicts)
+			{
+				errs->addInfo(l, "%shere%s:", first ? strprintf("Conflicting definition%s ", conflicts.size() == 1 ? "" : "s") : "and ",
+					ak == kind ? "" : strprintf(" (as a %s)", kind));
+
+				first = false;
+			}
+		};
+
 		// ok, now check only the current scope
 		auto defs = tree->getDefinitionsWithName(defn->id.name);
 
 		bool didError = false;
-		for(auto def : defs)
+		for(auto otherdef : defs)
 		{
-			bool conflicts = doCheck(this, def);
+			bool conflicts = doCheck(this, otherdef);
 			if(conflicts)
 			{
 				if(!didError)
 				{
-					didError = true;
-					exitless_error(defn, "Duplicate definition of %s '%s'", kind, defn->id.name);
-				}
-				info(def, "Conflicting definition here:");
+					PrettyError errs;
+					makeTheError(&errs, defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
-				if(dcast(sst::FunctionDecl, def) || dcast(sst::FunctionDecl, defn))
-					info("Functions cannot be overloaded based on argument names alone");
+					// TODO: be more intelligent about when we give this informative tidbit
+					if(dcast(sst::FunctionDecl, otherdef) && dcast(sst::FunctionDecl, defn))
+						errs.addInfo(Location(), "Functions cannot be overloaded based on argument names alone");
+
+					postErrorsAndQuit(errs);
+				}
 			}
+		}
+
+		// while in the interests of flexibility we provide a predicate for users to specify whether or not the duplicate definition is
+		// actually conflicting, for generics i couldn't be damned.
+		//? to know for certain that a definition will conflict with a generic thing, either we are:
+		// A: variable & generic anything
+		// B: function & generic type
+		// C: type & generic anything
+
+		if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(defn->id.name); gdefs.size() > 0)
+		{
+			PrettyError errs;
+			if(auto fn = dcast(sst::FunctionDecl, defn))
+			{
+				// honestly we can't know if we will conflict with other functions.
+				// filter out by kind.
+
+				auto newgds = util::filterMap(gdefs,
+					[](ast::Parameterisable* d) -> bool {
+						// return dcast(sst::TypeDefn, d) != nullptr;
+						return true;
+					},
+					[](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
+						return std::make_pair(d, d->getKind());
+					}
+				);
+
+				if(newgds.size() > 0)
+					makeTheError(&errs, defn, defn->id.name, defn->getKind(), newgds);
+			}
+			else
+			{
+				// assume everything conflicts, since functions are the only thing that can overload.
+				makeTheError(&errs, defn, defn->id.name, defn->getKind(),
+					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
+						return std::make_pair(d, d->getKind());
+					})
+				);
+			}
+
+			if(errs.hasErrors())
+				postErrorsAndQuit(errs);
 		}
 
 		if(didError)
@@ -425,7 +485,6 @@ namespace sst
 	static size_t _anonId = 0;
 	std::string TypecheckState::getAnonymousScopeName()
 	{
-		// warn(this->loc(), "make anon scope %zu", _anonId);
 		return "__anon_scope_" + std::to_string(_anonId++);
 	}
 }

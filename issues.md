@@ -8,6 +8,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 1. Constructor syntax for builtin types.
 
 
+2. Type solver/unifier for generic function calls
+
+
 3. Optional arguments.
 
 
@@ -21,9 +24,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 8. Operator overloading for assignment and subscript/slice
-
-
-13. Generic functions & types
 
 
 14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach
@@ -77,6 +77,33 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### THINGS TO INVESTIGATE
+
+
+0. Errors need to propagate better
+	Right now with the newly-implemented `PrettyError` system, we can propagate a lot more information upwards, and with the new thing of throwing an
+	error when we unwrap a `TCResult`, there's less need to be explicit when handling errors during typechecking.
+
+	Unfortunately, for a simple failed generic function instantiation, we get a mess like this:
+	```
+	(supertiny.flx:159:37) Error: No such function named 'foo' (in scope 'supertiny.main().__anon_scope_0')
+		let k = foo<T: int, G: str>(10, 20)
+								^
+	(supertiny.flx:159:37) Error: No viable candidates in attempted instantiation of parametric entity 'foo'; candidates are:
+		let k = foo<T: int, G: str>(10, 20)
+								^
+	(supertiny.flx:159:37) Error: Parametric entity 'foo' does not have an argument 'G'
+		let k = foo<T: int, G: str>(10, 20)
+								^
+	(supertiny.flx:157:13) Note: 'foo' was defined here:
+		fn foo<T>(a: T, b: T) -> T { return a + b }
+	```
+
+	Which is counter to our goal of having readable error messages even in the face of failed template instantiations (looking at you, C++)
+
+	Possibly we need more 'kinds' of errors, where we can have boilerplate prefixes like `Candidate not suitable: <bla bla>`, rather than cascading
+	multiple errors (most of them should be `info` anyway, and not errors), and also the possiblity of just posting text without the `Error`/`Warning` etc
+	prefix. Also, we should be able to control the context-printing of each of those as well.
+
 
 
 1. Certain cases we still allow a zeroinitialised class to exist:
@@ -191,6 +218,14 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(??)`
+- check generic things when looking for duplicate definitions (to the best of our abilities)
+- actually make generic constructors work properly instead of by random chance
+
+`(1734444)`
+- generic functions work
+- made error reporting slightly better, though now it becames a little messy.
 
 `(c911408)`
 - actually make generic types work, because we never tested them properly last time.

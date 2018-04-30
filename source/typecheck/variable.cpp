@@ -102,7 +102,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "Reference to unknown entity '%s' (in scope '%s')", this->name, fs->serialiseCurrentScope());
+	error(this, "Reference to unknown entity '%s'", this->name);
 }
 
 
@@ -145,7 +145,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	//* for variables, as long as the name matches, we conflict.
-	fs->checkForShadowingOrConflictingDefinition(defn, "variable", [](TCS* fs, sst::Defn* other) -> bool { return true; });
+	fs->checkForShadowingOrConflictingDefinition(defn, [](TCS* fs, sst::Defn* other) -> bool { return true; });
 
 	// check the defn
 	if(this->initialiser)

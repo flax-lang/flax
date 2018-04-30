@@ -78,7 +78,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	auto str = fir::StructType::createWithoutBody(defn->id);
 	defn->type = str;
 
-	fs->checkForShadowingOrConflictingDefinition(defn, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
@@ -105,8 +105,11 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	defer(fs->popLoc());
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
-	if(tcr.isParametric())  {warn(this, "parametric"); return tcr;}
-	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for struct '%s'", this->name);
+
+	if(tcr.isParametric()) return tcr;
+
+	// note: auto-error on unwrap below.
+	// if(!tcr.isDefn())  error(this, "Failed to generate declaration for struct '%s'", this->name);
 
 	auto defn = dcast(sst::StructDefn, tcr.defn());
 	iceAssert(defn);
@@ -243,7 +246,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 		defn->baseClass = basedef;
 	}
 
-	fs->checkForShadowingOrConflictingDefinition(defn, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it

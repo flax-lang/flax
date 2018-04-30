@@ -520,6 +520,7 @@ namespace sst
 		TreeDefn(const Location& l) : Defn(l) { this->readableName = "<TREE DEFINITION>"; }
 		~TreeDefn() { }
 
+		virtual std::string getKind() override { return "namespace"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		StateTree* tree = 0;
@@ -541,6 +542,7 @@ namespace sst
 		ArgumentDefn(const Location& l) : Defn(l) { this->readableName = "<ARGUMENT DEFINITION>"; }
 		~ArgumentDefn() { }
 
+		virtual std::string getKind() override { return "argument"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
@@ -549,6 +551,7 @@ namespace sst
 		VarDefn(const Location& l) : Defn(l) { this->readableName = "variable definition"; }
 		~VarDefn() { }
 
+		virtual std::string getKind() override { return "variable"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		Expr* init = 0;
@@ -570,6 +573,8 @@ namespace sst
 		bool isEntry = false;
 		bool noMangle = false;
 		bool isVarArg = false;
+
+		virtual std::string getKind() override { return "function"; }
 
 		protected:
 		FunctionDecl(const Location& l) : Defn(l) { this->readableName = "function declaration"; }
@@ -630,6 +635,7 @@ namespace sst
 		StructFieldDefn(const Location& l) : VarDefn(l) { }
 		~StructFieldDefn() { }
 
+		virtual std::string getKind() override { return "field"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
 
 		TypeDefn* parentType = 0;
@@ -640,6 +646,7 @@ namespace sst
 		ClassInitialiserDefn(const Location& l) : FunctionDefn(l) { }
 		~ClassInitialiserDefn() { }
 
+		virtual std::string getKind() override { return "initialiser"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->FunctionDefn::_codegen(cs, inferred); }
 	};
 
@@ -650,6 +657,7 @@ namespace sst
 		StructDefn(const Location& l) : TypeDefn(l) { this->readableName = "struct definition"; }
 		~StructDefn() { }
 
+		virtual std::string getKind() override { return "struct"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::vector<StructFieldDefn*> fields;
@@ -666,6 +674,7 @@ namespace sst
 		ClassDefn(const Location& l) : StructDefn(l) { this->readableName = "class definition"; }
 		~ClassDefn() { }
 
+		virtual std::string getKind() override { return "class"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 
@@ -681,6 +690,7 @@ namespace sst
 		EnumCaseDefn(const Location& l) : Defn(l) { this->readableName = "enum case definition"; }
 		~EnumCaseDefn() { }
 
+		virtual std::string getKind() override { return "enum case"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		Expr* val = 0;
@@ -694,6 +704,7 @@ namespace sst
 		EnumDefn(const Location& l) : TypeDefn(l) { this->readableName = "enum definition"; }
 		~EnumDefn() { }
 
+		virtual std::string getKind() override { return "enum"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		fir::Type* memberType = 0;
