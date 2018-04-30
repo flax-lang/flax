@@ -14,9 +14,15 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#pragma warning(push, 0)
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+#endif
+
 #include "llvm/ADT/SmallVector.h"
-#pragma warning(pop)
+
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
 
 namespace llvm
 {

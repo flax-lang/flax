@@ -485,7 +485,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				return expr;
 			}
 		}
-		else if(auto typ = dcast(sst::TypeDefn, def))
+		else if(dcast(sst::TypeDefn, def))
 		{
 			if(auto cls = dcast(sst::ClassDefn, def))
 			{

@@ -398,7 +398,7 @@ namespace backend
 		}
 		else if(frontend::getParameter("mcmodel").empty())
 		{
-			codeModel = llvm::CodeModel::Default;
+			codeModel = llvm::CodeModel::Small;
 		}
 		else
 		{

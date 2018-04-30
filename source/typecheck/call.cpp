@@ -159,7 +159,7 @@ namespace sst
 			// all named
 			named = args;
 		}
-		else if(idx == -1)
+		else if(idx == (size_t) -1)
 		{
 			// all positional
 			positional = args;

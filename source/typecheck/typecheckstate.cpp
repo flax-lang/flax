@@ -282,9 +282,10 @@ namespace sst
 	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
 	{
 		std::vector<Defn*> ret;
-		for(const auto& [filename, defnMap] : this->definitions)
+		for(const auto& [ filename, defnMap ] : this->definitions)
 		{
-			if (auto it = defnMap.find(name); it != defnMap.end())
+			(void) filename;
+			if(auto it = defnMap.find(name); it != defnMap.end())
 			{
 				const auto& defs = it->second;
 				if(defs.size() > 0) ret.insert(ret.end(), defs.begin(), defs.end());
@@ -460,7 +461,7 @@ namespace sst
 				);
 
 				if(newgds.size() > 0)
-					makeTheError(&errs, defn, defn->id.name, defn->getKind(), newgds);
+					makeTheError(&errs, fn, fn->id.name, fn->getKind(), newgds);
 			}
 			else
 			{
