@@ -83,10 +83,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
-			TypeParamMap_t gmaps;
-			for(const auto& p : this->mappings)
-				gmaps[p.first] = fs->convertParserTypeToFIR(p.second);
-
+			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
 			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false);
 			if(res)
 				return returnResult(res);
