@@ -136,7 +136,7 @@ enum class IdKind
 
 template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
 {
-	return strprintf("%s%s", COLOUR_RESET, COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + strprintf("%s", COLOUR_RESET);
+	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + std::string(COLOUR_RESET);
 }
 
 struct Identifier
