@@ -62,8 +62,8 @@ namespace cgn
 		namespace array
 		{
 			fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
-			fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			// fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
+			// fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype);
 			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition);

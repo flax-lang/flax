@@ -7,104 +7,104 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-ffi fn srand(s: i32)
-ffi fn rand() -> i32
+// ffi fn srand(s: i32)
+// ffi fn rand() -> i32
 
-let names = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+// let names = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
 
-class Animal
-{
-	init(w: f64)
-	{
-		// printf("make animal w = %f\n", w)
-		weight = w
-		name = names[rand() % names.length]
-	}
+// class Animal
+// {
+// 	init(w: f64)
+// 	{
+// 		// printf("make animal w = %f\n", w)
+// 		weight = w
+// 		name = names[rand() % names.length]
+// 	}
 
-	virtual fn makeNoise()
-	{
-		printf("some generic sound\n")
-	}
+// 	virtual fn makeNoise()
+// 	{
+// 		printf("some generic sound\n")
+// 	}
 
-	var name: str
-	var weight: f64
-	var cute: bool = true
-}
+// 	var name: str
+// 	var weight: f64
+// 	var cute: bool = true
+// }
 
-class Dog : Animal
-{
-	init() : super(w: 300)
-	{
-		// printf("make dog (w = %f)\n", weight)
-	}
+// class Dog : Animal
+// {
+// 	init() : super(w: 300)
+// 	{
+// 		// printf("make dog (w = %f)\n", weight)
+// 	}
 
-	override fn makeNoise()
-	{
-		printf("bark bark (%f)\n", weight)
-	}
+// 	override fn makeNoise()
+// 	{
+// 		printf("bark bark (%f)\n", weight)
+// 	}
 
-	virtual fn wag()
-	{
-		printf("wagging tail of length %d\n", tail)
-	}
+// 	virtual fn wag()
+// 	{
+// 		printf("wagging tail of length %d\n", tail)
+// 	}
 
-	var tail: int = 37
-}
+// 	var tail: int = 37
+// }
 
-class Dalmation : Dog
-{
-	init() : super()
-	{
-		printf("make dalmation\n")
-	}
+// class Dalmation : Dog
+// {
+// 	init() : super()
+// 	{
+// 		printf("make dalmation\n")
+// 	}
 
-	override fn wag()
-	{
-		printf("dalmation wags %d\n", tail)
-	}
+// 	override fn wag()
+// 	{
+// 		printf("dalmation wags %d\n", tail)
+// 	}
 
-	var numSpots: int
-}
+// 	var numSpots: int
+// }
 
 
-class LinkedList<T>
-{
-	struct Node
-	{
-		var data: T
+// class LinkedList<T>
+// {
+// 	struct Node
+// 	{
+// 		var data: T
 
-		var prev: &Node
-		var next: &Node
-	}
+// 		var prev: &Node
+// 		var next: &Node
+// 	}
 
-	var head: &Node
-	var tail: &Node
+// 	var head: &Node
+// 	var tail: &Node
 
-	var count: int
+// 	var count: int
 
-	init()
-	{
-	}
+// 	init()
+// 	{
+// 	}
 
-	mut fn insert(thing: T)
-	{
-		var nn = alloc mut Node (data: thing, prev: null, next: null)
+// 	mut fn insert(thing: T)
+// 	{
+// 		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
-		if head == null { head = nn; tail = nn }
-		else
-		{
-			var ot = tail as mut
-			tail = nn
+// 		if head == null { head = nn; tail = nn }
+// 		else
+// 		{
+// 			var ot = tail as mut
+// 			tail = nn
 
-			nn.prev = ot
-			ot.next = nn
-		}
+// 			nn.prev = ot
+// 			ot.next = nn
+// 		}
 
-		count += 1
-	}
+// 		count += 1
+// 	}
 
-	static fn hello() { printf("hi\n"); }
-}
+// 	static fn hello() { printf("hi\n"); }
+// }
 
 // struct Foo
 // {
@@ -150,66 +150,74 @@ class LinkedList<T>
 			for classes we just pass in all the init functions as candidates, since those will just be generic over their parents' types.
 	*/
 
-
 	do {
 		fn foo<T>(a: T, b: T) -> T { return a + b }
 
 		let k = foo<T: int>(10, 20)
+		printf("k = %d\n", k)
 
-		// printf("k = %d\n", k)
+		let a: [int] = [ 1, 2, 3 ]
+		let b: [int] = [ 4, 5, 6 ]
+
+		let h = foo<T: [int]>(a, b)
+		for n, i in h {
+			printf("%d: %d\n", i, n)
+		}
+
+		printf("\n\n")
 	}
 
 
-	do {
-		// don't question.
-		srand(284811)
+	// do {
+	// 	// don't question.
+	// 	srand(284811)
 
-		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+	// 	// fn test() -> f64 { printf("hi\n"); return 31.51 }
 
-		let dogs = alloc &Dog [5] {
-			if i % 2 == 1   { it = alloc Dalmation }
-			else            { it = alloc Dog }
-		}
+	// 	let dogs = alloc &Dog [5] {
+	// 		if i % 2 == 1   { it = alloc Dalmation }
+	// 		else            { it = alloc Dog }
+	// 	}
 
-		for dog, i in dogs {
-			printf("%d: %s - ", i, dog.name)
-			dog.wag()
-		}
-	}
+	// 	for dog, i in dogs {
+	// 		printf("%d: %s - ", i, dog.name)
+	// 		dog.wag()
+	// 	}
+	// }
 
 
 
-	do {
-		var list: LinkedList<T: int>
-		LinkedList<T: int>.hello()
+	// do {
+	// 	var list: LinkedList<T: int>
+	// 	LinkedList<T: int>.hello()
 
-		var list2: LinkedList<T: str>
-		list2.insert("hello")
-		list2.insert("world")
+	// 	var list2: LinkedList<T: str>
+	// 	list2.insert("hello")
+	// 	list2.insert("world")
 
-		list.insert(10)
-		list.insert(20)
-		list.insert(30)
-		list.insert(40)
+	// 	list.insert(10)
+	// 	list.insert(20)
+	// 	list.insert(30)
+	// 	list.insert(40)
 
-		do {
-			var head = list.head
-			while(head)
-			{
-				printf("%d\n", head.data)
-				head = head.next
-			}
-		}
+	// 	do {
+	// 		var head = list.head
+	// 		while(head)
+	// 		{
+	// 			printf("%d\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
 
-		do {
-			var head = list2.head
-			while(head)
-			{
-				printf("%s\n", head.data)
-				head = head.next
-			}
-		}
-	}
+	// 	do {
+	// 		var head = list2.head
+	// 		while(head)
+	// 		{
+	// 			printf("%s\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
+	// }
 }
 
 
