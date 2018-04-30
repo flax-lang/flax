@@ -46,23 +46,14 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		iceAssert(cdf);
 
 		using Param = sst::FunctionDecl::Param;
-		sst::TypecheckState::PrettyError errs;
+		PrettyError errs;
 
 		auto arguments = fs->typecheckCallArguments(this->args);
 		auto constructor = fs->resolveConstructorCall(cdf, util::map(arguments, [](FnCallArgument a) -> Param {
 			return Param { a.name, a.loc, a.value->type };
-		}), &errs, { });
+		}), { });
 
-		if(!constructor)
-		{
-			exitless_error(this, "%s", errs.errorStr);
-			for(auto i : errs.infoStrs)
-				info(i.first, "%s", i.second);
-
-			doTheExit();
-		}
-
-		ret->constructor = constructor;
+		ret->constructor = constructor.defn();
 		ret->arguments = arguments;
 	}
 	else if(!this->args.empty())

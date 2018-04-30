@@ -216,14 +216,14 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 
 			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param { e.name, e.loc, e.value->type }; });
 
-			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths, TCS::PrettyError* errs) -> sst::Defn* {
+			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths) -> sst::Defn* {
 
 				//! note: here we always presume it's mutable, since:
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
-				if(meths) ts.insert(ts.begin(), Param { "",fc->loc, str->type->getMutablePointerTo() });
+				if(meths) ts.insert(ts.begin(), Param { "", fc->loc, str->type->getMutablePointerTo() });
 
-				return fs->resolveFunctionFromCandidates(cands, ts, errs, fs->convertParserTypeArgsToFIR(fc->mappings), false);
+				return fs->resolveFunctionFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
 
 			std::vector<sst::Defn*> mcands;
@@ -266,9 +266,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			if(mcands.empty() && vcands.empty())
 				error(fc, "No method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
 
-
-			TCS::PrettyError errs;
-			sst::Defn* resolved = search(mcands, ts, true, &errs);
+			sst::Defn* resolved = search(mcands, ts, true);
 
 
 			sst::Expr* finalCall = 0;
@@ -284,17 +282,10 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 			}
 			else
 			{
-				resolved = search(vcands, ts, false, &errs);
-				if(!resolved)
-				{
-					exitless_error(fc, "%s", errs.errorStr);
-					for(auto inf : errs.infoStrs)
-						fprintf(stderr, "%s", inf.second.c_str());
-
-					doTheExit();
-				}
+				resolved = search(vcands, ts, false);
 
 				// else
+				iceAssert(resolved);
 
 				auto c = new sst::ExprCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = util::map(arguments, [](FnCallArgument e) -> sst::Expr* { return e.value; });

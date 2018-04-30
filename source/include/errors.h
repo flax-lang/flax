@@ -175,11 +175,6 @@ STRING_ERROR_FUNCTION(strinfo, "Note");
 STRING_ERROR_FUNCTION(strerror, "Error");
 STRING_ERROR_FUNCTION(strwarn, "Warning");
 
-template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
-{
-	return strprintf("%s%s", COLOUR_RESET, COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + strprintf("%s", COLOUR_RESET);
-}
-
 
 
 
