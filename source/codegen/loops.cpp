@@ -128,7 +128,9 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
 	fir::Value* iterptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
-	auto [ array, arrayptr, _ ] = this->array->codegen(cs);
+	auto [ array, arrayptr, vk ] = this->array->codegen(cs);
+	(void) vk;
+
 	if(array->getType()->isRangeType())
 	{
 		cs->irb.Store(cs->irb.GetRangeLower(array), idxptr);

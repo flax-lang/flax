@@ -283,8 +283,8 @@ namespace cgn
 		auto lt = l.value->getType();
 		auto rt = r.value->getType();
 
-		auto [ lv, lp ] = std::make_pair(l.value, l.pointer);
-		auto [ rv, rp ] = std::make_pair(r.value, r.pointer);
+		auto lv = l.value;
+		auto rv = r.value;
 
 		if(Operator::isComparison(op))
 		{

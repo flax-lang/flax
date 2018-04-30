@@ -224,14 +224,14 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// defer(cs->restoreNamespace(rsn));
 
 	bool broke = false;
-	bool cont = false;
+	// bool cont = false;
 	for(auto stmt : this->statements)
 	{
 		auto res = stmt->codegen(cs);
 		if(res.kind == CGResult::VK::Break || res.kind == CGResult::VK::Continue)
 		{
 			broke = true;
-			cont = (res.kind == CGResult::VK::Continue);
+			// cont = (res.kind == CGResult::VK::Continue);
 			break;
 		}
 	}

@@ -251,7 +251,10 @@ namespace sst
 			PrettyError errs;
 			errs.addError(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s'; candidates are:", name);
 			for(const auto& [ f, e ] : failures)
+			{
+				(void) f;
 				errs.incorporate(e);
+			}
 
 			return TCResult(errs);
 		}
