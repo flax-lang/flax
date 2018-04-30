@@ -108,7 +108,7 @@ namespace pts
 		virtual std::string str() override;
 		std::string name;
 
-		std::map<std::string, Type*> genericMapping;
+		std::unordered_map<std::string, Type*> genericMapping;
 
 		static NamedType* create(const std::string& s);
 		static NamedType* create(const std::string& s, const std::map<std::string, Type*>& genericMapping);
@@ -189,7 +189,7 @@ namespace pts
 		explicit FunctionType(const std::vector<pts::Type*>& args, pts::Type* ret) : argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
-		std::map<std::string, TypeConstraints_t> genericTypes;
+		std::unordered_map<std::string, TypeConstraints_t> genericTypes;
 		std::vector<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};

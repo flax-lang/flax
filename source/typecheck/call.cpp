@@ -338,7 +338,7 @@ namespace sst
 
 
 	Defn* TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
-		PrettyError* errs, bool allowImplicitSelf)
+		PrettyError* errs, const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		if(cands.empty()) return 0;
 
@@ -471,7 +471,8 @@ namespace sst
 		}
 	}
 
-	Defn* TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, PrettyError* errs, bool travUp)
+	Defn* TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, PrettyError* errs,
+		const TypeParamMap_t& gmaps, bool travUp)
 	{
 		iceAssert(errs);
 
@@ -511,7 +512,7 @@ namespace sst
 				{
 					// ok, then.
 					//* note: no need to specify 'travUp', because we already resolved the type here.
-					return this->resolveConstructorCall(typedf, arguments, errs);
+					return this->resolveConstructorCall(typedf, arguments, errs, gmaps);
 				}
 				else
 				{
@@ -529,16 +530,12 @@ namespace sst
 			//* based on the thing above, we only need to search generic functions if we haven't found anything via name lookup alone.
 			if(fns.empty())
 			{
-				// if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
-				// {
-				// 	TypeParamMap_t gmaps;
-				// 	for(const auto& p : this->mappings)
-				// 		gmaps[p.first] = fs->convertParserTypeToFIR(p.second);
-
-				// 	auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false);
-				// 	if(res)
-				// 		return returnResult(res);
-				// }
+				if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
+				{
+					//* allowFailIfNoMapping = true.
+					auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, 0, true);
+					if(res) fns.push_back(res);
+				}
 			}
 
 
@@ -552,12 +549,13 @@ namespace sst
 		if(fns.empty())
 			error(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
 
-		return this->resolveFunctionFromCandidates(fns, arguments, errs, travUp);
+		return this->resolveFunctionFromCandidates(fns, arguments, errs, gmaps, travUp);
 	}
 
 
 
-	Defn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs)
+	Defn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,
+		const TypeParamMap_t& gmaps)
 	{
 		iceAssert(errs);
 
@@ -576,7 +574,7 @@ namespace sst
 			PrettyError errs;
 			auto cand = this->resolveFunctionFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
-			}), arguments, &errs, true);
+			}), arguments, &errs, gmaps, true);
 
 			if(!cand)
 			{
@@ -685,7 +683,8 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 	sst::TypecheckState::PrettyError errs;
 	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
 
-	auto target = fs->resolveFunction(this->name, ts, &errs, this->traverseUpwards);
+	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
+	auto target = fs->resolveFunction(this->name, ts, &errs, gmaps, this->traverseUpwards);
 	if(!errs.errorStr.empty())
 	{
 		exitless_error(this, "%s", errs.errorStr);

@@ -223,7 +223,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 				if(meths) ts.insert(ts.begin(), Param { "",fc->loc, str->type->getMutablePointerTo() });
 
-				return fs->resolveFunctionFromCandidates(cands, ts, errs, false);
+				return fs->resolveFunctionFromCandidates(cands, ts, errs, fs->convertParserTypeArgsToFIR(fc->mappings), false);
 			};
 
 			std::vector<sst::Defn*> mcands;

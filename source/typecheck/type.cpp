@@ -117,9 +117,7 @@ namespace sst
 								error(this->loc(), "Parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
-							TypeParamMap_t mapping;
-							for(auto mp : pt->toNamedType()->genericMapping)
-								mapping[mp.first] = this->convertParserTypeToFIR(mp.second, allowFail);
+							TypeParamMap_t mapping = this->convertParserTypeArgsToFIR(pt->toNamedType()->genericMapping, allowFail);
 
 							// types generally cannot be overloaded, so it doesn't make sense for it to be SFINAE-ed.
 							auto td = this->instantiateGenericEntity(atd, mapping, false);

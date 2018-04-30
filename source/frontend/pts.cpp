@@ -140,7 +140,8 @@ namespace pts
 			return map[{ s, tm }];
 
 		auto ret = new NamedType(s);
-		ret->genericMapping = tm;
+		for(const auto& p : tm)
+			ret->genericMapping[p.first] = p.second;
 
 		return (map[{ s, tm }] = ret);
 	}

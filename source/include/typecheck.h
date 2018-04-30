@@ -164,6 +164,7 @@ namespace sst
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
+		TypeParamMap_t convertParserTypeArgsToFIR(const std::unordered_map<std::string, pts::Type*>& gmaps, bool allowFailure = false);
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
@@ -197,11 +198,12 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
-		Defn* resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs, bool traverseUp);
-		Defn* resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments,
-			PrettyError* errs, bool allowImplicitSelf);
+		Defn* resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,  const TypeParamMap_t& gmaps,
+			bool traverseUp);
+		Defn* resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,
+			const TypeParamMap_t& gmaps, bool allowImplicitSelf);
 
-		Defn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs);
+		Defn* resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs, const TypeParamMap_t& gmaps);
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,

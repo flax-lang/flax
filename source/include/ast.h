@@ -593,6 +593,8 @@ namespace ast
 		std::string name;
 		std::vector<std::pair<std::string, Expr*>> args;
 
+		std::unordered_map<std::string, pts::Type*> mappings;
+
 		bool traverseUpwards = true;
 	};
 
