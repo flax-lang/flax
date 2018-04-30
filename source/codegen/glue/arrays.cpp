@@ -145,6 +145,9 @@ namespace array
 	}
 
 
+	static fir::Function* getSliceCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
+	static fir::Function* getDynamicArrayCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+
 	static void _handleCallingAppropriateCloneFunction(CodegenState* cs, fir::Function* func, fir::Type* elmType, fir::Value* origptr,
 		fir::Value* newptr, fir::Value* origlen, fir::Value* actuallen, fir::Value* startIndex)
 	{
@@ -152,13 +155,22 @@ namespace array
 		{
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
+			#if DEBUG_ARRAY_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("origptr: %p, newptr: %p, origlen: %d, actuallen: %d, index: %d\n");
+				cs->irb.Call(printfn, { tmpstr, origptr, newptr, origlen, actuallen, startIndex });
+			}
+			#endif
+
 			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(origptr,
-				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+				startIndex), fir::Type::getMutInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 		}
 		else if(elmType->isDynamicArrayType())
 		{
 			// yo dawg i heard you like arrays...
-			fir::Function* clonef = getCloneFunction(cs, elmType->toDynamicArrayType());
+			fir::Function* clonef = getDynamicArrayCloneFunction(cs, elmType->toDynamicArrayType());
 			iceAssert(clonef);
 
 			// loop
@@ -168,7 +180,7 @@ namespace array
 		else if(elmType->isArraySliceType())
 		{
 			// yo dawg i heard you like arrays...
-			fir::Function* clonef = getCloneFunction(cs, elmType->toArraySliceType());
+			fir::Function* clonef = getSliceCloneFunction(cs, elmType->toArraySliceType());
 			iceAssert(clonef);
 
 			// loop
@@ -191,7 +203,7 @@ namespace array
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
 			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(origptr,
-				startIndex), fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+				startIndex), fir::Type::getMutInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 		}
 		else
 		{
@@ -205,16 +217,8 @@ namespace array
 
 
 
-
-	fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype)
-	{
-		if(arrtype->isDynamicArrayType())		return getCloneFunction(cs, arrtype->toDynamicArrayType());
-		else if(arrtype->isArraySliceType())	return getCloneFunction(cs, arrtype->toArraySliceType());
-		else									error("unsupported type '%s'", arrtype);
-	}
-
 	// takes ptr, start index
-	fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+	static fir::Function* getDynamicArrayCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
 		auto name = BUILTIN_DYNARRAY_CLONE_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 
@@ -269,7 +273,7 @@ namespace array
 			auto cap = cs->irb.CreatePHINode(fir::Type::getInt64());
 
 			cap->addIncoming(origcap, entry);
-			cap->addIncoming(/*origlen*/ origcap, insane);
+			cap->addIncoming(origlen, insane);
 
 			// ok, alloc a buffer with the original capacity
 			// get size in bytes, since cap is in elements
@@ -281,10 +285,15 @@ namespace array
 			fir::Value* newptr = cs->irb.Call(mallocf, actuallen);
 
 			fir::Type* elmType = arrtype->getElementType();
+
+
+			// _handleCallingAppropriateCloneFunction(CodegenState* cs, fir::Function* func, fir::Type* elmType, fir::Value* origptr,
+			// fir::Value* newptr, fir::Value* origlen, fir::Value* actuallen, fir::Value* startIndex)
+
 			_handleCallingAppropriateCloneFunction(cs, func, elmType, origptr, newptr, origlen, actuallen, startIndex);
 
 			fir::Value* newarr = cs->irb.CreateValue(arrtype);
-			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getMutablePointerTo()));
 			newarr = cs->irb.SetDynamicArrayLength(newarr, cs->irb.Subtract(origlen, startIndex));
 			newarr = cs->irb.SetDynamicArrayCapacity(newarr, cap);
 
@@ -327,7 +336,7 @@ namespace array
 
 
 	// takes a slice, but returns a dynamic array
-	fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype)
+	static fir::Function* getSliceCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype)
 	{
 		auto name = BUILTIN_SLICE_CLONE_FUNC_NAME + std::string("_") + arrtype->encodedStr();
 
@@ -376,7 +385,7 @@ namespace array
 			fir::Value* newlen = cs->irb.Subtract(origlen, startIndex);
 
 			fir::Value* newarr = cs->irb.CreateValue(fir::DynamicArrayType::get(arrtype->getElementType()));
-			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getPointerTo()));
+			newarr = cs->irb.SetDynamicArrayData(newarr, cs->irb.PointerTypeCast(newptr, arrtype->getElementType()->getMutablePointerTo()));
 			newarr = cs->irb.SetDynamicArrayLength(newarr, newlen);
 			newarr = cs->irb.SetDynamicArrayCapacity(newarr, newlen);
 
@@ -408,6 +417,14 @@ namespace array
 
 		iceAssert(fn);
 		return fn;
+	}
+
+
+	fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype)
+	{
+		if(arrtype->isDynamicArrayType())		return getDynamicArrayCloneFunction(cs, arrtype->toDynamicArrayType());
+		else if(arrtype->isArraySliceType())	return getSliceCloneFunction(cs, arrtype->toArraySliceType());
+		else									error("unsupported type '%s'", arrtype);
 	}
 
 
@@ -663,8 +680,8 @@ namespace array
 
 				fir::Value* actuallen = cs->irb.Multiply(applen, cs->irb.Sizeof(arrtype->getElementType()));
 
-				cs->irb.Call(memcpyf, { cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()),
-					cs->irb.PointerTypeCast(s2ptr, fir::Type::getInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
+				cs->irb.Call(memcpyf, { cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr()),
+					cs->irb.PointerTypeCast(s2ptr, fir::Type::getMutInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
 					fir::ConstantBool::get(false) });
 
 				// increase the length
