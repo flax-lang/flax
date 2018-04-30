@@ -636,7 +636,12 @@ namespace parser
 	static Expr* parseCall(State& st, Expr* lhs, Token op)
 	{
 		if(Ident* id = dynamic_cast<Ident*>(lhs))
-			return parseFunctionCall(st, id->name);
+		{
+			auto ret = parseFunctionCall(st, id->name);
+			ret->mappings = id->mappings;
+
+			return ret;
+		}
 
 		auto ret = new ast::ExprCall(op.loc);
 		iceAssert(op == TT::LParen);

@@ -58,7 +58,14 @@ namespace sst
 	}
 
 
+	TypeParamMap_t TypecheckState::convertParserTypeArgsToFIR(const std::unordered_map<std::string, pts::Type*>& gmaps, bool allowFailure)
+	{
+		TypeParamMap_t ret;
+		for(const auto& [ name, type ] : gmaps)
+			ret[name] = this->convertParserTypeToFIR(type, allowFailure);
 
+		return ret;
+	}
 
 
 

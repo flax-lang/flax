@@ -546,7 +546,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
 			[](FnCallArgument a) -> sst::FunctionDecl::Param {
 				return sst::FunctionDecl::Param { a.name, a.loc, a.value->type };
-		}), &errs);
+		}), &errs, { });
 
 		if(!constr)
 		{
