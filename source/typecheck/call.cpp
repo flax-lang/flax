@@ -353,7 +353,7 @@ namespace sst
 
 		for(auto cand : cands)
 		{
-			int dist = 0;
+			int dist = -1;
 
 			if(auto fn = dcast(FunctionDecl, cand))
 			{
@@ -491,55 +491,28 @@ namespace sst
 		//* how it works in C++, and for now also in Flax, is that once we match *any* names in the current scope, we stop searching upwards
 		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
 		bool didVar = false;
+		bool didGeneric = false;
 		while(tree)
 		{
-			auto defs = tree->getDefinitionsWithName(name);
-			for(auto def : defs)
+			// unify the handling of generic and non-generic stuff.
+
+			// if we provided mappings, don't bother searching normal functions.
+			if(gmaps.empty())
 			{
-				if(auto fn = dcast(FunctionDecl, def))
-				{
-					fns.push_back(fn);
-				}
-				else if((dcast(VarDefn, def) || dcast(ArgumentDefn, def)) && def->type->isFunctionType())
-				{
-					// ok, we'll check it later i guess.
-					if(!didVar)
-						fns.push_back(def);
-
-					didVar = true;
-				}
-				else if(auto typedf = dcast(TypeDefn, def))
-				{
-					// ok, then.
-					//* note: no need to specify 'travUp', because we already resolved the type here.
-					return this->resolveConstructorCall(typedf, arguments, gmaps);
-				}
-				else
-				{
-					didVar = true;
-					errors.addError(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type);
-
-					errors.addInfo(def, "Previously defined here:");
-					return TCResult(errors);
-				}
+				auto defs = tree->getDefinitionsWithName(name);
+				fns.insert(fns.begin(), defs.begin(), defs.end());
 			}
 
-			// include generic functions.
-			//* based on the thing above, we only need to search generic functions if we haven't found anything via name lookup alone.
-			if(fns.empty())
+			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
-				if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
-				{
-					//* allowFailIfNoMapping = true.
-					auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, 0);
+				didGeneric = true;
+				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, (fir::Type*) 0);
 
-					if(res.isDefn())
-						fns.push_back(res.defn());
+				if(res.isDefn())
+					fns.push_back(res.defn());
 
-					else
-						errors.incorporate(res.error());
-				}
+				else
+					errors.incorporate(res.error());
 			}
 
 
@@ -552,11 +525,46 @@ namespace sst
 
 		if(fns.empty())
 		{
-			errors.addErrorBefore(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
+			if(!didGeneric)
+				errors.addErrorBefore(this->loc(), "No such function named '%s'", name);
+
 			return TCResult(errors);
 		}
 
-		return this->resolveFunctionFromCandidates(fns, arguments, gmaps, travUp);
+		std::vector<sst::Defn*> cands;
+		for(auto def : fns)
+		{
+			if(auto fn = dcast(FunctionDecl, def))
+			{
+				cands.push_back(fn);
+			}
+			else if((dcast(VarDefn, def) || dcast(ArgumentDefn, def)) && def->type->isFunctionType())
+			{
+				// ok, we'll check it later i guess.
+				if(!didVar)
+					cands.push_back(def);
+
+				didVar = true;
+			}
+			else if(auto typedf = dcast(TypeDefn, def))
+			{
+				// ok, then.
+				//* note: no need to specify 'travUp', because we already resolved the type here.
+				return this->resolveConstructorCall(typedf, arguments, gmaps);
+			}
+			else
+			{
+				didVar = true;
+				errors.addError(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+					name, def->type);
+
+				errors.addInfo(def, "Previously defined here:");
+				return TCResult(errors);
+			}
+		}
+
+
+		return this->resolveFunctionFromCandidates(cands, arguments, gmaps, travUp);
 	}
 
 

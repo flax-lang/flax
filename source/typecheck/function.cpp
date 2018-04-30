@@ -128,7 +128,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		error(defn, "Only methods of a type can be marked as mutating with 'mut'");
 	}
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
@@ -187,7 +187,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		defn->type = fir::FunctionType::get(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
 
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, "function", [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{

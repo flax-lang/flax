@@ -38,6 +38,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
 
+	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+
 	fs->stree->addDefinition(this->name, defn);
 
 	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });

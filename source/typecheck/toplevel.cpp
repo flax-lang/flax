@@ -278,7 +278,7 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		td->visibility = this->visibility;
 
-		fs->checkForShadowingOrConflictingDefinition(td, "entity", [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; }, tree->parent);
+		fs->checkForShadowingOrConflictingDefinition(td, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; }, tree->parent);
 
 		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
 	}

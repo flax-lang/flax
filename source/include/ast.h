@@ -60,6 +60,7 @@ namespace ast
 		Parameterisable(const Location& l) : Stmt(l) { this->readableName = "<Parameterisable>"; }
 		~Parameterisable() { }
 
+		virtual std::string getKind() = 0;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) = 0;
 
@@ -117,6 +118,7 @@ namespace ast
 		FuncDefn(const Location& l) : Parameterisable(l) { this->readableName = "function defintion"; }
 		~FuncDefn() { }
 
+		virtual std::string getKind() override { return "function"; }
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
@@ -149,6 +151,7 @@ namespace ast
 		InitFunctionDefn(const Location& l) : Parameterisable(l) { this->readableName = "class initialiser definition"; }
 		~InitFunctionDefn() { }
 
+		virtual std::string getKind() override { return "initialiser"; }
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
@@ -362,6 +365,7 @@ namespace ast
 		StructDefn(const Location& l) : TypeDefn(l) { this->readableName = "struct definition"; }
 		~StructDefn() { }
 
+		virtual std::string getKind() override { return "struct"; }
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
@@ -381,6 +385,7 @@ namespace ast
 		ClassDefn(const Location& l) : TypeDefn(l) { this->readableName = "class definition"; }
 		~ClassDefn() { }
 
+		virtual std::string getKind() override { return "class"; }
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
@@ -402,6 +407,7 @@ namespace ast
 		EnumDefn(const Location& l) : TypeDefn(l) { this->readableName = "enum definition"; }
 		~EnumDefn() { }
 
+		virtual std::string getKind() override { return "enum"; }
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
