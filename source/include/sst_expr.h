@@ -55,6 +55,8 @@ namespace sst
 		fir::Type* type = 0;
 		bool global = false;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+
+		virtual std::string getKind() = 0;
 	};
 }
 
