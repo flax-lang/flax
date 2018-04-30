@@ -337,15 +337,15 @@ namespace sst
 
 
 
-	Defn* TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
-		PrettyError* errs, const TypeParamMap_t& gmaps, bool allowImplicitSelf)
+	TCResult TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
+		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
-		if(cands.empty()) return 0;
-
-		iceAssert(errs);
+		if(cands.empty()) return TCResult(PrettyError::error(Location(), "No candidates"));
 
 		using Param = FunctionDefn::Param;
 		iceAssert(cands.size() > 0);
+
+		PrettyError errors;
 
 		int bestDist = INT_MAX;
 		std::vector<Defn*> finals;
@@ -376,10 +376,10 @@ namespace sst
 				{
 					if(p.name != "")
 					{
-						errs->errorStr += strbold("Function values cannot be called with named arguments");
-						errs->infoStrs.push_back({ vr->loc, strinfo(vr->loc, "'%s' was defined here:", vr->id.name) });
+						errors.addError(p.loc, "Function values cannot be called with named arguments");
+						errors.addInfo(vr, "'%s' was defined here:", vr->id.name);
 
-						return 0;
+						return TCResult(errors);
 					}
 				}
 
@@ -402,13 +402,13 @@ namespace sst
 		{
 			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
 
-			errs->errorStr += strbold("No overload of function '%s' matching given argument types '%s' amongst %zu candidate%s",
+			errors.addError(this->loc(), "No overload of function '%s' matching given argument types '%s' amongst %zu candidate%s",
 				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), fails.size() == 1 ? "" : "s");
 
 			for(auto f : fails)
-				errs->infoStrs.push_back({ f.first->loc, strinfo(f.first->loc, "Candidate not viable: %s", f.second.second) });
+				errors.addInfo(f.first, "Candidate not viable: %s", f.second.second);
 
-			return 0;
+			return TCResult(errors);
 		}
 		else if(finals.size() > 1)
 		{
@@ -453,32 +453,32 @@ namespace sst
 
 			if(virt)
 			{
-				return ret;
+				return TCResult(ret);
 			}
 			else
 			{
-				errs->errorStr += strbold("Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size());
+				errors.addError(this->loc(), "Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size());
 
 				for(auto f : finals)
-					errs->infoStrs.push_back({ f->loc, strinfo(f, "Possible target") });
+					errors.addInfo(f, "Possible target:");
 
-				return 0;
+				return TCResult(errors);
 			}
 		}
 		else
 		{
-			return finals[0];
+			return TCResult(finals[0]);
 		}
 	}
 
-	Defn* TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, PrettyError* errs,
-		const TypeParamMap_t& gmaps, bool travUp)
-	{
-		iceAssert(errs);
 
+
+
+	TCResult TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, const TypeParamMap_t& gmaps, bool travUp)
+	{
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
-
+		PrettyError errors;
 		std::vector<Defn*> fns;
 		StateTree* tree = this->stree;
 
@@ -512,17 +512,16 @@ namespace sst
 				{
 					// ok, then.
 					//* note: no need to specify 'travUp', because we already resolved the type here.
-					return this->resolveConstructorCall(typedf, arguments, errs, gmaps);
+					return this->resolveConstructorCall(typedf, arguments, gmaps);
 				}
 				else
 				{
 					didVar = true;
-					exitless_error(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+					errors.addError(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
 						name, def->type);
 
-					info(def, "Previously defined here:");
-
-					doTheExit();
+					errors.addInfo(def, "Previously defined here:");
+					return TCResult(errors);
 				}
 			}
 
@@ -533,8 +532,13 @@ namespace sst
 				if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 				{
 					//* allowFailIfNoMapping = true.
-					auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, 0, true);
-					if(res) fns.push_back(res);
+					auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, 0);
+
+					if(res.isDefn())
+						fns.push_back(res.defn());
+
+					else
+						errors.incorporate(res.error());
 				}
 			}
 
@@ -547,18 +551,18 @@ namespace sst
 		}
 
 		if(fns.empty())
-			error(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
+		{
+			errors.addErrorBefore(this->loc(), "No such function named '%s' (in scope '%s')", name, this->serialiseCurrentScope());
+			return TCResult(errors);
+		}
 
-		return this->resolveFunctionFromCandidates(fns, arguments, errs, gmaps, travUp);
+		return this->resolveFunctionFromCandidates(fns, arguments, gmaps, travUp);
 	}
 
 
 
-	Defn* TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, PrettyError* errs,
-		const TypeParamMap_t& gmaps)
+	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps)
 	{
-		iceAssert(errs);
-
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
 
@@ -568,24 +572,23 @@ namespace sst
 			for(const auto& arg : arguments)
 			{
 				if(arg.name.empty())
-					error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name);
+				{
+					return TCResult(PrettyError::error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
+				}
 			}
 
-			PrettyError errs;
+
 			auto cand = this->resolveFunctionFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
-			}), arguments, &errs, gmaps, true);
+			}), arguments, gmaps, true);
 
-			if(!cand)
+			if(cand.isError())
 			{
-				exitless_error(this->loc(), "Failed to find matching initialiser for class '%s': %s", cls->id.name, errs.errorStr);
-				for(auto inf : errs.infoStrs)
-					fprintf(stderr, "%s", inf.second.c_str());
-
-				doTheExit();
+				cand.error().addErrorBefore(this->loc(), "Failed to find matching initialiser for class '%s':", cls->id.name);
+				return cand;
 			}
 
-			return cand;
+			return TCResult(cand);
 		}
 		else if(auto str = dcast(StructDefn, typedf))
 		{
@@ -610,7 +613,7 @@ namespace sst
 			{
 				if(arg.name.empty() && useNames)
 				{
-					error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor");
+					return TCResult(PrettyError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(firstName && !arg.name.empty())
 				{
@@ -619,18 +622,16 @@ namespace sst
 				}
 				else if(!arg.name.empty() && !useNames && !firstName)
 				{
-					error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor");
+					return TCResult(PrettyError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
 				{
-					exitless_error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name);
-					info(str, "Struct was defined here:");
-
-					doTheExit();
+					return TCResult(PrettyError::error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
 				}
 				else if(useNames && seenNames.find(arg.name) != seenNames.end())
 				{
-					error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'", arg.name, str->id.name);
+					return TCResult(PrettyError::error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+						arg.name, str->id.name));
 				}
 
 				seenNames.insert(arg.name);
@@ -639,23 +640,25 @@ namespace sst
 			//* note: if we're doing positional args, allow only all or none.
 			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
 			{
-				exitless_error(this->loc(),
+				PrettyError errors;
+				errors.addError(this->loc(),
 					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
 					str->id.name, fieldNames.size(), arguments.size());
 
-				info("All arguments are mandatory when using positional arguments");
-				doTheExit();
+				errors.addInfo(Location(), "All arguments are mandatory when using positional arguments");
+				return TCResult(errors);
 			}
 
 			// in actual fact we just return the thing here. sigh.
-			return str;
+			return TCResult(str);
 		}
 		else
 		{
-			exitless_error(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name);
-			info(typedf, "Type was defined here:");
+			PrettyError errors;
+			errors.addError(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name);
+			errors.addInfo(typedf, "Type was defined here:");
 
-			doTheExit();
+			return TCResult(errors);
 		}
 	}
 }
@@ -680,20 +683,12 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<
 
 
 	// resolve the function call here
-	sst::TypecheckState::PrettyError errs;
 	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-	auto target = fs->resolveFunction(this->name, ts, &errs, gmaps, this->traverseUpwards);
-	if(!errs.errorStr.empty())
-	{
-		exitless_error(this, "%s", errs.errorStr);
-		for(auto inf : errs.infoStrs)
-			fprintf(stderr, "%s", inf.second.c_str());
+	auto res = fs->resolveFunction(this->name, ts, gmaps, this->traverseUpwards);
 
-		doTheExit();
-	}
-
+	auto target = res.defn();
 	iceAssert(target);
 
 	if(auto strdf = dcast(sst::StructDefn, target))

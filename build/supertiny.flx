@@ -148,12 +148,15 @@ import "math" as _
 
 		5b. for struct constructors, it should be a simple case of mapping the struct fields to the function call parameter 'format', if you will.
 			for classes we just pass in all the init functions as candidates, since those will just be generic over their parents' types.
+
+		6. once we get the generic solver working, we should be able to provide it a partial list (that the user may have given) to aid its solving.
+			for now, it's all or nothing -- if you provide some you must provide all (or we will error).
 	*/
 
 	do {
 		fn foo<T>(a: T, b: T) -> T { return a + b }
 
-		let k = foo<T: int>(10, 20)
+		let k = foo<T: int, G: str>(10, 20)
 		printf("k = %d\n", k)
 
 		let a: [int] = [ 1, 2, 3 ]

@@ -262,7 +262,17 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 
 
+[[noreturn]] void postErrorsAndQuit(const PrettyError& error)
+{
+	for(const auto& [ kind, loc, estr ] : error._strs)
+	{
+		if(kind == PrettyError::Kind::Error)            exitless_error(loc, "%s", estr);
+		else if(kind == PrettyError::Kind::Warning)     warn(loc, "%s", estr);
+		else if(kind == PrettyError::Kind::Info)        info(loc, "%s", estr);
+	}
 
+	doTheExit();
+}
 
 
 

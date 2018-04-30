@@ -78,7 +78,7 @@ namespace sst
 
 
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-	Defn* TypecheckState::instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings, bool allowFail)
+	TCResult TypecheckState::instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings)
 	{
 		iceAssert(type);
 		iceAssert(!type->generics.empty());
@@ -104,14 +104,10 @@ namespace sst
 
 			if(type->generics.find(map.first) != type->generics.end() && ptrs < type->generics[map.first].pointerDegree)
 			{
-				if(allowFail)
-				{
-					return 0;
-				}
-				else
-				{
-					error(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s': replacement type has pointer degree %d, which is less than the required %d", map.second, map.first, type->name, ptrs, type->generics[map.first].pointerDegree);
-				}
+				PrettyError errs;
+				errs.addError(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s': replacement type has pointer degree %d, which is less than the required %d", map.second, map.first, type->name, ptrs, type->generics[map.first].pointerDegree);
+
+				return TCResult(errs);
 			}
 
 			// TODO: check if the type conforms to the protocols specified.
@@ -130,34 +126,24 @@ namespace sst
 			{
 				if(mappings.find(name) == mappings.end())
 				{
-					if(allowFail)
-					{
-						return 0;
-					}
-					else
-					{
-						exitless_error(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", type->name, name);
-						info(type, "'%s' was defined here:", type->name);
-						doTheExit();
-					}
+					PrettyError errs;
+					errs.addError(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", type->name, name);
+					errs.addInfo(type, "'%s' was defined here:", type->name);
+
+					return TCResult(errs);
 				}
 			}
 
 			// TODO: pretty lame, but look for things that don't exist.
 			for(const auto& [ name, t ] : mappings)
 			{
-				{
 				if(type->generics.find(name) == type->generics.end())
-					if(allowFail)
-					{
-						return 0;
-					}
-					else
-					{
-						exitless_error(this->loc(), "Parametric entity '%s' does not have an argument '%s'", type->name, name);
-						info(type, "'%s' was defined here:", type->name);
-						doTheExit();
-					}
+				{
+					PrettyError errs;
+					errs.addError(this->loc(), "Parametric entity '%s' does not have an argument '%s'", type->name, name);
+					errs.addInfo(type, "'%s' was defined here:", type->name);
+
+					return TCResult(errs);
 				}
 			}
 		}
@@ -192,27 +178,29 @@ namespace sst
 		iceAssert(ret);
 
 		type->name = oldname;
-		return ret;
+		return TCResult(ret);
 	}
 
 
 
-	Defn* TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-		const TypeParamMap_t& gmaps, fir::Type* infer, bool allowFailIfNoMapping)
+	TCResult TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+		const TypeParamMap_t& gmaps, fir::Type* infer)
 	{
+		iceAssert(gdefs.size() > 0);
+
 		if(gmaps.empty())
 		{
-			if(allowFailIfNoMapping)    return 0;
-			else                        error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name);
+			return TCResult(PrettyError::error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
 		}
 
 		if(infer == 0 && gdefs.size() > 1)
 		{
-			exitless_error(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+			PrettyError errs;
+			errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
 			for(auto g : gdefs)
-				info(g, "Potential target here:");
+				errs.addInfo(g, "Potential target here:");
 
-			doTheExit();
+			return TCResult(errs);
 		}
 
 
@@ -221,34 +209,51 @@ namespace sst
 		// TODO: find a better way to do this??
 
 		std::vector<sst::Defn*> pots;
+		std::vector<std::pair<ast::Parameterisable*, PrettyError>> failures;
+
 		for(const auto& gdef : gdefs)
 		{
 			// because we're trying multiple things potentially, allow failure.
-			auto d = this->instantiateGenericEntity(gdef, gmaps, true);
-			if(d && (infer ? d->type == infer : true))
-				pots.push_back(d);
+			auto d = this->instantiateGenericEntity(gdef, gmaps);
+			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
+			{
+				pots.push_back(d.defn());
+			}
+			else
+			{
+				iceAssert(d.isError());
+				failures.push_back({ gdef, d.error() });
+			}
 		}
 
 		if(!pots.empty())
 		{
 			if(pots.size() > 1)
 			{
-				exitless_error(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+				PrettyError errs;
+				errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
 				for(auto p : pots)
-					info(p, "Potential target here:");
+					errs.addInfo(p, "Potential target here:");
 
-				doTheExit();
+				return TCResult(errs);
 			}
 			else
 			{
 				// ok, great. just return that shit.
 				iceAssert(pots[0]);
-				return pots[0];
+				return TCResult(pots[0]);
 			}
 		}
 		else
 		{
-			return 0;
+			iceAssert(failures.size() > 0);
+
+			PrettyError errs;
+			errs.addError(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s'; candidates are:", name);
+			for(const auto& [ f, e ] : failures)
+				errs.incorporate(e);
+
+			return TCResult(errs);
 		}
 	}
 }

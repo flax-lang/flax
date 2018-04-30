@@ -120,8 +120,8 @@ namespace sst
 							TypeParamMap_t mapping = this->convertParserTypeArgsToFIR(pt->toNamedType()->genericMapping, allowFail);
 
 							// types generally cannot be overloaded, so it doesn't make sense for it to be SFINAE-ed.
-							auto td = this->instantiateGenericEntity(atd, mapping, false);
-							iceAssert(td);
+							// unwrapping it will post the error if any.
+							auto td = this->instantiateGenericEntity(atd, mapping).defn();
 
 							this->stree = restore;
 							return td->type;
