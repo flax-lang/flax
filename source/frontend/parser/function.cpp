@@ -118,7 +118,7 @@ namespace parser
 	{
 		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
 		if(isvar)
-			error(st, "C-style variadic arguments are not supported on non-foreign functions");
+			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
 
 		st.skipWS();
 		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
@@ -148,7 +148,9 @@ namespace parser
 		auto ffn = new ForeignFuncDefn(st.loc());
 
 		// copy the things over
-		auto [ defn, isvar, __ ] = parseFunctionDecl(st);
+		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
+		(void) varloc;
+
 		if(!defn->generics.empty())
 			error(ffn->loc, "Foreign functions cannot be generic");
 
@@ -169,12 +171,15 @@ namespace parser
 		Token tok = st.pop();
 		iceAssert(tok.str() == "init");
 
-		auto [ args, generics, retty, isvar, loc ] = parseFunctionLookingDecl(st);
+		auto [ args, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
 		if(generics.size() > 0)
-			error(loc, "Class initialiser functions cannot be generic");
+			error(st.ploc(), "Class initialiser functions cannot be generic");
 
 		else if(retty != 0)
-			error(loc, "Class initialisers cannot have a return type");
+			error(st.ploc(), "Class initialisers cannot have a return type");
+
+		else if(isvar)
+			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
 
 		// ok loh
 		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(tok.loc);

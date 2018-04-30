@@ -106,7 +106,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* vf = 0;
 	fir::FunctionType* ft = 0;
 
-	if(auto vd = dcast(VarDefn, this->target))
+	if(dcast(VarDefn, this->target))
 	{
 		// ok, we're calling a variable.
 		// the below stuff ain't gonna work without some intervention

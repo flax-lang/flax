@@ -82,7 +82,7 @@ namespace platform
 		// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
 		// if we have at least 4mb worth of file.
 		// if not, then just 2 * pagesize.
-		#define MINIMUM_MMAP_THRESHOLD (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize())
+		#define MINIMUM_MMAP_THRESHOLD ((size_t) (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
 		#define _
 
 		char* contents = 0;

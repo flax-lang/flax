@@ -75,7 +75,7 @@ namespace sst
 								if(auto v = dynamic_cast<VarDefn*>(ot))
 								{
 									exitless_error(fn, "Conflicting definition for function '%s'; was previously defined as a variable");
-									info(ot, "Conflicting definition was here:");
+									info(v, "Conflicting definition was here:");
 
 									doTheExit();
 								}
@@ -86,7 +86,7 @@ namespace sst
 										util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
 									{
 										exitless_error(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name);
-										info(ot, "Conflicting definition was here: (%p vs %p)", f, fn);
+										info(f, "Conflicting definition was here: (%p vs %p)", f, fn);
 
 										doTheExit();
 									}
@@ -98,7 +98,7 @@ namespace sst
 							}
 							else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
 							{
-								exitless_error(def, "Duplicate definition for variable '%s'");
+								exitless_error(vr, "Duplicate definition for variable '%s'");
 
 								for(auto ot : others)
 									info(ot, "Previously defined here:");

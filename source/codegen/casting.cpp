@@ -199,7 +199,7 @@ namespace cgn
 		}
 		else if(fromType->isTupleType() && target->isTupleType() && fromType->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
-			auto ftt = fromType->toTupleType();
+			// auto ftt = fromType->toTupleType();
 			auto ttt = target->toTupleType();
 
 			auto tuple = this->irb.CreateValue(target);
