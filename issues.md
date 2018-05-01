@@ -220,6 +220,16 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- actually add the instructions and stuff, fix a couple of bugs
+- `fir::ConstantString` is now actually a slice.
+- move as many of the dynamic array stuff to the new `SAA` functions as possible.
+- increase length when appending ._.
+
+`(0ceb391)`
+- strings now behave like dynamic arrays
+- new concept of `SAA`, string-array-analogues (for now just strings and arrays lol) that have the `{ ptr, len, cap, refptr }` pattern.
+
+`(312b94a)`
 - check generic things when looking for duplicate definitions (to the best of our abilities)
 - actually make generic constructors work properly instead of by random chance
 

@@ -40,6 +40,7 @@ namespace array
 {
 	fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition)
 	{
+		// return saa_common::generateBoundsCheckFunction
 		fir::Function* fn = cs->module->getFunction(Identifier(isPerformingDecomposition
 			? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
 
@@ -48,7 +49,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(isPerformingDecomposition ? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getString() },
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getCharSlice(false) },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -432,378 +433,31 @@ namespace array
 
 
 
-	// static void _growCapacityBy(CodegenState* cs, fir::Function* func, fir::Value* arr, fir::Value* amt)
-	// {
-	// 	iceAssert(arr->getType()->isPointerType());
-	// 	iceAssert(arr->getType()->getPointerElementType()->isDynamicArrayType());
-	// 	iceAssert(amt->getType() == fir::Type::getInt64());
-	// }
-
-
-	//* required is how much *EXTRA* space we need.
-	static fir::Value* _checkCapacityAndGrowIfNeeded(CodegenState* cs, fir::Function* func, fir::Value* arr, fir::Value* required)
+	fir::Function* getReserveExtraFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		iceAssert(arr->getType()->isDynamicArrayType());
-		iceAssert(required->getType() == fir::Type::getInt64());
-
-		auto elmtype = arr->getType()->getArrayElementType();
-
-		fir::Value* ptr = cs->irb.GetDynamicArrayData(arr, "ptr");
-		fir::Value* len = cs->irb.GetDynamicArrayLength(arr, "len");
-		fir::Value* cap = cs->irb.GetDynamicArrayCapacity(arr, "cap");
-
-		fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
-		fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
-		fir::IRBlock* growblk = cs->irb.addNewBlockInFunction("growblock", func);
-		fir::IRBlock* freeold = cs->irb.addNewBlockInFunction("freeold", func);
-		fir::IRBlock* mergeblk = cs->irb.addNewBlockInFunction("merge", func);
-
-		fir::Value* needed = cs->irb.Add(len, required, "needed");
-		fir::Value* elmsize = cs->irb.Sizeof(elmtype, "elmsize");
-
-		fir::Value* nullPhi = 0;
-		{
-			auto cond = cs->irb.ICmpEQ(cs->irb.PointerToIntCast(ptr, fir::Type::getInt64()), fir::ConstantInt::getInt64(0));
-			cs->irb.CondBranch(cond, isnull, notnull);
-
-			cs->irb.setCurrentBlock(isnull);
-			{
-				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-				iceAssert(mallocf);
-
-				auto allocsz = cs->irb.Multiply(needed, elmsize);
-				auto rawdata = cs->irb.Call(mallocf, allocsz);
-
-				auto dataptr = cs->irb.PointerTypeCast(rawdata, elmtype->getMutablePointerTo());
-
-				auto setfn = cgn::glue::array::getSetElementsToDefaultValueFunction(cs, elmtype);
-				cs->irb.Call(setfn, dataptr, needed);
-
-				auto ret = cs->irb.SetDynamicArrayData(arr, dataptr);
-				ret = cs->irb.SetDynamicArrayLength(ret, needed);
-				ret = cs->irb.SetDynamicArrayCapacity(ret, needed);
-
-				// allocate memory for the refcount
-				{
-					fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-					rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
-
-					ret = cs->irb.SetDynamicArrayRefCountPointer(ret, rcptr);
-				}
-
-				cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
-
-
-
-				#if DEBUG_ARRAY_ALLOCATION
-				{
-					fir::Value* tmpstr = cs->module->createGlobalString("grow arr (from null): OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
-
-					cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, len, cap, dataptr, needed, needed });
-				}
-				#endif
-
-
-				nullPhi = ret;
-			}
-
-			cs->irb.UnCondBranch(mergeblk);
-			cs->irb.setCurrentBlock(notnull);
-		}
-
-
-		// check if len + required > cap
-		fir::IRBlock* cb = cs->irb.getCurrentBlock();
-		fir::Value* cond = cs->irb.ICmpGT(needed, cap);
-
-
-		// for when the 'dynamic' array came from a literal. same as the usual stuff
-		// capacity will be -1, in this case.
-
-		cs->irb.CondBranch(cond, growblk, mergeblk);
-
-		// return a phi node.
-		fir::Value* growPhi = 0;
-
-
-		// grows to the nearest power of two from (len + required)
-		cs->irb.setCurrentBlock(growblk);
-		{
-			fir::Function* p2func = cs->module->getIntrinsicFunction("roundup_pow2");
-			iceAssert(p2func);
-
-			fir::Value* nextpow2 = cs->irb.Call(p2func, needed, "nextpow2");
-
-			fir::Value* newptr = 0;
-			#if 0
-			{
-				fir::Function* refunc = cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC);
-				iceAssert(refunc);
-
-				auto dataptr = cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr());
-				dataptr = cs->irb.PointerSub(dataptr, refCountSize);
-
-				fir::Value* actuallen = cs->irb.Mul(nextpow2, elmsize);
-				newptr = cs->irb.Call(refunc, dataptr, actuallen);
-				newptr = cs->irb.PointerAdd(newptr, refCountSize);
-				newptr = cs->irb.PointerTypeCast(newptr, ptr->getType());
-			}
-			#else
-			{
-				fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-				iceAssert(mallocf);
-
-				auto malloclen = cs->irb.Multiply(nextpow2, elmsize);
-				auto mallocptr = cs->irb.Call(mallocf, malloclen);
-
-				fir::Value* oldptr = cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr());
-
-				// do a memcopy
-				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-				auto copylen = cs->irb.Multiply(len, elmsize);
-
-				cs->irb.Call(memcpyf, { mallocptr, oldptr, copylen,
-					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-				newptr = cs->irb.PointerTypeCast(mallocptr, ptr->getType());
-			}
-			#endif
-
-			iceAssert(newptr);
-
-			fir::Value* ret = cs->irb.SetDynamicArrayData(arr, newptr);
-			ret = cs->irb.SetDynamicArrayCapacity(ret, nextpow2);
-
-			#if DEBUG_ARRAY_ALLOCATION
-			{
-				fir::Value* tmpstr = cs->module->createGlobalString("grow arr: OLD :: (ptr: %p, len: %ld, cap: %ld) | NEW :: (ptr: %p, len: %ld, cap: %ld)\n");
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, len, cap, newptr, len, nextpow2 });
-			}
-			#endif
-
-
-			growPhi = ret;
-
-			// set the new space to valid things
-			if((false))
-			{
-				auto setfn = getSetElementsToDefaultValueFunction(cs, elmtype);
-				auto ofsptr = cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(ret), len);
-				cs->irb.Call(setfn, ofsptr, cs->irb.Subtract(nextpow2, len));
-			}
-
-
-			{
-				auto cond = cs->irb.ICmpEQ(cap, fir::ConstantInt::getInt64(-1));
-				cs->irb.CondBranch(cond, mergeblk, freeold);
-			}
-		}
-
-
-		// free the old memory if we did grow stuff.
-		cs->irb.setCurrentBlock(freeold);
-		{
-			// free the old memory
-			fir::Function* freef = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
-			iceAssert(freef);
-
-			cs->irb.Call(freef, cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr()));
-
-			#if DEBUG_ARRAY_ALLOCATION
-			{
-				fir::Value* tmpstr = cs->module->createGlobalString("free arr: (ptr: %p)\n");
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr });
-			}
-			#endif
-
-
-			cs->irb.UnCondBranch(mergeblk);
-		}
-
-
-
-		cs->irb.setCurrentBlock(mergeblk);
-		{
-			auto phi = cs->irb.CreatePHINode(arr->getType());
-			phi->addIncoming(arr, cb);
-			phi->addIncoming(nullPhi, isnull);
-			phi->addIncoming(growPhi, growblk);
-			phi->addIncoming(growPhi, freeold);
-
-			return phi;
-		}
+		return saa_common::generateReserveExtraFunction(cs, arrtype);
 	}
+
+	fir::Function* getReserveAtLeastFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
+	{
+		return saa_common::generateReserveAtLeastFunction(cs, arrtype);
+	}
+
 
 
 
 	fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		iceAssert(arrtype);
-
-		auto name = BUILTIN_DYNARRAY_APPEND_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* appendf = cs->module->getFunction(Identifier(name, IdKind::Name));
-
-		if(!appendf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, arrtype }, arrtype), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* s2 = func->getArguments()[1];
-
-			auto elmType = arrtype->getElementType();
-
-
-
-			// get the second one
-			{
-				fir::Value* origlen = cs->irb.GetDynamicArrayLength(s1);
-				fir::Value* applen = cs->irb.GetDynamicArrayLength(s2);
-
-				// grow if needed
-				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
-
-				// we should be ok, now copy.
-				fir::Value* ptr = cs->irb.GetDynamicArrayData(s1);
-				ptr = cs->irb.PointerAdd(ptr, origlen);
-
-				fir::Value* s2ptr = cs->irb.GetDynamicArrayData(s2);
-
-				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-
-				fir::Value* actuallen = cs->irb.Multiply(applen, cs->irb.Sizeof(arrtype->getElementType()));
-
-				cs->irb.Call(memcpyf, { cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr()),
-					cs->irb.PointerTypeCast(s2ptr, fir::Type::getMutInt8Ptr()), actuallen, fir::ConstantInt::getInt32(0),
-					fir::ConstantBool::get(false) });
-
-				// increase the length
-				s1 = cs->irb.SetDynamicArrayLength(s1, cs->irb.Add(origlen, applen));
-
-
-				if(cs->isRefCountedType(elmType))
-				{
-					// loop through the source array (Y in X + Y)
-
-					fir::IRBlock* cond = cs->irb.addNewBlockInFunction("loopCond", func);
-					fir::IRBlock* body = cs->irb.addNewBlockInFunction("loopBody", func);
-					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-					fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getInt64());
-
-					// already set to 0 internally
-					// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrPtr);
-
-					fir::Value* s2len = cs->irb.GetDynamicArrayLength(s2);
-					cs->irb.UnCondBranch(cond);
-
-					cs->irb.setCurrentBlock(cond);
-					{
-						// check the condition
-						fir::Value* ctr = cs->irb.Load(ctrPtr);
-						fir::Value* res = cs->irb.ICmpLT(ctr, s2len);
-
-						cs->irb.CondBranch(res, body, merge);
-					}
-
-					cs->irb.setCurrentBlock(body);
-					{
-						// increment refcount
-						fir::Value* val = cs->irb.Load(cs->irb.PointerAdd(s2ptr, cs->irb.Load(ctrPtr)));
-
-						cs->incrementRefCount(val);
-
-						// increment counter
-						cs->irb.Store(cs->irb.Add(fir::ConstantInt::getInt64(1), cs->irb.Load(ctrPtr)), ctrPtr);
-						cs->irb.UnCondBranch(cond);
-					}
-
-					cs->irb.setCurrentBlock(merge);
-				}
-
-
-				// ok done.
-				cs->irb.Return(s1);
-			}
-
-
-			cs->irb.setCurrentBlock(restore);
-			appendf = func;
-		}
-
-		iceAssert(appendf);
-		return appendf;
+		return saa_common::generateAppendFunction(cs, arrtype);
 	}
-
-
-
-
-
 
 	fir::Function* getElementAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		iceAssert(arrtype);
-
-		auto name = BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* appendf = cs->module->getFunction(Identifier(name, IdKind::Name));
-
-		if(!appendf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, arrtype->getElementType() }, arrtype), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* s2 = func->getArguments()[1];
-
-			auto elmType = arrtype->getElementType();
-
-			// get the second one
-			{
-				fir::Value* origlen = cs->irb.GetDynamicArrayLength(s1);
-				fir::Value* applen = fir::ConstantInt::getInt64(1);
-
-				// grow if needed
-				s1 = _checkCapacityAndGrowIfNeeded(cs, func, s1, applen);
-
-
-				// we should be ok, now copy.
-				fir::Value* ptr = cs->irb.GetDynamicArrayData(s1);
-				// auto origptr = ptr;
-				ptr = cs->irb.PointerAdd(ptr, origlen);
-
-				cs->irb.Store(s2, ptr);
-				if(cs->isRefCountedType(elmType))
-					cs->incrementRefCount(s2);
-
-				// increase the length
-				s1 = cs->irb.SetDynamicArrayLength(s1, cs->irb.Add(origlen, applen));
-
-				// ok done.
-				cs->irb.Return(s1);
-			}
-
-
-			cs->irb.setCurrentBlock(restore);
-			appendf = func;
-		}
-
-		iceAssert(appendf);
-		return appendf;
+		return saa_common::generateElementAppendFunction(cs, arrtype);
 	}
+
+
+
 
 
 	fir::Function* getCallClassConstructorOnElementsFunction(CodegenState* cs, fir::ClassType* cls, sst::FunctionDefn* constr,
@@ -983,49 +637,6 @@ namespace array
 	}
 
 
-	//* On the other hand, this *always* reserves an *extra* N elements worth of space
-	//* in the array.
-	//! broken
-	fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
-	{
-		iceAssert(arrtype);
-
-		auto name = BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* reservef = cs->module->getFunction(Identifier(name, IdKind::Name));
-
-		if(!reservef)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* arr = func->getArguments()[0];
-			fir::Value* cnt = func->getArguments()[1];
-
-			auto elmType = arrtype->getElementType();
-
-			fir::Value* origlen = cs->irb.GetDynamicArrayLength(arr);
-
-			arr = _checkCapacityAndGrowIfNeeded(cs, func, arr, cnt);
-
-			auto setfn = getSetElementsToDefaultValueFunction(cs, elmType);
-			auto ofsptr = cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(arr), origlen);
-			cs->irb.Call(setfn, ofsptr, cnt);
-
-			cs->irb.ReturnVoid();
-
-			cs->irb.setCurrentBlock(restore);
-			reservef = func;
-		}
-
-		return reservef;
-	}
 
 
 
@@ -1589,47 +1200,9 @@ namespace array
 
 	fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
-		iceAssert(arrtype);
-
-		auto name = BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
-
-		if(!fn)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, arrtype }, arrtype), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-
-			fir::Value* a1 = func->getArguments()[0];
-			fir::Value* a2 = func->getArguments()[1];
-
-			fir::Value* ret = cs->irb.CreateValue(arrtype);
-
-			auto clonef = getCloneFunction(cs, arrtype);
-			ret = cs->irb.Call(clonef, a1, fir::ConstantInt::getInt64(0));
-
-			auto appendf = getAppendFunction(cs, arrtype);
-			ret = cs->irb.Call(appendf, ret, a2);
-
-			// ok, then
-
-			cs->irb.Return(ret);
-
-
-			cs->irb.setCurrentBlock(restore);
-			fn = func;
-		}
-
-		iceAssert(fn);
-		return fn;
+		return saa_common::generateConstructFromTwoFunction(cs, arrtype);
 	}
+
 
 	fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype)
 	{
@@ -1647,7 +1220,7 @@ namespace array
 			auto retTy = fir::TupleType::get({ arrtype, arrtype->getArrayElementType() });
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, fir::Type::getString() }, retTy), fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype, fir::Type::getCharSlice(false) }, retTy), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -1710,16 +1283,6 @@ namespace array
 
 		return fn;
 	}
-
-
-	//* This makes sure that there is *enough space* for N elements in the array
-	//* If there is already enough space, it does nothing.
-	fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
-	{
-		iceAssert(0);
-		return 0;
-	}
-
 
 
 

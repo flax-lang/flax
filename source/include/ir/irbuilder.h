@@ -97,7 +97,6 @@ namespace fir
 		Value* StackAlloc(Type* type, std::string vname = "");
 		Value* ImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
-		Value* CreateSliceFromString(Value* str, bool mut, std::string vname = "");
 
 		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 
@@ -185,6 +184,8 @@ namespace fir
 		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
 
 
+		Value* CreateSliceFromString(Value* str, bool mut, std::string vname = "");
+		Value* CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname = "");
 
 
 

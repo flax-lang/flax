@@ -215,6 +215,7 @@ namespace fir
 		static PointerType* getMutUint64Ptr(FTContext* tc = 0);
 		static PointerType* getMutUint128Ptr(FTContext* tc = 0);
 
+		static ArraySliceType* getCharSlice(bool mut, FTContext* tc = 0);
 		static CharType* getChar(FTContext* tc = 0);
 		static StringType* getString(FTContext* tc = 0);
 		static RangeType* getRange(FTContext* tc = 0);

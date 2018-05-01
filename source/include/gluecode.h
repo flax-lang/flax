@@ -69,8 +69,9 @@ namespace cgn
 			fir::Function* getConstructFromTwoFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getIncrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype);
 			fir::Function* getDecrementArrayRefCountFunction(CodegenState* cs, fir::Type* arrtype);
-			fir::Function* getReserveSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
-			fir::Function* getReserveExtraSpaceForElementsFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+
+			fir::Function* getReserveExtraFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
+			fir::Function* getReserveAtLeastFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 
 			fir::Function* getSetElementsToValueFunction(CodegenState* cs, fir::Type* elmType);
 			fir::Function* getSetElementsToDefaultValueFunction(CodegenState* cs, fir::Type* elmType);
