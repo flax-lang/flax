@@ -19,7 +19,7 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 		auto restore = cs->irb.getCurrentBlock();
 
 		fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME, IdKind::Name),
-			fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+			fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 		func->setAlwaysInline();
 

@@ -131,18 +131,6 @@ import "math" as _
 			for now, it's all or nothing -- if you provide some you must provide all (or we will error).
 	*/
 
-	/*
-		TODO list for un-fucking strings:
-
-		1. currently strings are messed up -- halfway through unfucking the refcount and i need to sleep
-
-		2. probably just move to a dynamic-array style thing? we might even get away with copying most of the code...???
-			since we're moving to the 'strings-are-mutable' style, might as well go the whole way with capacity and stuff right?
-
-		3. we can re-use a bunch of the code, but on the other hand i don't really want to be copy-pasting this stuff. plus there's
-			quite a lot of handling in the array code
-
-	 */
 
 	do {
 		class Foo<T>

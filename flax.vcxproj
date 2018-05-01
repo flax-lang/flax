@@ -115,6 +115,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <Optimization>Disabled</Optimization>
+      <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Debug\lib;D:\Projects\lib\mpfr\Debug\lib;D:\Projects\lib\llvm\Debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -156,6 +157,7 @@ rem exit 0</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
+      <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -197,6 +199,7 @@ rem exit 0</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
+      <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

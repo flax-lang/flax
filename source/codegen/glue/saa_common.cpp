@@ -245,7 +245,8 @@ namespace saa_common
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 				cs->irb.Call(memcpyf, {
 					cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
-					rhsbuf, rhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
+					cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr()), rhsbytecount,
+					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
 				});
 
 				// null terminator
@@ -255,6 +256,8 @@ namespace saa_common
 						fir::Type::getMutInt8Ptr()));
 				}
 			}
+
+			lhs = cs->irb.SetSAALength(lhs, cs->irb.Add(lhslen, rhslen));
 
 			// handle refcounting
 			if(cs->isRefCountedType(getSAAElm(saa)))
@@ -302,7 +305,7 @@ namespace saa_common
 			auto rhsp = cs->irb.ImmutStackAlloc(getSAAElm(saa), rhs, "rhsptr");
 
 			auto rhsslice = cs->irb.CreateValue(getSAASlice(saa), "rhsslice");
-			rhsslice = cs->irb.SetArraySliceData(rhsslice, rhsp);
+			rhsslice = cs->irb.SetArraySliceData(rhsslice, cs->irb.PointerTypeCast(rhsp, rhsp->getType()->getMutablePointerVersion()));
 			rhsslice = cs->irb.SetArraySliceLength(rhsslice, getCI(1));
 
 			auto appf = generateAppendFunction(cs, saa);
@@ -395,6 +398,7 @@ namespace saa_common
 					cs->irb.Call(incrfn, rhsbuf, rhslen);
 				}
 
+				ret = cs->irb.SetSAALength(ret, cs->irb.Add(lhslen, rhslen));
 				cs->irb.Return(ret);
 			}
 
@@ -482,7 +486,6 @@ namespace saa_common
 
 			auto oldlen = cs->irb.GetSAALength(s1, "oldlen");
 			auto oldcap = cs->irb.GetSAACapacity(s1, "oldcap");
-			auto oldrc  = cs->irb.CreatePHINode(fir::Type::getInt64());
 
 			fir::IRBlock* nullrc = cs->irb.addNewBlockInFunction("nullrc", func);
 			fir::IRBlock* notnullrc = cs->irb.addNewBlockInFunction("notnullrc", func);
@@ -491,63 +494,70 @@ namespace saa_common
 			auto oldrcp = cs->irb.GetSAARefCountPointer(s1, "oldrcp");
 			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr())), nullrc, notnullrc);
 
+			fir::Value* nullphi = 0;
+			fir::Value* notnullphi = 0;
+
 			cs->irb.setCurrentBlock(nullrc);
 			{
-				oldrc->addIncoming(getCI(1), nullrc);
+				nullphi = getCI(1);
 				cs->irb.UnCondBranch(mergerc);
 			}
 
 			cs->irb.setCurrentBlock(notnullrc);
 			{
-				auto rc = cs->irb.GetSAARefCount(s1, "oldref");
-				oldrc->addIncoming(rc, notnullrc);
-
+				notnullphi = cs->irb.GetSAARefCount(s1, "oldref");
 				cs->irb.UnCondBranch(mergerc);
 			}
 
 
 			cs->irb.setCurrentBlock(mergerc);
-
-			fir::IRBlock* returnUntouched = cs->irb.addNewBlockInFunction("noExpansion", func);
-			fir::IRBlock* doExpansion = cs->irb.addNewBlockInFunction("expand", func);
-
-			cs->irb.CondBranch(cs->irb.ICmpLEQ(minsz, oldcap), returnUntouched, doExpansion);
-
-
-			cs->irb.setCurrentBlock(doExpansion);
 			{
-				// TODO: is it faster to times 3 divide by 2, or do FP casts and times 1.5?
-				auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
+				auto oldrc = cs->irb.CreatePHINode(fir::Type::getInt64());
+				oldrc->addIncoming(nullphi, nullrc);
+				oldrc->addIncoming(notnullphi, notnullrc);
 
-				// call realloc. handles the null case as well, which is nice.
-				auto oldbuf = cs->irb.PointerTypeCast(cs->irb.GetSAAData(s1), fir::Type::getMutInt8Ptr(), "oldbuf");
+				fir::IRBlock* returnUntouched = cs->irb.addNewBlockInFunction("noExpansion", func);
+				fir::IRBlock* doExpansion = cs->irb.addNewBlockInFunction("expand", func);
 
-				auto newbytecount = cs->irb.Multiply(newlen, cs->irb.Sizeof(getSAAElm(saa)), "newbytecount");
-
-				if(saa->isStringType())
-					newbytecount = cs->irb.Add(newbytecount, getCI(1));
-
-				auto newbuf = cs->irb.Call(cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC), oldbuf, newbytecount, "newbuf");
-				newbuf = castRawBufToElmPtr(cs, saa, newbuf);
-
-				// null terminator
-				if(saa->isStringType())
-					cs->irb.Store(cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))), fir::ConstantInt::getInt8(0));
-
-				auto ret = cs->irb.CreateValue(saa);
-				ret = cs->irb.SetSAAData(ret, newbuf);
-				ret = cs->irb.SetSAALength(ret, oldlen);
-				ret = cs->irb.SetSAACapacity(ret, newlen);
-				ret = initSAAWithRefCount(cs, ret, oldrc);
-
-				cs->irb.Return(ret);
-			}
+				cs->irb.CondBranch(cs->irb.ICmpLEQ(minsz, oldcap), returnUntouched, doExpansion);
 
 
-			cs->irb.setCurrentBlock(returnUntouched);
-			{
-				// as the name implies, do nothing.
-				cs->irb.Return(s1);
+
+				cs->irb.setCurrentBlock(doExpansion);
+				{
+
+					// TODO: is it faster to times 3 divide by 2, or do FP casts and times 1.5?
+					auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
+
+					// call realloc. handles the null case as well, which is nice.
+					auto oldbuf = cs->irb.PointerTypeCast(cs->irb.GetSAAData(s1), fir::Type::getMutInt8Ptr(), "oldbuf");
+
+					auto newbytecount = cs->irb.Multiply(newlen, cs->irb.Sizeof(getSAAElm(saa)), "newbytecount");
+
+					if(saa->isStringType())
+						newbytecount = cs->irb.Add(newbytecount, getCI(1));
+
+					auto newbuf = cs->irb.Call(cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC), oldbuf, newbytecount, "newbuf");
+					newbuf = castRawBufToElmPtr(cs, saa, newbuf);
+
+					// null terminator
+					if(saa->isStringType())
+						cs->irb.Store(cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))), fir::ConstantInt::getInt8(0));
+
+					auto ret = cs->irb.CreateValue(saa);
+					ret = cs->irb.SetSAAData(ret, newbuf);
+					ret = cs->irb.SetSAALength(ret, oldlen);
+					ret = cs->irb.SetSAACapacity(ret, newlen);
+					ret = initSAAWithRefCount(cs, ret, oldrc);
+
+					cs->irb.Return(ret);
+				}
+
+				cs->irb.setCurrentBlock(returnUntouched);
+				{
+					// as the name implies, do nothing.
+					cs->irb.Return(s1);
+				}
 			}
 
 			cs->irb.setCurrentBlock(restore);
@@ -610,7 +620,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getString() },
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getCharSlice(false) },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
