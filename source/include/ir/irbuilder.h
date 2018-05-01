@@ -139,13 +139,38 @@ namespace fir
 		[[nodiscard]] Value* InsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname = "");
 
 
+		//! ACHTUNG !
+		//* 'generic' function that works for both strings and dynamic arrays,
+		//* since they now function almost exactly the same.
+		//? SAA -- String Array Analogue
+		Value* GetSAAData(Value* str, std::string vname = "");
+		Value* GetSAALength(Value* str, std::string vname = "");
+		Value* GetSAACapacity(Value* str, std::string vname = "");
+		Value* GetSAARefCount(Value* str, std::string vname = "");
+		Value* GetSAARefCountPointer(Value* str, std::string vname = "");
+
+		[[nodiscard]] Value* SetSAARefCountPointer(Value* str, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetSAACapacity(Value* str, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetSAALength(Value* str, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetSAAData(Value* str, Value* val, std::string vname = "");
+		void SetSAARefCount(Value* str, Value* val, std::string vname = "");
+
+
+
+
+
 		Value* GetStringData(Value* str, std::string vname = "");
 		Value* GetStringLength(Value* str, std::string vname = "");
+		Value* GetStringCapacity(Value* str, std::string vname = "");
 		Value* GetStringRefCount(Value* str, std::string vname = "");
+		Value* GetStringRefCountPointer(Value* str, std::string vname = "");
 
+		[[nodiscard]] Value* SetStringRefCountPointer(Value* str, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetStringCapacity(Value* str, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetStringLength(Value* str, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetStringData(Value* str, Value* val, std::string vname = "");
 		void SetStringRefCount(Value* str, Value* val, std::string vname = "");
+
 
 		Value* GetDynamicArrayData(Value* arr, std::string vname = "");
 		Value* GetDynamicArrayLength(Value* arr, std::string vname = "");
@@ -157,8 +182,12 @@ namespace fir
 		[[nodiscard]] Value* SetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetDynamicArrayRefCountPointer(Value* arr, Value* ptr, std::string vname = "");
-
 		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
+
+
+
+
+
 
 		Value* GetArraySliceData(Value* arr, std::string vname = "");
 		Value* GetArraySliceLength(Value* arr, std::string vname = "");

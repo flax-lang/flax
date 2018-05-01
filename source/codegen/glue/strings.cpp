@@ -8,455 +8,51 @@
 
 // generate runtime glue code
 
-#define BUILTIN_STRINGREF_INCR_FUNC_NAME            "__stringref_incr"
-#define BUILTIN_STRINGREF_DECR_FUNC_NAME            "__stringref_decr"
-
-#define BUILTIN_STRING_CLONE_FUNC_NAME              "__string_clone"
-#define BUILTIN_STRING_APPEND_FUNC_NAME             "__string_append"
-#define BUILTIN_STRING_APPEND_CHAR_FUNC_NAME        "__string_appendchar"
-#define BUILTIN_STRING_CMP_FUNC_NAME                "__string_compare"
-#define BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME     "__string_ulength"
-
-#define BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME      "__string_combinetwo"
-#define BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME     "__string_combinechar"
-
-#define BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME      "__string_checkliteralmodify"
-#define BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME       "__string_boundscheck"
-
-
-// namespace cgn::glue::string
 namespace cgn {
 namespace glue {
 namespace string
 {
 	fir::Function* getCloneFunction(CodegenState* cs)
 	{
-		fir::Function* clonef = cs->module->getFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name));
-
-		if(!clonef)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CLONE_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64() }, fir::Type::getString()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* cloneofs = func->getArguments()[1];
-
-			// get an empty string
-			fir::Value* lhslen = cs->irb.Subtract(cs->irb.GetStringLength(s1, "l1"), cloneofs);
-			fir::Value* lhsbuf = cs->irb.PointerAdd(cs->irb.GetStringData(s1, "d1"), cloneofs);
-
-
-			// space for null + refcount
-
-			fir::Value* malloclen = cs->irb.Add(lhslen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
-
-			// now malloc.
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
-
-
-			#if DEBUG_STRING_ALLOCATION
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("clone string: OLD :: (ptr: %p, len: %ld) | NEW :: (ptr: %p, len: %ld)\n");
-				cs->irb.Call(printfn, { tmpstr, lhsbuf, lhslen, buf, lhslen });
-			}
-			#endif
-
-
-			// move it forward (skip the refcount)
-			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-			// now memcpy
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
-
-			// null terminator
-			cs->irb.Store(fir::ConstantInt::getInt8(0), offsetbuf);
-
-			// ok, now fix it
-
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
-
-			str = cs->irb.SetStringData(str, buf);
-			str = cs->irb.SetStringLength(str, lhslen);
-			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
-
-
-			cs->irb.Return(str);
-
-			clonef = func;
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(clonef);
-		return clonef;
+		return saa_common::generateCloneFunction(cs, fir::Type::getString());
 	}
-
-
-
-
-	fir::Function* getConstructFromTwoFunction(CodegenState* cs)
-	{
-		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME, IdKind::Name));
-
-		if(!appendf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_MAKE_FROM_TWO_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::ArraySliceType::get(fir::Type::getChar(), false), fir::ArraySliceType::get(fir::Type::getChar(), false) },
-				fir::Type::getString()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* s2 = func->getArguments()[1];
-
-
-
-			iceAssert(s1);
-			iceAssert(s2);
-
-			fir::Value* lhslen = cs->irb.GetArraySliceLength(s1, "l1");
-			fir::Value* rhslen = cs->irb.GetArraySliceLength(s2, "l2");
-
-			fir::Value* lhsbuf = cs->irb.GetArraySliceData(s1, "d1");
-			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getMutInt8Ptr());
-
-			fir::Value* rhsbuf = cs->irb.GetArraySliceData(s2, "d2");
-			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr());
-
-			// ok. combine the lengths
-			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
-
-			// space for null + refcount
-			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
-
-			// now malloc.
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
-
-			// move it forward (skip the refcount)
-			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
-
-			// now memcpy
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
-			cs->irb.Call(memcpyf, { offsetbuf, rhsbuf, cs->irb.IntSizeCast(rhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			// null terminator
-			fir::Value* nt = cs->irb.GetPointer(offsetbuf, rhslen);
-			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
-
-			#if DEBUG_STRING_ALLOCATION
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("append string: malloc(%d): (ptr: %p)\n");
-				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
-			}
-			#endif
-
-			// ok, now fix it
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
-
-			str = cs->irb.SetStringData(str, cs->irb.PointerTypeCast(buf, fir::Type::getChar()->getPointerTo()));
-			str = cs->irb.SetStringLength(str, newlen);
-			cs->irb.SetStringRefCount(str, fir::ConstantInt::getInt64(1));
-
-			cs->irb.Return(str);
-
-			appendf = func;
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(appendf);
-		return appendf;
-	}
-
-
-
-
-	fir::Function* getConstructWithCharFunction(CodegenState* cs)
-	{
-		fir::Function* thefn = cs->module->getFunction(Identifier(BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME, IdKind::Name));
-
-		if(!thefn)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_MAKE_WITH_CHAR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::ArraySliceType::get(fir::Type::getChar(), false), fir::Type::getChar() },
-				fir::Type::getString()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* ch = func->getArguments()[1];
-
-			iceAssert(s1);
-			iceAssert(ch);
-
-			// so, we just do a cheaty thing, we call the constructFromTwo function.
-			auto chptr = cs->irb.ImmutStackAlloc(fir::Type::getChar(), ch);
-			auto chslc = cs->irb.CreateValue(fir::ArraySliceType::get(fir::Type::getChar(), false));
-			{
-				chslc = cs->irb.SetArraySliceData(chslc, chptr);
-				chslc = cs->irb.SetArraySliceLength(chslc, fir::ConstantInt::getInt64(1));
-			}
-
-			auto cftfn = getConstructFromTwoFunction(cs);
-			iceAssert(cftfn);
-
-			cs->irb.Return(cs->irb.Call(cftfn, cs->irb.CreateSliceFromString(s1, false), chslc));
-
-			thefn = func;
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(thefn);
-		return thefn;
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	fir::Function* getAppendFunction(CodegenState* cs)
 	{
-		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name));
-
-		if(!appendf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
-				fir::Type::getString()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* s2 = func->getArguments()[1];
-
-
-			iceAssert(s1);
-			iceAssert(s2);
-
-			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
-			fir::Value* rhslen = cs->irb.GetStringLength(s2, "l2");
-			fir::Value* newlen = cs->irb.Add(lhslen, rhslen);
-
-			// space for null + refcount
-			fir::Value* malloclen = cs->irb.Add(newlen, fir::ConstantInt::getInt64(1 + REFCOUNT_SIZE));
-
-			// TODO: should we use realloc instead?
-			//* possibly, once we fix the refcount madness it'll be less of a shitshow.
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
-
-			// move it forward (skip the refcount)
-			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-			buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
-
-
-			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
-			lhsbuf = cs->irb.PointerTypeCast(lhsbuf, fir::Type::getMutInt8Ptr());
-
-			fir::Value* rhsbuf = cs->irb.GetStringData(s2, "d2");
-			rhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr());
-
-			// now memcpy
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.Call(memcpyf, { buf, lhsbuf, cs->irb.IntSizeCast(lhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
-			cs->irb.Call(memcpyf, { offsetbuf, rhsbuf, cs->irb.IntSizeCast(rhslen, fir::Type::getInt64()),
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			// null terminator
-			fir::Value* nt = cs->irb.GetPointer(offsetbuf, rhslen);
-			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
-
-			#if DEBUG_STRING_ALLOCATION
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("append string: malloc(%d): (ptr: %p)\n");
-				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
-			}
-			#endif
-
-			// ok, now fix it
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
-
-			str = cs->irb.SetStringData(str, cs->irb.PointerTypeCast(buf, fir::Type::getChar()->getPointerTo()));
-			str = cs->irb.SetStringLength(str, newlen);
-
-			cs->irb.SetStringRefCount(str, cs->irb.GetStringRefCount(s1));
-
-			cs->irb.Return(str);
-
-			appendf = func;
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(appendf);
-		return appendf;
+		return saa_common::generateAppendFunction(cs, fir::Type::getString());
 	}
-
 
 	fir::Function* getCharAppendFunction(CodegenState* cs)
 	{
-		fir::Function* appendf = cs->module->getFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name));
-
-		if(!appendf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_APPEND_CHAR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getChar() },
-				fir::Type::getString()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* s1 = func->getArguments()[0];
-			fir::Value* s2 = func->getArguments()[1];
-
-			iceAssert(s1);
-			iceAssert(s2);
-
-			fir::Value* lhsbuf = cs->irb.GetStringData(s1, "d1");
-			fir::Value* lhslen = cs->irb.GetStringLength(s1, "l1");
-
-
-			// space for null (1) + refcount (i64size) + the char (another 1)
-			fir::Value* malloclen = cs->irb.Add(lhslen, fir::ConstantInt::getInt64(2 + REFCOUNT_SIZE));
-
-
-			// TODO: same issue with appending a string, maybe use realloc.
-			fir::Function* mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-			iceAssert(mallocf);
-
-			fir::Value* buf = cs->irb.Call(mallocf, malloclen);
-
-			// move it forward (skip the refcount)
-			buf = cs->irb.PointerAdd(buf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-
-			// now memcpy
-			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-			cs->irb.Call(memcpyf, { buf, lhsbuf, lhslen,
-				fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
-
-			fir::Value* offsetbuf = cs->irb.PointerAdd(buf, lhslen);
-
-			// store the char.
-			fir::Value* ch = cs->irb.Bitcast(s2, fir::Type::getInt8());
-			cs->irb.Store(ch, offsetbuf);
-
-			// null terminator
-			fir::Value* nt = cs->irb.PointerAdd(offsetbuf, fir::ConstantInt::getInt64(1));
-			cs->irb.Store(fir::ConstantInt::getInt8(0), nt);
-
-			#if DEBUG_STRING_ALLOCATION
-			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("append char: malloc(%d): (ptr: %p)\n");
-				cs->irb.Call(printfn, { tmpstr, malloclen, buf });
-			}
-			#endif
-
-
-			// ok, now fix it
-			// get an empty string
-			fir::Value* str = cs->irb.CreateValue(fir::Type::getString());
-
-			str = cs->irb.SetStringData(str, buf);
-			str = cs->irb.SetStringLength(str, cs->irb.Add(lhslen, fir::ConstantInt::getInt64(1)));
-
-			cs->irb.SetStringRefCount(str, cs->irb.GetStringRefCount(s1));
-
-			cs->irb.Return(str);
-
-			appendf = func;
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(appendf);
-		return appendf;
+		return saa_common::generateElementAppendFunction(cs, fir::Type::getString());
 	}
 
+	fir::Function* getConstructFromTwoFunction(CodegenState* cs)
+	{
+		return saa_common::generateConstructFromTwoFunction(cs, fir::Type::getString());
+	}
 
+	fir::Function* getConstructWithCharFunction(CodegenState* cs)
+	{
+		return saa_common::generateConstructWithElementFunction(cs, fir::Type::getString());
+	}
 
-
-
-
+	fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isDecomp)
+	{
+		return saa_common::generateBoundsCheckFunction(cs, fir::Type::getString(), isDecomp);
+	}
 
 	fir::Function* getCompareFunction(CodegenState* cs)
 	{
-		fir::Function* cmpf = cs->module->getFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name));
+		auto fname = "__compare_" + fir::Type::getString()->str();
+		fir::Function* cmpf = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
 		if(!cmpf)
 		{
 			// great.
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CMP_FUNC_NAME, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
 				fir::Type::getInt64()), fir::LinkageType::Internal);
 
@@ -541,297 +137,122 @@ namespace string
 	}
 
 
+	static void _doRefCount(CodegenState* cs, fir::Function* func, bool decrement)
+	{
+		auto str = func->getArguments()[0];
+		auto rcp = cs->irb.GetStringRefCountPointer(str, "rcp");
+
+		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
+		fir::IRBlock* dorc = cs->irb.addNewBlockInFunction("dorc", func);
+
+		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, cs->irb.PointerTypeCast(fir::ConstantInt::getInt64(0), fir::Type::getInt64Ptr())),
+			merge, dorc);
+
+		cs->irb.setCurrentBlock(dorc);
+		{
+			auto oldrc = cs->irb.GetStringRefCount(str, "oldrc");
+			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
+
+			cs->irb.SetStringRefCount(str, newrc);
+
+			if(decrement)
+			{
+				fir::IRBlock* dofree = cs->irb.addNewBlockInFunction("dofree", func);
+				cs->irb.CondBranch(cs->irb.ICmpEQ(newrc, fir::ConstantInt::getInt64(0)),
+					dofree, merge);
+
+				cs->irb.setCurrentBlock(dofree);
+				{
+					auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
+					iceAssert(freefn);
+
+					auto buf = cs->irb.GetStringData(str, "buf");
+					buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
+
+					cs->irb.Call(freefn, buf);
+				}
+			}
+
+			cs->irb.UnCondBranch(merge);
+		}
+
+		cs->irb.setCurrentBlock(merge);
+		{
+			cs->irb.ReturnVoid();
+		}
+	}
 
 
 
 
 	fir::Function* getRefCountIncrementFunction(CodegenState* cs)
 	{
-		fir::Function* incrf = cs->module->getFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name));
+		auto fname = "__incr_rc_" + fir::Type::getString()->str();
+		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
-		if(!incrf)
+		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_INCR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()),
-				fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			fir::IRBlock* getref = cs->irb.addNewBlockInFunction("getref", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 			cs->irb.setCurrentBlock(entry);
 
-			// if ptr is 0, we exit early.
-			{
-				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getChar()->getPointerTo()));
-
-				cs->irb.CondBranch(cond, merge, getref);
-			}
-
-
-			cs->irb.setCurrentBlock(getref);
-			fir::Value* curRc = cs->irb.GetStringRefCount(func->getArguments()[0]);
-
-			// never increment the refcount if this is a string literal
-			// how do we know? the refcount was -1 to begin with.
-
-			// check.
-			fir::IRBlock* doadd = cs->irb.addNewBlockInFunction("doref", func);
-			{
-				fir::Value* cond = cs->irb.ICmpLT(curRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CondBranch(cond, merge, doadd);
-			}
-
-			cs->irb.setCurrentBlock(doadd);
-			fir::Value* newRc = cs->irb.Add(curRc, fir::ConstantInt::getInt64(1));
-			cs->irb.SetStringRefCount(func->getArguments()[0], newRc);
-
-			#if DEBUG_STRING_REFCOUNTING
-			{
-				fir::Value* tmpstr = cs->module->createGlobalString("(incr) new rc of %p ('%s') = %d\n");
-
-				auto bufp = cs->irb.GetStringData(func->getArguments()[0]);
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
-			}
-			#endif
-
-			cs->irb.UnCondBranch(merge);
-			cs->irb.setCurrentBlock(merge);
-			cs->irb.ReturnVoid();
+			_doRefCount(cs, func, false);
 
 			cs->irb.setCurrentBlock(restore);
-
-			incrf = func;
+			retfn = func;
 		}
 
-		iceAssert(incrf);
-
-
-		return incrf;
+		iceAssert(retfn);
+		return retfn;
 	}
-
 
 	fir::Function* getRefCountDecrementFunction(CodegenState* cs)
 	{
-		fir::Function* decrf = cs->module->getFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name));
+		auto fname = "__decr_rc_" + fir::Type::getString()->str();
+		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
-		if(!decrf)
+		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRINGREF_DECR_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()),
-				fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			fir::IRBlock* checkneg = cs->irb.addNewBlockInFunction("checkneg", func);
-			fir::IRBlock* dotest = cs->irb.addNewBlockInFunction("dotest", func);
-			fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("deallocate", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-
-			// note:
-			// if the ptr is 0, we exit immediately
-			// if the refcount is -1, we exit as well.
-
-
 			cs->irb.setCurrentBlock(entry);
-			{
-				fir::Value* ptr = cs->irb.GetStringData(func->getArguments()[0]);
-				fir::Value* cond = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getChar()->getPointerTo()));
 
-				cs->irb.CondBranch(cond, merge, checkneg);
-			}
-
-
-			// needs to handle freeing the thing.
-			cs->irb.setCurrentBlock(checkneg);
-			fir::Value* curRc = cs->irb.GetStringRefCount(func->getArguments()[0]);
-
-			// check.
-			{
-				fir::Value* cond = cs->irb.ICmpLT(curRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CondBranch(cond, merge, dotest);
-			}
-
-
-			cs->irb.setCurrentBlock(dotest);
-			fir::Value* newRc = cs->irb.Subtract(curRc, fir::ConstantInt::getInt64(1));
-			cs->irb.SetStringRefCount(func->getArguments()[0], newRc);
-
-			#if DEBUG_STRING_REFCOUNTING
-			{
-				fir::Value* tmpstr = cs->module->createGlobalString("(decr) new rc of %p ('%s') = %d\n");
-
-
-				auto bufp = cs->irb.GetStringData(func->getArguments()[0]);
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
-			}
-			#endif
-
-			{
-				fir::Value* cond = cs->irb.ICmpEQ(newRc, fir::ConstantInt::getInt64(0));
-				cs->irb.CondBranch(cond, dealloc, merge);
-
-				cs->irb.setCurrentBlock(dealloc);
-
-				// call free on the buffer.
-				fir::Value* bufp = cs->irb.GetStringData(func->getArguments()[0]);
-				bufp = cs->irb.PointerTypeCast(bufp, fir::Type::getMutInt8Ptr());
-
-				#if DEBUG_STRING_ALLOCATION
-				{
-					fir::Value* tmpstr = cs->module->createGlobalString("free %p ('%s') (%d)\n");
-					cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, bufp, bufp, newRc });
-				}
-				#endif
-
-				fir::Function* freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
-				iceAssert(freefn);
-
-				cs->irb.Call(freefn, cs->irb.PointerSub(bufp, fir::ConstantInt::getInt64(REFCOUNT_SIZE)));
-
-				// cs->irb.SetStringData(func->getArguments()[0], fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
-				cs->irb.UnCondBranch(merge);
-			}
-
-			cs->irb.setCurrentBlock(merge);
-			cs->irb.ReturnVoid();
+			_doRefCount(cs, func, true);
 
 			cs->irb.setCurrentBlock(restore);
-
-			decrf = func;
+			retfn = func;
 		}
 
-		iceAssert(decrf);
-		return decrf;
+		iceAssert(retfn);
+		return retfn;
 	}
 
 
 
-
-	fir::Function* getBoundsCheckFunction(CodegenState* cs)
-	{
-		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
-
-		if(!fn)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64(), fir::Type::getString() },
-					fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			fir::IRBlock* failb = cs->irb.addNewBlockInFunction("fail", func);
-			fir::IRBlock* checkneg = cs->irb.addNewBlockInFunction("checkneg", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* arg1 = func->getArguments()[0];
-			fir::Value* arg2 = func->getArguments()[1];
-
-			fir::Value* len = cs->irb.GetStringLength(arg1);
-			fir::Value* res = cs->irb.ICmpGEQ(arg2, len);
-
-			cs->irb.CondBranch(res, failb, checkneg);
-			cs->irb.setCurrentBlock(failb);
-			{
-				printError(cs, func->getArguments()[2], "Tried to index string at index '%ld'; length is only '%ld'! (max index is thus '%ld')\n",
-					{ arg2, len, cs->irb.Subtract(len, fir::ConstantInt::getInt64(1)) });
-			}
-
-			cs->irb.setCurrentBlock(checkneg);
-			{
-				fir::Value* res = cs->irb.ICmpLT(arg2, fir::ConstantInt::getInt64(0));
-				cs->irb.CondBranch(res, failb, merge);
-			}
-
-			cs->irb.setCurrentBlock(merge);
-			{
-				cs->irb.ReturnVoid();
-			}
-
-			fn = func;
-
-
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(fn);
-		return fn;
-	}
-
-
-
-
-
-
-	fir::Function* getCheckLiteralWriteFunction(CodegenState* cs)
-	{
-		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name));
-
-		if(!fn)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_CHECK_LITERAL_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getInt64(), fir::Type::getString() },
-					fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			fir::IRBlock* failb = cs->irb.addNewBlockInFunction("fail", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* arg1 = func->getArguments()[0];
-			fir::Value* arg2 = func->getArguments()[1];
-
-			fir::Value* rc = cs->irb.GetStringRefCount(arg1);
-			fir::Value* res = cs->irb.ICmpLT(rc, fir::ConstantInt::getInt64(0));
-
-			cs->irb.CondBranch(res, failb, merge);
-			cs->irb.setCurrentBlock(failb);
-			{
-				fir::Value* dp = cs->irb.GetStringData(arg1);
-				printError(cs, func->getArguments()[2], "Tried to write to immutable string literal '%s' at index '%ld'!\n",
-					{ dp, arg2 });
-			}
-
-			cs->irb.setCurrentBlock(merge);
-			{
-				cs->irb.ReturnVoid();
-			}
-
-			fn = func;
-
-
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(fn);
-		return fn;
-	}
 
 
 	fir::Function* getUnicodeLengthFunction(CodegenState* cs)
 	{
-		fir::Function* lenf = cs->module->getFunction(Identifier(BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME, IdKind::Name));
+		auto fname = "__unicode_length_" + fir::Type::getString()->str();
+		fir::Function* lenf = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
 		if(!lenf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_STRING_UNICODE_LENGTH_FUNC_NAME, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();

@@ -52,13 +52,13 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 
 	cs->irb.setCurrentBlock(neg_begin);
-	cgn::glue::printError(cs, fir::ConstantString::get(apos.toString()), "Start index of array slice was negative (got '%ld')\n", { beginIndex });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(apos.toString()), "Start index of array slice was negative (got '%ld')\n", { beginIndex });
 
 	cs->irb.setCurrentBlock(neg_end);
-	cgn::glue::printError(cs, fir::ConstantString::get(bpos.toString()), "End index of array slice was negative (got '%ld')\n", { endIndex });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()), "End index of array slice was negative (got '%ld')\n", { endIndex });
 
 	cs->irb.setCurrentBlock(neg_len);
-	cgn::glue::printError(cs, fir::ConstantString::get(bpos.toString()), "Length of array slice was negative (got '%ld')\n", { length });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()), "Length of array slice was negative (got '%ld')\n", { length });
 
 
 	cs->irb.setCurrentBlock(merge);
