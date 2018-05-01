@@ -1144,6 +1144,18 @@ namespace fir
 		return slc;
 	}
 
+	Value* IRBuilder::CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname)
+	{
+		if(!str->getType()->isDynamicArrayType())
+			error("expected dynamic array type, found '%s' instead", str->getType());
+
+		// this is one of those compound thingies.
+		auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
+		slc = this->SetArraySliceData(slc, this->GetDynamicArrayData(str));
+		slc = this->SetArraySliceLength(slc, this->GetDynamicArrayLength(str));
+
+		return slc;
+	}
 
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)

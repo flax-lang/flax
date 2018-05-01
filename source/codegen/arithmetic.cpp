@@ -488,7 +488,9 @@ namespace cgn
 				// ok, do the append
 				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
-				fir::Value* res = this->irb.Call(maketwof, lv, rv);
+				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromDynamicArray(lv, true),
+					this->irb.CreateSliceFromDynamicArray(rv, true));
+
 				this->addRefCountedValue(res);
 
 				return CGResult(res);

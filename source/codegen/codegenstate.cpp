@@ -149,14 +149,23 @@ namespace cgn
 	{
 		if(type->isStringType())
 		{
-			return fir::ConstantString::get("");
+			fir::Value* arr = this->irb.CreateValue(type);
+
+			arr = this->irb.SetSAAData(arr, this->irb.GetArraySliceData(fir::ConstantString::get("")));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+
+			return arr;
 		}
 		else if(type->isDynamicArrayType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
-			arr = this->irb.SetDynamicArrayData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
-			arr = this->irb.SetDynamicArrayLength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetDynamicArrayCapacity(arr, fir::ConstantInt::getInt64(0));
+
+			arr = this->irb.SetSAAData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
 			return arr;
 		}

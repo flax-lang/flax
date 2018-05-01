@@ -18,10 +18,12 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
 
+	iceAssert(pos->getType()->isCharSliceType());
+
 	#ifdef _WIN32
 	{
 		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s: " + message).c_str());
-		fir::Value* posstr = cs->irb.GetStringData(pos);
+		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
 		std::vector<fir::Value*> as = { fmtstr, posstr };
 		as.insert(as.end(), args.begin(), args.end());
@@ -32,7 +34,7 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 	{
 		fir::Value* tmpstr = cs->module->createGlobalString("r");
 		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s: " + message).c_str());
-		fir::Value* posstr = cs->irb.GetStringData(pos);
+		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
 		fir::Value* err = cs->irb.Call(cs->getOrDeclareLibCFunction(CRT_FDOPEN), fir::ConstantInt::getInt32(2), tmpstr);
 
@@ -60,7 +62,7 @@ namespace misc
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getRange(), fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getRange(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 

@@ -261,7 +261,7 @@ namespace fir
 		return new ConstantString(s);
 	}
 
-	ConstantString::ConstantString(std::string s) : ConstantValue(fir::StringType::get())
+	ConstantString::ConstantString(std::string s) : ConstantValue(fir::Type::getCharSlice(false))
 	{
 		this->str = s;
 	}

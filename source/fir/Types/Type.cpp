@@ -926,6 +926,11 @@ namespace fir
 
 
 
+	ArraySliceType* Type::getCharSlice(bool mut, FTContext* tc)
+	{
+		return ArraySliceType::get(fir::Type::getChar(), mut, tc);
+	}
+
 	RangeType* Type::getRange(FTContext* tc)
 	{
 		return RangeType::get(tc);
