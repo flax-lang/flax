@@ -85,11 +85,11 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		// do a bounds check.
 		auto numbinds = fir::ConstantInt::getInt64(bind.inner.size());
 		{
-			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs);
+			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, true);
 			iceAssert(checkf);
 
 			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, rhs.value, numbinds, strloc);
+			cs->irb.Call(checkf, cs->irb.GetStringLength(rhs.value), numbinds, strloc);
 		}
 
 		//* note: special-case this, because 1. we want to return chars

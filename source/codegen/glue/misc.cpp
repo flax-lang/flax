@@ -13,7 +13,7 @@
 namespace cgn {
 namespace glue {
 
-void printError(cgn::CodegenState* cs, fir::Value* pos, std::string message, std::vector<fir::Value*> args)
+void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string message, std::vector<fir::Value*> args)
 {
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
@@ -123,17 +123,17 @@ namespace misc
 			{
 				cs->irb.setCurrentBlock(stepzero);
 				{
-					printError(cs, func->getArguments()[1], "Range step had value of zero\n", { });
+					printRuntimeError(cs, func->getArguments()[1], "Range step had value of zero\n", { });
 				}
 
 				cs->irb.setCurrentBlock(stepnotpos);
 				{
-					printError(cs, func->getArguments()[1], "Range had negative step value ('%ld'); invalid when start < end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "Range had negative step value ('%ld'); invalid when start < end\n", { step });
 				}
 
 				cs->irb.setCurrentBlock(stepnotneg);
 				{
-					printError(cs, func->getArguments()[1], "Range had positive step value ('%ld'); invalid when start > end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "Range had positive step value ('%ld'); invalid when start > end\n", { step });
 				}
 			}
 

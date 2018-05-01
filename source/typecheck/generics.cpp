@@ -124,6 +124,8 @@ namespace sst
 			// TODO: make an elegant early-out for this situation?
 			for(const auto& [ name, constr ] : type->generics)
 			{
+				(void) constr;
+
 				if(mappings.find(name) == mappings.end())
 				{
 					PrettyError errs;
@@ -135,8 +137,9 @@ namespace sst
 			}
 
 			// TODO: pretty lame, but look for things that don't exist.
-			for(const auto& [ name, t ] : mappings)
+			for(const auto& [ name, ty ] : mappings)
 			{
+				(void) ty;
 				if(type->generics.find(name) == type->generics.end())
 				{
 					PrettyError errs;

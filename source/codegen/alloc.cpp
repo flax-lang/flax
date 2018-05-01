@@ -39,7 +39,7 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 
 		cs->irb.setCurrentBlock(failb);
 		{
-			cgn::glue::printError(cs, s2, "Tried to allocate a negative ('%ld') amount of memory\n", { s1 });
+			cgn::glue::printRuntimeError(cs, s2, "Tried to allocate a negative ('%ld') amount of memory\n", { s1 });
 		}
 
 		cs->irb.setCurrentBlock(merge);

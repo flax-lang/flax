@@ -33,19 +33,6 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 
-	// check if we're trying to modify a literal, first of all.
-	// we do it here, because we need some special sauce to do stuff
-	if(auto so = dcast(SubscriptOp, this->left); so && so->cgSubscriptee->getType()->isStringType())
-	{
-		// yes, yes we are.
-		auto checkf = cgn::glue::string::getCheckLiteralWriteFunction(cs);
-		auto locstr = fir::ConstantString::get(this->loc.toString());
-
-		// call it
-		cs->irb.Call(checkf, so->cgSubscriptee, so->cgIndex, locstr);
-	}
-
-
 	// okay, i guess
 	auto rr = this->right->codegen(cs, lt);
 	auto rt = rr.value->getType();
@@ -101,7 +88,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::string::getAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromString(rr.value, true));
 
 				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);

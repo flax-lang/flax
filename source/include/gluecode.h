@@ -42,7 +42,7 @@ namespace cgn
 
 	namespace glue
 	{
-		void printError(CodegenState* cs, fir::Value* pos, std::string msg, std::vector<fir::Value*> args);
+		void printRuntimeError(CodegenState* cs, fir::Value* pos, std::string msg, std::vector<fir::Value*> args);
 
 		namespace string
 		{
@@ -50,20 +50,17 @@ namespace cgn
 			fir::Function* getAppendFunction(CodegenState* cs);
 			fir::Function* getCompareFunction(CodegenState* cs);
 			fir::Function* getCharAppendFunction(CodegenState* cs);
-			fir::Function* getBoundsCheckFunction(CodegenState* cs);
 			fir::Function* getUnicodeLengthFunction(CodegenState* cs);
 			fir::Function* getConstructFromTwoFunction(CodegenState* cs);
 			fir::Function* getConstructWithCharFunction(CodegenState* cs);
 			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
 			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
-			fir::Function* getCheckLiteralWriteFunction(CodegenState* cs);
+			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isDecomp);
 		}
 
 		namespace array
 		{
 			fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype);
-			// fir::Function* getCloneFunction(CodegenState* cs, fir::ArraySliceType* arrtype);
-			// fir::Function* getCloneFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype);
 			fir::Function* getPopElementFromBackFunction(CodegenState* cs, fir::Type* arrtype);
 			fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition);
@@ -80,6 +77,22 @@ namespace cgn
 
 			fir::Function* getCallClassConstructorOnElementsFunction(CodegenState* cs, fir::ClassType* cls, sst::FunctionDefn* constr,
 				const std::vector<FnCallArgument>& args);
+		}
+
+		namespace saa_common
+		{
+			fir::Function* generateCloneFunction(CodegenState* cs, fir::Type* saa);
+			fir::Function* generateAppendFunction(CodegenState* cs, fir::Type* saa);
+			fir::Function* generateElementAppendFunction(CodegenState* cs, fir::Type* saa);
+			fir::Function* generateConstructFromTwoFunction(CodegenState* cs, fir::Type* saa);
+			fir::Function* generateConstructWithElementFunction(CodegenState* cs, fir::Type* saa);
+
+			fir::Function* generateBoundsCheckFunction(CodegenState* cs, fir::Type* saa, bool isDecomp);
+
+			fir::Function* generateReserveExtraFunction(CodegenState* cs, fir::Type* saa);
+			fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa);
+
+			fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* str, fir::Value* rc);
 		}
 
 		namespace misc

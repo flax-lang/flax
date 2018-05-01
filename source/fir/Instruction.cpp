@@ -133,8 +133,12 @@ namespace fir
 			case OpKind::String_SetData:					instrname = "set_str.data"; break;
 			case OpKind::String_GetLength:					instrname = "get_str.len"; break;
 			case OpKind::String_SetLength:					instrname = "set_str.len"; break;
+			case OpKind::String_GetCapacity:				instrname = "get_str.cap"; break;
+			case OpKind::String_SetCapacity:				instrname = "set_str.cap"; break;
 			case OpKind::String_GetRefCount:				instrname = "get_str.rc"; break;
 			case OpKind::String_SetRefCount:				instrname = "set_str.rc"; break;
+			case OpKind::String_GetRefCountPtr:				instrname = "get_str.rc_ptr"; break;
+			case OpKind::String_SetRefCountPtr:				instrname = "set_str.rc_ptr"; break;
 
 			case OpKind::DynamicArray_GetData:				instrname = "get_arr.data"; break;
 			case OpKind::DynamicArray_SetData:				instrname = "set_arr.data"; break;

@@ -213,12 +213,12 @@ namespace cgn
 		else if(name == FREE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(FREE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getVoid()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getMutInt8Ptr() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{
