@@ -74,13 +74,13 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(lt->isStringType())
 	{
 		// bounds check
-		auto checkf = cgn::glue::string::getBoundsCheckFunction(cs);
+		auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, false);
 		iceAssert(checkf);
 
 		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.Call(checkf, lr.value, index, locstr);
+		cs->irb.Call(checkf, cs->irb.GetStringLength(lr.value), index, locstr);
 		data = cs->irb.GetStringData(lr.value);
 	}
 	else if(lt->isPointerType())

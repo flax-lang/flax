@@ -67,57 +67,51 @@ import "math" as _
 // }
 
 
-class LinkedList<T>
-{
-	struct Node
-	{
-		var data: T
+// class LinkedList<T>
+// {
+// 	struct Node
+// 	{
+// 		var data: T
 
-		var prev: &Node
-		var next: &Node
-	}
+// 		var prev: &Node
+// 		var next: &Node
+// 	}
 
-	var head: &Node
-	var tail: &Node
+// 	var head: &Node
+// 	var tail: &Node
 
-	var count: int
+// 	var count: int
 
-	init(data: T)
-	{
-		printf("called init with %d\n", data)
-	}
+// 	init(data: T)
+// 	{
+// 		printf("called init with %d\n", data)
+// 	}
 
-	mut fn insert(thing: T)
-	{
-		var nn = alloc mut Node (data: thing, prev: null, next: null)
+// 	mut fn insert(thing: T)
+// 	{
+// 		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
-		if head == null { head = nn; tail = nn }
-		else
-		{
-			var ot = tail as mut
-			tail = nn
+// 		if head == null { head = nn; tail = nn }
+// 		else
+// 		{
+// 			var ot = tail as mut
+// 			tail = nn
 
-			nn.prev = ot
-			ot.next = nn
-		}
+// 			nn.prev = ot
+// 			ot.next = nn
+// 		}
 
-		count += 1
-	}
+// 		count += 1
+// 	}
 
-	static fn hello() { printf("hi\n"); }
-}
+// 	static fn hello() { printf("hi\n"); }
+// }
 
 
 
 
 @entry fn main()
 {
-	/*
-		Things to fix:
-
-		2. possibly allow overloading mutable and non-mutable methods with the same signature?
-	*/
-
 	/*
 		TODO list for proper generic support:
 
@@ -137,6 +131,41 @@ class LinkedList<T>
 			for now, it's all or nothing -- if you provide some you must provide all (or we will error).
 	*/
 
+	/*
+		TODO list for un-fucking strings:
+
+		1. currently strings are messed up -- halfway through unfucking the refcount and i need to sleep
+
+		2. probably just move to a dynamic-array style thing? we might even get away with copying most of the code...???
+			since we're moving to the 'strings-are-mutable' style, might as well go the whole way with capacity and stuff right?
+
+		3. we can re-use a bunch of the code, but on the other hand i don't really want to be copy-pasting this stuff. plus there's
+			quite a lot of handling in the array code
+
+	 */
+
+	do {
+		class Foo<T>
+		{
+			var x: T
+
+			init() { }
+		}
+
+		class Bar<T> : Foo<T: T>
+		{
+			var y: T
+
+			init(y: T) : super()
+			{
+				self.y = y
+				self.x = y + y
+			}
+		}
+
+		let k = Bar<T: int>(y: 30)
+		printf("y = %d\n", k.x)
+	}
 
 	do {
 		fn foo<T>(a: T, b: T) -> T { return a + b }
@@ -175,37 +204,37 @@ class LinkedList<T>
 
 
 
-	do {
-		var list = LinkedList<T: int>(data: 41)
-		LinkedList<T: int>.hello()
+	// do {
+	// 	var list = LinkedList<T: int>(data: 41)
+	// 	LinkedList<T: int>.hello()
 
-		var list2 = LinkedList<T: str>(data: "foo")
-		list2.insert("hello")
-		list2.insert("world")
+	// 	var list2 = LinkedList<T: str>(data: "foo")
+	// 	list2.insert("hello")
+	// 	list2.insert("world")
 
-		list.insert(10)
-		list.insert(20)
-		list.insert(30)
-		list.insert(40)
+	// 	list.insert(10)
+	// 	list.insert(20)
+	// 	list.insert(30)
+	// 	list.insert(40)
 
-		do {
-			var head = list.head
-			while(head)
-			{
-				printf("%d\n", head.data)
-				head = head.next
-			}
-		}
+	// 	do {
+	// 		var head = list.head
+	// 		while(head)
+	// 		{
+	// 			printf("%d\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
 
-		do {
-			var head = list2.head
-			while(head)
-			{
-				printf("%s\n", head.data)
-				head = head.next
-			}
-		}
-	}
+	// 	do {
+	// 		var head = list2.head
+	// 		while(head)
+	// 		{
+	// 			printf("%s\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
+	// }
 }
 
 

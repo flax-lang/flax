@@ -474,7 +474,7 @@ namespace cgn
 
 
 				auto appfn = cgn::glue::string::getConstructWithCharFunction(this);
-				auto res = this->irb.Call(appfn, lv, rv);
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, true), rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);

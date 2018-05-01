@@ -1540,6 +1540,58 @@ namespace fir
 	}
 
 
+	Value* IRBuilder::GetStringCapacity(Value* str, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType());
+
+		Instruction* instr = new Instruction(OpKind::String_GetCapacity, false, this->currentBlock,
+			fir::Type::getInt64(), { str });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::SetStringCapacity(Value* str, Value* val, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType());
+
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		Instruction* instr = new Instruction(OpKind::String_SetCapacity, true, this->currentBlock, fir::Type::getString(), { str, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::GetStringRefCountPointer(Value* str, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType());
+
+		Instruction* instr = new Instruction(OpKind::String_GetRefCountPtr, false, this->currentBlock,
+			fir::Type::getInt64Ptr(), { str });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::SetStringRefCountPointer(Value* str, Value* val, std::string vname)
+	{
+		if(!str->getType()->isStringType())
+			error("str is not a string type (got '%s')", str->getType());
+
+		if(val->getType() != fir::Type::getInt64Ptr())
+			error("val is not an int64*");
+
+		Instruction* instr = new Instruction(OpKind::String_SetRefCountPtr, true, this->currentBlock,
+			fir::Type::getString(), { str, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
 
 	Value* IRBuilder::GetStringRefCount(Value* str, std::string vname)
 	{
@@ -1719,6 +1771,93 @@ namespace fir
 
 
 
+	Value* IRBuilder::GetSAAData(Value* saa, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->GetStringData(saa, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayData(saa, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::GetSAALength(Value* saa, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->GetStringLength(saa, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayLength(saa, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::GetSAACapacity(Value* saa, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->GetStringCapacity(saa, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayCapacity(saa, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::GetSAARefCountPointer(Value* saa, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->GetStringRefCountPointer(saa, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayRefCountPointer(saa, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::GetSAARefCount(Value* saa, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->GetStringRefCount(saa, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayRefCount(saa, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+
+
+
+	Value* IRBuilder::SetSAAData(Value* saa, Value* val, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->SetStringData(saa, val, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayData(saa, val, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::SetSAALength(Value* saa, Value* val, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->SetStringLength(saa, val, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayLength(saa, val, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::SetSAACapacity(Value* saa, Value* val, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->SetStringCapacity(saa, val, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayCapacity(saa, val, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	Value* IRBuilder::SetSAARefCountPointer(Value* saa, Value* val, std::string vname)
+	{
+		if(saa->getType()->isStringType())              return this->SetStringRefCountPointer(saa, val, vname);
+		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayRefCountPointer(saa, val, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+	}
+
+	void IRBuilder::SetSAARefCount(Value* saa, Value* val, std::string vname)
+	{
+		if(saa->getType()->isStringType())              this->SetStringRefCount(saa, val, vname);
+		else if(saa->getType()->isDynamicArrayType())   this->SetDynamicArrayRefCount(saa, val, vname);
+		else                                            error("'%s' is not an SAA type", saa->getType());
+
+		return;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1862,7 +2001,7 @@ namespace fir
 		iceAssert(this->context->module);
 
 		size_t sz = this->context->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
-		if(sz > 24 || sz == -1)
+		if(sz > 24 || sz == (size_t) -1)
 		{
 			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",
 				val->getType(), (int64_t) sz);

@@ -76,10 +76,10 @@ namespace array
 			cs->irb.setCurrentBlock(failb);
 			{
 				if(isPerformingDecomposition)
-					printError(cs, func->getArguments()[2], "Tried to decompose array with only '%ld' elements into '%ld' bindings\n", { max, ind });
+					printRuntimeError(cs, func->getArguments()[2], "Tried to decompose array with only '%ld' elements into '%ld' bindings\n", { max, ind });
 
 				else
-					printError(cs, func->getArguments()[2], "Tried to index array at index '%ld', but length is only '%ld'\n", { ind, max });
+					printRuntimeError(cs, func->getArguments()[2], "Index '%ld' out of bounds for array of length %ld\n", { ind, max });
 			}
 
 			cs->irb.setCurrentBlock(checkneg);
@@ -607,7 +607,7 @@ namespace array
 			fir::Function* freef = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 			iceAssert(freef);
 
-			cs->irb.Call(freef, cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()));
+			cs->irb.Call(freef, cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr()));
 
 			#if DEBUG_ARRAY_ALLOCATION
 			{
@@ -1398,13 +1398,13 @@ namespace array
 
 					cs->irb.setCurrentBlock(dealloc);
 					{
-						ptr = cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr());
+						ptr = cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr());
 
 						auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 						iceAssert(freefn);
 
 						cs->irb.Call(freefn, ptr);
-						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetDynamicArrayRefCountPointer(arr), fir::Type::getInt8Ptr()));
+						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetDynamicArrayRefCountPointer(arr), fir::Type::getMutInt8Ptr()));
 
 						#if DEBUG_ARRAY_ALLOCATION
 						{
@@ -1668,7 +1668,7 @@ namespace array
 			cs->irb.CondBranch(cond, fail, merge);
 			cs->irb.setCurrentBlock(fail);
 			{
-				printError(cs, loc, "Calling pop() on an empty array\n", { });
+				printRuntimeError(cs, loc, "Calling pop() on an empty array\n", { });
 			}
 
 

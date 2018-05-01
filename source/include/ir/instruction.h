@@ -123,8 +123,12 @@ namespace fir
 		String_SetData,
 		String_GetLength,
 		String_SetLength,
+		String_GetCapacity,
+		String_SetCapacity,
 		String_GetRefCount,
 		String_SetRefCount,
+		String_GetRefCountPtr,
+		String_SetRefCountPtr,
 
 		DynamicArray_GetData,
 		DynamicArray_SetData,
