@@ -358,7 +358,7 @@ namespace saa_common
 			ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, getCI(0)));
 			ret = cs->irb.SetSAALength(ret, getCI(0));
 			ret = cs->irb.SetSAACapacity(ret, getCI(0));
-			ret = cs->irb.SetSAARefCountPointer(ret, cs->irb.PointerTypeCast(getCI(0), fir::Type::getInt64Ptr()));
+			ret = cs->irb.SetSAARefCountPointer(ret, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr()));
 
 
 			ret = cs->irb.Call(generateReserveAtLeastFunction(cs, saa), ret, cs->irb.Add(cs->irb.Add(lhslen, rhslen),
