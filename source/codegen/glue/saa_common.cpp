@@ -374,14 +374,14 @@ namespace saa_common
 				auto rawrhsbuf = cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr(), "rawrhsbuf");
 
 				auto lhsbytecount = cs->irb.Multiply(lhslen, cs->irb.Sizeof(getSAAElm(saa)), "lhsbytecount");
-				auto rhsbytecount = cs->irb.Multiply(lhslen, cs->irb.Sizeof(getSAAElm(saa)), "rhsbytecount");
+				auto rhsbytecount = cs->irb.Multiply(rhslen, cs->irb.Sizeof(getSAAElm(saa)), "rhsbytecount");
 
 				cs->irb.Call(memcpyf, { rawbuf, rawlhsbuf,
 					lhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
 				});
 
-				cs->irb.Call(memcpyf, { cs->irb.PointerAdd(rawbuf, lhsbytecount), rawlhsbuf,
-					lhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
+				cs->irb.Call(memcpyf, { cs->irb.PointerAdd(rawbuf, lhsbytecount), rawrhsbuf,
+					rhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
 				});
 
 				// if it's a string, again, null terminator.
