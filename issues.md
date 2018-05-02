@@ -31,7 +31,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling `abort()`)
 
 
-17. `i8.min` prints `128` instead of `-128`
+17. `i8.min` prints `128` instead of `-128`     UPDATE: only on windows????
 
 -----
 

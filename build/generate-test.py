@@ -143,7 +143,7 @@ print("import \"math\" as _")
 print("ffi fn srand(s: i32)")
 print("ffi fn rand() -> i32")
 
-dupes = range(2 * 32)
+dupes = range(16 * 32)
 
 for i in dupes:
 	print(template.replace("(?)", str(i)))
