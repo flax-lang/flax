@@ -200,7 +200,6 @@ namespace fir
 		// get 'nice' IDs for the common types
 		fir::Type::getAny(tc);
 		fir::Type::getRange(tc);
-		fir::Type::getChar(tc);
 		fir::Type::getString(tc);
 
 		fir::Type::getInt8Ptr(tc);
@@ -398,10 +397,9 @@ namespace fir
 		else if(copy == FLOAT80_TYPE_STRING)            real = Type::getFloat80(tc);
 		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128(tc);
 
-		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
-		else if(copy == CHARACTER_TYPE_STRING)          real = Type::getChar();
+		else if(copy == STRING_TYPE_STRING)             real = Type::getString(tc);
 
-		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getChar(), false);
+		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getInt8(), false);
 
 		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool(tc);
 		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid(tc);
@@ -524,13 +522,6 @@ namespace fir
 	{
 		auto t = dynamic_cast<StringType*>(this);
 		if(t == 0) error("not string type");
-		return t;
-	}
-
-	CharType* Type::toCharType()
-	{
-		auto t = dynamic_cast<CharType*>(this);
-		if(t == 0) error("not char type");
 		return t;
 	}
 
@@ -678,14 +669,14 @@ namespace fir
 		return dynamic_cast<RangeType*>(this) != 0;
 	}
 
+	bool Type::isCharType()
+	{
+		return this == fir::Type::getInt8();
+	}
+
 	bool Type::isStringType()
 	{
 		return dynamic_cast<StringType*>(this) != 0;
-	}
-
-	bool Type::isCharType()
-	{
-		return dynamic_cast<CharType*>(this) != 0;
 	}
 
 	bool Type::isEnumType()
@@ -720,7 +711,7 @@ namespace fir
 
 	bool Type::isCharSliceType()
 	{
-		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getChar();
+		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getInt8();
 	}
 
 
@@ -928,17 +919,12 @@ namespace fir
 
 	ArraySliceType* Type::getCharSlice(bool mut, FTContext* tc)
 	{
-		return ArraySliceType::get(fir::Type::getChar(), mut, tc);
+		return ArraySliceType::get(fir::Type::getInt8(), mut, tc);
 	}
 
 	RangeType* Type::getRange(FTContext* tc)
 	{
 		return RangeType::get(tc);
-	}
-
-	CharType* Type::getChar(FTContext* tc)
-	{
-		return CharType::get(tc);
 	}
 
 	StringType* Type::getString(FTContext* tc)

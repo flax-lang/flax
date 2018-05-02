@@ -293,8 +293,7 @@ namespace cgn
 			auto [ lt, rt ] = std::make_pair(lr.value->getType(), rr.value->getType());
 
 			// do comparison
-			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType())
-				|| (lt->isCharType() && rt->isCharType()))
+			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
 			{
 				// we should cast these to be similar-ish.
 
@@ -488,8 +487,8 @@ namespace cgn
 				// ok, do the append
 				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
-				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromDynamicArray(lv, true),
-					this->irb.CreateSliceFromDynamicArray(rv, true));
+				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromDynamicArray(lv, false),
+					this->irb.CreateSliceFromDynamicArray(rv, false));
 
 				this->addRefCountedValue(res);
 

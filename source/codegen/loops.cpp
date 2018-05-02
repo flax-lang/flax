@@ -211,7 +211,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			theptr = cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr));
 
 		else if(array->getType()->isStringType())
-			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr)), fir::Type::getChar()->getPointerTo());
+			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr)), fir::Type::getInt8Ptr());
 
 		else if(array->getType()->isArrayType())
 			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr));

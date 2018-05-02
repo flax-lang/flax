@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "gluecode.h"
 
 std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
 {
@@ -213,10 +214,73 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 
+static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* type, const std::vector<sst::Expr*>& args)
+{
+	// for non-strings it's trivial
+	if(args.empty())
+	{
+		return CGResult(cs->getDefaultValue(type), 0, CGResult::VK::LitRValue);
+	}
+	else if(!type->isStringType())
+	{
+		iceAssert(args.size() == 1);
+		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type), type);
+
+		if(type != ret.value->getType())
+			error(args[0], "Mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret.value->getType());
+
+		return ret;
+	}
+	else
+	{
+		auto cloneTheSlice = [cs](fir::Value* slc) -> CGResult {
+
+			iceAssert(slc->getType()->isCharSliceType());
+
+			auto clonef = cgn::glue::string::getCloneFunction(cs);
+			iceAssert(clonef);
+
+			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getInt64(0));
+			cs->addRefCountedValue(ret);
+
+			return CGResult(ret);
+		};
+
+		if(args.size() == 1)
+		{
+			iceAssert(args[0]->type->isCharSliceType());
+			return cloneTheSlice(args[0]->codegen(cs, fir::Type::getCharSlice(false)).value);
+		}
+		else
+		{
+			iceAssert(args.size() == 2);
+			iceAssert(args[0]->type == fir::Type::getInt8Ptr() || args[0]->type == fir::Type::getMutInt8Ptr());
+			iceAssert(args[1]->type->isIntegerType());
+
+			auto ptr = args[0]->codegen(cs).value;
+			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+
+			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
+			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
+			slc = cs->irb.SetArraySliceLength(slc, len);
+
+			return cloneTheSlice(slc);
+		}
+	}
+}
+
+
+
+
 CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
+
+	if(auto te = dcast(sst::TypeExpr, this->callee))
+	{
+		return callBuiltinTypeConstructor(cs, te->type, this->arguments);
+	}
 
 	fir::Value* fn = this->callee->codegen(cs).value;
 	iceAssert(fn->getType()->isFunctionType());

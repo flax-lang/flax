@@ -75,10 +75,10 @@ namespace string
 			*/
 
 			{
-				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getChar()->getPointerTo());
+				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
 				cs->irb.Store(cs->irb.GetStringData(s1, "s1"), str1p);
 
-				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getChar()->getPointerTo());
+				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
 				cs->irb.Store(cs->irb.GetStringData(s2, "s2"), str2p);
 
 
@@ -145,7 +145,7 @@ namespace string
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 		fir::IRBlock* dorc = cs->irb.addNewBlockInFunction("dorc", func);
 
-		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, cs->irb.PointerTypeCast(fir::ConstantInt::getInt64(0), fir::Type::getInt64Ptr())),
+		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr())),
 			merge, dorc);
 
 		cs->irb.setCurrentBlock(dorc);

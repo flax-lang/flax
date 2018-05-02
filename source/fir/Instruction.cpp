@@ -216,10 +216,6 @@ namespace fir
 				{
 					ops += std::to_string(cf->getValue());
 				}
-				else if(ConstantChar* cc = dynamic_cast<ConstantChar*>(op))
-				{
-					ops += "'" + std::to_string(cc->getValue()) + "'";
-				}
 				else if(ConstantBool* cb = dynamic_cast<ConstantBool*>(op))
 				{
 					ops += cb->getValue() ? "true" : "false";

@@ -8,9 +8,7 @@
 #include "ir/type.h"
 #include "ir/constant.h"
 
-using TCS = sst::TypecheckState;
-
-TCResult ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -22,7 +20,7 @@ TCResult ast::LitNumber::typecheck(TCS* fs, fir::Type* infer)
 	return TCResult(ret);
 }
 
-TCResult ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitNull::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -31,7 +29,7 @@ TCResult ast::LitNull::typecheck(TCS* fs, fir::Type* infer)
 	return TCResult(ret);
 }
 
-TCResult ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitBool::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -42,7 +40,7 @@ TCResult ast::LitBool::typecheck(TCS* fs, fir::Type* infer)
 	return TCResult(ret);
 }
 
-TCResult ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -86,7 +84,7 @@ TCResult ast::LitTuple::typecheck(TCS* fs, fir::Type* infer)
 	return TCResult(ret);
 }
 
-TCResult ast::LitString::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::LitString::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -99,7 +97,7 @@ TCResult ast::LitString::typecheck(TCS* fs, fir::Type* infer)
 	}
 	else
 	{
-		ty = fir::ArraySliceType::get(fir::Type::getChar(), false);
+		ty = fir::Type::getCharSlice(false);
 	}
 
 	auto ret = new sst::LiteralString(this->loc, ty);

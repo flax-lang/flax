@@ -191,7 +191,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(ty->isStringType())
 	{
-		return performSliceOperation(cs, this, true, fir::Type::getChar(), cs->irb.GetStringData(lhs),
+		return performSliceOperation(cs, this, true, fir::Type::getInt8(), cs->irb.GetStringData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else
