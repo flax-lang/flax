@@ -11,9 +11,7 @@
 
 static void compile(std::string in, std::string out)
 {
-	// auto ts = std::chrono::high_resolution_clock::now();
-
-	// auto module = frontend::collectFiles(in);
+	auto ts = std::chrono::high_resolution_clock::now();
 
 	frontend::CollectorState state;
 	sst::DefinitionTree* dtree = 0;
@@ -28,11 +26,11 @@ static void compile(std::string in, std::string out)
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	auto cd = backend::CompiledData { module };
 
-	// auto dur = std::chrono::high_resolution_clock::now() - ts;
-	// auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	// auto s = ms / 1000.0;
-	// fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, s);
-	// return;
+	auto dur = std::chrono::high_resolution_clock::now() - ts;
+	auto ms = (double) dur.count() / 1000.0 / 1000.0;
+	auto s = ms / 1000.0;
+	fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, s);
+	return;
 
 	{
 		using namespace backend;

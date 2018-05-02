@@ -212,7 +212,7 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 		}
 		else
 		{
-			iceAssert(false && "invalid");
+			_error_and_exit("invalid");
 		}
 	}
 	else
