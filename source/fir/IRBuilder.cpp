@@ -1136,9 +1136,10 @@ namespace fir
 		if(!str->getType()->isStringType())
 			error("expected string type, found '%s' instead", str->getType());
 
+
 		// this is one of those compound thingies.
-		auto slc = this->CreateValue(fir::ArraySliceType::get(fir::Type::getChar(), mut));
-		slc = this->SetArraySliceData(slc, this->GetStringData(str));
+		auto slc = this->CreateValue(fir::Type::getCharSlice(mut));
+		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetStringData(str), mut ? fir::Type::getMutInt8Ptr() : fir::Type::getInt8Ptr()));
 		slc = this->SetArraySliceLength(slc, this->GetStringLength(str));
 
 		return slc;
@@ -1149,9 +1150,11 @@ namespace fir
 		if(!str->getType()->isDynamicArrayType())
 			error("expected dynamic array type, found '%s' instead", str->getType());
 
+		auto elmty = str->getType()->getArrayElementType();
+
 		// this is one of those compound thingies.
 		auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
-		slc = this->SetArraySliceData(slc, this->GetDynamicArrayData(str));
+		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetDynamicArrayData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
 		slc = this->SetArraySliceLength(slc, this->GetDynamicArrayLength(str));
 
 		return slc;
@@ -1505,7 +1508,7 @@ namespace fir
 			error("str is not a string type (got '%s')", str->getType());
 
 		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::Type::getChar()->getMutablePointerTo(), { str });
+			fir::Type::getMutInt8Ptr(), { str });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1518,7 +1521,7 @@ namespace fir
 		else if(!val->getType()->isPointerType())
 			error("val is not a pointer type");
 
-		if(val->getType()->getPointerElementType() != fir::Type::getChar())
+		else if(!val->getType()->getPointerElementType()->isCharType())
 			error("val is not a char*");
 
 		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getString(), { str, val });

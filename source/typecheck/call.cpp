@@ -11,8 +11,6 @@
 
 #include <set>
 
-using TCS = sst::TypecheckState;
-
 namespace sst
 {
 	int TypecheckState::getCastDistance(fir::Type* from, fir::Type* to)
@@ -669,6 +667,81 @@ namespace sst
 			return TCResult(errors);
 		}
 	}
+
+	fir::Type* TypecheckState::checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments)
+	{
+		if(auto type = fir::Type::fromBuiltin(name))
+		{
+			for(const auto& a : arguments)
+			{
+				if(!a.name.empty())
+					error(a.loc, "Builtin type initialisers do not accept named arguments");
+			}
+
+			// all builtin types can be zero-initialised.
+			if(arguments.empty())
+			{
+				return type;
+			}
+			else if(arguments.size() == 1)
+			{
+				if(int d = getCastDistance(arguments[0].value->type, type); d >= 0 || (type->isStringType() && arguments[0].value->type->isCharSliceType()))
+				{
+					return type;
+				}
+				else
+				{
+					error(arguments[0].loc, "Type mismatch in initialiser call to builtin type '%s', found type '%s' instead", type,
+						arguments[0].value->type);
+				}
+			}
+			else
+			{
+				if(type->isStringType())
+				{
+					// either from a slice, or from a ptr + len
+					if(arguments.size() == 1)
+					{
+						if(!arguments[0].value->type->isCharSliceType())
+						{
+							error(arguments[0].loc, "Single argument to string initialiser must be a slice of char, aka '%s', found '%s' instead",
+								fir::Type::getCharSlice(false), arguments[0].value->type);
+						}
+
+						return type;
+					}
+					else if(arguments.size() == 2)
+					{
+						if(auto t1 = arguments[0].value->type; (t1 != fir::Type::getInt8Ptr() && t1 != fir::Type::getMutInt8Ptr()))
+						{
+							error(arguments[0].loc, "First argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
+								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
+						}
+						else if(auto t2 = arguments[1].value->type; t2 != fir::Type::getInt64())
+						{
+							error(arguments[0].loc, "Second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
+								fir::Type::getInt64(), t1);
+						}
+						else
+						{
+							return type;
+						}
+					}
+					else
+					{
+						error(arguments[2].loc, "String initialiser only takes 1 (from slice) or 2 (from pointer+length) arguments, found '%ld' instead",
+							arguments.size());
+					}
+				}
+				else
+				{
+					error(arguments[1].loc, "Builtin type '%s' cannot be initialised with more than 1 value", type);
+				}
+			}
+		}
+
+		return 0;
+	}
 }
 
 
@@ -682,12 +755,21 @@ namespace sst
 
 
 
-sst::Expr* ast::FunctionCall::typecheckWithArguments(TCS* fs, const std::vector<FnCallArgument>& arguments)
+sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	using Param = sst::FunctionDecl::Param;
+
+	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, arguments))
+	{
+		auto ret = new sst::ExprCall(this->loc, ty);
+		ret->callee = new sst::TypeExpr(this->loc, ty);
+		ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
+
+		return ret;
+	}
 
 
 	// resolve the function call here
@@ -842,7 +924,7 @@ TCResult ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args)));
 }
 
-TCResult ast::FunctionCall::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::FunctionCall::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

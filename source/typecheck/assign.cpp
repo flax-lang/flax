@@ -9,9 +9,7 @@
 #include "ir/type.h"
 #include "ir/constant.h"
 
-using TCS = sst::TypecheckState;
-
-TCResult ast::AssignOp::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	// check the left side
 	auto l = this->left->typecheck(fs).expr();

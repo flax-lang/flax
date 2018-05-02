@@ -13,8 +13,8 @@ namespace glue {
 namespace saa_common
 {
 	static inline bool isSAA(fir::Type* t) { return t->isStringType() || t->isDynamicArrayType(); }
-	static inline fir::Type* getSAAElm(fir::Type* t) { iceAssert(isSAA(t)); return (t->isStringType() ? fir::Type::getChar() : t->getArrayElementType()); }
-	static inline fir::Type* getSAASlice(fir::Type* t) { iceAssert(isSAA(t)); return fir::ArraySliceType::get(getSAAElm(t), true); }
+	static inline fir::Type* getSAAElm(fir::Type* t) { iceAssert(isSAA(t)); return (t->isStringType() ? fir::Type::getInt8() : t->getArrayElementType()); }
+	static inline fir::Type* getSAASlice(fir::Type* t, bool mut = true) { iceAssert(isSAA(t)); return fir::ArraySliceType::get(getSAAElm(t), mut); }
 	static inline fir::ConstantInt* getCI(int64_t i) { return fir::ConstantInt::getInt64(i); }
 
 	static fir::Value* castRawBufToElmPtr(CodegenState* cs, fir::Type* saa, fir::Value* buf)
@@ -124,10 +124,123 @@ namespace saa_common
 	 */
 
 
-	fir::Function* generateCloneFunction(CodegenState* cs, fir::Type* saa)
+	static void _callCloneFunctionInLoop(CodegenState* cs, fir::Function* curfunc, fir::Function* fn,
+		fir::Value* ptr, fir::Value* len, fir::Value* newptr, fir::Value* startIndex)
 	{
-		iceAssert(isSAA(saa));
-		auto fname = "__clone_" + saa->str();
+		fir::IRBlock* loopcond = cs->irb.addNewBlockInFunction("loopcond", curfunc);
+		fir::IRBlock* loopbody = cs->irb.addNewBlockInFunction("loopbody", curfunc);
+		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", curfunc);
+
+		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getInt64());
+		cs->irb.Store(startIndex, counter);
+
+		cs->irb.UnCondBranch(loopcond);
+		cs->irb.setCurrentBlock(loopcond);
+		{
+			fir::Value* res = cs->irb.ICmpEQ(cs->irb.Load(counter), len);
+			cs->irb.CondBranch(res, merge, loopbody);
+		}
+
+		cs->irb.setCurrentBlock(loopbody);
+		{
+			// make clone
+			fir::Value* origElm = cs->irb.PointerAdd(ptr, cs->irb.Load(counter));
+			fir::Value* clone = 0;
+
+			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
+			clone = cs->irb.Call(fn, cs->irb.Load(origElm), fir::ConstantInt::getInt64(0));
+
+			// store clone
+			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.Load(counter));
+			cs->irb.Store(clone, newElm);
+
+			// increment counter
+			cs->irb.Store(cs->irb.Add(cs->irb.Load(counter), fir::ConstantInt::getInt64(1)), counter);
+			cs->irb.UnCondBranch(loopcond);
+		}
+
+		cs->irb.setCurrentBlock(merge);
+	}
+
+	static void _handleCallingAppropriateCloneFunction(CodegenState* cs, fir::Function* func, fir::Type* elmType, fir::Value* oldptr,
+		fir::Value* newptr, fir::Value* oldlen, fir::Value* bytecount, fir::Value* startIndex)
+	{
+		if(elmType->isPrimitiveType() || elmType->isCharType() || elmType->isEnumType())
+		{
+			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
+
+			#if DEBUG_ARRAY_ALLOCATION
+			{
+				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
+
+				fir::Value* tmpstr = cs->module->createGlobalString("oldptr: %p, newptr: %p, oldlen: %d, bytecount: %d, index: %d\n");
+				cs->irb.Call(printfn, { tmpstr, oldptr, newptr, oldlen, bytecount, startIndex });
+			}
+			#endif
+
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+		}
+		else if(elmType->isDynamicArrayType())
+		{
+			// yo dawg i heard you like arrays...
+			fir::Function* clonef = generateCloneFunction(cs, elmType);
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
+		}
+		else if(elmType->isArraySliceType())
+		{
+			// yo dawg i heard you like arrays...
+			fir::Function* clonef = generateCloneFunction(cs, elmType);
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
+		}
+		else if(elmType->isStringType())
+		{
+			fir::Function* clonef = glue::string::getCloneFunction(cs);
+			iceAssert(clonef);
+
+			// loop
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
+		}
+		else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
+		{
+			// todo: call copy constructors and stuff
+
+			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
+
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+		}
+		else
+		{
+			error("unsupported element type '%s' for array clone", elmType);
+		}
+	}
+
+
+
+
+
+
+	fir::Function* generateCloneFunction(CodegenState* cs, fir::Type* _saa)
+	{
+		auto fname = "__clone_" + _saa->str();
+
+		iceAssert(isSAA(_saa) || _saa->isArraySliceType());
+		auto slicetype = (isSAA(_saa) ? getSAASlice(_saa, false) : fir::ArraySliceType::get(_saa->getArrayElementType(), false));
+
+		iceAssert(slicetype->isArraySliceType());
+		bool isArray = !_saa->isStringType();
+
+		fir::Type* outtype = (isSAA(_saa) ? _saa : fir::DynamicArrayType::get(slicetype->getArrayElementType()));
 
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
@@ -135,12 +248,10 @@ namespace saa_common
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, fir::Type::getInt64() }, saa), fir::LinkageType::Internal);
+				fir::FunctionType::get({ slicetype, fir::Type::getInt64() }, outtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
-
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
@@ -148,50 +259,57 @@ namespace saa_common
 			auto s1 = func->getArguments()[0];
 			auto cloneofs = func->getArguments()[1];
 
-			auto lhsbuf = cs->irb.PointerAdd(cs->irb.GetSAAData(s1, "d1"), cloneofs, "lhsbuf");
+			auto lhsbuf = cs->irb.GetArraySliceData(s1, "lhsbuf");
 
 			fir::IRBlock* isnull = cs->irb.addNewBlockInFunction("isnull", func);
 			fir::IRBlock* notnull = cs->irb.addNewBlockInFunction("notnull", func);
 
 			// if it's null we just fuck off now.
-			cs->irb.CondBranch(cs->irb.ICmpEQ(lhsbuf, castRawBufToElmPtr(cs, saa, getCI(0))), isnull, notnull);
+			cs->irb.CondBranch(cs->irb.ICmpEQ(lhsbuf, fir::ConstantValue::getZeroValue(slicetype->getArrayElementType()->getPointerTo())),
+				isnull, notnull);
 
 			cs->irb.setCurrentBlock(notnull);
 			{
-				auto lhslen = cs->irb.Subtract(cs->irb.GetSAALength(s1, "l1"), cloneofs, "lhslen");
+				auto lhslen = cs->irb.Subtract(cs->irb.GetArraySliceLength(s1, "l1"), cloneofs, "lhslen");
 				auto newcap = cs->irb.Call(cs->module->getIntrinsicFunction("roundup_pow2"), lhslen, "newcap");
 
-				auto lhsbytecount = cs->irb.Multiply(lhslen, cs->irb.Sizeof(getSAAElm(saa)), "lhsbytecount");
-				auto newbytecount = cs->irb.Multiply(newcap, cs->irb.Sizeof(getSAAElm(saa)), "newbytecount");
+				auto lhsbytecount = cs->irb.Multiply(lhslen, cs->irb.Sizeof(slicetype->getArrayElementType()), "lhsbytecount");
+				auto newbytecount = cs->irb.Multiply(newcap, cs->irb.Sizeof(slicetype->getArrayElementType()), "newbytecount");
 
 
 				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
 				iceAssert(mallocf);
 
-				fir::Value* buf = cs->irb.Call(mallocf, saa->isStringType() ? cs->irb.Add(newbytecount, getCI(1)) : newbytecount, "buf");
+				fir::Value* newbuf = cs->irb.Call(mallocf, !isArray ? cs->irb.Add(newbytecount, getCI(1)) : newbytecount, "buf");
 				{
-					fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
-					cs->irb.Call(memcpyf, { buf, castRawBufToElmPtr(cs, saa, lhsbuf), lhsbytecount,
-						fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+					// fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
+					// cs->irb.Call(memcpyf, { buf, castRawBufToElmPtr(cs, saa, lhsbuf), lhsbytecount,
+					// 	fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+
+					_handleCallingAppropriateCloneFunction(cs, func, slicetype->getArrayElementType(), lhsbuf,
+						newbuf, lhslen, lhsbytecount, cloneofs);
 
 					// null terminator
-					if(saa->isStringType())
-						cs->irb.Store(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(buf, lhsbytecount));
+					if(!isArray)
+						cs->irb.Store(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, lhsbytecount));
 				}
 
-				auto ret = cs->irb.CreateValue(saa);
-				ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, buf));
-				ret = cs->irb.SetSAALength(ret, lhslen);                    //? vv for the null terminator
-				ret = cs->irb.SetSAACapacity(ret, saa->isStringType() ? cs->irb.Subtract(newcap, getCI(1)) : newcap);
-				ret = initSAAWithRefCount(cs, ret, getCI(1));
 
-				cs->irb.Return(ret);
+				{
+					auto ret = cs->irb.CreateValue(outtype);
+					ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, outtype, newbuf));
+					ret = cs->irb.SetSAALength(ret, lhslen);                    //? vv for the null terminator
+					ret = cs->irb.SetSAACapacity(ret, !isArray ? cs->irb.Subtract(newcap, getCI(1)) : newcap);
+					ret = initSAAWithRefCount(cs, ret, getCI(1));
+
+					cs->irb.Return(ret);
+				}
 			}
 
 			cs->irb.setCurrentBlock(isnull);
 			{
-				auto ret = cs->irb.CreateValue(saa);
-				ret = cs->irb.SetSAAData(ret, getCI(0));
+				auto ret = cs->irb.CreateValue(outtype);
+				ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, outtype, getCI(0)));
 				ret = cs->irb.SetSAALength(ret, getCI(0));
 				ret = cs->irb.SetSAACapacity(ret, getCI(0));
 				ret = initSAAWithRefCount(cs, ret, getCI(1));
@@ -337,7 +455,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ getSAASlice(saa), getSAASlice(saa) }, saa), fir::LinkageType::Internal);
+				fir::FunctionType::get({ getSAASlice(saa, false), getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -358,7 +476,7 @@ namespace saa_common
 			ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, getCI(0)));
 			ret = cs->irb.SetSAALength(ret, getCI(0));
 			ret = cs->irb.SetSAACapacity(ret, getCI(0));
-			ret = cs->irb.SetSAARefCountPointer(ret, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr()));
+			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
 
 			ret = cs->irb.Call(generateReserveAtLeastFunction(cs, saa), ret, cs->irb.Add(cs->irb.Add(lhslen, rhslen),
@@ -542,7 +660,7 @@ namespace saa_common
 
 					// null terminator
 					if(saa->isStringType())
-						cs->irb.Store(cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))), fir::ConstantInt::getInt8(0));
+						cs->irb.Store(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
 
 					auto ret = cs->irb.CreateValue(saa);
 					ret = cs->irb.SetSAAData(ret, newbuf);

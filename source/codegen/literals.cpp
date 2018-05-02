@@ -254,7 +254,7 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		auto str = cs->module->createGlobalString(this->str);
-		auto slc = fir::ConstantArraySlice::get(fir::ArraySliceType::get(fir::Type::getChar(), false), str, fir::ConstantInt::getInt64(this->str.length()));
+		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getInt64(this->str.length()));
 
 		return CGResult(slc, 0, CGResult::VK::LitRValue);
 	}

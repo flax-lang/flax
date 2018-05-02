@@ -166,6 +166,10 @@ namespace sst
 		fir::Type* inferCorrectTypeForLiteral(Expr* lit);
 		TypeParamMap_t convertParserTypeArgsToFIR(const std::unordered_map<std::string, pts::Type*>& gmaps, bool allowFailure = false);
 
+
+		fir::Type* checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments);
+
+
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.

@@ -31,7 +31,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 		elmty = fir::Type::getInt64();
 
 	else if(ret->array->type->isStringType())
-		elmty = fir::Type::getChar();
+		elmty = fir::Type::getInt8();
 
 	else
 		error(this->array, "Invalid type '%s' in foreach loop", ret->array->type);

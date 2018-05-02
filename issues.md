@@ -5,8 +5,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### FEATURES TO IMPLEMENT
 
-1. Constructor syntax for builtin types.
-
 
 2. Type solver/unifier for generic function calls
 
@@ -32,6 +30,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling `abort()`)
 
+
+17. `i8.min` prints `128` instead of `-128`
 
 -----
 
@@ -205,10 +205,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
 
 
-13. Make string refcounting not obscene, and move to the `refcount-pointer-is-a-separate-thing` scheme that we switched to for dynamic arrays. The current
-	system seems way too fragile.
-
-
 14. Flesh out the builtin methods for arrays/strings. In particular, do we want to keep allowing `+` and `+=` to work on arrays? Seems a bit dubious. We
 	already encounter the issue where we do `[string] + [char:]`, which can be seen as trying to append a string literal `[char:]` to an array of strings,
 	which doesn't work.
@@ -220,6 +216,11 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- remove `char` type; everything is now `i8`, and `isCharType()` just checks if its an `i8`
+- constructor syntax for builtin types, and strings from slices and/or ptr+data
+- fix a couple of mutability bugs here and there with the new gluecode.
+
+`(f3a06c3)`
 - actually add the instructions and stuff, fix a couple of bugs
 - `fir::ConstantString` is now actually a slice.
 - move as many of the dynamic array stuff to the new `SAA` functions as possible.

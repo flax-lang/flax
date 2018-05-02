@@ -8,9 +8,7 @@
 
 #include "ir/type.h"
 
-using TCS = sst::TypecheckState;
-
-static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type* infer)
+static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* dotop, fir::Type* infer)
 {
 	auto lhs = dotop->left->typecheck(fs).expr();
 
@@ -52,7 +50,7 @@ static sst::Expr* doExpressionDotOp(TCS* fs, ast::DotOperator* dotop, fir::Type*
 				res = fir::Type::getInt64();
 
 			else if(vr->name == "ptr")
-				res = fir::Type::getChar()->getPointerTo();
+				res = fir::Type::getInt8Ptr();
 
 			if(res)
 			{
@@ -563,7 +561,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 
 
-TCResult ast::DotOperator::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::DotOperator::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

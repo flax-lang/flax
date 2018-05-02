@@ -37,7 +37,7 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 	{
 		//* note: special-case this, because 1. we want to return chars, but 2. strings are supposed to be immutable.
 		for(auto& b : bind->inner)
-			checkAndAddBinding(fs, &b, fir::Type::getChar(), immut, false);
+			checkAndAddBinding(fs, &b, fir::Type::getInt8(), immut, false);
 
 		if(!bind->restName.empty())
 		{
@@ -47,7 +47,7 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 			fake->immutable = immut;
 
 			//* note: see typecheck/slices.cpp for mutability rules.
-			if(bind->restRef)   fake->type = fir::ArraySliceType::get(fir::Type::getChar(), sst::getMutabilityOfSliceOfType(rhs));
+			if(bind->restRef)   fake->type = fir::Type::getCharSlice(sst::getMutabilityOfSliceOfType(rhs));
 			else                fake->type = fir::Type::getString();
 
 			fs->stree->addDefinition(bind->restName, fake);
