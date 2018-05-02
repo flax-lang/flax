@@ -214,10 +214,6 @@ namespace backend
 
 			return llvm::StructType::get(gc, mems, false);
 		}
-		else if(type->isCharType())
-		{
-			return llvm::Type::getInt8Ty(gc);
-		}
 		else if(type->isBoolType())
 		{
 			return llvm::Type::getInt1Ty(gc);
@@ -338,11 +334,6 @@ namespace backend
 			{
 				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
-		}
-		else if(fir::ConstantChar* cc = dcast(fir::ConstantChar, c))
-		{
-			llvm::Type* ct = typeToLlvm(c->getType(), mod);
-			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
 		else if(fir::ConstantBool* cc = dcast(fir::ConstantBool, c))
 		{
@@ -1934,215 +1925,6 @@ namespace backend
 
 
 
-						#if 0
-						case fir::OpKind::String_GetData:
-						case fir::OpKind::String_GetLength:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::String_GetData)
-								ind = 0;
-							else if(inst->opKind == fir::OpKind::String_GetLength)
-								ind = 1;
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_GetRefCount:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isStructTy());
-
-							llvm::Value* dp = builder.CreateExtractValue(a, 0);
-
-							// refcount lies 8 bytes behind.
-							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
-							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
-
-							llvm::Value* ret = builder.CreateLoad(ptr);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-
-
-
-						case fir::OpKind::String_SetData:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt8PtrTy(gc));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetLength:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, 1);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetRefCount:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
-
-							llvm::Value* dp = builder.CreateExtractValue(a, 0);
-
-							// refcount lies 8 bytes behind.
-							llvm::Value* ptr = builder.CreatePointerCast(dp, llvm::Type::getInt64PtrTy(gc));
-							ptr = builder.CreateInBoundsGEP(ptr, llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(gc), -1));
-							builder.CreateStore(b, ptr);
-
-							llvm::Value* ret = builder.CreateLoad(ptr);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_GetData:
-						case fir::OpKind::String_GetLength:
-						case fir::OpKind::String_GetCapacity:
-						case fir::OpKind::String_GetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::String_GetData)
-								ind = 0;
-							else if(inst->opKind == fir::OpKind::String_GetLength)
-								ind = 1;
-							else if(inst->opKind == fir::OpKind::String_GetCapacity)
-								ind = 2;
-							else
-								ind = 3;
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-
-						case fir::OpKind::String_SetData:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == typeToLlvm(fir::Type::getChar(), module));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, 0);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64PtrTy(gc));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, 3);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetLength:
-						case fir::OpKind::String_SetCapacity:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::String_SetLength)
-								ind = 1;
-							else
-								ind = 2;
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-						case fir::OpKind::String_GetRefCount:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							llvm::Value* ret = builder.CreateLoad(builder.CreateExtractValue(a, 3));
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetRefCount:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
-
-							builder.CreateStore(b, builder.CreateExtractValue(a, 3));
-
-							break;
-						}
-
-
-						#endif
-
-
-
-
 
 						case fir::OpKind::String_GetData:
 						case fir::OpKind::String_GetLength:
@@ -2192,7 +1974,7 @@ namespace backend
 
 							iceAssert(a->getType()->isStructTy());
 							iceAssert(b->getType() == typeToLlvm((inst->operands[0]->getType()->isStringType()
-								? fir::Type::getChar()->getPointerTo()
+								? fir::Type::getInt8()->getPointerTo()
 								: inst->operands[0]->getType()->getArrayElementType()->getPointerTo()), module));
 
 							llvm::Value* ret = builder.CreateInsertValue(a, b, SAA_DATA_INDEX);

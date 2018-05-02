@@ -93,7 +93,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		}
 
 		//* note: special-case this, because 1. we want to return chars
-		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetStringData(rhs.value), fir::CharType::get()->getMutablePointerTo());
+		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetStringData(rhs.value), fir::Type::getMutInt8Ptr());
 		{
 			size_t idx = 0;
 			for(auto& b : bind.inner)
@@ -112,7 +112,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				// make a slice of char.
 				auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
 
-				auto slice = cs->irb.CreateValue(fir::ArraySliceType::get(fir::CharType::get(), shouldSliceBeMutable));
+				auto slice = cs->irb.CreateValue(fir::Type::getCharSlice(shouldSliceBeMutable));
 				slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(strdat, numbinds));
 				slice = cs->irb.SetArraySliceLength(slice, remaining);
 

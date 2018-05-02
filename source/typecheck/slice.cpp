@@ -8,9 +8,6 @@
 
 #include "ir/type.h"
 
-using TCS = sst::TypecheckState;
-
-
 bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 {
 	if(ty->isStringType() || ty->isDynamicArrayType())
@@ -42,7 +39,7 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		elm = ty->getArrayElementType();
 
 	else if(ty->isStringType())
-		elm = fir::Type::getChar();
+		elm = fir::Type::getInt8();
 
 	else if(ty->isPointerType())
 		elm = ty->getPointerElementType();

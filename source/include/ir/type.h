@@ -18,7 +18,6 @@ namespace fir
 	struct AnyType;
 	struct NullType;
 	struct VoidType;
-	struct CharType;
 	struct EnumType;
 	struct BoolType;
 	struct ArrayType;
@@ -115,7 +114,6 @@ namespace fir
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		BoolType* toBoolType();
-		CharType* toCharType();
 		EnumType* toEnumType();
 		NullType* toNullType();
 		AnyType* toAnyType();
@@ -216,7 +214,6 @@ namespace fir
 		static PointerType* getMutUint128Ptr(FTContext* tc = 0);
 
 		static ArraySliceType* getCharSlice(bool mut, FTContext* tc = 0);
-		static CharType* getChar(FTContext* tc = 0);
 		static StringType* getString(FTContext* tc = 0);
 		static RangeType* getRange(FTContext* tc = 0);
 
@@ -822,23 +819,6 @@ namespace fir
 		static StringType* get(FTContext* tc = 0);
 	};
 
-	struct CharType : Type
-	{
-		friend struct Type;
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-
-
-		// protected constructor
-		protected:
-		CharType();
-		virtual ~CharType() override { }
-
-		public:
-		static CharType* get(FTContext* tc = 0);
-	};
 
 
 

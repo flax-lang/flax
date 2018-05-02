@@ -105,7 +105,7 @@ namespace array
 
 
 
-
+	#if 0
 
 	static void _callCloneFunctionInLoop(CodegenState* cs, fir::Function* curfunc, fir::Function* fn,
 		fir::Value* ptr, fir::Value* len, fir::Value* newptr, fir::Value* startIndex)
@@ -420,12 +420,16 @@ namespace array
 		return fn;
 	}
 
+	#endif
+
 
 	fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype)
 	{
-		if(arrtype->isDynamicArrayType())		return getDynamicArrayCloneFunction(cs, arrtype->toDynamicArrayType());
-		else if(arrtype->isArraySliceType())	return getSliceCloneFunction(cs, arrtype->toArraySliceType());
-		else									error("unsupported type '%s'", arrtype);
+		// if(arrtype->isDynamicArrayType())		return getDynamicArrayCloneFunction(cs, arrtype->toDynamicArrayType());
+		// else if(arrtype->isArraySliceType())	return getSliceCloneFunction(cs, arrtype->toArraySliceType());
+		// else									error("unsupported type '%s'", arrtype);
+
+		return saa_common::generateCloneFunction(cs, arrtype);
 	}
 
 

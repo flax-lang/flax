@@ -6,9 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
-using TCS = sst::TypecheckState;
 
-TCResult ast::DeferredStmt::typecheck(TCS* fs, fir::Type* infer)
+TCResult ast::DeferredStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());

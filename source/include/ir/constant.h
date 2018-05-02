@@ -87,19 +87,6 @@ namespace fir
 		uint64_t value;
 	};
 
-	struct ConstantChar : ConstantValue
-	{
-		friend struct Module;
-
-		static ConstantChar* get(char c, FTContext* tc = 0) { return new ConstantChar(c); }
-
-		char getValue() { return this->value; }
-
-		protected:
-		ConstantChar(char v) : ConstantValue(Type::getChar()), value(v) { }
-		char value;
-	};
-
 
 	struct ConstantFP : ConstantValue
 	{

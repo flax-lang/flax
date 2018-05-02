@@ -8,8 +8,6 @@
 
 #include <deque>
 
-using TCS = sst::TypecheckState;
-
 namespace sst
 {
 	// void TypecheckState::pushLoc(const Location& l)

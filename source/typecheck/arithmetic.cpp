@@ -8,7 +8,6 @@
 
 #include "ir/type.h"
 
-using TCS = sst::TypecheckState;
 
 
 static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const Location& loc, int kind, std::string op,
@@ -65,7 +64,7 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 
 
 
-fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const std::string& op, sst::FunctionDefn** overloadFn)
+fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type* right, const std::string& op, sst::FunctionDefn** overloadFn)
 {
 	if(op == Operator::LogicalOr || op == Operator::LogicalAnd || op == Operator::LogicalNot)
 	{
@@ -194,7 +193,7 @@ fir::Type* TCS::getBinaryOpResultType(fir::Type* left, fir::Type* right, const s
 
 
 
-TCResult ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	iceAssert(!Operator::isAssignment(this->op));
 
@@ -265,7 +264,7 @@ TCResult ast::BinaryOp::typecheck(TCS* fs, fir::Type* inferred)
 	return TCResult(ret);
 }
 
-TCResult ast::UnaryOp::typecheck(TCS* fs, fir::Type* inferred)
+TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	auto v = this->expr->typecheck(fs, inferred).expr();
 

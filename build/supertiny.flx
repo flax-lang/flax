@@ -131,6 +131,20 @@ import "math" as _
 			for now, it's all or nothing -- if you provide some you must provide all (or we will error).
 	*/
 
+	/*
+		TODO for next week
+
+		// 1. constructor syntax for builtin types
+		2. start work on the generic type solver?
+		3. variadic functions
+	 */
+
+
+	do {
+		let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
+		printf("foo = '%s'\n", foo)
+	}
+
 
 	do {
 		class Foo<T>
