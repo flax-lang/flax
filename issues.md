@@ -215,7 +215,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(25dadf0)`
 - remove `char` type; everything is now `i8`, and `isCharType()` just checks if its an `i8`
 - constructor syntax for builtin types, and strings from slices and/or ptr+data
 - fix a couple of mutability bugs here and there with the new gluecode.

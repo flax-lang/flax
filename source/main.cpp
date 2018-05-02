@@ -13,7 +13,19 @@ static void compile(std::string in, std::string out)
 {
 	// auto ts = std::chrono::high_resolution_clock::now();
 
-	auto module = frontend::collectFiles(in);
+	// auto module = frontend::collectFiles(in);
+
+	frontend::CollectorState state;
+	sst::DefinitionTree* dtree = 0;
+	{
+		frontend::collectFiles(in, &state);
+
+		frontend::parseFiles(&state);
+		dtree = frontend::typecheckFiles(&state);
+	}
+
+	iceAssert(dtree);
+	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	auto cd = backend::CompiledData { module };
 
 	// auto dur = std::chrono::high_resolution_clock::now() - ts;
