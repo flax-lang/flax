@@ -49,6 +49,7 @@ namespace frontend
 	std::vector<std::string> getLibrariesToLink();
 	std::vector<std::string> getLibrarySearchPaths();
 
+	struct DependencyGraph;
 	struct CollectorState
 	{
 		std::unordered_set<std::string> importedFiles;
@@ -58,9 +59,18 @@ namespace frontend
 		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
 		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
 		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
+
+		DependencyGraph* graph = 0;
+		std::string fullMainFile;
+		std::vector<std::string> allFiles;
 	};
 
-	fir::Module* collectFiles(std::string filename);
+	// fir::Module* collectFiles(std::string filename);
+	void collectFiles(const std::string& mainfile, CollectorState* state);
+	void parseFiles(CollectorState* state);
+	sst::DefinitionTree* typecheckFiles(CollectorState* state);
+	fir::Module* generateFIRModule(CollectorState* state, sst::DefinitionTree* maintree);
+
 
 	std::pair<std::string, std::string> parseCmdLineOpts(int argc, char** argv);
 
