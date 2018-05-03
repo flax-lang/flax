@@ -21,52 +21,49 @@ namespace fir
 		this->setInitialiserFunctions(inits);
 	}
 
-
+	static std::unordered_map<Identifier, ClassType*> typeCache;
 	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
-		const std::vector<Function*>& methods, const std::vector<Function*>& inits, FTContext* tc)
+		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		ClassType* type = new ClassType(name, members, methods, inits);
+		// ClassType* type = ;
 
 		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache)
-		{
-			if(t->isClassType() && t->toClassType()->getTypeName() == name)
-			{
-				// check members.
-				std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-				std::vector<Type*> tl2; for(auto p : t->toClassType()->classMembers) tl2.push_back(p.second);
+		// for(auto t : tc->typeCache)
+		// {
+		// 	if(t->isClassType() && t->toClassType()->getTypeName() == name)
+		// 	{
+		// 		// check members.
+		// 		std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
+		// 		std::vector<Type*> tl2; for(auto p : t->toClassType()->classMembers) tl2.push_back(p.second);
 
-				if(!areTypeListsEqual(tl1, tl2))
-				{
-					error("Conflicting types for class '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
-				}
+		// 		if(!areTypeListsEqual(tl1, tl2))
+		// 		{
+		// 			error("Conflicting types for class '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
+		// 		}
 
-				// ok.
-				// early exit, since we should be checking this every time we add -- at most 1 with the same name at any moment.
-				break;
-			}
-		}
+		// 		// ok.
+		// 		// early exit, since we should be checking this every time we add -- at most 1 with the same name at any moment.
+		// 		break;
+		// 	}
+		// }
 
-		return dynamic_cast<ClassType*>(tc->normaliseType(type));
+		// return typeCache.getOrAddCachedType(new ClassType(name, members, methods, inits));
+
+
+		if(auto it = typeCache.find(name); it != typeCache.end())
+			error("Class with name '%s' already exists", name.str());
+
+		else
+			return (typeCache[name] = new ClassType(name, members, methods, inits));
 	}
 
-	ClassType* ClassType::createWithoutBody(const Identifier& name, FTContext* tc)
+	ClassType* ClassType::createWithoutBody(const Identifier& name)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		if(auto it = typeCache.find(name); it != typeCache.end())
+			error("Class with name '%s' already exists", name.str());
 
-		// special case: if no body, just return a type of the existing name.
-		for(auto& t : tc->typeCache)
-		{
-			if(t->isClassType() && t->toClassType()->getTypeName() == name)
-				return t->toClassType();
-		}
-
-		// if not, create a new one.
-		return ClassType::create(name, { }, { }, { }, tc);
+		else
+			return (typeCache[name] = new ClassType(name, { }, { }, { }));
 	}
 
 

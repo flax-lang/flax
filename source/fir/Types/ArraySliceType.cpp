@@ -48,24 +48,20 @@ namespace fir
 		return this->arrayElementType->isTypeEqual(af->arrayElementType) && af->isSliceMutable == this->isSliceMutable;
 	}
 
-	ArraySliceType* ArraySliceType::get(Type* elementType, bool mut, FTContext* tc)
+	static TypeCache<ArraySliceType> typeCache;
+	ArraySliceType* ArraySliceType::get(Type* elementType, bool mut)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// create.
-		ArraySliceType* type = new ArraySliceType(elementType, mut);
-		return dynamic_cast<ArraySliceType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(new ArraySliceType(elementType, mut));
 	}
 
-	ArraySliceType* ArraySliceType::getMutable(Type* elementType, FTContext* tc)
+	ArraySliceType* ArraySliceType::getMutable(Type* elementType)
 	{
-		return get(elementType, true, tc);
+		return get(elementType, true);
 	}
 
-	ArraySliceType* ArraySliceType::getImmutable(Type* elementType, FTContext* tc)
+	ArraySliceType* ArraySliceType::getImmutable(Type* elementType)
 	{
-		return get(elementType, false, tc);
+		return get(elementType, false);
 	}
 }
 

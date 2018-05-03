@@ -6,10 +6,11 @@
 
 namespace fir
 {
-	PrimitiveType::PrimitiveType(size_t bits, Kind kind)
+	PrimitiveType::PrimitiveType(size_t bits, bool issigned, Kind kind)
 	{
 		this->bitWidth = bits;
 		this->primKind = kind;
+		this->isTypeSigned = issigned;
 	}
 
 
@@ -21,14 +22,10 @@ namespace fir
 
 
 
-	PrimitiveType* PrimitiveType::getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned)
+	static std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypeCache;
+	PrimitiveType* PrimitiveType::getIntWithBitWidthAndSignage(size_t bits, bool issigned)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		std::vector<PrimitiveType*> types = tc->primitiveTypes[bits];
-
-		iceAssert(types.size() > 0 && "no types of this kind??");
+		std::vector<PrimitiveType*>& types = primitiveTypeCache[bits];
 
 		for(auto t : types)
 		{
@@ -37,19 +34,13 @@ namespace fir
 				return t;
 		}
 
-		iceAssert(false);
-		return 0;
+
+		return *types.insert(types.end(), new PrimitiveType(bits, issigned, Kind::Integer));
 	}
 
-	PrimitiveType* PrimitiveType::getFloatWithBitWidth(FTContext* tc, size_t bits)
+	PrimitiveType* PrimitiveType::getFloatWithBitWidth(size_t bits)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-
-		std::vector<PrimitiveType*> types = tc->primitiveTypes[bits];
-
-		iceAssert(types.size() > 0 && "no types of this kind??");
+		std::vector<PrimitiveType*>& types = primitiveTypeCache[bits];
 
 		for(auto t : types)
 		{
@@ -58,141 +49,98 @@ namespace fir
 				return t;
 		}
 
-		iceAssert(false);
-		return 0;
+		return *types.insert(types.end(), new PrimitiveType(bits, false, Kind::Floating));
 	}
 
-	PrimitiveType* PrimitiveType::getIntN(size_t bits, FTContext* tc)
+	PrimitiveType* PrimitiveType::getIntN(size_t bits)
 	{
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, bits, true);
+		return PrimitiveType::getIntWithBitWidthAndSignage(bits, true);
 	}
 
-	PrimitiveType* PrimitiveType::getUintN(size_t bits, FTContext* tc)
+	PrimitiveType* PrimitiveType::getUintN(size_t bits)
 	{
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, bits, false);
-	}
-
-
-
-
-
-	PrimitiveType* PrimitiveType::getInt8(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 8, true);
-	}
-
-	PrimitiveType* PrimitiveType::getInt16(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 16, true);
-	}
-
-	PrimitiveType* PrimitiveType::getInt32(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 32, true);
-	}
-
-	PrimitiveType* PrimitiveType::getInt64(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 64, true);
-	}
-
-	PrimitiveType* PrimitiveType::getInt128(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 128, true);
+		return PrimitiveType::getIntWithBitWidthAndSignage(bits, false);
 	}
 
 
 
 
 
-	PrimitiveType* PrimitiveType::getUint8(FTContext* tc)
+	PrimitiveType* PrimitiveType::getInt8()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 8, false);
+		return PrimitiveType::getIntWithBitWidthAndSignage(8, true);
 	}
 
-	PrimitiveType* PrimitiveType::getUint16(FTContext* tc)
+	PrimitiveType* PrimitiveType::getInt16()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 16, false);
+		return PrimitiveType::getIntWithBitWidthAndSignage(16, true);
 	}
 
-	PrimitiveType* PrimitiveType::getUint32(FTContext* tc)
+	PrimitiveType* PrimitiveType::getInt32()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 32, false);
+		return PrimitiveType::getIntWithBitWidthAndSignage(32, true);
 	}
 
-	PrimitiveType* PrimitiveType::getUint64(FTContext* tc)
+	PrimitiveType* PrimitiveType::getInt64()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 64, false);
+		return PrimitiveType::getIntWithBitWidthAndSignage(64, true);
 	}
 
-	PrimitiveType* PrimitiveType::getUint128(FTContext* tc)
+	PrimitiveType* PrimitiveType::getInt128()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getIntWithBitWidthAndSignage(tc, 128, false);
+		return PrimitiveType::getIntWithBitWidthAndSignage(128, true);
 	}
 
 
 
 
-	PrimitiveType* PrimitiveType::getFloat32(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
 
-		return PrimitiveType::getFloatWithBitWidth(tc, 32);
+	PrimitiveType* PrimitiveType::getUint8()
+	{
+		return PrimitiveType::getIntWithBitWidthAndSignage(8, false);
 	}
 
-	PrimitiveType* PrimitiveType::getFloat64(FTContext* tc)
+	PrimitiveType* PrimitiveType::getUint16()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getFloatWithBitWidth(tc, 64);
+		return PrimitiveType::getIntWithBitWidthAndSignage(16, false);
 	}
 
-	PrimitiveType* PrimitiveType::getFloat80(FTContext* tc)
+	PrimitiveType* PrimitiveType::getUint32()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return PrimitiveType::getFloatWithBitWidth(tc, 80);
+		return PrimitiveType::getIntWithBitWidthAndSignage(32, false);
 	}
 
-	PrimitiveType* PrimitiveType::getFloat128(FTContext* tc)
+	PrimitiveType* PrimitiveType::getUint64()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		return PrimitiveType::getIntWithBitWidthAndSignage(64, false);
+	}
 
-		return PrimitiveType::getFloatWithBitWidth(tc, 128);
+	PrimitiveType* PrimitiveType::getUint128()
+	{
+		return PrimitiveType::getIntWithBitWidthAndSignage(128, false);
+	}
+
+
+
+
+	PrimitiveType* PrimitiveType::getFloat32()
+	{
+		return PrimitiveType::getFloatWithBitWidth(32);
+	}
+
+	PrimitiveType* PrimitiveType::getFloat64()
+	{
+		return PrimitiveType::getFloatWithBitWidth(64);
+	}
+
+	PrimitiveType* PrimitiveType::getFloat80()
+	{
+		return PrimitiveType::getFloatWithBitWidth(80);
+	}
+
+	PrimitiveType* PrimitiveType::getFloat128()
+	{
+		return PrimitiveType::getFloatWithBitWidth(128);
 	}
 
 

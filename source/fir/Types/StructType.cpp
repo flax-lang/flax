@@ -18,47 +18,45 @@ namespace fir
 		this->setBody(mems);
 	}
 
-	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, FTContext* tc, bool packed)
+	static std::unordered_map<Identifier, StructType*> typeCache;
+	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		// StructType* type = new StructType(name, members, packed);
 
-		StructType* type = new StructType(name, members, packed);
+		// // special: need to check if new type has the same name
+		// for(auto t : tc->typeCache)
+		// {
+		// 	if(t->isStructType() && t->toStructType()->getTypeName() == name)
+		// 	{
+		// 		// check members.
+		// 		std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
+		// 		std::vector<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
 
-		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache)
-		{
-			if(t->isStructType() && t->toStructType()->getTypeName() == name)
-			{
-				// check members.
-				std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-				std::vector<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
+		// 		if(!areTypeListsEqual(tl1, tl2))
+		// 			error("Conflicting types for named struct '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
 
-				if(!areTypeListsEqual(tl1, tl2))
-					error("Conflicting types for named struct '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
+		// 		// ok.
+		// 		break;
+		// 	}
+		// }
 
-				// ok.
-				break;
-			}
-		}
+		// return dynamic_cast<StructType*>(tc->normaliseType(type));
 
-		return dynamic_cast<StructType*>(tc->normaliseType(type));
+
+		if(auto it = typeCache.find(name); it != typeCache.end())
+			error("Struct with name '%s' already exists", name.str());
+
+		else
+			return (typeCache[name] = new StructType(name, members, packed));
 	}
 
-	StructType* StructType::createWithoutBody(const Identifier& name, FTContext* tc, bool isPacked)
+	StructType* StructType::createWithoutBody(const Identifier& name, bool isPacked)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		if(auto it = typeCache.find(name); it != typeCache.end())
+			error("Struct with name '%s' already exists", name.str());
 
-		// special case: if no body, just return a type of the existing name.
-		for(auto& t : tc->typeCache)
-		{
-			if(t->isStructType() && t->toStructType()->getTypeName() == name)
-				return t->toStructType();
-		}
-
-		// if not, create a new one.
-		return StructType::create(name, { }, tc, isPacked);
+		else
+			return (typeCache[name] = new StructType(name, { }, isPacked));
 	}
 
 

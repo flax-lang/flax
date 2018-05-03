@@ -12,6 +12,7 @@ namespace pts
 
 namespace fir
 {
+	#if 0
 	Type* FTContext::normaliseType(Type* type)
 	{
 		if(Type::areTypesEqual(type, this->voidType))
@@ -47,7 +48,7 @@ namespace fir
 
 
 	static FTContext* defaultFTContext = 0;
-	void setDefaultFTContext(FTContext* tc)
+	void setDefaultFTContext()
 	{
 		iceAssert(tc && "Tried to set null type context as default");
 		defaultFTContext = tc;
@@ -67,7 +68,7 @@ namespace fir
 
 	FTContext* createFTContext()
 	{
-		FTContext* tc = new FTContext();
+		 = new FTContext();
 
 		// fill in primitives
 
@@ -198,23 +199,23 @@ namespace fir
 		}
 
 		// get 'nice' IDs for the common types
-		fir::Type::getAny(tc);
-		fir::Type::getRange(tc);
-		fir::Type::getString(tc);
+		fir::Type::getAny();
+		fir::Type::getRange();
+		fir::Type::getString();
 
-		fir::Type::getInt8Ptr(tc);
-		fir::Type::getInt16Ptr(tc);
-		fir::Type::getInt32Ptr(tc);
-		fir::Type::getInt64Ptr(tc);
+		fir::Type::getInt8Ptr();
+		fir::Type::getInt16Ptr();
+		fir::Type::getInt32Ptr();
+		fir::Type::getInt64Ptr();
 
-		fir::Type::getUint8Ptr(tc);
-		fir::Type::getUint16Ptr(tc);
-		fir::Type::getUint32Ptr(tc);
-		fir::Type::getUint64Ptr(tc);
+		fir::Type::getUint8Ptr();
+		fir::Type::getUint16Ptr();
+		fir::Type::getUint32Ptr();
+		fir::Type::getUint64Ptr();
 
 		return tc;
 	}
-
+	#endif
 
 
 
@@ -246,7 +247,7 @@ namespace fir
 
 		for(size_t i = 0; i < a.size(); i++)
 		{
-			if(!Type::areTypesEqual(a[i], b[i]))
+			if(a[i] != b[i])
 				return false;
 		}
 
@@ -260,66 +261,46 @@ namespace fir
 
 
 
-	Type* Type::getPointerTo(FTContext* tc)
+	Type* Type::getPointerTo()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 		// cache the pointer internally
 		if(!this->pointerTo)
 		{
 			PointerType* newType = new PointerType(this, false);
-			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
-
-			// the type shouldn't be in the global cache at this point yet
-			iceAssert(normalised == newType);
-
-			this->pointerTo = normalised;
+			this->pointerTo = newType;
 		}
 
 		return this->pointerTo;
 	}
 
-
-	Type* Type::getMutablePointerTo(FTContext* tc)
+	Type* Type::getMutablePointerTo()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 		// cache the pointer internally
 		if(!this->mutablePointerTo)
 		{
 			PointerType* newType = new PointerType(this, true);
-			PointerType* normalised = dynamic_cast<PointerType*>(tc->normaliseType(newType));
-
-			// the type shouldn't be in the global cache at this point yet
-			iceAssert(normalised == newType);
-
-			this->mutablePointerTo = normalised;
+			this->mutablePointerTo = newType;
 		}
 
 		return this->mutablePointerTo;
 	}
 
 
-	Type* Type::getMutablePointerVersion(FTContext* tc)
+	Type* Type::getMutablePointerVersion()
 	{
 		iceAssert(this->isPointerType() && "not pointer type");
-		return this->toPointerType()->getMutable(tc);
+		return this->toPointerType()->getMutable();
 	}
 
-	Type* Type::getImmutablePointerVersion(FTContext* tc)
+	Type* Type::getImmutablePointerVersion()
 	{
 		iceAssert(this->isPointerType() && "not pointer type");
-		return this->toPointerType()->getImmutable(tc);
+		return this->toPointerType()->getImmutable();
 	}
 
 
-	Type* Type::getPointerElementType(FTContext* tc)
+	Type* Type::getPointerElementType()
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 		if(!this->isPointerType())
 			error("type is not a pointer ('%s')", this);
 
@@ -336,26 +317,20 @@ namespace fir
 		return newType;
 	}
 
-	bool Type::areTypesEqual(Type* a, Type* b)
+	// bool Type::areTypesEqual(Type* a, Type* b)
+	// {
+	// 	return a->isTypeEqual(b);
+	// }
+
+
+
+	Type* Type::getIndirectedType(int times)
 	{
-		return a->isTypeEqual(b);
-	}
-
-
-
-	Type* Type::getIndirectedType(int times, FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 		Type* ret = this;
 		if(times > 0)
 		{
 			for(int i = 0; i < times; i++)
-			{
-				// auto old = ret;
 				ret = ret->getPointerTo();
-			}
 		}
 		else if(times < 0)
 		{
@@ -369,49 +344,46 @@ namespace fir
 	}
 
 
-	Type* Type::fromBuiltin(const std::string& builtin, FTContext* tc)
+	Type* Type::fromBuiltin(const std::string& builtin)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 
 		int indirections = 0;
 		auto copy = pts::unwrapPointerType(builtin, &indirections);
 
 		Type* real = 0;
 
-		if(copy == INT8_TYPE_STRING)                    real = Type::getInt8(tc);
-		else if(copy == INT16_TYPE_STRING)              real = Type::getInt16(tc);
-		else if(copy == INT32_TYPE_STRING)              real = Type::getInt32(tc);
-		else if(copy == INT64_TYPE_STRING)              real = Type::getInt64(tc);
-		else if(copy == INT128_TYPE_STRING)             real = Type::getInt128(tc);
+		if(copy == INT8_TYPE_STRING)                    real = Type::getInt8();
+		else if(copy == INT16_TYPE_STRING)              real = Type::getInt16();
+		else if(copy == INT32_TYPE_STRING)              real = Type::getInt32();
+		else if(copy == INT64_TYPE_STRING)              real = Type::getInt64();
+		else if(copy == INT128_TYPE_STRING)             real = Type::getInt128();
 
-		else if(copy == UINT8_TYPE_STRING)              real = Type::getUint8(tc);
-		else if(copy == UINT16_TYPE_STRING)             real = Type::getUint16(tc);
-		else if(copy == UINT32_TYPE_STRING)             real = Type::getUint32(tc);
-		else if(copy == UINT64_TYPE_STRING)             real = Type::getUint64(tc);
-		else if(copy == UINT128_TYPE_STRING)            real = Type::getUint128(tc);
+		else if(copy == UINT8_TYPE_STRING)              real = Type::getUint8();
+		else if(copy == UINT16_TYPE_STRING)             real = Type::getUint16();
+		else if(copy == UINT32_TYPE_STRING)             real = Type::getUint32();
+		else if(copy == UINT64_TYPE_STRING)             real = Type::getUint64();
+		else if(copy == UINT128_TYPE_STRING)            real = Type::getUint128();
 
-		else if(copy == FLOAT32_TYPE_STRING)            real = Type::getFloat32(tc);
-		else if(copy == FLOAT64_TYPE_STRING)            real = Type::getFloat64(tc);
-		else if(copy == FLOAT80_TYPE_STRING)            real = Type::getFloat80(tc);
-		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128(tc);
+		else if(copy == FLOAT32_TYPE_STRING)            real = Type::getFloat32();
+		else if(copy == FLOAT64_TYPE_STRING)            real = Type::getFloat64();
+		else if(copy == FLOAT80_TYPE_STRING)            real = Type::getFloat80();
+		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128();
 
-		else if(copy == STRING_TYPE_STRING)             real = Type::getString(tc);
+		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
 
 		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getInt8(), false);
 
-		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool(tc);
-		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid(tc);
+		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool();
+		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid();
 
 		// unspecified things
-		else if(copy == INTUNSPEC_TYPE_STRING)          real = Type::getInt64(tc);
-		else if(copy == UINTUNSPEC_TYPE_STRING)         real = Type::getUint64(tc);
+		else if(copy == INTUNSPEC_TYPE_STRING)          real = Type::getInt64();
+		else if(copy == UINTUNSPEC_TYPE_STRING)         real = Type::getUint64();
 
-		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32(tc);
-		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64(tc);
+		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32();
+		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64();
 
-		else if(copy == ANY_TYPE_STRING)                real = Type::getAny(tc);
+		else if(copy == ANY_TYPE_STRING)                real = Type::getAny();
 
 		else return 0;
 
@@ -719,338 +691,234 @@ namespace fir
 
 
 	// static getting functions
-	VoidType* Type::getVoid(FTContext* tc)
+	VoidType* Type::getVoid()
 	{
-		return VoidType::get(tc);
+		return VoidType::get();
 	}
 
-	NullType* Type::getNull(FTContext* tc)
+	NullType* Type::getNull()
 	{
-		return NullType::get(tc);
+		return NullType::get();
 	}
 
-	Type* Type::getVoidPtr(FTContext* tc)
+	Type* Type::getVoidPtr()
 	{
-		return VoidType::get(tc)->getPointerTo();
+		return VoidType::get()->getPointerTo();
 	}
 
-	BoolType* Type::getBool(FTContext* tc)
+	BoolType* Type::getBool()
 	{
-		return BoolType::get(tc);
+		return BoolType::get();
 	}
 
-	PrimitiveType* Type::getInt8(FTContext* tc)
+	PrimitiveType* Type::getInt8()
 	{
-		return PrimitiveType::getInt8(tc);
+		return PrimitiveType::getInt8();
 	}
 
-	PrimitiveType* Type::getInt16(FTContext* tc)
+	PrimitiveType* Type::getInt16()
 	{
-		return PrimitiveType::getInt16(tc);
+		return PrimitiveType::getInt16();
 	}
 
-	PrimitiveType* Type::getInt32(FTContext* tc)
+	PrimitiveType* Type::getInt32()
 	{
-		return PrimitiveType::getInt32(tc);
+		return PrimitiveType::getInt32();
 	}
 
-	PrimitiveType* Type::getInt64(FTContext* tc)
+	PrimitiveType* Type::getInt64()
 	{
-		return PrimitiveType::getInt64(tc);
+		return PrimitiveType::getInt64();
 	}
 
-	PrimitiveType* Type::getInt128(FTContext* tc)
+	PrimitiveType* Type::getInt128()
 	{
-		return PrimitiveType::getInt128(tc);
+		return PrimitiveType::getInt128();
 	}
 
-	PrimitiveType* Type::getUint8(FTContext* tc)
+	PrimitiveType* Type::getUint8()
 	{
-		return PrimitiveType::getUint8(tc);
+		return PrimitiveType::getUint8();
 	}
 
-	PrimitiveType* Type::getUint16(FTContext* tc)
+	PrimitiveType* Type::getUint16()
 	{
-		return PrimitiveType::getUint16(tc);
+		return PrimitiveType::getUint16();
 	}
 
-	PrimitiveType* Type::getUint32(FTContext* tc)
+	PrimitiveType* Type::getUint32()
 	{
-		return PrimitiveType::getUint32(tc);
+		return PrimitiveType::getUint32();
 	}
 
-	PrimitiveType* Type::getUint64(FTContext* tc)
+	PrimitiveType* Type::getUint64()
 	{
-		return PrimitiveType::getUint64(tc);
+		return PrimitiveType::getUint64();
 	}
 
-	PrimitiveType* Type::getUint128(FTContext* tc)
+	PrimitiveType* Type::getUint128()
 	{
-		return PrimitiveType::getUint128(tc);
+		return PrimitiveType::getUint128();
 	}
 
-	PrimitiveType* Type::getFloat32(FTContext* tc)
+	PrimitiveType* Type::getFloat32()
 	{
-		return PrimitiveType::getFloat32(tc);
+		return PrimitiveType::getFloat32();
 	}
 
-	PrimitiveType* Type::getFloat64(FTContext* tc)
+	PrimitiveType* Type::getFloat64()
 	{
-		return PrimitiveType::getFloat64(tc);
+		return PrimitiveType::getFloat64();
 	}
 
-	PrimitiveType* Type::getFloat80(FTContext* tc)
+	PrimitiveType* Type::getFloat80()
 	{
-		return PrimitiveType::getFloat80(tc);
+		return PrimitiveType::getFloat80();
 	}
 
-	PrimitiveType* Type::getFloat128(FTContext* tc)
+	PrimitiveType* Type::getFloat128()
 	{
-		return PrimitiveType::getFloat128(tc);
-	}
-
-
-	PointerType* Type::getInt8Ptr(FTContext* tc)
-	{
-		return PointerType::getInt8Ptr(tc);
-	}
-
-	PointerType* Type::getInt16Ptr(FTContext* tc)
-	{
-		return PointerType::getInt16Ptr(tc);
-	}
-
-	PointerType* Type::getInt32Ptr(FTContext* tc)
-	{
-		return PointerType::getInt32Ptr(tc);
-	}
-
-	PointerType* Type::getInt64Ptr(FTContext* tc)
-	{
-		return PointerType::getInt64Ptr(tc);
-	}
-
-	PointerType* Type::getInt128Ptr(FTContext* tc)
-	{
-		return PointerType::getInt128Ptr(tc);
-	}
-
-	PointerType* Type::getUint8Ptr(FTContext* tc)
-	{
-		return PointerType::getUint8Ptr(tc);
-	}
-
-	PointerType* Type::getUint16Ptr(FTContext* tc)
-	{
-		return PointerType::getUint16Ptr(tc);
-	}
-
-	PointerType* Type::getUint32Ptr(FTContext* tc)
-	{
-		return PointerType::getUint32Ptr(tc);
-	}
-
-	PointerType* Type::getUint64Ptr(FTContext* tc)
-	{
-		return PointerType::getUint64Ptr(tc);
-	}
-
-	PointerType* Type::getUint128Ptr(FTContext* tc)
-	{
-		return PointerType::getUint128Ptr(tc);
+		return PrimitiveType::getFloat128();
 	}
 
 
-
-
-	PointerType* Type::getMutInt8Ptr(FTContext* tc)
+	PointerType* Type::getInt8Ptr()
 	{
-		return PointerType::getInt8Ptr(tc)->getMutable();
+		return PointerType::getInt8Ptr();
 	}
 
-	PointerType* Type::getMutInt16Ptr(FTContext* tc)
+	PointerType* Type::getInt16Ptr()
 	{
-		return PointerType::getInt16Ptr(tc)->getMutable();
+		return PointerType::getInt16Ptr();
 	}
 
-	PointerType* Type::getMutInt32Ptr(FTContext* tc)
+	PointerType* Type::getInt32Ptr()
 	{
-		return PointerType::getInt32Ptr(tc)->getMutable();
+		return PointerType::getInt32Ptr();
 	}
 
-	PointerType* Type::getMutInt64Ptr(FTContext* tc)
+	PointerType* Type::getInt64Ptr()
 	{
-		return PointerType::getInt64Ptr(tc)->getMutable();
+		return PointerType::getInt64Ptr();
 	}
 
-	PointerType* Type::getMutInt128Ptr(FTContext* tc)
+	PointerType* Type::getInt128Ptr()
 	{
-		return PointerType::getInt128Ptr(tc)->getMutable();
+		return PointerType::getInt128Ptr();
 	}
 
-	PointerType* Type::getMutUint8Ptr(FTContext* tc)
+	PointerType* Type::getUint8Ptr()
 	{
-		return PointerType::getUint8Ptr(tc)->getMutable();
+		return PointerType::getUint8Ptr();
 	}
 
-	PointerType* Type::getMutUint16Ptr(FTContext* tc)
+	PointerType* Type::getUint16Ptr()
 	{
-		return PointerType::getUint16Ptr(tc)->getMutable();
+		return PointerType::getUint16Ptr();
 	}
 
-	PointerType* Type::getMutUint32Ptr(FTContext* tc)
+	PointerType* Type::getUint32Ptr()
 	{
-		return PointerType::getUint32Ptr(tc)->getMutable();
+		return PointerType::getUint32Ptr();
 	}
 
-	PointerType* Type::getMutUint64Ptr(FTContext* tc)
+	PointerType* Type::getUint64Ptr()
 	{
-		return PointerType::getUint64Ptr(tc)->getMutable();
+		return PointerType::getUint64Ptr();
 	}
 
-	PointerType* Type::getMutUint128Ptr(FTContext* tc)
+	PointerType* Type::getUint128Ptr()
 	{
-		return PointerType::getUint128Ptr(tc)->getMutable();
+		return PointerType::getUint128Ptr();
 	}
 
 
 
 
-
-	ArraySliceType* Type::getCharSlice(bool mut, FTContext* tc)
+	PointerType* Type::getMutInt8Ptr()
 	{
-		return ArraySliceType::get(fir::Type::getInt8(), mut, tc);
+		return PointerType::getInt8Ptr()->getMutable();
 	}
 
-	RangeType* Type::getRange(FTContext* tc)
+	PointerType* Type::getMutInt16Ptr()
 	{
-		return RangeType::get(tc);
+		return PointerType::getInt16Ptr()->getMutable();
 	}
 
-	StringType* Type::getString(FTContext* tc)
+	PointerType* Type::getMutInt32Ptr()
 	{
-		return StringType::get(tc);
+		return PointerType::getInt32Ptr()->getMutable();
 	}
 
-	AnyType* Type::getAny(FTContext* tc)
+	PointerType* Type::getMutInt64Ptr()
 	{
-		return AnyType::get(tc);
+		return PointerType::getInt64Ptr()->getMutable();
 	}
 
-	ConstantNumberType* Type::getConstantNumber(mpfr::mpreal n, FTContext* tc)
+	PointerType* Type::getMutInt128Ptr()
 	{
-		return ConstantNumberType::get(n, tc);
+		return PointerType::getInt128Ptr()->getMutable();
+	}
+
+	PointerType* Type::getMutUint8Ptr()
+	{
+		return PointerType::getUint8Ptr()->getMutable();
+	}
+
+	PointerType* Type::getMutUint16Ptr()
+	{
+		return PointerType::getUint16Ptr()->getMutable();
+	}
+
+	PointerType* Type::getMutUint32Ptr()
+	{
+		return PointerType::getUint32Ptr()->getMutable();
+	}
+
+	PointerType* Type::getMutUint64Ptr()
+	{
+		return PointerType::getUint64Ptr()->getMutable();
+	}
+
+	PointerType* Type::getMutUint128Ptr()
+	{
+		return PointerType::getUint128Ptr()->getMutable();
 	}
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-	BoolType::BoolType()
+	ArraySliceType* Type::getCharSlice(bool mut)
 	{
-		// nothing
+		return ArraySliceType::get(fir::Type::getInt8(), mut);
 	}
 
-	std::string BoolType::str()
+	RangeType* Type::getRange()
 	{
-		return "bool";
+		return RangeType::get();
 	}
 
-	std::string BoolType::encodedStr()
+	StringType* Type::getString()
 	{
-		return "bool";
+		return StringType::get();
 	}
 
-	bool BoolType::isTypeEqual(Type* other)
+	AnyType* Type::getAny()
 	{
-		return other && other->isBoolType();
+		return AnyType::get();
 	}
 
-	BoolType* BoolType::get(FTContext* tc)
+	ConstantNumberType* Type::getConstantNumber(mpfr::mpreal n)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->boolType;
+		return ConstantNumberType::get(n);
 	}
 
 
 
-
-
-
-	std::string VoidType::str()
-	{
-		return "void";
-	}
-
-	std::string VoidType::encodedStr()
-	{
-		return "void";
-	}
-
-	bool VoidType::isTypeEqual(Type* other)
-	{
-		return other && other->isVoidType();
-	}
-
-	VoidType::VoidType()
-	{
-		// nothing
-	}
-
-	VoidType* VoidType::get(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->voidType;
-	}
-
-
-
-
-
-
-	std::string NullType::str()
-	{
-		return "nulltype";
-	}
-
-	std::string NullType::encodedStr()
-	{
-		return "nulltype";
-	}
-
-	bool NullType::isTypeEqual(Type* other)
-	{
-		return other && other->isNullType();
-	}
-
-	NullType::NullType()
-	{
-		// nothing
-	}
-
-	NullType* NullType::get(FTContext* tc)
-	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		return tc->nullType;
-	}
 }
+
+
 
 namespace tinyformat
 {

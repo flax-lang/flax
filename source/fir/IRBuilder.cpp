@@ -14,10 +14,9 @@
 
 namespace fir
 {
-	IRBuilder::IRBuilder(FTContext* c)
+	IRBuilder::IRBuilder(Module* mod)
 	{
-		this->context = c;
-
+		this->module = mod;
 		this->currentBlock = 0;
 		this->previousBlock = 0;
 		this->currentFunction = 0;
@@ -431,7 +430,7 @@ namespace fir
 			error("creating icmp eq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -445,7 +444,7 @@ namespace fir
 			error("creating icmp neq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -459,7 +458,7 @@ namespace fir
 			error("creating icmp gt instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -473,7 +472,7 @@ namespace fir
 			error("creating icmp lt instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -487,7 +486,7 @@ namespace fir
 			error("creating icmp geq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -501,7 +500,7 @@ namespace fir
 			error("creating icmp leq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -514,7 +513,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::Type::getBool(this->context),
+		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -524,7 +523,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Equal_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -533,7 +532,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_ORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -542,7 +541,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -551,7 +550,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Greater_ORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -560,7 +559,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Greater_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -569,7 +568,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Less_ORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -578,7 +577,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Less_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -587,7 +586,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_ORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -596,7 +595,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -605,7 +604,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_ORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -614,7 +613,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_UNORD, false, this->currentBlock,
-			fir::Type::getBool(this->context), { a, b });
+			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -625,7 +624,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating icmp multi instruction with non-equal types");
 		// iceAssert(a->getType()->isIntegerType() && "creating icmp multi instruction with non-integer type");
 		Instruction* instr = new Instruction(OpKind::ICompare_Multi, false, this->currentBlock,
-			fir::Type::getInt64(this->context), { a, b });
+			fir::Type::getInt64(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -634,7 +633,7 @@ namespace fir
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
 		Instruction* instr = new Instruction(OpKind::FCompare_Multi, false, this->currentBlock,
-			fir::Type::getInt64(this->context), { a, b });
+			fir::Type::getInt64(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -2012,10 +2011,9 @@ namespace fir
 		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
 			error("any is not a pointer to an any type (got '%s')", any->getType());
 
-		iceAssert(this->context);
-		iceAssert(this->context->module);
+		iceAssert(this->module);
 
-		size_t sz = this->context->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
+		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
 		if(sz > 24 || sz == (size_t) -1)
 		{
 			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",

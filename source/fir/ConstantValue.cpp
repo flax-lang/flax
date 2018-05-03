@@ -31,7 +31,7 @@ namespace fir
 	}
 
 
-	ConstantBool* ConstantBool::get(bool val, FTContext* tc)
+	ConstantBool* ConstantBool::get(bool val)
 	{
 		return new ConstantBool(val);
 	}
@@ -91,52 +91,44 @@ namespace fir
 		return this->value;
 	}
 
-	ConstantInt* ConstantInt::getInt8(int8_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getInt8(int8_t value)
 	{
-		Type* t = Type::getInt8(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getInt8(), value);
 	}
 
-	ConstantInt* ConstantInt::getInt16(int16_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getInt16(int16_t value)
 	{
-		Type* t = Type::getInt16(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getInt16(), value);
 	}
 
-	ConstantInt* ConstantInt::getInt32(int32_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getInt32(int32_t value)
 	{
-		Type* t = Type::getInt32(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getInt32(), value);
 	}
 
-	ConstantInt* ConstantInt::getInt64(int64_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getInt64(int64_t value)
 	{
-		Type* t = Type::getInt64(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getInt64(), value);
 	}
 
-	ConstantInt* ConstantInt::getUint8(uint8_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getUint8(uint8_t value)
 	{
-		Type* t = Type::getUint8(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getUint8(), value);
 	}
 
-	ConstantInt* ConstantInt::getUint16(uint16_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getUint16(uint16_t value)
 	{
-		Type* t = Type::getUint16(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getUint16(), value);
 	}
 
-	ConstantInt* ConstantInt::getUint32(uint32_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getUint32(uint32_t value)
 	{
-		Type* t = Type::getUint32(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getUint32(), value);
 	}
 
-	ConstantInt* ConstantInt::getUint64(uint64_t value, FTContext* tc)
+	ConstantInt* ConstantInt::getUint64(uint64_t value)
 	{
-		Type* t = Type::getUint64(tc);
-		return ConstantInt::get(t, value);
+		return ConstantInt::get(Type::getUint64(), value);
 	}
 
 
@@ -205,22 +197,19 @@ namespace fir
 		return this->value;
 	}
 
-	ConstantFP* ConstantFP::getFloat32(float value, FTContext* tc)
+	ConstantFP* ConstantFP::getFloat32(float value)
 	{
-		Type* t = Type::getFloat32(tc);
-		return ConstantFP::get(t, value);
+		return ConstantFP::get(Type::getFloat32(), value);
 	}
 
-	ConstantFP* ConstantFP::getFloat64(double value, FTContext* tc)
+	ConstantFP* ConstantFP::getFloat64(double value)
 	{
-		Type* t = Type::getFloat64(tc);
-		return ConstantFP::get(t, value);
+		return ConstantFP::get(Type::getFloat64(), value);
 	}
 
-	ConstantFP* ConstantFP::getFloat80(long double value, FTContext* tc)
+	ConstantFP* ConstantFP::getFloat80(long double value)
 	{
-		Type* t = Type::getFloat80(tc);
-		return ConstantFP::get(t, value);
+		return ConstantFP::get(Type::getFloat80(), value);
 	}
 
 

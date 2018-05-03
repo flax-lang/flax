@@ -71,21 +71,15 @@ namespace fir
 
 
 
-	EnumType* EnumType::get(const Identifier& name, Type* caseType, FTContext* tc)
+	static std::unordered_map<Identifier, EnumType*> typeCache;
+
+	EnumType* EnumType::get(const Identifier& name, Type* caseType)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
+		if(auto it = typeCache.find(name); it != typeCache.end())
+			error("Enum with name '%s' already exists", name.str());
 
-		EnumType* type = new EnumType(name, caseType);
-
-		// special: need to check if new type has the same name
-		for(auto t : tc->typeCache)
-		{
-			if(t->isEnumType() && t->toEnumType()->getTypeName() == name)
-				error("Enum '%s' already exists", name.str());
-		}
-
-		return dynamic_cast<EnumType*>(tc->normaliseType(type));
+		else
+			return (typeCache[name] = new EnumType(name, caseType));
 	}
 }
 
