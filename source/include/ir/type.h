@@ -37,30 +37,6 @@ namespace fir
 	struct ConstantArray;
 	struct Function;
 
-	// struct FTContext
-	// {
-	// 	// primitives
-	// 	// NOTE: map is ordered by bit width.
-	// 	// floats + ints here too.
-	// 	std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
-
-	// 	// special little thing.
-	// 	VoidType* voidType = 0;
-
-	// 	// special thing #2
-	// 	NullType* nullType = 0;
-
-	// 	// #3
-	// 	BoolType* boolType = 0;
-
-	// 	// fir::LLVMContext* llvmContext = 0;
-	// 	fir::Module* module = 0;
-
-	// 	std::vector<Type*> typeCache;
-	// 	Type* normaliseType(Type* type);
-
-	// 	void dumpTypeIDs();
-	// };
 
 	template <typename T>
 	struct TypeCache
@@ -81,6 +57,28 @@ namespace fir
 		}
 	};
 
+	enum class TypeKind
+	{
+		Invalid,
+
+		Any,
+		Null,
+		Void,
+		Enum,
+		Bool,
+		Array,
+		Tuple,
+		Class,
+		Range,
+		Struct,
+		String,
+		Pointer,
+		Function,
+		Primitive,
+		ArraySlice,
+		DynamicArray,
+		ConstantNumber,
+	};
 
 	struct Type
 	{
@@ -228,9 +226,10 @@ namespace fir
 
 
 		virtual ~Type() { }
+		const TypeKind kind;
 
 		protected:
-		Type()
+		Type(TypeKind k) : kind(k)
 		{
 			static size_t __id = 0;
 			this->id = __id++;

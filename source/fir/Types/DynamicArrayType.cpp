@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	DynamicArrayType::DynamicArrayType(Type* elmType)
+	DynamicArrayType::DynamicArrayType(Type* elmType) : Type(TypeKind::DynamicArray)
 	{
 		this->arrayElementType = elmType;
 		iceAssert(this->arrayElementType);
@@ -35,11 +35,11 @@ namespace fir
 
 	bool DynamicArrayType::isTypeEqual(Type* other)
 	{
-		DynamicArrayType* af = dynamic_cast<DynamicArrayType*>(other);
-		if(!af) return false;
-		if(af->isVariadic != this->isVariadic) return false;
+		if(other->kind != TypeKind::DynamicArray)
+			return false;
 
-		return this->arrayElementType->isTypeEqual(af->arrayElementType);
+		auto af = other->toDynamicArrayType();
+		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->isVariadic == af->isVariadic);
 	}
 
 	static TypeCache<DynamicArrayType> typeCache;

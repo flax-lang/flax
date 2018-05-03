@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	PointerType::PointerType(Type* base, bool mut)
+	PointerType::PointerType(Type* base, bool mut) : Type(TypeKind::Pointer)
 	{
 		this->baseType = base;
 		this->isPtrMutable = mut;
@@ -34,53 +34,53 @@ namespace fir
 
 	PointerType* PointerType::getInt8Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getInt8()->getPointerTo());
+		return Type::getInt8()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getInt16Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getInt16()->getPointerTo());
+		return Type::getInt16()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getInt32Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getInt32()->getPointerTo());
+		return Type::getInt32()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getInt64Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getInt64()->getPointerTo());
+		return Type::getInt64()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getInt128Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getInt128()->getPointerTo());
+		return Type::getInt128()->getPointerTo()->toPointerType();
 	}
 
 
 	PointerType* PointerType::getUint8Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getUint8()->getPointerTo());
+		return Type::getUint8()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getUint16Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getUint16()->getPointerTo());
+		return Type::getUint16()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getUint32Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getUint32()->getPointerTo());
+		return Type::getUint32()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getUint64Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getUint64()->getPointerTo());
+		return Type::getUint64()->getPointerTo()->toPointerType();
 	}
 
 	PointerType* PointerType::getUint128Ptr()
 	{
-		return dynamic_cast<PointerType*>(Type::getUint128()->getPointerTo());
+		return Type::getUint128()->getPointerTo()->toPointerType();
 	}
 
 
@@ -103,10 +103,11 @@ namespace fir
 
 	bool PointerType::isTypeEqual(Type* other)
 	{
-		PointerType* po = dynamic_cast<PointerType*>(other);
-		if(!po) return false;
+		if(other->kind != TypeKind::Pointer)
+			return false;
 
-		return this->baseType->isTypeEqual(po->baseType) && (this->isPtrMutable == po->isPtrMutable);
+		auto op = other->toPointerType();
+		return this->baseType->isTypeEqual(op->baseType) && (this->isPtrMutable == op->isPtrMutable);
 	}
 }
 

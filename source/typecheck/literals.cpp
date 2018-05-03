@@ -188,15 +188,15 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			type = fir::ArrayType::get(elmty, this->values.size());
 		}
-		else if(infer->isDynamicArrayType())
-		{
-			// do something
-			type = fir::DynamicArrayType::get(elmty);
-		}
 		else if(infer == 0 || infer->isArraySliceType())
 		{
 			// slices from a constant array generally should remain immutable.
 			type = fir::ArraySliceType::get(elmty, false);
+		}
+		else if(infer->isDynamicArrayType())
+		{
+			// do something
+			type = fir::DynamicArrayType::get(elmty);
 		}
 		else
 		{

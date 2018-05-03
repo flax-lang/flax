@@ -12,7 +12,7 @@ namespace Codegen
 
 namespace fir
 {
-	FunctionType::FunctionType(const std::vector<Type*>& args, Type* ret, bool iscva)
+	FunctionType::FunctionType(const std::vector<Type*>& args, Type* ret, bool iscva) : Type(TypeKind::Function)
 	{
 		this->functionParams = args;
 		this->functionRetType = ret;
@@ -105,19 +105,27 @@ namespace fir
 
 	bool FunctionType::isTypeEqual(Type* other)
 	{
-		FunctionType* of = dynamic_cast<FunctionType*>(other);
-		if(!of) return false;
-		if(this->isFnCStyleVarArg != of->isFnCStyleVarArg) return false;
-		if(this->functionParams.size() != of->functionParams.size()) return false;
-		if(!this->functionRetType->isTypeEqual(of->functionRetType)) return false;
+		if(other->kind != TypeKind::Function)
+			return false;
 
-		for(size_t i = 0; i < this->functionParams.size(); i++)
+		auto of = other->toFunctionType();
+		auto ret = (this->isFnCStyleVarArg == of->isFnCStyleVarArg) && (this->functionRetType->isTypeEqual(of->functionRetType))
+			&& (this->functionParams.size() == of->functionParams.size());
+
+		if(ret)
 		{
-			if(!this->functionParams[i]->isTypeEqual(of->functionParams[i]))
-				return false;
-		}
+			for(size_t i = 0; i < this->functionParams.size(); i++)
+			{
+				if(!this->functionParams[i]->isTypeEqual(of->functionParams[i]))
+					return false;
+			}
 
-		return true;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 }
 
