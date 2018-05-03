@@ -10,7 +10,6 @@ namespace fir
 	DynamicArrayType::DynamicArrayType(Type* elmType) : Type(TypeKind::DynamicArray)
 	{
 		this->arrayElementType = elmType;
-		iceAssert(this->arrayElementType);
 	}
 
 	Type* DynamicArrayType::getElementType()
