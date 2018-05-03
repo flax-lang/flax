@@ -52,7 +52,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantBool* get(bool value, FTContext* tc = 0);
+		static ConstantBool* get(bool value);
 		bool getValue();
 
 		protected:
@@ -67,14 +67,14 @@ namespace fir
 
 		static ConstantInt* get(Type* intType, uint64_t val);
 
-		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);
-		static ConstantInt* getInt16(int16_t value, FTContext* tc = 0);
-		static ConstantInt* getInt32(int32_t value, FTContext* tc = 0);
-		static ConstantInt* getInt64(int64_t value, FTContext* tc = 0);
-		static ConstantInt* getUint8(uint8_t value, FTContext* tc = 0);
-		static ConstantInt* getUint16(uint16_t value, FTContext* tc = 0);
-		static ConstantInt* getUint32(uint32_t value, FTContext* tc = 0);
-		static ConstantInt* getUint64(uint64_t value, FTContext* tc = 0);
+		static ConstantInt* getInt8(int8_t value);
+		static ConstantInt* getInt16(int16_t value);
+		static ConstantInt* getInt32(int32_t value);
+		static ConstantInt* getInt64(int64_t value);
+		static ConstantInt* getUint8(uint8_t value);
+		static ConstantInt* getUint16(uint16_t value);
+		static ConstantInt* getUint32(uint32_t value);
+		static ConstantInt* getUint64(uint64_t value);
 
 
 		int64_t getSignedValue();
@@ -96,9 +96,9 @@ namespace fir
 		static ConstantFP* get(Type* intType, double val);
 		static ConstantFP* get(Type* intType, long double val);
 
-		static ConstantFP* getFloat32(float value, FTContext* tc = 0);
-		static ConstantFP* getFloat64(double value, FTContext* tc = 0);
-		static ConstantFP* getFloat80(long double value, FTContext* tc = 0);
+		static ConstantFP* getFloat32(float value);
+		static ConstantFP* getFloat64(double value);
+		static ConstantFP* getFloat80(long double value);
 
 		long double getValue();
 

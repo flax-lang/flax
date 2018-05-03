@@ -42,26 +42,19 @@ namespace fir
 		return this->arrayElementType->isTypeEqual(af->arrayElementType);
 	}
 
-	DynamicArrayType* DynamicArrayType::get(Type* elementType, FTContext* tc)
+	static TypeCache<DynamicArrayType> typeCache;
+	DynamicArrayType* DynamicArrayType::get(Type* elementType)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// create.
-		DynamicArrayType* type = new DynamicArrayType(elementType);
-		return dynamic_cast<DynamicArrayType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(new DynamicArrayType(elementType));
 	}
 
-	DynamicArrayType* DynamicArrayType::getVariadic(Type* elementType, FTContext* tc)
+	DynamicArrayType* DynamicArrayType::getVariadic(Type* elementType)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
 		// create.
 		DynamicArrayType* type = new DynamicArrayType(elementType);
 		type->isVariadic = true;
 
-		return dynamic_cast<DynamicArrayType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(type);
 	}
 
 }

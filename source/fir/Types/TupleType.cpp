@@ -48,22 +48,17 @@ namespace fir
 
 
 
-	TupleType* TupleType::get(const std::initializer_list<Type*>& mems, FTContext* tc)
+	static TypeCache<TupleType> typeCache;
+
+	TupleType* TupleType::get(const std::vector<Type*>& mems)
 	{
-		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()), tc);
+		return typeCache.getOrAddCachedType(new TupleType(mems));
 	}
 
-	TupleType* TupleType::get(const std::vector<Type*>& mems, FTContext* tc)
+	TupleType* TupleType::get(const std::initializer_list<Type*>& mems)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		iceAssert(mems.size() > 0 && "empty tuple is not supported");
-
-		TupleType* type = new TupleType(mems);
-		return dynamic_cast<TupleType*>(tc->normaliseType(type));
+		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()));
 	}
-
 }
 
 

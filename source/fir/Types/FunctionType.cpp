@@ -23,50 +23,27 @@ namespace fir
 
 
 
-
+	static TypeCache<FunctionType> typeCache;
 
 	// functions
-	FunctionType* FunctionType::getCVariadicFunc(const std::vector<Type*>& args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::getCVariadicFunc(const std::vector<Type*>& args, Type* ret)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// create.
-		FunctionType* type = new FunctionType(args, ret, true);
-		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(new FunctionType(args, ret, true));
 	}
 
-	FunctionType* FunctionType::getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret)
 	{
-		std::vector<Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return getCVariadicFunc(dargs, ret, tc);
+		return FunctionType::getCVariadicFunc(std::vector<Type*>(args.begin(), args.end()), ret);
 	}
 
-
-
-
-
-
-	FunctionType* FunctionType::get(const std::vector<Type*>& args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::get(const std::vector<Type*>& args, Type* ret)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// create.
-		FunctionType* type = new FunctionType(args, ret, false);
-		return dynamic_cast<FunctionType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(new FunctionType(args, ret, false));
 	}
 
-	FunctionType* FunctionType::get(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc)
+	FunctionType* FunctionType::get(const std::initializer_list<Type*>& args, Type* ret)
 	{
-		std::vector<Type*> dargs;
-		for(auto a : args)
-			dargs.push_back(a);
-
-		return get(dargs, ret, tc);
+		return FunctionType::get(std::vector<Type*>(args.begin(), args.end()), ret);
 	}
 
 

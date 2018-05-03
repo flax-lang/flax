@@ -18,7 +18,7 @@ namespace fir
 {
 	struct IRBuilder
 	{
-		IRBuilder(FTContext* c);
+		IRBuilder(Module* mod);
 
 		Value* Negate(Value* a, std::string vname = "");
 		Value* Add(Value* a, Value* b, std::string vname = "");
@@ -236,8 +236,7 @@ namespace fir
 		private:
 		Value* addInstruction(Instruction* instr, std::string vname);
 
-		FTContext* context;
-
+		Module* module = 0;
 		Function* currentFunction = 0;
 		IRBlock* currentBlock = 0;
 		IRBlock* previousBlock = 0;
