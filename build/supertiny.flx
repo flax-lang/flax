@@ -67,45 +67,45 @@ import "math" as _
 // }
 
 
-// class LinkedList<T>
-// {
-// 	struct Node
-// 	{
-// 		var data: T
+class LinkedList<T>
+{
+	struct Node
+	{
+		var data: T
 
-// 		var prev: &Node
-// 		var next: &Node
-// 	}
+		var prev: &Node
+		var next: &Node
+	}
 
-// 	var head: &Node
-// 	var tail: &Node
+	var head: &Node
+	var tail: &Node
 
-// 	var count: int
+	var count: int
 
-// 	init(data: T)
-// 	{
-// 		printf("called init with %d\n", data)
-// 	}
+	init(data: T)
+	{
+		printf("called init with %d\n", data)
+	}
 
-// 	mut fn insert(thing: T)
-// 	{
-// 		var nn = alloc mut Node (data: thing, prev: null, next: null)
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
-// 		if head == null { head = nn; tail = nn }
-// 		else
-// 		{
-// 			var ot = tail as mut
-// 			tail = nn
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
 
-// 			nn.prev = ot
-// 			ot.next = nn
-// 		}
+			nn.prev = ot
+			ot.next = nn
+		}
 
-// 		count += 1
-// 	}
+		count += 1
+	}
 
-// 	static fn hello() { printf("hi\n"); }
-// }
+	static fn hello() { printf("hi\n"); }
+}
 
 
 
@@ -206,37 +206,37 @@ import "math" as _
 
 
 
-	// do {
-	// 	var list = LinkedList<T: int>(data: 41)
-	// 	LinkedList<T: int>.hello()
+	do {
+		var list = LinkedList<T: int>(data: 41)
+		LinkedList<T: int>.hello()
 
-	// 	var list2 = LinkedList<T: str>(data: "foo")
-	// 	list2.insert("hello")
-	// 	list2.insert("world")
+		var list2 = LinkedList<T: str>(data: "foo")
+		list2.insert("hello")
+		list2.insert("world")
 
-	// 	list.insert(10)
-	// 	list.insert(20)
-	// 	list.insert(30)
-	// 	list.insert(40)
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
 
-	// 	do {
-	// 		var head = list.head
-	// 		while(head)
-	// 		{
-	// 			printf("%d\n", head.data)
-	// 			head = head.next
-	// 		}
-	// 	}
+		do {
+			var head = list.head
+			while(head)
+			{
+				printf("%d\n", head.data)
+				head = head.next
+			}
+		}
 
-	// 	do {
-	// 		var head = list2.head
-	// 		while(head)
-	// 		{
-	// 			printf("%s\n", head.data)
-	// 			head = head.next
-	// 		}
-	// 	}
-	// }
+		do {
+			var head = list2.head
+			while(head)
+			{
+				printf("%s\n", head.data)
+				head = head.next
+			}
+		}
+	}
 }
 
 

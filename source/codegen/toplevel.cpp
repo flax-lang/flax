@@ -18,7 +18,7 @@ namespace cgn
 		// debuglog("codegen for %s\n", dtr->base->name.c_str());
 
 		auto mod = new fir::Module(dtr->base->name);
-		auto builder = fir::IRBuilder(fir::getDefaultFTContext());
+		auto builder = fir::IRBuilder(mod);
 
 		auto cs = new CodegenState(builder);
 		cs->stree = dtr->base;

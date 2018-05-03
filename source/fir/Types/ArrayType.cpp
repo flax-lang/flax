@@ -12,14 +12,10 @@ namespace fir
 		this->arraySize = num;
 	}
 
-	ArrayType* ArrayType::get(Type* elementType, size_t num, FTContext* tc)
+	static TypeCache<ArrayType> typeCache;
+	ArrayType* ArrayType::get(Type* elementType, size_t num)
 	{
-		if(!tc) tc = getDefaultFTContext();
-		iceAssert(tc && "null type context");
-
-		// create.
-		ArrayType* type = new ArrayType(elementType, num);
-		return dynamic_cast<ArrayType*>(tc->normaliseType(type));
+		return typeCache.getOrAddCachedType(new ArrayType(elementType, num));
 	}
 
 	// various

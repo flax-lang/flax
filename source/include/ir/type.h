@@ -37,48 +37,55 @@ namespace fir
 	struct ConstantArray;
 	struct Function;
 
-	struct FTContext
+	// struct FTContext
+	// {
+	// 	// primitives
+	// 	// NOTE: map is ordered by bit width.
+	// 	// floats + ints here too.
+	// 	std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
+
+	// 	// special little thing.
+	// 	VoidType* voidType = 0;
+
+	// 	// special thing #2
+	// 	NullType* nullType = 0;
+
+	// 	// #3
+	// 	BoolType* boolType = 0;
+
+	// 	// fir::LLVMContext* llvmContext = 0;
+	// 	fir::Module* module = 0;
+
+	// 	std::vector<Type*> typeCache;
+	// 	Type* normaliseType(Type* type);
+
+	// 	void dumpTypeIDs();
+	// };
+
+	template <typename T>
+	struct TypeCache
 	{
-		// primitives
-		// NOTE: map is ordered by bit width.
-		// floats + ints here too.
-		std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypes;
+		std::vector<T*> cache;
+		T* getOrAddCachedType(T* type)
+		{
+			for(auto ty : this->cache)
+			{
+				if(ty->isTypeEqual(type))
+				{
+					if(type != ty)  delete type;
+					return ty;
+				}
+			}
 
-		// special little thing.
-		VoidType* voidType = 0;
-
-		// special thing #2
-		NullType* nullType = 0;
-
-		// #3
-		BoolType* boolType = 0;
-
-		// fir::LLVMContext* llvmContext = 0;
-		fir::Module* module = 0;
-
-		std::vector<Type*> typeCache;
-		Type* normaliseType(Type* type);
-
-		void dumpTypeIDs();
+			return *(cache.insert(cache.end(), type));
+		}
 	};
-
-	FTContext* createFTContext();
-	FTContext* getDefaultFTContext();
-	void setDefaultFTContext(FTContext* tc);
-
-
 
 
 	struct Type
 	{
-		// aquaintances
-		friend struct FTContext;
-		friend FTContext* createFTContext();
-
 		// stuff
-		static Type* fromBuiltin(const std::string& builtin, FTContext* tc = 0);
-
-		static bool areTypesEqual(Type* a, Type* b);
+		static Type* fromBuiltin(const std::string& builtin);
 
 		static std::string typeListToString(const std::vector<Type*>& types);
 		static std::string typeListToString(const std::initializer_list<Type*>& types);
@@ -91,12 +98,12 @@ namespace fir
 		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
 
-		Type* getPointerTo(FTContext* tc = 0);
-		Type* getMutablePointerTo(FTContext* tc = 0);
-		Type* getPointerElementType(FTContext* tc = 0);
+		Type* getPointerTo();
+		Type* getMutablePointerTo();
+		Type* getPointerElementType();
 
-		Type* getMutablePointerVersion(FTContext* tc = 0);
-		Type* getImmutablePointerVersion(FTContext* tc = 0);
+		Type* getMutablePointerVersion();
+		Type* getImmutablePointerVersion();
 
 		// note: works for all array types, be it dynamic, fixed, or slices
 		Type* getArrayElementType();
@@ -157,68 +164,70 @@ namespace fir
 
 		size_t getBitWidth();
 
-		Type* getIndirectedType(int times, FTContext* tc = 0);
+		Type* getIndirectedType(int times);
 
 		size_t getID() { return this->id; }
 
 
 		// convenience
-		static VoidType* getVoid(FTContext* tc = 0);
-		static NullType* getNull(FTContext* tc = 0);
+		static VoidType* getVoid();
+		static NullType* getNull();
 
-		static Type* getVoidPtr(FTContext* tc = 0);
+		static Type* getVoidPtr();
 
-		static ConstantNumberType* getConstantNumber(mpfr::mpreal n, FTContext* tc = 0);
+		static ConstantNumberType* getConstantNumber(mpfr::mpreal n);
 
-		static BoolType* getBool(FTContext* tc = 0);
+		static BoolType* getBool();
 
-		static PrimitiveType* getInt8(FTContext* tc = 0);
-		static PrimitiveType* getInt16(FTContext* tc = 0);
-		static PrimitiveType* getInt32(FTContext* tc = 0);
-		static PrimitiveType* getInt64(FTContext* tc = 0);
-		static PrimitiveType* getInt128(FTContext* tc = 0);
+		static PrimitiveType* getInt8();
+		static PrimitiveType* getInt16();
+		static PrimitiveType* getInt32();
+		static PrimitiveType* getInt64();
+		static PrimitiveType* getInt128();
 
-		static PrimitiveType* getUint8(FTContext* tc = 0);
-		static PrimitiveType* getUint16(FTContext* tc = 0);
-		static PrimitiveType* getUint32(FTContext* tc = 0);
-		static PrimitiveType* getUint64(FTContext* tc = 0);
-		static PrimitiveType* getUint128(FTContext* tc = 0);
+		static PrimitiveType* getUint8();
+		static PrimitiveType* getUint16();
+		static PrimitiveType* getUint32();
+		static PrimitiveType* getUint64();
+		static PrimitiveType* getUint128();
 
-		static PrimitiveType* getFloat32(FTContext* tc = 0);
-		static PrimitiveType* getFloat64(FTContext* tc = 0);
-		static PrimitiveType* getFloat80(FTContext* tc = 0);
-		static PrimitiveType* getFloat128(FTContext* tc = 0);
+		static PrimitiveType* getFloat32();
+		static PrimitiveType* getFloat64();
+		static PrimitiveType* getFloat80();
+		static PrimitiveType* getFloat128();
 
-		static PointerType* getInt8Ptr(FTContext* tc = 0);
-		static PointerType* getInt16Ptr(FTContext* tc = 0);
-		static PointerType* getInt32Ptr(FTContext* tc = 0);
-		static PointerType* getInt64Ptr(FTContext* tc = 0);
-		static PointerType* getInt128Ptr(FTContext* tc = 0);
+		static PointerType* getInt8Ptr();
+		static PointerType* getInt16Ptr();
+		static PointerType* getInt32Ptr();
+		static PointerType* getInt64Ptr();
+		static PointerType* getInt128Ptr();
 
-		static PointerType* getUint8Ptr(FTContext* tc = 0);
-		static PointerType* getUint16Ptr(FTContext* tc = 0);
-		static PointerType* getUint32Ptr(FTContext* tc = 0);
-		static PointerType* getUint64Ptr(FTContext* tc = 0);
-		static PointerType* getUint128Ptr(FTContext* tc = 0);
+		static PointerType* getUint8Ptr();
+		static PointerType* getUint16Ptr();
+		static PointerType* getUint32Ptr();
+		static PointerType* getUint64Ptr();
+		static PointerType* getUint128Ptr();
 
-		static PointerType* getMutInt8Ptr(FTContext* tc = 0);
-		static PointerType* getMutInt16Ptr(FTContext* tc = 0);
-		static PointerType* getMutInt32Ptr(FTContext* tc = 0);
-		static PointerType* getMutInt64Ptr(FTContext* tc = 0);
-		static PointerType* getMutInt128Ptr(FTContext* tc = 0);
+		static PointerType* getMutInt8Ptr();
+		static PointerType* getMutInt16Ptr();
+		static PointerType* getMutInt32Ptr();
+		static PointerType* getMutInt64Ptr();
+		static PointerType* getMutInt128Ptr();
 
-		static PointerType* getMutUint8Ptr(FTContext* tc = 0);
-		static PointerType* getMutUint16Ptr(FTContext* tc = 0);
-		static PointerType* getMutUint32Ptr(FTContext* tc = 0);
-		static PointerType* getMutUint64Ptr(FTContext* tc = 0);
-		static PointerType* getMutUint128Ptr(FTContext* tc = 0);
+		static PointerType* getMutUint8Ptr();
+		static PointerType* getMutUint16Ptr();
+		static PointerType* getMutUint32Ptr();
+		static PointerType* getMutUint64Ptr();
+		static PointerType* getMutUint128Ptr();
 
-		static ArraySliceType* getCharSlice(bool mut, FTContext* tc = 0);
-		static StringType* getString(FTContext* tc = 0);
-		static RangeType* getRange(FTContext* tc = 0);
+		static ArraySliceType* getCharSlice(bool mut);
+		static StringType* getString();
+		static RangeType* getRange();
 
-		static AnyType* getAny(FTContext* tc = 0);
+		static AnyType* getAny();
 
+
+		virtual ~Type() { }
 
 		protected:
 		Type()
@@ -227,7 +236,6 @@ namespace fir
 			this->id = __id++;
 		}
 
-		virtual ~Type() { }
 
 		// base things
 		size_t id = 0;
@@ -235,13 +243,13 @@ namespace fir
 		PointerType* pointerTo = 0;
 		PointerType* mutablePointerTo = 0;
 
-		static Type* getOrCreateFloatingTypeWithConstraints(FTContext* tc, size_t bits);
-		static Type* getOrCreateIntegerTypeWithConstraints(FTContext* tc, bool issigned, size_t bits);
-		static Type* getOrCreateArrayTypeWithConstraints(FTContext* tc, size_t arrsize, Type* elm);
-		static Type* getOrCreateStructTypeWithConstraints(FTContext* tc, bool islit, std::string name,
+		static Type* getOrCreateFloatingTypeWithConstraints(size_t bits);
+		static Type* getOrCreateIntegerTypeWithConstraints(bool issigned, size_t bits);
+		static Type* getOrCreateArrayTypeWithConstraints(size_t arrsize, Type* elm);
+		static Type* getOrCreateStructTypeWithConstraints(bool islit, std::string name,
 			std::vector<Type*> mems);
 
-		static Type* getOrCreateFunctionTypeWithConstraints(FTContext* tc, bool isva, std::vector<Type*> args,
+		static Type* getOrCreateFunctionTypeWithConstraints(bool isva, std::vector<Type*> args,
 			Type* ret);
 	};
 
@@ -271,12 +279,13 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
-		BoolType();
-		protected:
 		virtual ~BoolType() override { }
 
+		BoolType();
+		protected:
+
 		public:
-		static BoolType* get(FTContext* tc = 0);
+		static BoolType* get();
 	};
 
 	struct VoidType : Type
@@ -288,12 +297,12 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~VoidType() override { }
 		VoidType();
 		protected:
-		virtual ~VoidType() override { }
 
 		public:
-		static VoidType* get(FTContext* tc = 0);
+		static VoidType* get();
 	};
 
 
@@ -306,12 +315,12 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~NullType() override { }
 		NullType();
 		protected:
-		virtual ~NullType() override { }
 
 		public:
-		static NullType* get(FTContext* tc = 0);
+		static NullType* get();
 	};
 
 	// special case -- the type also needs to store the number, to know things like
@@ -319,8 +328,6 @@ namespace fir
 	struct ConstantNumberType : Type
 	{
 		friend struct Type;
-		friend struct FTContext;
-		friend FTContext* createFTContext();
 
 		mpfr::mpreal getValue();
 
@@ -328,7 +335,9 @@ namespace fir
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 
-		static ConstantNumberType* get(mpfr::mpreal num, FTContext* tc = 0);
+		static ConstantNumberType* get(mpfr::mpreal num);
+
+		virtual ~ConstantNumberType() override { }
 
 		protected:
 		ConstantNumberType(mpfr::mpreal n);
@@ -338,9 +347,6 @@ namespace fir
 	struct PrimitiveType : Type
 	{
 		friend struct Type;
-
-		friend struct FTContext;
-		friend FTContext* createFTContext();
 
 		// methods
 		bool isSigned();
@@ -363,9 +369,10 @@ namespace fir
 
 
 		// protected constructor
-		protected:
-		PrimitiveType(size_t bits, Kind _kind);
 		virtual ~PrimitiveType() override { }
+
+		protected:
+		PrimitiveType(size_t bits, bool issigned, Kind _kind);
 
 
 		// fields (protected)
@@ -374,34 +381,31 @@ namespace fir
 
 		Kind primKind = Kind::Invalid;
 
-		// static funcs
-		protected:
-
-		static PrimitiveType* getIntWithBitWidthAndSignage(FTContext* tc, size_t bits, bool issigned);
-		static PrimitiveType* getFloatWithBitWidth(FTContext* tc, size_t bits);
+		static PrimitiveType* getIntWithBitWidthAndSignage(size_t bits, bool issigned);
+		static PrimitiveType* getFloatWithBitWidth(size_t bits);
 
 
 		public:
 
-		static PrimitiveType* getIntN(size_t bits, FTContext* tc = 0);
-		static PrimitiveType* getUintN(size_t bits, FTContext* tc = 0);
+		static PrimitiveType* getIntN(size_t bits);
+		static PrimitiveType* getUintN(size_t bits);
 
-		static PrimitiveType* getInt8(FTContext* tc = 0);
-		static PrimitiveType* getInt16(FTContext* tc = 0);
-		static PrimitiveType* getInt32(FTContext* tc = 0);
-		static PrimitiveType* getInt64(FTContext* tc = 0);
-		static PrimitiveType* getInt128(FTContext* tc = 0);
+		static PrimitiveType* getInt8();
+		static PrimitiveType* getInt16();
+		static PrimitiveType* getInt32();
+		static PrimitiveType* getInt64();
+		static PrimitiveType* getInt128();
 
-		static PrimitiveType* getUint8(FTContext* tc = 0);
-		static PrimitiveType* getUint16(FTContext* tc = 0);
-		static PrimitiveType* getUint32(FTContext* tc = 0);
-		static PrimitiveType* getUint64(FTContext* tc = 0);
-		static PrimitiveType* getUint128(FTContext* tc = 0);
+		static PrimitiveType* getUint8();
+		static PrimitiveType* getUint16();
+		static PrimitiveType* getUint32();
+		static PrimitiveType* getUint64();
+		static PrimitiveType* getUint128();
 
-		static PrimitiveType* getFloat32(FTContext* tc = 0);
-		static PrimitiveType* getFloat64(FTContext* tc = 0);
-		static PrimitiveType* getFloat80(FTContext* tc = 0);
-		static PrimitiveType* getFloat128(FTContext* tc = 0);
+		static PrimitiveType* getFloat32();
+		static PrimitiveType* getFloat64();
+		static PrimitiveType* getFloat80();
+		static PrimitiveType* getFloat128();
 	};
 
 
@@ -410,20 +414,17 @@ namespace fir
 	{
 		friend struct Type;
 
-		friend struct FTContext;
-		friend FTContext* createFTContext();
-
 		virtual bool isTypeEqual(Type* other) override;
 
-		PointerType* getMutable(FTContext* tc = 0);
-		PointerType* getImmutable(FTContext* tc = 0);
+		PointerType* getMutable();
+		PointerType* getImmutable();
 
 		bool isMutable();
 
 		// protected constructor
+		virtual ~PointerType() override { }
 		protected:
 		PointerType(Type* base, bool mut);
-		virtual ~PointerType() override { }
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 
@@ -433,17 +434,17 @@ namespace fir
 		// static funcs
 		public:
 
-		static PointerType* getInt8Ptr(FTContext* tc = 0);
-		static PointerType* getInt16Ptr(FTContext* tc = 0);
-		static PointerType* getInt32Ptr(FTContext* tc = 0);
-		static PointerType* getInt64Ptr(FTContext* tc = 0);
-		static PointerType* getInt128Ptr(FTContext* tc = 0);
+		static PointerType* getInt8Ptr();
+		static PointerType* getInt16Ptr();
+		static PointerType* getInt32Ptr();
+		static PointerType* getInt64Ptr();
+		static PointerType* getInt128Ptr();
 
-		static PointerType* getUint8Ptr(FTContext* tc = 0);
-		static PointerType* getUint16Ptr(FTContext* tc = 0);
-		static PointerType* getUint32Ptr(FTContext* tc = 0);
-		static PointerType* getUint64Ptr(FTContext* tc = 0);
-		static PointerType* getUint128Ptr(FTContext* tc = 0);
+		static PointerType* getUint8Ptr();
+		static PointerType* getUint16Ptr();
+		static PointerType* getUint32Ptr();
+		static PointerType* getUint64Ptr();
+		static PointerType* getUint128Ptr();
 	};
 
 
@@ -462,16 +463,16 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~TupleType() override { }
 		protected:
 		TupleType(const std::vector<Type*>& mems);
-		virtual ~TupleType() override { }
 
 		// fields (protected)
 		std::vector<Type*> members;
 
 		public:
-		static TupleType* get(const std::initializer_list<Type*>& members, FTContext* tc = 0);
-		static TupleType* get(const std::vector<Type*>& members, FTContext* tc = 0);
+		static TupleType* get(const std::initializer_list<Type*>& members);
+		static TupleType* get(const std::vector<Type*>& members);
 	};
 
 
@@ -499,9 +500,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~StructType() override { }
 		protected:
 		StructType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked);
-		virtual ~StructType() override { }
 
 		// fields (protected)
 		bool isTypePacked;
@@ -512,8 +513,8 @@ namespace fir
 
 		// static funcs
 		public:
-		static StructType* createWithoutBody(const Identifier& name, FTContext* tc = 0, bool isPacked = false);
-		static StructType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, FTContext* tc = 0,
+		static StructType* createWithoutBody(const Identifier& name, bool isPacked = false);
+		static StructType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
 			bool isPacked = false);
 	};
 
@@ -563,11 +564,11 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~ClassType() override { }
 		protected:
 		ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
 			const std::vector<Function*>& inits);
 
-		virtual ~ClassType() override { }
 
 		// fields (protected)
 		Identifier className;
@@ -596,9 +597,9 @@ namespace fir
 
 		// static funcs
 		public:
-		static ClassType* createWithoutBody(const Identifier& name, FTContext* tc = 0);
+		static ClassType* createWithoutBody(const Identifier& name);
 		static ClassType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
-			const std::vector<Function*>& methods, const std::vector<Function*>& inits, FTContext* tc = 0);
+			const std::vector<Function*>& methods, const std::vector<Function*>& inits);
 	};
 
 
@@ -621,9 +622,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~EnumType() override { }
 		protected:
 		EnumType(const Identifier& name, Type* ty);
-		virtual ~EnumType() override { }
 
 		Type* caseType;
 		Identifier typeName;
@@ -633,7 +634,7 @@ namespace fir
 
 		// static funcs
 		public:
-		static EnumType* get(const Identifier& name, Type* caseType, FTContext* tc = 0);
+		static EnumType* get(const Identifier& name, Type* caseType);
 	};
 
 
@@ -654,9 +655,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~ArrayType() override { }
 		protected:
 		ArrayType(Type* elmType, size_t sz);
-		virtual ~ArrayType() override { }
 
 		// fields (protected)
 		size_t arraySize;
@@ -664,7 +665,7 @@ namespace fir
 
 		// static funcs
 		public:
-		static ArrayType* get(Type* elementType, size_t num, FTContext* tc = 0);
+		static ArrayType* get(Type* elementType, size_t num);
 	};
 
 
@@ -681,9 +682,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~DynamicArrayType() override { }
 		protected:
 		DynamicArrayType(Type* elmType);
-		virtual ~DynamicArrayType() override { }
 
 		// fields
 		bool isVariadic = false;
@@ -691,8 +692,8 @@ namespace fir
 
 		// static funcs
 		public:
-		static DynamicArrayType* get(Type* elementType, FTContext* tc = 0);
-		static DynamicArrayType* getVariadic(Type* elementType, FTContext* tc = 0);
+		static DynamicArrayType* get(Type* elementType);
+		static DynamicArrayType* getVariadic(Type* elementType);
 	};
 
 
@@ -710,9 +711,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~ArraySliceType() override { }
 		protected:
 		ArraySliceType(Type* elmType, bool mut);
-		virtual ~ArraySliceType() override { }
 
 		// fields
 		bool isSliceMutable;
@@ -720,9 +721,9 @@ namespace fir
 
 		// static funcs
 		public:
-		static ArraySliceType* get(Type* elementType, bool mut, FTContext* tc = 0);
-		static ArraySliceType* getMutable(Type* elementType, FTContext* tc = 0);
-		static ArraySliceType* getImmutable(Type* elementType, FTContext* tc = 0);
+		static ArraySliceType* get(Type* elementType, bool mut);
+		static ArraySliceType* getMutable(Type* elementType);
+		static ArraySliceType* getImmutable(Type* elementType);
 	};
 
 
@@ -762,9 +763,9 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 
 		// protected constructor
+		virtual ~FunctionType() override { }
 		protected:
 		FunctionType(const std::vector<Type*>& args, Type* ret, bool iscva);
-		virtual ~FunctionType() override { }
 
 		// fields (protected)
 		bool isFnCStyleVarArg;
@@ -774,11 +775,11 @@ namespace fir
 
 		// static funcs
 		public:
-		static FunctionType* getCVariadicFunc(const std::vector<Type*>& args, Type* ret, FTContext* tc = 0);
-		static FunctionType* getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc = 0);
+		static FunctionType* getCVariadicFunc(const std::vector<Type*>& args, Type* ret);
+		static FunctionType* getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret);
 
-		static FunctionType* get(const std::vector<Type*>& args, Type* ret, FTContext* tc = 0);
-		static FunctionType* get(const std::initializer_list<Type*>& args, Type* ret, FTContext* tc = 0);
+		static FunctionType* get(const std::vector<Type*>& args, Type* ret);
+		static FunctionType* get(const std::initializer_list<Type*>& args, Type* ret);
 	};
 
 
@@ -792,12 +793,12 @@ namespace fir
 
 
 		// protected constructor
+		virtual ~RangeType() override { }
 		protected:
 		RangeType();
-		virtual ~RangeType() override { }
 
 		public:
-		static RangeType* get(FTContext* tc = 0);
+		static RangeType* get();
 	};
 
 
@@ -811,12 +812,12 @@ namespace fir
 
 
 		// protected constructor
+		virtual ~StringType() override { }
 		protected:
 		StringType();
-		virtual ~StringType() override { }
 
 		public:
-		static StringType* get(FTContext* tc = 0);
+		static StringType* get();
 	};
 
 
@@ -835,12 +836,12 @@ namespace fir
 
 
 		// protected constructor
+		virtual ~AnyType() override { }
 		protected:
 		AnyType();
-		virtual ~AnyType() override { }
 
 		public:
-		static AnyType* get(FTContext* tc = 0);
+		static AnyType* get();
 	};
 }
 
