@@ -18,15 +18,14 @@ namespace fir
 		return typeCache.getOrAddCachedType(new ArrayType(elementType, num));
 	}
 
-	// various
 	std::string ArrayType::str()
 	{
-		return "[" + this->arrayElementType->str() + ": " + std::to_string(this->getArraySize()) + "]";
+		return strprintf("[%s: %ld]", this->arrayElementType->str(), this->getArraySize());
 	}
 
 	std::string ArrayType::encodedStr()
 	{
-		return "[" + this->arrayElementType->encodedStr() + ": " + std::to_string(this->getArraySize()) + "]";
+		return strprintf("[%s: %ld]", this->arrayElementType->encodedStr(), this->getArraySize());
 	}
 
 
