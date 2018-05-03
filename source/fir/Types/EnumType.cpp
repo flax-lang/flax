@@ -10,7 +10,7 @@
 
 namespace fir
 {
-	EnumType::EnumType(const Identifier& name, Type* ct)
+	EnumType::EnumType(const Identifier& name, Type* ct) : Type(TypeKind::Enum)
 	{
 		this->typeName = name;
 		this->caseType = ct;
@@ -38,14 +38,11 @@ namespace fir
 
 	bool EnumType::isTypeEqual(Type* other)
 	{
-		EnumType* os = dynamic_cast<EnumType*>(other);
-		if(!os) return false;
-		if(this->typeName != os->typeName) return false;
-		if(this->caseType != os->caseType) return false;
+		if(other->kind != TypeKind::Enum)
+			return false;
 
-		return true;
+		return (this->typeName == other->toEnumType()->typeName) && (this->caseType->isTypeEqual(other->toEnumType()->caseType));
 	}
-
 
 	fir::ConstantValue* EnumType::getNameArray()
 	{

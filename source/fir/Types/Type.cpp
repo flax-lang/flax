@@ -12,215 +12,6 @@ namespace pts
 
 namespace fir
 {
-	#if 0
-	Type* FTContext::normaliseType(Type* type)
-	{
-		if(Type::areTypesEqual(type, this->voidType))
-			return this->voidType;
-
-		if(Type::areTypesEqual(type, this->nullType))
-			return this->nullType;
-
-		// pointer types are guaranteed to be unique due to internal caching
-		// see getPointerTo
-		if(type->isPointerType())
-			return type;
-
-		// find in the list.
-		// todo: make this more efficient
-		for(auto t : typeCache)
-		{
-			if(Type::areTypesEqual(t, type))
-				return t;
-		}
-
-		typeCache.push_back(type);
-		return type;
-	}
-
-	void FTContext::dumpTypeIDs()
-	{
-		for(auto t : typeCache)
-			debuglog("%zu: '%s'\n", t->getID(), t);
-
-		debuglog("\n\n");
-	}
-
-
-	static FTContext* defaultFTContext = 0;
-	void setDefaultFTContext()
-	{
-		iceAssert(tc && "Tried to set null type context as default");
-		defaultFTContext = tc;
-	}
-
-	FTContext* getDefaultFTContext()
-	{
-		if(defaultFTContext == 0)
-		{
-			// iceAssert(0);
-			defaultFTContext = createFTContext();
-		}
-
-		return defaultFTContext;
-	}
-
-
-	FTContext* createFTContext()
-	{
-		 = new FTContext();
-
-		// fill in primitives
-
-		// special things
-		tc->voidType = new VoidType();
-		tc->nullType = new NullType();
-		tc->boolType = new BoolType();
-
-		// int8
-		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = true;
-
-			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// int16
-		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = true;
-
-			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// int32
-		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = true;
-
-			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// int64
-		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = true;
-
-			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// int128
-		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = true;
-
-			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-
-
-
-
-		// uint8
-		{
-			PrimitiveType* t = new PrimitiveType(8, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[8].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// uint16
-		{
-			PrimitiveType* t = new PrimitiveType(16, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[16].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// uint32
-		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// uint64
-		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// uint128
-		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Integer);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-
-
-
-
-		// float32
-		{
-			PrimitiveType* t = new PrimitiveType(32, PrimitiveType::Kind::Floating);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[32].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// float64
-		{
-			PrimitiveType* t = new PrimitiveType(64, PrimitiveType::Kind::Floating);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[64].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// float80
-		{
-			PrimitiveType* t = new PrimitiveType(80, PrimitiveType::Kind::Floating);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[80].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-		// float128
-		{
-			PrimitiveType* t = new PrimitiveType(128, PrimitiveType::Kind::Floating);
-			t->isTypeSigned = false;
-
-			tc->primitiveTypes[128].push_back(t);
-			tc->typeCache.push_back(t);
-		}
-
-		// get 'nice' IDs for the common types
-		fir::Type::getAny();
-		fir::Type::getRange();
-		fir::Type::getString();
-
-		fir::Type::getInt8Ptr();
-		fir::Type::getInt16Ptr();
-		fir::Type::getInt32Ptr();
-		fir::Type::getInt64Ptr();
-
-		fir::Type::getUint8Ptr();
-		fir::Type::getUint16Ptr();
-		fir::Type::getUint32Ptr();
-		fir::Type::getUint64Ptr();
-
-		return tc;
-	}
-	#endif
-
-
-
-
-
 	std::string Type::typeListToString(const std::initializer_list<Type*>& types)
 	{
 		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
@@ -304,17 +95,14 @@ namespace fir
 		if(!this->isPointerType())
 			error("type is not a pointer ('%s')", this);
 
-
-		PointerType* ptrthis = dynamic_cast<PointerType*>(this);
+		PointerType* ptrthis = this->toPointerType();
 		iceAssert(ptrthis);
-
-		Type* newType = ptrthis->baseType;
 
 		// ptrthis could only have been obtained by calling getPointerTo
 		// on an already normalised type, so this should not be needed
 		// newType = tc->normaliseType(newType);
 
-		return newType;
+		return ptrthis->baseType;
 	}
 
 	// bool Type::areTypesEqual(Type* a, Type* b)
@@ -422,107 +210,92 @@ namespace fir
 
 	PrimitiveType* Type::toPrimitiveType()
 	{
-		auto t = dynamic_cast<PrimitiveType*>(this);
-		if(t == 0) error("not primitive type");
-		return t;
+		if(this->kind != TypeKind::Primitive) error("not primitive type");
+		return static_cast<PrimitiveType*>(this);
 	}
 
 	FunctionType* Type::toFunctionType()
 	{
-		auto t = dynamic_cast<FunctionType*>(this);
-		if(t == 0) error("not function type");
-		return t;
+		if(this->kind != TypeKind::Function) error("not function type");
+		return static_cast<FunctionType*>(this);
 	}
 
 	PointerType* Type::toPointerType()
 	{
-		auto t = dynamic_cast<PointerType*>(this);
-		if(t == 0) error("not pointer type");
-		return t;
+		if(this->kind != TypeKind::Pointer) error("not pointer type");
+		return static_cast<PointerType*>(this);
 	}
 
 	StructType* Type::toStructType()
 	{
-		auto t = dynamic_cast<StructType*>(this);
-		if(t == 0) error("not struct type");
-		return t;
+		if(this->kind != TypeKind::Struct) error("not struct type");
+		return static_cast<StructType*>(this);
 	}
 
 	ClassType* Type::toClassType()
 	{
-		auto t = dynamic_cast<ClassType*>(this);
-		if(t == 0) error("not class type");
-		return t;
+		if(this->kind != TypeKind::Class) error("not class type");
+		return static_cast<ClassType*>(this);
 	}
 
 	TupleType* Type::toTupleType()
 	{
-		auto t = dynamic_cast<TupleType*>(this);
-		if(t == 0) error("not tuple type");
-		return t;
+		if(this->kind != TypeKind::Tuple) error("not tuple type");
+		return static_cast<TupleType*>(this);
 	}
 
 	ArrayType* Type::toArrayType()
 	{
-		auto t = dynamic_cast<ArrayType*>(this);
-		if(t == 0) error("not array type");
-		return t;
+		if(this->kind != TypeKind::Array) error("not array type");
+		return static_cast<ArrayType*>(this);
 	}
 
 	DynamicArrayType* Type::toDynamicArrayType()
 	{
-		auto t = dynamic_cast<DynamicArrayType*>(this);
-		if(t == 0) error("not dynamic array type");
-		return t;
+		if(this->kind != TypeKind::DynamicArray) error("not dynamic array type");
+		return static_cast<DynamicArrayType*>(this);
 	}
 
 	ArraySliceType* Type::toArraySliceType()
 	{
-		auto t = dynamic_cast<ArraySliceType*>(this);
-		if(t == 0) error("not array slice type");
-		return t;
+		if(this->kind != TypeKind::ArraySlice) error("not array slice type");
+		return static_cast<ArraySliceType*>(this);
 	}
 
 	RangeType* Type::toRangeType()
 	{
-		auto t = dynamic_cast<RangeType*>(this);
-		if(t == 0) error("not range type");
-		return t;
+		if(this->kind != TypeKind::Range) error("not range type");
+		return static_cast<RangeType*>(this);
 	}
 
 	StringType* Type::toStringType()
 	{
-		auto t = dynamic_cast<StringType*>(this);
-		if(t == 0) error("not string type");
-		return t;
+		if(this->kind != TypeKind::String) error("not string type");
+		return static_cast<StringType*>(this);
 	}
 
 	EnumType* Type::toEnumType()
 	{
-		auto t = dynamic_cast<EnumType*>(this);
-		if(t == 0) error("not enum type");
-		return t;
+		if(this->kind != TypeKind::Enum) error("not enum type");
+		return static_cast<EnumType*>(this);
 	}
 
 	AnyType* Type::toAnyType()
 	{
-		auto t = dynamic_cast<AnyType*>(this);
-		if(t == 0) error("not any type");
-		return t;
+		if(this->kind != TypeKind::Any) error("not any type");
+		return static_cast<AnyType*>(this);
 	}
 
 	NullType* Type::toNullType()
 	{
-		auto t = dynamic_cast<NullType*>(this);
-		if(t == 0) error("not null type");
-		return t;
+		if(this->kind != TypeKind::Null) error("not null type");
+		return static_cast<NullType*>(this);
 	}
 
 	ConstantNumberType* Type::toConstantNumberType()
 	{
-		auto t = dynamic_cast<ConstantNumberType*>(this);
-		if(t == 0) error("not constant number type");
-		return t;
+		if(this->kind != TypeKind::ConstantNumber) error("not constant number type");
+		return static_cast<ConstantNumberType*>(this);
 	}
 
 
@@ -554,135 +327,157 @@ namespace fir
 
 	bool Type::isConstantNumberType()
 	{
-		return dynamic_cast<ConstantNumberType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::ConstantNumber;
 	}
 
 	bool Type::isStructType()
 	{
-		return dynamic_cast<StructType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Struct;
 	}
 
 	bool Type::isTupleType()
 	{
-		return dynamic_cast<TupleType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Tuple;
 	}
 
 	bool Type::isClassType()
 	{
-		return dynamic_cast<ClassType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Class;
 	}
 
 	bool Type::isPackedStruct()
 	{
-		return this->isStructType()
-			&& (this->toStructType()->isTypePacked);
+		iceAssert(this);
+		return this->isStructType() && (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		return dynamic_cast<ArrayType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Array;
 	}
 
 	bool Type::isFloatingPointType()
 	{
-		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Floating;
+		iceAssert(this);
+		return this->kind == TypeKind::Primitive && (this->toPrimitiveType()->primKind == PrimitiveType::Kind::Floating);
 	}
 
 	bool Type::isIntegerType()
 	{
-		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Integer;
+		iceAssert(this);
+		return this->kind == TypeKind::Primitive && (this->toPrimitiveType()->primKind == PrimitiveType::Kind::Integer);
 	}
 
 	bool Type::isSignedIntType()
 	{
-		auto t = dynamic_cast<PrimitiveType*>(this);
-		return t != 0 && t->primKind == PrimitiveType::Kind::Integer && t->isSigned();
+		iceAssert(this);
+		return this->isIntegerType() && this->toPrimitiveType()->isSigned();
 	}
 
 	bool Type::isFunctionType()
 	{
-		return dynamic_cast<FunctionType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Function;
 	}
 
 	bool Type::isPrimitiveType()
 	{
-		return dynamic_cast<PrimitiveType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Primitive;
 	}
 
 	bool Type::isPointerType()
 	{
-		return dynamic_cast<PointerType*>(this);
+		iceAssert(this);
+		return this->kind == TypeKind::Pointer;
 	}
 
 	bool Type::isVoidType()
 	{
-		return dynamic_cast<VoidType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Void;
 	}
 
 	bool Type::isDynamicArrayType()
 	{
-		return dynamic_cast<DynamicArrayType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::DynamicArray;
 	}
 
 	bool Type::isVariadicArrayType()
 	{
+		iceAssert(this);
 		return this->isDynamicArrayType() && this->toDynamicArrayType()->isFunctionVariadic();
 	}
 
 	bool Type::isArraySliceType()
 	{
-		return dynamic_cast<ArraySliceType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::ArraySlice;
 	}
 
 	bool Type::isRangeType()
 	{
-		return dynamic_cast<RangeType*>(this) != 0;
-	}
-
-	bool Type::isCharType()
-	{
-		return this == fir::Type::getInt8();
+		iceAssert(this);
+		return this->kind == TypeKind::Range;
 	}
 
 	bool Type::isStringType()
 	{
-		return dynamic_cast<StringType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::String;
+	}
+
+	bool Type::isCharType()
+	{
+		iceAssert(this);
+		return this == fir::Type::getInt8();
 	}
 
 	bool Type::isEnumType()
 	{
-		return dynamic_cast<EnumType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Enum;
 	}
 
 	bool Type::isAnyType()
 	{
-		return dynamic_cast<AnyType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Any;
 	}
 
 	bool Type::isNullType()
 	{
-		return dynamic_cast<NullType*>(this) != 0;
+		iceAssert(this);
+		return this->kind == TypeKind::Null;
 	}
 
 	bool Type::isBoolType()
 	{
+		iceAssert(this);
 		return this == fir::Type::getBool();
 	}
 
 	bool Type::isMutablePointer()
 	{
+		iceAssert(this);
 		return this->isPointerType() && this->toPointerType()->isMutable();
 	}
 
 	bool Type::isImmutablePointer()
 	{
+		iceAssert(this);
 		return this->isPointerType() && !this->toPointerType()->isMutable();
 	}
 
 	bool Type::isCharSliceType()
 	{
+		iceAssert(this);
 		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getInt8();
 	}
 

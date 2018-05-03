@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	PrimitiveType::PrimitiveType(size_t bits, bool issigned, Kind kind)
+	PrimitiveType::PrimitiveType(size_t bits, bool issigned, Kind kind) : Type(TypeKind::Primitive)
 	{
 		this->bitWidth = bits;
 		this->primKind = kind;
@@ -184,13 +184,11 @@ namespace fir
 
 	bool PrimitiveType::isTypeEqual(Type* other)
 	{
-		PrimitiveType* po = dynamic_cast<PrimitiveType*>(other);
-		if(!po) return false;
-		if(this->primKind != po->primKind) return false;
-		if(this->bitWidth != po->bitWidth) return false;
-		if(this->isTypeSigned != po->isTypeSigned) return false;
+		if(other->kind != TypeKind::Primitive)
+			return false;
 
-		return true;
+		auto op = other->toPrimitiveType();
+		return (this->primKind == op->primKind) && (this->bitWidth == op->bitWidth) && (this->isTypeSigned == op->isTypeSigned);
 	}
 
 

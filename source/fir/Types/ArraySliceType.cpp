@@ -7,9 +7,12 @@
 
 namespace fir
 {
-	ArraySliceType::ArraySliceType(Type* elmType, bool mut) : isSliceMutable(mut), arrayElementType(elmType)
+	ArraySliceType::ArraySliceType(Type* elmType, bool mut) : Type(TypeKind::ArraySlice)
 	{
 		iceAssert(this->arrayElementType);
+
+		this->isSliceMutable = mut;
+		this->arrayElementType = elmType;
 	}
 
 	Type* ArraySliceType::getElementType()
@@ -42,10 +45,11 @@ namespace fir
 
 	bool ArraySliceType::isTypeEqual(Type* other)
 	{
-		ArraySliceType* af = dynamic_cast<ArraySliceType*>(other);
-		if(!af) return false;
+		if(other->kind != TypeKind::ArraySlice)
+			return false;
 
-		return this->arrayElementType->isTypeEqual(af->arrayElementType) && af->isSliceMutable == this->isSliceMutable;
+		auto af = other->toArraySliceType();
+		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->isSliceMutable == af->isSliceMutable);
 	}
 
 	static TypeCache<ArraySliceType> typeCache;

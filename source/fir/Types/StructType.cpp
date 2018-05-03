@@ -11,6 +11,7 @@ namespace fir
 {
 	// structs
 	StructType::StructType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked)
+		: Type(TypeKind::Struct)
 	{
 		this->structName = name;
 		this->isTypePacked = ispacked;
@@ -21,28 +22,6 @@ namespace fir
 	static std::unordered_map<Identifier, StructType*> typeCache;
 	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
 	{
-		// StructType* type = new StructType(name, members, packed);
-
-		// // special: need to check if new type has the same name
-		// for(auto t : tc->typeCache)
-		// {
-		// 	if(t->isStructType() && t->toStructType()->getTypeName() == name)
-		// 	{
-		// 		// check members.
-		// 		std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-		// 		std::vector<Type*> tl2; for(auto p : t->toStructType()->structMembers) tl2.push_back(p.second);
-
-		// 		if(!areTypeListsEqual(tl1, tl2))
-		// 			error("Conflicting types for named struct '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
-
-		// 		// ok.
-		// 		break;
-		// 	}
-		// }
-
-		// return dynamic_cast<StructType*>(tc->normaliseType(type));
-
-
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("Struct with name '%s' already exists", name.str());
 
@@ -78,13 +57,10 @@ namespace fir
 
 	bool StructType::isTypeEqual(Type* other)
 	{
-		StructType* os = dynamic_cast<StructType*>(other);
-		if(!os) return false;
-		if(this->structName != os->structName) return false;
-		if(this->isTypePacked != os->isTypePacked) return false;
+		if(other->kind != TypeKind::Struct)
+			return false;
 
-		// return areTypeListsEqual(this->typeList, os->typeList);
-		return true;
+		return (this->structName == other->toStructType()->structName) && (this->isTypePacked == other->toStructType()->isTypePacked);
 	}
 
 

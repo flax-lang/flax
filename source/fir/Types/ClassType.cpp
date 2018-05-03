@@ -12,7 +12,7 @@ namespace fir
 {
 	// structs
 	ClassType::ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
-		const std::vector<Function*>& inits)
+		const std::vector<Function*>& inits) : Type(TypeKind::Class)
 	{
 		this->className = name;
 
@@ -25,31 +25,6 @@ namespace fir
 	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
 		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
-		// ClassType* type = ;
-
-		// special: need to check if new type has the same name
-		// for(auto t : tc->typeCache)
-		// {
-		// 	if(t->isClassType() && t->toClassType()->getTypeName() == name)
-		// 	{
-		// 		// check members.
-		// 		std::vector<Type*> tl1; for(auto p : members) tl1.push_back(p.second);
-		// 		std::vector<Type*> tl2; for(auto p : t->toClassType()->classMembers) tl2.push_back(p.second);
-
-		// 		if(!areTypeListsEqual(tl1, tl2))
-		// 		{
-		// 			error("Conflicting types for class '%s':\n%s vs %s", name.str(), t, typeListToString(tl1));
-		// 		}
-
-		// 		// ok.
-		// 		// early exit, since we should be checking this every time we add -- at most 1 with the same name at any moment.
-		// 		break;
-		// 	}
-		// }
-
-		// return typeCache.getOrAddCachedType(new ClassType(name, members, methods, inits));
-
-
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("Class with name '%s' already exists", name.str());
 
@@ -85,11 +60,10 @@ namespace fir
 
 	bool ClassType::isTypeEqual(Type* other)
 	{
-		ClassType* os = dynamic_cast<ClassType*>(other);
-		if(!os) return false;
-		if(this->className != os->className) return false;
+		if(other->kind != TypeKind::Class)
+			return false;
 
-		return true;
+		return this->className == other->toClassType()->className;
 	}
 
 

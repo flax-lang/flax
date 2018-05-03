@@ -7,7 +7,7 @@
 
 namespace fir
 {
-	TupleType::TupleType(const std::vector<Type*>& mems) : members(mems)
+	TupleType::TupleType(const std::vector<Type*>& mems) : Type(TypeKind::Tuple), members(mems)
 	{
 	}
 
@@ -40,9 +40,10 @@ namespace fir
 
 	bool TupleType::isTypeEqual(Type* other)
 	{
-		TupleType* ot = dynamic_cast<TupleType*>(other);
-		if(!ot) return false;
+		if(other->kind != TypeKind::Tuple)
+			return false;
 
+		auto ot = other->toTupleType();
 		return areTypeListsEqual(this->members, ot->members);
 	}
 
