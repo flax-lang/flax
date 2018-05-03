@@ -6,7 +6,7 @@
 
 namespace fir
 {
-	ArrayType::ArrayType(Type* elm, size_t num)
+	ArrayType::ArrayType(Type* elm, size_t num) : Type(TypeKind::Array)
 	{
 		this->arrayElementType = elm;
 		this->arraySize = num;
@@ -33,11 +33,11 @@ namespace fir
 
 	bool ArrayType::isTypeEqual(Type* other)
 	{
-		ArrayType* af = dynamic_cast<ArrayType*>(other);
-		if(!af) return false;
-		if(this->arraySize != af->arraySize) return false;
+		if(other->kind != TypeKind::Array)
+			return false;
 
-		return this->arrayElementType->isTypeEqual(af->arrayElementType);
+		auto af = other->toArrayType();
+		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->arraySize == af->arraySize);
 	}
 
 
