@@ -7,8 +7,9 @@
 
 namespace fir
 {
-	TupleType::TupleType(const std::vector<Type*>& mems) : Type(TypeKind::Tuple), members(mems)
+	TupleType::TupleType(const std::vector<Type*>& mems) : Type(TypeKind::Tuple)
 	{
+		this->members = mems;
 	}
 
 	size_t TupleType::getElementCount()

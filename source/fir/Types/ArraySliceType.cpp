@@ -9,8 +9,6 @@ namespace fir
 {
 	ArraySliceType::ArraySliceType(Type* elmType, bool mut) : Type(TypeKind::ArraySlice)
 	{
-		iceAssert(this->arrayElementType);
-
 		this->isSliceMutable = mut;
 		this->arrayElementType = elmType;
 	}
