@@ -412,7 +412,7 @@ namespace fir
 	bool Type::isVariadicArrayType()
 	{
 		iceAssert(this);
-		return this->isDynamicArrayType() && this->toDynamicArrayType()->isFunctionVariadic();
+		return this->isArraySliceType() && this->toArraySliceType()->isVariadicType();
 	}
 
 	bool Type::isArraySliceType()

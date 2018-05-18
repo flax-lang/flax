@@ -330,6 +330,14 @@ namespace parser
 					st.pop();
 					return new pts::ArraySliceType(elm, mut);
 				}
+				else if(st.front() == TT::Ellipsis)
+				{
+					st.pop();
+					if(st.pop() != TT::RSquare)
+						expectedAfter(st, "']'", "... in variadic array type", st.front().str());
+
+					return new pts::VariadicArrayType(elm);
+				}
 				else if(st.front() != TT::Number)
 				{
 					expected(st, "positive, non-zero size for fixed array", st.front().str());

@@ -84,7 +84,7 @@ class LinkedList<T>
 
 	init(data: T)
 	{
-		printf("called init with %d\n", data)
+		printf("called init with %p\n", data)
 	}
 
 	mut fn insert(thing: T)
@@ -107,7 +107,21 @@ class LinkedList<T>
 	static fn hello() { printf("hi\n"); }
 }
 
+fn printThings(mul: int, ints: [int: ...])
+{
+	printf("ints: ");
+	for i in ints { printf("%d ", mul * i) }
 
+	printf("\n")
+}
+
+fn printThings(mul: f64, flts: [f64: ...])
+{
+	printf("floats: ");
+	for i in flts { printf("%.1f ", mul * i) }
+
+	printf("\n")
+}
 
 
 @entry fn main()
@@ -132,59 +146,65 @@ class LinkedList<T>
 	*/
 
 	/*
-		TODO for next week
+		TODO for this week
 
 		// 1. constructor syntax for builtin types
 		2. start work on the generic type solver?
-		3. variadic functions
+		// 3. variadic functions
+			// 3a. make variadic forwarding work properly
+		4. move overload resolution to use PrettyError
 	 */
 
-
 	do {
-		let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
-		printf("foo = '%s'\n", foo)
+		printThings(30, [ 1, 2, 3, 4, 5 ])
+		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
 	}
 
+	// do {
+	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
+	// 	printf("foo = '%s'\n", foo)
+	// }
 
-	do {
-		class Foo<T>
-		{
-			var x: T
 
-			init() { }
-		}
+	// do {
+	// 	class Foo<T>
+	// 	{
+	// 		var x: T
 
-		class Bar<T> : Foo<T: T>
-		{
-			var y: T
+	// 		init() { }
+	// 	}
 
-			init(y: T) : super()
-			{
-				self.y = y
-				self.x = y + y
-			}
-		}
+	// 	class Bar<T> : Foo<T: T>
+	// 	{
+	// 		var y: T
 
-		let k = Bar<T: int>(y: 30)
-		printf("y = %d\n", k.x)
-	}
+	// 		init(y: T) : super()
+	// 		{
+	// 			self.y = y
+	// 			self.x = y + y
+	// 		}
+	// 	}
 
-	do {
-		fn foo<T>(a: T, b: T) -> T { return a + b }
+	// 	let k = Bar<T: int>(y: 30)
+	// 	printf("y = %d\n", k.x)
+	// }
 
-		let k = foo<T: int>(10, 20)
-		printf("k = %d\n", k)
+	// do {
+	// 	fn foo<T>(a: T, b: T) -> T { return a + b }
 
-		let a: [int] = [ 1, 2, 3 ]
-		let b: [int] = [ 4, 5, 6 ]
+	// 	let k = foo<T: int>(10, 20)
+	// 	printf("k = %d\n", k)
 
-		let h = foo<T: [int]>(a, b)
-		for n, i in h {
-			printf("%d: %d\n", i, n)
-		}
+	// 	let a: [int] = [ 1, 2, 3 ]
+	// 	let b: [int] = [ 4, 5, 6 ]
 
-		// printf("\n\n. %d", fa)
-	}
+	// 	let h = foo<T: [int]>(a, b)
+	// 	for n, i in h {
+	// 		printf("%d: %d\n", i, n)
+	// 	}
+
+	// 	// printf("\n\n. %d", fa)
+	// }
 
 
 	// do {
@@ -206,37 +226,37 @@ class LinkedList<T>
 
 
 
-	do {
-		var list = LinkedList<T: int>(data: 41)
-		LinkedList<T: int>.hello()
+	// do {
+	// 	var list = LinkedList<T: int>(data: 41)
+	// 	LinkedList<T: int>.hello()
 
-		var list2 = LinkedList<T: str>(data: "foo")
-		list2.insert("hello")
-		list2.insert("world")
+	// 	var list2 = LinkedList<T: str>(data: "foo")
+	// 	list2.insert("hello")
+	// 	list2.insert("world")
 
-		list.insert(10)
-		list.insert(20)
-		list.insert(30)
-		list.insert(40)
+	// 	list.insert(10)
+	// 	list.insert(20)
+	// 	list.insert(30)
+	// 	list.insert(40)
 
-		do {
-			var head = list.head
-			while(head)
-			{
-				printf("%d\n", head.data)
-				head = head.next
-			}
-		}
+	// 	do {
+	// 		var head = list.head
+	// 		while(head)
+	// 		{
+	// 			printf("%d\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
 
-		do {
-			var head = list2.head
-			while(head)
-			{
-				printf("%s\n", head.data)
-				head = head.next
-			}
-		}
-	}
+	// 	do {
+	// 		var head = list2.head
+	// 		while(head)
+	// 		{
+	// 			printf("%s\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
+	// }
 }
 
 

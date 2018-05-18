@@ -30,7 +30,7 @@ static void compile(std::string in, std::string out)
 	auto ms = (double) dur.count() / 1000.0 / 1000.0;
 	auto s = ms / 1000.0;
 	fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, s);
-	return;
+	// return;
 
 	{
 		using namespace backend;
@@ -52,7 +52,7 @@ static void compile(std::string in, std::string out)
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
 			backend->performCompilation();
-			backend->optimiseProgram();
+			// backend->optimiseProgram();
 			backend->writeOutput();
 		}
 		else

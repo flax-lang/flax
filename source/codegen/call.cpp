@@ -44,8 +44,35 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 		size_t i = (arg.name == "" ? counter : idxmap.find(arg.name)->second);
 
 		fir::Type* inf = 0;
-		if(i < numArgs)
+		if(ft->isVariadicFunc())
+		{
+			//? the reason for this discrepancy is that for va_arg functions, the '...' isn't really counted
+			//? as an 'argument', whereas for flax-varargs we have a variadic slice thingy that is an actual argument.
+			iceAssert(numArgs > 0);
+
+			auto at = arg.value->type;
+
+			if(i < numArgs - 1)
+			{
+				inf = ft->getArgumentN(i);
+			}
+			else if(i == numArgs - 1 && at->isArraySliceType() && at->getArrayElementType() == ft->getArgumentTypes().back()->getArrayElementType())
+			{
+				// perfect forwarding.
+				inf = ft->getArgumentTypes().back();
+			}
+			else
+			{
+				iceAssert(ft->getArgumentTypes().back()->isVariadicArrayType());
+				inf = ft->getArgumentTypes().back()->getArrayElementType();
+			}
+		}
+		else if(i < numArgs)
+		{
 			inf = ft->getArgumentN(i);
+		}
+
+
 
 		auto vr = arg.value->codegen(this, inf);
 		auto val = vr.value;
@@ -58,30 +85,34 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 			val = this->unwrapConstantNumber(cv);
 		}
 
-		if(i < numArgs)
+		if(ft->isVariadicFunc() || i < numArgs)
 		{
-			if(val->getType() != ft->getArgumentN(i))
-			{
-				vr = this->oneWayAutocast(vr, ft->getArgumentN(i));
-				val = vr.value;
-			}
+			// the inferred type should always be present, and should always be correct.
+			iceAssert(inf);
 
-			// still?
-			if(val->getType() != ft->getArgumentN(i))
+			// this syntax feels a little dirty.
+			val = (vr = this->oneWayAutocast(vr, inf)).value;
+
+			if(val->getType() != inf)
 			{
-				error(arg.loc, "Mismatched type in function call; parameter has type '%s', but given argument has type '%s'",
-					ft->getArgumentN(i), val->getType());
+				PrettyError errs;
+				errs.addError(arg.loc, "Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'",
+					i, inf, val->getType());
+
+				if(ft->isVariadicFunc() && i >= numArgs - 1)
+					errs.addInfo(arg.loc, "Argument's type '%s' cannot be cast to the expected variadic element type '%s'", val->getType(), inf);
+
+				postErrorsAndQuit(errs);
 			}
 		}
-		else if(val->getType()->isStringType())
+		else if(ft->isCStyleVarArg())
 		{
-			// auto-convert strings into char* when passing to va_args
-			val = this->irb.GetStringData(val);
-		}
-		else if(val->getType()->isCharSliceType())
-		{
-			// same, auto-convert char slices to char*
-			val = this->irb.GetArraySliceData(val);
+			// auto-convert strings and char slices into char* when passing to va_args
+			if(val->getType()->isStringType())
+				val = this->irb.GetStringData(val);
+
+			else if(val->getType()->isCharSliceType())
+				val = this->irb.GetArraySliceData(val);
 		}
 
 
@@ -172,13 +203,13 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	size_t numArgs = ft->getArgumentTypes().size();
-	if(!ft->isCStyleVarArg() && this->arguments.size() != numArgs)
+	if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
 	{
 		error(this, "Mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
 			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
 			numArgs == 1 ? "was" : "were");
 	}
-	else if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
+	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs)
 	{
 		error(this, "Need at least %zu arguments to call variadic function '%s', only have %zu",
 			numArgs, this->name, this->arguments.size());
@@ -309,7 +340,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(!arg || arg->getType() != inf)
 		{
-			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", inf,
+			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", i, inf,
 				arg ? arg->getType() : fir::Type::getVoid());
 		}
 
