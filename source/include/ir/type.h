@@ -674,7 +674,6 @@ namespace fir
 
 		// methods
 		Type* getElementType();
-		bool isFunctionVariadic();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -686,7 +685,6 @@ namespace fir
 		DynamicArrayType(Type* elmType);
 
 		// fields
-		bool isVariadic = false;
 		Type* arrayElementType;
 
 		// static funcs
@@ -704,6 +702,7 @@ namespace fir
 		Type* getElementType();
 
 		bool isMutable();
+		bool isVariadicType();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -718,11 +717,15 @@ namespace fir
 		bool isSliceMutable;
 		Type* arrayElementType;
 
+		bool isVariadic = false;
+
 		// static funcs
 		public:
 		static ArraySliceType* get(Type* elementType, bool mut);
 		static ArraySliceType* getMutable(Type* elementType);
 		static ArraySliceType* getImmutable(Type* elementType);
+
+		static ArraySliceType* getVariadic(Type* elementType);
 	};
 
 

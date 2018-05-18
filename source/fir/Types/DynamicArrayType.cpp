@@ -19,17 +19,12 @@ namespace fir
 
 	std::string DynamicArrayType::str()
 	{
-		return "[" + this->arrayElementType->str() + (this->isVariadic ? "...]" : "]");
+		return strprintf("[%s]", this->arrayElementType->str());
 	}
 
 	std::string DynamicArrayType::encodedStr()
 	{
-		return "[" + this->arrayElementType->encodedStr() + (this->isVariadic ? "...]" : "]");
-	}
-
-	bool DynamicArrayType::isFunctionVariadic()
-	{
-		return this->isVariadic;
+		return strprintf("[%s]", this->arrayElementType->encodedStr());
 	}
 
 	bool DynamicArrayType::isTypeEqual(Type* other)
@@ -37,8 +32,7 @@ namespace fir
 		if(other->kind != TypeKind::DynamicArray)
 			return false;
 
-		auto af = other->toDynamicArrayType();
-		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->isVariadic == af->isVariadic);
+		return this->arrayElementType->isTypeEqual(other->toDynamicArrayType()->arrayElementType);
 	}
 
 	static TypeCache<DynamicArrayType> typeCache;
@@ -46,16 +40,6 @@ namespace fir
 	{
 		return typeCache.getOrAddCachedType(new DynamicArrayType(elementType));
 	}
-
-	DynamicArrayType* DynamicArrayType::getVariadic(Type* elementType)
-	{
-		// create.
-		DynamicArrayType* type = new DynamicArrayType(elementType);
-		type->isVariadic = true;
-
-		return typeCache.getOrAddCachedType(type);
-	}
-
 }
 
 

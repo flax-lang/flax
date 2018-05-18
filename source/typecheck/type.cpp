@@ -244,6 +244,10 @@ namespace sst
 		{
 			return fir::DynamicArrayType::get(convert(pt->toDynamicArrayType()->base));
 		}
+		else if(pt->isVariadicArrayType())
+		{
+			return fir::ArraySliceType::getVariadic(convert(pt->toVariadicArrayType()->base));
+		}
 		else if(pt->isFixedArrayType())
 		{
 			return fir::ArrayType::get(convert(pt->toFixedArrayType()->base), pt->toFixedArrayType()->size);

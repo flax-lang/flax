@@ -17,7 +17,7 @@ namespace sst
 	{
 		if(from == to) return 0;
 
-		if(from->isConstantNumberType())
+		if(from->isConstantNumberType() && to->isPrimitiveType())
 		{
 			auto num = from->toConstantNumberType()->getValue();
 			if(mpfr::isint(num) && to->isIntegerType())
@@ -25,6 +25,9 @@ namespace sst
 
 			else if(mpfr::isint(num) && to->isFloatingPointType())
 				return 1;
+
+			else if(to->isFloatingPointType())      // not isint means isfloat, so if we're doing float -> float the cost is 0
+				return 0;
 
 			else
 				return 1;
@@ -82,7 +85,15 @@ namespace sst
 			// same with slices -- cast from mutable slice to immut slice can be implicit.
 			return 1;
 		}
+		else if(from->isArraySliceType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
+		{
+			// allow implicit casting from slices to their variadic counterparts.
+			// and vice versa.
 
+			// note: it's implicit that we can cast variadic slices and normal slices to/from each other
+			// since both are 'slices'.
+			return 4;
+		}
 		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
 		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
 			&& from->getPointerElementType()->toClassType()->isInParentHierarchy(to->getPointerElementType()))
@@ -121,13 +132,14 @@ namespace sst
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
 	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, std::vector<FunctionDecl::Param> target,
-		std::vector<FunctionDecl::Param> args, bool cvararg, Location* loc, std::string* estr, Defn* candidate)
+		const std::vector<FunctionDecl::Param>& args, bool cvararg, Location* loc, std::string* estr, Defn* candidate)
 	{
 		iceAssert(estr);
 		if(target.empty() && args.empty())
 			return 0;
 
-		bool anyvararg = cvararg || (target.size() > 0 && target.back().type->isVariadicArrayType());
+		bool fvararg = (target.size() > 0 && target.back().type->isVariadicArrayType());
+		bool anyvararg = cvararg || fvararg;
 
 		if(!anyvararg && target.size() != args.size())
 		{
@@ -135,7 +147,7 @@ namespace sst
 			*loc = fnLoc;
 			return -1;
 		}
-		else if(anyvararg && args.size() < target.size())
+		else if(anyvararg && args.size() < (fvararg ? target.size() - 1 : target.size()))
 		{
 			*estr = strprintf("Too few arguments; need at least %zu even if variadic arguments are empty", target.size());
 			*loc = fnLoc;
@@ -212,7 +224,8 @@ namespace sst
 		int distance = 0;
 
 		// handle the positional arguments
-		for(size_t i = 0; i < std::min(target.size(), positional.size()); i++)
+
+		for(size_t i = 0; i < std::min((fvararg ? target.size() - 1 : target.size()), positional.size()); i++)
 		{
 			auto d = fs->getCastDistance(args[i].type, target[i].type);
 			if(d == -1)
@@ -221,10 +234,12 @@ namespace sst
 					i, args[i].type, target[i].type);
 				*loc = args[i].loc;
 
+				// warn(*loc, "%s", *estr);
 				return -1;
 			}
 			else
 			{
+				// info("pdist + %d (%s -> %s)", d, args[i].type, target[i].type);
 				distance += d;
 			}
 		}
@@ -238,6 +253,7 @@ namespace sst
 				*estr = strprintf("Duplicate argument '%s', was already specified as a positional argument", narg.name);
 				*loc = narg.loc;
 
+				// warn(*loc, "%s", *estr);
 				return -1;
 			}
 
@@ -248,9 +264,11 @@ namespace sst
 					narg.name, narg.type, target[ind].type);
 				*loc = narg.loc;
 
+				// warn(*loc, "%s", *estr);
 				return -1;
 			}
 
+			// info("ndist + %d", d);
 			distance += d;
 		}
 
@@ -258,47 +276,32 @@ namespace sst
 
 		// means we're a flax-variadic function
 		// thus we need to actually check the types.
-		if(anyvararg && !cvararg)
+		if(fvararg)
 		{
-			// first, check if we can do a direct-passthrough
-			if(args.size() == target.size() && (args.back().type->isVariadicArrayType() || args.back().type->isDynamicArrayType()))
-			{
-				// yes we can
-				// TODO: if we take any[...], then passing an array should *not* cast to a single 'any' (duh)
-				auto a = args.back().type->getArrayElementType();
-				auto t = target.back().type->getArrayElementType();
+			//? note: we removed the previous code for forwarding variadic args, because the new ruling is that
+			//? in order to forward, we must pass a named argument.
 
-				if(a != t)
+			auto elmTy = target.back().type->getArrayElementType();
+			for(size_t i = target.size(); i < args.size(); i++)
+			{
+				auto ty = args[i].type;
+				auto dist = fs->getCastDistance(ty, elmTy);
+				if(dist == -1)
 				{
-					*estr = strprintf("Mismatched element type in variadic array passthrough; expected '%s', got '%s'",
-						t, a);
-					*loc = target.back().loc;
+					*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
+					*loc = args.back().loc;
+
+					// warn(*loc, "%s", *estr);
 					return -1;
 				}
-				else
-				{
-					distance += 0;
-				}
-			}
-			else
-			{
-				auto elmTy = target.back().type->getArrayElementType();
-				for(size_t i = target.size(); i < args.size(); i++)
-				{
-					auto ty = args[i].type;
-					auto dist = fs->getCastDistance(ty, elmTy);
-					if(dist == -1)
-					{
-						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
-						*loc = args.back().loc;
-						return -1;
-					}
 
-					distance += dist;
-				}
+				// info("vdist + %d (%s -> %s)", dist, ty, elmTy);
+				distance += dist;
 			}
+
 		}
 
+		// warn(candidate, "distance %d", distance);
 		return distance;
 	}
 

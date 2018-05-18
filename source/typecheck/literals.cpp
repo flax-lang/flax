@@ -117,32 +117,38 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* type = 0;
 	if(this->values.empty())
 	{
-		if(infer == 0)
+		if(this->explicitType)
 		{
-			// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
-			infer = fir::DynamicArrayType::get(fir::VoidType::get());
-		}
+			auto explty = fs->convertParserTypeToFIR(this->explicitType);
+			iceAssert(explty);
 
-		// error(this, "Unable to infer type for empty array literal");
-
-		// okay.
-		if(infer->isArrayType())
-		{
-			if(infer->toArrayType()->getArraySize() != 0)
-				error(this, "Array type with non-zero length %zu was inferred for empty array literal", infer->toArrayType()->getArraySize());
+			type = fir::DynamicArrayType::get(explty);
 		}
-		else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
+		else
 		{
-			error(this, "Invalid type '%s' inferred for array literal", infer);
+			if(infer == 0)
+			{
+				// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
+				infer = fir::DynamicArrayType::get(fir::VoidType::get());
+			}
+			else if(infer->isArrayType())
+			{
+				if(infer->toArrayType()->getArraySize() != 0)
+					error(this, "Array type with non-zero length %zu was inferred for empty array literal", infer->toArrayType()->getArraySize());
+			}
+			else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
+			{
+				error(this, "Invalid type '%s' inferred for array literal", infer);
+			}
 		}
 
 		type = infer;
 	}
 	else
 	{
-		fir::Type* elmty = 0;
+		fir::Type* elmty = (this->explicitType ? fs->convertParserTypeToFIR(this->explicitType) : 0);
 
-		if(infer)
+		if(!elmty && infer)
 		{
 			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
 				error(this, "Invalid type '%s' inferred for array literal", infer);
@@ -164,19 +170,20 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			}
 			else if(elmty != e->type)
 			{
-				error(v, "Mismatched type for expression in array literal; expected '%s' as inferred from previous elements, found '%s'",
-					elmty, e->type);
+				error(v, "Mismatched type for expression in array literal; expected '%s'%s, found '%s'",
+					elmty, (this->explicitType ? "" : " as inferred from previous elements"), e->type);
 			}
 
 
 			if(e->type->isVoidType())
 			{
 				// be helpful
-				exitless_error(v, "Expected value in array literal, found 'void' value instead");
+				PrettyError errs;
+				errs.addError(v, "Expected value in array literal, found 'void' value instead");
 				if(auto fc = dcast(sst::FunctionCall, e); fc && fc->target)
-					info(fc->target, "Function was defined here:");
+					errs.addInfo(fc->target, "Function was defined here:");
 
-				doTheExit();
+				postErrorsAndQuit(errs);
 			}
 
 			vals.push_back(e);

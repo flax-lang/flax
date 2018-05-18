@@ -61,6 +61,17 @@ namespace parser
 		iceAssert(st.front() == TT::LSquare);
 		Token front = st.eat();
 
+		pts::Type* explType = 0;
+		if(st.front() == TT::As)
+		{
+			// get an explicit type.
+			st.pop();
+			explType = parseType(st);
+
+			if(st.pop() != TT::Colon)
+				error(st.ploc(), "Expected ':' after explicit type in array literal");
+		}
+
 		std::vector<Expr*> values;
 		while(true)
 		{
@@ -91,6 +102,7 @@ namespace parser
 		auto end = st.eat();
 
 		auto ret = new LitArray(front.loc, values);
+		ret->explicitType = explType;               // don't matter if null.
 		ret->raw = israw;
 
 		// ret->loc.col = front.loc.col + 1;

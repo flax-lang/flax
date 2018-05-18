@@ -81,12 +81,12 @@ namespace fir
 		Value* Call(Function* fn, Value* p1, Value* p2, std::string vname = "");
 		Value* Call(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname = "");
 
-		Value* Call(Function* fn, std::vector<Value*> args, std::string vname = "");
-		Value* Call(Function* fn, std::initializer_list<Value*> args, std::string vname = "");
+		Value* Call(Function* fn, const std::vector<Value*>& args, std::string vname = "");
+		Value* Call(Function* fn, const std::initializer_list<Value*>& args, std::string vname = "");
 
-		Value* CallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname = "");
+		Value* CallToFunctionPointer(Value* fn, FunctionType* ft, const std::vector<Value*>& args, std::string vname = "");
 
-		Value* CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, std::vector<Value*> args, std::string vname = "");
+		Value* CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, std::string vname = "");
 
 		Value* Return(Value* v);
 		Value* ReturnVoid();
@@ -128,14 +128,13 @@ namespace fir
 		Value* PointerSub(Value* ptr, Value* num, std::string vname = "");
 
 
-		// Value* AggregateValue(Type* t, std::vector<Value*> values, std::string vname = "");
 		Value* CreateValue(Type* t, std::string vname = "");
 
-		Value* ExtractValue(Value* val, std::vector<size_t> inds, std::string vname = "");
+		Value* ExtractValue(Value* val, const std::vector<size_t>& inds, std::string vname = "");
 		Value* ExtractValueByName(Value* val, std::string mem, std::string vname = "");
 
 		[[nodiscard]] Value* InsertValueByName(Value* val, std::string mem, Value* elm, std::string vname = "");
-		[[nodiscard]] Value* InsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname = "");
+		[[nodiscard]] Value* InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, std::string vname = "");
 
 
 		//! ACHTUNG !
