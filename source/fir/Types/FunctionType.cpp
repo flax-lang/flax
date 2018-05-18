@@ -98,8 +98,8 @@ namespace fir
 
 	bool FunctionType::isVariadicFunc()
 	{
-		return this->functionParams.size() > 0 && this->functionParams.back()->isDynamicArrayType()
-			&& this->functionParams.back()->toDynamicArrayType()->isFunctionVariadic();
+		return this->functionParams.size() > 0 && this->functionParams.back()->isArraySliceType()
+			&& this->functionParams.back()->toArraySliceType()->isVariadicType();
 	}
 
 

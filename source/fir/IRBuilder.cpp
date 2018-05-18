@@ -954,55 +954,170 @@ namespace fir
 	}
 
 
-	// static void checkCallArguments(Function* fn
-
-
-	Value* IRBuilder::Call(Function* fn, std::vector<Value*> args, std::string vname)
+	Value* IRBuilder::Call(Function* fn, const std::vector<Value*>& args, std::string vname)
 	{
-		// in theory we should still check, but i'm lazy right now
-		// TODO.
-		if(!fn->isCStyleVarArg())
+		if(args.size() != fn->getArgumentCount() && !fn->isVariadic() && !fn->isCStyleVarArg())
 		{
-			// check here, to stop llvm dying
-			if(args.size() != fn->getArgumentCount())
-				error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
-					fn->getArgumentCount(), args.size());
+			error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+				fn->getArgumentCount(), args.size());
+		}
 
-			for(size_t i = 0; i < args.size(); i++)
+		auto autocastStuff = [this](Value* arg, Type* target) -> Value* {
+
+			auto at = arg->getType();
+			if(at->isArraySliceType() && target->isArraySliceType() &&
+				target->toArraySliceType()->isVariadicType() != at->toArraySliceType()->isVariadicType())
 			{
-				auto at = args[i]->getType();
+				// silently cast, because they're the same thing
+				// the distinction is solely for the type system's benefit
+				return this->Bitcast(arg, target);
+			}
+			else if(at->isPointerType() && target->isPointerType() && at->getPointerElementType() == target->getPointerElementType() &&
+				at->isMutablePointer() && target->isImmutablePointer())
+			{
+				// this is ok. at the llvm level the cast should reduce to a no-op.
+				return this->PointerTypeCast(arg, target);
+			}
+			else
+			{
+				return arg;
+			}
+		};
+
+		std::vector<Value*> out;
+		out.reserve(args.size());
+
+		bool forwarded = false;
+		std::vector<Value*> variadicArgs;
+
+		auto numArgs = fn->getArgumentCount();
+		for(size_t i = 0; i < args.size(); i++)
+		{
+			auto at = args[i]->getType();
+
+			if(i < (fn->isVariadic() ? numArgs - 1 : numArgs))
+			{
 				auto target = fn->getArguments()[i]->getType();
+				out.push_back(autocastStuff(args[i], target));
 
-				// special case
-				if(at->isDynamicArrayType() && target->isDynamicArrayType() &&
-					target->toDynamicArrayType()->isFunctionVariadic() != at->toDynamicArrayType()->isFunctionVariadic())
-				{
-					// silently cast, because they're the same thing
-					// the distinction is solely for the type system's benefit
-					args[i] = this->Bitcast(args[i], target);
-				}
-				else if(at->isPointerType() && target->isPointerType() && at->getPointerElementType() == target->getPointerElementType() &&
-					at->isMutablePointer() && target->isImmutablePointer())
-				{
-					// this is ok. at the llvm level the cast should reduce to a no-op.
-					args[i] = this->PointerTypeCast(args[i], target);
-				}
-
-				if(args[i]->getType() != target)
+				if(out[i]->getType() != target)
 				{
 					error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
-						fn->getArguments()[i]->getType(), args[i]->getType());
+						fn->getArguments()[i]->getType(), out[i]->getType());
 				}
+			}
+			else if(fn->isVariadic())
+			{
+				iceAssert(fn->getArguments().back()->getType()->isVariadicArrayType());
+				auto elm = fn->getArguments().back()->getType()->getArrayElementType();
+
+				if(at->isArraySliceType() && at->getArrayElementType() == elm)
+				{
+					forwarded = true;
+					out.push_back(args[i]);
+				}
+				else if(args[i]->getType() != elm)
+				{
+					error("Mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+						elm, args[i]->getType());
+				}
+				else
+				{
+					// handle it later, lol.
+					variadicArgs.push_back(autocastStuff(args[i], elm));
+				}
+			}
+			else if(fn->isCStyleVarArg())
+			{
+				// auto-convert strings and char slices into char* when passing to va_args
+				if(at->isStringType())
+					out.push_back(this->GetStringData(args[i]));
+
+				else if(at->isCharSliceType())
+					out.push_back(this->GetArraySliceData(args[i]));
+
+				else
+					out.push_back(args[i]);
+			}
+			else
+			{
+				// shouldn't happen -- we should've errored out earlier.
+				iceAssert(0);
 			}
 		}
 
-		args.insert(args.begin(), fn);
+		if(variadicArgs.size() > 0 && !forwarded)
+		{
+			iceAssert(fn->isVariadic());
+			iceAssert(fn->getArguments().back()->getType()->isVariadicArrayType());
+			auto elm = fn->getArguments().back()->getType()->getArrayElementType();
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, true, this->currentBlock, fn->getType()->getReturnType(), args);
+			//? so the strat here is to stack-allocate an array, so we get a pointer to the array,
+			//? with which we can use GEP instructions to store things inside.
+
+			auto arrty = fir::ArrayType::get(elm, variadicArgs.size());
+			auto arrptr = this->StackAlloc(arrty);
+
+			for(size_t i = 0; i < variadicArgs.size(); i++)
+				this->Store(variadicArgs[i], this->ConstGEP2(arrptr, 0, i));
+
+			// then we make a slice out of it
+			auto slcty = fir::ArraySliceType::getVariadic(elm);
+			auto slc = this->CreateValue(slcty);
+
+			// ugh, fix mutability cast.
+			slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->ConstGEP2(arrptr, 0, 0), elm->getPointerTo()));
+			slc = this->SetArraySliceLength(slc, fir::ConstantInt::getInt64(variadicArgs.size()));
+
+			// ok, this is the last argument.
+			out.push_back(slc);
+		}
+
+
+
+		// if(!fn->isCStyleVarArg())
+		// {
+		// 	// check here, to stop llvm dying
+		// 	if(args.size() != fn->getArgumentCount())
+		// 		error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+		// 			fn->getArgumentCount(), args.size());
+
+		// 	for(size_t i = 0; i < args.size(); i++)
+		// 	{
+		// 		auto at = args[i]->getType();
+		// 		auto target = fn->getArguments()[i]->getType();
+
+		// 		// special case
+		// 		if(at->isArraySliceType() && target->isArraySliceType() &&
+		// 			target->toArraySliceType()->isVariadicType() != at->toArraySliceType()->isVariadicType())
+		// 		{
+		// 			// silently cast, because they're the same thing
+		// 			// the distinction is solely for the type system's benefit
+		// 			out[i] = this->Bitcast(args[i], target);
+		// 		}
+		// 		else if(at->isPointerType() && target->isPointerType() && at->getPointerElementType() == target->getPointerElementType() &&
+		// 			at->isMutablePointer() && target->isImmutablePointer())
+		// 		{
+		// 			// this is ok. at the llvm level the cast should reduce to a no-op.
+		// 			out[i] = this->PointerTypeCast(args[i], target);
+		// 		}
+
+		// 		out[i] = args[i];
+		// 		if(out[i]->getType() != target)
+		// 		{
+		// 			error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+		// 				fn->getArguments()[i]->getType(), out[i]->getType());
+		// 		}
+		// 	}
+		// }
+
+		out.insert(out.begin(), fn);
+
+		Instruction* instr = new Instruction(OpKind::Value_CallFunction, true, this->currentBlock, fn->getType()->getReturnType(), out);
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Call(Function* fn, std::initializer_list<Value*> args, std::string vname)
+	Value* IRBuilder::Call(Function* fn, const std::initializer_list<Value*>& args, std::string vname)
 	{
 		return this->Call(fn, std::vector<Value*>(args.begin(), args.end()), vname);
 	}
@@ -1011,16 +1126,16 @@ namespace fir
 
 
 
-	Value* IRBuilder::CallToFunctionPointer(Value* fn, FunctionType* ft, std::vector<Value*> args, std::string vname)
+	Value* IRBuilder::CallToFunctionPointer(Value* fn, FunctionType* ft, const std::vector<Value*>& args, std::string vname)
 	{
-		// we can't really check anything.
-		args.insert(args.begin(), fn);
+		//* note: we're using our operator overload here for T + VEC<T>
+		auto out = fn + args;
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, true, this->currentBlock, ft->getReturnType(), args);
+		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, true, this->currentBlock, ft->getReturnType(), out);
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, std::vector<Value*> args, std::string vname)
+	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, std::string vname)
 	{
 		// args[0] must be the self, for obvious reasons.
 		auto ty = args[0]->getType();
@@ -1409,7 +1524,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::InsertValue(Value* val, std::vector<size_t> inds, Value* elm, std::string vname)
+	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, std::string vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
@@ -1441,7 +1556,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ExtractValue(Value* val, std::vector<size_t> inds, std::string vname)
+	Value* IRBuilder::ExtractValue(Value* val, const std::vector<size_t>& inds, std::string vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())

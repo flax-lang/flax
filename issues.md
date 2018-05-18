@@ -215,6 +215,15 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- fix a couple of unrelated bugs
+- varidic arrays are now slice-based instead of dynarray-based
+- variadic functions work, mostly. not thoroughly tested (nothing ever is)
+
+`(65b25b3)`
+- parse the variadic type as `[T: ...]`
+- allow `[as T: x, y, ... z]` syntax for specifying explicitly that the element type should be `T`.
+
 `(25dadf0)`
 - remove `char` type; everything is now `i8`, and `isCharType()` just checks if its an `i8`
 - constructor syntax for builtin types, and strings from slices and/or ptr+data

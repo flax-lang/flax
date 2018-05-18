@@ -11,6 +11,8 @@ namespace fir
 	{
 		this->isSliceMutable = mut;
 		this->arrayElementType = elmType;
+
+		this->isVariadic = false;
 	}
 
 	Type* ArraySliceType::getElementType()
@@ -29,7 +31,7 @@ namespace fir
 			return (this->isSliceMutable ? "mut str" : "str");
 
 		else
-			return (this->isSliceMutable ? "[mut " : "[") + this->arrayElementType->str() + ":]";
+			return strprintf("[%s%s:%s]", this->isSliceMutable ? "mut " : "", this->arrayElementType->str(), this->isVariadic ? " ..." : "");
 	}
 
 	std::string ArraySliceType::encodedStr()
@@ -38,7 +40,7 @@ namespace fir
 			return (this->isSliceMutable ? "mut str" : "str");
 
 		else
-			return (this->isSliceMutable ? "[mut " : "[") + this->arrayElementType->encodedStr() + ":]";
+			return strprintf("[%s%s:%s]", this->isSliceMutable ? "mut " : "", this->arrayElementType->encodedStr(), this->isVariadic ? " ..." : "");
 	}
 
 	bool ArraySliceType::isTypeEqual(Type* other)
@@ -47,7 +49,13 @@ namespace fir
 			return false;
 
 		auto af = other->toArraySliceType();
-		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->isSliceMutable == af->isSliceMutable);
+		return this->arrayElementType->isTypeEqual(af->arrayElementType) && (this->isSliceMutable == af->isSliceMutable)
+			&& (this->isVariadic == af->isVariadic);
+	}
+
+	bool ArraySliceType::isVariadicType()
+	{
+		return this->isVariadic;
 	}
 
 	static TypeCache<ArraySliceType> typeCache;
@@ -64,6 +72,14 @@ namespace fir
 	ArraySliceType* ArraySliceType::getImmutable(Type* elementType)
 	{
 		return get(elementType, false);
+	}
+
+	ArraySliceType* ArraySliceType::getVariadic(Type* elementType)
+	{
+		auto a = new ArraySliceType(elementType, false);
+		a->isVariadic = true;
+
+		return typeCache.getOrAddCachedType(a);
 	}
 }
 

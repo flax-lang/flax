@@ -689,6 +689,7 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 
 		bool raw = false;
+		pts::Type* explicitType = 0;
 		std::vector<Expr*> values;
 	};
 
