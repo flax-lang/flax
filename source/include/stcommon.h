@@ -33,6 +33,7 @@ struct FnCallArgument
 
 	Location loc;
 	std::string name;
-
 	sst::Expr* value = 0;
+
+	bool wasSplat = false;
 };

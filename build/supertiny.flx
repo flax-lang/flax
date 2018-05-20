@@ -67,45 +67,45 @@ import "math" as _
 // }
 
 
-class LinkedList<T>
-{
-	struct Node
-	{
-		var data: T
+// class LinkedList<T>
+// {
+// 	struct Node
+// 	{
+// 		var data: T
 
-		var prev: &Node
-		var next: &Node
-	}
+// 		var prev: &Node
+// 		var next: &Node
+// 	}
 
-	var head: &Node
-	var tail: &Node
+// 	var head: &Node
+// 	var tail: &Node
 
-	var count: int
+// 	var count: int
 
-	init(data: T)
-	{
-		printf("called init with %p\n", data)
-	}
+// 	init(data: T)
+// 	{
+// 		printf("called init with %p\n", data)
+// 	}
 
-	mut fn insert(thing: T)
-	{
-		var nn = alloc mut Node (data: thing, prev: null, next: null)
+// 	mut fn insert(thing: T)
+// 	{
+// 		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
-		if head == null { head = nn; tail = nn }
-		else
-		{
-			var ot = tail as mut
-			tail = nn
+// 		if head == null { head = nn; tail = nn }
+// 		else
+// 		{
+// 			var ot = tail as mut
+// 			tail = nn
 
-			nn.prev = ot
-			ot.next = nn
-		}
+// 			nn.prev = ot
+// 			ot.next = nn
+// 		}
 
-		count += 1
-	}
+// 		count += 1
+// 	}
 
-	static fn hello() { printf("hi\n"); }
-}
+// 	static fn hello() { printf("hi\n"); }
+// }
 
 fn printThings(mul: int, ints: [int: ...])
 {
@@ -115,13 +115,13 @@ fn printThings(mul: int, ints: [int: ...])
 	printf("\n")
 }
 
-fn printThings(mul: f64, flts: [f64: ...])
-{
-	printf("floats: ");
-	for i in flts { printf("%.1f ", mul * i) }
+// fn printThings(mul: f64, flts: [f64: ...])
+// {
+// 	printf("floats: ");
+// 	for i in flts { printf("%.1f ", mul * i) }
 
-	printf("\n")
-}
+// 	printf("\n")
+// }
 
 
 @entry fn main()
@@ -146,17 +146,19 @@ fn printThings(mul: f64, flts: [f64: ...])
 	*/
 
 	/*
-		TODO for this week
+		TODO for this week (that keeps getting longer and where the real work always gets postponed)
 
 		// 1. constructor syntax for builtin types
-		2. start work on the generic type solver?
+		2. start work on the generic type solver?           <-- seriously get started on this
 		// 3. variadic functions
-			// 3a. make variadic forwarding work properly
-		4. move overload resolution to use PrettyError
+		// 3a. make variadic forwarding work properly
+		4. optional arguments                               <-- do we actually want this?
+		5. move overload resolution to use PrettyError
+
 	 */
 
 	do {
-		printThings(30, [ 1, 2, 3, 4, 5 ])
+		printThings(30, ...[ 1, 2, 3, 4, 5 ])
 		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
 	}
 

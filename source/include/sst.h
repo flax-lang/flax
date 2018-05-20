@@ -562,9 +562,15 @@ namespace sst
 	{
 		struct Param
 		{
+			Param(fir::Type* t) : name(""), loc(Location()), type(t), wasSplat(false) { }
+			Param(const FnCallArgument& fca) : name(fca.name), loc(fca.loc), type(fca.value->type), wasSplat(fca.wasSplat) { }
+			Param(const std::string& n, const Location& l, fir::Type* t, bool splt = false) : name(n), loc(l), type(t), wasSplat(splt) { }
+
 			std::string name;
 			Location loc;
 			fir::Type* type = 0;
+
+			bool wasSplat = false;
 		};
 
 		std::vector<Param> params;

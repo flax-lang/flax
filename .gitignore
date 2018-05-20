@@ -74,6 +74,7 @@ build/cmake-output
 CMakeLists.txt
 
 source_old
+meson-build-dir
 
 codealike.json
 

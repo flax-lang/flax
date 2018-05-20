@@ -29,8 +29,8 @@ namespace sst
 			else if(to->isFloatingPointType())      // not isint means isfloat, so if we're doing float -> float the cost is 0
 				return 0;
 
-			else
-				return 1;
+			else                                    // if we reach here, we're trying to do float -> int, which is a no-go.
+				return -1;
 		}
 		else if(from->isIntegerType() && to->isIntegerType())
 		{
@@ -79,20 +79,16 @@ namespace sst
 			// cast from a mutable pointer type to an immutable one can be implicit.
 			return 1;
 		}
+		else if(from->isVariadicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
+		{
+			// allow implicit casting from variadic slices to their normal counterparts.
+			return 4;
+		}
 		else if(from->isArraySliceType() && to->isArraySliceType() && (from->getArrayElementType() == to->getArrayElementType())
-			&& from->toArraySliceType()->isMutable() && !to->toArraySliceType()->isMutable())
+			&& from->toArraySliceType()->isMutable() && !to->toArraySliceType()->isMutable() && !from->isVariadicArrayType() && !to->isVariadicArrayType())
 		{
 			// same with slices -- cast from mutable slice to immut slice can be implicit.
 			return 1;
-		}
-		else if(from->isArraySliceType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
-		{
-			// allow implicit casting from slices to their variadic counterparts.
-			// and vice versa.
-
-			// note: it's implicit that we can cast variadic slices and normal slices to/from each other
-			// since both are 'slices'.
-			return 4;
 		}
 		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
 		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
@@ -131,7 +127,7 @@ namespace sst
 
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
-	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, std::vector<FunctionDecl::Param> target,
+	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
 		const std::vector<FunctionDecl::Param>& args, bool cvararg, Location* loc, std::string* estr, Defn* candidate)
 	{
 		iceAssert(estr);
@@ -278,27 +274,46 @@ namespace sst
 		// thus we need to actually check the types.
 		if(fvararg)
 		{
-			//? note: we removed the previous code for forwarding variadic args, because the new ruling is that
-			//? in order to forward, we must pass a named argument.
-
 			auto elmTy = target.back().type->getArrayElementType();
-			for(size_t i = target.size(); i < args.size(); i++)
+
+			// check if we only have 1 last arg
+			if(target.size() == args.size())
 			{
-				auto ty = args[i].type;
-				auto dist = fs->getCastDistance(ty, elmTy);
-				if(dist == -1)
+				auto lasty = args.back().type;
+				if(lasty->isArraySliceType() && lasty->getArrayElementType() == elmTy)
 				{
-					*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
-					*loc = args.back().loc;
+					if(!args.back().wasSplat)
+					{
+						*estr = strprintf("To forward a parameter pack, or to pass a slice as a parameter pack to a variadic function, use the splat (`...`) operator");
+						*loc = args.back().loc;
 
-					// warn(*loc, "%s", *estr);
-					return -1;
+						return -1;
+					}
+					else
+					{
+						distance += 1;
+					}
 				}
-
-				// info("vdist + %d (%s -> %s)", dist, ty, elmTy);
-				distance += dist;
 			}
+			else
+			{
+				for(size_t i = target.size() - 1; i < args.size(); i++)
+				{
+					auto ty = args[i].type;
+					auto dist = fs->getCastDistance(ty, elmTy);
+					if(dist == -1)
+					{
+						*estr = strprintf("Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
+						*loc = args.back().loc;
 
+						// warn(*loc, "%s", *estr);
+						return -1;
+					}
+
+					// info("vdist + %d (%s -> %s)", dist, ty, elmTy);
+					distance += dist;
+				}
+			}
 		}
 
 		// warn(candidate, "distance %d", distance);
@@ -314,8 +329,8 @@ namespace sst
 
 		using Param = FunctionDefn::Param;
 
-		return computeOverloadDistance(this, this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }),
-			util::map(b, [](fir::Type* t) -> Param { return Param { "", Location(), t }; }), false, &eloc, &estr, 0);
+		return computeOverloadDistance(this, this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param(t); }),
+			util::map(b, [](fir::Type* t) -> Param { return Param(t); }), false, &eloc, &estr, 0);
 	}
 
 	int TypecheckState::getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b)
@@ -362,7 +377,7 @@ namespace sst
 				auto args = arguments;
 
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
-					args.insert(args.begin(), Param { "", Location(), def->parentTypeForMethod->getPointerTo() });
+					args.insert(args.begin(), Param(def->parentTypeForMethod->getPointerTo()));
 
 				dist = computeOverloadDistance(this, cand->loc, fn->params,
 					args, fn->isVarArg, &fails[fn].first, &fails[fn].second, cand);
@@ -385,7 +400,7 @@ namespace sst
 				}
 
 				auto prms = ft->getArgumentTypes();
-				dist = computeOverloadDistance(this, cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param { "", Location(), t }; }),
+				dist = computeOverloadDistance(this, cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param(t); }),
 					arguments, false, &fails[vr].first, &fails[vr].second, cand);
 			}
 
@@ -776,7 +791,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 
 	// resolve the function call here
-	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
+	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
 	auto res = fs->resolveFunction(this->name, ts, gmaps, this->traverseUpwards);
@@ -852,7 +867,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	using Param = sst::FunctionDecl::Param;
 
-	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param { e.name, e.loc, e.value->type }; });
+	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
 
 	auto target = this->callee->typecheck(fs).expr();
 	iceAssert(target);
@@ -864,8 +879,8 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	std::string estr;
 
 	auto ft = target->type->toFunctionType();
-	int dist = sst::computeOverloadDistance(fs, this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
-		return Param { "", Location(), t }; }), ts, false, &eloc, &estr, 0);
+	int dist = sst::computeOverloadDistance(fs, this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto { return Param(t); }),
+		ts, false, &eloc, &estr, 0);
 
 	if(!estr.empty() || dist == -1)
 		error(eloc, "%s", estr);
@@ -885,28 +900,39 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 	{
 		if(auto splat = dcast(ast::SplatOp, arg.second))
 		{
-			if(!arg.first.empty())
-				error(arg.second->loc, "Splatted tuples cannot be passed as a named argument");
-
-			// get the type of the thing inside.
 			//* note: theoretically, this should be the only place in the compiler where we deal with splats explitily
 			//* and it should remain this way.
 
-			// TODO: handle splatting of arrays for varargs calls.
+			//? actually we also deal with splats when destructuring stuff.
 
-			auto tuple = splat->expr->typecheck(this).expr();
-			if(!tuple->type->isTupleType())
-				error(arg.second->loc, "Splatting in a function is currently only supported for tuples, have type '%s'", tuple->type);
+			auto thing = splat->expr->typecheck(this).expr();
 
-			auto tty = tuple->type->toTupleType();
-			for(size_t i = 0; i < tty->getElementCount(); i++)
+			if(thing->type->isTupleType())
 			{
-				auto tdo = new sst::TupleDotOp(arg.second->loc, tty->getElementN(i));
-				tdo->index = i;
-				tdo->lhs = tuple;
+				if(!arg.first.empty())
+					error(thing->loc, "Splatted tuples cannot be passed as a named argument");
 
-				auto fca = FnCallArgument(arg.second->loc, arg.first, tdo);
+				auto tty = thing->type->toTupleType();
+				for(size_t i = 0; i < tty->getElementCount(); i++)
+				{
+					auto tdo = new sst::TupleDotOp(thing->loc, tty->getElementN(i));
+					tdo->index = i;
+					tdo->lhs = thing;
+
+					auto fca = FnCallArgument(thing->loc, arg.first, tdo);
+					ret.push_back(fca);
+				}
+			}
+			else if(thing->type->isArraySliceType())
+			{
+				auto fca = FnCallArgument(thing->loc, arg.first, thing);
+				fca.wasSplat = true;
+
 				ret.push_back(fca);
+			}
+			else
+			{
+				error(thing->loc, "Only tuples and slices can be splatted in a function call, have type '%s'", thing->type);
 			}
 		}
 		else
