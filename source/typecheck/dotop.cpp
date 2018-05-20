@@ -212,14 +212,14 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr());
 			});
 
-			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param { e.name, e.loc, e.value->type }; });
+			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param(e); });
 
 			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths) -> sst::Defn* {
 
 				//! note: here we always presume it's mutable, since:
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
-				if(meths) ts.insert(ts.begin(), Param { "", fc->loc, str->type->getMutablePointerTo() });
+				if(meths) ts.insert(ts.begin(), Param(str->type->getMutablePointerTo()));
 
 				return fs->resolveFunctionFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};

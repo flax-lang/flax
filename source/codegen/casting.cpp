@@ -191,13 +191,6 @@ namespace cgn
 			auto ret = this->irb.PointerTypeCast(from.value, target);
 			return CGResult(ret);
 		}
-		else if(fromType->isArraySliceType() && target->isArraySliceType() && (fromType->getArrayElementType() == target->getArrayElementType())
-			&& fromType->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
-		{
-			//* note: we can cheat, since at the llvm level there's no mutability distinction.
-			auto ret = this->irb.Bitcast(from.value, target);
-			return CGResult(ret);
-		}
 		else if(fromType->isArraySliceType() && target->isVariadicArrayType() && (fromType->getArrayElementType() == target->getArrayElementType()))
 		{
 			//* note: we can cheat, since at the llvm level there's no mutability distinction.

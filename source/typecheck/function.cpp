@@ -73,7 +73,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(infer)
 	{
 		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-		auto p = Param { "self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()) };
+		auto p = Param("self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
 
 		ps.push_back(p);
 		ptys.push_back(p.type);
@@ -81,7 +81,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	for(auto t : this->args)
 	{
-		auto p = Param { t.name, t.loc, fs->convertParserTypeToFIR(t.type) };
+		auto p = Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type));
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
@@ -169,7 +169,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	std::vector<Param> ps;
 
 	for(auto t : this->args)
-		ps.push_back(Param { t.name, t.loc, fs->convertParserTypeToFIR(t.type) });
+		ps.push_back(Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type)));
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
