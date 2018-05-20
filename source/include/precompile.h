@@ -22,65 +22,6 @@
 #include <functional>
 #include <unordered_map>
 
-#ifndef __has_include
-#error "Please switch to a compiler that supports '__has_include'"
-#endif
-
-/*
-	STRING_VIEW_TYPE documentation
-
-	0: normal, std::string_view
-	1: experimental, std::experimental::string_view
-	2: external, stx::string_view
-*/
-#if __has_include(<string_view>) && _HAS_CXX17
-	#include <string_view>
-	#define STRING_VIEW_TYPE 0
-#elif __has_include(<experimental/string_view>) && _HAS_CXX17
-	#include <experimental/string_view>
-	#define STRING_VIEW_TYPE 1
-#else
-	// #error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
-	#include "../external/stx/string_view.hpp"
-	#define STRING_VIEW_TYPE 2
-#endif
-
-
-#if defined(__clang__)
-	#pragma clang diagnostic push
-	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(__GNUC__)
-	#pragma GCC diagnostic push
-	#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#elif defined(_MSC_VER)
-	#pragma warning(push, 0)
-#endif
-
-#include "../external/mpreal/mpreal.h"
-
-#if defined(__clang__)
-	#pragma clang diagnostic pop
-#elif defined(__GNUC__)
-	#pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-	#pragma warning(pop)
-#endif
-
-
-struct Identifier;
-enum class VisibilityLevel;
-
-namespace fir { struct Type; }
-namespace tinyformat
-{
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
-}
-
-#define TINYFORMAT_ERROR(x)
-#include "../external/tinyformat/tinyformat.h"
-
 #endif
 
 

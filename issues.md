@@ -40,13 +40,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 2. There are still some instances where we explicitly 'initialise' a class equivalent to `memset(0)` -- see *THINGS TO NOTE* below.
 
-3. Fix the `char`/`i8` stupidity when handling strings. The way I see it, there are 2 options:
-	a) make `char` redundant; strings are just `i8` everywhere. if we want unicode, then it'll be a separate (`ustring`?) type.
-	b) make `char` distinct; strings would handle unicode in terms of codepoints, maybe utf-32. would be pretty bad
-		for most things though.
-
-	Probaby going with option A.
-
 
 4. Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
 	then have the compiler enforce that your variable is immutable after that point, eg:
@@ -125,9 +118,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	`for [ first, middle, last, ... ] in list { ... }`
 
 
-4. Variadic functions should take a slice of `any`.
-
-
 5. Type inference for single-expr functions? It's a little weird to have two arrows like this:
 	`fn foo(a: T) -> T => a * a`
 
@@ -141,23 +131,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	It's not really a high-priority thing anyway.
 
 
-6. wrt. named parameters:
-
-	there are two cases of named parameters being used; first in a type constructor, and second in a regular function call.
-
-	When calling a type constructor of a struct, all arguments are optional, ie. you can specify all, some or none of the fields
-	as named arguments in your constructor call. Those not provided will be given the default value for their type, or, if the
-	struct definition itself has initialisers at the field declaration site, that particular init value.
-
-	On the other hand, the constructor for a class acts like a normal function, in that only defined 'init' functions can be called,
-	and they can only be called with their corresponding arguments.
-
-	For these regular function calls, named parameters are must come after any positional arguments, and positional arguments cannot come after
-	named arguments. Thus, once you start naming arguments in a call, you must name all subsequent arguments.
-
-	Note that functions cannot be overloaded solely on the names of the arguments, just the types.
-
-	Finally, for optional arguments, it behaves much the same, except that you *must* refer to it by name to specify a value. For example:
+6. wrt. optional arguments, you *must* refer to it by name to specify a value. For example:
 
 	`fn foo(a: int, b: int = 3) => ...`
 
@@ -173,11 +147,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	foo(30, 7)			<-- must name the optional argument 'b'
 
 	```
-
-
-	Yep, that's about it for named args. I don't plan on supporting the whole 'internal/external name' thing that Swift has going on.
-	It's probably just an objective-c fetishism thing, and muddles up function declarations. If you want the internal name to be different,
-	just create a new variable, it's not going to kill the program.
 
 
 8. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
@@ -215,7 +184,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(80d5297)`
 - fix a couple of unrelated bugs
 - varidic arrays are now slice-based instead of dynarray-based
 - variadic functions work, mostly. not thoroughly tested (nothing ever is)
