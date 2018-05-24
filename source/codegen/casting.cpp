@@ -228,6 +228,7 @@ namespace cgn
 		LABEL_failure:
 		error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
 		return CGResult(0);
+		// return from;
 	}
 
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)

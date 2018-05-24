@@ -109,19 +109,19 @@ import "math" as _
 
 fn printThings(mul: int, ints: [int: ...])
 {
-	printf("ints: ");
-	for i in ints { printf("%d ", mul * i) }
+	// printf("ints: ");
+	// for i in ints { printf("%d ", mul * i) }
+
+	// printf("\n")
+}
+
+fn printThings(mul: f64, flts: [f64: ...])
+{
+	printf("floats: ");
+	for i in flts { printf("%.1f ", mul * i) }
 
 	printf("\n")
 }
-
-// fn printThings(mul: f64, flts: [f64: ...])
-// {
-// 	printf("floats: ");
-// 	for i in flts { printf("%.1f ", mul * i) }
-
-// 	printf("\n")
-// }
 
 
 @entry fn main()
@@ -152,14 +152,16 @@ fn printThings(mul: int, ints: [int: ...])
 		2. start work on the generic type solver?           <-- seriously get started on this
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
+		3b. overloaded variadic forwarding doesn't work     <-- FIX THIS
 		4. optional arguments                               <-- do we actually want this?
 		5. move overload resolution to use PrettyError
 
 	 */
 
 	do {
-		printThings(30, ...[ 1, 2, 3, 4, 5 ])
-		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+		printf("HELLO???\n")
+		// printThings(30, ...[ 1, 2, 3, 4, 5 ])
+		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
 	}
 
 	// do {
