@@ -17,16 +17,16 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto checkStore = [this, cs](fir::Value* val) -> fir::Value* {
 
 		fir::Value* nv = val;
-		if(val->getType() != this->type)
-			nv = cs->oneWayAutocast(CGResult(val), this->type).value;
+		if(nv->getType() != this->type)
+			nv = cs->oneWayAutocast(CGResult(nv), this->type).value;
 
-		if(!nv)
+		if(nv->getType() != this->type)
 		{
 			iceAssert(this->init);
 
 			HighlightOptions hs;
 			hs.underlines.push_back(this->init->loc);
-			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, val->getType());
+			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType());
 		}
 
 		return nv;
@@ -80,7 +80,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		res = this->init->codegen(cs, this->type);
 		res = cs->oneWayAutocast(res, this->type);
-		iceAssert(res.value);
+		iceAssert(res.value && res.value->getType() == this->type);
 
 		val = res.value;
 	}

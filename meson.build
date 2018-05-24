@@ -227,10 +227,10 @@ include_dirs = include_directories([ 'source/include', mpir_hdr_dir, mpfr_hdr_di
 
 executable('flaxc', source_files,
 	include_directories: include_dirs,
-	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep ],
-	cpp_pch: [ 'source/include/precompile.h', 'source/include/precompile.cpp' ]
+	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep ]
 )
 
+	# cpp_pch: [ 'source/include/precompile.h', 'source/include/precompile.cpp' ]
 
 
 
