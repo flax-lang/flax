@@ -6,33 +6,6 @@
 
 #include "defs.h"
 
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
-#ifdef _MSC_VER
-	#pragma warning(push, 0)
-#endif
-
-#include "llvm/ADT/SmallVector.h"
-
-#ifdef _MSC_VER
-	#pragma warning(pop)
-#endif
-
-namespace llvm
-{
-	class Module;
-	class TargetMachine;
-	class ExecutionEngine;
-	class LLVMContext;
-	class Function;
-}
-
 namespace fir
 {
 	struct Module;
@@ -114,34 +87,6 @@ namespace backend
 		CompiledData& compiledData;
 		std::vector<std::string> inputFilenames;
 		std::string outputFilename;
-	};
-
-	struct LLVMBackend : Backend
-	{
-		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
-		virtual ~LLVMBackend() { }
-
-		virtual void performCompilation() override;
-		virtual void optimiseProgram() override;
-		virtual void writeOutput() override;
-
-		virtual std::string str() override;
-
-		static llvm::LLVMContext& getLLVMContext();
-
-		static llvm::Module* translateFIRtoLLVM(fir::Module* mod);
-
-		private:
-		void setupTargetMachine();
-		void finaliseGlobalConstructors();
-		void runProgramWithJIT();
-		llvm::SmallVector<char, 0> initialiseLLVMStuff();
-
-		llvm::Function* entryFunction = 0;
-
-
-		llvm::Module* linkedModule = 0;
-		llvm::TargetMachine* targetMachine = 0;
 	};
 
 	struct x64Backend : Backend

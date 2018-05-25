@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "backend.h"
+#include "backends/llvm.h"
 
 namespace backend
 {
