@@ -54,8 +54,8 @@
 #include "ir/module.h"
 #include "ir/irbuilder.h"
 
-#include "backend.h"
 #include "frontend.h"
+#include "backends/llvm.h"
 
 #include "../../external/tinyprocesslib/process.h"
 
@@ -178,7 +178,7 @@ namespace backend
 
 	void LLVMBackend::writeOutput()
 	{
-		// this->linkedModule->print(llvm::errs(), 0);
+		this->linkedModule->print(llvm::errs(), 0);
 
 		// verify the module.
 		{
@@ -574,22 +574,29 @@ namespace backend
 		}
 
 
-
 		if(this->entryFunction)
 		{
-			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
+			auto jit = LLVMJit(this->targetMachine);
+			auto jitmod = jit.addModule(std::unique_ptr<llvm::Module>(this->linkedModule));
 
-			// finalise the object, which does something.
-			execEngine->finalizeObject();
+			auto entryaddr = jit.getSymbolAddress(this->entryFunction->getName().str());
 
-			void* func = execEngine->getPointerToFunction(this->entryFunction);
-			iceAssert(func != 0);
+			auto mainfunc = (int (*)(int, const char**)) entryaddr;
 
-			auto mainfunc = (int (*)(int, const char**)) func;
+			// llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
+
+			// // finalise the object, which does something.
+			// execEngine->finalizeObject();
+
+			// void* func = execEngine->getPointerToFunction(this->entryFunction);
+			// iceAssert(func != 0);
+
+			// auto mainfunc = (int (*)(int, const char**)) func;
 
 			const char* m[] = { ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str() };
 
 			mainfunc(1, m);
+
 		}
 		else
 		{

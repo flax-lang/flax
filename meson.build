@@ -3,9 +3,18 @@ project('flax', ['c', 'cpp'])
 the_compiler = meson.get_compiler('c')
 
 buildKind = 'Debug'
+
 mpir_root_dir = 'D:/Projects/lib/mpir'
 mpfr_root_dir = 'D:/Projects/lib/mpfr'
 llvm_root_dir = 'D:/Projects/lib/llvm'
+
+mpir_hdr_dir = mpir_root_dir + '/' + buildKind + '/include/'
+mpfr_hdr_dir = mpfr_root_dir + '/' + buildKind + '/include/'
+llvm_hdr_dir = llvm_root_dir + '/' + buildKind + '/include/'
+
+mpir_lib_dir = mpir_root_dir + '/' + buildKind + '/lib/'
+mpfr_lib_dir = mpfr_root_dir + '/' + buildKind + '/lib/'
+llvm_lib_dir = llvm_root_dir + '/' + buildKind + '/lib/'
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/std:c++17', language: 'cpp')
@@ -15,8 +24,8 @@ if the_compiler.get_id() == 'msvc'
 	add_project_link_arguments('/machine:X64', language: 'cpp')
 	add_project_link_arguments('/incremental', language: 'cpp')
 	# add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
-	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
-	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
+	# add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
+	# add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
 else
 	add_project_arguments('--std=c++17', language: 'cpp')
 	add_project_arguments('--std=c11', language: 'c')
@@ -51,6 +60,7 @@ source_files = files([
 	'source/backend/backend.cpp',
 	'source/backend/x64AsmBackend.cpp',
 
+	'source/backend/llvm/jit.cpp',
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
@@ -160,14 +170,6 @@ tinyproclib_dep = declare_dependency(include_directories: include_directories('s
 			]
 )
 
-
-mpir_hdr_dir = mpir_root_dir + '/' + buildKind + '/include/'
-mpfr_hdr_dir = mpfr_root_dir + '/' + buildKind + '/include/'
-llvm_hdr_dir = llvm_root_dir + '/' + buildKind + '/include/'
-
-mpir_lib_dir = mpir_root_dir + '/' + buildKind + '/lib/'
-mpfr_lib_dir = mpfr_root_dir + '/' + buildKind + '/lib/'
-llvm_lib_dir = llvm_root_dir + '/' + buildKind + '/lib/'
 
 
 mpir_dep = declare_dependency(version: '3.0.0', include_directories: include_directories(mpir_hdr_dir),
