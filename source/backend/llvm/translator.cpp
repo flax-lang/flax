@@ -26,7 +26,7 @@
 #include "ir/module.h"
 #include "ir/constant.h"
 
-#include "backend.h"
+#include "backends/llvm.h"
 
 #include <set>
 

@@ -107,21 +107,21 @@ import "math" as _
 // 	static fn hello() { printf("hi\n"); }
 // }
 
-fn printThings(mul: int, ints: [int: ...])
-{
-	// printf("ints: ");
-	// for i in ints { printf("%d ", mul * i) }
+// fn printThings(mul: int, ints: [int: ...])
+// {
+// 	// printf("ints: ");
+// 	// for i in ints { printf("%d ", mul * i) }
 
-	// printf("\n")
-}
+// 	// printf("\n")
+// }
 
-fn printThings(mul: f64, flts: [f64: ...])
-{
-	printf("floats: ");
-	for i in flts { printf("%.1f ", mul * i) }
+// fn printThings(mul: f64, flts: [f64: ...])
+// {
+// 	printf("floats: ");
+// 	for i in flts { printf("%.1f ", mul * i) }
 
-	printf("\n")
-}
+// 	printf("\n")
+// }
 
 
 @entry fn main()
@@ -158,11 +158,11 @@ fn printThings(mul: f64, flts: [f64: ...])
 
 	 */
 
-	do {
+	// do {
 		printf("HELLO???\n")
 		// printThings(30, ...[ 1, 2, 3, 4, 5 ])
 		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
-	}
+	// }
 
 	// do {
 	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
