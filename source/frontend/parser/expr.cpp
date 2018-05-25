@@ -624,7 +624,7 @@ namespace parser
 
 	static FunctionCall* parseFunctionCall(State& st, std::string name)
 	{
-		auto ret = new FunctionCall(st.ploc(), name);
+		auto ret = new FunctionCall(st.lookahead(-2).loc, name);
 
 		st.skipWS();
 		ret->args = parseCallArgumentList(st);

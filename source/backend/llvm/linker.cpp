@@ -178,7 +178,7 @@ namespace backend
 
 	void LLVMBackend::writeOutput()
 	{
-		this->linkedModule->print(llvm::errs(), 0);
+		// this->linkedModule->print(llvm::errs(), 0);
 
 		// verify the module.
 		{
@@ -576,22 +576,25 @@ namespace backend
 
 		if(this->entryFunction)
 		{
+			#if 0
 			auto jit = LLVMJit(this->targetMachine);
-			auto jitmod = jit.addModule(std::unique_ptr<llvm::Module>(this->linkedModule));
+			jit.addModule(std::unique_ptr<llvm::Module>(this->linkedModule));
 
 			auto entryaddr = jit.getSymbolAddress(this->entryFunction->getName().str());
 
 			auto mainfunc = (int (*)(int, const char**)) entryaddr;
 
-			// llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
+			#else
+			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
 
-			// // finalise the object, which does something.
-			// execEngine->finalizeObject();
+			// finalise the object, which does something.
+			execEngine->finalizeObject();
 
-			// void* func = execEngine->getPointerToFunction(this->entryFunction);
-			// iceAssert(func != 0);
+			void* func = execEngine->getPointerToFunction(this->entryFunction);
+			iceAssert(func != 0);
 
-			// auto mainfunc = (int (*)(int, const char**)) func;
+			auto mainfunc = (int (*)(int, const char**)) func;
+			#endif
 
 			const char* m[] = { ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str() };
 
