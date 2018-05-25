@@ -109,19 +109,19 @@ import "math" as _
 
 // fn printThings(mul: int, ints: [int: ...])
 // {
-// 	// printf("ints: ");
-// 	// for i in ints { printf("%d ", mul * i) }
-
-// 	// printf("\n")
-// }
-
-// fn printThings(mul: f64, flts: [f64: ...])
-// {
-// 	printf("floats: ");
-// 	for i in flts { printf("%.1f ", mul * i) }
+// 	printf("ints: ");
+// 	for i in ints { printf("%d ", mul * i) }
 
 // 	printf("\n")
 // }
+
+fn printThings(mul: f64, flts: [f64: ...])
+{
+	printf("floats: ");
+	for i in flts { printf("%.1f ", mul * i) }
+
+	printf("\n")
+}
 
 
 @entry fn main()
@@ -152,17 +152,17 @@ import "math" as _
 		2. start work on the generic type solver?           <-- seriously get started on this
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
-		3b. overloaded variadic forwarding doesn't work     <-- FIX THIS
+		3b. overloaded variadic forwarding doesn't work     <-- SEEMS TO BE FIXED????
 		4. optional arguments                               <-- do we actually want this?
-		5. move overload resolution to use PrettyError
+		5. move overload resolution to use PrettyError		<-- more.
 
 	 */
 
-	// do {
-		printf("HELLO???\n")
-		// printThings(30, ...[ 1, 2, 3, 4, 5 ])
-		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
-	// }
+	do {
+		// printf("HELLO???\n")
+		printThings(30, ...[ 1, 2, 3, 4, 5 ])
+		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+	}
 
 	// do {
 	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
@@ -331,6 +331,55 @@ operator infix cross (a: vec3, b: vec3) -> vec3
 				y: (a.z * b.x) - (a.x * b.z),
 				z: (a.x * b.y) - (a.y * b.x));
 }
+
+
+
+ */
+
+
+
+
+
+
+ /*
+
+
+error: No matching overload in call to 'printThings(number, [i64:])' amongst 3 candidates
+at:    /path/to/source/file.flx:341:23
+
+call site:
+    |
+341 |    printThings(30, ...[ 1, 2, 3, 4, 5 ])
+    |    ^^^^^^^^^^^
+
+note: candidate 1 was defined here:
+at:   /path/to/thing:425:4
+
+    |
+425 |    fn printThings(a: int, b: [f64: ...])
+    |                           ^^^^^^^^^^^^^
+    |                           |> mismatched type '[i64: ...]' at call site
+
+
+note: candidate 2 was defined here:
+at: /path/to/thing:430:4
+
+    |
+430 |    fn printThings(a: str, b: [i64: ...])
+    |                   ^^^^^^
+    |                   |> mismatched type 'int' at call site
+
+
+
+note: candidate 3 was defined here:
+at: /path/to/thing:440:4
+
+    |
+440 |    fn printThings()
+    |                  ^^
+    |                  |> mismatched number of arguments;
+    |                  |> expected 0, found 2 at call site
+
 
 
 

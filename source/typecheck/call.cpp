@@ -128,7 +128,7 @@ namespace sst
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
 	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
-		const std::vector<FunctionDecl::Param>& args, bool cvararg, PrettyError* errs, Defn* candidate)
+		const std::vector<FunctionDecl::Param>& args, bool cvararg, ComplexError* errs, Defn* candidate)
 	{
 		iceAssert(errs);
 		if(target.empty() && args.empty())
@@ -307,8 +307,8 @@ namespace sst
 			}
 		}
 
-		info(fs->loc(), "for this boi:");
-		warn(candidate, "distance %d", distance);
+		// info(fs->loc(), "for this boi:");
+		// warn(candidate, "distance %d", distance);
 		return distance;
 	}
 
@@ -316,7 +316,7 @@ namespace sst
 
 	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
-		PrettyError errs;
+		ComplexError errs;
 		using Param = FunctionDefn::Param;
 
 		return computeOverloadDistance(this, this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param(t); }),
@@ -346,15 +346,15 @@ namespace sst
 	TCResult TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
-		if(cands.empty()) return TCResult(PrettyError::error(Location(), "No candidates"));
+		if(cands.empty()) return TCResult(ComplexError::error(Location(), "No candidates"));
 
 		using Param = FunctionDefn::Param;
 		iceAssert(cands.size() > 0);
 
-		PrettyError errors;
+		ComplexError errors;
 
 		int bestDist = INT_MAX;
-		std::map<Defn*, PrettyError> fails;
+		std::map<Defn*, ComplexError> fails;
 		std::vector<std::pair<Defn*, int>> finals;
 
 		for(auto cand : cands)
@@ -408,8 +408,8 @@ namespace sst
 		{
 			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
 
-			errors.addError(this->loc(), "No overload of function '%s' matching given argument types '%s' amongst %zu candidate%s",
-				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), fails.size() == 1 ? "" : "s");
+			errors.addError(this->loc(), "No overload in call to '%s(%s)' amongst %zu %s",
+				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()));
 
 			for(auto f : fails)
 			{
@@ -487,7 +487,7 @@ namespace sst
 	{
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
-		PrettyError errors;
+		ComplexError errors;
 		std::vector<Defn*> fns;
 		StateTree* tree = this->stree;
 
@@ -590,7 +590,7 @@ namespace sst
 			{
 				if(arg.name.empty())
 				{
-					return TCResult(PrettyError::error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
+					return TCResult(ComplexError::error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
 				}
 			}
 
@@ -630,7 +630,7 @@ namespace sst
 			{
 				if(arg.name.empty() && useNames)
 				{
-					return TCResult(PrettyError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
+					return TCResult(ComplexError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(firstName && !arg.name.empty())
 				{
@@ -639,15 +639,15 @@ namespace sst
 				}
 				else if(!arg.name.empty() && !useNames && !firstName)
 				{
-					return TCResult(PrettyError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
+					return TCResult(ComplexError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
 				{
-					return TCResult(PrettyError::error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
+					return TCResult(ComplexError::error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
 				}
 				else if(useNames && seenNames.find(arg.name) != seenNames.end())
 				{
-					return TCResult(PrettyError::error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+					return TCResult(ComplexError::error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
 						arg.name, str->id.name));
 				}
 
@@ -657,7 +657,7 @@ namespace sst
 			//* note: if we're doing positional args, allow only all or none.
 			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
 			{
-				PrettyError errors;
+				ComplexError errors;
 				errors.addError(this->loc(),
 					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
 					str->id.name, fieldNames.size(), arguments.size());
@@ -671,7 +671,7 @@ namespace sst
 		}
 		else
 		{
-			PrettyError errors;
+			ComplexError errors;
 			errors.addError(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name);
 			errors.addInfo(typedf, "Type was defined here:");
 
@@ -868,7 +868,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	if(!target->type->isFunctionType())
 		error(this->callee, "Expression with non-function-type '%s' cannot be called");
 
-	PrettyError errs;
+	ComplexError errs;
 
 	auto ft = target->type->toFunctionType();
 	int dist = sst::computeOverloadDistance(fs, this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto { return Param(t); }),
@@ -917,7 +917,7 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 			}
 			else if(thing->type->isArraySliceType())
 			{
-				auto fca = FnCallArgument(thing->loc, arg.first, thing);
+				auto fca = FnCallArgument(splat->expr->loc, arg.first, thing);
 				fca.wasSplat = true;
 
 				ret.push_back(fca);
