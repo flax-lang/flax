@@ -85,8 +85,8 @@ namespace fir
 		// stuff
 		static Type* fromBuiltin(const std::string& builtin);
 
-		static std::string typeListToString(const std::vector<Type*>& types);
-		static std::string typeListToString(const std::initializer_list<Type*>& types);
+		static std::string typeListToString(const std::vector<Type*>& types, bool includeBraces = false);
+		static std::string typeListToString(const std::initializer_list<Type*>& types, bool includeBraces = false);
 
 		static bool areTypeListsEqual(const std::vector<Type*>& a, const std::vector<Type*>& b);
 		static bool areTypeListsEqual(const std::initializer_list<Type*>& a, const std::initializer_list<Type*>& b);

@@ -394,7 +394,7 @@ namespace sst
 			_tree = _tree->parent;
 		}
 
-		auto makeTheError = [](PrettyError* errs, Locatable* a, const std::string& n, const std::string& ak,
+		auto makeTheError = [](ComplexError* errs, Locatable* a, const std::string& n, const std::string& ak,
 			const std::vector<std::pair<Locatable*, std::string>>& conflicts) {
 
 			errs->addError(a, "Duplicate definition of '%s'", n);
@@ -403,7 +403,7 @@ namespace sst
 
 			for(const auto& [ l, kind ] : conflicts)
 			{
-				errs->addInfo(l, "%shere%s:", first ? strprintf("Conflicting definition%s ", conflicts.size() == 1 ? "" : "s") : "and ",
+				errs->addInfo(l, "%shere%s:", first ? strprintf("Conflicting %s ", util::plural("definition", conflicts.size())) : "and ",
 					ak == kind ? "" : strprintf(" (as a %s)", kind));
 
 				first = false;
@@ -421,7 +421,7 @@ namespace sst
 			{
 				if(!didError)
 				{
-					PrettyError errs;
+					ComplexError errs;
 					makeTheError(&errs, defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
 					// TODO: be more intelligent about when we give this informative tidbit
@@ -442,7 +442,7 @@ namespace sst
 
 		if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(defn->id.name); gdefs.size() > 0)
 		{
-			PrettyError errs;
+			ComplexError errs;
 			if(auto fn = dcast(sst::FunctionDecl, defn))
 			{
 				// honestly we can't know if we will conflict with other functions.
