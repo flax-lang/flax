@@ -139,7 +139,7 @@ namespace sst
 
 		if((!anyvararg && target.size() != args.size()) || (anyvararg && args.size() < (fvararg ? target.size() - 1 : target.size())))
 		{
-			errs->add(fnLoc, { fnLoc->loc, strprintf("Mismatched number of arguments; expected %d, got %d", target.size(), args.size()) });
+			errs->add(fnLoc, { fnLoc->loc, strprintf("Mismatched number of arguments; expected %d, got %d instead", target.size(), args.size()) });
 			return -1;
 		}
 

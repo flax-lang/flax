@@ -58,10 +58,9 @@ namespace fir
 		return this->isVariadic;
 	}
 
-	static TypeCache<ArraySliceType> typeCache;
 	ArraySliceType* ArraySliceType::get(Type* elementType, bool mut)
 	{
-		return typeCache.getOrAddCachedType(new ArraySliceType(elementType, mut));
+		return TypeCache::get().getOrAddCachedType(new ArraySliceType(elementType, mut));
 	}
 
 	ArraySliceType* ArraySliceType::getMutable(Type* elementType)
@@ -79,7 +78,7 @@ namespace fir
 		auto a = new ArraySliceType(elementType, false);
 		a->isVariadic = true;
 
-		return typeCache.getOrAddCachedType(a);
+		return TypeCache::get().getOrAddCachedType(a);
 	}
 }
 

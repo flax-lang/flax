@@ -23,12 +23,11 @@ namespace fir
 
 
 
-	static TypeCache<FunctionType> typeCache;
 
 	// functions
 	FunctionType* FunctionType::getCVariadicFunc(const std::vector<Type*>& args, Type* ret)
 	{
-		return typeCache.getOrAddCachedType(new FunctionType(args, ret, true));
+		return TypeCache::get().getOrAddCachedType(new FunctionType(args, ret, true));
 	}
 
 	FunctionType* FunctionType::getCVariadicFunc(const std::initializer_list<Type*>& args, Type* ret)
@@ -38,7 +37,7 @@ namespace fir
 
 	FunctionType* FunctionType::get(const std::vector<Type*>& args, Type* ret)
 	{
-		return typeCache.getOrAddCachedType(new FunctionType(args, ret, false));
+		return TypeCache::get().getOrAddCachedType(new FunctionType(args, ret, false));
 	}
 
 	FunctionType* FunctionType::get(const std::initializer_list<Type*>& args, Type* ret)
