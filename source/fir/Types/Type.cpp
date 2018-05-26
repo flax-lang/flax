@@ -12,6 +12,12 @@ namespace pts
 
 namespace fir
 {
+	static TypeCache tc;
+	TypeCache& TypeCache::get()
+	{
+		return tc;
+	}
+
 	std::string Type::typeListToString(const std::initializer_list<Type*>& types, bool includeBraces)
 	{
 		return typeListToString(std::vector<Type*>(types.begin(), types.end()), includeBraces);

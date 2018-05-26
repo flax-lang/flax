@@ -35,10 +35,9 @@ namespace fir
 		return this->arrayElementType->isTypeEqual(other->toDynamicArrayType()->arrayElementType);
 	}
 
-	static TypeCache<DynamicArrayType> typeCache;
 	DynamicArrayType* DynamicArrayType::get(Type* elementType)
 	{
-		return typeCache.getOrAddCachedType(new DynamicArrayType(elementType));
+		return TypeCache::get().getOrAddCachedType(new DynamicArrayType(elementType));
 	}
 }
 

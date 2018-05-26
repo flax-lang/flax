@@ -50,11 +50,9 @@ namespace fir
 
 
 
-	static TypeCache<TupleType> typeCache;
-
 	TupleType* TupleType::get(const std::vector<Type*>& mems)
 	{
-		return typeCache.getOrAddCachedType(new TupleType(mems));
+		return TypeCache::get().getOrAddCachedType(new TupleType(mems));
 	}
 
 	TupleType* TupleType::get(const std::initializer_list<Type*>& mems)

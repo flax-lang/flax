@@ -12,10 +12,9 @@ namespace fir
 		this->arraySize = num;
 	}
 
-	static TypeCache<ArrayType> typeCache;
 	ArrayType* ArrayType::get(Type* elementType, size_t num)
 	{
-		return typeCache.getOrAddCachedType(new ArrayType(elementType, num));
+		return TypeCache::get().getOrAddCachedType(new ArrayType(elementType, num));
 	}
 
 	std::string ArrayType::str()

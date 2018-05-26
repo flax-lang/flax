@@ -188,6 +188,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- sort the candidates by line number, and don't print too many of the fake margin/gutter things.
+- change typecache (thanks adrian) to be better.
+
+`(ce9f113)`
 - magnificently beautiful and informative errors for function call overload failure.
 
 `(80d5297)`
