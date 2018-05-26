@@ -505,12 +505,9 @@ namespace backend
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-
 		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
-
-		// module->setDataLayout("e-m:o-i64:64-f80:128-n8:16:32:64-S128");
 		llvm::IRBuilder<> builder(gc);
 
 
