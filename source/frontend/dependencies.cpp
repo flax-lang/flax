@@ -183,7 +183,7 @@ namespace frontend
 
 						info(u.second, "");
 
-						// __error_gen(prettyErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "here", "Note", false, ap);
+						// __error_gen(ComplexErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "here", "Note", false, ap);
 					}
 				}
 

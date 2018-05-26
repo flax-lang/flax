@@ -67,7 +67,7 @@ TESTSRC			:= build/tester.flx
 .PHONY: copylibs jit compile clean build osx linux ci prep satest tiny osxflags
 
 prep:
-	@echo C++ compiler is: $(CXX)
+	@# echo C++ compiler is: $(CXX)
 	@mkdir -p $(dir $(OUTPUT))
 
 osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)

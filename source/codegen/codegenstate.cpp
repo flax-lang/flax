@@ -200,7 +200,7 @@ namespace cgn
 
 			if(ifn == 0)
 			{
-				PrettyError errs;
+				ComplexError errs;
 				errs.addError(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
 					cls->getTypeName());
 
