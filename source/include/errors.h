@@ -100,7 +100,7 @@ namespace frontend
 	std::string getFilenameFromPath(std::string path);
 }
 
-std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type);
+std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type, bool context);
 
 template <typename... Ts>
 std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, bool, Ts... ts)
@@ -111,7 +111,7 @@ std::string __error_gen(const HighlightOptions& ops, const char* msg, const char
 
 	// return ret;
 
-	return __error_gen_internal(ops, tinyformat::format(msg, ts...), type);
+	return __error_gen_internal(ops, tinyformat::format(msg, ts...), type, true);
 }
 
 

@@ -123,6 +123,18 @@ fn printThings(mul: f64, flts: [f64: ...])
 	printf("\n")
 }
 
+fn printThings(mul: str, flts: [f64: ...])
+{
+	printf("floats: ");
+	for i in flts { printf("%s: %.1f ", mul.ptr, i) }
+
+	printf("\n")
+}
+
+fn printThings()
+{
+	printf("print things 3\n")
+}
 
 @entry fn main()
 {
@@ -152,16 +164,14 @@ fn printThings(mul: f64, flts: [f64: ...])
 		2. start work on the generic type solver?           <-- seriously get started on this
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
-		3b. overloaded variadic forwarding doesn't work     <-- SEEMS TO BE FIXED????
 		4. optional arguments                               <-- do we actually want this?
-		5. move overload resolution to use PrettyError		<-- more.
 
 	 */
 
 	do {
 		// printf("HELLO???\n")
 		printThings(30, ...[ 1, 2, 3, 4, 5 ])
-		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
 	}
 
 	// do {
@@ -352,33 +362,30 @@ call site:
 341 |    printThings(30, ...[ 1, 2, 3, 4, 5 ])
     |    ^^^^^^^^^^^
 
-note: candidate 1 was defined here:
+note: candidate 1 was defined here
 at:   /path/to/thing:425:4
-
     |
 425 |    fn printThings(a: int, b: [f64: ...])
     |                           ^^^^^^^^^^^^^
     |                           |> mismatched type '[i64: ...]' at call site
 
-
 note: candidate 2 was defined here:
 at: /path/to/thing:430:4
-
     |
-430 |    fn printThings(a: str, b: [i64: ...])
-    |                   ^^^^^^
+430 |    fn printThings(a: str, b: [f64: ...])
+    |                   ^^^^^^     ^^^^^^^^^^
+    |                   |          |> mismatched type '[i64: ...]' at call site
+    |                   |          |> bla bla bla
+    |                   |
     |                   |> mismatched type 'int' at call site
-
-
 
 note: candidate 3 was defined here:
 at: /path/to/thing:440:4
-
     |
 440 |    fn printThings()
     |                  ^^
     |                  |> mismatched number of arguments;
-    |                  |> expected 0, found 2 at call site
+    |                     expected 0, found 2 at call site
 
 
 

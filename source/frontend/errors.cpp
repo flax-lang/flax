@@ -49,25 +49,18 @@ static std::string spaces(size_t n)
 	return repeat(" ", n);
 }
 
-
-#define UNDERLINE_CHARACTER " ̅"
-// #define UNDERLINE_CHARACTER "^"
-
-std::string printContext(HighlightOptions ops)
+static std::string fetchContextLine(Location loc, size_t* adjust)
 {
-	std::string retstr;
-
-	auto lines = frontend::getFileLines(ops.caret.fileID);
-	if(lines.size() > ops.caret.line)
+	auto lines = frontend::getFileLines(loc.fileID);
+	if(lines.size() > loc.line)
 	{
-		std::string orig = util::to_string(lines[ops.caret.line]);
+		std::string orig = util::to_string(lines[loc.line]);
 
-		size_t adjust = 0;
 		size_t adjust1 = 0;
 		for(auto c : orig)
 		{
-			if(c == '\t')		adjust += TAB_WIDTH, adjust1 += (TAB_WIDTH - 1);
-			else if(c == ' ')	adjust++;
+			if(c == '\t')		(*adjust) += TAB_WIDTH, adjust1 += (TAB_WIDTH - 1);
+			else if(c == ' ')	(*adjust)++;
 			else				break;
 		}
 
@@ -81,8 +74,25 @@ std::string printContext(HighlightOptions ops)
 			}
 		}
 
-		auto str = ln.str();
-		auto part1 = strprintf("%s%s", _convertTab(), str.c_str());
+		return strprintf("%s%s", _convertTab(), ln.str().c_str());
+	}
+
+	return "";
+}
+
+
+// #define UNDERLINE_CHARACTER " ̅"
+#define UNDERLINE_CHARACTER "^"
+
+std::string printContext(HighlightOptions ops)
+{
+	std::string retstr;
+
+	auto lines = frontend::getFileLines(ops.caret.fileID);
+	if(lines.size() > ops.caret.line)
+	{
+		size_t adjust = 0;
+		auto part1 = fetchContextLine(ops.caret, &adjust);
 
 		size_t cursorX = 1;
 		bool uline = ops.caret.len >= 5 && ops.underlines.empty();
@@ -133,11 +143,11 @@ std::string printContext(HighlightOptions ops)
 
 		// ok, now we print the fancy left side pipes and line numbers and all
 		{
-			auto num_width = std::to_string(ops.caret.line).length();
+			auto num_width = std::to_string(ops.caret.line + 1).length();
 
 			// one spacing line
 			retstr =  strprintf("%s |\n", spaces(num_width));
-			retstr += strprintf("%d |%s\n", ops.caret.line, part1);
+			retstr += strprintf("%d |%s\n", ops.caret.line + 1, part1);
 			retstr += strprintf("%s |%s\n", spaces(num_width), part2);
 		}
 	}
@@ -165,7 +175,7 @@ void popErrorLocation()
 
 
 
-std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type)
+std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type, bool context)
 {
 	std::string ret;
 
@@ -195,10 +205,9 @@ std::string __error_gen_internal(const HighlightOptions& ops, const std::string&
 
 	ret += "\n";
 
-	if(ops.caret.fileID > 0)
-		ret += printContext(ops);
+	if(context && ops.caret.fileID > 0)
+		ret += printContext(ops) + "\n";
 
-	ret += "\n";
 	return ret;
 }
 
@@ -272,16 +281,200 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 
 
-[[noreturn]] void postErrorsAndQuit(const ComplexError& error)
-{
-	for(const auto& [ kind, loc, estr ] : error._strs)
-	{
-		if(kind == ComplexError::Kind::Error)            exitless_error(loc, "%s", estr);
-		else if(kind == ComplexError::Kind::Warning)     warn(loc, "%s", estr);
-		else if(kind == ComplexError::Kind::Info)        info(loc, "%s", estr);
-	}
 
-	doTheExit();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+template <typename... Ts>
+static size_t strprinterrf(const char* fmt, Ts... ts)
+{
+	return (size_t) fprintf(stderr, "%s", strprintf(fmt, ts...).c_str());
+}
+
+template <typename... Ts>
+static void outputWithoutContext(const char* type, const HighlightOptions& ho, const char* fmt, Ts... ts)
+{
+	strprinterrf("%s", __error_gen_internal(ho, strprintf(fmt, ts...), type, false));
+}
+
+
+
+
+bool OverloadError::hasErrors()
+{
+	return this->primaryError.second.size() > 0 || this->cands.size() > 0 || this->otherErrors.size() > 0;
+}
+
+void OverloadError::clear()
+{
+	this->cands.clear();
+	this->otherErrors.clear();
+	this->primaryError = { Location(), "" };
+}
+
+void OverloadError::add(Locatable* d, const std::pair<Location, std::string>& e)
+{
+	this->cands[d].push_back(e);
+}
+
+
+
+void OverloadError::post()
+{
+	// first, post the original error.
+	outputWithoutContext("error", HighlightOptions(this->primaryError.first), "%s", this->primaryError.second);
+
+	// say 'call site'
+	strprinterrf("(call site):\n%s\n", printContext(HighlightOptions(this->primaryError.first)));
+
+
+
+	// then any other errors.
+	for(auto& other : this->otherErrors)
+		other.post();
+
+	// go through each candidate.
+	int counter = 1;
+	for(auto [ loc, errs ] : cands)
+	{
+		if(errs.size() == 1 && errs[0].first == Location())
+		{
+			info(loc, "%s", errs[0].second);
+		}
+		else
+		{
+			auto ho = HighlightOptions(loc->loc);
+			ho.drawCaret = false;
+
+			outputWithoutContext("note", ho, "candidate %d was defined here:", counter++);
+
+			// sort the errors
+			std::sort(errs.begin(), errs.end(), [](auto a, auto b) -> bool { return a.first.col < b.first.col; });
+
+			// ok. so we have our own custom little output thing here.
+
+			auto num_width = std::to_string(loc->loc.line + 1).length();
+
+			// one spacing line
+			size_t adjust = 0;
+			size_t margin = num_width + 2;
+			strprinterrf("%s |\n", spaces(num_width));
+			strprinterrf("%d |%s\n", loc->loc.line + 1, fetchContextLine(loc->loc, &adjust));
+			strprinterrf("%s |", spaces(num_width));
+
+			// ok, now loop through each err, and draw the underline.
+			// size_t width = std::min((size_t) 80, platform::getTerminalWidth()) - 10;
+			size_t width = (size_t) (0.85 * platform::getTerminalWidth());
+
+			//* cursor represents the 'virtual' position -- excluding the left margin
+			size_t cursor = 0;
+			for(auto err : errs)
+			{
+				// pad out.
+				cursor += strprinterrf("%s", spaces(num_width + err.first.col - adjust - cursor));
+				strprinterrf("%s", COLOUR_RED_BOLD);
+
+				cursor += strprinterrf("%s", repeat(UNDERLINE_CHARACTER, err.first.len));
+				strprinterrf("%s", COLOUR_RESET);
+			}
+
+			cursor = 0;
+			strprinterrf("\n");
+
+			// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
+			// it doesn't really matter.
+
+			size_t counter = 0;
+			while(counter < errs.size())
+			{
+				strprinterrf("%s |", spaces(num_width));
+
+				for(size_t i = 0; i < errs.size() - counter; i++)
+				{
+					auto col = errs[i].first.col;
+
+					if(i == errs.size() - counter - 1)
+					{
+						auto remaining = errs[i].second;
+
+						// complex math shit to predict where the cursor will be once we print,
+						// and more importantly whether or not we'll finish printing the message in the current iteration.
+						auto realcursor = cursor + 2 + (num_width + col - adjust - cursor + 1) + margin + 1;
+
+						auto splitpos = std::min(remaining.length(), width - realcursor);
+
+						// refuse to split words in half.
+						while(splitpos > 0 && remaining[splitpos - 1] != ' ')
+							splitpos--;
+
+						auto segment = remaining.substr(0, splitpos);
+						if(segment.empty())
+						{
+							counter++;
+							break;
+						}
+						else
+						{
+							cursor += 3 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+							strprinterrf("%s|>%s ", COLOUR_GREY_BOLD, COLOUR_RESET);
+
+							errs[i].second = remaining.substr(segment.length());
+							cursor += strprinterrf("%s", segment);
+						}
+					}
+					else
+					{
+						cursor += 1 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+						strprinterrf("%s|%s", COLOUR_GREY_BOLD, COLOUR_RESET);
+					}
+				}
+
+				cursor = 0;
+				strprinterrf("\n");
+			}
+
+			strprinterrf("\n\n");
+		}
+	}
+}
+
+
+void OverloadError::incorporate(const OverloadError& e)
+{
+	for(const auto& p : e.cands)
+		this->cands[p.first] = p.second;
+}
+
+
+void OverloadError::incorporate(const NonTrivialError& e)
+{
+	if(e.kind == Kind::Overload)
+		this->incorporate(dynamic_cast<const OverloadError&>(e));
+
+	else
+		this->otherErrors.push_back(e);
 }
 
 
@@ -298,12 +491,22 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 
 
+void MultiError::post()
+{
+	for(const auto& [ kind, loc, estr ] : this->_strs)
+	{
+		if(kind == MultiError::Kind::Error)            exitless_error(loc, "%s", estr);
+		else if(kind == MultiError::Kind::Warning)     warn(loc, "%s", estr);
+		else if(kind == MultiError::Kind::Info)        info(loc, "%s", estr);
+	}
+}
 
 
-
-
-
-
+[[noreturn]] void postErrorsAndQuit(NonTrivialError* err)
+{
+	err->post();
+	doTheExit();
+}
 
 
 

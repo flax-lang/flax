@@ -46,7 +46,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		iceAssert(cdf);
 
 		using Param = sst::FunctionDecl::Param;
-		ComplexError errs;
+		MultiError errs;
 
 		auto arguments = fs->typecheckCallArguments(this->args);
 		auto constructor = fs->resolveConstructorCall(cdf, util::map(arguments, [](FnCallArgument a) -> Param {

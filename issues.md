@@ -18,6 +18,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 5. String operators
 
 
+6. Location information for type specifiers in definitions
+
+
 7. 'cases' member of enums to enable runtime enumeration of... the enumeration.
 
 
@@ -183,6 +186,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
+
+`(??)`
+- magnificently beautiful and informative errors for function call overload failure.
 
 `(80d5297)`
 - fix a couple of unrelated bugs
