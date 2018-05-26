@@ -252,9 +252,9 @@ struct Locatable
 };
 
 
-struct PrettyError
+struct ComplexError
 {
-	PrettyError() { }
+	ComplexError() { }
 
 	enum class Kind
 	{
@@ -264,15 +264,15 @@ struct PrettyError
 	};
 
 	template <typename... Ts>
-	static PrettyError error(const Location& l, const char* fmt, Ts... ts)
+	static ComplexError error(const Location& l, const char* fmt, Ts... ts)
 	{
-		PrettyError errs;
+		ComplexError errs;
 		errs.addError(l, fmt, ts...);
 		return errs;
 	}
 
 	template <typename... Ts>
-	static PrettyError error(Locatable* l, const char* fmt, Ts... ts) { return PrettyError::error(l->loc, fmt, ts...); }
+	static ComplexError error(Locatable* l, const char* fmt, Ts... ts) { return ComplexError::error(l->loc, fmt, ts...); }
 
 
 	template <typename... Ts>
@@ -303,7 +303,7 @@ struct PrettyError
 	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
 
 	bool hasErrors() { return this->_strs.size() > 0; }
-	void incorporate(const PrettyError& other)
+	void incorporate(const ComplexError& other)
 	{
 		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
 	}
@@ -334,7 +334,7 @@ struct TCResult
 		sst::Stmt* _st;
 		sst::Expr* _ex;
 		sst::Defn* _df;
-		PrettyError* _pe;
+		ComplexError* _pe;
 	};
 
 	RK _kind = RK::Invalid;
@@ -345,13 +345,13 @@ struct TCResult
 	explicit TCResult(sst::Stmt* s) : _kind(RK::Statement)      { _st = s; }
 	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
-	explicit TCResult(const PrettyError& pe) : _kind(RK::Error) { _pe = new PrettyError(pe); }
+	explicit TCResult(const ComplexError& pe) : _kind(RK::Error) { _pe = new ComplexError(pe); }
 
 	TCResult(const TCResult& r)
 	{
 		this->_kind = r._kind;
 
-		if(this->isError())     this->_pe = new PrettyError(*r._pe);
+		if(this->isError())     this->_pe = new ComplexError(*r._pe);
 		else if(this->isStmt()) this->_st = r._st;
 		else if(this->isExpr()) this->_ex = r._ex;
 		else if(this->isDefn()) this->_df = r._df;
@@ -389,7 +389,7 @@ struct TCResult
 
 
 
-	PrettyError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
+	ComplexError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
 
 
 	sst::Expr* expr();
@@ -457,7 +457,7 @@ namespace std
 
 
 
-[[noreturn]] void postErrorsAndQuit(const PrettyError& error);
+[[noreturn]] void postErrorsAndQuit(const ComplexError& error);
 
 
 enum class VisibilityLevel
@@ -568,6 +568,10 @@ namespace util
 		return ret;
 	}
 
+	inline std::string plural(const std::string& thing, size_t count)
+	{
+		return thing + (count == 1 ? "" : "s");
+	}
 
 
 	template <typename T>

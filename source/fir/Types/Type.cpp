@@ -12,22 +12,22 @@ namespace pts
 
 namespace fir
 {
-	std::string Type::typeListToString(const std::initializer_list<Type*>& types)
+	std::string Type::typeListToString(const std::initializer_list<Type*>& types, bool includeBraces)
 	{
-		return typeListToString(std::vector<Type*>(types.begin(), types.end()));
+		return typeListToString(std::vector<Type*>(types.begin(), types.end()), includeBraces);
 	}
 
-	std::string Type::typeListToString(const std::vector<Type*>& types)
+	std::string Type::typeListToString(const std::vector<Type*>& types, bool braces)
 	{
 		// print types
-		std::string str = "{ ";
+		std::string str = (braces ? "{ " : "");
 		for(auto t : types)
 			str += t->str() + ", ";
 
 		if(str.length() > 2)
 			str = str.substr(0, str.length() - 2);
 
-		return str + " }";
+		return str + (braces ? " }" : "");
 	}
 
 

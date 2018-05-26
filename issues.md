@@ -202,7 +202,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 - actually add the instructions and stuff, fix a couple of bugs
 - `fir::ConstantString` is now actually a slice.
 - move as many of the dynamic array stuff to the new `SAA` functions as possible.
-- increase length when appending ._.
+- increase length when appending
 
 `(0ceb391)`
 - strings now behave like dynamic arrays
