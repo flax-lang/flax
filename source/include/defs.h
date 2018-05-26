@@ -252,9 +252,54 @@ struct Locatable
 };
 
 
-struct ComplexError
+struct NonTrivialError
 {
-	ComplexError() { }
+	enum class Kind
+	{
+		Overload,
+		Multi
+
+	} kind;
+
+	NonTrivialError(Kind k) : kind(k) { }
+	virtual ~NonTrivialError() { }
+
+	virtual void post() { }
+	virtual bool hasErrors() { return false; }
+};
+
+
+struct OverloadError : NonTrivialError
+{
+	OverloadError() : NonTrivialError(NonTrivialError::Kind::Overload) { }
+
+	OverloadError(Locatable* l, const std::string& p) : NonTrivialError(Kind::Overload) { this->setPrimary(l, p); }
+	OverloadError(const Location& l, const std::string& p) : NonTrivialError(Kind::Overload) { this->setPrimary(l, p); }
+
+	virtual void post() override;
+	virtual bool hasErrors() override;
+
+	void clear();
+
+	void setPrimary(Locatable* l, const std::string& p) { this->primaryError = { l->loc, p }; }
+	void setPrimary(const Location& l, const std::string& p) { this->primaryError = { l, p }; }
+
+	void add(Locatable* d, const std::pair<Location, std::string>& e);
+
+	void incorporate(const OverloadError& e);
+	void incorporate(const NonTrivialError& e);
+
+
+	std::pair<Location, std::string> primaryError;
+	std::unordered_map<Locatable*, std::vector<std::pair<Location, std::string>>> cands;
+
+	std::vector<NonTrivialError> otherErrors;
+};
+
+
+struct MultiError : NonTrivialError
+{
+	MultiError() : NonTrivialError(NonTrivialError::Kind::Multi) { }
 
 	enum class Kind
 	{
@@ -263,16 +308,19 @@ struct ComplexError
 		Info
 	};
 
+	virtual void post() override;
+	virtual bool hasErrors() override { return this->_strs.size() > 0; }
+
 	template <typename... Ts>
-	static ComplexError error(const Location& l, const char* fmt, Ts... ts)
+	static MultiError error(const Location& l, const char* fmt, Ts... ts)
 	{
-		ComplexError errs;
+		MultiError errs;
 		errs.addError(l, fmt, ts...);
 		return errs;
 	}
 
 	template <typename... Ts>
-	static ComplexError error(Locatable* l, const char* fmt, Ts... ts) { return ComplexError::error(l->loc, fmt, ts...); }
+	static MultiError error(Locatable* l, const char* fmt, Ts... ts) { return MultiError::error(l->loc, fmt, ts...); }
 
 
 	template <typename... Ts>
@@ -302,8 +350,7 @@ struct ComplexError
 	template <typename... Ts>
 	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
 
-	bool hasErrors() { return this->_strs.size() > 0; }
-	void incorporate(const ComplexError& other)
+	void incorporate(const MultiError& other)
 	{
 		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
 	}
@@ -334,7 +381,7 @@ struct TCResult
 		sst::Stmt* _st;
 		sst::Expr* _ex;
 		sst::Defn* _df;
-		ComplexError* _pe;
+		NonTrivialError* _pe;
 	};
 
 	RK _kind = RK::Invalid;
@@ -345,13 +392,16 @@ struct TCResult
 	explicit TCResult(sst::Stmt* s) : _kind(RK::Statement)      { _st = s; }
 	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
-	explicit TCResult(const ComplexError& pe) : _kind(RK::Error) { _pe = new ComplexError(pe); }
+
+	explicit TCResult(const NonTrivialError& pe) : _kind(RK::Error) { _pe = new NonTrivialError(pe); }
+	explicit TCResult(const OverloadError& pe) : _kind(RK::Error) { _pe = new OverloadError(pe); }
+	explicit TCResult(const MultiError& pe) : _kind(RK::Error) { _pe = new MultiError(pe); }
 
 	TCResult(const TCResult& r)
 	{
 		this->_kind = r._kind;
 
-		if(this->isError())     this->_pe = new ComplexError(*r._pe);
+		if(this->isError())     this->_pe = new NonTrivialError(*r._pe);
 		else if(this->isStmt()) this->_st = r._st;
 		else if(this->isExpr()) this->_ex = r._ex;
 		else if(this->isDefn()) this->_df = r._df;
@@ -389,7 +439,7 @@ struct TCResult
 
 
 
-	ComplexError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
+	NonTrivialError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
 
 
 	sst::Expr* expr();
@@ -455,9 +505,7 @@ namespace std
 	};
 }
 
-
-
-[[noreturn]] void postErrorsAndQuit(const ComplexError& error);
+[[noreturn]] void postErrorsAndQuit(NonTrivialError* error);
 
 
 enum class VisibilityLevel

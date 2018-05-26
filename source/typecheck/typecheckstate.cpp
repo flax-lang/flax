@@ -394,7 +394,7 @@ namespace sst
 			_tree = _tree->parent;
 		}
 
-		auto makeTheError = [](ComplexError* errs, Locatable* a, const std::string& n, const std::string& ak,
+		auto makeTheError = [](MultiError* errs, Locatable* a, const std::string& n, const std::string& ak,
 			const std::vector<std::pair<Locatable*, std::string>>& conflicts) {
 
 			errs->addError(a, "Duplicate definition of '%s'", n);
@@ -421,14 +421,14 @@ namespace sst
 			{
 				if(!didError)
 				{
-					ComplexError errs;
+					MultiError errs;
 					makeTheError(&errs, defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
 					// TODO: be more intelligent about when we give this informative tidbit
 					if(dcast(sst::FunctionDecl, otherdef) && dcast(sst::FunctionDecl, defn))
 						errs.addInfo(Location(), "Functions cannot be overloaded based on argument names alone");
 
-					postErrorsAndQuit(errs);
+					postErrorsAndQuit(&errs);
 				}
 			}
 		}
@@ -442,7 +442,7 @@ namespace sst
 
 		if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(defn->id.name); gdefs.size() > 0)
 		{
-			ComplexError errs;
+			MultiError errs;
 			if(auto fn = dcast(sst::FunctionDecl, defn))
 			{
 				// honestly we can't know if we will conflict with other functions.
@@ -472,7 +472,7 @@ namespace sst
 			}
 
 			if(errs.hasErrors())
-				postErrorsAndQuit(errs);
+				postErrorsAndQuit(&errs);
 		}
 
 		if(didError)

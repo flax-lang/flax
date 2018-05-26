@@ -10,6 +10,7 @@
 #ifndef _WIN32
 	#include <unistd.h>
 	#include <sys/mman.h>
+	#include <sys/ioctl.h>
 
 	#define USE_MMAP true
 
@@ -243,6 +244,23 @@ namespace platform
 			free(ret);
 
 			return str;
+		}
+		#endif
+	}
+
+	size_t getTerminalWidth()
+	{
+		#ifdef _WIN32
+		{
+			CONSOLE_SCREEN_BUFFER_INFO csbi;
+			GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+			return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+		}
+		#else
+		{
+			struct winsize w;
+			ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+			return w.ws_col;
 		}
 		#endif
 	}

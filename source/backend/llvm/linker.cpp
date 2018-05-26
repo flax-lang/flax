@@ -604,7 +604,6 @@ namespace backend
 			#endif
 
 			const char* m = ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str();
-			warn("thing is %s", m);
 			mainfunc(1, &m);
 		}
 		else
