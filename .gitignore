@@ -39,7 +39,7 @@ commit
 run
 *.sublime-*
 build/sysroot
-build/meson
+build/meson-*
 .modifydates
 
 # this is a generated file, so we ignore it.

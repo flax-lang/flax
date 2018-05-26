@@ -2,7 +2,8 @@ project('flax', ['c', 'cpp'])
 
 the_compiler = meson.get_compiler('c')
 
-buildKind = 'Debug'
+buildKind = get_option('buildtype')
+message('build type is ' + buildKind)
 
 mpir_root_dir = 'D:/Projects/lib/mpir'
 mpfr_root_dir = 'D:/Projects/lib/mpfr'
@@ -22,14 +23,17 @@ if the_compiler.get_id() == 'msvc'
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
 	add_project_link_arguments('/machine:X64', language: 'cpp')
-	add_project_link_arguments('/incremental', language: 'cpp')
-	# add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
-	# add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
-	# add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
+	# add_project_link_arguments('/incremental', language: 'cpp')
+	add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
+	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
+	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
 else
-	add_project_arguments('--std=c++17', language: 'cpp')
-	add_project_arguments('--std=c11', language: 'c')
+	# add_project_arguments('--std=c++17', language: 'cpp')
+	# add_project_arguments('--std=c11', language: 'c')
+
+	error('You fool, use the makefile for non-windows builds')
 endif
+
 
 source_files = files([
 	'source/main.cpp',
@@ -184,6 +188,7 @@ llvm_dep = declare_dependency(version: '5.0.0', include_directories: include_dir
 		the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),

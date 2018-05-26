@@ -20,7 +20,7 @@ namespace backend
 		return this->targetMachine.get();
 	}
 
-	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
+	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::shared_ptr<llvm::Module> mod)
 	{
 		auto resolver = llvm::orc::createLambdaResolver([&](const std::string& name) -> auto {
 			if(auto sym = this->compileLayer.findSymbol(name, false))
@@ -36,7 +36,7 @@ namespace backend
 				return llvm::JITSymbol(nullptr);
 		});
 
-		return llvm::cantFail(this->compileLayer.addModule(std::move(mod), std::move(resolver)));
+		return llvm::cantFail(this->compileLayer.addModule(mod, std::move(resolver)));
 	}
 
 	void LLVMJit::removeModule(LLVMJit::ModuleHandle_t mod)
@@ -50,7 +50,7 @@ namespace backend
 		llvm::raw_string_ostream out(mangledName);
 		llvm::Mangler::getNameWithPrefix(out, name, this->targetMachine->createDataLayout());
 
-		return this->compileLayer.findSymbol(out.str(), true);
+		return this->compileLayer.findSymbol(out.str(), false);
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)

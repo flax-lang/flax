@@ -99,7 +99,7 @@ namespace backend
 			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().str());
 
 
-		this->linkedModule = mainModule;
+		this->linkedModule = std::shared_ptr<llvm::Module>(mainModule);
 		this->finaliseGlobalConstructors();
 
 		// ok, move some shit into here because llvm is fucking retarded
@@ -172,13 +172,12 @@ namespace backend
 			fpm.add(llvm::createLoopSimplifyPass());
 		}
 
-		iceAssert(this->linkedModule);
 		fpm.run(*this->linkedModule);
 	}
 
 	void LLVMBackend::writeOutput()
 	{
-		this->linkedModule->print(llvm::errs(), 0);
+		// this->linkedModule->print(llvm::errs(), 0);
 
 		// verify the module.
 		{
@@ -206,7 +205,7 @@ namespace backend
 			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
 			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
-			llvm::WriteBitcodeToFile(this->linkedModule, rso);
+			llvm::WriteBitcodeToFile(this->linkedModule.get(), rso);
 			rso.close();
 		}
 		else
@@ -365,9 +364,9 @@ namespace backend
 		// todo: support other platforms
 		llvm::InitializeNativeTarget();
 
-		llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
-		llvm::initializeCore(*Registry);
-		llvm::initializeCodeGen(*Registry);
+		// llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
+		// llvm::initializeCore(*Registry);
+		// llvm::initializeCodeGen(*Registry);
 
 		llvm::Triple targetTriple;
 		targetTriple.setTriple(frontend::getParameter("targetarch").empty() ? llvm::sys::getProcessTriple()
@@ -418,8 +417,10 @@ namespace backend
 		if(frontend::getIsPositionIndependent())
 			relocModel = llvm::Reloc::Model::PIC_;
 
-		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
-			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
+		// this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
+		// 	targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
+
+		this->targetMachine = llvm::EngineBuilder().selectTarget();
 	}
 
 
@@ -576,27 +577,35 @@ namespace backend
 
 		if(this->entryFunction)
 		{
+			#if 1
+
 			auto jit = LLVMJit(this->targetMachine);
-			auto jitmod = jit.addModule(std::unique_ptr<llvm::Module>(this->linkedModule));
+			jit.addModule(this->linkedModule);
 
-			auto entryaddr = jit.getSymbolAddress(this->entryFunction->getName().str());
-
+			auto name = this->entryFunction->getName().str();
+			auto entryaddr = jit.getSymbolAddress(name);
 			auto mainfunc = (int (*)(int, const char**)) entryaddr;
 
-			// llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
+			iceAssert(mainfunc && "failed to resolve entry function address");
 
-			// // finalise the object, which does something.
-			// execEngine->finalizeObject();
+			#else
+			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
 
-			// void* func = execEngine->getPointerToFunction(this->entryFunction);
-			// iceAssert(func != 0);
+			// finalise the object, which does something.
+			iceAssert(execEngine);
+			execEngine->finalizeObject();
 
-			// auto mainfunc = (int (*)(int, const char**)) func;
+			std::uninitialized_copy(0, 0, 0);
 
-			const char* m[] = { ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str() };
+			void* func = execEngine->getPointerToFunction(this->entryFunction);
+			iceAssert(func != 0);
 
-			mainfunc(1, m);
+			auto mainfunc = (int (*)(int, const char**)) func;
+			#endif
 
+			const char* m = ("__llvmJIT_" + this->linkedModule->getModuleIdentifier()).c_str();
+			warn("thing is %s", m);
+			mainfunc(1, &m);
 		}
 		else
 		{
@@ -673,7 +682,7 @@ namespace backend
 			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(c),
 				{ llvm::Type::getInt32Ty(c), llvm::Type::getInt8Ty(c)->getPointerTo()->getPointerTo() }, false);
 
-			llvm::Function* mainf = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage, "main", this->linkedModule);
+			llvm::Function* mainf = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage, "main", this->linkedModule.get());
 			llvm::BasicBlock* entry = llvm::BasicBlock::Create(c, "main_entry", mainf);
 			builder.SetInsertPoint(entry);
 
@@ -708,7 +717,7 @@ namespace backend
 			}
 		}
 
-
+		// return;
 		{
 			// insert a call at the beginning of main().
 			if((frontend::getOutputMode() == ProgOutputMode::Program || frontend::getOutputMode() == ProgOutputMode::RunJit) && !entryfunc)
@@ -722,6 +731,9 @@ namespace backend
 
 			builder.SetInsertPoint(f);
 			builder.CreateCall(this->linkedModule->getFunction("__global_init_function__"));
+
+			// auto x = builder.CreateAlloca(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), nullptr, "x");
+			// builder.CreateStore(llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 491), x, true);
 			builder.CreateBr(entryblock);
 		}
 

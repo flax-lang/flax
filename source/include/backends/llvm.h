@@ -77,10 +77,8 @@ namespace backend
 		llvm::SmallVector<char, 0> initialiseLLVMStuff();
 
 		llvm::Function* entryFunction = 0;
-
-
-		llvm::Module* linkedModule = 0;
 		llvm::TargetMachine* targetMachine = 0;
+		std::shared_ptr<llvm::Module> linkedModule;
 	};
 
 	struct LLVMJit
@@ -91,7 +89,7 @@ namespace backend
 		llvm::TargetMachine* getTargetMachine();
 
 		void removeModule(ModuleHandle_t mod);
-		ModuleHandle_t addModule(std::unique_ptr<llvm::Module> mod);
+		ModuleHandle_t addModule(std::shared_ptr<llvm::Module> mod);
 
 		llvm::JITSymbol findSymbol(const std::string& name);
 		llvm::JITTargetAddress getSymbolAddress(const std::string& name);
