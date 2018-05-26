@@ -38,24 +38,6 @@ namespace fir
 	struct Function;
 
 
-	template <typename T>
-	struct TypeCache
-	{
-		std::vector<T*> cache;
-		T* getOrAddCachedType(T* type)
-		{
-			for(auto ty : this->cache)
-			{
-				if(ty->isTypeEqual(type))
-				{
-					if(type != ty)  delete type;
-					return ty;
-				}
-			}
-
-			return *(cache.insert(cache.end(), type));
-		}
-	};
 
 	enum class TypeKind
 	{
@@ -844,6 +826,44 @@ namespace fir
 
 		public:
 		static AnyType* get();
+	};
+
+	struct HashTypeByStr
+	{
+		size_t operator() (Type* t) const
+		{
+			return std::hash<std::string>()(t->str());
+		}
+	};
+
+	struct TypesEqual
+	{
+		bool operator() (Type* a, Type* b) const
+		{
+			return a->isTypeEqual(b);
+		}
+	};
+
+	struct TypeCache
+	{
+		std::unordered_set<Type*, HashTypeByStr, TypesEqual> cache;
+
+		template <typename T>
+		T* getOrAddCachedType(T* type)
+		{
+			if(auto it = cache.find(type); it != cache.end())
+			{
+				delete type;
+				return dynamic_cast<T*>(*it);
+			}
+			else
+			{
+				cache.insert(type);
+				return type;
+			}
+		}
+
+		static TypeCache& get();
 	};
 }
 

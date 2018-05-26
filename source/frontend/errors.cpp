@@ -349,15 +349,18 @@ void OverloadError::post()
 	// say 'call site'
 	strprinterrf("(call site):\n%s\n", printContext(HighlightOptions(this->primaryError.first)));
 
-
-
 	// then any other errors.
 	for(auto& other : this->otherErrors)
 		other.post();
 
+	// sort the candidates by line number
+	// (idk maybe it's a windows thing but it feels like the order changes every so often)
+	auto cds = std::vector<std::pair<Locatable*, std::vector<std::pair<Location, std::string>>>>(cands.begin(), cands.end());
+	std::sort(cds.begin(), cds.end(), [](auto a, auto b) -> bool { return a.first->loc.line < b.first->loc.line; });
+
 	// go through each candidate.
 	int counter = 1;
-	for(auto [ loc, errs ] : cands)
+	for(auto [ loc, errs ] : cds)
 	{
 		if(errs.size() == 1 && errs[0].first == Location())
 		{
@@ -409,7 +412,7 @@ void OverloadError::post()
 			size_t counter = 0;
 			while(counter < errs.size())
 			{
-				strprinterrf("%s |", spaces(num_width));
+				strprinterrf("%s", spaces(margin));
 
 				for(size_t i = 0; i < errs.size() - counter; i++)
 				{
@@ -426,7 +429,7 @@ void OverloadError::post()
 						auto splitpos = std::min(remaining.length(), width - realcursor);
 
 						// refuse to split words in half.
-						while(splitpos > 0 && remaining[splitpos - 1] != ' ')
+						while(splitpos > 0 && splitpos < remaining.length() && remaining[splitpos - 1] != ' ')
 							splitpos--;
 
 						auto segment = remaining.substr(0, splitpos);
