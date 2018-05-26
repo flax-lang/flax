@@ -44,9 +44,18 @@ static std::string repeat(std::string str, size_t n)
 	return str;
 }
 
+static std::string spaces(size_t n)
+{
+	return repeat(" ", n);
+}
+
+
+#define UNDERLINE_CHARACTER " ̅"
+// #define UNDERLINE_CHARACTER "^"
+
 std::string printContext(HighlightOptions ops)
 {
-	std::string ret;
+	std::string retstr;
 
 	auto lines = frontend::getFileLines(ops.caret.fileID);
 	if(lines.size() > ops.caret.line)
@@ -73,13 +82,12 @@ std::string printContext(HighlightOptions ops)
 		}
 
 		auto str = ln.str();
-		ret += strprintf("%s%s\n", _convertTab(), str.c_str());
+		auto part1 = strprintf("%s%s", _convertTab(), str.c_str());
 
 		size_t cursorX = 1;
-
 		bool uline = ops.caret.len >= 5 && ops.underlines.empty();
 
-		std::string part2;
+		std::string part2 = _convertTab();
 
 		ops.caret.col -= adjust;
 		for(auto& u : ops.underlines)
@@ -104,9 +112,9 @@ std::string printContext(HighlightOptions ops)
 					cursorX += num1 + 1 + num2;
 
 					part2 += strprintf("%s%s%s%s%s", COLOUR_GREEN_BOLD,
-						uline ? repeat(" ̅", num1).c_str() : std::string(num1, ' '),
-						ops.drawCaret && !uline ? "^" : " ̅",
-						uline ? repeat(" ̅", num2).c_str() : std::string(num2, ' '),
+						uline ? repeat(UNDERLINE_CHARACTER, num1).c_str() : std::string(num1, ' '),
+						ops.drawCaret && !uline ? "^" : UNDERLINE_CHARACTER,
+						uline ? repeat(UNDERLINE_CHARACTER, num2).c_str() : std::string(num2, ' '),
 						COLOUR_RESET);
 				}
 				else
@@ -117,20 +125,28 @@ std::string printContext(HighlightOptions ops)
 			}
 			else
 			{
-				part2 += strprintf("%s%s%s", COLOUR_GREEN_BOLD, repeat(" ̅", ul.len).c_str(), COLOUR_RESET);
+				part2 += strprintf("%s%s%s", COLOUR_GREEN_BOLD, repeat(UNDERLINE_CHARACTER, ul.len).c_str(), COLOUR_RESET);
 				cursorX += ul.len;
 			}
-
 		}
 
-		ret += (_convertTab() + part2);
+
+		// ok, now we print the fancy left side pipes and line numbers and all
+		{
+			auto num_width = std::to_string(ops.caret.line).length();
+
+			// one spacing line
+			retstr =  strprintf("%s |\n", spaces(num_width));
+			retstr += strprintf("%d |%s\n", ops.caret.line, part1);
+			retstr += strprintf("%s |%s\n", spaces(num_width), part2);
+		}
 	}
 	else
 	{
-		ret += strprintf("(no context)");
+		retstr = strprintf("(no context)");
 	}
 
-	return ret;
+	return retstr;
 }
 
 static std::vector<Locatable*> errorLocationStack;
@@ -149,19 +165,19 @@ void popErrorLocation()
 
 
 
-std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type)
+std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type)
 {
 	std::string ret;
 
 	auto colour = COLOUR_RED_BOLD;
-	if(strcmp(type, "Warning") == 0)
+	if(strcmp(type, "warning") == 0)
 		colour = COLOUR_MAGENTA_BOLD;
 
-	else if(strcmp(type, "Note") == 0)
+	else if(strcmp(type, "note") == 0)
 		colour = COLOUR_GREY_BOLD;
 
-	bool empty = strcmp(type, "") == 0;
-	bool dobold = strcmp(type, "Note") != 0;
+	// bool empty = strcmp(type, "") == 0;
+	// bool dobold = strcmp(type, "note") != 0;
 
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
@@ -169,41 +185,33 @@ std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, cons
 	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
 		: frontend::getFilenameFromID(ops.caret.fileID));
 
-	// std::string filename = "TODO: filename";
-
-	if(ops.caret.fileID > 0)
-		ret += strprintf("%s%s(%s:%zu:%zu) ", COLOUR_RESET, COLOUR_BLACK_BOLD, filename, ops.caret.line + 1, ops.caret.col + 1);
-
-	if(empty)	ret += strprintf("%s%s%s%s", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
-	else		ret += strprintf("%s%s%s%s: ", colour, type, COLOUR_RESET, dobold ? COLOUR_BLACK_BOLD : "");
-
-	return ret;
-}
-
-std::string __error_gen_part2(const HighlightOptions& ops)
-{
-	std::string ret = strprintf("%s\n", COLOUR_RESET);
+	ret += strprintf("%s%s%s:%s %s\n", COLOUR_RESET, colour, type, COLOUR_RESET, msg);
 
 	if(ops.caret.fileID > 0)
 	{
-		std::vector<std::string> lines;
-		if(ops.caret.fileID > 0)
-			ret += printContext(ops);
+		auto location = strprintf("%s:%d:%d", filename, ops.caret.line + 1, ops.caret.col + 1);
+		ret += strprintf("%s%sat:%s %s%s", COLOUR_RESET, COLOUR_GREY_BOLD, spaces(strlen(type) - 2), COLOUR_RESET, location);
 	}
 
-	return ret + "\n";
-}
+	ret += "\n";
 
+	if(ops.caret.fileID > 0)
+		ret += printContext(ops);
+
+	ret += "\n";
+	return ret;
+}
 
 
 
 #define MAX_BACKTRACE_DEPTH 0
 
 //! prevents re-entrant calling
-static bool isBacktracing = false;
+// static bool isBacktracing = false;
 std::string __error_gen_backtrace(const HighlightOptions& ops)
 {
 	std::string ret;
+	#if 0
 
 	if(isBacktracing || MAX_BACKTRACE_DEPTH == 0) return ret;
 
@@ -243,6 +251,8 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 	}
 
 	isBacktracing = false;
+	#endif
+
 	return ret;
 }
 
@@ -262,13 +272,13 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 
 
-[[noreturn]] void postErrorsAndQuit(const PrettyError& error)
+[[noreturn]] void postErrorsAndQuit(const ComplexError& error)
 {
 	for(const auto& [ kind, loc, estr ] : error._strs)
 	{
-		if(kind == PrettyError::Kind::Error)            exitless_error(loc, "%s", estr);
-		else if(kind == PrettyError::Kind::Warning)     warn(loc, "%s", estr);
-		else if(kind == PrettyError::Kind::Info)        info(loc, "%s", estr);
+		if(kind == ComplexError::Kind::Error)            exitless_error(loc, "%s", estr);
+		else if(kind == ComplexError::Kind::Warning)     warn(loc, "%s", estr);
+		else if(kind == ComplexError::Kind::Info)        info(loc, "%s", estr);
 	}
 
 	doTheExit();

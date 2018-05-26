@@ -35,7 +35,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer == 0)
 			{
-				PrettyError errs;
+				ComplexError errs;
 				errs.addError(this, "Ambiguous reference to '%s'", this->name);
 
 				for(auto v : vs)
@@ -53,7 +53,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return returnResult(v);
 			}
 
-			PrettyError errs;
+			ComplexError errs;
 			errs.addError(this, "No definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
 				errs.addInfo(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
@@ -72,7 +72,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				//* -- those are technically "in" a function body, but they're certainly not methods.
 				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
 				{
-					PrettyError errs;
+					ComplexError errs;
 					errs.addError(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
 						this->name, fld->parentType->id.name);
 

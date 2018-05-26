@@ -95,7 +95,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 
 			if(val->getType() != inf)
 			{
-				PrettyError errs;
+				ComplexError errs;
 				errs.addError(arg.loc, "Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'",
 					i, inf, val->getType());
 

@@ -100,20 +100,18 @@ namespace frontend
 	std::string getFilenameFromPath(std::string path);
 }
 
-std::string __error_gen_part1(const HighlightOptions& ops, const char* msg, const char* type);
-std::string __error_gen_part2(const HighlightOptions& ops);
-std::string __error_gen_backtrace(const HighlightOptions& ops);
+std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type);
 
 template <typename... Ts>
-std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, bool dotrace, Ts... ts)
+std::string __error_gen(const HighlightOptions& ops, const char* msg, const char* type, bool, Ts... ts)
 {
-	std::string ret = __error_gen_part1(ops, msg, type);
-	ret += tinyformat::format(msg, ts...);
-	ret += __error_gen_part2(ops);
+	// std::string ret = __error_gen_part1(ops, msg, type);
+	// ret += tinyformat::format(msg, ts...);
+	// ret += __error_gen_part2(ops);
 
-	if(dotrace) ret += __error_gen_backtrace(ops);
+	// return ret;
 
-	return ret;
+	return __error_gen_internal(ops, tinyformat::format(msg, ts...), type);
 }
 
 
@@ -166,14 +164,14 @@ template <typename... Ts> std::string name (Locatable* e, HighlightOptions ops, 
 
 
 
-ERROR_FUNCTION(error, "Error", noreturn, true);
-ERROR_FUNCTION(info, "Note", maybe_unused, false);
-ERROR_FUNCTION(warn, "Warning", maybe_unused, false);
-ERROR_FUNCTION(exitless_error, "Error", maybe_unused, false);
+ERROR_FUNCTION(error, "error", noreturn, true);
+ERROR_FUNCTION(info, "note", maybe_unused, false);
+ERROR_FUNCTION(warn, "warning", maybe_unused, false);
+ERROR_FUNCTION(exitless_error, "error", maybe_unused, false);
 
-STRING_ERROR_FUNCTION(strinfo, "Note");
-STRING_ERROR_FUNCTION(strerror, "Error");
-STRING_ERROR_FUNCTION(strwarn, "Warning");
+STRING_ERROR_FUNCTION(strinfo, "note");
+STRING_ERROR_FUNCTION(strerror, "error");
+STRING_ERROR_FUNCTION(strwarn, "warning");
 
 
 

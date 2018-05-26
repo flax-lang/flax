@@ -104,7 +104,7 @@ namespace sst
 
 			if(type->generics.find(map.first) != type->generics.end() && ptrs < type->generics[map.first].pointerDegree)
 			{
-				PrettyError errs;
+				ComplexError errs;
 				errs.addError(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s': replacement type has pointer degree %d, which is less than the required %d", map.second, map.first, type->name, ptrs, type->generics[map.first].pointerDegree);
 
 				return TCResult(errs);
@@ -128,7 +128,7 @@ namespace sst
 
 				if(mappings.find(name) == mappings.end())
 				{
-					PrettyError errs;
+					ComplexError errs;
 					errs.addError(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", type->name, name);
 					errs.addInfo(type, "'%s' was defined here:", type->name);
 
@@ -142,7 +142,7 @@ namespace sst
 				(void) ty;
 				if(type->generics.find(name) == type->generics.end())
 				{
-					PrettyError errs;
+					ComplexError errs;
 					errs.addError(this->loc(), "Parametric entity '%s' does not have an argument '%s'", type->name, name);
 					errs.addInfo(type, "'%s' was defined here:", type->name);
 
@@ -193,12 +193,12 @@ namespace sst
 
 		if(gmaps.empty())
 		{
-			return TCResult(PrettyError::error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
+			return TCResult(ComplexError::error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
 		}
 
 		if(infer == 0 && gdefs.size() > 1)
 		{
-			PrettyError errs;
+			ComplexError errs;
 			errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
 			for(auto g : gdefs)
 				errs.addInfo(g, "Potential target here:");
@@ -212,7 +212,7 @@ namespace sst
 		// TODO: find a better way to do this??
 
 		std::vector<sst::Defn*> pots;
-		std::vector<std::pair<ast::Parameterisable*, PrettyError>> failures;
+		std::vector<std::pair<ast::Parameterisable*, ComplexError>> failures;
 
 		for(const auto& gdef : gdefs)
 		{
@@ -233,7 +233,7 @@ namespace sst
 		{
 			if(pots.size() > 1)
 			{
-				PrettyError errs;
+				ComplexError errs;
 				errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
 				for(auto p : pots)
 					errs.addInfo(p, "Potential target here:");
@@ -251,7 +251,7 @@ namespace sst
 		{
 			iceAssert(failures.size() > 0);
 
-			PrettyError errs;
+			ComplexError errs;
 			errs.addError(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s'; candidates are:", name);
 			for(const auto& [ f, e ] : failures)
 			{
