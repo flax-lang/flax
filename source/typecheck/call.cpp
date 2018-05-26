@@ -127,8 +127,8 @@ namespace sst
 
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
-	static int computeOverloadDistance(TypecheckState* fs, const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
-		const std::vector<FunctionDecl::Param>& args, bool cvararg, ComplexError* errs, Defn* candidate)
+	static int computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
+		const std::vector<FunctionDecl::Param>& args, bool cvararg, OverloadError* errs, Defn* candidate)
 	{
 		iceAssert(errs);
 		if(target.empty() && args.empty())
@@ -137,14 +137,9 @@ namespace sst
 		bool fvararg = (target.size() > 0 && target.back().type->isVariadicArrayType());
 		bool anyvararg = cvararg || fvararg;
 
-		if(!anyvararg && target.size() != args.size())
+		if((!anyvararg && target.size() != args.size()) || (anyvararg && args.size() < (fvararg ? target.size() - 1 : target.size())))
 		{
-			errs->addError(fnLoc, "Mismatched number of arguments; expected %zu, got %zu", target.size(), args.size());
-			return -1;
-		}
-		else if(anyvararg && args.size() < (fvararg ? target.size() - 1 : target.size()))
-		{
-			errs->addError(fnLoc, "Mismatched number of arguments; expected %zu, got %zu", target.size(), args.size());
+			errs->add(fnLoc, { fnLoc->loc, strprintf("Mismatched number of arguments; expected %d, got %d", target.size(), args.size()) });
 			return -1;
 		}
 
@@ -183,22 +178,26 @@ namespace sst
 			{
 				if(k.name == "")
 				{
-					errs->addError(k.loc, "Positional arguments cannot appear after named arguments in a function call");
+					// errs->add(fnLoc, { k.loc, strprintf("Positional arguments cannot appear after named arguments in a function call") });
+					error(k.loc, "how did this happen?? Positional arguments cannot appear after named arguments in a function call");
 					return -1;
 				}
 				else if(candidate && dcast(sst::FunctionDefn, candidate) && dcast(sst::FunctionDefn, candidate)->parentTypeForMethod && k.name == "self")
 				{
-					errs->addError(k.loc, "Self pointer cannot be specified in a method call");
+					// errs->add(fnLoc, { k.loc, strprintf("Self pointer cannot be specified in a method call") });
+					error(k.loc, "how did this happen?? Self pointer cannot be specified in a method call");
 					return -1;
 				}
 				else if(names.find(k.name) != names.end())
 				{
-					errs->addError(k.loc, "Duplicate named argument '%s'", k.name);
+					// errs->add(fnLoc, { k.loc, strprintf("Duplicate named argument '%s'", k.name) });
+					error(k.loc, "how did this happen?? Duplicate named argument '%s'", k.name);
 					return -1;
 				}
 				else if(nameToIndex.find(k.name) == nameToIndex.end())
 				{
-					errs->addError(k.loc, "Function does not have a parameter named '%s'", k.name);
+					// errs->add(fnLoc, { k.loc, strprintf("Function does not have a parameter named '%s'", k.name) });
+					error(k.loc, "how did this happen?? Function does not have a parameter named '%s'", k.name);
 					return -1;
 				}
 
@@ -216,9 +215,8 @@ namespace sst
 			auto d = fs->getCastDistance(args[i].type, target[i].type);
 			if(d == -1)
 			{
-				errs->addError(args[i].loc, "Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'",
-					i, args[i].type, target[i].type);
-				return -1;
+				errs->add(fnLoc, { target[i].loc, strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'", i, args[i].type, target[i].type) });
+				// return -1;
 			}
 			else
 			{
@@ -233,16 +231,15 @@ namespace sst
 			auto ind = nameToIndex[narg.name];
 			if(!positional.empty() && ind <= positional.size())
 			{
-				errs->addError(narg.loc, "Duplicate argument '%s', was already specified as a positional argument", narg.name);
-				return -1;
+				errs->add(fnLoc, { target[ind].loc, strprintf("Duplicate argument '%s', was already specified as a positional argument", narg.name) });
+				// return -1;
 			}
 
 			int d = fs->getCastDistance(narg.type, target[ind].type);
 			if(d == -1)
 			{
-				errs->addError(narg.loc, "Mismatched argument type in named argument '%s': no valid cast from given type '%s' to expected type '%s'",
-					narg.name, narg.type, target[ind].type);
-				return -1;
+				errs->add(fnLoc, { target[ind].loc, strprintf("Mismatched argument type in named argument '%s': no valid cast from given type '%s' to expected type '%s'", narg.name, narg.type, target[ind].type) });
+				// return -1;
 			}
 
 			// info("ndist + %d", d);
@@ -265,16 +262,15 @@ namespace sst
 				{
 					if(!args.back().wasSplat)
 					{
-						errs->addError(args.back().loc, "To forward a parameter pack, or to pass a slice as a parameter pack to a variadic function, use the splat (`...`) operator");
+						errs->add(fnLoc, { target.back().loc, strprintf("To forward a parameter pack, or to pass a slice as a parameter pack to a variadic function, use the splat (`...`) operator") });
 
-						return -1;
+						// return -1;
 					}
 					else if(lasty->getArrayElementType() != elmTy)
 					{
-						errs->addError(args.back().loc, "Mismatched type in parameter pack forwarding; expected element type of '%s', but found '%s' instead",
-							elmTy, lasty->getArrayElementType());
+						errs->add(fnLoc, { target.back().loc, strprintf("Mismatched type in parameter pack forwarding: expected element type of '%s', but found '%s' instead", elmTy, lasty->getArrayElementType()) });
 
-						return -1;
+						// return -1;
 					}
 					else
 					{
@@ -296,9 +292,9 @@ namespace sst
 					auto dist = fs->getCastDistance(ty, elmTy);
 					if(dist == -1)
 					{
-						errs->addError(args.back().loc, "Mismatched type in variadic argument; no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy);
+						errs->add(fnLoc, { target.back().loc, strprintf("Mismatched type in variadic argument: no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy) });
 
-						return -1;
+						// return -1;
 					}
 
 					// info("vdist + %d (%s -> %s)", dist, ty, elmTy);
@@ -309,17 +305,19 @@ namespace sst
 
 		// info(fs->loc(), "for this boi:");
 		// warn(candidate, "distance %d", distance);
-		return distance;
+		if(errs->hasErrors())   return -1;
+		else                    return distance;
 	}
 
 
 
 	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
-		ComplexError errs;
+		OverloadError errs;
 		using Param = FunctionDefn::Param;
 
-		return computeOverloadDistance(this, this->loc(), util::map(a, [](fir::Type* t) -> Param { return Param(t); }),
+		auto l = Locatable(this->loc(), "");
+		return computeOverloadDistance(this, &l, util::map(a, [](fir::Type* t) -> Param { return Param(t); }),
 			util::map(b, [](fir::Type* t) -> Param { return Param(t); }), false, &errs, 0);
 	}
 
@@ -346,15 +344,15 @@ namespace sst
 	TCResult TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
-		if(cands.empty()) return TCResult(ComplexError::error(Location(), "No candidates"));
+		if(cands.empty()) return TCResult(MultiError::error(Location(), "No candidates"));
 
 		using Param = FunctionDefn::Param;
 		iceAssert(cands.size() > 0);
 
-		ComplexError errors;
+		OverloadError errors;
 
 		int bestDist = INT_MAX;
-		std::map<Defn*, ComplexError> fails;
+		std::map<Defn*, OverloadError> fails;
 		std::vector<std::pair<Defn*, int>> finals;
 
 		for(auto cand : cands)
@@ -369,8 +367,7 @@ namespace sst
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
 					args.insert(args.begin(), Param(def->parentTypeForMethod->getPointerTo()));
 
-				dist = computeOverloadDistance(this, cand->loc, fn->params,
-					args, fn->isVarArg, &fails[fn], cand);
+				dist = computeOverloadDistance(this, cand, fn->params, args, fn->isVarArg, &fails[fn], cand);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{
@@ -382,15 +379,15 @@ namespace sst
 				{
 					if(p.name != "")
 					{
-						errors.addError(p.loc, "Function values cannot be called with named arguments");
-						errors.addInfo(vr, "'%s' was defined here:", vr->id.name);
+						errors.setPrimary(p.loc, "Function values cannot be called with named arguments");
+						errors.add(vr, { Location(), strprintf("'%s' was defined here:", vr->id.name) });
 
 						return TCResult(errors);
 					}
 				}
 
 				auto prms = ft->getArgumentTypes();
-				dist = computeOverloadDistance(this, cand->loc, util::map(prms, [](fir::Type* t) -> auto { return Param(t); }),
+				dist = computeOverloadDistance(this, cand, util::map(prms, [](fir::Type* t) -> auto { return Param(t); }),
 					arguments, false, &fails[vr], cand);
 			}
 
@@ -408,14 +405,11 @@ namespace sst
 		{
 			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
 
-			errors.addError(this->loc(), "No overload in call to '%s(%s)' amongst %zu %s",
-				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()));
+			errors.setPrimary(this->loc(), strprintf("No overload in call to '%s(%s)' amongst %zu %s",
+				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
 
 			for(auto f : fails)
-			{
-				errors.addInfo(f.first, "Candidate not viable:");
 				errors.incorporate(f.second);
-			}
 
 			return TCResult(errors);
 		}
@@ -466,10 +460,10 @@ namespace sst
 			}
 			else
 			{
-				errors.addError(this->loc(), "Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size());
+				errors.setPrimary(this->loc(), strprintf("Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size()));
 
 				for(auto f : finals)
-					errors.addInfo(f.first, "Possible target (overload distance %d):", f.second);
+					errors.add(f.first, { Location(), strprintf("Possible target (overload distance %d):", f.second) });
 
 				return TCResult(errors);
 			}
@@ -487,7 +481,7 @@ namespace sst
 	{
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
-		ComplexError errors;
+		OverloadError errors;
 		std::vector<Defn*> fns;
 		StateTree* tree = this->stree;
 
@@ -535,7 +529,10 @@ namespace sst
 		if(fns.empty())
 		{
 			if(!didGeneric)
-				errors.addErrorBefore(this->loc(), "No such function named '%s'", name);
+			{
+				errors.clear();
+				errors.setPrimary(this->loc(), strprintf("No such function named '%s'", name));
+			}
 
 			return TCResult(errors);
 		}
@@ -564,10 +561,10 @@ namespace sst
 			else
 			{
 				didVar = true;
-				errors.addError(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-					name, def->type);
+				errors.setPrimary(this->loc(), strprintf("'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+					name, def->type));
 
-				errors.addInfo(def, "Previously defined here:");
+				errors.add(def, { Location(), "Previously defined here:" });
 				return TCResult(errors);
 			}
 		}
@@ -590,7 +587,7 @@ namespace sst
 			{
 				if(arg.name.empty())
 				{
-					return TCResult(ComplexError::error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
+					return TCResult(MultiError::error(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
 				}
 			}
 
@@ -601,8 +598,10 @@ namespace sst
 
 			if(cand.isError())
 			{
-				cand.error().addErrorBefore(this->loc(), "Failed to find matching initialiser for class '%s':", cls->id.name);
-				return cand;
+				auto ne = OverloadError(this->loc(), strprintf("Failed to find matching initialiser for class '%s':", cls->id.name));
+				ne.incorporate(cand.error());
+
+				return TCResult(ne);
 			}
 
 			return TCResult(cand);
@@ -630,7 +629,7 @@ namespace sst
 			{
 				if(arg.name.empty() && useNames)
 				{
-					return TCResult(ComplexError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
+					return TCResult(MultiError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(firstName && !arg.name.empty())
 				{
@@ -639,15 +638,15 @@ namespace sst
 				}
 				else if(!arg.name.empty() && !useNames && !firstName)
 				{
-					return TCResult(ComplexError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
+					return TCResult(MultiError::error(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
 				}
 				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
 				{
-					return TCResult(ComplexError::error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
+					return TCResult(MultiError::error(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
 				}
 				else if(useNames && seenNames.find(arg.name) != seenNames.end())
 				{
-					return TCResult(ComplexError::error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+					return TCResult(MultiError::error(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
 						arg.name, str->id.name));
 				}
 
@@ -657,7 +656,7 @@ namespace sst
 			//* note: if we're doing positional args, allow only all or none.
 			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
 			{
-				ComplexError errors;
+				MultiError errors;
 				errors.addError(this->loc(),
 					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
 					str->id.name, fieldNames.size(), arguments.size());
@@ -671,7 +670,7 @@ namespace sst
 		}
 		else
 		{
-			ComplexError errors;
+			MultiError errors;
 			errors.addError(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name);
 			errors.addInfo(typedf, "Type was defined here:");
 
@@ -868,14 +867,14 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	if(!target->type->isFunctionType())
 		error(this->callee, "Expression with non-function-type '%s' cannot be called");
 
-	ComplexError errs;
+	OverloadError errs;
 
 	auto ft = target->type->toFunctionType();
-	int dist = sst::computeOverloadDistance(fs, this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto { return Param(t); }),
+	int dist = sst::computeOverloadDistance(fs, this, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto { return Param(t); }),
 		ts, false, &errs, 0);
 
 	if(errs.hasErrors() || dist == -1)
-		postErrorsAndQuit(errs);
+		postErrorsAndQuit(&errs);
 
 	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;

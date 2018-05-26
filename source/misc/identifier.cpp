@@ -15,7 +15,7 @@
 sst::Stmt* TCResult::stmt()
 {
 	if(this->_kind == RK::Error)
-		postErrorsAndQuit(*this->_pe);
+		postErrorsAndQuit(this->_pe);
 
 	switch(this->_kind)
 	{
@@ -29,7 +29,7 @@ sst::Stmt* TCResult::stmt()
 sst::Expr* TCResult::expr()
 {
 	if(this->_kind == RK::Error)
-		postErrorsAndQuit(*this->_pe);
+		postErrorsAndQuit(this->_pe);
 
 	if(this->_kind != RK::Expression)
 		_error_and_exit("not expr\n");
@@ -40,7 +40,7 @@ sst::Expr* TCResult::expr()
 sst::Defn* TCResult::defn()
 {
 	if(this->_kind == RK::Error)
-		postErrorsAndQuit(*this->_pe);
+		postErrorsAndQuit(this->_pe);
 
 	if(this->_kind != RK::Definition)
 		_error_and_exit("not defn\n");

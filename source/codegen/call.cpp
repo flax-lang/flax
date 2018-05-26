@@ -95,14 +95,14 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 
 			if(val->getType() != inf)
 			{
-				ComplexError errs;
+				MultiError errs;
 				errs.addError(arg.loc, "Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'",
 					i, inf, val->getType());
 
 				if(ft->isVariadicFunc() && i >= numArgs - 1)
 					errs.addInfo(arg.loc, "Argument's type '%s' cannot be cast to the expected variadic element type '%s'", val->getType(), inf);
 
-				postErrorsAndQuit(errs);
+				postErrorsAndQuit(&errs);
 			}
 		}
 		else if(ft->isCStyleVarArg())

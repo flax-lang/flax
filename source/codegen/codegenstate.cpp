@@ -200,13 +200,13 @@ namespace cgn
 
 			if(ifn == 0)
 			{
-				ComplexError errs;
+				MultiError errs;
 				errs.addError(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
 					cls->getTypeName());
 
 				errs.addInfo(clsdef, "Class '%s' was defined here:", clsdef->id.name);
 
-				postErrorsAndQuit(errs);
+				postErrorsAndQuit(&errs);
 			}
 
 			// ok, we call it.
