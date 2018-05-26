@@ -577,13 +577,7 @@ namespace backend
 
 		if(this->entryFunction)
 		{
-<<<<<<< HEAD
 			#if 1
-=======
-			#if 0
-			auto jit = LLVMJit(this->targetMachine);
-			jit.addModule(std::unique_ptr<llvm::Module>(this->linkedModule));
->>>>>>> 2da69869de48a67166bc343b1e9d2170480a6ad2
 
 			auto jit = LLVMJit(this->targetMachine);
 			jit.addModule(this->linkedModule);
@@ -592,7 +586,6 @@ namespace backend
 			auto entryaddr = jit.getSymbolAddress(name);
 			auto mainfunc = (int (*)(int, const char**)) entryaddr;
 
-<<<<<<< HEAD
 			iceAssert(mainfunc && "failed to resolve entry function address");
 
 			#else
@@ -603,19 +596,6 @@ namespace backend
 			execEngine->finalizeObject();
 
 			std::uninitialized_copy(0, 0, 0);
-=======
-			#else
-			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule)).create();
-
-			// finalise the object, which does something.
-			execEngine->finalizeObject();
-
-			void* func = execEngine->getPointerToFunction(this->entryFunction);
-			iceAssert(func != 0);
-
-			auto mainfunc = (int (*)(int, const char**)) func;
-			#endif
->>>>>>> 2da69869de48a67166bc343b1e9d2170480a6ad2
 
 			void* func = execEngine->getPointerToFunction(this->entryFunction);
 			iceAssert(func != 0);
