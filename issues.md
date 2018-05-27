@@ -187,7 +187,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(e479ba2)`
 - overhaul the error output system for non-trivial cases (it's awesome), remove `HighlightOptions` because we now have `SpanError`.
 - make osx travis use `tester.flx` so we stop having the CI say failed.
 
