@@ -172,6 +172,9 @@ fn printThings()
 		printf("HELLO???\n")
 		printThings(30, ...[ 1, 2, 3, 4, 5 ])
 		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+
+		let k: str = "foo"
+		k = 30
 	}
 
 	// do {

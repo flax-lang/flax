@@ -81,44 +81,95 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
 // #define UNDERLINE_CHARACTER " ̅"
 #define UNDERLINE_CHARACTER "^"
 
-std::string printContext(HighlightOptions ops)
+std::string getSpannedContext(const Location& loc, const std::vector<SpanError::Span>& spans, size_t* adjust, size_t* num_width, size_t* margin,
+	bool underline, bool bottompad)
 {
-	std::string retstr;
+	std::string ret;
 
-	auto lines = frontend::getFileLines(ops.caret.fileID);
-	if(lines.size() > ops.caret.line)
+	iceAssert(adjust && margin && num_width);
+	iceAssert((underline == bottompad || bottompad) && "cannot underline without bottom pad");
+
+	if(!std::is_sorted(spans.begin(), spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; }))
+		_error_and_exit("spans must be sorted!");
+
+	*num_width = std::to_string(loc.line + 1).length();
+
+	// one spacing line
+	*margin = *num_width + 2;
+	ret += strprintf("%s |\n", spaces(*num_width));
+	ret += strprintf("%d |%s\n", loc.line + 1, fetchContextLine(loc, adjust));
+
+	if(bottompad)
+		ret += strprintf("%s |", spaces(*num_width));
+
+	// ok, now loop through each err, and draw the underline.
+	if(underline)
+	{
+		//* cursor represents the 'virtual' position -- excluding the left margin
+		size_t cursor = 0;
+		for(auto span : spans)
+		{
+			// pad out.
+			auto tmp = strprintf("%s", spaces(*num_width + span.loc.col - *adjust - cursor));
+			ret += tmp + strprintf("%s", COLOUR_RED_BOLD); cursor += tmp.length();
+
+			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
+			ret += tmp + strprintf("%s", COLOUR_RESET); cursor += tmp.length();
+		}
+	}
+
+	return ret;
+}
+
+std::string getSingleContext(const Location& loc, bool underline = true, bool bottompad = true)
+{
+	size_t a = 0;
+	size_t b = 0;
+	size_t c = 0;
+	return getSpannedContext(loc, { SpanError::Span(loc, "") }, &a, &b, &c, underline, bottompad);
+
+	#if 0
+	std::string retstr;
+	Location loc = _loc;    // copy it so we can mutate it.
+
+	auto lines = frontend::getFileLines(loc.fileID);
+	if(lines.size() > loc.line)
 	{
 		size_t adjust = 0;
-		auto part1 = fetchContextLine(ops.caret, &adjust);
+		auto part1 = fetchContextLine(loc, &adjust);
+		loc.col -= adjust;
 
 		size_t cursorX = 1;
-		bool uline = ops.caret.len >= 5 && ops.underlines.empty();
+		bool uline = loc.len >= 5;
 
 		std::string part2 = _convertTab();
-
-		ops.caret.col -= adjust;
-		for(auto& u : ops.underlines)
-			u.col -= adjust;
-
-
-		ops.underlines.push_back(ops.caret);
-		std::sort(ops.underlines.begin(), ops.underlines.end(), [=](Location a, Location b) { return a.col < b.col; });
 
 		for(auto& ul : ops.underlines)
 		{
 			while(cursorX < ul.col)
 				part2 += " ", cursorX++;
 
-			if(ul == ops.caret)
+			if(ul == loc)
 			{
-				// debuglog("HI %d, %d\n", ops.drawCaret, ops.caret.line);
-				if(ops.caret.fileID > 0)
+				// debuglog("HI %d, %d\n", ops.drawCaret, loc.line);
+				if(loc.fileID > 0)
 				{
-					auto num1 = (ops.caret.len / 2);
-					auto num2 = (ops.caret.len > 0 ? ((ops.caret.len - 1) - (ops.caret.len / 2)) : 0);
+					auto num1 = (loc.len / 2);
+					auto num2 = (loc.len > 0 ? ((loc.len - 1) - (loc.len / 2)) : 0);
 					cursorX += num1 + 1 + num2;
 
 					part2 += strprintf("%s%s%s%s%s", COLOUR_GREEN_BOLD,
@@ -143,11 +194,11 @@ std::string printContext(HighlightOptions ops)
 
 		// ok, now we print the fancy left side pipes and line numbers and all
 		{
-			auto num_width = std::to_string(ops.caret.line + 1).length();
+			auto num_width = std::to_string(loc.line + 1).length();
 
 			// one spacing line
 			retstr =  strprintf("%s |\n", spaces(num_width));
-			retstr += strprintf("%d |%s\n", ops.caret.line + 1, part1);
+			retstr += strprintf("%d |%s\n", loc.line + 1, part1);
 			retstr += strprintf("%s |%s\n", spaces(num_width), part2);
 		}
 	}
@@ -157,25 +208,15 @@ std::string printContext(HighlightOptions ops)
 	}
 
 	return retstr;
-}
-
-static std::vector<Locatable*> errorLocationStack;
-void pushErrorLocation(Locatable* l)
-{
-	errorLocationStack.push_back(l);
-}
-
-void popErrorLocation()
-{
-	iceAssert(errorLocationStack.size() > 0);
-	errorLocationStack.pop_back();
+	#endif
 }
 
 
 
 
 
-std::string __error_gen_internal(const HighlightOptions& ops, const std::string& msg, const char* type, bool context)
+
+std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context)
 {
 	std::string ret;
 
@@ -192,84 +233,28 @@ std::string __error_gen_internal(const HighlightOptions& ops, const std::string&
 	// todo: do we want to truncate the file path?
 	// we're doing it now, might want to change (or use a flag)
 
-	std::string filename = frontend::getFilenameFromPath(ops.caret.fileID == 0 ? "(unknown)"
-		: frontend::getFilenameFromID(ops.caret.fileID));
+	std::string filename = frontend::getFilenameFromPath(loc.fileID == 0 ? "(unknown)"
+		: frontend::getFilenameFromID(loc.fileID));
 
 	ret += strprintf("%s%s%s:%s %s\n", COLOUR_RESET, colour, type, COLOUR_RESET, msg);
 
-	if(ops.caret.fileID > 0)
+	if(loc.fileID > 0)
 	{
-		auto location = strprintf("%s:%d:%d", filename, ops.caret.line + 1, ops.caret.col + 1);
+		auto location = strprintf("%s:%d:%d", filename, loc.line + 1, loc.col + 1);
 		ret += strprintf("%s%sat:%s %s%s", COLOUR_RESET, COLOUR_GREY_BOLD, spaces(strlen(type) - 2), COLOUR_RESET, location);
 	}
 
 	ret += "\n";
 
-	if(context && ops.caret.fileID > 0)
-		ret += printContext(ops) + "\n";
+	if(context && loc.fileID > 0)
+		ret += getSingleContext(loc) + "\n";
 
 	return ret;
 }
 
-
-
-#define MAX_BACKTRACE_DEPTH 0
-
-//! prevents re-entrant calling
-// static bool isBacktracing = false;
-std::string __error_gen_backtrace(const HighlightOptions& ops)
-{
-	std::string ret;
-	#if 0
-
-	if(isBacktracing || MAX_BACKTRACE_DEPTH == 0) return ret;
-
-	isBacktracing = true;
-
-	// give more things.
-	auto numlocs = errorLocationStack.size();
-
-	std::vector<Location> seen;
-
-	if(numlocs > 1)
-	{
-		int done = 0;
-		for(size_t i = numlocs; i-- > 2; )
-		{
-			// skip the boring stuff.
-			auto e = errorLocationStack[i];
-			if(dcast(ast::Block, e) || dcast(sst::Block, e) || ops.caret == e->loc || std::find(seen.begin(), seen.end(), e->loc) != seen.end())
-				continue;
-
-			std::string oper = (dcast(ast::Stmt, e) ? "typechecking" : "code generation");
-			ret += __error_gen(HighlightOptions(e->loc), strprintf("In %s of %s here:",
-				oper, e->readableName).c_str(), "Note", false);
-
-			done++;
-
-			seen.push_back(e->loc);
-
-			int64_t skip = (int64_t) numlocs - done - (int64_t) i;
-			if(done == 2 && i - MAX_BACKTRACE_DEPTH > 1 && skip > 0)
-			{
-				ret += strprintf("... skipping %d intermediarie%s...\n\n", skip, skip == 1 ? "" : "s");
-
-				continue;
-			}
-		}
-	}
-
-	isBacktracing = false;
-	#endif
-
-	return ret;
-}
 
 [[noreturn]] void doTheExit(bool trace)
 {
-	if(trace)
-		fprintf(stderr, "%s", __error_gen_backtrace(HighlightOptions()).c_str());
-
 	fprintf(stderr, "There were errors, compilation cannot continue\n");
 
 	#ifdef NDEBUG
@@ -336,9 +321,9 @@ static size_t strprinterrf(const char* fmt, Ts... ts)
 }
 
 template <typename... Ts>
-static void outputWithoutContext(const char* type, const HighlightOptions& ho, const char* fmt, Ts... ts)
+static void outputWithoutContext(const char* type, const Location& loc, const char* fmt, Ts... ts)
 {
-	strprinterrf("%s", __error_gen_internal(ho, strprintf(fmt, ts...), type, false));
+	strprinterrf("%s", __error_gen_internal(loc, strprintf(fmt, ts...), type, false));
 }
 
 
@@ -349,7 +334,7 @@ static void outputWithoutContext(const char* type, const HighlightOptions& ho, c
 
 void BareError::post()
 {
-	outputWithoutContext(typestr(this->type).c_str(), HighlightOptions(), this->msg.c_str());
+	outputWithoutContext(typestr(this->type).c_str(), Location(), this->msg.c_str());
 	for(auto other : this->subs)
 		other->post();
 }
@@ -368,8 +353,9 @@ BareError* BareError::clone() const
 
 void SimpleError::post()
 {
-	outputWithoutContext(typestr(this->type).c_str(), HighlightOptions(this->loc), this->msg.c_str());
-	strprinterrf("%s%s%s\n", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "", printContext(HighlightOptions(this->loc)));
+	outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str());
+	strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
+		this->printContext ? getSingleContext(this->loc) + "\n\n" : "");
 
 	for(auto other : this->subs)
 		other->post();
@@ -405,13 +391,14 @@ SpanError* SpanError::clone() const
 
 void SpanError::post()
 {
-	BareError(this->top.msg, this->top.type).post();
+	this->top.printContext = false;
+	this->top.post();
 
 	// ok. so we have our own custom little output thing here.
 	{
+		#if 0
 		// sort the spans.
 		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
-
 		auto num_width = std::to_string(this->top.loc.line + 1).length();
 
 		// one spacing line
@@ -422,8 +409,6 @@ void SpanError::post()
 		strprinterrf("%s |", spaces(num_width));
 
 		// ok, now loop through each err, and draw the underline.
-		// size_t width = std::min((size_t) 80, platform::getTerminalWidth()) - 10;
-		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
 
 		//* cursor represents the 'virtual' position -- excluding the left margin
 		size_t cursor = 0;
@@ -436,9 +421,17 @@ void SpanError::post()
 			cursor += strprinterrf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
 			strprinterrf("%s", COLOUR_RESET);
 		}
+		#endif
 
-		cursor = 0;
-		strprinterrf("\n");
+		size_t adjust = 0;
+		size_t margin = 0;
+		size_t num_width = 0;
+
+		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
+		strprinterrf("%s\n", getSpannedContext(this->top.loc, this->spans, &adjust, &num_width, &margin, true, true));
+
+		size_t cursor = 0;
+		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
 
 		// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
 		// it doesn't really matter.
@@ -563,8 +556,6 @@ void OverloadError::post()
 
 			spe->set(SimpleError(loc->loc, strprintf("candidate %d was defined here:", cand_counter++), MsgType::Note));
 			spe->post();
-
-			strprinterrf("\n");
 		}
 	}
 

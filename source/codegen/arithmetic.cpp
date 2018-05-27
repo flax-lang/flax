@@ -267,13 +267,10 @@ namespace cgn
 	{
 		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
 
-			HighlightOptions ho;
-			ho.caret = loc;
-			ho.underlines.push_back(al);
-			ho.underlines.push_back(bl);
-
-			ho.drawCaret = true;
-			error(loc, ho, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b);
+			SpanError().set(SimpleError::make(loc, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b))
+				.add(SpanError::Span(al, strprintf("type '%s'", a)))
+				.add(SpanError::Span(bl, strprintf("type '%s'", b)))
+				.postAndQuit();
 		};
 
 

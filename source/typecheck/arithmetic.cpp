@@ -244,13 +244,10 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op, &overloadFn);
 	if(!rest)
 	{
-		HighlightOptions ho;
-		ho.caret = this->loc;
-		ho.underlines.push_back(this->left->loc);
-		ho.underlines.push_back(this->right->loc);
-
-		ho.drawCaret = true;
-		error(this, ho, "Unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt);
+		SpanError().set(SimpleError::make(this, "Unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt))
+			.add(SpanError::Span(this->left->loc, strprintf("type '%s'", lt)))
+			.add(SpanError::Span(this->right->loc, strprintf("type '%s'", rt)))
+			.postAndQuit();
 	}
 
 	auto ret = new sst::BinaryOp(this->loc, rest);
