@@ -102,6 +102,14 @@ std::vector<T> operator + (const T& elm, const std::vector<T>& vec)
 
 
 
+
+template <typename... Ts>
+std::string strprintf(const char* fmt, Ts... ts)
+{
+	return tinyformat::format(fmt, ts...);
+}
+
+
 template <typename T>
 bool match(const T& first)
 {
@@ -864,16 +872,6 @@ namespace util
 
 
 
-
-template <typename... Ts>
-std::string strprintf(const char* fmt, Ts... ts)
-{
-	return tinyformat::format(fmt, ts...);
-}
-
-
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 
 
