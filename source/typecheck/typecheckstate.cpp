@@ -22,14 +22,10 @@ namespace sst
 		// this->pushLoc(stmt->loc);
 
 		this->locationStack.push_back(stmt->loc);
-
-		pushErrorLocation(stmt);
 	}
 
 	Location TypecheckState::popLoc()
 	{
-		popErrorLocation();
-
 		iceAssert(this->locationStack.size() > 0);
 		auto last = this->locationStack.back();
 		this->locationStack.pop_back();

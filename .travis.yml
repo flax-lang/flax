@@ -14,7 +14,7 @@ addons:
         sources:
         - llvm-toolchain-trusty-5.0
         - ubuntu-toolchain-r-test
-            
+
         packages:
         - g++-7
         - llvm-5.0
@@ -36,8 +36,8 @@ before_script:
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then PATH="/usr/local/opt/llvm@5/bin:$PATH" LLVM_CONFIG=llvm-config make osx;
-        else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
+        then PATH="/usr/local/opt/llvm@5/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
+      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
       fi
 
 notifications:

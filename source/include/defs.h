@@ -374,6 +374,7 @@ struct SimpleError : ErrorMsg
 	std::string msg;
 
 	// just a hacky thing to print some words (eg. '(call site)') before the context.
+	bool printContext = true;
 	std::string wordsBeforeContext;
 };
 

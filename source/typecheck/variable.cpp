@@ -159,8 +159,9 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(fs->getCastDistance(defn->init->type, defn->type) < 0)
 		{
-			error(defn->init, "Cannot assign a value of type '%s' to a variable with type '%s'",
-				defn->init->type, defn->type);
+			SpanError(SimpleError::make(this, "Cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
+				.add(SpanError::Span(defn->init->loc, strprintf("type '%s'", defn->init->type)))
+				.postAndQuit();
 		}
 	}
 

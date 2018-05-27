@@ -187,6 +187,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- overhaul the error output system for non-trivial cases (it's awesome), remove `HighlightOptions` because we now have `SpanError`.
+- make osx travis use `tester.flx` so we stop having the CI say failed.
+
 `(6385652)`
 - sort the candidates by line number, and don't print too many of the fake margin/gutter things.
 - change typecache (thanks adrian) to be better.

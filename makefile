@@ -79,10 +79,10 @@ osxflags:
 osx: prep jit osxflags
 
 satest: prep osxflags build
-	@$(OUTPUT) $(FLXFLAGS) -run -o build/standalone build/standalone.flx
+	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tiny: prep osxflags build
-	@$(OUTPUT) $(FLXFLAGS) -run -o build/tiny build/tiny.flx
+tester: prep osxflags build
+	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
 ci: prep test
 
