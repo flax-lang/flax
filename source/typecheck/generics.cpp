@@ -78,10 +78,10 @@ namespace sst
 
 
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
-	TCResult TypecheckState::instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings)
+	TCResult TypecheckState::instantiateGenericEntity(ast::Parameterisable* thing, const TypeParamMap_t& mappings)
 	{
-		iceAssert(type);
-		iceAssert(!type->generics.empty());
+		iceAssert(thing);
+		iceAssert(!thing->generics.empty());
 
 
 		this->pushGenericTypeContext();
@@ -102,16 +102,14 @@ namespace sst
 					t = t->getPointerElementType(), ptrs++;
 			}
 
-			if(type->generics.find(map.first) != type->generics.end() && ptrs < type->generics[map.first].pointerDegree)
+			if(thing->generics.find(map.first) != thing->generics.end() && ptrs < thing->generics[map.first].pointerDegree)
 			{
-				OverloadError errs;
-				errs.setPrimary(this->loc(), strprintf("Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
-					map.second, map.first, type->name));
-
-				errs.add(type, { Location(), strprintf("replacement type has pointer degree %d, which is less than the required %d",
-					ptrs, type->generics[map.first].pointerDegree) });
-
-				return TCResult(errs);
+				return TCResult(
+					SimpleError::make(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
+						map.second, map.first, thing->name)
+					.append(SimpleError(MsgType::Note).set(thing, "replacement type has pointer degree %d, which is less than the required %d",
+						ptrs, thing->generics[map.first].pointerDegree))
+				);
 			}
 
 			// TODO: check if the type conforms to the protocols specified.
@@ -126,17 +124,16 @@ namespace sst
 		// check if we provided all the required mappings.
 		{
 			// TODO: make an elegant early-out for this situation?
-			for(const auto& [ name, constr ] : type->generics)
+			for(const auto& [ name, constr ] : thing->generics)
 			{
 				(void) constr;
 
 				if(mappings.find(name) == mappings.end())
 				{
-					MultiError errs;
-					errs.addError(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", type->name, name);
-					errs.addInfo(type, "'%s' was defined here:", type->name);
-
-					return TCResult(errs);
+					return TCResult(
+						SimpleError::make(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", thing->name, name)
+						.append(SimpleError(MsgType::Note).set(thing, "'%s' was defined here:", thing->name))
+					);
 				}
 			}
 
@@ -144,13 +141,12 @@ namespace sst
 			for(const auto& [ name, ty ] : mappings)
 			{
 				(void) ty;
-				if(type->generics.find(name) == type->generics.end())
+				if(thing->generics.find(name) == thing->generics.end())
 				{
-					MultiError errs;
-					errs.addError(this->loc(), "Parametric entity '%s' does not have an argument '%s'", type->name, name);
-					errs.addInfo(type, "'%s' was defined here:", type->name);
-
-					return TCResult(errs);
+					return TCResult(
+						SimpleError::make(this->loc(), "Parametric entity '%s' does not have an argument '%s'", thing->name, name)
+						.append(SimpleError(MsgType::Note).set(thing, "'%s' was defined here:", thing->name))
+					);
 				}
 			}
 		}
@@ -174,17 +170,18 @@ namespace sst
 		//* type parameters.
 		//? fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
 
-		auto oldname = type->name;
-		type->name = oldname + "<" + mapToString() + ">";
+		auto oldname = thing->name;
+		thing->name = oldname + "<" + mapToString() + ">";
 
 		//* we **MUST** first call ::generateDeclaration if we're doing a generic thing.
 		//* with the mappings that we're using to instantiate it.
-		type->generateDeclaration(this, 0, mappings);
+		thing->generateDeclaration(this, 0, mappings);
+
 		// now it is 'safe' to call typecheck.
-		auto ret = dcast(Defn, type->typecheck(this, 0, mappings).defn());
+		auto ret = dcast(Defn, thing->typecheck(this, 0, mappings).defn());
 		iceAssert(ret);
 
-		type->name = oldname;
+		thing->name = oldname;
 		return TCResult(ret);
 	}
 
@@ -197,15 +194,14 @@ namespace sst
 
 		if(gmaps.empty())
 		{
-			return TCResult(MultiError::error(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
+			return TCResult(SimpleError::make(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
 		}
 
 		if(infer == 0 && gdefs.size() > 1)
 		{
-			MultiError errs;
-			errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+			auto errs = SimpleError::make(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
 			for(auto g : gdefs)
-				errs.addInfo(g, "Potential target here:");
+				errs.append(SimpleError(g->loc, "Potential target here:", MsgType::Note));
 
 			return TCResult(errs);
 		}
@@ -216,7 +212,11 @@ namespace sst
 		// TODO: find a better way to do this??
 
 		std::vector<sst::Defn*> pots;
-		std::vector<std::pair<ast::Parameterisable*, NonTrivialError>> failures;
+		std::vector<std::pair<ast::Parameterisable*, ErrorMsg*>> failures;
+		defer({
+			for(const auto& p : failures)
+				delete p.second;
+		});
 
 		for(const auto& gdef : gdefs)
 		{
@@ -229,7 +229,7 @@ namespace sst
 			else
 			{
 				iceAssert(d.isError());
-				failures.push_back({ gdef, d.error() });
+				failures.push_back(std::make_pair(gdef, d.error().clone()));
 			}
 		}
 
@@ -237,10 +237,9 @@ namespace sst
 		{
 			if(pots.size() > 1)
 			{
-				MultiError errs;
-				errs.addError(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
-				for(auto p : pots)
-					errs.addInfo(p, "Potential target here:");
+				auto errs = SimpleError::make(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
+				for(auto g : pots)
+					errs.append(SimpleError(g->loc, "Potential target here:", MsgType::Note));
 
 				return TCResult(errs);
 			}
@@ -255,13 +254,10 @@ namespace sst
 		{
 			iceAssert(failures.size() > 0);
 
-			OverloadError errs;
-			errs.setPrimary(this->loc(), strprintf("No viable candidates in attempted instantiation of parametric entity '%s'; candidates are:", name));
+			auto errs = OverloadError(SimpleError::make(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s' amongst %d candidates", name, failures.size()));
+
 			for(const auto& [ f, e ] : failures)
-			{
-				(void) f;
-				errs.incorporate(e);
-			}
+				errs.addCand(f, *e);
 
 			return TCResult(errs);
 		}
