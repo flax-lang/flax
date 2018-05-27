@@ -395,6 +395,7 @@ struct SpanError : ErrorMsg
 
 		Location loc;
 		std::string msg;
+		std::string colour;
 	};
 
 	SpanError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t) { }
@@ -410,6 +411,9 @@ struct SpanError : ErrorMsg
 
 	SimpleError top;
 	std::vector<Span> spans;
+
+	// again, another internal flag; this one controls whether or not to underline the original location.
+	bool highlightActual = true;
 };
 
 
@@ -434,67 +438,6 @@ struct OverloadError : ErrorMsg
 	std::unordered_map<Locatable*, ErrorMsg*> cands;
 };
 
-
-// struct MultiError : ErrorMsg
-// {
-// 	MultiError() : ErrorMsg(ErrKind::Multi) { }
-
-// 	enum class Kind
-// 	{
-// 		Error,
-// 		Warning,
-// 		Info
-// 	};
-
-// 	virtual void post() override;
-// 	virtual bool hasErrors() override { return this->_strs.size() > 0; }
-
-// 	template <typename... Ts>
-// 	static MultiError error(const Location& l, const char* fmt, Ts... ts)
-// 	{
-// 		MultiError errs;
-// 		errs.addError(l, fmt, ts...);
-// 		return errs;
-// 	}
-
-// 	template <typename... Ts>
-// 	static MultiError error(Locatable* l, const char* fmt, Ts... ts) { return MultiError::error(l->loc, fmt, ts...); }
-
-
-// 	template <typename... Ts>
-// 	void addError(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l->loc, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addErrorBefore(Locatable* l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l->loc, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addWarning(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l->loc, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addInfo(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l->loc, strbold(fmt, ts...) }); }
-
-
-
-
-// 	template <typename... Ts>
-// 	void addError(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addErrorBefore(const Location& l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addWarning(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l, strbold(fmt, ts...) }); }
-
-// 	template <typename... Ts>
-// 	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
-
-// 	void incorporate(const MultiError& other)
-// 	{
-// 		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
-// 	}
-
-// 	std::vector<std::tuple<Kind, Location, std::string>> _strs;
-// };
 
 
 

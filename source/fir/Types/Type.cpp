@@ -333,157 +333,131 @@ namespace fir
 
 	bool Type::isConstantNumberType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::ConstantNumber;
 	}
 
 	bool Type::isStructType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Struct;
 	}
 
 	bool Type::isTupleType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Tuple;
 	}
 
 	bool Type::isClassType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Class;
 	}
 
 	bool Type::isPackedStruct()
 	{
-		iceAssert(this);
 		return this->isStructType() && (this->toStructType()->isTypePacked);
 	}
 
 	bool Type::isArrayType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Array;
 	}
 
 	bool Type::isFloatingPointType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Primitive && (this->toPrimitiveType()->primKind == PrimitiveType::Kind::Floating);
 	}
 
 	bool Type::isIntegerType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Primitive && (this->toPrimitiveType()->primKind == PrimitiveType::Kind::Integer);
 	}
 
 	bool Type::isSignedIntType()
 	{
-		iceAssert(this);
 		return this->isIntegerType() && this->toPrimitiveType()->isSigned();
 	}
 
 	bool Type::isFunctionType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Function;
 	}
 
 	bool Type::isPrimitiveType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Primitive;
 	}
 
 	bool Type::isPointerType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Pointer;
 	}
 
 	bool Type::isVoidType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Void;
 	}
 
 	bool Type::isDynamicArrayType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::DynamicArray;
 	}
 
 	bool Type::isVariadicArrayType()
 	{
-		iceAssert(this);
 		return this->isArraySliceType() && this->toArraySliceType()->isVariadicType();
 	}
 
 	bool Type::isArraySliceType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::ArraySlice;
 	}
 
 	bool Type::isRangeType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Range;
 	}
 
 	bool Type::isStringType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::String;
 	}
 
 	bool Type::isCharType()
 	{
-		iceAssert(this);
 		return this == fir::Type::getInt8();
 	}
 
 	bool Type::isEnumType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Enum;
 	}
 
 	bool Type::isAnyType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Any;
 	}
 
 	bool Type::isNullType()
 	{
-		iceAssert(this);
 		return this->kind == TypeKind::Null;
 	}
 
 	bool Type::isBoolType()
 	{
-		iceAssert(this);
 		return this == fir::Type::getBool();
 	}
 
 	bool Type::isMutablePointer()
 	{
-		iceAssert(this);
 		return this->isPointerType() && this->toPointerType()->isMutable();
 	}
 
 	bool Type::isImmutablePointer()
 	{
-		iceAssert(this);
 		return this->isPointerType() && !this->toPointerType()->isMutable();
 	}
 
 	bool Type::isCharSliceType()
 	{
-		iceAssert(this);
 		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getInt8();
 	}
 

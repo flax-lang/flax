@@ -96,7 +96,7 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 #define UNDERLINE_CHARACTER "^"
 
 std::string getSpannedContext(const Location& loc, const std::vector<SpanError::Span>& spans, size_t* adjust, size_t* num_width, size_t* margin,
-	bool underline, bool bottompad)
+	bool underline, bool bottompad, std::string underlineColour)
 {
 	std::string ret;
 
@@ -125,7 +125,7 @@ std::string getSpannedContext(const Location& loc, const std::vector<SpanError::
 		{
 			// pad out.
 			auto tmp = strprintf("%s", spaces(*num_width + span.loc.col - *adjust - cursor));
-			ret += tmp + strprintf("%s", COLOUR_RED_BOLD); cursor += tmp.length();
+			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour); cursor += tmp.length();
 
 			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
 			ret += tmp + strprintf("%s", COLOUR_RESET); cursor += tmp.length();
@@ -140,75 +140,7 @@ std::string getSingleContext(const Location& loc, bool underline = true, bool bo
 	size_t a = 0;
 	size_t b = 0;
 	size_t c = 0;
-	return getSpannedContext(loc, { SpanError::Span(loc, "") }, &a, &b, &c, underline, bottompad);
-
-	#if 0
-	std::string retstr;
-	Location loc = _loc;    // copy it so we can mutate it.
-
-	auto lines = frontend::getFileLines(loc.fileID);
-	if(lines.size() > loc.line)
-	{
-		size_t adjust = 0;
-		auto part1 = fetchContextLine(loc, &adjust);
-		loc.col -= adjust;
-
-		size_t cursorX = 1;
-		bool uline = loc.len >= 5;
-
-		std::string part2 = _convertTab();
-
-		for(auto& ul : ops.underlines)
-		{
-			while(cursorX < ul.col)
-				part2 += " ", cursorX++;
-
-			if(ul == loc)
-			{
-				// debuglog("HI %d, %d\n", ops.drawCaret, loc.line);
-				if(loc.fileID > 0)
-				{
-					auto num1 = (loc.len / 2);
-					auto num2 = (loc.len > 0 ? ((loc.len - 1) - (loc.len / 2)) : 0);
-					cursorX += num1 + 1 + num2;
-
-					part2 += strprintf("%s%s%s%s%s", COLOUR_GREEN_BOLD,
-						uline ? repeat(UNDERLINE_CHARACTER, num1).c_str() : std::string(num1, ' '),
-						ops.drawCaret && !uline ? "^" : UNDERLINE_CHARACTER,
-						uline ? repeat(UNDERLINE_CHARACTER, num2).c_str() : std::string(num2, ' '),
-						COLOUR_RESET);
-				}
-				else
-				{
-					part2 += std::string(ul.len, ' ');
-					cursorX += ul.len;
-				}
-			}
-			else
-			{
-				part2 += strprintf("%s%s%s", COLOUR_GREEN_BOLD, repeat(UNDERLINE_CHARACTER, ul.len).c_str(), COLOUR_RESET);
-				cursorX += ul.len;
-			}
-		}
-
-
-		// ok, now we print the fancy left side pipes and line numbers and all
-		{
-			auto num_width = std::to_string(loc.line + 1).length();
-
-			// one spacing line
-			retstr =  strprintf("%s |\n", spaces(num_width));
-			retstr += strprintf("%d |%s\n", loc.line + 1, part1);
-			retstr += strprintf("%s |%s\n", spaces(num_width), part2);
-		}
-	}
-	else
-	{
-		retstr = strprintf("(no context)");
-	}
-
-	return retstr;
-	#endif
+	return getSpannedContext(loc, { SpanError::Span(loc, "") }, &a, &b, &c, underline, bottompad, COLOUR_RED_BOLD);
 }
 
 
@@ -251,48 +183,6 @@ std::string __error_gen_internal(const Location& loc, const std::string& msg, co
 
 	return ret;
 }
-
-
-[[noreturn]] void doTheExit(bool trace)
-{
-	fprintf(stderr, "There were errors, compilation cannot continue\n");
-
-	#ifdef NDEBUG
-		exit(1);
-	#else
-		abort();
-	#endif
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -389,46 +279,32 @@ SpanError* SpanError::clone() const
 	return new SpanError(*this);
 }
 
+static bool operator == (const SpanError::Span& a, const SpanError::Span& b) { return a.loc == b.loc && a.msg == b.msg; }
+
 void SpanError::post()
 {
 	this->top.printContext = false;
 	this->top.post();
 
-	// ok. so we have our own custom little output thing here.
 	{
-		#if 0
-		// sort the spans.
-		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
-		auto num_width = std::to_string(this->top.loc.line + 1).length();
-
-		// one spacing line
-		size_t adjust = 0;
-		size_t margin = num_width + 2;
-		strprinterrf("%s |\n", spaces(num_width));
-		strprinterrf("%d |%s\n", this->top.loc.line + 1, fetchContextLine(this->top.loc, &adjust));
-		strprinterrf("%s |", spaces(num_width));
-
-		// ok, now loop through each err, and draw the underline.
-
-		//* cursor represents the 'virtual' position -- excluding the left margin
-		size_t cursor = 0;
-		for(auto span : this->spans)
-		{
-			// pad out.
-			cursor += strprinterrf("%s", spaces(num_width + span.loc.col - adjust - cursor));
-			strprinterrf("%s", COLOUR_RED_BOLD);
-
-			cursor += strprinterrf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
-			strprinterrf("%s", COLOUR_RESET);
-		}
-		#endif
-
 		size_t adjust = 0;
 		size_t margin = 0;
 		size_t num_width = 0;
 
+		if(this->highlightActual)
+		{
+			auto sp = Span(this->top.loc, "");
+			sp.colour = COLOUR_RED_BOLD;
+
+			this->spans.push_back(sp);
+		}
+
 		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
-		strprinterrf("%s\n", getSpannedContext(this->top.loc, this->spans, &adjust, &num_width, &margin, true, true));
+		strprinterrf("%s\n", getSpannedContext(this->top.loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
+
+		// ok now remove the extra thing.
+		if(this->highlightActual)
+			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), Span(this->top.loc, "")));
 
 		size_t cursor = 0;
 		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
@@ -471,7 +347,7 @@ void SpanError::post()
 					else
 					{
 						cursor += 3 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
-						strprinterrf("%s|>%s ", COLOUR_GREY_BOLD, COLOUR_RESET);
+						strprinterrf("%s|>%s ", COLOUR_CYAN_BOLD, COLOUR_RESET);
 
 						spanscopy[i].msg = remaining.substr(segment.length());
 						cursor += strprinterrf("%s", segment);
@@ -480,7 +356,7 @@ void SpanError::post()
 				else
 				{
 					cursor += 1 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
-					strprinterrf("%s|%s", COLOUR_GREY_BOLD, COLOUR_RESET);
+					strprinterrf("%s|%s", COLOUR_CYAN_BOLD, COLOUR_RESET);
 				}
 			}
 
@@ -555,6 +431,7 @@ void OverloadError::post()
 			iceAssert(spe);
 
 			spe->set(SimpleError(loc->loc, strprintf("candidate %d was defined here:", cand_counter++), MsgType::Note));
+			spe->highlightActual = false;
 			spe->post();
 		}
 	}
@@ -568,12 +445,17 @@ void OverloadError::post()
 
 
 
-
-
-[[noreturn]] void postErrorsAndQuit(ErrorMsg* err)
+[[noreturn]] void doTheExit(bool trace)
 {
-	err->postAndQuit();
+	fprintf(stderr, "There were errors, compilation cannot continue\n");
+
+	#ifdef NDEBUG
+		exit(1);
+	#else
+		abort();
+	#endif
 }
+
 
 
 
