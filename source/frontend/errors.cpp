@@ -307,6 +307,28 @@ std::string __error_gen_backtrace(const HighlightOptions& ops)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+static std::string typestr(MsgType t)
+{
+	switch(t)
+	{
+		case MsgType::Note:     return "note";
+		case MsgType::Error:    return "error";
+		case MsgType::Warning:  return "warning";
+		default:                iceAssert(0); return "";
+	}
+}
+
 template <typename... Ts>
 static size_t strprinterrf(const char* fmt, Ts... ts)
 {
@@ -322,21 +344,195 @@ static void outputWithoutContext(const char* type, const HighlightOptions& ho, c
 
 
 
-bool OverloadError::hasErrors()
+
+
+
+void BareError::post()
 {
-	return this->primaryError.second.size() > 0 || this->cands.size() > 0 || this->otherErrors.size() > 0;
+	outputWithoutContext(typestr(this->type).c_str(), HighlightOptions(), this->msg.c_str());
+	for(auto other : this->subs)
+		other->post();
+}
+
+bool BareError::hasErrors() const
+{
+	return this->msg.size() > 0 || this->subs.size() > 0;
+}
+
+BareError* BareError::clone() const
+{
+	return new BareError(*this);
+}
+
+
+
+void SimpleError::post()
+{
+	outputWithoutContext(typestr(this->type).c_str(), HighlightOptions(this->loc), this->msg.c_str());
+	strprinterrf("%s%s%s\n", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "", printContext(HighlightOptions(this->loc)));
+
+	for(auto other : this->subs)
+		other->post();
+}
+
+bool SimpleError::hasErrors() const
+{
+	return this->msg.size() > 0 || this->subs.size() > 0;
+}
+
+SimpleError* SimpleError::clone() const
+{
+	return new SimpleError(*this);
+}
+
+
+
+SpanError& SpanError::add(const Span& s)
+{
+	this->spans.push_back(s);
+	return *this;
+}
+
+bool SpanError::hasErrors() const
+{
+	return (this->top.hasErrors() || this->spans.size() > 0) || this->subs.size() > 0;
+}
+
+SpanError* SpanError::clone() const
+{
+	return new SpanError(*this);
+}
+
+void SpanError::post()
+{
+	BareError(this->top.msg, this->top.type).post();
+
+	// ok. so we have our own custom little output thing here.
+	{
+		// sort the spans.
+		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
+
+		auto num_width = std::to_string(this->top.loc.line + 1).length();
+
+		// one spacing line
+		size_t adjust = 0;
+		size_t margin = num_width + 2;
+		strprinterrf("%s |\n", spaces(num_width));
+		strprinterrf("%d |%s\n", this->top.loc.line + 1, fetchContextLine(this->top.loc, &adjust));
+		strprinterrf("%s |", spaces(num_width));
+
+		// ok, now loop through each err, and draw the underline.
+		// size_t width = std::min((size_t) 80, platform::getTerminalWidth()) - 10;
+		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
+
+		//* cursor represents the 'virtual' position -- excluding the left margin
+		size_t cursor = 0;
+		for(auto span : this->spans)
+		{
+			// pad out.
+			cursor += strprinterrf("%s", spaces(num_width + span.loc.col - adjust - cursor));
+			strprinterrf("%s", COLOUR_RED_BOLD);
+
+			cursor += strprinterrf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
+			strprinterrf("%s", COLOUR_RESET);
+		}
+
+		cursor = 0;
+		strprinterrf("\n");
+
+		// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
+		// it doesn't really matter.
+
+		// don't mutate the spans, make a copy
+		auto spanscopy = this->spans;
+
+		size_t counter = 0;
+		while(counter < spanscopy.size())
+		{
+			strprinterrf("%s", spaces(margin));
+
+			for(size_t i = 0; i < spanscopy.size() - counter; i++)
+			{
+				auto col = spanscopy[i].loc.col;
+
+				if(i == spanscopy.size() - counter - 1)
+				{
+					auto remaining = spanscopy[i].msg;
+
+					// complex math shit to predict where the cursor will be once we print,
+					// and more importantly whether or not we'll finish printing the message in the current iteration.
+					auto realcursor = cursor + 2 + (num_width + col - adjust - cursor + 1) + margin + 1;
+
+					auto splitpos = std::min(remaining.length(), width - realcursor);
+
+					// refuse to split words in half.
+					while(splitpos > 0 && splitpos < remaining.length() && remaining[splitpos - 1] != ' ')
+						splitpos--;
+
+					auto segment = remaining.substr(0, splitpos);
+					if(segment.empty())
+					{
+						counter++;
+						break;
+					}
+					else
+					{
+						cursor += 3 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+						strprinterrf("%s|>%s ", COLOUR_GREY_BOLD, COLOUR_RESET);
+
+						spanscopy[i].msg = remaining.substr(segment.length());
+						cursor += strprinterrf("%s", segment);
+					}
+				}
+				else
+				{
+					cursor += 1 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+					strprinterrf("%s|%s", COLOUR_GREY_BOLD, COLOUR_RESET);
+				}
+			}
+
+			cursor = 0;
+			strprinterrf("\n");
+		}
+	}
+
+
+	for(auto other : this->subs)
+		other->post();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+bool OverloadError::hasErrors() const
+{
+	return (this->top.hasErrors() || this->cands.size() > 0) || this->subs.size() > 0;
 }
 
 void OverloadError::clear()
 {
 	this->cands.clear();
-	this->otherErrors.clear();
-	this->primaryError = { Location(), "" };
+	this->top = SimpleError();
 }
 
-void OverloadError::add(Locatable* d, const std::pair<Location, std::string>& e)
+OverloadError* OverloadError::clone() const
 {
-	this->cands[d].push_back(e);
+	return new OverloadError(*this);
+}
+
+
+OverloadError& OverloadError::addCand(Locatable* d, const ErrorMsg& sp)
+{
+	this->cands[d] = sp.clone();
+	return *this;
 }
 
 
@@ -344,140 +540,36 @@ void OverloadError::add(Locatable* d, const std::pair<Location, std::string>& e)
 void OverloadError::post()
 {
 	// first, post the original error.
-	outputWithoutContext("error", HighlightOptions(this->primaryError.first), "%s", this->primaryError.second);
-
-	// say 'call site'
-	strprinterrf("(call site):\n%s\n", printContext(HighlightOptions(this->primaryError.first)));
-
-	// then any other errors.
-	for(auto& other : this->otherErrors)
-		other.post();
+	this->top.wordsBeforeContext = "(call site)";
+	this->top.post();
 
 	// sort the candidates by line number
 	// (idk maybe it's a windows thing but it feels like the order changes every so often)
-	auto cds = std::vector<std::pair<Locatable*, std::vector<std::pair<Location, std::string>>>>(cands.begin(), cands.end());
+	auto cds = std::vector<std::pair<Locatable*, ErrorMsg*>>(this->cands.begin(), this->cands.end());
 	std::sort(cds.begin(), cds.end(), [](auto a, auto b) -> bool { return a.first->loc.line < b.first->loc.line; });
 
 	// go through each candidate.
-	int counter = 1;
-	for(auto [ loc, errs ] : cds)
+	int cand_counter = 1;
+	for(auto [ loc, emg ] : cds)
 	{
-		if(errs.size() == 1 && errs[0].first == Location())
+		if(emg->kind != ErrKind::Span)
 		{
-			info(loc, "%s", errs[0].second);
+			emg->post();
 		}
 		else
 		{
-			auto ho = HighlightOptions(loc->loc);
-			ho.drawCaret = false;
+			auto spe = dynamic_cast<SpanError*>(emg);
+			iceAssert(spe);
 
-			outputWithoutContext("note", ho, "candidate %d was defined here:", counter++);
+			spe->set(SimpleError(loc->loc, strprintf("candidate %d was defined here:", cand_counter++), MsgType::Note));
+			spe->post();
 
-			// sort the errors
-			std::sort(errs.begin(), errs.end(), [](auto a, auto b) -> bool { return a.first.col < b.first.col; });
-
-			// ok. so we have our own custom little output thing here.
-
-			auto num_width = std::to_string(loc->loc.line + 1).length();
-
-			// one spacing line
-			size_t adjust = 0;
-			size_t margin = num_width + 2;
-			strprinterrf("%s |\n", spaces(num_width));
-			strprinterrf("%d |%s\n", loc->loc.line + 1, fetchContextLine(loc->loc, &adjust));
-			strprinterrf("%s |", spaces(num_width));
-
-			// ok, now loop through each err, and draw the underline.
-			// size_t width = std::min((size_t) 80, platform::getTerminalWidth()) - 10;
-			size_t width = (size_t) (0.85 * platform::getTerminalWidth());
-
-			//* cursor represents the 'virtual' position -- excluding the left margin
-			size_t cursor = 0;
-			for(auto err : errs)
-			{
-				// pad out.
-				cursor += strprinterrf("%s", spaces(num_width + err.first.col - adjust - cursor));
-				strprinterrf("%s", COLOUR_RED_BOLD);
-
-				cursor += strprinterrf("%s", repeat(UNDERLINE_CHARACTER, err.first.len));
-				strprinterrf("%s", COLOUR_RESET);
-			}
-
-			cursor = 0;
 			strprinterrf("\n");
-
-			// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
-			// it doesn't really matter.
-
-			size_t counter = 0;
-			while(counter < errs.size())
-			{
-				strprinterrf("%s", spaces(margin));
-
-				for(size_t i = 0; i < errs.size() - counter; i++)
-				{
-					auto col = errs[i].first.col;
-
-					if(i == errs.size() - counter - 1)
-					{
-						auto remaining = errs[i].second;
-
-						// complex math shit to predict where the cursor will be once we print,
-						// and more importantly whether or not we'll finish printing the message in the current iteration.
-						auto realcursor = cursor + 2 + (num_width + col - adjust - cursor + 1) + margin + 1;
-
-						auto splitpos = std::min(remaining.length(), width - realcursor);
-
-						// refuse to split words in half.
-						while(splitpos > 0 && splitpos < remaining.length() && remaining[splitpos - 1] != ' ')
-							splitpos--;
-
-						auto segment = remaining.substr(0, splitpos);
-						if(segment.empty())
-						{
-							counter++;
-							break;
-						}
-						else
-						{
-							cursor += 3 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
-							strprinterrf("%s|>%s ", COLOUR_GREY_BOLD, COLOUR_RESET);
-
-							errs[i].second = remaining.substr(segment.length());
-							cursor += strprinterrf("%s", segment);
-						}
-					}
-					else
-					{
-						cursor += 1 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
-						strprinterrf("%s|%s", COLOUR_GREY_BOLD, COLOUR_RESET);
-					}
-				}
-
-				cursor = 0;
-				strprinterrf("\n");
-			}
-
-			strprinterrf("\n\n");
 		}
 	}
-}
 
-
-void OverloadError::incorporate(const OverloadError& e)
-{
-	for(const auto& p : e.cands)
-		this->cands[p.first] = p.second;
-}
-
-
-void OverloadError::incorporate(const NonTrivialError& e)
-{
-	if(e.kind == Kind::Overload)
-		this->incorporate(dynamic_cast<const OverloadError&>(e));
-
-	else
-		this->otherErrors.push_back(e);
+	for(auto sub : this->subs)
+		sub->post();
 }
 
 
@@ -487,28 +579,9 @@ void OverloadError::incorporate(const NonTrivialError& e)
 
 
 
-
-
-
-
-
-
-
-void MultiError::post()
+[[noreturn]] void postErrorsAndQuit(ErrorMsg* err)
 {
-	for(const auto& [ kind, loc, estr ] : this->_strs)
-	{
-		if(kind == MultiError::Kind::Error)            exitless_error(loc, "%s", estr);
-		else if(kind == MultiError::Kind::Warning)     warn(loc, "%s", estr);
-		else if(kind == MultiError::Kind::Info)        info(loc, "%s", estr);
-	}
-}
-
-
-[[noreturn]] void postErrorsAndQuit(NonTrivialError* err)
-{
-	err->post();
-	doTheExit();
+	err->postAndQuit();
 }
 
 

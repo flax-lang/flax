@@ -251,112 +251,241 @@ struct Locatable
 	std::string readableName;
 };
 
-
-struct NonTrivialError
+//? in order of complexity, i guess?
+enum class ErrKind
 {
-	enum class Kind
-	{
-		Overload,
-		Multi
+	Bare,           // error without context
+	Simple,         // error with context
 
-	} kind;
-
-	NonTrivialError(Kind k) : kind(k) { }
-	virtual ~NonTrivialError() { }
-
-	virtual void post() { }
-	virtual bool hasErrors() { return false; }
+	Span,           // error with context, but with squiggles within those (general case of
+	Overload,       // most complex one; built specifically to handle multiple candidates and such
 };
 
-
-struct OverloadError : NonTrivialError
+enum class MsgType
 {
-	OverloadError() : NonTrivialError(NonTrivialError::Kind::Overload) { }
+	Note,
+	Warning,
+	Error
+};
 
-	OverloadError(Locatable* l, const std::string& p) : NonTrivialError(Kind::Overload) { this->setPrimary(l, p); }
-	OverloadError(const Location& l, const std::string& p) : NonTrivialError(Kind::Overload) { this->setPrimary(l, p); }
+struct ErrorMsg
+{
+
+	virtual ~ErrorMsg() { }
+
+	virtual void post() = 0;
+	virtual bool hasErrors() const = 0;
+	virtual ErrorMsg* clone() const = 0;
+
+	virtual ErrorMsg& append(const ErrorMsg& e)
+	{
+		this->subs.push_back(e.clone());
+		return *this;
+	}
+
+	[[noreturn]] void postAndQuit()
+	{
+		this->post();
+		doTheExit();
+	}
+
+	ErrKind kind;
+	MsgType type;
+	std::vector<ErrorMsg*> subs;
+
+	protected:
+	ErrorMsg(ErrKind k, MsgType t) : kind(k), type(t) { }
+};
+
+struct BareError : ErrorMsg
+{
+	BareError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t) { }
+	BareError(const std::string& m, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t), msg(m) { }
+
+	template <typename... Ts>
+	BareError& set(const char* fmt, Ts... ts)
+	{
+		this->msg = strprintf(fmt, ts...);
+		return *this;
+	}
+
+	BareError& set(const std::string& m)
+	{
+		this->msg = m;
+		return *this;
+	}
+
+	template <typename... Ts>
+	static BareError make(const char* fmt, Ts... ts)
+	{
+		return BareError().set(fmt, ts...);
+	}
 
 	virtual void post() override;
-	virtual bool hasErrors() override;
+	virtual bool hasErrors() const override;
+	virtual BareError* clone() const override;
 
-	void clear();
-
-	void setPrimary(Locatable* l, const std::string& p) { this->primaryError = { l->loc, p }; }
-	void setPrimary(const Location& l, const std::string& p) { this->primaryError = { l, p }; }
-
-	void add(Locatable* d, const std::pair<Location, std::string>& e);
-
-	void incorporate(const OverloadError& e);
-	void incorporate(const NonTrivialError& e);
-
-
-	std::pair<Location, std::string> primaryError;
-	std::unordered_map<Locatable*, std::vector<std::pair<Location, std::string>>> cands;
-
-	std::vector<NonTrivialError> otherErrors;
+	std::string msg;
 };
 
-
-struct MultiError : NonTrivialError
+struct SimpleError : ErrorMsg
 {
-	MultiError() : NonTrivialError(NonTrivialError::Kind::Multi) { }
+	SimpleError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Simple, t) { }
+	SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t), loc(l), msg(m) { }
 
-	enum class Kind
+	template <typename... Ts>
+	SimpleError& set(Locatable* l, const char* fmt, Ts... ts)
 	{
-		Error,
-		Warning,
-		Info
+		return this->set(l ? l->loc : Location(), fmt, ts...);
+	}
+
+	template <typename... Ts>
+	SimpleError& set(const Location& l, const char* fmt, Ts... ts)
+	{
+		this->loc = l;
+		this->msg = strprintf(fmt, ts...);
+		return *this;
+	}
+
+	template <typename... Ts>
+	static SimpleError make(const Location& l, const char* fmt, Ts... ts)
+	{
+		return SimpleError().set(l, fmt, ts...);
+	}
+
+	template <typename... Ts>
+	static SimpleError make(Locatable* l, const char* fmt, Ts... ts)
+	{
+		return SimpleError().set(l, fmt, ts...);
+	}
+
+	SimpleError& set(const Location& l, const std::string& m)
+	{
+		this->loc = l;
+		this->msg = m;
+		return *this;
+	}
+
+	virtual void post() override;
+	virtual bool hasErrors() const override;
+	virtual SimpleError* clone() const override;
+
+	Location loc;
+	std::string msg;
+
+	// just a hacky thing to print some words (eg. '(call site)') before the context.
+	std::string wordsBeforeContext;
+};
+
+struct SpanError : ErrorMsg
+{
+	struct Span
+	{
+		Span() { }
+		Span(const Location& l, const std::string& m) : loc(l), msg(m) { }
+
+		Location loc;
+		std::string msg;
 	};
 
+	SpanError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t) { }
+	SpanError(const SimpleError& se, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t), top(se) { }
+	SpanError(const SimpleError& se, const std::vector<Span>& s, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t), top(se), spans(s) { }
+
+	SpanError& add(const Span& s);
+	SpanError& set(const SimpleError& se) { this->top = se; return *this; }
+
 	virtual void post() override;
-	virtual bool hasErrors() override { return this->_strs.size() > 0; }
+	virtual bool hasErrors() const override;
+	virtual SpanError* clone() const override;
 
-	template <typename... Ts>
-	static MultiError error(const Location& l, const char* fmt, Ts... ts)
-	{
-		MultiError errs;
-		errs.addError(l, fmt, ts...);
-		return errs;
-	}
-
-	template <typename... Ts>
-	static MultiError error(Locatable* l, const char* fmt, Ts... ts) { return MultiError::error(l->loc, fmt, ts...); }
-
-
-	template <typename... Ts>
-	void addError(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l->loc, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addErrorBefore(Locatable* l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l->loc, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addWarning(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l->loc, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addInfo(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l->loc, strbold(fmt, ts...) }); }
-
-
-
-
-	template <typename... Ts>
-	void addError(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addErrorBefore(const Location& l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addWarning(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l, strbold(fmt, ts...) }); }
-
-	template <typename... Ts>
-	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
-
-	void incorporate(const MultiError& other)
-	{
-		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
-	}
-
-	std::vector<std::tuple<Kind, Location, std::string>> _strs;
+	SimpleError top;
+	std::vector<Span> spans;
 };
+
+
+
+struct OverloadError : ErrorMsg
+{
+	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
+	OverloadError(const SimpleError& se) : ErrorMsg(ErrKind::Overload, MsgType::Error) { this->set(se); }
+
+	void clear();
+	virtual void post() override;
+	virtual bool hasErrors() const override;
+	virtual OverloadError* clone() const override;
+
+	OverloadError& set(const SimpleError& se) { this->top = se; return *this; }
+	OverloadError& addCand(Locatable* d, const ErrorMsg& e);
+
+	// void incorporate(const OverloadError& e);
+	// void incorporate(const ErrorMsg& e);
+
+	SimpleError top;
+	std::unordered_map<Locatable*, ErrorMsg*> cands;
+};
+
+
+// struct MultiError : ErrorMsg
+// {
+// 	MultiError() : ErrorMsg(ErrKind::Multi) { }
+
+// 	enum class Kind
+// 	{
+// 		Error,
+// 		Warning,
+// 		Info
+// 	};
+
+// 	virtual void post() override;
+// 	virtual bool hasErrors() override { return this->_strs.size() > 0; }
+
+// 	template <typename... Ts>
+// 	static MultiError error(const Location& l, const char* fmt, Ts... ts)
+// 	{
+// 		MultiError errs;
+// 		errs.addError(l, fmt, ts...);
+// 		return errs;
+// 	}
+
+// 	template <typename... Ts>
+// 	static MultiError error(Locatable* l, const char* fmt, Ts... ts) { return MultiError::error(l->loc, fmt, ts...); }
+
+
+// 	template <typename... Ts>
+// 	void addError(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l->loc, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addErrorBefore(Locatable* l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l->loc, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addWarning(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l->loc, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addInfo(Locatable* l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l->loc, strbold(fmt, ts...) }); }
+
+
+
+
+// 	template <typename... Ts>
+// 	void addError(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Error, l, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addErrorBefore(const Location& l, const char* fmt, Ts... ts) { this->_strs.insert(this->_strs.begin(), { Kind::Error, l, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addWarning(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Warning, l, strbold(fmt, ts...) }); }
+
+// 	template <typename... Ts>
+// 	void addInfo(const Location& l, const char* fmt, Ts... ts) { this->_strs.push_back({ Kind::Info, l, strbold(fmt, ts...) }); }
+
+// 	void incorporate(const MultiError& other)
+// 	{
+// 		this->_strs.insert(this->_strs.end(), other._strs.begin(), other._strs.end());
+// 	}
+
+// 	std::vector<std::tuple<Kind, Location, std::string>> _strs;
+// };
 
 
 
@@ -381,7 +510,7 @@ struct TCResult
 		sst::Stmt* _st;
 		sst::Expr* _ex;
 		sst::Defn* _df;
-		NonTrivialError* _pe;
+		ErrorMsg* _pe;
 	};
 
 	RK _kind = RK::Invalid;
@@ -393,15 +522,13 @@ struct TCResult
 	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
 
-	explicit TCResult(const NonTrivialError& pe) : _kind(RK::Error) { _pe = new NonTrivialError(pe); }
-	explicit TCResult(const OverloadError& pe) : _kind(RK::Error) { _pe = new OverloadError(pe); }
-	explicit TCResult(const MultiError& pe) : _kind(RK::Error) { _pe = new MultiError(pe); }
+	explicit TCResult(const ErrorMsg& pe) : _kind(RK::Error) { _pe = pe.clone(); }
 
 	TCResult(const TCResult& r)
 	{
 		this->_kind = r._kind;
 
-		if(this->isError())     this->_pe = new NonTrivialError(*r._pe);
+		if(this->isError())     this->_pe = r._pe->clone();
 		else if(this->isStmt()) this->_st = r._st;
 		else if(this->isExpr()) this->_ex = r._ex;
 		else if(this->isDefn()) this->_df = r._df;
@@ -439,7 +566,7 @@ struct TCResult
 
 
 
-	NonTrivialError& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
+	ErrorMsg& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
 
 
 	sst::Expr* expr();
@@ -504,8 +631,6 @@ namespace std
 		}
 	};
 }
-
-[[noreturn]] void postErrorsAndQuit(NonTrivialError* error);
 
 
 enum class VisibilityLevel

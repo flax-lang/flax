@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "ir/type.h"
+
 #include <deque>
 
 namespace sst
@@ -394,42 +396,47 @@ namespace sst
 			_tree = _tree->parent;
 		}
 
-		auto makeTheError = [](MultiError* errs, Locatable* a, const std::string& n, const std::string& ak,
-			const std::vector<std::pair<Locatable*, std::string>>& conflicts) {
+		auto makeTheError = [](Locatable* a, const std::string& n, const std::string& ak,
+			const std::vector<std::pair<Locatable*, std::string>>& conflicts) -> SimpleError {
 
-			errs->addError(a, "Duplicate definition of '%s'", n);
+			auto err = SimpleError::make(a, "Duplicate definition of '%s'", n);
 
 			bool first = true;
 
 			for(const auto& [ l, kind ] : conflicts)
 			{
-				errs->addInfo(l, "%shere%s:", first ? strprintf("Conflicting %s ", util::plural("definition", conflicts.size())) : "and ",
-					ak == kind ? "" : strprintf(" (as a %s)", kind));
+				err.append(SimpleError(MsgType::Note).set(l, "%shere%s:", first ? strprintf("Conflicting %s ",
+					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;
 			}
+
+			return err;
 		};
 
 		// ok, now check only the current scope
 		auto defs = tree->getDefinitionsWithName(defn->id.name);
 
-		bool didError = false;
 		for(auto otherdef : defs)
 		{
 			bool conflicts = doCheck(this, otherdef);
 			if(conflicts)
 			{
-				if(!didError)
+				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
+
+				// TODO: be more intelligent about when we give this informative tidbit
+				if(dcast(sst::FunctionDecl, otherdef) && dcast(sst::FunctionDecl, defn))
 				{
-					MultiError errs;
-					makeTheError(&errs, defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
-
-					// TODO: be more intelligent about when we give this informative tidbit
-					if(dcast(sst::FunctionDecl, otherdef) && dcast(sst::FunctionDecl, defn))
-						errs.addInfo(Location(), "Functions cannot be overloaded based on argument names alone");
-
-					postErrorsAndQuit(&errs);
+					auto a = dcast(sst::FunctionDecl, defn);
+					auto b = dcast(sst::FunctionDecl, otherdef);
+					if(fir::Type::areTypeListsEqual(util::map(a->params, [](auto p) -> fir::Type* { return p.type; }),
+						util::map(b->params, [](auto p) -> fir::Type* { return p.type; })))
+					{
+						errs.append(BareError("Functions cannot be overloaded based on argument names alone", MsgType::Note));
+					}
 				}
+
+				errs.postAndQuit();
 			}
 		}
 
@@ -442,7 +449,6 @@ namespace sst
 
 		if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(defn->id.name); gdefs.size() > 0)
 		{
-			MultiError errs;
 			if(auto fn = dcast(sst::FunctionDecl, defn))
 			{
 				// honestly we can't know if we will conflict with other functions.
@@ -459,24 +465,18 @@ namespace sst
 				);
 
 				if(newgds.size() > 0)
-					makeTheError(&errs, fn, fn->id.name, fn->getKind(), newgds);
+					makeTheError(fn, fn->id.name, fn->getKind(), newgds).postAndQuit();
 			}
 			else
 			{
 				// assume everything conflicts, since functions are the only thing that can overload.
-				makeTheError(&errs, defn, defn->id.name, defn->getKind(),
+				makeTheError(defn, defn->id.name, defn->getKind(),
 					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());
 					})
-				);
+				).postAndQuit();
 			}
-
-			if(errs.hasErrors())
-				postErrorsAndQuit(&errs);
 		}
-
-		if(didError)
-			doTheExit();
 
 		return false;
 	}

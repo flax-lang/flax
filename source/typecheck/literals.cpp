@@ -178,12 +178,12 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			if(e->type->isVoidType())
 			{
 				// be helpful
-				MultiError errs;
-				errs.addError(v, "Expected value in array literal, found 'void' value instead");
-				if(auto fc = dcast(sst::FunctionCall, e); fc && fc->target)
-					errs.addInfo(fc->target, "Function was defined here:");
+				auto err = SimpleError::make(v, "Expected value in array literal, found 'void' value instead");
 
-				postErrorsAndQuit(&errs);
+				if(auto fc = dcast(sst::FunctionCall, e); fc && fc->target)
+					err.append(SimpleError(fc->target->loc, "Function was defined here:", MsgType::Note));
+
+				err.postAndQuit();
 			}
 
 			vals.push_back(e);
