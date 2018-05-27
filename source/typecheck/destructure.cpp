@@ -90,9 +90,6 @@ static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping* bind, fir
 		{
 			auto fake = new sst::VarDefn(bind->loc);
 
-			pushErrorLocation(fake);
-			defer(popErrorLocation());
-
 			fake->id = Identifier(bind->name, IdKind::Name);
 			fake->immutable = immut;
 
@@ -142,8 +139,9 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	{
 		if(this->bindings.array)
 		{
-			HighlightOptions ho; ho.caret = this->loc; ho.underlines.push_back(this->initialiser->loc);
-			error(this, ho, "Value splats can only be assigned to tuple decompositions");
+			SpanError(SimpleError::make(this, "Value splats can only be assigned to tuple decompositions"))
+				.add(SpanError::Span(this->initialiser->loc, ""))
+				.postAndQuit();
 		}
 
 		bool isnest = false;
@@ -158,8 +156,9 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		if(isnest)
 		{
-			HighlightOptions ho; ho.caret = this->loc; ho.underlines.push_back(this->initialiser->loc);
-			error(this, ho, "Value splats can only be assigned to single-level tuple decompositions; nesting is not allowed.");
+			SpanError(SimpleError::make(this, "Cannot assign value splats to nested tuple decomposition"))
+				.add(SpanError::Span(this->initialiser->loc, ""))
+				.postAndQuit();
 		}
 
 		// ok, at this point we should be fine.

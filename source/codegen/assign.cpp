@@ -20,16 +20,16 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(!lr.pointer || lr.kind != CGResult::VK::LValue)
 	{
-		HighlightOptions hs;
-		hs.underlines.push_back(this->left->loc);
-		error(this, hs, "Cannot assign to non-lvalue (most likely a temporary) expression");
+		SpanError(SimpleError::make(this, "Cannot assign to non-lvalue (most likely a temporary) expression"))
+			.add(SpanError::Span(this->left->loc, "here"))
+			.postAndQuit();
 	}
 
 	if(lr.pointer && lr.pointer->getType()->isImmutablePointer())
 	{
-		HighlightOptions hs;
-		hs.underlines.push_back(this->left->loc);
-		error(this, hs, "Cannot assign to immutable expression");
+		SpanError(SimpleError::make(this, "Cannot assign to immutable expression"))
+			.add(SpanError::Span(this->left->loc, "here"))
+			.postAndQuit();
 	}
 
 

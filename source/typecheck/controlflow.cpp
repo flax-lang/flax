@@ -61,11 +61,10 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(ret->value->type != retty && fs->getCastDistance(ret->value->type, retty) < 1)
 		{
-			HighlightOptions hs;
-			hs.underlines.push_back(this->value->loc);
-
-			error(this, hs, "Cannot return a value of type '%s' in a function returning type '%s'",
-				ret->value->type, retty);
+			SpanError(SimpleError::make(this, "Mismatched type in return statement; function returns '%s', value has type '%s'", retty, ret->value->type))
+				.add(SpanError::Span(this->value->loc, strprintf("type '%s'", ret->value->type)))
+				.append(SimpleError(fn->loc, "Function definition is here:", MsgType::Note))
+				.postAndQuit();
 		}
 
 		// ok
@@ -120,11 +119,11 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				}
 				else
 				{
-					HighlightOptions hs;
-					hs.underlines.push_back(retstmt->value->loc);
-
-					error(retstmt, hs, "Cannot return a value of type '%s' in a function returning type '%s'",
-						retstmt->expectedType, retty);
+					SpanError(SimpleError::make(retstmt, "Mismatched type in return statement; function returns '%s', value has type '%s'",
+						retty, retstmt->expectedType))
+						.add(SpanError::Span(retstmt->value->loc, strprintf("type '%s'", retstmt->expectedType)))
+						.append(SimpleError(fs->getCurrentFunction()->loc, "Function definition is here:", MsgType::Note))
+						.postAndQuit();
 				}
 			}
 

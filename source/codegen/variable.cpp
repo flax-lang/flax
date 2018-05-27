@@ -24,9 +24,9 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(this->init);
 
-			HighlightOptions hs;
-			hs.underlines.push_back(this->init->loc);
-			error(this, hs, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType());
+			SpanError(SimpleError::make(this, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
+				.add(SpanError::Span(this->init->loc, strprintf("type '%s'", nv->getType())))
+				.postAndQuit();
 		}
 
 		return nv;
