@@ -401,7 +401,7 @@ namespace sst
 
 			for(const auto& [ l, kind ] : conflicts)
 			{
-				err.append(SimpleError(MsgType::Note).set(l, "%shere%s:", first ? strprintf("Conflicting %s ",
+				err.append(SimpleError::make(MsgType::Note, l, "%shere%s:", first ? strprintf("Conflicting %s ",
 					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;

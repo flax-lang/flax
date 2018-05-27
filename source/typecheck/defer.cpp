@@ -22,15 +22,15 @@ TCResult ast::DeferredStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(dcast(sst::Defn, stmt))
 			{
-				exitless_error(stmt, "Definitions cannot be deferred");
-				info(loc, "In deferred block here:");
-				doTheExit();
+				SimpleError::make(stmt, "Definitions cannot be deferred")
+					.append(SimpleError::make(MsgType::Note, loc, "In deferred block here:"))
+					.postAndQuit();
 			}
 			else if(dcast(sst::BreakStmt, stmt) || dcast(sst::ContinueStmt, stmt) || dcast(sst::ReturnStmt, stmt))
 			{
-				exitless_error(stmt, "Control flow cannot be deferred");
-				info(loc, "In deferred block here:");
-				doTheExit();
+				SimpleError::make(stmt, "Control flow cannot be deferred")
+					.append(SimpleError::make(MsgType::Note, loc, "In deferred block here:"))
+					.postAndQuit();
 			}
 			else if(auto hb = dcast(sst::HasBlocks, stmt))
 			{

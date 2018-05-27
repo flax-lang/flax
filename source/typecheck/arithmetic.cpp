@@ -44,10 +44,12 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 		{
 			if(cands.size() > 1)
 			{
-				exitless_error(loc, "Ambiguous use of overloaded operator '%s'", op);
-				for(auto c : cands) info(c, "Potential overload candidate here:");
+				auto err = SimpleError::make(loc, "Ambiguous use of overloaded operator '%s'", op);
 
-				doTheExit();
+				for(auto c : cands)
+					err.append(SimpleError::make(MsgType::Note, c, "Potential overload candidate here:"));
+
+				err.postAndQuit();
 			}
 			else
 			{

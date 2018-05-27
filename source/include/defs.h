@@ -323,11 +323,8 @@ struct BareError : ErrorMsg
 		return *this;
 	}
 
-	template <typename... Ts>
-	static BareError make(const char* fmt, Ts... ts)
-	{
-		return BareError().set(fmt, ts...);
-	}
+	template <typename... Ts> static BareError make(const char* fmt, Ts... ts) { return BareError().set(fmt, ts...); }
+	template <typename... Ts> static BareError make(MsgType t, const char* fmt, Ts... ts) { return BareError(t).set(fmt, ts...); }
 
 	virtual void post() override;
 	virtual bool hasErrors() const override;
@@ -356,16 +353,13 @@ struct SimpleError : ErrorMsg
 	}
 
 	template <typename... Ts>
-	static SimpleError make(const Location& l, const char* fmt, Ts... ts)
-	{
-		return SimpleError().set(l, fmt, ts...);
-	}
-
+	static SimpleError make(const Location& l, const char* fmt, Ts... ts) { return SimpleError().set(l, fmt, ts...); }
 	template <typename... Ts>
-	static SimpleError make(Locatable* l, const char* fmt, Ts... ts)
-	{
-		return SimpleError().set(l, fmt, ts...);
-	}
+	static SimpleError make(Locatable* l, const char* fmt, Ts... ts)      { return SimpleError().set(l, fmt, ts...); }
+	template <typename... Ts>
+	static SimpleError make(MsgType t, const Location& l, const char* fmt, Ts... ts) { return SimpleError(t).set(l, fmt, ts...); }
+	template <typename... Ts>
+	static SimpleError make(MsgType t, Locatable* l, const char* fmt, Ts... ts)      { return SimpleError(t).set(l, fmt, ts...); }
 
 	SimpleError& set(const Location& l, const std::string& m)
 	{

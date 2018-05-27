@@ -118,10 +118,10 @@ namespace backend
 
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
-			exitless_error("\nLLVM Module verification failed");
+			fprintf(stderr, "\n\n");
 			this->linkedModule->print(llvm::errs(), 0);
 
-			doTheExit();
+			BareError("\nLLVM Module verification failed\n").postAndQuit();
 		}
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
@@ -233,10 +233,8 @@ namespace backend
 				auto fd = platform::openFile(objname.c_str(), O_RDWR | O_CREAT, 0);
 				if(fd == platform::InvalidFileHandle)
 				{
-					exitless_error("Unable to create temporary file ('%s') for linking", objname);
 					perror("open(2) error");
-
-					doTheExit();
+					BareError::make("Unable to create temporary file ('%s') for linking", objname).postAndQuit();
 				}
 
 				platform::writeFile(fd, buffer.data(), buffer.size_in_bytes());

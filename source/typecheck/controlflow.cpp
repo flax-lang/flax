@@ -131,8 +131,9 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 
 			if(i != block->statements.size() - 1)
 			{
-				exitless_error(block->statements[i + 1], "Unreachable code after return statement");
-				info(retstmt, "Return statement was here:");
+				SimpleError::make(block->statements[i + 1], "Unreachable code after return statement")
+					.append(SimpleError::make(MsgType::Note, retstmt, "Return statement was here:"))
+					.postAndQuit();;
 
 				doTheExit();
 			}
@@ -171,13 +172,12 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 	if(!expected->isVoidType() && !ret)
 	{
-		exitless_error(fn, "Not all paths return a value; expected value of type '%s'",
-			expected);
+		auto err = SimpleError::make(fn, "Not all paths return a value; expected value of type '%s'", expected);
 
 		for(auto b : faults)
-			info(b->closingBrace, "Potentially missing return statement here:");
+			err.append(SimpleError::make(MsgType::Note, b->closingBrace, "Potentially missing return statement here:"));
 
-		doTheExit();
+		err.postAndQuit();
 	}
 
 	return ret;
