@@ -156,9 +156,9 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					exitless_error(this, "Failed to codegen variable definition for '%s'", this->name);
-					info(this->def, "Offending definition is here:");
-					doTheExit();
+					SimpleError::make(this, "Failed to codegen variable definition for '%s'", this->name)
+						.append(SimpleError::make(MsgType::Note, this->def, "Offending definition is here:"))
+						.postAndQuit();
 				}
 
 				defn = it->second;

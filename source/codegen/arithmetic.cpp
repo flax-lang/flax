@@ -126,19 +126,17 @@ namespace sst
 
 			if(lv->getType() != func->getArguments()[0]->getType())
 			{
-				exitless_error(this->left, "Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), lv->getType());
-
-				info(this->overloadedOpFunction, "Operator was overloaded here:");
-				doTheExit();
+				SpanError(SimpleError::make(this->left, "Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[0]->getType(), lv->getType()))
+					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
+					.postAndQuit();
 			}
 			else if(rv->getType() != func->getArguments()[1]->getType())
 			{
-				exitless_error(this->right, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[1]->getType(), rv->getType());
-
-				info(this->overloadedOpFunction, "Operator was overloaded here:");
-				doTheExit();
+				SpanError(SimpleError::make(this->left, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[1]->getType(), rv->getType()))
+					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
+					.postAndQuit();
 			}
 
 			// ok, call that guy.
@@ -173,11 +171,10 @@ namespace sst
 
 			if(val->getType() != func->getArguments()[0]->getType())
 			{
-				exitless_error(this->expr, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), val->getType());
-
-				info(this->overloadedOpFunction, "Operator was overloaded here:");
-				doTheExit();
+				SpanError(SimpleError::make(this->expr, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[0]->getType(), val->getType()))
+					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
+					.postAndQuit();
 			}
 
 			// ok, call that guy.

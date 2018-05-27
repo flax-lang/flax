@@ -119,13 +119,13 @@ namespace sst
 
 		if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
 		{
-			exitless_error(this->loc(), "Cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
+			auto err = SimpleError::make(this->loc(), "Cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
 				util::serialiseScope(sfrom), util::serialiseScope(stoParent), name);
 
 			for(const auto& d : defs)
-				info(d, "Conflicting definition here:");
+				err.append(SimpleError::make(MsgType::Note, d, "Conflicting definition here:"));
 
-			doTheExit();
+			err.postAndQuit();
 		}
 
 		// add a thing in the current scope

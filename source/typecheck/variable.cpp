@@ -54,7 +54,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			auto errs = SimpleError::make(this, "No definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
-				errs.append(SimpleError(MsgType::Note).set(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?"));
+				errs.append(SimpleError::make(MsgType::Note, v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?"));
 
 			return TCResult(errs);
 		}
@@ -73,7 +73,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return TCResult(
 						SimpleError::make(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
 							this->name, fld->parentType->id.name)
-						.append(SimpleError(MsgType::Note).set(def, "Field '%s' was defined here:", def->id.name))
+						.append(SimpleError::make(MsgType::Note, def, "Field '%s' was defined here:", def->id.name))
 					);
 				}
 			}

@@ -92,11 +92,11 @@ namespace sst
 						}
 						else if(gdefs.size() > 1)
 						{
-							exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope", name);
+							auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope", name);
 							for(auto d : gdefs)
-								info(d, "Possible reference:");
+								err.append(SimpleError::make(MsgType::Note, d, "Possible reference:"));
 
-							doTheExit();
+							err.postAndQuit();
 						}
 
 
@@ -129,11 +129,11 @@ namespace sst
 					}
 					else if(defs.size() > 1)
 					{
-						exitless_error(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
+						auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
 						for(auto d : defs)
-							info(d, "Possible reference:");
+							err.append(SimpleError::make(MsgType::Note, d, "Possible reference:"));
 
-						doTheExit();
+						err.postAndQuit();
 					}
 
 
@@ -143,10 +143,9 @@ namespace sst
 						if(!tyd)
 						{
 							//* example of something 'wrong'
-							exitless_error(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name);
-							info(d, "'%s' was defined here:", d->id.name);
-
-							doTheExit();
+							SimpleError::make(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name)
+								.append(SimpleError::make(MsgType::Note, d, "'%s' was defined here:", d->id.name))
+								.postAndQuit();
 						}
 
 						return tyd->type;

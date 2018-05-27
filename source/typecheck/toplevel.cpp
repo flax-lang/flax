@@ -74,10 +74,9 @@ namespace sst
 							{
 								if(auto v = dynamic_cast<VarDefn*>(ot))
 								{
-									exitless_error(fn, "Conflicting definition for function '%s'; was previously defined as a variable");
-									info(v, "Conflicting definition was here:");
-
-									doTheExit();
+									SimpleError::make(fn, "Conflicting definition for function '%s'; was previously defined as a variable")
+										.append(SimpleError::make(MsgType::Note, v, "Conflicting definition was here:"))
+										.postAndQuit();
 								}
 								else if(auto f = dynamic_cast<FunctionDecl*>(ot))
 								{
@@ -85,10 +84,9 @@ namespace sst
 									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
 										util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
 									{
-										exitless_error(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name);
-										info(f, "Conflicting definition was here: (%p vs %p)", f, fn);
-
-										doTheExit();
+										SimpleError::make(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name)
+											.append(SimpleError::make(MsgType::Note, f, "Conflicting definition was here: (%p vs %p)", f, fn))
+											.postAndQuit();
 									}
 								}
 								else
@@ -98,20 +96,20 @@ namespace sst
 							}
 							else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
 							{
-								exitless_error(vr, "Duplicate definition for variable '%s'");
+								auto err = SimpleError::make(vr, "Duplicate definition for variable '%s'");
 
 								for(auto ot : others)
-									info(ot, "Previously defined here:");
+									err.append(SimpleError::make(MsgType::Note, ot, "Previously defined here:"));
 
-								doTheExit();
+								err.postAndQuit();
 							}
 							else
 							{
 								// probably a class or something
 
-								exitless_error(def, "Duplicate definition of '%s'", ot->id.name);
-								info(ot, "Conflicting definition was here:");
-								doTheExit();
+								SimpleError::make(def, "Duplicate definition of '%s'", ot->id.name)
+									.append(SimpleError::make(MsgType::Note, ot, "Conflicting definition was here:"))
+									.postAndQuit();
 							}
 						}
 
