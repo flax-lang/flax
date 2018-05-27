@@ -107,7 +107,6 @@ template <typename... Ts> [[attr]] void name (const Location& loc, const char* f
 ERROR_FUNCTION(error, "error", noreturn, true);
 ERROR_FUNCTION(info, "note", maybe_unused, false);
 ERROR_FUNCTION(warn, "warning", maybe_unused, false);
-ERROR_FUNCTION(exitless_error, "error", maybe_unused, false);
 
 
 

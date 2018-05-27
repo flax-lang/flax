@@ -107,7 +107,7 @@ namespace sst
 				return TCResult(
 					SimpleError::make(this->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
 						map.second, map.first, thing->name)
-					.append(SimpleError(MsgType::Note).set(thing, "replacement type has pointer degree %d, which is less than the required %d",
+					.append(SimpleError::make(MsgType::Note, thing, "replacement type has pointer degree %d, which is less than the required %d",
 						ptrs, thing->generics[map.first].pointerDegree))
 				);
 			}
@@ -132,7 +132,7 @@ namespace sst
 				{
 					return TCResult(
 						SimpleError::make(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", thing->name, name)
-						.append(SimpleError(MsgType::Note).set(thing, "'%s' was defined here:", thing->name))
+						.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
 					);
 				}
 			}
@@ -145,7 +145,7 @@ namespace sst
 				{
 					return TCResult(
 						SimpleError::make(this->loc(), "Parametric entity '%s' does not have an argument '%s'", thing->name, name)
-						.append(SimpleError(MsgType::Note).set(thing, "'%s' was defined here:", thing->name))
+						.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
 					);
 				}
 			}

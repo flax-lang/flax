@@ -18,15 +18,15 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 
 	if(field == strty)
 	{
-		exitless_error(floc, "Composite type '%s' cannot contain a field of its own type; use a pointer.", strty);
-		info(fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty);
-		doTheExit();
+		SimpleError::make(floc, "Composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
+			.append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			.postAndQuit();
 	}
 	else if(seeing.find(field) != seeing.end())
 	{
-		exitless_error(floc, "Recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty);
-		info(fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty);
-		doTheExit();
+		SimpleError::make(floc, "Recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
+			.append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			.postAndQuit();
 	}
 	else if(field->isClassType())
 	{
@@ -328,11 +328,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 					{
 						if(bf->id.name == fld->id.name)
 						{
-							exitless_error(fld, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'", fld->id.name, fld->type, cls->id);
-
-							info(bf, "'%s' was previously defined in the base class here:", fld->id.name);
-							info(cls, "Base class '%s' was defined here:", cls->id);
-							doTheExit();
+							SimpleError::make(fld, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'",
+								fld->id.name, fld->type, cls->id)
+								.append(SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class here:", fld->id.name))
+								.append(SimpleError::make(MsgType::Note, cls, "Base class '%s' was defined here:", cls->id))
+								.postAndQuit();
 						}
 					}
 
@@ -387,26 +387,30 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 							// nice comprehensive error messages, I hope.
 							if(!meth->isOverride)
 							{
-								exitless_error(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'", meth->id.name,
-									meth->type, cls->id);
+								auto err = SimpleError::make(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
+									meth->id.name, meth->type, cls->id);
 
 								if(bf->isVirtual)
 								{
-									info(bf, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name);
+									err.append(SimpleError::make(MsgType::Note, bf, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name));
 								}
 								else
 								{
-									info(bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name);
-									info("To override it, define '%s' as a virtual method", bf->id.name);
+									err.append(
+										SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class as a non-virtual method here:",
+											bf->id.name)
+										.append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name)
+									));
 								}
-								doTheExit();
+
+								err.postAndQuit();
 							}
 							else if(!bf->isVirtual)
 							{
-								exitless_error(meth, "Cannot override non-virtual method '%s'", bf->id.name);
-								info(bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name);
-								info("To override it, define '%s' as a virtual method", bf->id.name);
-								doTheExit();
+								SimpleError::make(meth, "Cannot override non-virtual method '%s'", bf->id.name)
+									.append(SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name))
+									.append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name))
+									.postAndQuit();
 							}
 						}
 					}

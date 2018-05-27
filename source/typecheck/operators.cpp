@@ -97,6 +97,10 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	iceAssert(defn);
 
 
+	// TODO: is there actually a problem with allowing both types to be user-defined?
+	//? eg we want some_string * 5 to repeat 'some_string' 5 times???
+	//? is that a legit use-case??
+
 	// ok, do our checks on the defn instead.
 	auto ft = defn->type->toFunctionType();
 
@@ -110,11 +114,10 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 		else if(!Operator::isAssignment(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
 			 && isBuiltinOperator(this->symbol))
 		{
-			exitless_error(this, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
-				this->symbol, ft->getArgumentN(0), ft->getArgumentN(1));
-
-			info("At least one of the parameters must be a user-defined type");
-			doTheExit();
+			SimpleError::make(this, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
+				this->symbol, ft->getArgumentN(0), ft->getArgumentN(1))
+				.append(BareError::make(MsgType::Note, "At least one of the parameters must be a user-defined type"))
+				.postAndQuit();
 		}
 	}
 	else if(this->kind == Kind::Postfix || this->kind == Kind::Prefix)
@@ -159,10 +162,9 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	{
 		if(fs->isDuplicateOverload(it->params, defn->params))
 		{
-			exitless_error(this, "Duplicate operator overload for '%s' taking identical arguments", this->symbol);
-			info(it, "Previous definition was here:");
-
-			doTheExit();
+			SimpleError::make(this, "Duplicate operator overload for '%s' taking identical arguments", this->symbol)
+				.append(SimpleError::make(MsgType::Note, it, "Previous definition was here:"))
+				.postAndQuit();
 		}
 	}
 

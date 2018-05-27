@@ -104,9 +104,9 @@ namespace parser
 			{
 				if(seen.find(dm.name) != seen.end())
 				{
-					exitless_error(dm.loc, "Duplicate binding '%s' in destructuring declaration", dm.name);
-					info(seen[dm.name], "Previous binding was here:");
-					doTheExit();
+					SimpleError::make(dm.loc, "Duplicate binding '%s' in destructuring declaration", dm.name)
+						.append(SimpleError::make(MsgType::Note, seen[dm.name], "Previous binding was here:"))
+						.postAndQuit();
 				}
 				else
 				{

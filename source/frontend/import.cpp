@@ -38,11 +38,10 @@ namespace frontend
 			}
 			else
 			{
-				exitless_error(loc, "No module or library at the path '%s' could be found", imp);
-				info("'%s' does not exist", fullname);
-				info("'%s' does not exist", builtinlib);
-
-				doTheExit();
+				SimpleError::make(loc, "No module or library at the path '%s' could be found", imp)
+					.append(BareError::make(MsgType::Note, "'%s' does not exist", fullname))
+					.append(BareError::make(MsgType::Note, "'%s' does not exist", builtinlib))
+					.postAndQuit();
 			}
 		}
 	}

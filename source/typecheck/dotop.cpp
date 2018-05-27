@@ -357,11 +357,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					// ok, we need to.
 					if(infer == 0)
 					{
-						exitless_error(dotop->right, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
+						auto err = SimpleError::make(dotop->right, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
 						for(auto m : meths)
-							info(m, "Potential target here:");
+							err.append(SimpleError::make(MsgType::Note, m, "Potential target here:"));
 
-						doTheExit();
+						err.postAndQuit();
 					}
 
 					// else...
