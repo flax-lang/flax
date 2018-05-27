@@ -35,11 +35,10 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer == 0)
 			{
-				MultiError errs;
-				errs.addError(this, "Ambiguous reference to '%s'", this->name);
+				auto errs = SimpleError::make(this, "Ambiguous reference to '%s'", this->name);
 
 				for(auto v : vs)
-					errs.addInfo(v, "Potential target here:");
+					errs.append(SimpleError(v->loc, "Potential target here:", MsgType::Note));
 
 				return TCResult(errs);
 			}
@@ -53,10 +52,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return returnResult(v);
 			}
 
-			MultiError errs;
-			errs.addError(this, "No definition of '%s' matching type '%s'", this->name, infer);
+			auto errs = SimpleError::make(this, "No definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
-				errs.addInfo(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?");
+				errs.append(SimpleError(MsgType::Note).set(v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?"));
 
 			return TCResult(errs);
 		}
@@ -72,12 +70,11 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				//* -- those are technically "in" a function body, but they're certainly not methods.
 				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
 				{
-					MultiError errs;
-					errs.addError(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
-						this->name, fld->parentType->id.name);
-
-					errs.addInfo(def, "Field '%s' was defined here:", def->id.name);
-					return TCResult(errs);
+					return TCResult(
+						SimpleError::make(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+							this->name, fld->parentType->id.name)
+						.append(SimpleError(MsgType::Note).set(def, "Field '%s' was defined here:", def->id.name))
+					);
 				}
 			}
 
