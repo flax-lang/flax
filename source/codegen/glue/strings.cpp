@@ -155,6 +155,15 @@ namespace string
 
 			cs->irb.SetStringRefCount(str, newrc);
 
+			#if DEBUG_STRING_REFCOUNTING
+			{
+				std::string x = decrement ? "(decr)" : "(incr)";
+				fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of string: (ptr: %p, len: %ld, cap: %ld) = %d\n");
+
+				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.GetSAAData(str), cs->irb.GetSAALength(str), cs->irb.GetSAACapacity(str), cs->irb.GetSAARefCount(str) });
+			}
+			#endif
+
 			if(decrement)
 			{
 				fir::IRBlock* dofree = cs->irb.addNewBlockInFunction("dofree", func);
@@ -170,6 +179,14 @@ namespace string
 					buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
 
 					cs->irb.Call(freefn, buf);
+					cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetStringRefCountPointer(str), fir::Type::getMutInt8Ptr()));
+
+					#if DEBUG_STRING_ALLOCATION
+					{
+						fir::Value* tmpstr = cs->module->createGlobalString("freed str: (ptr: %p / rcp: %p)\n");
+						cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, buf, cs->irb.GetSAARefCountPointer(str) });
+					}
+					#endif
 				}
 			}
 

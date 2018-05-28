@@ -18,41 +18,18 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->isFunctionCall)
 	{
 		std::vector<fir::Value*> arguments = util::map(this->args, [cs](sst::Expr* e) -> fir::Value* { return e->codegen(cs).value; });
-		if(this->name == "clone")
+		if(this->name == BUILTIN_SAA_FN_CLONE)
 		{
 			iceAssert(arguments.empty());
-			auto clonef = cgn::glue::array::getCloneFunction(cs, ty);
+			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
 
 			auto ret = cs->irb.Call(clonef, res.value, fir::ConstantInt::getInt64(0));
 			return CGResult(ret, 0, CGResult::VK::LitRValue);
 		}
-		else if(this->name == "back")
+		else if(this->name == BUILTIN_ARRAY_FN_POP)
 		{
-			fir::Value* ptr = 0;
-			fir::Value* idx = 0;
+			iceAssert(!ty->isStringType());
 
-			if(ty->isDynamicArrayType())
-			{
-				ptr = cs->irb.GetDynamicArrayData(res.value);
-				idx = cs->irb.Subtract(cs->irb.GetDynamicArrayLength(res.value), fir::ConstantInt::getInt64(1));
-			}
-			else if(ty->isArraySliceType())
-			{
-				ptr = cs->irb.GetArraySliceData(res.value);
-				idx = cs->irb.Subtract(cs->irb.GetArraySliceLength(res.value), fir::ConstantInt::getInt64(1));
-			}
-			else if(ty->isArrayType())
-			{
-				iceAssert(res.pointer);
-				ptr = cs->irb.ConstGEP2(res.pointer, 0, 0);
-				idx = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize() - 1);
-			}
-
-			ptr = cs->irb.PointerAdd(ptr, idx);
-			return CGResult(cs->irb.Load(ptr));
-		}
-		else if(this->name == "pop")
-		{
 			if(res.kind != CGResult::VK::LValue)
 				error(this->lhs, "Cannot call 'pop()' on an rvalue");
 
@@ -79,16 +56,48 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			return CGResult(retelm);
 		}
+		else if(this->name == BUILTIN_SAA_FN_APPEND)
+		{
+			iceAssert(arguments.size() == 1);
+
+			if(res.kind != CGResult::VK::LValue)
+				error(this->lhs, "Cannot call 'append' on an rvalue");
+
+			auto arg = arguments[0];
+			fir::Function* appendf = cgn::glue::saa_common::generateAppropriateAppendFunction(cs, ty, arg->getType());
+			iceAssert(appendf);
+
+			if(arg->getType()->isDynamicArrayType() && arg->getType() == ty)
+				arg = cs->irb.CreateSliceFromDynamicArray(arg, true);
+
+			else if(arg->getType()->isStringType() && arg->getType() == ty)
+				arg = cs->irb.CreateSliceFromString(arg, true);
+
+			auto ret = cs->irb.Call(appendf, res.value, arg);
+
+			if(res.pointer)
+				cs->irb.Store(ret, res.pointer);
+
+			return CGResult(ret, res.pointer, CGResult::VK::LValue);
+		}
 	}
 	else
 	{
-		if(ty->isStringType())
+		if(ty->isStringType() || ty->isDynamicArrayType())
 		{
-			if(this->name == "length")
-			{
-				return CGResult(cs->irb.GetStringLength(res.value));
-			}
-			if(this->name == "count")
+			if(this->name == BUILTIN_SAA_FIELD_POINTER)
+				return CGResult(cs->irb.GetSAAData(res.value));
+
+			else if(this->name == BUILTIN_SAA_FIELD_LENGTH)
+				return CGResult(cs->irb.GetSAALength(res.value));
+
+			else if(this->name == BUILTIN_SAA_FIELD_CAPACITY)
+				return CGResult(cs->irb.GetSAACapacity(res.value));
+
+			else if(this->name == BUILTIN_SAA_FIELD_REFCOUNT)
+				return CGResult(cs->irb.GetSAARefCount(res.value));
+
+			else if(ty->isStringType() && this->name == BUILTIN_STRING_FIELD_COUNT)
 			{
 				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);
 				iceAssert(fn);
@@ -96,69 +105,51 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto ret = cs->irb.Call(fn, cs->irb.GetStringData(res.value));
 				return CGResult(ret);
 			}
-			else if(this->name == "ptr")
-			{
-				return CGResult(cs->irb.GetStringData(res.value));
-			}
-			else if(this->name == "rc")
-			{
-				return CGResult(cs->irb.GetStringRefCount(res.value));
-			}
-		}
-		else if(ty->isDynamicArrayType())
-		{
-			if(this->name == "length" || this->name == "count")
-			{
-				return CGResult(cs->irb.GetDynamicArrayLength(res.value));
-			}
-			if(this->name == "capacity")
-			{
-				return CGResult(cs->irb.GetDynamicArrayCapacity(res.value));
-			}
-			else if(this->name == "ptr")
-			{
-				return CGResult(cs->irb.GetDynamicArrayData(res.value));
-			}
-			else if(this->name == "rc")
-			{
-				return CGResult(cs->irb.GetDynamicArrayRefCount(res.value));
-			}
 		}
 		else if(ty->isArraySliceType())
 		{
-			if(this->name == "length" || this->name == "count")
-			{
+			if(this->name == BUILTIN_SAA_FIELD_LENGTH)
 				return CGResult(cs->irb.GetArraySliceLength(res.value));
-			}
-			else if(this->name == "ptr")
-			{
+
+			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
 				return CGResult(cs->irb.GetArraySliceData(res.value));
-			}
 		}
 		else if(ty->isArrayType())
 		{
-			if(this->name == "length" || this->name == "count")
+			if(this->name == BUILTIN_SAA_FIELD_LENGTH)
 			{
 				return CGResult(fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize()));
 			}
-			else if(this->name == "ptr")
+			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
 			{
 				iceAssert(res.pointer);
 				auto ret = cs->irb.ConstGEP2(res.pointer, 0, 0);
 				return CGResult(ret);
 			}
 		}
+		else if(ty->isRangeType())
+		{
+			if(this->name == BUILTIN_RANGE_FIELD_BEGIN)
+				return CGResult(cs->irb.GetRangeLower(res.value));
+
+			else if(this->name == BUILTIN_RANGE_FIELD_END)
+				return CGResult(cs->irb.GetRangeUpper(res.value));
+
+			else if(this->name == BUILTIN_RANGE_FIELD_STEP)
+				return CGResult(cs->irb.GetRangeStep(res.value));
+
+		}
 		else if(ty->isEnumType())
 		{
-			if(this->name == "index")
+			if(this->name == BUILTIN_ENUM_FIELD_INDEX)
 			{
 				return CGResult(cs->irb.GetEnumCaseIndex(res.value));
 			}
-			else if(this->name == "value")
+			else if(this->name == BUILTIN_ENUM_FIELD_VALUE)
 			{
 				return CGResult(cs->irb.GetEnumCaseValue(res.value));
 			}
-			else if(this->name == "name")
+			else if(this->name == BUILTIN_ENUM_FIELD_NAME)
 			{
 				auto namearr = ty->toEnumType()->getNameArray();
 				iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());
@@ -167,21 +158,6 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getInt64(0), idx);
 
 				return CGResult(cs->irb.Load(n));
-			}
-		}
-		else if(ty->isRangeType())
-		{
-			if(this->name == "begin")
-			{
-				return CGResult(cs->irb.GetRangeLower(res.value));
-			}
-			else if(this->name == "end")
-			{
-				return CGResult(cs->irb.GetRangeUpper(res.value));
-			}
-			else if(this->name == "step")
-			{
-				return CGResult(cs->irb.GetRangeStep(res.value));
 			}
 		}
 	}

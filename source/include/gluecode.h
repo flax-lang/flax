@@ -13,13 +13,36 @@
 
 #define DEBUG_RUNTIME_GLUE_MASTER	0
 
-#define DEBUG_STRING_MASTER			(0 & DEBUG_RUNTIME_GLUE_MASTER)
-#define DEBUG_STRING_ALLOCATION		(0 & DEBUG_STRING_MASTER)
-#define DEBUG_STRING_REFCOUNTING	(0 & DEBUG_STRING_MASTER)
+#define DEBUG_STRING_MASTER			(1 & DEBUG_RUNTIME_GLUE_MASTER)
+#define DEBUG_STRING_ALLOCATION		(1 & DEBUG_STRING_MASTER)
+#define DEBUG_STRING_REFCOUNTING	(1 & DEBUG_STRING_MASTER)
 
-#define DEBUG_ARRAY_MASTER			(1 & DEBUG_RUNTIME_GLUE_MASTER)
+#define DEBUG_ARRAY_MASTER			(0 & DEBUG_RUNTIME_GLUE_MASTER)
 #define DEBUG_ARRAY_ALLOCATION		(1 & DEBUG_ARRAY_MASTER)
-#define DEBUG_ARRAY_REFCOUNTING		(0 & DEBUG_ARRAY_MASTER)
+#define DEBUG_ARRAY_REFCOUNTING		(1 & DEBUG_ARRAY_MASTER)
+
+
+#define BUILTIN_SAA_FN_APPEND       "append"
+#define BUILTIN_SAA_FN_CLONE        "clone"
+
+#define BUILTIN_SAA_FIELD_LENGTH    "length"
+#define BUILTIN_SAA_FIELD_POINTER   "ptr"
+#define BUILTIN_SAA_FIELD_REFCOUNT  "refcount"
+#define BUILTIN_SAA_FIELD_CAPACITY  "capacity"
+
+
+#define BUILTIN_STRING_FIELD_COUNT  "count"
+
+#define BUILTIN_ARRAY_FN_POP        "pop"
+
+#define BUILTIN_ENUM_FIELD_VALUE    "value"
+#define BUILTIN_ENUM_FIELD_INDEX    "index"
+#define BUILTIN_ENUM_FIELD_NAME     "name"
+
+#define BUILTIN_RANGE_FIELD_BEGIN   "begin"
+#define BUILTIN_RANGE_FIELD_END     "end"
+#define BUILTIN_RANGE_FIELD_STEP    "step"
+
 
 
 namespace fir
@@ -88,11 +111,14 @@ namespace cgn
 			fir::Function* generateConstructFromTwoFunction(CodegenState* cs, fir::Type* saa);
 			fir::Function* generateConstructWithElementFunction(CodegenState* cs, fir::Type* saa);
 
+			fir::Function* generateAppropriateAppendFunction(CodegenState* cs, fir::Type* saa, fir::Type* appendee);
+
 			fir::Function* generateBoundsCheckFunction(CodegenState* cs, fir::Type* saa, bool isDecomp);
 
 			fir::Function* generateReserveExtraFunction(CodegenState* cs, fir::Type* saa);
 			fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa);
 
+			fir::Value* makeNewRefCountPointer(CodegenState* cs, fir::Value* rc);
 			fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* str, fir::Value* rc);
 		}
 

@@ -393,6 +393,7 @@ namespace sst
 
 		if(finals.empty())
 		{
+			iceAssert(cands.size() == fails.size());
 			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
 
 			auto errs = OverloadError(SimpleError(this->loc(), strprintf("No overload in call to '%s(%s)' amongst %zu %s",
@@ -502,11 +503,8 @@ namespace sst
 				didGeneric = true;
 				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, (fir::Type*) 0);
 
-				if(res.isDefn())
-					fns.push_back(res.defn());
-
-				else
-					errs.append(res.error());
+				if(res.isDefn())    fns.push_back(res.defn());
+				else                errs.append(res.error());
 			}
 
 
@@ -534,7 +532,7 @@ namespace sst
 			{
 				cands.push_back(fn);
 			}
-			else if((dcast(VarDefn, def) || dcast(ArgumentDefn, def)) && def->type->isFunctionType())
+			else if(dcast(VarDefn, def) && def->type->isFunctionType())
 			{
 				// ok, we'll check it later i guess.
 				if(!didVar)

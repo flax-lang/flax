@@ -537,14 +537,6 @@ namespace sst
 		std::vector<Stmt*> statements;
 	};
 
-	struct ArgumentDefn : Defn
-	{
-		ArgumentDefn(const Location& l) : Defn(l) { this->readableName = "<ARGUMENT DEFINITION>"; }
-		~ArgumentDefn() { }
-
-		virtual std::string getKind() override { return "argument"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-	};
 
 	struct VarDefn : Defn
 	{
@@ -556,6 +548,15 @@ namespace sst
 
 		Expr* init = 0;
 		bool immutable = false;
+	};
+
+	struct ArgumentDefn : VarDefn
+	{
+		ArgumentDefn(const Location& l) : VarDefn(l) { this->readableName = "<ARGUMENT DEFINITION>"; this->immutable = true; }
+		~ArgumentDefn() { }
+
+		virtual std::string getKind() override { return "argument"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 	struct FunctionDecl : Defn

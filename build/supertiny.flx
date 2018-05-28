@@ -107,13 +107,13 @@ import "math" as _
 // 	static fn hello() { printf("hi\n"); }
 // }
 
-// fn printThings(mul: int, ints: [int: ...])
-// {
-// 	printf("ints: ");
-// 	for i in ints { printf("%d ", mul * i) }
+fn printThings(mul: int, ints: [int: ...])
+{
+	printf("ints: ");
+	for i in ints { printf("%d ", mul * i) }
 
-// 	printf("\n")
-// }
+	printf("\n")
+}
 
 fn printThings(mul: f64, flts: [f64: ...])
 {
@@ -158,23 +158,70 @@ fn printThings()
 	*/
 
 	/*
-		TODO for this week (that keeps getting longer and where the real work always gets postponed)
+		TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
 		// 1. constructor syntax for builtin types
-		2. start work on the generic type solver?           <-- seriously get started on this
+		2. start work on the generic type solver?
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
-		4. optional arguments                               <-- do we actually want this?
+		5. fix SAA types {
+			a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
+			// b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
+			// c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
+		}
 
 	 */
 
-	do {
-		printf("HELLO???\n")
-		printThings(30, ...[ 1, 2, 3, 4, 5 ])
-		// printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+	// do {
+	// 	printf("HELLO???\n")
+	// 	printThings(30, ...[ 1, 2, 3, 4, 5 ])
+	// 	printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+	// }
 
-		let k: str = "foo"
-		k + 30
+	do {
+		// some normal FP stuff
+		fn map<T, U>(a: [T:], fun: fn(T) -> U) -> [U]
+		{
+			var ret: [U]
+
+			for it in a => ret.append(fun(it))
+
+			return ret
+		}
+
+
+		do {
+			printf("set 1:")
+
+			fn twice(a: int) -> int => a * 2
+
+			let new = map<T: int, U: int>([ 1, 2, 3 ], twice)
+			for it in new { printf(" %d", it) }
+
+			printf("\n")
+		}
+
+		// do {
+		// 	printf("set 2:")
+
+		// 	fn twice(a: str) -> string => string(a) + string(a)
+
+		// 	let new = map<T: str, U: string>([ "a", "b", "c" ], twice)
+		// 	for it in new { printf(" %s", it) }
+
+		// 	printf("\n")
+		// }
+
+		// do {
+		// 	printf("set 3:")
+
+		// 	fn square<T>(a: T) -> i64 => (a * a) as i64
+
+		// 	let new = map<T: f64, U: i64>([ 7.3, 8.7, 9.1 ], square<T: f64>)
+		// 	for it in new { printf(" %d", it) }
+
+		// 	printf("\n")
+		// }
 	}
 
 	// do {

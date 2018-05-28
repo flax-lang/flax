@@ -83,8 +83,6 @@ fn add2<A, B>(x: A, y: B) -> A { x + y }
 	}
 
 
-	todo: handle taking address of function
-	todo: basic blocks need to check if they all have a terminator
 */
 
 

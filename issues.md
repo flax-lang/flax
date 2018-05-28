@@ -187,6 +187,13 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- fix a couple of bugs relating to SAA types and their refouncting pointers
+- fix a thing where single-expr functions weren't handling `doBlockEndThings` properly.
+
+`(337a6a5)`
+- eliminate `exitless_error`, and made everything that used to use it use our new error system.
+
 `(e479ba2)`
 - overhaul the error output system for non-trivial cases (it's awesome), remove `HighlightOptions` because we now have `SpanError`.
 - make osx travis use `tester.flx` so we stop having the CI say failed.

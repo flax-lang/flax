@@ -477,8 +477,11 @@ namespace parser
 
 			if(isfn)
 			{
-				// eat the arrow, parse the type
+				if(st.front() != TT::RightArrow)
+					expected(st, "'->' in function type specifier after parameter types", st.front().str());
+
 				st.eat();
+				// eat the arrow, parse the type
 				return new pts::FunctionType(types, parseType(st));
 			}
 			else
