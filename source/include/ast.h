@@ -106,6 +106,7 @@ namespace ast
 		Location closingBrace;
 
 		bool isArrow = false;
+		bool isFunctionBody = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferredStatements;
 	};

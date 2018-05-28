@@ -148,7 +148,7 @@ namespace parser
 		iceAssert(st.front() == TT::For);
 		st.eat();
 
-		if(!match(st.front(), TT::Identifier, TT::LParen))
+		if(!util::match(st.front(), TT::Identifier, TT::LParen))
 			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
 		auto ret = new ast::ForeachLoop(st.ploc());

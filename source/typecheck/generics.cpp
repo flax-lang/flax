@@ -8,6 +8,45 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
+//* helper method that abstracts away the common error-checking
+std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
+{
+	if(this->generics.size() > 0 && gmaps.empty())
+	{
+		if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
+			fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+
+		return { false, 0 };
+	}
+	else
+	{
+		//! ACHTUNG !
+		//* IMPORTANT *
+		/*
+			? the reason we match the *ENTIRE* generic context stack when checking for an existing definition is because of nesting.
+			* if we only checked the current map, then for methods of generic types and/or nested, non-generic types inside generic types,
+			* we'd match an existing definition even though all the generic types are probably completely different.
+
+			* so, pretty much the only way to make sure we're absolutely certain it's the same context is to compare the entire type stack.
+
+			? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
+			? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
+			? the generic types match in the stack.
+		*/
+
+		for(const auto& gv : this->genericVersions)
+		{
+			if(gv.second == fs->getCurrentGenericContextStack())
+				return { true, gv.first };
+		}
+
+		//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
+		//? the genericVersions list will have 1 entry which is just the type itself.
+		return { true, 0 };
+	}
+}
+
+
 namespace sst
 {
 	std::vector<TypeParamMap_t> TypecheckState::getCurrentGenericContextStack()
@@ -74,7 +113,19 @@ namespace sst
 
 
 
+	static std::vector<std::string> isSolutionComplete(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution)
+	{
+		std::vector<std::string> missing;
+		for(const auto& [ name, constr ] : needed)
+		{
+			(void) constr;
 
+			if(solution.find(name) == solution.end())
+				missing.push_back(name);
+		}
+
+		return missing;
+	}
 
 
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
@@ -83,10 +134,8 @@ namespace sst
 		iceAssert(thing);
 		iceAssert(!thing->generics.empty());
 
-
 		this->pushGenericTypeContext();
 		defer(this->popGenericTypeContext());
-
 
 		//* allowFail is only allowed to forgive a failure when we're checking for type conformance to protocols or something like that.
 		//* we generally don't look into type or function bodies when checking stuff, and it'd be hard to check for something like this (eg.
@@ -124,17 +173,30 @@ namespace sst
 		// check if we provided all the required mappings.
 		{
 			// TODO: make an elegant early-out for this situation?
-			for(const auto& [ name, constr ] : thing->generics)
+			if(auto missing = isSolutionComplete(thing->generics, mappings); missing.size() > 0)
 			{
-				(void) constr;
-
-				if(mappings.find(name) == mappings.end())
+				std::string mstr;
+				if(missing.size() == 1)
 				{
-					return TCResult(
-						SimpleError::make(this->loc(), "Instantiation of parametric entity '%s' is missing type argument for '%s'", thing->name, name)
-						.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
-					);
+					mstr = strprintf("'%s'", missing[0]);
 				}
+				else if(missing.size() == 2)
+				{
+					mstr = strprintf("'%s' and '%s'", missing[0], missing[1]);
+				}
+				else
+				{
+					for(size_t i = 0; i < missing.size() - 1; i++)
+						mstr += strprintf("'%s', ", missing[i]);
+
+					// oxford comma is important.
+					mstr += strprintf("and '%s'", missing.back());
+				}
+
+				return TCResult(
+					SimpleError::make(this->loc(), "Instantiation of parametric entity '%s' is missing type %s for %s", thing->name, util::plural("argument", missing.size()), mstr)
+					.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
+				);
 			}
 
 			// TODO: pretty lame, but look for things that don't exist.
@@ -187,25 +249,16 @@ namespace sst
 
 
 
+
+
+
 	TCResult TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-		const TypeParamMap_t& gmaps, fir::Type* infer)
+		const TypeParamMap_t& _gmaps, fir::Type* infer)
 	{
+		// make a copy
+		TypeParamMap_t gmaps = _gmaps;
+
 		iceAssert(gdefs.size() > 0);
-
-		if(gmaps.empty())
-		{
-			return TCResult(SimpleError::make(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
-		}
-
-		if(infer == 0 && gdefs.size() > 1)
-		{
-			auto errs = SimpleError::make(this->loc(), "Ambiguous reference to parametric entity '%s'", name);
-			for(auto g : gdefs)
-				errs.append(SimpleError(g->loc, "Potential target here:", MsgType::Note));
-
-			return TCResult(errs);
-		}
-
 
 		//? now if we have multiple things then we need to try them all, which can get real slow real quick.
 		//? unfortunately I see no better way to do this.
@@ -220,8 +273,38 @@ namespace sst
 
 		for(const auto& gdef : gdefs)
 		{
+			iceAssert(gdef->name == name);
+
 			// because we're trying multiple things potentially, allow failure.
+			if(gmaps.empty())
+			{
+				// TODO: infer types.
+				return TCResult(SimpleError::make(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
+			}
+
+			/*
+				notes:
+
+				at this point, we should check if we have a complete solution currently in gmaps.
+				if not, we call the inference 'engine' to start inferring types to the best of its ability.
+
+				we need to change the inference function to also return an error message, possibly with more information
+				about any inference failures. we then just append that error (if any) to the error that instantiateGenericEntity will throw
+
+				(which just tells you where the thing was defined and what solutions were missing)
+				(inference errors probably need to include stuff like conflicting solutions)
+
+				we should be able to just pass whatever solution we get out of the inference thing straight to instantiation,
+				and let that handle the errors for us.
+
+				i think we might not even need to check whether or not the solution is complete; we should just let the inference handle
+				it (duh, just return the 'partial' input solutions if it is already complete)
+			 */
+
+			ErrorMsg* err = 0;
+			std::tie(gmaps, err) = this->inferTypesForGenericEntity(gdef, { }, gmaps);
 			auto d = this->instantiateGenericEntity(gdef, gmaps);
+
 			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
 			{
 				pots.push_back(d.defn());
@@ -229,7 +312,11 @@ namespace sst
 			else
 			{
 				iceAssert(d.isError());
-				failures.push_back(std::make_pair(gdef, d.error().clone()));
+				iceAssert(err);
+
+				failures.push_back(std::make_pair(gdef, d.error().append(*err).clone()));
+
+				delete err;
 			}
 		}
 
@@ -262,56 +349,10 @@ namespace sst
 			return TCResult(errs);
 		}
 	}
+
+
+
 }
-
-
-
-
-//* these are just helper methods that abstract away the common error-checking
-std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
-{
-	if(this->generics.size() > 0 && gmaps.empty())
-	{
-		if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
-			fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-
-		return { false, 0 };
-	}
-	else
-	{
-		//! ACHTUNG !
-		//* IMPORTANT *
-		/*
-			? the reason we match the *ENTIRE* generic context stack when checking for an existing definition is because of nesting.
-			* if we only checked the current map, then for methods of generic types and/or nested, non-generic types inside generic types,
-			* we'd match an existing definition even though all the generic types are probably completely different.
-
-			* so, pretty much the only way to make sure we're absolutely certain it's the same context is to compare the entire type stack.
-
-			? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
-			? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
-			? the generic types match in the stack.
-		*/
-
-		for(const auto& gv : this->genericVersions)
-		{
-			if(gv.second == fs->getCurrentGenericContextStack())
-				return { true, gv.first };
-		}
-
-		//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
-		//? the genericVersions list will have 1 entry which is just the type itself.
-		return { true, 0 };
-	}
-}
-
-
-
-
-
-
-
-
 
 
 

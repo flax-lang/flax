@@ -172,6 +172,11 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
+
+		std::pair<TypeParamMap_t, ErrorMsg*> inferTypesForGenericEntity(ast::Parameterisable* problem, const std::vector<fir::Type*>& input,
+			const TypeParamMap_t& partial);
+
+
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
 		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
 

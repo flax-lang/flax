@@ -61,15 +61,6 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
 		this->body->codegen(cs);
-
-		if(this->body->isSingleExpr)
-		{
-			iceAssert(this->body->statements.size() == 1);
-			auto last = this->body->statements[0]->cachedResult;
-			last = cs->oneWayAutocast(last, this->returnType);
-
-			cs->irb.Return(last.value);
-		}
 	}
 	cs->leaveBreakableBody();
 
@@ -77,7 +68,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// that all paths return the correct type.
 
 
-	if(this->needReturnVoid && !this->body->isSingleExpr)
+	if(this->needReturnVoid)
 		cs->irb.ReturnVoid();
 
 	if(this->parentTypeForMethod)
@@ -146,8 +137,6 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok...
 	cs->valueMap[this] = CGResult(arg);
-	// cs->vtree->values[this->id.name].push_back(CGResult(arg));
-
 	return CGResult(arg);
 }
 

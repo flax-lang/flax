@@ -41,7 +41,8 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			defn->arguments.push_back(vd);
 		}
 
-		defn->body = dcast(sst::Block, this->body->typecheck(fs).stmt());
+		this->body->isFunctionBody = true;
+		defn->body = dcast(sst::Block, this->body->typecheck(fs, defn->returnType).stmt());
 		defn->body->isSingleExpr = this->body->isArrow;
 
 		iceAssert(defn->body);
@@ -232,25 +233,52 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	ret->scope = fs->getCurrentScope();
 	ret->closingBrace = this->closingBrace;
 
-	for(auto stmt : this->statements)
+	if(this->isArrow && this->isFunctionBody)
 	{
-		auto tcr = stmt->typecheck(fs);
-		if(tcr.isError())
-			return TCResult(tcr.error());
+		iceAssert(this->deferredStatements.empty());
+		iceAssert(this->statements.size() == 1);
 
-		else if(!tcr.isParametric() && !tcr.isDummy())
-			ret->statements.push_back(tcr.stmt());
+		auto s = this->statements[0];
+		if(auto e = dcast(ast::Expr, s))
+		{
+			auto ex = e->typecheck(fs, inferred).expr();
+			if(inferred && ex->type != inferred)
+				error(ex, "Invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
+
+			auto rst = new sst::ReturnStmt(s->loc);
+			rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
+			rst->value = ex;
+
+			ret->statements = { rst };
+		}
+		else
+		{
+			error(s, "Invalid use of statement in single-expression function body");
+		}
+	}
+	else
+	{
+		for(auto stmt : this->statements)
+		{
+			auto tcr = stmt->typecheck(fs);
+			if(tcr.isError())
+				return TCResult(tcr.error());
+
+			else if(!tcr.isParametric() && !tcr.isDummy())
+				ret->statements.push_back(tcr.stmt());
+		}
+
+		for(auto dstmt : this->deferredStatements)
+		{
+			auto tcr = dstmt->typecheck(fs);
+			if(tcr.isError())
+				return TCResult(tcr.error());
+
+			else if(!tcr.isParametric() && !tcr.isDummy())
+				ret->deferred.push_back(tcr.stmt());
+		}
 	}
 
-	for(auto dstmt : this->deferredStatements)
-	{
-		auto tcr = dstmt->typecheck(fs);
-		if(tcr.isError())
-			return TCResult(tcr.error());
-
-		else if(!tcr.isParametric() && !tcr.isDummy())
-			ret->deferred.push_back(tcr.stmt());
-	}
 
 	return TCResult(ret);
 }
