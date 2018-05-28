@@ -121,8 +121,7 @@ namespace cgn
 		std::unordered_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
 
 		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
-		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(fir::FunctionType* ft, const std::vector<FnCallArgument>& args,
-			const std::unordered_map<std::string, size_t>& nameIndexMap);
+
 
 		enum class OperatorFn
 		{

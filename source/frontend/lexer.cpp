@@ -528,7 +528,7 @@ namespace lexer
 					// yes, parse a floating point
 					post.remove_prefix(1), didRead++;
 
-					while(isdigit(post.front()))
+					while(post.size() > 0 && isdigit(post.front()))
 						post.remove_prefix(1), didRead++;
 
 					// ok.
@@ -598,7 +598,7 @@ namespace lexer
 					{
 						// skip it, then move to the next line
 						pos.line++;
-						pos.col = 1;
+						pos.col = 0;
 						(*line)++;
 
 						if(*line == lines.size())
@@ -726,16 +726,16 @@ namespace lexer
 			if(read > 0)
 			{
 				// note(debatable): put the actual "position" in the front of the token
-				pos.col += read;
+				pos.col += (unicodeLength > 0 ? unicodeLength : read);
 
 				// special handling -- things like ƒ, ≤ etc. are one character wide, but can be several *bytes* long.
 				pos.len = (unicodeLength > 0 ? unicodeLength : read);
-				tok.loc.len = read;
+				tok.loc.len = (unicodeLength > 0 ? unicodeLength : read);
 			}
 		}
 		else
 		{
-			pos.col = 1;
+			pos.col = 0;
 			pos.line++;
 
 			(*line)++;

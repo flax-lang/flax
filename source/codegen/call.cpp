@@ -18,20 +18,10 @@ std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::
 
 
 
-std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft,
-	const std::vector<FnCallArgument>& arguments)
-{
-	std::unordered_map<std::string, size_t> idxmap;
-	if(auto fd = dcast(sst::FunctionDefn, target))
-		idxmap = this->getNameIndexMap(fd);
-
-	return this->codegenAndArrangeFunctionCallArguments(ft, arguments, idxmap);
-}
 
 
 
-
-std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(fir::FunctionType* ft,
+static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::CodegenState* cs, fir::FunctionType* ft,
 	const std::vector<FnCallArgument>& arguments, const std::unordered_map<std::string, size_t>& idxmap)
 {
 	// do this so we can index directly.
@@ -74,7 +64,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 
 
 
-		auto vr = arg.value->codegen(this, inf);
+		auto vr = arg.value->codegen(cs, inf);
 		auto val = vr.value;
 
 		if(val->getType()->isConstantNumberType())
@@ -82,7 +72,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 			auto cv = dcast(fir::ConstantValue, val);
 			iceAssert(cv);
 
-			val = this->unwrapConstantNumber(cv);
+			val = cs->unwrapConstantNumber(cv);
 		}
 
 		if(ft->isVariadicFunc() || i < numArgs)
@@ -90,8 +80,8 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 			// the inferred type should always be present, and should always be correct.
 			iceAssert(inf);
 
-			// this syntax feels a little dirty.
-			val = (vr = this->oneWayAutocast(vr, inf)).value;
+			// cs syntax feels a little dirty.
+			val = (vr = cs->oneWayAutocast(vr, inf)).value;
 
 			if(val->getType() != inf)
 			{
@@ -111,10 +101,10 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 		{
 			// auto-convert strings and char slices into char* when passing to va_args
 			if(val->getType()->isStringType())
-				val = this->irb.GetStringData(val);
+				val = cs->irb.GetStringData(val);
 
 			else if(val->getType()->isCharSliceType())
-				val = this->irb.GetArraySliceData(val);
+				val = cs->irb.GetArraySliceData(val);
 		}
 
 
@@ -126,6 +116,18 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 
 	return ret;
 }
+
+
+std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft,
+	const std::vector<FnCallArgument>& arguments)
+{
+	std::unordered_map<std::string, size_t> idxmap;
+	if(auto fd = dcast(sst::FunctionDefn, target))
+		idxmap = this->getNameIndexMap(fd);
+
+	return _codegenAndArrangeFunctionCallArguments(this, ft, arguments, idxmap);
+}
+
 
 
 CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)

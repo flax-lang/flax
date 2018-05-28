@@ -130,6 +130,8 @@ namespace frontend
 
 			} while(flag);
 
+			ts[ts.size() - 1].loc.len = 0;
+
 			// fprintf(stderr, "Processed %zu tokens (%zu lines)\n", i, curLine);
 		}
 

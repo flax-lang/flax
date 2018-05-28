@@ -9,6 +9,8 @@
 #include "sst.h"
 #include "frontend.h"
 
+#define LEFT_PADDING TAB_WIDTH
+
 static std::string _convertTab()
 {
 	return std::string(TAB_WIDTH, ' ');
@@ -51,30 +53,25 @@ static std::string spaces(size_t n)
 
 static std::string fetchContextLine(Location loc, size_t* adjust)
 {
+	if(loc.fileID == 0) return "";
+
 	auto lines = frontend::getFileLines(loc.fileID);
 	if(lines.size() > loc.line)
 	{
 		std::string orig = util::to_string(lines[loc.line]);
-
-		size_t adjust1 = 0;
-		for(auto c : orig)
-		{
-			if(c == '\t')		(*adjust) += TAB_WIDTH, adjust1 += (TAB_WIDTH - 1);
-			else if(c == ' ')	(*adjust)++;
-			else				break;
-		}
-
 		std::stringstream ln;
 
+		// skip all leading whitespace.
+		bool ws = true;
 		for(auto c : orig)
 		{
-			if(c != '\t' && c != '\n')
-			{
-				ln << c;
-			}
+			if(ws && c == '\t')                 { *adjust += TAB_WIDTH; continue;   }
+			else if(ws && c == ' ')             { *adjust += 1; continue;           }
+			else if(c == '\n')                  { break;                            }
+			else                                { ws = false; ln << c;              }
 		}
 
-		return strprintf("%s%s", _convertTab(), ln.str().c_str());
+		return strprintf("%s%s", spaces(LEFT_PADDING), ln.str().c_str());
 	}
 
 	return "";
@@ -121,14 +118,18 @@ std::string getSpannedContext(const Location& loc, const std::vector<SpanError::
 	{
 		//* cursor represents the 'virtual' position -- excluding the left margin
 		size_t cursor = 0;
+
+		// columns actually start at 1 for some reason.
+		ret += spaces(LEFT_PADDING - 1);
+
 		for(auto span : spans)
 		{
 			// pad out.
-			auto tmp = strprintf("%s", spaces(*num_width + span.loc.col - *adjust - cursor));
-			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour); cursor += tmp.length();
+			auto tmp = strprintf("%s", spaces(1 + span.loc.col - *adjust - cursor)); cursor += tmp.length();
+			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour);
 
-			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len));
-			ret += tmp + strprintf("%s", COLOUR_RESET); cursor += tmp.length();
+			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len)); cursor += tmp.length();
+			ret += tmp + strprintf("%s", COLOUR_RESET);
 		}
 	}
 
@@ -137,6 +138,8 @@ std::string getSpannedContext(const Location& loc, const std::vector<SpanError::
 
 std::string getSingleContext(const Location& loc, bool underline = true, bool bottompad = true)
 {
+	if(loc.fileID == 0) return "";
+
 	size_t a = 0;
 	size_t b = 0;
 	size_t c = 0;
@@ -224,7 +227,8 @@ static void outputWithoutContext(const char* type, const Location& loc, const ch
 
 void BareError::post()
 {
-	outputWithoutContext(typestr(this->type).c_str(), Location(), this->msg.c_str());
+	if(!this->msg.empty()) outputWithoutContext(typestr(this->type).c_str(), Location(), this->msg.c_str());
+
 	for(auto other : this->subs)
 		other->post();
 }
@@ -243,9 +247,12 @@ BareError* BareError::clone() const
 
 void SimpleError::post()
 {
-	outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str());
-	strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
-		this->printContext ? getSingleContext(this->loc) + "\n\n" : "");
+	if(!this->msg.empty())
+	{
+		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str());
+		strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
+			this->printContext ? getSingleContext(this->loc) + "\n\n" : "");
+	}
 
 	for(auto other : this->subs)
 		other->post();
@@ -330,7 +337,7 @@ void SpanError::post()
 
 					// complex math shit to predict where the cursor will be once we print,
 					// and more importantly whether or not we'll finish printing the message in the current iteration.
-					auto realcursor = cursor + 2 + (num_width + col - adjust - cursor + 1) + margin + 1;
+					auto realcursor = margin + col;
 
 					auto splitpos = std::min(remaining.length(), width - realcursor);
 
@@ -346,7 +353,7 @@ void SpanError::post()
 					}
 					else
 					{
-						cursor += 3 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+						cursor += 3 + strprinterrf("%s", spaces(1 + num_width + col - adjust - cursor));
 						strprinterrf("%s|>%s ", COLOUR_CYAN_BOLD, COLOUR_RESET);
 
 						spanscopy[i].msg = remaining.substr(segment.length());
@@ -355,7 +362,7 @@ void SpanError::post()
 				}
 				else
 				{
-					cursor += 1 + strprinterrf("%s", spaces(num_width + col - adjust - cursor));
+					cursor += 1 + strprinterrf("%s", spaces(1 + num_width + col - adjust - cursor));
 					strprinterrf("%s|%s", COLOUR_CYAN_BOLD, COLOUR_RESET);
 				}
 			}
