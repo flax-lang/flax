@@ -194,7 +194,8 @@ namespace sst
 				}
 
 				return TCResult(
-					SimpleError::make(this->loc(), "Instantiation of parametric entity '%s' is missing type %s for %s", thing->name, util::plural("argument", missing.size()), mstr)
+					SimpleError::make(MsgType::Note, this->loc(), "Instantiation of parametric entity '%s' is missing type %s for %s",
+					thing->name, util::plural("argument", missing.size()), mstr)
 					.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
 				);
 			}
@@ -253,7 +254,7 @@ namespace sst
 
 
 	TCResult TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-		const TypeParamMap_t& _gmaps, fir::Type* infer)
+		const TypeParamMap_t& _gmaps, fir::Type* infer, const std::vector<FunctionDecl::Param>& args)
 	{
 		// make a copy
 		TypeParamMap_t gmaps = _gmaps;
@@ -265,22 +266,13 @@ namespace sst
 		// TODO: find a better way to do this??
 
 		std::vector<sst::Defn*> pots;
-		std::vector<std::pair<ast::Parameterisable*, ErrorMsg*>> failures;
-		defer({
-			for(const auto& p : failures)
-				delete p.second;
-		});
+		std::vector<std::pair<ast::Parameterisable*, BareError>> failures;
 
 		for(const auto& gdef : gdefs)
 		{
 			iceAssert(gdef->name == name);
 
 			// because we're trying multiple things potentially, allow failure.
-			if(gmaps.empty())
-			{
-				// TODO: infer types.
-				return TCResult(SimpleError::make(this->loc(), "Parametric entity '%s' cannot be referenced without type arguments", name));
-			}
 
 			/*
 				notes:
@@ -301,8 +293,8 @@ namespace sst
 				it (duh, just return the 'partial' input solutions if it is already complete)
 			 */
 
-			ErrorMsg* err = 0;
-			std::tie(gmaps, err) = this->inferTypesForGenericEntity(gdef, { }, gmaps);
+			BareError err;
+			std::tie(gmaps, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer);
 			auto d = this->instantiateGenericEntity(gdef, gmaps);
 
 			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
@@ -312,11 +304,10 @@ namespace sst
 			else
 			{
 				iceAssert(d.isError());
-				iceAssert(err);
+				if(err.hasErrors())
+					d.error() = err;
 
-				failures.push_back(std::make_pair(gdef, d.error().append(*err).clone()));
-
-				delete err;
+				failures.push_back(std::make_pair(gdef, BareError().append(d.error())));
 			}
 		}
 
@@ -344,7 +335,7 @@ namespace sst
 			auto errs = OverloadError(SimpleError::make(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s' amongst %d candidates", name, failures.size()));
 
 			for(const auto& [ f, e ] : failures)
-				errs.addCand(f, *e);
+				errs.addCand(f, e);
 
 			return TCResult(errs);
 		}

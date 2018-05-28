@@ -345,6 +345,9 @@ namespace parser
 
 	static Expr* parseRhs(State& st, Expr* lhs, int prio)
 	{
+		if(!st.hasTokens() || st.front() == TT::EndOfFile)
+			return lhs;
+
 		while(true)
 		{
 			int prec = precedence(st);
