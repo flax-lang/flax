@@ -59,7 +59,7 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		ret->value = this->value->typecheck(fs, retty).expr();
 
-		if(ret->value->type != retty && fs->getCastDistance(ret->value->type, retty) < 1)
+		if(ret->value->type != retty)
 		{
 			SpanError(SimpleError::make(this, "Mismatched type in return statement; function returns '%s', value has type '%s'", retty, ret->value->type))
 				.add(SpanError::Span(this->value->loc, strprintf("type '%s'", ret->value->type)))
@@ -119,8 +119,11 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				}
 				else
 				{
-					SpanError(SimpleError::make(retstmt, "Mismatched type in return statement; function returns '%s', value has type '%s'",
-						retty, retstmt->expectedType))
+					std::string msg;
+					if(block->isSingleExpr) msg = "Invalid single-expression with type '%s' in function returning '%s'";
+					else                    msg = "Mismatched type in return statement; function returns '%s', value has type '%s'";
+
+					SpanError(SimpleError::make(retstmt, msg.c_str(), retty, retstmt->expectedType))
 						.add(SpanError::Span(retstmt->value->loc, strprintf("type '%s'", retstmt->expectedType)))
 						.append(SimpleError(fs->getCurrentFunction()->loc, "Function definition is here:", MsgType::Note))
 						.postAndQuit();
@@ -146,26 +149,6 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 {
 	fir::Type* expected = fn->returnType;
-
-	if(fn->body->isSingleExpr)
-	{
-		// special things.
-		iceAssert(fn->body->statements.size() == 1);
-
-		auto stmt = fn->body->statements.front();
-		if(auto expr = dcast(sst::Expr, stmt); expr)
-		{
-			if(this->getCastDistance(expr->type, expected) < 0)
-				error(expr, "Found expression of type '%s' in single-expression function, when function returns type '%s'", expr->type, expected);
-
-			// ok.
-			return false;
-		}
-		else
-		{
-			error(stmt, "Expected expression (of type '%s') for single-expression function, found statement instead.", expected);
-		}
-	}
 
 	std::vector<sst::Block*> faults { fn->body };
 	auto ret = checkBlockPathsReturn(this, fn->body, expected, &faults);

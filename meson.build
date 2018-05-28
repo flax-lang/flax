@@ -93,6 +93,7 @@ source_files = files([
 	'source/typecheck/destructure.cpp',
 	'source/typecheck/controlflow.cpp',
 	'source/typecheck/typecheckstate.cpp',
+	'source/typecheck/genericinference.cpp',
 
 	'source/codegen/alloc.cpp',
 	'source/codegen/arithmetic.cpp',

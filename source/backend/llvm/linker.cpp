@@ -105,6 +105,9 @@ namespace backend
 		// ok, move some shit into here because llvm is fucking retarded
 		this->setupTargetMachine();
 		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
+
+		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
+		// this->linkedModule->print(llvm::errs(), 0);
 	}
 
 
@@ -112,9 +115,7 @@ namespace backend
 	{
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_optimise");
 
-		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
 
-		// this->linkedModule->print(llvm::errs(), 0);
 
 		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{

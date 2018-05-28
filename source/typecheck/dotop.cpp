@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "gluecode.h"
+
 #include "ir/type.h"
 
 static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* dotop, fir::Type* infer)
@@ -38,6 +40,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	else if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
 	{
 		type = type->getPointerElementType();
+
+		//* note: it's in the else-if here because we currently don't support auto deref-ing (ie. use '.' on pointers)
+		//*       for builtin types, only for classes and structs.
+
+		// TODO: reevaluate this decision?
 	}
 	else if(type->isStringType())
 	{
@@ -46,11 +53,12 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(vr->name == "length" || vr->name == "count" || vr->name == "rc")
+			if(util::match(vr->name, BUILTIN_SAA_FIELD_LENGTH, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT, BUILTIN_STRING_FIELD_COUNT))
 				res = fir::Type::getInt64();
 
-			else if(vr->name == "ptr")
+			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
 				res = fir::Type::getInt8Ptr();
+
 
 			if(res)
 			{
@@ -62,23 +70,58 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			}
 			// else: break out below, for extensions
 		}
+		else if(auto fc = dcast(ast::FunctionCall, rhs))
+		{
+			fir::Type* res = 0;
+			std::vector<sst::Expr*> args;
+			if(fc->name == BUILTIN_SAA_FN_CLONE)
+			{
+				res = type;
+				if(fc->args.size() != 0)
+					error(fc, "Builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
+			}
+			else if(fc->name == BUILTIN_SAA_FN_APPEND)
+			{
+				res = fir::Type::getVoid();
+				if(fc->args.size() != 1)
+					error(fc, "Builtin string method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
+
+				else if(!fc->args[0].first.empty())
+					error(fc, "Argument to builtin method 'append' cannot be named");
+
+				args.push_back(fc->args[0].second->typecheck(fs).expr());
+				if(!args[0]->type->isCharType() && !args[0]->type->isStringType() && !args[0]->type->isCharSliceType())
+				{
+					error(fc, "Invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
+						args[0]->type, fir::Type::getInt8(), (fir::Type*) fir::Type::getCharSlice(false), (fir::Type*) fir::Type::getString());
+				}
+			}
+
+
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->args = args;
+				tmp->name = fc->name;
+				tmp->isFunctionCall = true;
+
+				return tmp;
+			}
+		}
 	}
 	else if(type->isDynamicArrayType() || type->isArraySliceType() || type->isArrayType())
 	{
 		auto rhs = dotop->right;
 		if(auto vr = dcast(ast::Ident, rhs))
 		{
-			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(vr->name == "length" || vr->name == "count")
+			if(vr->name == BUILTIN_SAA_FIELD_LENGTH || (type->isDynamicArrayType()
+				&& util::match(vr->name, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT)))
 			{
 				res = fir::Type::getInt64();
 			}
-			else if(type->isDynamicArrayType() && (vr->name == "capacity" || vr->name == "rc"))
-			{
-				res = fir::Type::getInt64();
-			}
-			else if(vr->name == "ptr")
+			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
 			{
 				res = type->getArrayElementType()->getPointerTo();
 				if(type->isDynamicArrayType())
@@ -103,36 +146,45 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		else if(auto fc = dcast(ast::FunctionCall, rhs))
 		{
 			fir::Type* res = 0;
+			std::vector<sst::Expr*> args;
 
-			// TODO: extension support here
-			if(fc->name == "clone")
+			if(fc->name == BUILTIN_SAA_FN_CLONE)
 			{
 				res = type;
 				if(fc->args.size() != 0)
-					error(fc, "'clone' expects exactly 0 arguments, found '%d' instead", fc->args.size());
+					error(fc, "Builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
-			else if(fc->name == "pop")
+			else if(fc->name == BUILTIN_SAA_FN_APPEND)
 			{
-				res = type->getArrayElementType();
-				if(fc->args.size() != 0)
-					error(fc, "'pop' expects exactly 0 arguments, found '%d' instead", fc->args.size());
-			}
-			else if(fc->name == "back")
-			{
-				res = type->getArrayElementType();
-				if(fc->args.size() != 0)
-					error(fc, "'back' expects exactly 0 arguments, found '%d' instead", fc->args.size());
+				if(type->isArrayType())
+					error(fc, "'append' method cannot be called on arrays");
+
+				res = fir::DynamicArrayType::get(type->getArrayElementType());
+
+				if(fc->args.size() != 1)
+					error(fc, "Builtin array method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
+
+				else if(!fc->args[0].first.empty())
+					error(fc, "Argument to builtin method 'append' cannot be named");
+
+				args.push_back(fc->args[0].second->typecheck(fs).expr());
+				if(args[0]->type != type->getArrayElementType()     //? vv logic below looks a little sketch.
+					&& ((args[0]->type->isArraySliceType() && args[0]->type->getArrayElementType() != type->getArrayElementType()))
+					&& args[0]->type != type)
+				{
+					error(fc, "Invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
+						args[0]->type, type, type->getArrayElementType(), (fir::Type*) fir::ArraySliceType::get(type->getArrayElementType(), false));
+				}
 			}
 
 			// fallthrough
-
 
 			if(res)
 			{
 				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
 				tmp->lhs = lhs;
+				tmp->args = args;
 				tmp->name = fc->name;
-				tmp->args = util::map(fc->args, [fs](auto e) -> sst::Expr* { return e.second->typecheck(fs).expr(); });
 				tmp->isFunctionCall = true;
 
 				return tmp;
@@ -190,6 +242,9 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough;
 	}
+
+	// TODO: plug in extensions here.
+
 
 	if(!type->isStructType() && !type->isClassType())
 	{

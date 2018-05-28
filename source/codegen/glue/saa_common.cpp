@@ -93,18 +93,24 @@ namespace saa_common
 		return retfn;
 	}
 
+	fir::Value* makeNewRefCountPointer(CodegenState* cs, fir::Value* rc)
+	{
+		iceAssert(rc->getType()->isIntegerType() && "not integer type");
+
+		auto rcp = cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC), getCI(REFCOUNT_SIZE));
+		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getMutInt64Ptr());
+
+		cs->irb.Store(rc, rcp);
+		return cs->irb.PointerTypeCast(rcp, fir::Type::getInt64Ptr());
+	}
+
 	fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* saa, fir::Value* rc)
 	{
 		iceAssert(isSAA(saa->getType()) && "not saa type");
 		iceAssert(rc->getType()->isIntegerType() && "not integer type");
 
-		auto rcp = cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC), getCI(REFCOUNT_SIZE));
-		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getInt64Ptr());
-
-		auto ret = cs->irb.SetSAARefCountPointer(saa, rcp);
-		cs->irb.SetSAARefCount(ret, rc);
-
-		return ret;
+		auto rcp = makeNewRefCountPointer(cs, rc);
+		return cs->irb.SetSAARefCountPointer(saa, rcp);
 	}
 
 
@@ -169,17 +175,18 @@ namespace saa_common
 		{
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-			#if DEBUG_ARRAY_ALLOCATION
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+
+			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
 			{
 				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
 
-				fir::Value* tmpstr = cs->module->createGlobalString("oldptr: %p, newptr: %p, oldlen: %d, bytecount: %d, index: %d\n");
-				cs->irb.Call(printfn, { tmpstr, oldptr, newptr, oldlen, bytecount, startIndex });
+				fir::Value* tmpstr = cs->module->createGlobalString("clone (memmove): oldptr: %p, newptr: %p, ('%c') oldlen: %d, bytecount: %d, index: %d\n");
+				cs->irb.Call(printfn, { tmpstr, oldptr, newptr, cs->irb.Load(newptr), oldlen, bytecount, startIndex });
 			}
 			#endif
 
-			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
-				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
 		}
 		else if(elmType->isDynamicArrayType())
 		{
@@ -323,6 +330,20 @@ namespace saa_common
 
 		iceAssert(retfn);
 		return retfn;
+	}
+
+
+	fir::Function* generateAppropriateAppendFunction(CodegenState* cs, fir::Type* saa, fir::Type* appendee)
+	{
+		iceAssert(isSAA(saa));
+		if(appendee == getSAAElm(saa))
+			return generateElementAppendFunction(cs, saa);
+
+		else if(util::match(appendee, getSAASlice(saa), saa))
+			return generateAppendFunction(cs, saa);
+
+		else
+			error(cs->loc(), "cannot append '%s' to '%s'", appendee, saa);
 	}
 
 
@@ -475,12 +496,20 @@ namespace saa_common
 			auto ret = cs->irb.CreateValue(saa);
 			ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, getCI(0)));
 			ret = cs->irb.SetSAALength(ret, getCI(0));
-			ret = cs->irb.SetSAACapacity(ret, getCI(0));
+			ret = cs->irb.SetSAACapacity(ret, getCI(0));  //? vv  we count on the 'reserveAtLeast' function to init our refcount
 			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
 
 			ret = cs->irb.Call(generateReserveAtLeastFunction(cs, saa), ret, cs->irb.Add(cs->irb.Add(lhslen, rhslen),
 				saa->isStringType() ? getCI(1) : getCI(0)));
+
+
+			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
+			{
+				fir::Value* tmpstr = cs->module->createGlobalString("constructfromtwo: (ptr: %p, len: %d) + (ptr: %p, len: %d) = %p\n");
+				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, lhsbuf, lhslen, rhsbuf, rhslen, cs->irb.GetSAAData(ret) });
+			}
+			#endif
 
 
 			auto buf = cs->irb.GetSAAData(ret, "buf");
@@ -612,27 +641,29 @@ namespace saa_common
 			auto oldrcp = cs->irb.GetSAARefCountPointer(s1, "oldrcp");
 			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr())), nullrc, notnullrc);
 
+
+			//? these phi nodes are for the refcount pointer of the thing we will eventually return.
 			fir::Value* nullphi = 0;
 			fir::Value* notnullphi = 0;
 
 			cs->irb.setCurrentBlock(nullrc);
 			{
-				nullphi = getCI(1);
+				nullphi = makeNewRefCountPointer(cs, getCI(1));
 				cs->irb.UnCondBranch(mergerc);
 			}
 
 			cs->irb.setCurrentBlock(notnullrc);
 			{
-				notnullphi = cs->irb.GetSAARefCount(s1, "oldref");
+				notnullphi = cs->irb.GetSAARefCountPointer(s1, "oldref");
 				cs->irb.UnCondBranch(mergerc);
 			}
 
 
 			cs->irb.setCurrentBlock(mergerc);
 			{
-				auto oldrc = cs->irb.CreatePHINode(fir::Type::getInt64());
-				oldrc->addIncoming(nullphi, nullrc);
-				oldrc->addIncoming(notnullphi, notnullrc);
+				auto rcptr = cs->irb.CreatePHINode(fir::Type::getInt64Ptr());
+				rcptr->addIncoming(nullphi, nullrc);
+				rcptr->addIncoming(notnullphi, notnullrc);
 
 				fir::IRBlock* returnUntouched = cs->irb.addNewBlockInFunction("noExpansion", func);
 				fir::IRBlock* doExpansion = cs->irb.addNewBlockInFunction("expand", func);
@@ -640,10 +671,8 @@ namespace saa_common
 				cs->irb.CondBranch(cs->irb.ICmpLEQ(minsz, oldcap), returnUntouched, doExpansion);
 
 
-
 				cs->irb.setCurrentBlock(doExpansion);
 				{
-
 					// TODO: is it faster to times 3 divide by 2, or do FP casts and times 1.5?
 					auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
 
@@ -666,7 +695,14 @@ namespace saa_common
 					ret = cs->irb.SetSAAData(ret, newbuf);
 					ret = cs->irb.SetSAALength(ret, oldlen);
 					ret = cs->irb.SetSAACapacity(ret, newlen);
-					ret = initSAAWithRefCount(cs, ret, oldrc);
+					ret = cs->irb.SetSAARefCountPointer(ret, rcptr);
+
+					#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
+					{
+						fir::Value* tmpstr = cs->module->createGlobalString("(re)alloc arr: (ptr: %p, cap: %d / rcp: %p)\n");
+						cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, newbuf, newlen, cs->irb.GetSAARefCountPointer(ret) });
+					}
+					#endif
 
 					cs->irb.Return(ret);
 				}
