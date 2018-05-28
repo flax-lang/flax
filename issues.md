@@ -187,9 +187,10 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(1e41f88)`
 - fix a couple of bugs relating to SAA types and their refouncting pointers
 - fix a thing where single-expr functions weren't handling `doBlockEndThings` properly.
+- start drilling holes for the generic inference stuff
 
 `(337a6a5)`
 - eliminate `exitless_error`, and made everything that used to use it use our new error system.

@@ -355,7 +355,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 	iceAssert(fd->type->isFunctionType());
 
 	auto ft = fd->type->toFunctionType();
-	auto args = this->codegenAndArrangeFunctionCallArguments(ft, call->arguments, this->getNameIndexMap(fd));
+	auto args = this->codegenAndArrangeFunctionCallArguments(fd, ft, call->arguments);
 
 	auto idx = cls->getVirtualMethodIndex(call->name, ft);
 	return this->irb.CallVirtualMethod(cls, ft, idx, args);

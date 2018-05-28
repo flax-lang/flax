@@ -490,7 +490,6 @@ namespace sst
 		while(tree)
 		{
 			// unify the handling of generic and non-generic stuff.
-
 			// if we provided mappings, don't bother searching normal functions.
 			if(gmaps.empty())
 			{
@@ -501,7 +500,7 @@ namespace sst
 			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
 				didGeneric = true;
-				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, (fir::Type*) 0);
+				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, arguments);
 
 				if(res.isDefn())    fns.push_back(res.defn());
 				else                errs.append(res.error());

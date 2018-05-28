@@ -10,10 +10,9 @@
 
 namespace sst
 {
-	fir::Type* TypecheckState::inferCorrectTypeForLiteral(Expr* expr)
+	fir::Type* TypecheckState::inferCorrectTypeForLiteral(fir::ConstantNumberType* type)
 	{
-		iceAssert(expr->type->isConstantNumberType());
-		auto num = expr->type->toConstantNumberType()->getValue();
+		auto num = type->toConstantNumberType()->getValue();
 
 		// if(auto lit = dcast(sst::LiteralNumber, expr))
 		{
@@ -30,7 +29,7 @@ namespace sst
 					return fir::Type::getUint64();
 
 				else
-					error(expr, "Numberic literal does not fit into largest supported (64-bit) type");
+					error(this->loc(), "Numberic literal does not fit into largest supported (64-bit) type");
 			}
 			else
 			{
@@ -41,7 +40,7 @@ namespace sst
 					return fir::Type::getFloat80();
 
 				else
-					error(expr, "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80());
+					error(this->loc(), "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80());
 			}
 		}
 	}

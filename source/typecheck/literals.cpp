@@ -69,7 +69,7 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		auto ty = expr->type;
 		if(expr->type->isConstantNumberType() && (!inf || !inf->isPrimitiveType()))
-			ty = fs->inferCorrectTypeForLiteral(expr);
+			ty = fs->inferCorrectTypeForLiteral(expr->type->toConstantNumberType());
 
 		vals.push_back(expr);
 		fts.push_back(ty);
@@ -163,7 +163,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			if(!elmty)
 			{
 				if(e->type->isConstantNumberType() && !infer)
-					elmty = fs->inferCorrectTypeForLiteral(e);
+					elmty = fs->inferCorrectTypeForLiteral(e->type->toConstantNumberType());
 
 				else
 					elmty = e->type;

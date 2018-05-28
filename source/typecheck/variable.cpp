@@ -84,7 +84,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
 
-			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer);
+			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, { });
 			if(res.isDefn())
 				return returnResult(res.defn());
 		}
@@ -153,7 +153,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			auto t = defn->init->type;
 			if(t->isConstantNumberType())
-				t = fs->inferCorrectTypeForLiteral(defn->init);
+				t = fs->inferCorrectTypeForLiteral(defn->init->type->toConstantNumberType());
 
 			defn->type = t;
 		}
