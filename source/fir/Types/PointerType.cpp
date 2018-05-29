@@ -109,6 +109,13 @@ namespace fir
 		auto op = other->toPointerType();
 		return this->baseType->isTypeEqual(op->baseType) && (this->isPtrMutable == op->isPtrMutable);
 	}
+
+	fir::Type* PointerType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		auto base = _substitute(subst, this->baseType);
+		if(this->isMutable())   return base->getMutablePointerTo();
+		else                    return base->getPointerTo();
+	}
 }
 
 

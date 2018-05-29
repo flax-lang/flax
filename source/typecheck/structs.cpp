@@ -159,7 +159,11 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		//* generate all the decls first so we can call methods out of order.
 		for(auto m : this->methods)
 		{
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, str, { }).defn());
+			auto res = m->generateDeclaration(fs, str, { });
+			if(res.isParametric())
+				error(m, "Methods of a type cannot be polymorphic (for now???)");
+
+			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
 			defn->methods.push_back(decl);
@@ -185,7 +189,11 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }).defn());
+			auto res = m->generateDeclaration(fs, str, { });
+			if(res.isParametric())
+				error(m, "Static methods of a type cannot be polymorphic (for now???)");
+
+			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
 			defn->staticMethods.push_back(decl);
@@ -348,7 +356,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			if(m->name == "init")
 				error(m, "Cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
 
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, cls, { }).defn());
+			auto res = m->generateDeclaration(fs, cls, { });
+			if(res.isParametric())
+				error(m, "Methods of a type cannot be polymorphic (for now???)");
+
+			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
 			// info(decl, "inside '%s' -- %s", defn->id.str(), decl->type);
@@ -480,7 +492,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		for(auto m : this->staticMethods)
 		{
 			// infer is 0 because this is a static thing
-			auto decl = dcast(sst::FunctionDefn, m->generateDeclaration(fs, 0, { }).defn());
+			auto res = m->generateDeclaration(fs, 0, { });
+			if(res.isParametric())
+				error(m, "Functions of a type cannot be polymorphic (for now???)");
+
+			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
 			defn->staticMethods.push_back(decl);

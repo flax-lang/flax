@@ -240,6 +240,7 @@ namespace sst
 		//* with the mappings that we're using to instantiate it.
 		thing->generateDeclaration(this, 0, mappings);
 
+
 		// now it is 'safe' to call typecheck.
 		auto ret = dcast(Defn, thing->typecheck(this, 0, mappings).defn());
 		iceAssert(ret);
@@ -253,8 +254,29 @@ namespace sst
 
 
 
-	TCResult TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-		const TypeParamMap_t& _gmaps, fir::Type* infer, const std::vector<FunctionDecl::Param>& args)
+
+	static int placeholderGroupID = 0;
+	static sst::Defn* fillGenericTypeWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
+	{
+		// this will just call back into 'attemptToDisamiguateBlaBla' with filled in types for the partial solution.
+		TypeParamMap_t copy = partial;
+
+		for(const auto& p : thing->generics)
+		{
+			if(copy.find(p.first) == copy.end())
+				copy[p.first] = fir::PolyPlaceholderType::get(p.first, placeholderGroupID);
+		}
+
+		placeholderGroupID++;
+
+		std::vector<FnCallArgument> fake;
+		return fs->attemptToDisambiguateGenericReference(thing->name, { thing }, copy, 0, false, fake).first.defn();
+	}
+
+
+	std::pair<TCResult, TypeParamMap_t> TypecheckState::attemptToDisambiguateGenericReference(const std::string& name,
+		const std::vector<ast::Parameterisable*>& gdefs, const TypeParamMap_t& _gmaps, fir::Type* infer, bool isFnCall,
+		std::vector<FnCallArgument>& args)
 	{
 		// make a copy
 		TypeParamMap_t gmaps = _gmaps;
@@ -272,42 +294,44 @@ namespace sst
 		{
 			iceAssert(gdef->name == name);
 
-			// because we're trying multiple things potentially, allow failure.
-
-			/*
-				notes:
-
-				at this point, we should check if we have a complete solution currently in gmaps.
-				if not, we call the inference 'engine' to start inferring types to the best of its ability.
-
-				we need to change the inference function to also return an error message, possibly with more information
-				about any inference failures. we then just append that error (if any) to the error that instantiateGenericEntity will throw
-
-				(which just tells you where the thing was defined and what solutions were missing)
-				(inference errors probably need to include stuff like conflicting solutions)
-
-				we should be able to just pass whatever solution we get out of the inference thing straight to instantiation,
-				and let that handle the errors for us.
-
-				i think we might not even need to check whether or not the solution is complete; we should just let the inference handle
-				it (duh, just return the 'partial' input solutions if it is already complete)
-			 */
+			//* ok, here's the thing -- if we pass in a function reference, (ie. it's an ast::FuncDefn), but 'isFnCall' is false,
+			//* then we want to fill in the 'solution' with placeholder types, so we can actually do an inference thing.
 
 			BareError err;
-			std::tie(gmaps, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer);
+			std::unordered_map<fir::Type*, fir::Type*> substitutions;
+			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer);
+
+			//* note: if we manage to instantite without error, that means that we have a complete solution.
 			auto d = this->instantiateGenericEntity(gdef, gmaps);
 
 			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
 			{
 				pots.push_back(d.defn());
+
+				for(FnCallArgument& arg : args)
+				{
+					//! ACHTUNG !
+					//* here, we modify the input appropriately.
+					//* i don't see a better way to do it.
+
+					iceAssert(arg.orig);
+					arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
+				}
 			}
 			else
 			{
-				iceAssert(d.isError());
-				if(err.hasErrors())
-					d.error() = err;
+				if(auto fd = dcast(ast::FuncDefn, gdef); fd && !isFnCall)
+				{
+					pots.push_back(fillGenericTypeWithPlaceholders(this, gdef, gmaps));
+				}
+				else
+				{
+					iceAssert(d.isError());
+					if(err.hasErrors())
+						d.error() = err;
 
-				failures.push_back(std::make_pair(gdef, BareError().append(d.error())));
+					failures.push_back(std::make_pair(gdef, BareError().append(d.error())));
+				}
 			}
 		}
 
@@ -319,13 +343,13 @@ namespace sst
 				for(auto g : pots)
 					errs.append(SimpleError(g->loc, "Potential target here:", MsgType::Note));
 
-				return TCResult(errs);
+				return { TCResult(errs), gmaps };
 			}
 			else
 			{
 				// ok, great. just return that shit.
 				iceAssert(pots[0]);
-				return TCResult(pots[0]);
+				return { TCResult(pots[0]), gmaps };
 			}
 		}
 		else
@@ -337,7 +361,7 @@ namespace sst
 			for(const auto& [ f, e ] : failures)
 				errs.addCand(f, e);
 
-			return TCResult(errs);
+			return { TCResult(errs), gmaps };
 		}
 	}
 

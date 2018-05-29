@@ -23,35 +23,39 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
 		return TCResult(defn);
 
-	fs->enterFunctionBody(defn);
-	fs->pushTree(defn->id.mangledName());
+	// if we have placeholders, don't bother generating anything.
+	if(!defn->type->containsPlaceholders())
 	{
-		// add the arguments to the tree
-
-		for(auto arg : defn->params)
+		fs->enterFunctionBody(defn);
+		fs->pushTree(defn->id.mangledName());
 		{
-			auto vd = new sst::ArgumentDefn(arg.loc);
-			vd->id = Identifier(arg.name, IdKind::Name);
-			vd->id.scope = fs->getCurrentScope();
+			// add the arguments to the tree
 
-			vd->type = arg.type;
+			for(auto arg : defn->params)
+			{
+				auto vd = new sst::ArgumentDefn(arg.loc);
+				vd->id = Identifier(arg.name, IdKind::Name);
+				vd->id.scope = fs->getCurrentScope();
 
-			fs->stree->addDefinition(arg.name, vd);
+				vd->type = arg.type;
 
-			defn->arguments.push_back(vd);
+				fs->stree->addDefinition(arg.name, vd);
+
+				defn->arguments.push_back(vd);
+			}
+
+			this->body->isFunctionBody = true;
+			defn->body = dcast(sst::Block, this->body->typecheck(fs, defn->returnType).stmt());
+			defn->body->isSingleExpr = this->body->isArrow;
+
+			iceAssert(defn->body);
 		}
+		fs->popTree();
+		fs->leaveFunctionBody();
 
-		this->body->isFunctionBody = true;
-		defn->body = dcast(sst::Block, this->body->typecheck(fs, defn->returnType).stmt());
-		defn->body->isSingleExpr = this->body->isArrow;
-
-		iceAssert(defn->body);
+		// ok, do the check.
+		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
 	}
-	fs->popTree();
-	fs->leaveFunctionBody();
-
-	// ok, do the check.
-	defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);

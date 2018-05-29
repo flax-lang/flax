@@ -120,6 +120,25 @@ namespace fir
 			i++;
 		}
 	}
+
+	fir::Type* StructType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		error("not supported!");
+		return 0;
+
+		// std::vector<std::pair<std::string, Type*>> mems;
+		// for(const auto& p : this->structMembers)
+		// 	mems.push_back({ p.first, _substitute(subst, p.second) });
+
+		// // return StructType::get
+		// auto it = typeCache.find(this->structName);
+		// iceAssert(it != typeCache.end());
+
+		// auto old = it->second;
+		// typeCache[this->structName] = new StructType(this->structName, mems, this->isTypePacked);
+
+		// delete old;
+	}
 }
 
 

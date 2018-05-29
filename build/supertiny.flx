@@ -136,6 +136,13 @@ import "math" as _
 // 	printf("print things 3\n")
 // }
 
+
+// class quarkle
+// {
+// 	init() { }
+// 	static fn twice<K>(a: K) -> K => a * 2
+// }
+
 @entry fn main()
 {
 	/*
@@ -161,7 +168,10 @@ import "math" as _
 		TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
 		// 1. constructor syntax for builtin types
-		2. start work on the generic type solver?
+		2. start work on the generic type solver? {
+			a. placeholder types for references to generic functions in a function call.
+			b. make sure that instantiating a generic function by assinging it to a variable works.
+		}
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
 		5. fix SAA types {
@@ -170,8 +180,23 @@ import "math" as _
 			// c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
 		}
 		6. clean up generic error output -- we have the content, just need to trim and arrange.
+		7. move long error messages on spans nearer to the left margin when there's only one span in the error.
 
 	 */
+
+
+	 /*
+		TODO LIST for generics so i don't forget wtf is going on
+
+		*ALMOST THERE*, bar some issues:
+
+		1. need to figure out how to 'convert' the `infer` passed to inferGenericTypesForEntity into the format that it can understand (ie.
+			generic mappings).
+
+		2. that should be it??? hopefully????
+
+
+	  */
 
 	// do {
 	// 	printf("HELLO???\n")
@@ -202,7 +227,8 @@ import "math" as _
 		do {
 			printf("set 1:")
 
-			fn twice(a: int) -> int => a * 2
+			// fn twice(a: int) -> int => a * 2
+			fn twice<K>(a: K) -> K => a * 2
 
 			let new = map(false, fun: twice, arr: [ 1, 2, 3 ])
 			for it in new { printf(" %d", it) }

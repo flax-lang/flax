@@ -39,6 +39,11 @@ namespace fir
 	{
 		return TypeCache::get().getOrAddCachedType(new DynamicArrayType(elementType));
 	}
+
+	fir::Type* DynamicArrayType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		return DynamicArrayType::get(_substitute(subst, this->arrayElementType));
+	}
 }
 
 

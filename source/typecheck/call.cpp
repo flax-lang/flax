@@ -332,7 +332,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveFunctionFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
+	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		if(cands.empty()) return TCResult(BareError("No candidates"));
@@ -468,7 +468,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveFunction(const std::string& name, const std::vector<Param>& arguments, const TypeParamMap_t& gmaps, bool travUp)
+	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp)
 	{
 		// we kinda need to check manually, since... we need to give a good error message
 		// when a shadowed thing is not a function
@@ -476,6 +476,7 @@ namespace sst
 		StateTree* tree = this->stree;
 
 		SimpleError errs;
+		auto ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
 
 		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
 		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
@@ -500,10 +501,29 @@ namespace sst
 			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
 				didGeneric = true;
-				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, arguments);
+				auto [ res, newmap ] = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, arguments);
 
-				if(res.isDefn())    fns.push_back(res.defn());
-				else                errs.append(res.error());
+				if(!res.isDefn())
+				{
+					errs.append(res.error());
+				}
+				else
+				{
+					auto def = res.defn();
+					fns.push_back(def);
+
+					//! ACHTUNG !
+					/*
+						* this piece of somewhat messy/hacky code deals with the situation where we have placeholders in our function call.
+						* we need to eliminate it, by using the refined solution set (newmap) that was returned.
+
+						* what we're going to do is quite possibly stupid, but i don't see any other way to do it without significantly
+						* rearchitecting how typechecking interacts with the generic pipeline.
+
+						so what we do is just re-typecheck everything. now hear me out -- function calls shouldn't contain any definitions.
+						so there shouldn't be any (ill/side)-effects. there might be a memory problem, but fuck that.
+					 */
+				}
 			}
 
 
@@ -543,7 +563,7 @@ namespace sst
 			{
 				// ok, then.
 				//* note: no need to specify 'travUp', because we already resolved the type here.
-				return this->resolveConstructorCall(typedf, arguments, gmaps);
+				return this->resolveConstructorCall(typedf, ts, gmaps);
 			}
 			else
 			{
@@ -554,8 +574,7 @@ namespace sst
 			}
 		}
 
-
-		return this->resolveFunctionFromCandidates(cands, arguments, gmaps, travUp);
+		return this->resolveFunctionCallFromCandidates(cands, ts, gmaps, travUp);
 	}
 
 
@@ -577,7 +596,7 @@ namespace sst
 			}
 
 
-			auto cand = this->resolveFunctionFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
+			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
 			}), arguments, gmaps, true);
 
@@ -764,10 +783,10 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 
 	// resolve the function call here
-	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
+	std::vector<FnCallArgument> ts = arguments;
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-	auto res = fs->resolveFunction(this->name, ts, gmaps, this->traverseUpwards);
+	auto res = fs->resolveFunctionCall(this->name, ts, gmaps, this->traverseUpwards);
 
 	auto target = res.defn();
 	iceAssert(target);
@@ -889,13 +908,12 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 					tdo->index = i;
 					tdo->lhs = thing;
 
-					auto fca = FnCallArgument(thing->loc, arg.first, tdo);
-					ret.push_back(fca);
+					ret.push_back(FnCallArgument(thing->loc, arg.first, tdo, arg.second));
 				}
 			}
 			else if(thing->type->isArraySliceType())
 			{
-				auto fca = FnCallArgument(splat->expr->loc, arg.first, thing);
+				auto fca = FnCallArgument(splat->expr->loc, arg.first, thing, arg.second);
 				fca.wasSplat = true;
 
 				ret.push_back(fca);
@@ -907,7 +925,7 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 		}
 		else
 		{
-			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this).expr()));
+			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this).expr(), arg.second));
 		}
 	}
 

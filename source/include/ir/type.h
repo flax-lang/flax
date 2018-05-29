@@ -32,12 +32,13 @@ namespace fir
 	struct ArraySliceType;
 	struct DynamicArrayType;
 	struct ConstantNumberType;
+	struct PolyPlaceholderType;
 
 	struct ConstantValue;
 	struct ConstantArray;
 	struct Function;
 
-
+	fir::Type* _substitute(const std::unordered_map<fir::Type*, fir::Type*>& subst, fir::Type* t);
 
 	enum class TypeKind
 	{
@@ -60,6 +61,7 @@ namespace fir
 		ArraySlice,
 		DynamicArray,
 		ConstantNumber,
+		PolyPlaceholder,
 	};
 
 	struct Type
@@ -77,6 +79,7 @@ namespace fir
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) = 0;
 
 		Type* getPointerTo();
 		Type* getMutablePointerTo();
@@ -88,6 +91,7 @@ namespace fir
 		// note: works for all array types, be it dynamic, fixed, or slices
 		Type* getArrayElementType();
 
+		PolyPlaceholderType* toPolyPlaceholderType();
 		ConstantNumberType* toConstantNumberType();
 		DynamicArrayType* toDynamicArrayType();
 		ArraySliceType* toArraySliceType();
@@ -141,6 +145,9 @@ namespace fir
 		bool isMutablePointer();
 		bool isImmutablePointer();
 		bool isConstantNumberType();
+		bool isPolyPlaceholderType();
+
+		bool containsPlaceholders();
 
 		size_t getBitWidth();
 
@@ -258,6 +265,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~BoolType() override { }
@@ -276,6 +284,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~VoidType() override { }
@@ -294,6 +303,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~NullType() override { }
@@ -315,6 +325,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		static ConstantNumberType* get(mpfr::mpreal num);
 
@@ -324,6 +335,33 @@ namespace fir
 		ConstantNumberType(mpfr::mpreal n);
 		mpfr::mpreal number;
 	};
+
+	struct PolyPlaceholderType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
+
+		std::string getName();
+		int getGroup();
+
+		// session allows placeholders to share a name while being unrelated.
+		static PolyPlaceholderType* get(const std::string& name, int session);
+		virtual ~PolyPlaceholderType() override { }
+
+		protected:
+		PolyPlaceholderType(const std::string& n, int ses);
+
+		std::string name;
+		int group = 0;
+	};
+
+
+
+
 
 	struct PrimitiveType : Type
 	{
@@ -338,6 +376,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 
 		enum class Kind
@@ -408,6 +447,7 @@ namespace fir
 		PointerType(Type* base, bool mut);
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		Type* baseType = 0;
 		bool isPtrMutable = false;
@@ -442,6 +482,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~TupleType() override { }
@@ -479,6 +520,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~StructType() override { }
@@ -543,6 +585,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ClassType() override { }
@@ -601,6 +644,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~EnumType() override { }
@@ -634,6 +678,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ArrayType() override { }
@@ -660,6 +705,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~DynamicArrayType() override { }
@@ -689,6 +735,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ArraySliceType() override { }
@@ -745,6 +792,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 		// protected constructor
 		virtual ~FunctionType() override { }
@@ -774,6 +822,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 
 		// protected constructor
@@ -793,6 +842,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 
 		// protected constructor
@@ -817,6 +867,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
 
 		// protected constructor

@@ -27,6 +27,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 8. Operator overloading for assignment and subscript/slice
 
 
+9. Figure out how to reconcile generic functions/methods with structs/classes.
+
+
 14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach
 	eg. index with `foo[a, b, c]` instead of `foo[a][b][c]`
 
@@ -64,7 +67,30 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 -----
 
 
-### THINGS TO NOTE
+### POLYMORPHIC PIPELINE DOCUMENTATION
+
+So, this thing serves as the shitty documentation for how the generic pipeline works for future implementations.
+
+1. When AST nodes are typechecked at the top level, if they are polymorphic things they will refuse to be checked,
+	and won't return a result (`ast::Block` does the same check), but instead add themselves to a list of pending,
+	uninstantiated generic types in the `sst::StateTree`.
+
+2. When resolving a reference (function call or identifier), we check the pending generic list if we can't find any
+	normal things that match (or if we already have some explicit mappings). If there is a match, we call into
+	`attemptToDisambiguateGenericReference()` with whatever information we have (eg. partial solutions)
+
+3. We call `inferTypesForGenericEntity` which is the main solver function that infers types for the type arguments
+	that are missing. This just acts like a black box for the most part.
+
+4. If we find that we're actually a reference to a function (ie. we act like a function pointer instead of a call) then
+	we do a thing called `fillGenericTypeWithPlaceholders` which puts in fake 'solutions' for each type argument (aka
+	`fir::PolyPlaceholderType`), and proceeds to return it.
+
+5. We will then allow that to typecheck. For now, only functions can have placeholder types, so we special-case that in
+	function typechecking by just skipping the body typecheck when we have placeholders.
+
+6. Once we manage to solve everything -- ie. get rid of all the placeholder types, we need to re-typecheck the original definition
+	with proper filled in types. This happens in `resolveFunctionCall`.
 
 
 

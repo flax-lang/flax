@@ -51,6 +51,46 @@ struct SolvedType
 	fir::Type* soln = 0;
 };
 
+struct SolutionSet
+{
+	void addSolution(const std::string& x, const SolvedType& y)
+	{
+		this->solutions[x] = y;
+	}
+
+	void addSubstitution(fir::Type* x, fir::Type* y)
+	{
+		this->substitutions[x] = y;
+	}
+
+	bool hasSolution(const std::string& n)
+	{
+		return this->solutions.find(n) != this->solutions.end();
+	}
+
+	SolvedType getSolution(const std::string& n)
+	{
+		if(auto it = this->solutions.find(n); it != this->solutions.end())
+			return it->second;
+
+		else
+			return SolvedType();
+	}
+
+	fir::Type* substitute(fir::Type* x)
+	{
+		if(auto it = this->substitutions.find(x); it != this->substitutions.end())
+			return it->second;
+
+		else
+			return x;
+	}
+
+	std::unordered_map<std::string, SolvedType> solutions;
+	std::unordered_map<fir::Type*, fir::Type*> substitutions;
+};
+
+
 
 using Param_t = sst::FunctionDecl::Param;
 using Solution_t = std::unordered_map<std::string, SolvedType>;
@@ -71,7 +111,11 @@ static std::set<std::string> extractGenericProblems(pts::Type* t, const ProblemS
 
 
 
-static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& input, Solution_t& workingSoln,
+
+static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const std::vector<Param_t>& input, SolutionSet& workingSoln,
+	const std::set<std::string>& tosolve, const ProblemSpace_t& problemSpace);
+
+static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& input, SolutionSet& workingSoln,
 	const std::set<std::string>& tosolve, const ProblemSpace_t& problemSpace)
 {
 	/*
@@ -84,6 +128,8 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 
 	auto [ prob, probtrfs ] = decomposeIntoTrfs(problem.type);
 	auto [ inpt, inpttrfs ] = decomposeIntoTrfs(input.type);
+
+	inpt = workingSoln.substitute(inpt);
 
 	if(probtrfs.size() > inpttrfs.size())
 	{
@@ -99,38 +145,118 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 		if(tosolve.find(name) != tosolve.end())
 		{
 			// check if we're conflicting.
-			if(auto it = workingSoln.find(name); it != workingSoln.end())
+			bool existing = false;
+			if(auto s = workingSoln.getSolution(name); s.soln != 0)
 			{
+				existing = true;
+
 				// actually check if the existing solution is a fake number;
-				if(!it->second.soln->isConstantNumberType())
+				if(s.soln->isConstantNumberType())
 				{
-					return SimpleError().append(SpanError(MsgType::Note)
-							.set(SimpleError::make(input.loc, "Conflicting solutions for type parameter '%s': '%s' and '%s'", name, it->second.soln, inpt))
-							.add(SpanError::Span(it->second.lastLoc, strprintf("Previously solved here as '%s'", it->second.soln)))
-							.add(SpanError::Span(input.loc, strprintf("New, conflicting solution '%s' here", inpt)))
-						);
+					inpt = mergeNumberTypes(inpt, s.soln);
+				}
+				else if(inpt->isPolyPlaceholderType() && !s.soln->isPolyPlaceholderType())
+				{
+					debuglogln("substitution for '%s' -> '%s'", inpt, s.soln);
+					workingSoln.addSubstitution(inpt, s.soln);
+
+					inpt = s.soln;
 				}
 				else
 				{
-					inpt = mergeNumberTypes(inpt, it->second.soln);
+					return SimpleError().append(SpanError(MsgType::Note)
+							.set(SimpleError::make(input.loc, "Conflicting solutions for type parameter '%s': '%s' and '%s'", name, s.soln, inpt))
+							.add(SpanError::Span(s.lastLoc, strprintf("Previously solved here as '%s'", s.soln)))
+							.add(SpanError::Span(input.loc, strprintf("New, conflicting solution '%s' here", inpt)))
+						);
 				}
 			}
 
 			// great.
-			workingSoln[name] = SolvedType(input.loc, inpt);
-			debuglog("solved %s = %s", name, inpt);
+			workingSoln.addSolution(name, SolvedType(input.loc, inpt));
+
+			debuglogln("solved %s = %s", name, inpt);
 		}
 	}
 	else
 	{
 		// ok, we might need to enlist the help of the iterative solver now.
 
-		error("not supported!!!");
+		std::vector<UnsolvedType> problemList;
+		std::vector<Param_t> inputList;
+
+		if(prob->isFunctionType())
+		{
+			if(!inpt->isFunctionType())
+			{
+				return SimpleError::make(MsgType::Note, input.loc,
+					"No solution between value with type '%s' and expected type argument with function type '%s'",
+					prob->str()).append(SimpleError::make(MsgType::Note, problem.loc, "here:"));
+			}
+
+			for(auto p : prob->toFunctionType()->argTypes)
+				problemList.push_back(UnsolvedType(problem.loc, p));    // TODO: add PTS location!
+
+			for(auto p : inpt->toFunctionType()->getArgumentTypes())
+				inputList.push_back(Param_t("", input.loc, p));
+
+			problemList.push_back(UnsolvedType(problem.loc, prob->toFunctionType()->returnType));
+			inputList.push_back(Param_t("", input.loc, inpt->toFunctionType()->getReturnType()));
+		}
+		else if(prob->isTupleType())
+		{
+			if(!inpt->isTupleType())
+			{
+				return SimpleError::make(MsgType::Note, input.loc,
+					"No solution between value with type '%s' and expected type argument with tuple type '%s'",
+					prob->str()).append(SimpleError::make(MsgType::Note, problem.loc, "here:"));
+			}
+
+			for(auto p : prob->toTupleType()->types)
+				problemList.push_back(UnsolvedType(problem.loc, p));    // TODO: add PTS location!
+
+			for(auto p : inpt->toTupleType()->getElements())
+				inputList.push_back(Param_t("", input.loc, p));
+		}
+		else
+		{
+			error(problem.loc, "unsupported problem type '%s'!!", prob->str());
+		}
+
+
+		return solveArgumentList(problemList, inputList, workingSoln, tosolve, problemSpace);
 	}
 
 
 	return SimpleError();
 }
+
+
+static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const std::vector<Param_t>& input, SolutionSet& workingSoln,
+	const std::set<std::string>& tosolve, const ProblemSpace_t& problemSpace)
+{
+	debuglogln("input: %s", util::listToString(input, [](auto a) -> std::string { return a.type->str(); }));
+	debuglogln("problems: %s\n", util::listToString(problem, [](auto a) -> std::string { return a.type->str(); }));
+
+
+	SimpleError retError;
+	for(size_t i = 0; i < problem.size(); i++)
+	{
+		auto err = solveSingleArgument(problem[i], input[i], workingSoln, tosolve, problemSpace);
+
+		if(err.hasErrors())
+			retError.append(err);
+	}
+
+	return retError;
+}
+
+
+
+
+
+
+
 
 
 
@@ -140,12 +266,12 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 
 //* this thing only infers to the best of its abilities; it cannot be guaranteed to return a complete solution.
 //* please check for the completeness of said solution before using it.
-std::pair<TypeParamMap_t, BareError> sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target,
-	const std::vector<Param_t>& _input, const TypeParamMap_t& partial, fir::Type* infer)
+std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError>
+	sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer)
 {
-	Solution_t solution;
+	SolutionSet solution;
 	for(const auto& p : partial)
-		solution[p.first] = SolvedType { this->loc(), p.second };
+		solution.addSolution(p.first, SolvedType(this->loc(), p.second));
 
 	std::vector<Param_t> input(_input.size());
 	std::vector<UnsolvedType> problem;
@@ -175,19 +301,19 @@ std::pair<TypeParamMap_t, BareError> sst::TypecheckState::inferTypesForGenericEn
 		{
 			if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
 			{
-				return { partial, BareError()
+				return { partial, { }, BareError()
 					.append(SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
 					_target->name, i.name)).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
 				};
 			}
 
-			input[i.name.empty() ? counter : nameToIndex[i.name]] = i;
+			input[i.name.empty() ? counter : nameToIndex[i.name]] = Param_t(i);
 			counter++;
 		}
 	}
 	else
 	{
-		return { partial, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
+		return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
 			"Unable to infer types for unsupported entity '%s'", _target->name))
 		};
 	}
@@ -205,7 +331,7 @@ std::pair<TypeParamMap_t, BareError> sst::TypecheckState::inferTypesForGenericEn
 		}
 		else
 		{
-			return { partial, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
+			return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
 				"Mismatched number of arguments; expected %d, got %d instead", problem.size(), input.size()))
 				.append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
 			};
@@ -217,26 +343,13 @@ std::pair<TypeParamMap_t, BareError> sst::TypecheckState::inferTypesForGenericEn
 	for(const auto& p : problemSpace)
 		tosolve.insert(p.first);
 
-	BareError retError;
-	for(size_t i = 0; i < problem.size(); i++)
-	{
-		auto err = solveSingleArgument(problem[i], input[i], solution, tosolve, problemSpace);
 
-		if(err.hasErrors())
-			retError.append(err);
-	}
-
-
-
-
-
-
-
+	auto retError = solveArgumentList(problem, input, solution, tosolve, problemSpace);
 
 	// convert the thing.
 	{
 		TypeParamMap_t ret;
-		for(const auto& soln : solution)
+		for(const auto& soln : solution.solutions)
 		{
 			auto s = soln.second.soln;
 			if(s->isConstantNumberType())
@@ -245,7 +358,7 @@ std::pair<TypeParamMap_t, BareError> sst::TypecheckState::inferTypesForGenericEn
 			ret[soln.first] = s;
 		}
 
-		return { ret, retError };
+		return { ret, solution.substitutions, BareError().append(retError) };
 	}
 }
 

@@ -53,6 +53,12 @@ namespace fir
 	{
 		return this->arraySize;
 	}
+
+
+	fir::Type* ArrayType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		return ArrayType::get(_substitute(subst, this->arrayElementType), this->arraySize);
+	}
 }
 
 
