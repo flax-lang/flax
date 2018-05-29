@@ -157,10 +157,10 @@ namespace pts
 		{
 			std::string m;
 			for(auto p : this->genericMapping)
-				m += p.first + ":" + p.second->str() + ",";
+				m += p.first + ": " + p.second->str() + ", ";
 
-			if(!m.empty())
-				m.pop_back();
+			if(this->genericMapping.size() > 0)
+				m.pop_back(), m.pop_back();
 
 			ret += "<" + m + ">";
 		}
@@ -170,17 +170,17 @@ namespace pts
 
 	std::string PointerType::str()
 	{
-		return this->base->str() + "*";
+		return "&" + this->base->str();
 	}
 
 	std::string TupleType::str()
 	{
 		std::string ret = "(";
 		for(auto t : this->types)
-			ret += t->str() + ",";
+			ret += t->str() + ", ";
 
-		if(ret.size() > 1)
-			ret.pop_back();
+		if(this->types.size() > 0)
+			ret.pop_back(), ret.pop_back();
 
 		return ret + ")";
 	}
@@ -191,7 +191,7 @@ namespace pts
 		if(this->base->isFunctionType())
 			b = "(" + b + ")";
 
-		return b + "[" + std::to_string(this->size) + "]";
+		return strprintf("[%s: %d]", b, std::to_string(this->size));
 	}
 
 	std::string DynamicArrayType::str()
@@ -200,7 +200,7 @@ namespace pts
 		if(this->base->isFunctionType())
 			b = "(" + b + ")";
 
-		return b + "[]";
+		return strprintf("[%s]", b);
 	}
 
 	std::string VariadicArrayType::str()
@@ -209,7 +209,7 @@ namespace pts
 		if(this->base->isFunctionType())
 			b = "(" + b + ")";
 
-		return b + "[...]";
+		return strprintf("[%s: ...]", b);
 	}
 
 	std::string ArraySliceType::str()
@@ -218,23 +218,20 @@ namespace pts
 		if(this->base->isFunctionType())
 			b = "(" + b + ")";
 
-		return b + "[:]";
+		return strprintf("[%s:]", b);
 	}
 
 	std::string FunctionType::str()
 	{
-		std::string ret = "(";
-
-		if(ret.back() == ',')
-			ret.pop_back();
+		std::string ret = "fn(";
 
 		for(auto t : this->argTypes)
-			ret += t->str() + ",";
+			ret += t->str() + ", ";
 
-		if(ret.back() == ',')
-			ret.pop_back();
+		if(this->argTypes.size() > 0)
+			ret.pop_back(), ret.pop_back();
 
-		return ret + ")->" + this->returnType->str();
+		return ret + ") -> " + this->returnType->str();
 	}
 }
 

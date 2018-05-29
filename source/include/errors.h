@@ -11,11 +11,15 @@
 template <typename... Ts>
 inline void debuglog(const char* s, Ts... ts)
 {
-	std::string s1 = s;
-	s1 += "\n";
-
-	auto out = tinyformat::format(s1.c_str(), ts...);
+	auto out = tinyformat::format(s, ts...);
 	fprintf(stderr, "%s", out.c_str());
+}
+
+template <typename... Ts>
+inline void debuglogln(const char* s, Ts... ts)
+{
+	auto out = tinyformat::format(s, ts...);
+	fprintf(stderr, "%s\n", out.c_str());
 }
 
 

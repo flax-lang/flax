@@ -22,6 +22,11 @@ namespace cgn
 	struct CodegenState;
 }
 
+namespace ast
+{
+	struct FuncDefn;
+}
+
 namespace sst
 {
 	//! ACHTUNG !

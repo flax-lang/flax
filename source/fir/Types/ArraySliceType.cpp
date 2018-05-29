@@ -80,6 +80,12 @@ namespace fir
 
 		return TypeCache::get().getOrAddCachedType(a);
 	}
+
+
+	fir::Type* ArraySliceType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		return ArraySliceType::get(_substitute(subst, this->arrayElementType), this->isSliceMutable);
+	}
 }
 
 

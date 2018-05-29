@@ -25,6 +25,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return TCResult(ret);
 	};
 
+	if(infer && infer->containsPlaceholders())
+		infer = 0;
+
 	// hm.
 	sst::StateTree* tree = fs->stree;
 	while(tree)
@@ -82,11 +85,20 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
+			std::vector<FnCallArgument> fake;
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
+			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false, fake).first;
 
-			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, { });
+			// note: we ignore the 'new' solution since we have no use for it (since we can't have any nested stuff for var refs)
 			if(res.isDefn())
+			{
 				return returnResult(res.defn());
+			}
+			else
+			{
+				iceAssert(res.isError());
+				res.error().postAndQuit();
+			}
 		}
 
 		if(this->traverseUpwards)
