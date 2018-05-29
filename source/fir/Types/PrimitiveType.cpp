@@ -261,6 +261,11 @@ namespace fir
 			return this;
 		}
 	}
+
+	fir::Type* PrimitiveType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		return this;
+	}
 }
 
 

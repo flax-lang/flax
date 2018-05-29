@@ -78,6 +78,12 @@ namespace fir
 		else
 			return (typeCache[name] = new EnumType(name, caseType));
 	}
+
+	fir::Type* EnumType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		error("not supported!");
+		return 0;
+	}
 }
 
 

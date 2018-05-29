@@ -697,6 +697,20 @@ namespace util
 		return thing + (count == 1 ? "" : "s");
 	}
 
+	template <typename T, class UnaryOp>
+	std::string listToString(const std::vector<T>& list, UnaryOp fn)
+	{
+		std::string ret;
+		for(size_t i = 0; i < list.size(); i++)
+		{
+			ret += fn(list[i]);
+			if(i != list.size() - 1)
+				ret += ", ";
+		}
+
+		return "[ " + ret + " ]";
+	}
+
 
 	template <typename T>
 	class FastVector

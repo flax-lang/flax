@@ -178,15 +178,15 @@ namespace sst
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 
-		std::pair<TypeParamMap_t, BareError> inferTypesForGenericEntity(ast::Parameterisable* target, const std::vector<FunctionDecl::Param>& input,
-			const TypeParamMap_t& partial, fir::Type* infer);
+		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError> inferTypesForGenericEntity(ast::Parameterisable* target,
+			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer);
 
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
 		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
 
-		TCResult attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-			const TypeParamMap_t& mappings, fir::Type* infer, const std::vector<FunctionDecl::Param>& args);
+		std::pair<TCResult, TypeParamMap_t> attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+			const TypeParamMap_t& mappings, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
@@ -206,9 +206,9 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
-		TCResult resolveFunction(const std::string& name, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
+		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps,
 			bool traverseUp);
-		TCResult resolveFunctionFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
+		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
 			bool allowImplicitSelf);
 
 		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps);

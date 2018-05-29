@@ -18,6 +18,18 @@ namespace fir
 		return tc;
 	}
 
+
+
+	fir::Type* _substitute(const std::unordered_map<fir::Type*, fir::Type*>& subst, fir::Type* t)
+	{
+		if(auto it = subst.find(t); it != subst.end())
+			return _substitute(subst, it->second);
+
+		return t;
+	}
+
+
+
 	std::string Type::typeListToString(const std::initializer_list<Type*>& types, bool includeBraces)
 	{
 		return typeListToString(std::vector<Type*>(types.begin(), types.end()), includeBraces);
@@ -111,12 +123,6 @@ namespace fir
 		return ptrthis->baseType;
 	}
 
-	// bool Type::areTypesEqual(Type* a, Type* b)
-	// {
-	// 	return a->isTypeEqual(b);
-	// }
-
-
 
 	Type* Type::getIndirectedType(int times)
 	{
@@ -199,6 +205,68 @@ namespace fir
 
 
 
+	size_t Type::getBitWidth()
+	{
+		if(this->isIntegerType())
+			return this->toPrimitiveType()->getIntegerBitWidth();
+
+		else if(this->isFloatingPointType())
+			return this->toPrimitiveType()->getFloatingPointBitWidth();
+
+		else if(this->isPointerType())
+			return sizeof(void*) * CHAR_BIT;
+
+		else
+			return 0;
+	}
+
+
+	// better to just handle this centrally i guess.
+	bool Type::containsPlaceholders()
+	{
+		if(this->isPolyPlaceholderType())   return true;
+		else if(this->isPointerType())      return this->getPointerElementType()->containsPlaceholders();
+		else if(this->isArrayType())        return this->getArrayElementType()->containsPlaceholders();
+		else if(this->isArraySliceType())   return this->getArrayElementType()->containsPlaceholders();
+		else if(this->isDynamicArrayType()) return this->getArrayElementType()->containsPlaceholders();
+		else if(this->isArrayType())        return this->getArrayElementType()->containsPlaceholders();
+		else if(this->isTupleType())
+		{
+			bool res = false;
+			for(auto t : this->toTupleType()->getElements())
+				res |= t->containsPlaceholders();
+
+			return res;
+		}
+		else if(this->isClassType())
+		{
+			bool res = false;
+			for(auto t : this->toClassType()->getElements())
+				res |= t->containsPlaceholders();
+
+			return res;
+		}
+		else if(this->isStructType())
+		{
+			bool res = false;
+			for(auto t : this->toStructType()->getElements())
+				res |= t->containsPlaceholders();
+
+			return res;
+		}
+		else if(this->isFunctionType())
+		{
+			bool res = this->toFunctionType()->getReturnType()->containsPlaceholders();
+			for(auto t : this->toFunctionType()->getArgumentTypes())
+				res |= t->containsPlaceholders();
+
+			return res;
+		}
+		else
+		{
+			return false;
+		}
+	}
 
 
 
@@ -304,23 +372,11 @@ namespace fir
 		return static_cast<ConstantNumberType*>(this);
 	}
 
-
-	size_t Type::getBitWidth()
+	PolyPlaceholderType* Type::toPolyPlaceholderType()
 	{
-		if(this->isIntegerType())
-			return this->toPrimitiveType()->getIntegerBitWidth();
-
-		else if(this->isFloatingPointType())
-			return this->toPrimitiveType()->getFloatingPointBitWidth();
-
-		else if(this->isPointerType())
-			return sizeof(void*) * CHAR_BIT;
-
-		else
-			return 0;
+		if(this->kind != TypeKind::PolyPlaceholder) error("not poly placeholder type");
+		return static_cast<PolyPlaceholderType*>(this);
 	}
-
-
 
 
 
@@ -461,7 +517,10 @@ namespace fir
 		return this->isArraySliceType() && this->getArrayElementType() == fir::Type::getInt8();
 	}
 
-
+	bool Type::isPolyPlaceholderType()
+	{
+		return this->kind == TypeKind::PolyPlaceholder;
+	}
 
 
 

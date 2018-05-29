@@ -10,6 +10,11 @@ namespace sst
 	struct VarDefn;
 }
 
+namespace ast
+{
+	struct Expr;
+}
+
 struct DecompMapping
 {
 	Location loc;
@@ -29,11 +34,13 @@ struct DecompMapping
 
 struct FnCallArgument
 {
-	FnCallArgument(const Location& l, const std::string& n, sst::Expr* v) : loc(l), name(n), value(v) { }
+	FnCallArgument(const Location& l, const std::string& n, sst::Expr* v, ast::Expr* o) : loc(l), name(n), value(v), orig(o) { }
 
 	Location loc;
 	std::string name;
 	sst::Expr* value = 0;
 
 	bool wasSplat = false;
+
+	ast::Expr* orig = 0;
 };

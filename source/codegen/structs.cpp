@@ -222,7 +222,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto rv = new sst::RawValueExpr(this->loc, res.pointer->getType());
 		rv->rawValue = CGResult(res.pointer);
 
-		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv));
+		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));
 		return fc->codegen(cs);
 	}
 	else if(auto ec = dcast(sst::ExprCall, this->call))
@@ -349,7 +349,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 		auto fake = new sst::RawValueExpr(call->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(this->getMethodSelf());
 
-		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake));
+		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake, 0));
 	}
 
 	iceAssert(fd->type->isFunctionType());

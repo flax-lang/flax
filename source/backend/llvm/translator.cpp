@@ -255,6 +255,10 @@ namespace backend
 
 			return createdTypes[id] = str;
 		}
+		else if(type->isPolyPlaceholderType())
+		{
+			error("Unfulfilled polymorphic placeholder type '%s'", type);
+		}
 		else
 		{
 			error("Unimplememented type '%s' for LLVM backend", type);

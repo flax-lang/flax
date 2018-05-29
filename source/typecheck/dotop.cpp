@@ -264,7 +264,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			// check methods first
 			using Param = sst::FunctionDefn::Param;
 			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
-				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr());
+				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
 			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param(e); });
@@ -276,7 +276,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 				if(meths) ts.insert(ts.begin(), Param(str->type->getMutablePointerTo()));
 
-				return fs->resolveFunctionFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
+				return fs->resolveFunctionCallFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
 
 			std::vector<sst::Defn*> mcands;
@@ -479,14 +479,18 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		sst::Expr* ret = 0;
 		if(auto fc = dcast(ast::FunctionCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs).expr()); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+				e.second->typecheck(fs).expr(), e.second);
+			});
 
 			fs->teleportToScope(news);
 			ret = fc->typecheckWithArguments(fs, args);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first, e.second->typecheck(fs).expr()); });
+			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+				e.second->typecheck(fs).expr(), e.second);
+			});
 
 			fs->teleportToScope(news);
 			ret = ec->typecheckWithArguments(fs, args);

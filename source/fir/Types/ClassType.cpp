@@ -328,6 +328,12 @@ namespace fir
 	{
 		this->inlineInitialiser = fn;
 	}
+
+	fir::Type* ClassType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		error("not supported!");
+		return 0;
+	}
 }
 
 
