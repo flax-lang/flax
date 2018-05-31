@@ -332,7 +332,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& arguments,
+	static TCResult _resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<std::pair<Defn*, std::vector<Param>>>& cands,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		if(cands.empty()) return TCResult(BareError("No candidates"));
@@ -346,7 +346,7 @@ namespace sst
 		std::map<Defn*, SpanError> fails;
 		std::vector<std::pair<Defn*, int>> finals;
 
-		for(auto cand : cands)
+		for(const auto& [ cand, arguments ] : cands)
 		{
 			int dist = -1;
 
@@ -358,7 +358,7 @@ namespace sst
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
 					args.insert(args.begin(), Param(def->parentTypeForMethod->getPointerTo()));
 
-				std::tie(dist, fails[fn]) = computeOverloadDistance(this, cand, fn->params, args, fn->isVarArg, cand);
+				std::tie(dist, fails[fn]) = computeOverloadDistance(fs, cand, fn->params, args, fn->isVarArg, cand);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{
@@ -377,7 +377,7 @@ namespace sst
 				}
 
 				auto prms = ft->getArgumentTypes();
-				std::tie(dist, fails[vr]) = computeOverloadDistance(this, cand, util::map(prms, [](fir::Type* t) -> auto { return Param(t); }),
+				std::tie(dist, fails[vr]) = computeOverloadDistance(fs, cand, util::map(prms, [](fir::Type* t) -> auto { return Param(t); }),
 					arguments, false, cand);
 			}
 
@@ -393,11 +393,13 @@ namespace sst
 
 		if(finals.empty())
 		{
-			iceAssert(cands.size() == fails.size());
-			std::vector<fir::Type*> tmp = util::map(arguments, [](Param p) -> auto { return p.type; });
+			// TODO: make this error message better, because right now we assume the arguments are all the same.
 
-			auto errs = OverloadError(SimpleError(this->loc(), strprintf("No overload in call to '%s(%s)' amongst %zu %s",
-				cands[0]->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()))));
+			iceAssert(cands.size() == fails.size());
+			std::vector<fir::Type*> tmp = util::map(cands[0].second, [](Param p) -> auto { return p.type; });
+
+			auto errs = OverloadError(SimpleError(fs->loc(), strprintf("No overload in call to '%s(%s)' amongst %zu %s",
+				cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()))));
 
 			for(auto f : fails)
 				errs.addCand(f.first, f.second);
@@ -451,7 +453,8 @@ namespace sst
 			}
 			else
 			{
-				auto err = SimpleError(this->loc(), strprintf("Ambiguous call to function '%s', have %zu candidates:", cands[0]->id.name, finals.size()));
+				auto err = SimpleError(fs->loc(), strprintf("Ambiguous call to function '%s', have %zu candidates:",
+					cands[0].first->id.name, finals.size()));
 
 				for(auto f : finals)
 					err.append(SimpleError(f.first->loc, strprintf("Possible target (overload distance %d):", f.second), MsgType::Note));
@@ -465,18 +468,21 @@ namespace sst
 		}
 	}
 
+	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& args,
+		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
+	{
+		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<Param>> { return { c, args }; });
+		return _resolveFunctionCallFromCandidates(this, cds, gmaps, allowImplicitSelf);
+	}
+
+
 
 
 
 	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp)
 	{
-		// we kinda need to check manually, since... we need to give a good error message
-		// when a shadowed thing is not a function
-		std::vector<Defn*> fns;
-		StateTree* tree = this->stree;
-
 		SimpleError errs;
-		auto ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
+		StateTree* tree = this->stree;
 
 		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
 		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
@@ -488,6 +494,8 @@ namespace sst
 		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
 		bool didVar = false;
 		bool didGeneric = false;
+
+		std::vector<std::pair<Defn*, std::vector<FnCallArgument>>> fns;
 		while(tree)
 		{
 			// unify the handling of generic and non-generic stuff.
@@ -495,13 +503,15 @@ namespace sst
 			if(gmaps.empty())
 			{
 				auto defs = tree->getDefinitionsWithName(name);
-				fns.insert(fns.begin(), defs.begin(), defs.end());
+				for(auto d : defs)
+					fns.push_back({ d, arguments });
 			}
 
 			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
 				didGeneric = true;
-				auto [ res, newmap ] = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, arguments);
+				auto argcopy = arguments;
+				auto [ res, newmap ] = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, argcopy);
 
 				if(!res.isDefn())
 				{
@@ -510,22 +520,9 @@ namespace sst
 				else
 				{
 					auto def = res.defn();
-					fns.push_back(def);
-
-					//! ACHTUNG !
-					/*
-						* this piece of somewhat messy/hacky code deals with the situation where we have placeholders in our function call.
-						* we need to eliminate it, by using the refined solution set (newmap) that was returned.
-
-						* what we're going to do is quite possibly stupid, but i don't see any other way to do it without significantly
-						* rearchitecting how typechecking interacts with the generic pipeline.
-
-						so what we do is just re-typecheck everything. now hear me out -- function calls shouldn't contain any definitions.
-						so there shouldn't be any (ill/side)-effects. there might be a memory problem, but fuck that.
-					 */
+					fns.push_back({ def, argcopy });
 				}
 			}
-
 
 			if(travUp && fns.empty())
 				tree = tree->parent;
@@ -544,18 +541,20 @@ namespace sst
 			return TCResult(errs);
 		}
 
-		std::vector<sst::Defn*> cands;
-		for(auto def : fns)
+
+		std::vector<std::pair<sst::Defn*, std::vector<Param>>> cands;
+		for(const auto& [ def, args ] : fns)
 		{
+			auto ts = util::map(args, [](auto p) -> auto { return Param(p); });
 			if(auto fn = dcast(FunctionDecl, def))
 			{
-				cands.push_back(fn);
+				cands.push_back({ fn, ts });
 			}
 			else if(dcast(VarDefn, def) && def->type->isFunctionType())
 			{
 				// ok, we'll check it later i guess.
 				if(!didVar)
-					cands.push_back(def);
+					cands.push_back({ def, ts });
 
 				didVar = true;
 			}
@@ -574,7 +573,16 @@ namespace sst
 			}
 		}
 
-		return this->resolveFunctionCallFromCandidates(cands, ts, gmaps, travUp);
+		auto res = _resolveFunctionCallFromCandidates(this, cands, gmaps, travUp);
+		if(auto ret = res.defn())
+		{
+			auto it = std::find_if(fns.begin(), fns.end(), [&ret](const auto& p) -> bool { return p.first == ret; });
+			iceAssert(it != fns.end());
+
+			arguments = it->second;
+		}
+
+		return TCResult(res);
 	}
 
 
@@ -765,25 +773,25 @@ namespace sst
 
 
 
-sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments)
+sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	using Param = sst::FunctionDecl::Param;
 
-	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, arguments))
+	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, _arguments))
 	{
 		auto ret = new sst::ExprCall(this->loc, ty);
 		ret->callee = new sst::TypeExpr(this->loc, ty);
-		ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
+		ret->arguments = util::map(_arguments, [](auto e) -> sst::Expr* { return e.value; });
 
 		return ret;
 	}
 
 
 	// resolve the function call here
-	std::vector<FnCallArgument> ts = arguments;
+	std::vector<FnCallArgument> ts = _arguments;
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
 	auto res = fs->resolveFunctionCall(this->name, ts, gmaps, this->traverseUpwards);
@@ -796,7 +804,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 		auto ret = new sst::StructConstructorCall(this->loc, strdf->type);
 
 		ret->target = strdf;
-		ret->arguments = arguments;
+		ret->arguments = ts;
 
 		return ret;
 	}
@@ -812,7 +820,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);
 
 			ret->target = fnd;
-			ret->arguments = arguments;
+			ret->arguments = ts;
 			ret->classty = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
 
 			iceAssert(ret->target);
@@ -825,7 +833,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 		auto call = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
 		call->name = this->name;
 		call->target = target;
-		call->arguments = arguments;
+		call->arguments = ts;
 
 		if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
 		{

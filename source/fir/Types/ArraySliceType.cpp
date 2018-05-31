@@ -84,7 +84,7 @@ namespace fir
 
 	fir::Type* ArraySliceType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		return ArraySliceType::get(_substitute(subst, this->arrayElementType), this->isSliceMutable);
+		return ArraySliceType::get(this->arrayElementType->substitutePlaceholders(subst), this->isSliceMutable);
 	}
 }
 

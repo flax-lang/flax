@@ -77,8 +77,8 @@ namespace fir
 
 
 
-	std::string PolyPlaceholderType::str()          { return strprintf("placeholder<%d: %s>", this->group, this->name); }
-	std::string PolyPlaceholderType::encodedStr()   { return strprintf("placeholder<%d: %s>", this->group, this->name); }
+	std::string PolyPlaceholderType::str()          { return strprintf("$%s<%d>", this->name, this->group); }
+	std::string PolyPlaceholderType::encodedStr()   { return strprintf("$%s<%d>", this->name, this->group); }
 
 	std::string PolyPlaceholderType::getName()      { return this->name; }
 	int PolyPlaceholderType::getGroup()             { return this->group; }
@@ -98,6 +98,15 @@ namespace fir
 	{
 		this->name = n;
 		this->group = g;
+	}
+
+
+	static fir::Type* _substitute(const std::unordered_map<fir::Type*, fir::Type*>& subst, fir::Type* t)
+	{
+		if(auto it = subst.find(t); it != subst.end())
+			return it->second->substitutePlaceholders(subst);
+
+		return t;
 	}
 
 	fir::Type* PolyPlaceholderType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)

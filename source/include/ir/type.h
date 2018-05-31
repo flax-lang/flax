@@ -38,8 +38,6 @@ namespace fir
 	struct ConstantArray;
 	struct Function;
 
-	fir::Type* _substitute(const std::unordered_map<fir::Type*, fir::Type*>& subst, fir::Type* t);
-
 	enum class TypeKind
 	{
 		Invalid,

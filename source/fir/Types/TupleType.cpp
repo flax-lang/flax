@@ -62,7 +62,7 @@ namespace fir
 
 	fir::Type* TupleType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		auto args = util::map(this->members, [&subst](auto t) -> auto { return _substitute(subst, t); });
+		auto args = util::map(this->members, [&subst](auto t) -> auto { return t->substitutePlaceholders(subst); });
 
 		return TupleType::get(members);
 	}

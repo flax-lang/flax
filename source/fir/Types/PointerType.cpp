@@ -112,7 +112,7 @@ namespace fir
 
 	fir::Type* PointerType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		auto base = _substitute(subst, this->baseType);
+		auto base = this->baseType->substitutePlaceholders(subst);
 		if(this->isMutable())   return base->getMutablePointerTo();
 		else                    return base->getPointerTo();
 	}
