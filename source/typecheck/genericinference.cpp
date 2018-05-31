@@ -95,7 +95,7 @@ static int _indent = 0;
 template <typename... Ts>
 void dbgprintln(const char* fmt, Ts... ts)
 {
-	if((true))
+	if((false))
 	{
 		debuglog("%*s", _indent * 4, " ");
 		debuglogln(fmt, ts...);

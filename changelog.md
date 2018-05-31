@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(dbc7cd2)`
 - pretty much complete implementation of the generic type solver for arbitrary levels of nesting.
 - one final detail is the lack of the iterative solver; that's trivial though and i'll do that on the weekend.
 
