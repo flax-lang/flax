@@ -34,9 +34,9 @@ public fn doDecompositionTest()
 		do {
 
 			var arr2: [str]
-			arr2 += "hello"
-			arr2 += "world"
-			arr2 += "bouys"
+			arr2.append("hello")
+			arr2.append("world")
+			arr2.append("bouys")
 
 			let [ a, ... &b ] = arr2
 
