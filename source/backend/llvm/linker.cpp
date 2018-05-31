@@ -85,8 +85,6 @@ namespace backend
 	void LLVMBackend::performCompilation()
 	{
 		llvm::InitializeNativeTarget();
-		llvm::InitializeNativeTargetAsmParser();
-		llvm::InitializeNativeTargetAsmPrinter();
 
 		// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_linkmod");
 
@@ -360,12 +358,9 @@ namespace backend
 		// llvm::InitializeAllAsmParsers();
 		// llvm::InitializeAllAsmPrinters();
 
-		// todo: support other platforms
 		llvm::InitializeNativeTarget();
-
-		// llvm::PassRegistry* Registry = llvm::PassRegistry::getPassRegistry();
-		// llvm::initializeCore(*Registry);
-		// llvm::initializeCodeGen(*Registry);
+		llvm::InitializeNativeTargetAsmParser();
+		llvm::InitializeNativeTargetAsmPrinter();
 
 		llvm::Triple targetTriple;
 		targetTriple.setTriple(frontend::getParameter("targetarch").empty() ? llvm::sys::getProcessTriple()

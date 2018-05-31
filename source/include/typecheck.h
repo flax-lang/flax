@@ -179,7 +179,7 @@ namespace sst
 
 
 		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError> inferTypesForGenericEntity(ast::Parameterisable* target,
-			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer);
+			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
 
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.

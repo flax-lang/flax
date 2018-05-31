@@ -2,20 +2,22 @@ project('flax', ['c', 'cpp'])
 
 the_compiler = meson.get_compiler('c')
 
-buildKind = get_option('buildtype')
-message('build type is ' + buildKind)
+# buildKind = get_option('buildtype')
+# message('build type is ' + buildKind)
+
+libKind = 'DebugNoSyms'
 
 mpir_root_dir = 'D:/Projects/lib/mpir'
 mpfr_root_dir = 'D:/Projects/lib/mpfr'
 llvm_root_dir = 'D:/Projects/lib/llvm'
 
-mpir_hdr_dir = mpir_root_dir + '/' + buildKind + '/include/'
-mpfr_hdr_dir = mpfr_root_dir + '/' + buildKind + '/include/'
-llvm_hdr_dir = llvm_root_dir + '/' + buildKind + '/include/'
+mpir_hdr_dir = mpir_root_dir + '/' + libKind + '/include/'
+mpfr_hdr_dir = mpfr_root_dir + '/' + libKind + '/include/'
+llvm_hdr_dir = llvm_root_dir + '/' + libKind + '/include/'
 
-mpir_lib_dir = mpir_root_dir + '/' + buildKind + '/lib/'
-mpfr_lib_dir = mpfr_root_dir + '/' + buildKind + '/lib/'
-llvm_lib_dir = llvm_root_dir + '/' + buildKind + '/lib/'
+mpir_lib_dir = mpir_root_dir + '/' + libKind + '/lib/'
+mpfr_lib_dir = mpfr_root_dir + '/' + libKind + '/lib/'
+llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/std:c++17', language: 'cpp')
@@ -150,8 +152,6 @@ source_files = files([
 	'source/fir/Types/Type.cpp'
 ])
 
-buildKind = 'Debug'
-
 utf8rewind_dep = declare_dependency(include_directories: include_directories('source/external/utf8rewind/include'),
 	sources: [
 				'source/external/utf8rewind/source/utf8rewind.c',
@@ -185,49 +185,49 @@ mpfr_dep = declare_dependency(version: '4.0.0', include_directories: include_dir
 
 llvm_dep = declare_dependency(version: '6.0.0', include_directories: include_directories(llvm_hdr_dir),
 	dependencies: [ mpfr_dep, mpir_dep,
-		the_compiler.find_library('LLVM_all', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMAsmPrinter', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
+		# the_compiler.find_library('LLVM_all', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMAsmPrinter', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDlltoolDriver', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoDWARF', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
+		the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMInstrumentation', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
+		the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
 	]
 )
 

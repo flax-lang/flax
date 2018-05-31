@@ -129,8 +129,8 @@ namespace fir
 
 	fir::Type* FunctionType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		auto args = util::map(this->functionParams, [&subst](auto t) -> auto { return _substitute(subst, t); });
-		auto ret = _substitute(subst, this->functionRetType);
+		auto args = util::map(this->functionParams, [&subst](auto t) -> auto { return t->substitutePlaceholders(subst); });
+		auto ret = this->functionRetType->substitutePlaceholders(subst);
 
 		if(this->isFnCStyleVarArg)  return FunctionType::getCVariadicFunc(args, ret);
 		else                        return FunctionType::get(args, ret);

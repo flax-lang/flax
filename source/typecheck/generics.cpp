@@ -299,7 +299,7 @@ namespace sst
 
 			BareError err;
 			std::unordered_map<fir::Type*, fir::Type*> substitutions;
-			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer);
+			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer, isFnCall);
 
 			//* note: if we manage to instantite without error, that means that we have a complete solution.
 			auto d = this->instantiateGenericEntity(gdef, gmaps);
@@ -308,14 +308,21 @@ namespace sst
 			{
 				pots.push_back(d.defn());
 
-				for(FnCallArgument& arg : args)
+				if(isFnCall)
 				{
-					//! ACHTUNG !
-					//* here, we modify the input appropriately.
-					//* i don't see a better way to do it.
+					for(FnCallArgument& arg : args)
+					{
+						//! ACHTUNG !
+						//* here, we modify the input appropriately.
+						//* i don't see a better way to do it.
 
-					iceAssert(arg.orig);
-					arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
+						// warn(arg.value, "re-typechecking with substitutions:");
+						// for(auto [ a, b ] : substitutions)
+						// 	debuglogln("%s -> %s", a, b);
+
+						iceAssert(arg.orig);
+						arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
+					}
 				}
 			}
 			else
