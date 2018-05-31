@@ -90,6 +90,19 @@ struct SolutionSet
 	std::unordered_map<fir::Type*, fir::Type*> substitutions;
 };
 
+static int _indent = 0;
+
+template <typename... Ts>
+void dbgprintln(const char* fmt, Ts... ts)
+{
+	if((true))
+	{
+		debuglog("%*s", _indent * 4, " ");
+		debuglogln(fmt, ts...);
+	}
+}
+
+
 
 
 using Param_t = sst::FunctionDecl::Param;
@@ -97,7 +110,7 @@ using Solution_t = std::unordered_map<std::string, SolvedType>;
 using ProblemSpace_t = std::unordered_map<std::string, TypeConstraints_t>;
 
 
-static std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTrfs(fir::Type* t);
+static std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTrfs(fir::Type* t, size_t max);
 static std::pair<pts::Type*, std::vector<Trf>> decomposeIntoTrfs(pts::Type* t);
 
 static fir::Type* applyTrfs(fir::Type* t, const std::vector<Trf>& trfs);
@@ -127,9 +140,16 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 	 */
 
 	auto [ prob, probtrfs ] = decomposeIntoTrfs(problem.type);
-	auto [ inpt, inpttrfs ] = decomposeIntoTrfs(input.type);
+	auto [ inpt, inpttrfs ] = decomposeIntoTrfs(input.type, probtrfs.size());
 
-	inpt = workingSoln.substitute(inpt);
+	dbgprintln("trfs: (%s => %s) (%d) -> (%s => %s) (%d)", problem.type->str(), prob->str(), probtrfs.size(), input.type, inpt, inpttrfs.size());
+
+
+	if(auto _inpt = workingSoln.substitute(inpt); inpt != _inpt)
+	{
+		dbgprintln("substituting %s -> %s", inpt, _inpt);
+		inpt = _inpt;
+	}
 
 	if(probtrfs.size() > inpttrfs.size())
 	{
@@ -145,11 +165,8 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 		if(tosolve.find(name) != tosolve.end())
 		{
 			// check if we're conflicting.
-			bool existing = false;
 			if(auto s = workingSoln.getSolution(name); s.soln != 0)
 			{
-				existing = true;
-
 				// actually check if the existing solution is a fake number;
 				if(s.soln->isConstantNumberType())
 				{
@@ -157,9 +174,9 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 				}
 				else if(inpt->isPolyPlaceholderType() && !s.soln->isPolyPlaceholderType())
 				{
-					debuglogln("substitution for '%s' -> '%s'", inpt, s.soln);
-					workingSoln.addSubstitution(inpt, s.soln);
+					dbgprintln("add substitution for '%s' -> '%s'", inpt, s.soln);
 
+					workingSoln.addSubstitution(inpt, s.soln);
 					inpt = s.soln;
 				}
 				else
@@ -175,7 +192,7 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 			// great.
 			workingSoln.addSolution(name, SolvedType(input.loc, inpt));
 
-			debuglogln("solved %s = %s", name, inpt);
+			dbgprintln("solved %s = %s", name, inpt);
 		}
 	}
 	else
@@ -235,18 +252,27 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const std::vector<Param_t>& input, SolutionSet& workingSoln,
 	const std::set<std::string>& tosolve, const ProblemSpace_t& problemSpace)
 {
-	debuglogln("input: %s", util::listToString(input, [](auto a) -> std::string { return a.type->str(); }));
-	debuglogln("problems: %s\n", util::listToString(problem, [](auto a) -> std::string { return a.type->str(); }));
+	dbgprintln("{");
+	_indent++;
 
+	dbgprintln("input: %s", util::listToString(input, [](auto a) -> std::string { return a.type->str(); }));
+	dbgprintln("problems: %s", util::listToString(problem, [](auto a) -> std::string { return a.type->str(); }));
 
 	SimpleError retError;
 	for(size_t i = 0; i < problem.size(); i++)
 	{
+		dbgprintln("arg %d: {", i); _indent++;
 		auto err = solveSingleArgument(problem[i], input[i], workingSoln, tosolve, problemSpace);
 
 		if(err.hasErrors())
 			retError.append(err);
+
+		_indent--;
+		dbgprintln("}\n");
 	}
+
+	_indent--;
+	dbgprintln("}");
 
 	return retError;
 }
@@ -267,7 +293,7 @@ static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const s
 //* this thing only infers to the best of its abilities; it cannot be guaranteed to return a complete solution.
 //* please check for the completeness of said solution before using it.
 std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError>
-	sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer)
+	sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall)
 {
 	SolutionSet solution;
 	for(const auto& p : partial)
@@ -281,6 +307,12 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 	{
 		// strip out the name information, and do purely positional things.
 		std::unordered_map<std::string, size_t> nameToIndex;
+
+		fir::Type* fretty = 0;
+		pts::Type* retty = 0;
+		if(auto ifd = dcast(ast::InitFunctionDefn, _target))   error("unsupported???");
+		else if(auto fd = dcast(ast::FuncDefn, _target))       retty = fd->returnType;
+
 
 		{
 			std::vector<ast::FuncDefn::Arg> _args;
@@ -296,19 +328,62 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 			}
 		}
 
-		int counter = 0;
-		for(const auto& i : _input)
+		if(isFnCall)
 		{
-			if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
+			int counter = 0;
+			for(const auto& i : _input)
 			{
-				return { partial, { }, BareError()
-					.append(SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
-					_target->name, i.name)).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
-				};
+				if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
+				{
+					return { partial, { }, BareError()
+						.append(SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
+						_target->name, i.name)).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
+					};
+				}
+
+				input[i.name.empty() ? counter : nameToIndex[i.name]] = Param_t(i);
+				counter++;
 			}
 
-			input[i.name.empty() ? counter : nameToIndex[i.name]] = Param_t(i);
-			counter++;
+
+			// if infer != 0, then it should be the return type.
+			if(infer && !infer->isVoidType())
+				fretty = infer;
+		}
+		else
+		{
+			if(infer == 0)
+			{
+				return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
+					"Unable to infer type for function '%s' without additional information", _target->name)) };
+			}
+			else if(!infer->isFunctionType())
+			{
+				return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
+					"Invalid inferred type '%s' for polymorphic entity '%s'", infer, _target->name)) };
+			}
+			else
+			{
+				// now...
+				auto fty = infer->toFunctionType();
+				input.resize(fty->getArgumentTypes().size());
+
+				int ctr = 0;
+				for(auto arg : fty->getArgumentTypes())
+					input[ctr++] = arg;
+			}
+		}
+
+
+		if(fretty && (retty->isNamedType() && retty->toNamedType()->name == VOID_TYPE_STRING) != fretty->isVoidType())
+		{
+			return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(), "Mismatch between inferred types '%s' and '%s' in return type of function '%s'", retty->str(), fretty, _target->name)) };
+		}
+
+		if(fretty)
+		{
+			input.push_back(Param_t("", this->loc(), fretty));
+			problem.push_back(UnsolvedType(_target->loc, retty));
 		}
 	}
 	else
@@ -324,7 +399,6 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 
 	if(input.size() != problem.size())
 	{
-		// if(variadic) return { partial,  };
 		if(variadic)
 		{
 			error("variadic things not supported!");
@@ -343,8 +417,9 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 	for(const auto& p : problemSpace)
 		tosolve.insert(p.first);
 
-
+	dbgprintln("SESSION:");
 	auto retError = solveArgumentList(problem, input, solution, tosolve, problemSpace);
+	dbgprintln("\n");
 
 	// convert the thing.
 	{
@@ -408,11 +483,11 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 
 
 
-static std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTrfs(fir::Type* t)
+static std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTrfs(fir::Type* t, size_t max)
 {
 	std::vector<Trf> ret;
 
-	while(true)
+	for(size_t i = 0; i < max; i++)
 	{
 		if(t->isDynamicArrayType())
 		{

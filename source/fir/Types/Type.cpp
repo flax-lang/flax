@@ -20,15 +20,6 @@ namespace fir
 
 
 
-	fir::Type* _substitute(const std::unordered_map<fir::Type*, fir::Type*>& subst, fir::Type* t)
-	{
-		if(auto it = subst.find(t); it != subst.end())
-			return _substitute(subst, it->second);
-
-		return t;
-	}
-
-
 
 	std::string Type::typeListToString(const std::initializer_list<Type*>& types, bool includeBraces)
 	{

@@ -42,7 +42,7 @@ namespace fir
 
 	fir::Type* DynamicArrayType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		return DynamicArrayType::get(_substitute(subst, this->arrayElementType));
+		return DynamicArrayType::get(this->arrayElementType->substitutePlaceholders(subst));
 	}
 }
 
