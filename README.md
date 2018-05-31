@@ -24,12 +24,8 @@ A low level language with high level syntax and expressibility, aimed at OSDev w
 
 #### Disclaimer ####
 
-Feb 2017: I'm being dragged off to dig trenches or something, Flax will thus experience slow development for... basically 2 years.
-
-
-
-I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development. I am still a student, so the limited time I have will be shared between this project and [mx](https://github.com/zhiayang/mx). Expect stretches of active development, followed by stretches of inactivity.
-
+I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development.
+I'm no famous artist but this is my magnum opus, so it'll not be abandoned anytime soon.
 
 #### Language Goals ####
 
@@ -45,17 +41,14 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Current Features ####
 
-- User-defined types (structs, enums and typealiases)
+- User-defined types (currently only product types)
 - Arrays (fixed and dynamic), slices
 - Pointer manipulation/arithmetic
 - Operator overloading
-- Basic type inference (C++ auto-esque, not Haskell-esque)
-- Deferred expressions (executes at end of current block scope)
-- Swift-like extensions to existing types
-- Generic Functions
+- C++ auto-style type inference
+- Generic functions and types
 - C-style for loops
 - Range-based for loops
-- Basically almost everything that C can do (plus some more), with the exception of `typedef`.
 
 -----------------------------------------------
 
@@ -69,64 +62,29 @@ I work on Flax in my spare time, and as the lone developer I cannot guarantee co
 
 #### Code Sample ####
 
-```swift
-ffi fn malloc(size: i64) -> i8*
-ffi fn printf(fmt: i8*, ...) -> i32
+```rust
+do {
+	fn gincr<A>(x: A) -> A => x + 1
+	fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
 
-namespace NS
-{
-	class Array<T>
+	fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
 	{
-		var data: T*
-
-		init(ptr: T*)
+		var i = 0
+		var ret: [F]
+		while i < arr.length
 		{
-			self.data = ptr
+			ret.append(fa(arr[i], f))
+			i += 1
 		}
 
-		operator [] (index: i64) -> T
-		{
-			get { self.data[index] }
-			set { self.data[index] = value }
-		}
-	}
-}
-
-fn add<T>(a: T, b: T) -> T
-{
-	a + b
-}
-
-public fn main() -> int
-{
-	do {
-		let ptr = (alloc[60] i64).data
-		defer dealloc ptr
-
-		var list = NS.Array<T: i64>(ptr)
-
-		ptr[0] = 37
-
-		printf("x = %d\n", list[0])
-		list[1] = 401
+		return ret
 	}
 
-	do {
-		let ptr = (alloc[60] string).data
-		defer dealloc ptr
+	printf("set 4:")
+	let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+	for it in new { printf(" %d", it) }
 
-
-		var list = NS.Array<T: string>(ptr)
-		list[3] = "foobar"
-
-		printf("0 = '%s', 3 = '%s'\n", list[0], list[3])
-	}
-
-	let c = add<T: i64>(30, 40)
-	let d = add(100, 200)
-	printf("c = %d, d = %d\n", c, d)
-
-	return 0
+	printf("\n")
 }
 ```
 
@@ -149,11 +107,11 @@ public fn main() -> int
 
 ##### Windows
 
-- Open `flax.vcxproj`
-- Edit the configuration variables to tell `msvc` where to find the libraries -- notably, these are needed: [`libmpir`](http://mpir.org), [`libmpfr`](http://mpfr.org), and most importantly, [`libllvm`](http://llvm.org). Follow the build instructions for each library, preferably generating both Debug and Release *static* libraries.
-- Point Visual Studio to the appropriate include and lib directories (as appropriate for each configuration if you built separate Release and Debug libraries)
+- Install [meson](https://mesonbuild.com/)
+- Edit `meson.build` variables to tell it where to find the libraries -- notably, these are needed: [`libmpir`](http://mpir.org), [`libmpfr`](http://mpfr.org), and most importantly, [`libllvm`](http://llvm.org). Follow the build instructions for each library, preferably generating both Debug and Release *static* libraries.
+- Run `meson build\meson-dbg` (where ever you want, really), followed my `ninja -C build\meson-dbg`.
+- `flaxc.exe` will be in `build\meson-dbg`.
 - Build and profit, hopefully.
-- The compiler executable is placed in `build/sysroot/windows/(Release|Debug)/`
 
 -----------------------------------------------
 
