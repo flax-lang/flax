@@ -481,7 +481,6 @@ namespace sst
 
 	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp)
 	{
-		SimpleError errs;
 		StateTree* tree = this->stree;
 
 		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
@@ -495,6 +494,7 @@ namespace sst
 		bool didVar = false;
 		bool didGeneric = false;
 
+		SimpleError errs;
 		std::vector<std::pair<Defn*, std::vector<FnCallArgument>>> fns;
 		while(tree)
 		{
@@ -511,10 +511,11 @@ namespace sst
 			{
 				didGeneric = true;
 				auto argcopy = arguments;
-				auto [ res, newmap ] = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, argcopy);
+				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, argcopy).first;
 
 				if(!res.isDefn())
 				{
+					iceAssert(res.isError());
 					errs.append(res.error());
 				}
 				else
@@ -574,20 +575,24 @@ namespace sst
 		}
 
 		auto res = _resolveFunctionCallFromCandidates(this, cands, gmaps, travUp);
-		if(auto ret = res.defn())
+		if(res.isDefn())
 		{
+			auto ret = res.defn();
 			auto it = std::find_if(fns.begin(), fns.end(), [&ret](const auto& p) -> bool { return p.first == ret; });
 			iceAssert(it != fns.end());
 
 			arguments = it->second;
+			return res;
 		}
-
-		return TCResult(res);
+		else
+		{
+			return TCResult(errs);
+		}
 	}
 
 
 
-	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps)
+	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<Param>& arguments, const TypeParamMap_t& gmaps)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
@@ -777,8 +782,6 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
-
-	using Param = sst::FunctionDecl::Param;
 
 	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, _arguments))
 	{

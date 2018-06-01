@@ -11,10 +11,6 @@
 
 #define LEFT_PADDING TAB_WIDTH
 
-static std::string _convertTab()
-{
-	return std::string(TAB_WIDTH, ' ');
-}
 
 static std::string repeat(std::string str, size_t n)
 {

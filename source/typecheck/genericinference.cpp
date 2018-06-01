@@ -110,15 +110,10 @@ using Solution_t = std::unordered_map<std::string, SolvedType>;
 using ProblemSpace_t = std::unordered_map<std::string, TypeConstraints_t>;
 
 
+static fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b);
+
 static std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTrfs(fir::Type* t, size_t max);
 static std::pair<pts::Type*, std::vector<Trf>> decomposeIntoTrfs(pts::Type* t);
-
-static fir::Type* applyTrfs(fir::Type* t, const std::vector<Trf>& trfs);
-static std::vector<Trf> reduceTrfsCompatibly(const std::vector<Trf>& master, const std::vector<Trf>& slave);
-
-static fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b);
-static std::set<std::string> extractGenericProblems(pts::Type* t, const ProblemSpace_t& problemSpace);
-
 
 
 
@@ -310,8 +305,8 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 
 		fir::Type* fretty = 0;
 		pts::Type* retty = 0;
-		if(auto ifd = dcast(ast::InitFunctionDefn, _target))   error("unsupported???");
-		else if(auto fd = dcast(ast::FuncDefn, _target))       retty = fd->returnType;
+		if(dcast(ast::InitFunctionDefn, _target))           error("unsupported???");
+		else if(auto fd = dcast(ast::FuncDefn, _target))    retty = fd->returnType;
 
 
 		{
@@ -552,114 +547,6 @@ static std::pair<pts::Type*, std::vector<Trf>> decomposeIntoTrfs(pts::Type* t)
 	}
 
 	return { t, ret };
-}
-
-
-
-static fir::Type* applyTrfs(fir::Type* t, const std::vector<Trf>& trfs)
-{
-	for(const auto& trf : trfs)
-	{
-		switch(trf.type)
-		{
-			case TrfType::None:
-				break;
-
-			case TrfType::Pointer:
-				t = t->getPointerTo();
-				break;
-
-			case TrfType::DynamicArray:
-				t = fir::DynamicArrayType::get(t);
-				break;
-
-			case TrfType::FixedArray:
-				t = fir::ArrayType::get(t, trf.data);
-				break;
-
-			case TrfType::Slice:
-				t = fir::ArraySliceType::get(t, trf.data);
-				break;
-
-			default:
-				iceAssert(0);
-		}
-	}
-
-	return t;
-}
-
-// wow what are with these names?
-static std::vector<Trf> reduceTrfsCompatibly(const std::vector<Trf>& master, const std::vector<Trf>& slave)
-{
-	iceAssert(master.size() <= slave.size());
-
-	auto ret = master;
-	for(size_t i = 0; i < master.size(); i++)
-	{
-		auto at = master[master.size() - i - 1];
-		auto bt = slave[slave.size() - i - 1];
-
-		if(at != bt)    break;
-		else            ret.pop_back();
-	}
-
-	return ret;
-}
-
-static void _extractGenericProblems(pts::Type* t, const ProblemSpace_t& problemSpace, std::set<std::string>& list)
-{
-	if(t->isNamedType())
-	{
-		if(problemSpace.find(t->toNamedType()->name) != problemSpace.end())
-			list.insert(t->toNamedType()->name);
-
-		for(auto m : t->toNamedType()->genericMapping)
-			_extractGenericProblems(m.second, problemSpace, list);
-	}
-	else if(t->isFunctionType())
-	{
-		for(auto p : t->toFunctionType()->argTypes)
-			_extractGenericProblems(p, problemSpace, list);
-
-		_extractGenericProblems(t->toFunctionType()->returnType, problemSpace, list);
-	}
-	else if(t->isTupleType())
-	{
-		for(auto m : t->toTupleType()->types)
-			_extractGenericProblems(m, problemSpace, list);
-	}
-	else if(t->isPointerType())
-	{
-		while(t->isPointerType())
-			t = t->toPointerType()->base;
-
-		_extractGenericProblems(t, problemSpace, list);
-	}
-	else if(t->isDynamicArrayType())
-	{
-		_extractGenericProblems(t->toDynamicArrayType()->base, problemSpace, list);
-	}
-	else if(t->isFixedArrayType())
-	{
-		_extractGenericProblems(t->toFixedArrayType()->base, problemSpace, list);
-	}
-	else if(t->isVariadicArrayType())
-	{
-		_extractGenericProblems(t->toVariadicArrayType()->base, problemSpace, list);
-	}
-	else if(t->isArraySliceType())
-	{
-		_extractGenericProblems(t->toArraySliceType()->base, problemSpace, list);
-	}
-}
-
-static std::set<std::string> extractGenericProblems(pts::Type* t, const ProblemSpace_t& problemSpace)
-{
-	std::set<std::string> ret;
-	_extractGenericProblems(t, problemSpace, ret);
-
-	return ret;
 }
 
 
