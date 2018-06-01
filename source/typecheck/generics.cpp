@@ -111,21 +111,54 @@ namespace sst
 
 
 
+	static std::string listToEnglish(const std::vector<std::string>& list)
+	{
+		std::string mstr;
+		if(list.size() == 1)
+		{
+			mstr = strprintf("'%s'", list[0]);
+		}
+		else if(list.size() == 2)
+		{
+			mstr = strprintf("'%s' and '%s'", list[0], list[1]);
+		}
+		else
+		{
+			for(size_t i = 0; i < list.size() - 1; i++)
+				mstr += strprintf("'%s', ", list[i]);
 
+			// oxford comma is important.
+			mstr += strprintf("and '%s'", list.back());
+		}
 
-	static std::vector<std::string> isSolutionComplete(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution)
+		return mstr;
+	}
+
+	static std::vector<std::string> isSolutionComplete(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
+		bool allowPlaceholders)
 	{
 		std::vector<std::string> missing;
 		for(const auto& [ name, constr ] : needed)
 		{
 			(void) constr;
 
-			if(solution.find(name) == solution.end())
+			if(auto it = solution.find(name); it == solution.end())
+				missing.push_back(name);
+
+			else if(!allowPlaceholders && it->second->containsPlaceholders())
 				missing.push_back(name);
 		}
 
 		return missing;
 	}
+
+	static SimpleError complainAboutMissingSolutions(TypecheckState* fs, ast::Parameterisable* thing, const std::vector<std::string>& missing)
+	{
+		auto mstr = listToEnglish(missing);
+		return SimpleError::make(fs->loc(), "Type %s %s could not be inferred",
+			util::plural("parameter", missing.size()), mstr);
+	}
+
 
 
 	//* gets an generic type in the AST form and returns a concrete SST node from it, given the mappings.
@@ -173,29 +206,9 @@ namespace sst
 		// check if we provided all the required mappings.
 		{
 			// TODO: make an elegant early-out for this situation?
-			if(auto missing = isSolutionComplete(thing->generics, mappings); missing.size() > 0)
+			if(auto missing = isSolutionComplete(thing->generics, mappings, /* allowPlaceholders: */ true); missing.size() > 0)
 			{
-				std::string mstr;
-				if(missing.size() == 1)
-				{
-					mstr = strprintf("'%s'", missing[0]);
-				}
-				else if(missing.size() == 2)
-				{
-					mstr = strprintf("'%s' and '%s'", missing[0], missing[1]);
-				}
-				else
-				{
-					for(size_t i = 0; i < missing.size() - 1; i++)
-						mstr += strprintf("'%s', ", missing[i]);
-
-					// oxford comma is important.
-					mstr += strprintf("and '%s'", missing.back());
-				}
-
-				return TCResult(
-					SimpleError::make(MsgType::Note, this->loc(), "Instantiation of parametric entity '%s' is missing type %s for %s",
-					thing->name, util::plural("argument", missing.size()), mstr)
+				return TCResult(complainAboutMissingSolutions(this, thing, missing)
 					.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
 				);
 			}
@@ -293,11 +306,7 @@ namespace sst
 		for(const auto& gdef : gdefs)
 		{
 			iceAssert(gdef->name == name);
-
-			//* ok, here's the thing -- if we pass in a function reference, (ie. it's an ast::FuncDefn), but 'isFnCall' is false,
-			//* then we want to fill in the 'solution' with placeholder types, so we can actually do an inference thing.
-
-			BareError err;
+ 			BareError err;
 			std::unordered_map<fir::Type*, fir::Type*> substitutions;
 			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer, isFnCall);
 
@@ -306,23 +315,44 @@ namespace sst
 
 			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
 			{
-				pots.push_back(d.defn());
-
 				if(isFnCall)
 				{
-					for(FnCallArgument& arg : args)
+					if(auto missing = isSolutionComplete(gdef->generics, gmaps, /* allowPlaceholders: */ false); missing.size() > 0)
 					{
-						//! ACHTUNG !
-						//* here, we modify the input appropriately.
-						//* i don't see a better way to do it.
+						auto se = SpanError().set(complainAboutMissingSolutions(this, gdef, missing));
 
-						// warn(arg.value, "re-typechecking with substitutions:");
-						// for(auto [ a, b ] : substitutions)
-						// 	debuglogln("%s -> %s", a, b);
+						for(const auto& arg : args)
+						{
+							if(arg.value->type->containsPlaceholders())
+							{
+								se.add(SpanError::Span(arg.loc, strprintf("Unresolved inference placeholder(s) in argument type '%s'",
+									arg.value->type->substitutePlaceholders(substitutions))));
 
-						iceAssert(arg.orig);
-						arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
+								if(auto vr = dcast(sst::VarRef, arg.value); vr && vr->def)
+									se.append(SimpleError::make(MsgType::Note, vr->def, "'%s' was defined here:", vr->name));
+							}
+						}
+
+						se.append(SimpleError::make(MsgType::Note, gdef, "'%s' was defined here:", name));
+						failures.push_back(std::make_pair(gdef, BareError().append(se)));
 					}
+					else
+					{
+						pots.push_back(d.defn());
+						for(FnCallArgument& arg : args)
+						{
+							//! ACHTUNG !
+							//* here, we modify the input appropriately.
+							//* i don't see a better way to do it.
+
+							iceAssert(arg.orig);
+							arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
+						}
+					}
+				}
+				else
+				{
+					pots.push_back(d.defn());
 				}
 			}
 			else
@@ -363,7 +393,7 @@ namespace sst
 		{
 			iceAssert(failures.size() > 0);
 
-			auto errs = OverloadError(SimpleError::make(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s' amongst %d candidates", name, failures.size()));
+			auto errs = OverloadError(SimpleError::make(this->loc(), "No viable candidates in attempted instantiation of parametric entity '%s' amongst %d %s", name, failures.size(), util::plural("candidate", failures.size())));
 
 			for(const auto& [ f, e ] : failures)
 				errs.addCand(f, e);

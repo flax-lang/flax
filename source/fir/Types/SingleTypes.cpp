@@ -77,8 +77,8 @@ namespace fir
 
 
 
-	std::string PolyPlaceholderType::str()          { return strprintf("$%s<%d>", this->name, this->group); }
-	std::string PolyPlaceholderType::encodedStr()   { return strprintf("$%s<%d>", this->name, this->group); }
+	std::string PolyPlaceholderType::str()          { return strprintf("$%s", this->name); }
+	std::string PolyPlaceholderType::encodedStr()   { return strprintf("$%s", this->name); }
 
 	std::string PolyPlaceholderType::getName()      { return this->name; }
 	int PolyPlaceholderType::getGroup()             { return this->group; }

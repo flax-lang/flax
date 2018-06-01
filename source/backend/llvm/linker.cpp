@@ -396,7 +396,7 @@ namespace backend
 		}
 		else if(frontend::getParameter("mcmodel").empty())
 		{
-			codeModel = llvm::CodeModel::Small;
+			codeModel = llvm::CodeModel::Large;
 		}
 		else
 		{
@@ -411,10 +411,10 @@ namespace backend
 		if(frontend::getIsPositionIndependent())
 			relocModel = llvm::Reloc::Model::PIC_;
 
-		// this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
-		// 	targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
+		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
+			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
 
-		this->targetMachine = llvm::EngineBuilder().selectTarget();
+		// this->targetMachine = llvm::EngineBuilder().selectTarget();
 	}
 
 
