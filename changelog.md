@@ -1,6 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix a parsing bug involving closing braces and namespaces.
+
+`(e35c883)`
 - still no iterative solver, but made the error output slightly better.
 - also, if we're assigning the result to something with a concrete type, allow the inference thing to work with that
 	information as well.
