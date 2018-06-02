@@ -155,6 +155,10 @@ namespace platform
 		#endif
 	}
 
+	void deleteFile(filehandle_t fd)
+	{
+	}
+
 	size_t readFile(filehandle_t fd, void* buf, size_t count)
 	{
 		#ifdef _WIN32
@@ -195,6 +199,12 @@ namespace platform
 			struct stat st;
 			return stat(path.c_str(), &st) == 0;
 		#endif
+	}
+
+
+	std::string getTemporaryFilename(const std::string& name)
+	{
+		return "./." + name + ".o";
 	}
 
 

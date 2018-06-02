@@ -143,8 +143,10 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			if(cs->isInMethodBody())
+			// bool implicit = false;
+			if(this->isImplicitField)
 			{
+				iceAssert(cs->isInMethodBody());
 				return cs->getStructFieldImplicitly(this->name);
 			}
 			else if(!defn.pointer && !defn.value)

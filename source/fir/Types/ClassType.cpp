@@ -140,7 +140,7 @@ namespace fir
 	bool ClassType::hasElementWithName(const std::string& name)
 	{
 		auto cls = this;
-		while(cls->classMembers.find(name) == cls->classMembers.end())
+		while(cls && cls->classMembers.find(name) == cls->classMembers.end())
 			cls = cls->baseClass;
 
 		return cls != 0;

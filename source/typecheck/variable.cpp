@@ -17,10 +17,11 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->name == "_")
 		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
 
-	auto returnResult = [this](sst::Defn* def) -> TCResult {
+	auto returnResult = [this](sst::Defn* def, bool implicit = false) -> TCResult {
 		auto ret = new sst::VarRef(this->loc, def->type);
 		ret->name = this->name;
 		ret->def = def;
+		ret->isImplicitField = implicit;
 
 		return TCResult(ret);
 	};
@@ -66,8 +67,11 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			auto def = vs.front();
 			iceAssert(def);
 
+			bool implicit = false;
 			if(auto fld = dcast(sst::StructFieldDefn, def))
 			{
+				implicit = true;
+
 				// check that we're actually in a method def.
 				//* this is superior to the previous 'isInStructBody()' approach, because this will properly handle defining nested functions
 				//* -- those are technically "in" a function body, but they're certainly not methods.
@@ -81,13 +85,13 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 
-			return returnResult(def);
+			return returnResult(def, implicit);
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
 			std::vector<FnCallArgument> fake;
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false, fake).first;
+			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false, fake);
 
 			// note: we ignore the 'new' solution since we have no use for it (since we can't have any nested stuff for var refs)
 			if(res.isDefn())

@@ -366,6 +366,7 @@ namespace sst
 
 		std::string name;
 		Defn* def = 0;
+		bool isImplicitField = false;
 	};
 
 	struct ScopeExpr : Expr

@@ -95,7 +95,7 @@ static int _indent = 0;
 template <typename... Ts>
 void dbgprintln(const char* fmt, Ts... ts)
 {
-	if((true))
+	if((false))
 	{
 		if(_indent > 0) debuglog("%*s", _indent * 4, " ");
 		debuglogln(fmt, ts...);
@@ -291,7 +291,7 @@ static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const s
 
 //* this thing only infers to the best of its abilities; it cannot be guaranteed to return a complete solution.
 //* please check for the completeness of said solution before using it.
-std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError>
+std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError>
 	sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall)
 {
 	SolutionSet solution;
@@ -334,9 +334,8 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 			{
 				if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
 				{
-					return { partial, { }, BareError()
-						.append(SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
-						_target->name, i.name)).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
+					return { partial, { }, SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
+						_target->name, i.name).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
 					};
 				}
 
@@ -353,13 +352,13 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 		{
 			if(infer == 0)
 			{
-				return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
-					"Unable to infer type for function '%s' without additional information", _target->name)) };
+				return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
+					"Unable to infer type for function '%s' without additional information", _target->name) };
 			}
 			else if(!infer->isFunctionType())
 			{
-				return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
-					"Invalid inferred type '%s' for polymorphic entity '%s'", infer, _target->name)) };
+				return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
+					"Invalid inferred type '%s' for polymorphic entity '%s'", infer, _target->name) };
 			}
 			else
 			{
@@ -378,7 +377,7 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 
 		if(fretty && (retty->isNamedType() && retty->toNamedType()->name == VOID_TYPE_STRING) != fretty->isVoidType())
 		{
-			return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(), "Mismatch between inferred types '%s' and '%s' in return type of function '%s'", retty->str(), fretty, _target->name)) };
+			return { partial, { }, SimpleError::make(MsgType::Note, this->loc(), "Mismatch between inferred types '%s' and '%s' in return type of function '%s'", retty->str(), fretty, _target->name) };
 		}
 
 		if(fretty)
@@ -389,8 +388,8 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 	}
 	else
 	{
-		return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
-			"Unable to infer types for unsupported entity '%s'", _target->name))
+		return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
+			"Unable to infer types for unsupported entity '%s'", _target->name)
 		};
 	}
 
@@ -406,8 +405,8 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 		}
 		else
 		{
-			return { partial, { }, BareError().append(SimpleError::make(MsgType::Note, this->loc(),
-				"Mismatched number of arguments; expected %d, got %d instead", problem.size(), input.size()))
+			return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
+				"Mismatched number of arguments; expected %d, got %d instead", problem.size(), input.size())
 				.append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
 			};
 		}
@@ -436,7 +435,7 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 			ret[soln.first] = s;
 		}
 
-		return { ret, solution.substitutions, BareError().append(retError) };
+		return { ret, solution.substitutions, retError };
 	}
 }
 
