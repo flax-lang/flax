@@ -204,7 +204,7 @@ namespace platform
 
 	std::string getTemporaryFilename(const std::string& name)
 	{
-		return "./." + name + ".o";
+		return "." + name + ".o";
 	}
 
 
