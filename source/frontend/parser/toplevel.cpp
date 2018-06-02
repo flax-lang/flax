@@ -75,9 +75,12 @@ namespace parser
 		TopLevelBlock* root = new TopLevelBlock(st.loc(), name);
 
 		// if it's not empty, then it's an actual user-defined namespace
+		bool hadLBrace = false;
 		if(name != "")
 		{
 			// expect "namespace FOO { ... }"
+
+			bool hadLBrace = true;
 			iceAssert(st.front() == TT::Identifier);
 			st.eat();
 
@@ -196,6 +199,7 @@ namespace parser
 					continue;
 
 				case TT::RBrace:
+					if(!hadLBrace) error(st, "Unexpected '}'");
 					goto out;
 
 				default:
