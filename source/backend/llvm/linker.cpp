@@ -418,6 +418,8 @@ namespace backend
 
 		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
 			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
+
+		// this->targetMachine = llvm::EngineBuilder().selectTarget();
 	}
 
 

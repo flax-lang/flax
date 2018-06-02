@@ -330,7 +330,7 @@ struct BareError : ErrorMsg
 	virtual void post() override;
 	virtual bool hasErrors() const override;
 	virtual BareError* clone() const override;
-	virtual BareError& append(const ErrorMsg& e) { this->subs.push_back(e.clone()); return *this; }
+	virtual BareError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
 
 	std::string msg;
 };
@@ -373,7 +373,7 @@ struct SimpleError : ErrorMsg
 	virtual void post() override;
 	virtual bool hasErrors() const override;
 	virtual SimpleError* clone() const override;
-	virtual SimpleError& append(const ErrorMsg& e) { this->subs.push_back(e.clone()); return *this; }
+	virtual SimpleError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
 
 	Location loc;
 	std::string msg;
@@ -405,7 +405,7 @@ struct SpanError : ErrorMsg
 	virtual void post() override;
 	virtual bool hasErrors() const override;
 	virtual SpanError* clone() const override;
-	virtual SpanError& append(const ErrorMsg& e) { this->subs.push_back(e.clone()); return *this; }
+	virtual SpanError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
 
 	SimpleError top;
 	std::vector<Span> spans;
@@ -425,7 +425,7 @@ struct OverloadError : ErrorMsg
 	virtual void post() override;
 	virtual bool hasErrors() const override;
 	virtual OverloadError* clone() const override;
-	virtual OverloadError& append(const ErrorMsg& e) { this->subs.push_back(e.clone()); return *this; }
+	virtual OverloadError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
 
 	OverloadError& set(const SimpleError& se) { this->top = se; return *this; }
 	OverloadError& addCand(Locatable* d, const ErrorMsg& e);
