@@ -80,7 +80,7 @@ namespace parser
 		{
 			// expect "namespace FOO { ... }"
 
-			bool hadLBrace = true;
+			hadLBrace = true;
 			iceAssert(st.front() == TT::Identifier);
 			st.eat();
 
