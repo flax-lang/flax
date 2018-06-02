@@ -711,6 +711,12 @@ namespace util
 		return "[ " + ret + " ]";
 	}
 
+	template <typename K, typename V>
+	std::vector<std::pair<K, V>> pairs(const std::unordered_map<K, V>& map)
+	{
+		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
+		return ret;
+	}
 
 	template <typename T>
 	class FastVector

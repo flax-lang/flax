@@ -313,28 +313,32 @@ namespace sst
 			//* note: if we manage to instantite without error, that means that we have a complete solution.
 			auto d = this->instantiateGenericEntity(gdef, gmaps);
 
-			if(d.isDefn() && (infer ? d.defn()->type == infer : true))
+			if(d.isDefn())
 			{
 				if(isFnCall)
 				{
 					if(auto missing = isSolutionComplete(gdef->generics, gmaps, /* allowPlaceholders: */ false); missing.size() > 0)
 					{
 						auto se = SpanError().set(complainAboutMissingSolutions(this, gdef, missing));
+						se.top.loc = gdef->loc;
 
+						size_t ctr = 0;
 						for(const auto& arg : args)
 						{
 							if(arg.value->type->containsPlaceholders())
 							{
-								se.add(SpanError::Span(arg.loc, strprintf("Unresolved inference placeholder(s) in argument type '%s'",
-									arg.value->type->substitutePlaceholders(substitutions))));
+								auto loc = arg.loc;
+								if(auto fd = dcast(FunctionDefn, d.defn()))
+									loc = fd->params[ctr].loc;
 
-								if(auto vr = dcast(sst::VarRef, arg.value); vr && vr->def)
-									se.append(SimpleError::make(MsgType::Note, vr->def, "'%s' was defined here:", vr->name));
+								se.add(SpanError::Span(loc, strprintf("Unresolved inference placeholder(s) in argument type; partially solved as '%s'",
+									arg.value->type->substitutePlaceholders(substitutions))));
 							}
+
+							ctr++;
 						}
 
-						se.append(SimpleError::make(MsgType::Note, gdef, "'%s' was defined here:", name));
-						failures.push_back(std::make_pair(gdef, BareError().append(se)));
+						failures.push_back(std::make_pair(gdef, err.append(se)));
 					}
 					else
 					{

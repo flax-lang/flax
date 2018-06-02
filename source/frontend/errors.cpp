@@ -303,6 +303,8 @@ void SpanError::post()
 		}
 
 		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
+		this->spans.erase(std::unique(this->spans.begin(), this->spans.end()), this->spans.end());
+
 		strprinterrf("%s\n", getSpannedContext(this->top.loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
 
 		// ok now remove the extra thing.

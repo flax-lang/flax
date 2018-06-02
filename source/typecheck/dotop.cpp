@@ -462,9 +462,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 
-static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left)
+static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left, fir::Type* infer)
 {
-	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news) -> sst::Expr* {
+	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news,
+		fir::Type* infer) -> sst::Expr* {
 
 		if(auto id = dcast(ast::Ident, dot->right))
 			id->traverseUpwards = false;
@@ -484,7 +485,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			});
 
 			fs->teleportToScope(news);
-			ret = fc->typecheckWithArguments(fs, args);
+			ret = fc->typecheckWithArguments(fs, args, infer);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
@@ -493,7 +494,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			});
 
 			fs->teleportToScope(news);
-			ret = ec->typecheckWithArguments(fs, args);
+			ret = ec->typecheckWithArguments(fs, args, infer);
 		}
 		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
@@ -526,7 +527,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			auto newscope = td->tree->getScope();
 			auto oldscope = fs->getCurrentScope();
 
-			auto expr = checkRhs(fs, dot, oldscope, newscope);
+			auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
 
 			// check the thing
 			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
@@ -550,7 +551,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				auto newscope = cls->id.scope;
 				newscope.push_back(cls->id.name);
 
-				return checkRhs(fs, dot, oldscope, newscope);
+				return checkRhs(fs, dot, oldscope, newscope, infer);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
@@ -558,7 +559,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				auto newscope = enm->id.scope;
 				newscope.push_back(enm->id.name);
 
-				auto rhs = checkRhs(fs, dot, oldscope, newscope);
+				auto rhs = checkRhs(fs, dot, oldscope, newscope, infer);
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
@@ -599,7 +600,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		auto oldscope = fs->getCurrentScope();
 		auto newscope = scp->scope;
 
-		auto expr = checkRhs(fs, dot, oldscope, newscope);
+		auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
 
 		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 		{
@@ -625,7 +626,7 @@ TCResult ast::DotOperator::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = doStaticDotOp(fs, this, this->left->typecheck(fs).expr());
+	auto ret = doStaticDotOp(fs, this, this->left->typecheck(fs).expr(), infer);
 	if(ret) return TCResult(ret);
 
 	// catch-all, probably.

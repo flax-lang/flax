@@ -1,5 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- still no iterative solver, but made the error output slightly better.
+- also, if we're assigning the result to something with a concrete type, allow the inference thing to work with that
+	information as well.
+
 `(dbc7cd2)`
 - pretty much complete implementation of the generic type solver for arbitrary levels of nesting.
 - one final detail is the lack of the iterative solver; that's trivial though and i'll do that on the weekend.

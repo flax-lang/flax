@@ -479,7 +479,8 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp)
+	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp,
+		fir::Type* inferredRetType)
 	{
 		StateTree* tree = this->stree;
 
@@ -511,7 +512,7 @@ namespace sst
 			{
 				didGeneric = true;
 				auto argcopy = arguments;
-				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, nullptr, true, argcopy).first;
+				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, inferredRetType, true, argcopy).first;
 
 				if(!res.isDefn())
 				{
@@ -586,7 +587,7 @@ namespace sst
 		}
 		else
 		{
-			return TCResult(errs);
+			return TCResult(errs.append(res.error()));
 		}
 	}
 
@@ -778,7 +779,7 @@ namespace sst
 
 
 
-sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments)
+sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -797,7 +798,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	std::vector<FnCallArgument> ts = _arguments;
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-	auto res = fs->resolveFunctionCall(this->name, ts, gmaps, this->traverseUpwards);
+	auto res = fs->resolveFunctionCall(this->name, ts, gmaps, this->traverseUpwards, infer);
 
 	auto target = res.defn();
 	iceAssert(target);
@@ -863,7 +864,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 
 
-sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments)
+sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
@@ -949,15 +950,15 @@ TCResult ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args)));
+	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args), infer));
 }
 
-TCResult ast::FunctionCall::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::FunctionCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args)));
+	return TCResult(this->typecheckWithArguments(fs, fs->typecheckCallArguments(this->args), infer));
 }
 
 

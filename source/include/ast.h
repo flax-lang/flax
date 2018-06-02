@@ -595,7 +595,7 @@ namespace ast
 		~FunctionCall() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args);
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args, fir::Type* inferred);
 
 		std::string name;
 		std::vector<std::pair<std::string, Expr*>> args;
@@ -611,7 +611,7 @@ namespace ast
 		~ExprCall() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
-		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args);
+		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args, fir::Type* inferred);
 
 		Expr* callee = 0;
 		std::vector<std::pair<std::string, Expr*>> args;

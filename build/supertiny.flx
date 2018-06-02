@@ -107,71 +107,49 @@ import "math" as _
 // 	static fn hello() { printf("hi\n"); }
 // }
 
-// fn printThings(mul: int, ints: [int: ...])
-// {
-// 	printf("ints: ");
-// 	for i in ints { printf("%d ", mul * i) }
 
-// 	printf("\n")
+
+// fn overloadErrorTest()
+// {
+// 	fn printThings(mul: f64, flts: [f64: ...])
+// 	{
+// 		printf("floats: ");
+// 		for i in flts { printf("%.1f ", mul * i) }
+
+// 		printf("\n")
+// 	}
+
+// 	fn printThings(mul: str, flts: [f64: ...])
+// 	{
+// 		printf("floats: ");
+// 		for i in flts { printf("%s: %.1f ", mul.ptr, i) }
+
+// 		printf("\n")
+// 	}
+
+// 	fn printThings()
+// 	{
+// 		printf("print things 3\n")
+// 	}
+
+
+// 	do {
+// 		printThings(30, ...[ 1, 2, 3, 4, 5 ])
+// 		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+// 	}
 // }
 
-// fn printThings(mul: f64, flts: [f64: ...])
-// {
-// 	printf("floats: ");
-// 	for i in flts { printf("%.1f ", mul * i) }
-
-// 	printf("\n")
-// }
-
-// fn printThings(mul: str, flts: [f64: ...])
-// {
-// 	printf("floats: ");
-// 	for i in flts { printf("%s: %.1f ", mul.ptr, i) }
-
-// 	printf("\n")
-// }
-
-// fn printThings()
-// {
-// 	printf("print things 3\n")
-// }
-
-
-// class quarkle
-// {
-// 	init() { }
-// 	static fn twice<K>(a: K) -> K => a * 2
-// }
 
 @entry fn main()
 {
 	/*
-		TODO list for proper generic support:
-
-		// 1. factor out the code in typecheck/variable.cpp that searches for generic stuff into a new thing
-		// 2. modify resolveFunction to take generic mapping information.
-		// 3. call that new thing from typecheck/call.cpp in resolveFunction.
-		4. if we're passed in the generic mappings, we can use similar logic (the variable thing) (that we factored out) to instantiate
-			the appropriate generic function.
-
-		5. for cases where we don't have explicit mappings, since resolveFunction already has the parameter types, we can call our type
-			inference algorithm from there, both for functions as well as type constructors -- both struct and class.
-
-		5b. for struct constructors, it should be a simple case of mapping the struct fields to the function call parameter 'format', if you will.
-			for classes we just pass in all the init functions as candidates, since those will just be generic over their parents' types.
-
-		6. once we get the generic solver working, we should be able to provide it a partial list (that the user may have given) to aid its solving.
-			for now, it's all or nothing -- if you provide some you must provide all (or we will error).
-	*/
-
-	/*
 		TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
 		// 1. constructor syntax for builtin types
-		2. start work on the generic type solver? {
-			a. placeholder types for references to generic functions in a function call.
-			b. make sure that instantiating a generic function by assinging it to a variable works.
-		}
+		// 2. start work on the generic type solver? {
+		// 	a. placeholder types for references to generic functions in a function call.
+		//	b. make sure that instantiating a generic function by assinging it to a variable works.
+		// }
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
 		5. fix SAA types {
@@ -179,30 +157,20 @@ import "math" as _
 			// b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
 			// c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
 		}
-		6. clean up generic error output -- we have the content, just need to trim and arrange.
+		// 6. clean up generic error output -- we have the content, just need to trim and arrange.
 		7. move long error messages on spans nearer to the left margin when there's only one span in the error.
-
+		8. return type inference for generics don't seem to work {
+			a. no idea why. too sleepy.
+		}
+		9. fix errors (in general?) {
+			a. the generic solver should basically return only a Span, ie. a location with text.
+			b. maybe find some way to 'link' two spans together with one message.
+			c. figure out if/how we should split up errors when there are too many spans in one context.
+				- do we duplicate the context?
+				- if not then???
+		}
 	 */
 
-
-	 /*
-		TODO LIST for generics so i don't forget wtf is going on
-
-		*ALMOST THERE*, bar some issues:
-
-		1. need to figure out how to 'convert' the `infer` passed to inferGenericTypesForEntity into the format that it can understand (ie.
-			generic mappings).
-
-		2. that should be it??? hopefully????
-
-
-	  */
-
-	// do {
-	// 	printf("HELLO???\n")
-	// 	printThings(30, ...[ 1, 2, 3, 4, 5 ])
-	// 	printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
-	// }
 
 	do {
 		// some normal FP stuff
@@ -217,7 +185,6 @@ import "math" as _
 		// do {
 		// 	printf("set 1:")
 
-		// 	// fn twice(a: int) -> int => a * 2
 		// 	fn twice<K>(a: K) -> K => a * 2
 
 		// 	let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
@@ -237,40 +204,40 @@ import "math" as _
 		// 	printf("\n")
 		// }
 
-		// do {
-		// 	printf("set 3:")
-
-		// 	fn square<T, U>(a: T) -> U => (a * a)
-
-		// 	let new = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
-		// 	for it in new { printf(" %.2f", it) }
-
-		// 	printf("\n")
-		// }
-
 		do {
-			fn gincr<A, K>(x: A) -> K => x + 1
-			fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+			printf("set 3:")
 
-			fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
-			{
-				var i = 0
-				var ret: [F]
-				while i < arr.length
-				{
-					ret.append(fa(arr[i], f))
-					i += 1
-				}
+			fn square<T, U>(a: T) -> U => (a * a)
 
-				return ret
-			}
-
-			printf("set 4:")
-			let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
-			for it in new { printf(" %d", it) }
+			let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
+			for it in new { printf(" %.2f", it) }
 
 			printf("\n")
 		}
+
+		// do {
+		// 	fn gincr<A>(x: A) -> A => x + 1
+		// 	fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		// 	fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		// 	{
+		// 		var i = 0
+		// 		var ret: [F]
+		// 		while i < arr.length
+		// 		{
+		// 			ret.append(fa(arr[i], f))
+		// 			i += 1
+		// 		}
+
+		// 		return ret
+		// 	}
+
+		// 	printf("set 4:")
+		// 	let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		// 	for it in new { printf(" %d", it) }
+
+		// 	printf("\n")
+		// }
 
 
 		// do {
