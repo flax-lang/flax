@@ -207,7 +207,7 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
 		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps,
-			bool traverseUp);
+			bool traverseUp, fir::Type* inferredRetType);
 		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
 			bool allowImplicitSelf);
 

@@ -95,9 +95,9 @@ static int _indent = 0;
 template <typename... Ts>
 void dbgprintln(const char* fmt, Ts... ts)
 {
-	if((false))
+	if((true))
 	{
-		debuglog("%*s", _indent * 4, " ");
+		if(_indent > 0) debuglog("%*s", _indent * 4, " ");
 		debuglogln(fmt, ts...);
 	}
 }
@@ -173,6 +173,10 @@ static SimpleError solveSingleArgument(UnsolvedType& problem, const Param_t& inp
 
 					workingSoln.addSubstitution(inpt, s.soln);
 					inpt = s.soln;
+				}
+				else if(s.soln->isPolyPlaceholderType() && !inpt->isPolyPlaceholderType())
+				{
+					workingSoln.addSubstitution(s.soln, inpt);
 				}
 				else
 				{
@@ -366,6 +370,8 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 				int ctr = 0;
 				for(auto arg : fty->getArgumentTypes())
 					input[ctr++] = arg;
+
+				fretty = fty->getReturnType();
 			}
 		}
 
@@ -412,9 +418,11 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError
 	for(const auto& p : problemSpace)
 		tosolve.insert(p.first);
 
-	dbgprintln("SESSION:");
+	dbgprintln("SESSION: infer = %s", infer);
 	auto retError = solveArgumentList(problem, input, solution, tosolve, problemSpace);
-	dbgprintln("\n");
+	dbgprintln("SOLUTIONS: %s\n", util::listToString(util::pairs(solution.solutions), [](auto p) -> auto {
+		return strprintf("%s = '%s'", p.first, p.second.soln);
+	}));
 
 	// convert the thing.
 	{
