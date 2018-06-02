@@ -4,7 +4,7 @@ robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /n
 
 SETLOCAL
 
-IF /I"%1%"=="Release" (
+IF /I "%1"=="release" (
 	SET buildDir="build\meson-rel"
 ) ELSE (
 	SET buildDir="build\meson-dbg"

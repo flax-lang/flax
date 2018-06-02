@@ -178,14 +178,14 @@ namespace sst
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 
-		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, BareError> inferTypesForGenericEntity(ast::Parameterisable* target,
+		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError> inferTypesForGenericEntity(ast::Parameterisable* target,
 			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
 
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
 		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
 
-		std::pair<TCResult, TypeParamMap_t> attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+		TCResult attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
 			const TypeParamMap_t& mappings, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args);
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.

@@ -136,6 +136,60 @@ fn stuff(?)()
 		}
 	}
 }
+
+fn genericstuff(?)()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\\n")
+	}
+}
 """
 print("export massive")
 print("import \"libc\" as _")
@@ -143,7 +197,8 @@ print("import \"math\" as _")
 print("ffi fn srand(s: i32)")
 print("ffi fn rand() -> i32")
 
-dupes = range(16 * 32)
+# dupes = range(128 * 48)
+dupes = range(40)
 
 for i in dupes:
 	print(template.replace("(?)", str(i)))
@@ -152,6 +207,7 @@ for i in dupes:
 print("@entry fn main() -> i32 {")
 for i in dupes:
 	print("\tstuff(?)()".replace("(?)", str(i)))
+	print("\tgenericstuff(?)()".replace("(?)", str(i)))
 
 print("\treturn 0\n}")
 

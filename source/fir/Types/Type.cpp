@@ -212,44 +212,48 @@ namespace fir
 	}
 
 
-	// better to just handle this centrally i guess.
-	bool Type::containsPlaceholders()
+	static bool _containsPlaceholders(fir::Type* ty, std::unordered_set<fir::Type*>& seen)
 	{
-		if(this->isPolyPlaceholderType())   return true;
-		else if(this->isPointerType())      return this->getPointerElementType()->containsPlaceholders();
-		else if(this->isArrayType())        return this->getArrayElementType()->containsPlaceholders();
-		else if(this->isArraySliceType())   return this->getArrayElementType()->containsPlaceholders();
-		else if(this->isDynamicArrayType()) return this->getArrayElementType()->containsPlaceholders();
-		else if(this->isArrayType())        return this->getArrayElementType()->containsPlaceholders();
-		else if(this->isTupleType())
+		if(seen.find(ty) != seen.end())
+			return false;
+
+		seen.insert(ty);
+
+		if(ty->isPolyPlaceholderType())     return true;
+		else if(ty->isPointerType())        return _containsPlaceholders(ty->getPointerElementType(), seen);
+		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen);
+		else if(ty->isArraySliceType())     return _containsPlaceholders(ty->getArrayElementType(), seen);
+		else if(ty->isDynamicArrayType())   return _containsPlaceholders(ty->getArrayElementType(), seen);
+		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen);
+		else if(ty->isTupleType())
 		{
 			bool res = false;
-			for(auto t : this->toTupleType()->getElements())
-				res |= t->containsPlaceholders();
+			for(auto t : ty->toTupleType()->getElements())
+				res |= _containsPlaceholders(t, seen);
 
 			return res;
 		}
-		else if(this->isClassType())
+		else if(ty->isClassType())
 		{
 			bool res = false;
-			for(auto t : this->toClassType()->getElements())
-				res |= t->containsPlaceholders();
+			for(auto t : ty->toClassType()->getElements())
+				res |= _containsPlaceholders(t, seen);
 
 			return res;
 		}
-		else if(this->isStructType())
+		else if(ty->isStructType())
 		{
 			bool res = false;
-			for(auto t : this->toStructType()->getElements())
-				res |= t->containsPlaceholders();
+			for(auto t : ty->toStructType()->getElements())
+				res |= _containsPlaceholders(t, seen);
 
 			return res;
 		}
-		else if(this->isFunctionType())
+		else if(ty->isFunctionType())
 		{
-			bool res = this->toFunctionType()->getReturnType()->containsPlaceholders();
-			for(auto t : this->toFunctionType()->getArgumentTypes())
-				res |= t->containsPlaceholders();
+			bool res = ty->toFunctionType()->getReturnType()->containsPlaceholders();
+			for(auto t : ty->toFunctionType()->getArgumentTypes())
+				res |= _containsPlaceholders(t, seen);
 
 			return res;
 		}
@@ -257,6 +261,14 @@ namespace fir
 		{
 			return false;
 		}
+	}
+
+
+	// better to just handle this centrally i guess.
+	bool Type::containsPlaceholders()
+	{
+		std::unordered_set<fir::Type*> seen;
+		return _containsPlaceholders(this, seen);
 	}
 
 

@@ -50,6 +50,9 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr,
 	fir::Value* selfptr, const std::vector<FnCallArgument>& args, bool callInlineInit)
 {
+	if(auto c = this->typeDefnMap[cls])
+		c->codegen(this);
+
 	auto initfn = cls->getInlineInitialiser();
 	iceAssert(initfn);
 

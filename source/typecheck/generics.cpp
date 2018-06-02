@@ -265,6 +265,76 @@ namespace sst
 
 
 
+	// forward declare this
+	static sst::Defn* fillGenericTypeWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial);
+
+	static std::pair<Defn*, SimpleError> attemptToInstantiateGenericThing(TypecheckState* fs, ast::Parameterisable* thing,
+		const TypeParamMap_t& _gmaps, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args, bool fillplaceholders)
+	{
+		if(auto fd = dcast(ast::FuncDefn, thing); fd && !isFnCall && infer == 0 && fillplaceholders)
+			return { fillGenericTypeWithPlaceholders(fs, thing, _gmaps), SimpleError() };
+
+		auto [ gmaps, substitutions, err ] = fs->inferTypesForGenericEntity(thing, args, _gmaps, infer, isFnCall);
+
+		//* note: if we manage to instantite without error, that means that we have a complete solution.
+		auto d = fs->instantiateGenericEntity(thing, gmaps);
+
+		if(d.isDefn())
+		{
+			if(isFnCall)
+			{
+				if(auto missing = isSolutionComplete(thing->generics, gmaps, /* allowPlaceholders: */ false); missing.size() > 0)
+				{
+					auto se = SpanError().set(complainAboutMissingSolutions(fs, thing, missing));
+					se.top.loc = thing->loc;
+
+					size_t ctr = 0;
+					for(const auto& arg : args)
+					{
+						if(arg.value->type->containsPlaceholders())
+						{
+							auto loc = arg.loc;
+							if(auto fd = dcast(FunctionDefn, d.defn()))
+								loc = fd->params[ctr].loc;
+
+							se.add(SpanError::Span(loc, strprintf("Unresolved inference placeholder(s) in argument type; partially solved as '%s'",
+								arg.value->type->substitutePlaceholders(substitutions))));
+						}
+
+						ctr++;
+					}
+
+					return { nullptr, err.append(se) };
+				}
+				else
+				{
+					for(FnCallArgument& arg : args)
+					{
+						//! ACHTUNG !
+						//* here, we modify the input appropriately.
+						//* i don't see a better way to do it.
+
+						iceAssert(arg.orig);
+						arg.value = arg.orig->typecheck(fs, arg.value->type->substitutePlaceholders(substitutions)).expr();
+					}
+
+					return { d.defn(), SimpleError() };
+				}
+			}
+			else
+			{
+				return { d.defn(), SimpleError() };
+			}
+		}
+		else
+		{
+			iceAssert(d.isError());
+			return { nullptr, err.append(d.error()) };
+		}
+	}
+
+
+
 
 
 
@@ -282,14 +352,16 @@ namespace sst
 
 		placeholderGroupID++;
 
-		std::vector<FnCallArgument> fake;
-		return fs->attemptToDisambiguateGenericReference(thing->name, { thing }, copy, 0, false, fake).first.defn();
+		auto def = attemptToInstantiateGenericThing(fs, thing, copy, /* infer: */ 0, /* isFnCall: */ false,
+			/* args: */ std::vector<FnCallArgument>(), /* fillplaceholders: */ false).first;
+
+		iceAssert(def);
+		return def;
 	}
 
 
-	std::pair<TCResult, TypeParamMap_t> TypecheckState::attemptToDisambiguateGenericReference(const std::string& name,
-		const std::vector<ast::Parameterisable*>& gdefs, const TypeParamMap_t& _gmaps, fir::Type* infer, bool isFnCall,
-		std::vector<FnCallArgument>& args)
+	TCResult TypecheckState::attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+		const TypeParamMap_t& _gmaps, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args)
 	{
 		// make a copy
 		TypeParamMap_t gmaps = _gmaps;
@@ -301,11 +373,20 @@ namespace sst
 		// TODO: find a better way to do this??
 
 		std::vector<sst::Defn*> pots;
-		std::vector<std::pair<ast::Parameterisable*, BareError>> failures;
+		std::vector<std::pair<ast::Parameterisable*, SimpleError>> failures;
 
 		for(const auto& gdef : gdefs)
 		{
 			iceAssert(gdef->name == name);
+
+			auto [ def, err ] = attemptToInstantiateGenericThing(this, gdef, gmaps, /* infer: */ infer, /* isFnCall: */ isFnCall,
+				/* args:  */ args, /* fillplaceholders: */ true);
+
+			if(def) pots.push_back(def);
+			else    failures.push_back({ gdef, err });
+
+
+			#if 0
  			BareError err;
 			std::unordered_map<fir::Type*, fir::Type*> substitutions;
 			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer, isFnCall);
@@ -361,11 +442,6 @@ namespace sst
 			}
 			else
 			{
-				if(auto fd = dcast(ast::FuncDefn, gdef); fd && !isFnCall)
-				{
-					pots.push_back(fillGenericTypeWithPlaceholders(this, gdef, gmaps));
-				}
-				else
 				{
 					iceAssert(d.isError());
 					if(err.hasErrors())
@@ -374,6 +450,7 @@ namespace sst
 					failures.push_back(std::make_pair(gdef, BareError().append(d.error())));
 				}
 			}
+			#endif
 		}
 
 		if(!pots.empty())
@@ -384,13 +461,13 @@ namespace sst
 				for(auto g : pots)
 					errs.append(SimpleError(g->loc, "Potential target here:", MsgType::Note));
 
-				return { TCResult(errs), gmaps };
+				return TCResult(errs);
 			}
 			else
 			{
 				// ok, great. just return that shit.
 				iceAssert(pots[0]);
-				return { TCResult(pots[0]), gmaps };
+				return TCResult(pots[0]);
 			}
 		}
 		else
@@ -402,7 +479,7 @@ namespace sst
 			for(const auto& [ f, e ] : failures)
 				errs.addCand(f, e);
 
-			return { TCResult(errs), gmaps };
+			return TCResult(errs);
 		}
 	}
 

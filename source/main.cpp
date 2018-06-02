@@ -16,10 +16,20 @@ static void compile(std::string in, std::string out)
 	frontend::CollectorState state;
 	sst::DefinitionTree* dtree = 0;
 	{
+		auto ts = std::chrono::high_resolution_clock::now();
 		frontend::collectFiles(in, &state);
-
 		frontend::parseFiles(&state);
+
+		auto dur = std::chrono::high_resolution_clock::now() - ts;
+		auto ms = (double) dur.count() / 1000.0 / 1000.0;
+		fprintf(stderr, "frontend took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
+
+		ts = std::chrono::high_resolution_clock::now();
 		dtree = frontend::typecheckFiles(&state);
+
+		dur = std::chrono::high_resolution_clock::now() - ts;
+		ms = (double) dur.count() / 1000.0 / 1000.0;
+		fprintf(stderr, "typecheck took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
 	}
 
 	iceAssert(dtree);
@@ -28,9 +38,7 @@ static void compile(std::string in, std::string out)
 
 	auto dur = std::chrono::high_resolution_clock::now() - ts;
 	auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	auto s = ms / 1000.0;
-	fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, s);
-	// return;
+	fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
 
 	{
 		using namespace backend;

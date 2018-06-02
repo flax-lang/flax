@@ -1,6 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix a recursion bug with checking for placeholders
+- fix a bug where we would try to do implicit field access on non-field stuff -- set a flag during typechecking so we know.
+- add more tests.
+
+`(a86608b)`
 - fix a parsing bug involving closing braces and namespaces.
 
 `(e35c883)`

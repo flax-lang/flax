@@ -2,156 +2,105 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-import fizzbuzz
+export test_generics
 
-class Outer
-{
-	class SomeClass
-	{
-		fn gen<T, K>(a: T, b: K) -> K
-		{
-			let m = alloc K
-			printf("instance generic\n")
-			return *m;
-		}
-
-		static fn sgen<T, K>(a: T, b: K) -> T
-		{
-			let m = alloc T
-			printf("static generic\n")
-			return *m;
-		}
-	}
-}
-
-extension Outer
-{
-	extension SomeClass
-	{
-		fn egen<T>(a: T)
-		{
-			let m = alloc T
-			printf("extension generic\n")
-		}
-
-		static fn segen()
-		{
-			// let m = alloc T
-			printf("static extension generic\n")
-		}
-	}
-}
-
-namespace SomeNS
-{
-	fn ngen<T>(a: T) -> T
-	{
-		let m = alloc T
-		printf("namespace generic\n")
-		return *m;
-	}
-}
-
-
-
-
-fn foo_generic<T>(a: T, b: T, c: T)
-{
-	printf("foo: triple T\n")
-	(a, b, c)
-}
-
-fn foo_generic<T>(a: T, b: T)
-{
-	printf("foo: double T\n")
-	(a, b)
-}
-
-fn foo_generic<T, K>(a: T, b: K)
-{
-	// let ta = typeof(a)
-	// let tb = typeof(b)
-
-	let x = T()
-	let y = K()
-
-	// if(ta == Type.i8)
-	// {
-	// 	printf("foo: (i8)   %d, ", a)
-	// }
-	// else if(ta == Type.i16)
-	// {
-	// 	printf("foo: (i16)  %d, ", a)
-	// }
-	// else if(ta == Type.i32)
-	// {
-	// 	printf("foo: (i32)  %d, ", a)
-	// }
-	// else if(ta == Type.i64)
-	// {
-	// 	printf("foo: (i64)  %d, ", a)
-	// }
-	// else if(ta == Type.string)
-	// {
-	// 	printf("foo: (string) %s, ", a)
-	// }
-
-
-	// if(tb == Type.i8)
-	// {
-	// 	printf("(i8)   %d\n", b)
-	// }
-	// else if(tb == Type.i16)
-	// {
-	// 	printf("(i16)  %d\n", b)
-	// }
-	// else if(tb == Type.i32)
-	// {
-	// 	printf("(i32)  %d\n", b)
-	// }
-	// else if(tb == Type.i64)
-	// {
-	// 	printf("(i64)  %d\n", b)
-	// }
-	// else if(tb == Type.string)
-	// {
-	// 	printf("(string) %s\n", b)
-	// }
-}
-
-fn arrtest<T>(b: T, x: T[]) -> T
-{
-	return b
-}
-
-fn foo(a: &f64, b: &f64[])
-{
-	arrtest(a, b)
-}
+import "libc" as _
 
 
 public fn doGenericsTest()
 {
-	foo_generic(7, 6 as i8)
-	foo_generic(7, 6 as i16)
-	foo_generic(7, 6 as i32)
+	// some normal FP stuff
+	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
+	{
+		var ret: [U]
+		for it in arr => ret.append(fun(it))
 
-	foo_generic(5, "asdf")
+		return ret
+	}
 
-	foo_generic(1, 4, 9)
+	do {
+		printf("set 1:")
 
-	let sc = Outer.SomeClass()
-	sc.gen(10, 20)
-	sc.egen(47)
-	Outer.SomeClass.segen()
-	Outer.SomeClass.sgen(10, 20)
-	SomeNS.ngen("foo")
+		fn twice<K>(a: K) -> K => a * 2
+
+		let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+	do {
+		printf("set 2:")
+
+		fn twice(a: str) -> string => string(a) + string(a)
+
+		let new = map([ "a", "b", "c", "d", "e" ], twice)
+		for it in new { printf(" %s", it) }
+
+		printf("\n")
+	}
+
+	do {
+		printf("set 3:")
+
+		fn square<T, U>(a: T) -> U => (a * a)
+
+		let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
+		for it in new { printf(" %.2f", it) }
+
+		printf("\n")
+	}
+
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
 
 
-	let x = alloc[5] &f64
-	let y = 50.3;
-	arrtest(&y, x)
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
 }
 
 

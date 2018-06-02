@@ -5,7 +5,13 @@ the_compiler = meson.get_compiler('c')
 # buildKind = get_option('buildtype')
 # message('build type is ' + buildKind)
 
-libKind = 'DebugNoSyms'
+# libKind = 'DebugNoSyms'
+
+if get_option('buildtype') == 'debug'
+	libKind = 'DebugNoSyms'
+else
+	libKind = 'Release'
+endif
 
 mpir_root_dir = 'D:/Projects/lib/mpir'
 mpfr_root_dir = 'D:/Projects/lib/mpfr'
