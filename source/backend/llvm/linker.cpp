@@ -62,7 +62,8 @@
 
 static llvm::LLVMContext globalContext;
 
-static void _printTiming(std::chrono::time_point<std::chrono::steady_clock> ts, const std::string& thing)
+template <typename T>
+static void _printTiming(T ts, const std::string& thing)
 {
 	auto dur = std::chrono::high_resolution_clock::now() - ts;
 	auto ms = (double) dur.count() / 1000.0 / 1000.0;

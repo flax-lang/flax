@@ -352,8 +352,9 @@ namespace sst
 
 		placeholderGroupID++;
 
+		std::vector<FnCallArgument> fake;
 		auto def = attemptToInstantiateGenericThing(fs, thing, copy, /* infer: */ 0, /* isFnCall: */ false,
-			/* args: */ std::vector<FnCallArgument>(), /* fillplaceholders: */ false).first;
+			/* args: */ fake, /* fillplaceholders: */ false).first;
 
 		iceAssert(def);
 		return def;
