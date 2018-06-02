@@ -11,30 +11,33 @@ import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
 // import "tests/forloops"
+import "tests/classes"
 import "tests/scopes"
 import "tests/defertest"
 import "tests/decomposition"
 import "tests/intlimits"
+import "tests/generics"
 
 fn runTests()
 {
 	// fib
-	let fibTitle		= "       *** FIBONACII SEQUENCE ***       \n"
-	let fizzbuzzTitle	= "            *** FIZZBUZZ ***            \n"
-	let intLimitsTitle	= "       *** PRINTING INT LIMITS ***      \n"
-	let scopeTitle		= "*** SCOPE RESOLUTION REGRESSION TEST ***\n"
-	let operatorTitle	= " *** OPERATOR/TUPLE REGRESSION TEST *** \n"
-	let arrayTitle		= "      *** ARRAY REGRESSION TEST ***     \n"
-	let genericsTitle	= "    *** GENERICS REGRESSION TEST ***    \n"
-	let functionsTitle	= "    *** FUNCTION REGRESSION TEST ***    \n"
-	let deferTitle		= "       *** DEFER SEMANTICS TEST ***     \n"
-	let anyTitle		= "        *** ANY SEMANTICS TEST ***      \n"
-	let slicesTitle		= "     *** SLICES REGRESSION TEST ***     \n"
-	let decomposeTitle	= " *** DECOMPOSITION REGRESSION TEST ***  \n"
-	let forLoopTitle	= "    *** FOR LOOP REGRESSION TEST ***    \n"
-	let miscTitle		= "       *** MISCELLANEOUS TESTS ***      \n"
-	let thinLine		= "----------------------------------------\n"
-	let endTitle		= "============ TESTS COMPLETE ============\n"
+	let fibTitle        = "       *** FIBONACII SEQUENCE ***       \n"
+	let fizzbuzzTitle   = "            *** FIZZBUZZ ***            \n"
+	let intLimitsTitle  = "       *** PRINTING INT LIMITS ***      \n"
+	let scopeTitle      = "*** SCOPE RESOLUTION REGRESSION TEST ***\n"
+	let operatorTitle   = " *** OPERATOR/TUPLE REGRESSION TEST *** \n"
+	let arrayTitle      = "      *** ARRAY REGRESSION TEST ***     \n"
+	let genericsTitle   = "    *** GENERICS REGRESSION TEST ***    \n"
+	let functionsTitle  = "    *** FUNCTION REGRESSION TEST ***    \n"
+	let classTitle      = "      *** CLASS REGRESSION TEST ***     \n"
+	let deferTitle      = "       *** DEFER SEMANTICS TEST ***     \n"
+	let anyTitle        = "        *** ANY SEMANTICS TEST ***      \n"
+	let slicesTitle     = "     *** SLICES REGRESSION TEST ***     \n"
+	let decomposeTitle  = " *** DECOMPOSITION REGRESSION TEST ***  \n"
+	let forLoopTitle    = "    *** FOR LOOP REGRESSION TEST ***    \n"
+	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
+	let thinLine        = "----------------------------------------\n"
+	let endTitle        = "============ TESTS COMPLETE ============\n"
 
 
 	libc.printf("%s%s", fibTitle, thinLine)
@@ -85,7 +88,13 @@ fn runTests()
 
 	// generics
 	libc.printf("%s%s", genericsTitle, thinLine)
-	// doGenericsTest()
+	test_generics.doGenericsTest()
+	libc.printf("\n\n\n")
+
+
+	// classes
+	libc.printf("%s%s", classTitle, thinLine)
+	test_classes.doClassTest()
 	libc.printf("\n\n\n")
 
 

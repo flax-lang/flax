@@ -512,7 +512,7 @@ namespace sst
 			{
 				didGeneric = true;
 				auto argcopy = arguments;
-				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, inferredRetType, true, argcopy).first;
+				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, inferredRetType, true, argcopy);
 
 				if(!res.isDefn())
 				{

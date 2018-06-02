@@ -42,6 +42,7 @@ namespace platform
 	#define REFCOUNT_SIZE		8
 
 	filehandle_t openFile(const char* name, int mode, int flags);
+	// void deleteFile(filehandle_t fd);
 	void closeFile(filehandle_t fd);
 
 	size_t readFile(filehandle_t fd, void* buf, size_t count);
@@ -53,6 +54,7 @@ namespace platform
 	util::string_view readEntireFile(const std::string& path);
 
 	std::string getFullPath(const std::string& partial);
+	std::string getTemporaryFilename(const std::string& name);
 
 	size_t getTerminalWidth();
 }

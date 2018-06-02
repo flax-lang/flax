@@ -55,31 +55,8 @@ namespace llvm
 
 namespace backend
 {
-	struct LLVMBackend : Backend
-	{
-		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
-		virtual ~LLVMBackend() { }
+	using EntryPoint_t = int (*)(int, const char**);
 
-		virtual void performCompilation() override;
-		virtual void optimiseProgram() override;
-		virtual void writeOutput() override;
-
-		virtual std::string str() override;
-
-		static llvm::LLVMContext& getLLVMContext();
-
-		static llvm::Module* translateFIRtoLLVM(fir::Module* mod);
-
-		private:
-		void setupTargetMachine();
-		void finaliseGlobalConstructors();
-		void runProgramWithJIT();
-		llvm::SmallVector<char, 0> initialiseLLVMStuff();
-
-		llvm::Function* entryFunction = 0;
-		llvm::TargetMachine* targetMachine = 0;
-		std::shared_ptr<llvm::Module> linkedModule;
-	};
 
 	struct LLVMJit
 	{
@@ -98,6 +75,34 @@ namespace backend
 		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
 		std::unique_ptr<llvm::TargetMachine> targetMachine;
 		llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
+	};
+
+	struct LLVMBackend : Backend
+	{
+		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
+		virtual ~LLVMBackend() { }
+
+		virtual void performCompilation() override;
+		virtual void optimiseProgram() override;
+		virtual void writeOutput() override;
+
+		virtual std::string str() override;
+
+		static llvm::LLVMContext& getLLVMContext();
+
+		static llvm::Module* translateFIRtoLLVM(fir::Module* mod);
+
+		private:
+		void setupTargetMachine();
+		void finaliseGlobalConstructors();
+		EntryPoint_t getEntryFunctionFromJIT();
+		llvm::SmallVector<char, 0> initialiseLLVMStuff();
+
+		llvm::Function* entryFunction = 0;
+		llvm::TargetMachine* targetMachine = 0;
+		std::shared_ptr<llvm::Module> linkedModule;
+
+		LLVMJit* jitInstance = 0;
 	};
 }
 
