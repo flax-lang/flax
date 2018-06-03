@@ -7,7 +7,7 @@ export test_generics
 import "libc" as _
 
 
-@entry public fn doGenericsTest()
+public fn doGenericsTest()
 {
 	// some normal FP stuff
 	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
