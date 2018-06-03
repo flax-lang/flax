@@ -40,10 +40,10 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
 
 
-SANITISE		:= -fsanitize=address
+SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fsanitize=address -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE)
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE)
 
 LDFLAGS			+= $(SANITISE)
 

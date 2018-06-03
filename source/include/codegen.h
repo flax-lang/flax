@@ -47,6 +47,16 @@ namespace cgn
 
 	struct CodegenState
 	{
+		enum class OperatorFn
+		{
+			None,
+
+			Builtin,
+			UserDefined
+		};
+
+
+
 		CodegenState(const fir::IRBuilder& i) : irb(i) { }
 		fir::Module* module = 0;
 		sst::StateTree* stree = 0;
@@ -65,6 +75,13 @@ namespace cgn
 		std::unordered_map<fir::Function*, fir::Type*> methodList;
 
 		std::unordered_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+
+
+		size_t _debugIRIndent = 0;
+		void pushIRDebugIndentation();
+		void printIRDebugMessage(const std::string& msg, const std::vector<fir::Value*>& vals);
+		void popIRDebugIndentation();
+
 
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
@@ -123,13 +140,6 @@ namespace cgn
 		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
 
 
-		enum class OperatorFn
-		{
-			None,
-
-			Builtin,
-			UserDefined
-		};
 
 		void addVariableUsingStorage(sst::VarDefn* var, fir::Value* ptr, CGResult val);
 

@@ -35,7 +35,7 @@ public fn doGenericsTest()
 		fn twice(a: str) -> string => string(a) + string(a)
 
 		let new = map([ "a", "b", "c", "d", "e" ], twice)
-		for it in new { printf(" %s", it) }
+		for it in new => printf(" %s", it)
 
 		printf("\n")
 	}

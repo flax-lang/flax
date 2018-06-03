@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "gluecode.h"
 
 // just a tmp thing
 static bool operator == (const sst::IfStmt::Case& a, const sst::IfStmt::Case& b)
@@ -142,6 +143,13 @@ std::vector<sst::Block*> sst::IfStmt::getBlocks()
 
 static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
 {
+	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
+	{
+		cs->printIRDebugMessage("\n! CTRLFLOW: at: " + cfp.block->loc.shortString() + "\n{", { });
+		cs->pushIRDebugIndentation();
+	}
+	#endif
+
 	// then do the defers
 	for(auto stmt : cfp.block->deferred)
 		stmt->codegen(cs);
@@ -151,6 +159,14 @@ static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
 
 	for(auto p : cfp.refCountedPointers)
 		cs->decrementRefCount(cs->irb.Load(p));
+
+
+	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
+	{
+		cs->popIRDebugIndentation();
+		cs->printIRDebugMessage("}", { });
+	}
+	#endif
 }
 
 CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -239,6 +255,13 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(!broke)
 	{
+		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
+		{
+			cs->printIRDebugMessage("\n! BLOCKEND: at: " + this->loc.shortString() + "\n{", { });
+			cs->pushIRDebugIndentation();
+		}
+		#endif
+
 		for(auto it = this->deferred.rbegin(); it != this->deferred.rend(); it++)
 			(*it)->codegen(cs);
 
@@ -248,6 +271,14 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		for(auto p : cs->getRefCountedPointers())
 			cs->decrementRefCount(cs->irb.Load(p));
+
+
+		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
+		{
+			cs->popIRDebugIndentation();
+			cs->printIRDebugMessage("}", { });
+		}
+		#endif
 	}
 
 	return CGResult(0);

@@ -1,6 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix a massive design flaw wrt. arrays -- they now no longer modify the refcount of their elements. only when they are completely freed,
+	then we run a decrement loop (once!) over the elements.
+- this should fix the linux crash as well. note: classes test fails, so we've turned that off for now.
+
+`(c060a50)`
 - fix a recursion bug with checking for placeholders
 - fix a bug where we would try to do implicit field access on non-field stuff -- set a flag during typechecking so we know.
 - add more tests.

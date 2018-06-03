@@ -219,25 +219,22 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		else
 			iceAssert(0);
 
-		auto res = CGResult(cs->irb.Load(theptr), theptr);
-		cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
-
-		if(this->indexVar)
-		{
-			auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
-			idx->rawValue = CGResult(cs->irb.Load(iterptr));
-
-			this->indexVar->init = idx;
-			this->indexVar->codegen(cs);
-
-			if(cs->isRefCountedType(res.value->getType()))
-				cs->addRefCountedValue(res.value);
-		}
-
 
 		// make the block
 		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, check));
 		{
+			auto res = CGResult(cs->irb.Load(theptr), theptr);
+			cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
+
+			if(this->indexVar)
+			{
+				auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
+				idx->rawValue = CGResult(cs->irb.Load(iterptr));
+
+				this->indexVar->init = idx;
+				this->indexVar->codegen(cs);
+			}
+
 			this->body->codegen(cs);
 		}
 		cs->leaveBreakableBody();
