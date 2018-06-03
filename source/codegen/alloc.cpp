@@ -161,6 +161,14 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		iceAssert(checkf);
 		cs->irb.Call(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
 
+		auto arr = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
+		auto expandfn = cgn::glue::saa_common::generateReserveAtLeastFunction(cs, arr->getType());
+		iceAssert(expandfn);
+
+		arr = cs->irb.Call(expandfn, arr, count);
+		return arr;
+
+		#if 0
 		// ok, now we have a length -- allocate enough memory for length * sizeof(elm) + refcount size
 		auto alloclen = cs->irb.Multiply(count, cs->irb.Sizeof(type));
 		auto mem = cs->irb.Call(mallocf, alloclen);
@@ -193,9 +201,9 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			}
 			#endif
 
-
 			return ret;
 		}
+		#endif
 	}
 }
 

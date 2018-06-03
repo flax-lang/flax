@@ -205,6 +205,24 @@ namespace cgn
 		return fir::ConstantValue::getZeroValue(type);
 	}
 
+	void CodegenState::pushIRDebugIndentation()
+	{
+		this->_debugIRIndent++;
+	}
+
+	void CodegenState::printIRDebugMessage(const std::string& msg, const std::vector<fir::Value*>& vals)
+	{
+		fir::Value* tmpstr = this->module->createGlobalString(std::string(this->_debugIRIndent * 4, ' ') + msg + "\n");
+		this->irb.Call(this->getOrDeclareLibCFunction("printf"), tmpstr + vals);
+	}
+
+	void CodegenState::popIRDebugIndentation()
+	{
+		this->_debugIRIndent--;
+	}
+
+
+
 
 
 	fir::Function* CodegenState::getOrDeclareLibCFunction(std::string name)

@@ -180,10 +180,8 @@ namespace saa_common
 
 			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
 			{
-				fir::Function* printfn = cs->getOrDeclareLibCFunction("printf");
-
-				fir::Value* tmpstr = cs->module->createGlobalString("clone (memmove): oldptr: %p, newptr: %p, ('%c') oldlen: %d, bytecount: %d, index: %d\n");
-				cs->irb.Call(printfn, { tmpstr, oldptr, newptr, cs->irb.Load(newptr), oldlen, bytecount, startIndex });
+				cs->printIRDebugMessage("* SAACOM: clone(): (oldptr: %p, oldlen: %d), (newptr: %p, bytecount: %d, index: %d)", {
+					oldptr, oldlen, newptr, bytecount, startIndex });
 			}
 			#endif
 
@@ -506,8 +504,8 @@ namespace saa_common
 
 			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
 			{
-				fir::Value* tmpstr = cs->module->createGlobalString("constructfromtwo: (ptr: %p, len: %d) + (ptr: %p, len: %d) = %p\n");
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, lhsbuf, lhslen, rhsbuf, rhslen, cs->irb.GetSAAData(ret) });
+				cs->printIRDebugMessage("* SAACOM: construct2(): (ptr: %p, len: %d) + (ptr: %p, len: %d) = %p", {
+					lhsbuf, lhslen, rhsbuf, rhslen, cs->irb.GetSAAData(ret) });
 			}
 			#endif
 
@@ -699,8 +697,8 @@ namespace saa_common
 
 					#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
 					{
-						fir::Value* tmpstr = cs->module->createGlobalString("(re)alloc arr: (ptr: %p, cap: %d / rcp: %p)\n");
-						cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, newbuf, newlen, cs->irb.GetSAARefCountPointer(ret) });
+						cs->printIRDebugMessage("* SAACOM: realloc(): (ptr: %p, cap: %d / rcp: %p)", {
+							newbuf, newlen, cs->irb.GetSAARefCountPointer(ret) });
 					}
 					#endif
 

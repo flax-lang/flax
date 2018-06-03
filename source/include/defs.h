@@ -249,6 +249,7 @@ struct Location
 	}
 
 	std::string toString() const;
+	std::string shortString() const;
 };
 
 struct Locatable
