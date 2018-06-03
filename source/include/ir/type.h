@@ -38,6 +38,8 @@ namespace fir
 	struct ConstantArray;
 	struct Function;
 
+	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
+
 	enum class TypeKind
 	{
 		Invalid,
@@ -159,8 +161,6 @@ namespace fir
 		static NullType* getNull();
 
 		static Type* getVoidPtr();
-
-		static ConstantNumberType* getConstantNumber(mpfr::mpreal n);
 
 		static BoolType* getBool();
 
@@ -312,27 +312,35 @@ namespace fir
 		static NullType* get();
 	};
 
+
 	// special case -- the type also needs to store the number, to know things like
 	// whether it's signed, negative, an integer, and other stuff.
 	struct ConstantNumberType : Type
 	{
 		friend struct Type;
 
-		mpfr::mpreal getValue();
+		bool isSigned();
+		bool isFloating();
+		int getMinBits();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
-		static ConstantNumberType* get(mpfr::mpreal num);
+		static ConstantNumberType* get(bool neg, bool flt, int bits);
 
 		virtual ~ConstantNumberType() override { }
 
+
 		protected:
-		ConstantNumberType(mpfr::mpreal n);
-		mpfr::mpreal number;
+		ConstantNumberType(bool neg, bool floating, int bits);
+
+		bool _floating = false;
+		bool _signed = false;
+		int _bits = 0;
 	};
+
 
 	struct PolyPlaceholderType : Type
 	{

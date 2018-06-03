@@ -745,14 +745,6 @@ namespace fir
 	{
 		return AnyType::get();
 	}
-
-	ConstantNumberType* Type::getConstantNumber(mpfr::mpreal n)
-	{
-		return ConstantNumberType::get(n);
-	}
-
-
-
 }
 
 

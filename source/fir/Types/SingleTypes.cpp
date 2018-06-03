@@ -63,16 +63,33 @@ namespace fir
 
 	std::string ConstantNumberType::str()                       { return "number"; }
 	std::string ConstantNumberType::encodedStr()                { return "number"; }
-	mpfr::mpreal ConstantNumberType::getValue()                 { return this->number; }
-	ConstantNumberType* ConstantNumberType::get(mpfr::mpreal n) { return new ConstantNumberType(n); }
+	bool ConstantNumberType::isSigned()                         { return this->_signed; }
+	bool ConstantNumberType::isFloating()                       { return this->_floating; }
+	int ConstantNumberType::getMinBits()                        { return this->_bits; }
 	bool ConstantNumberType::isTypeEqual(Type* other)           { return other && other->isConstantNumberType(); }
-	ConstantNumberType::ConstantNumberType(mpfr::mpreal n) : Type(TypeKind::ConstantNumber)
+	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, int bits)
 	{
-		this->number = n;
+		return new ConstantNumberType(neg, flt, bits);
+	}
+	ConstantNumberType::ConstantNumberType(bool neg, bool flt, int bits) : Type(TypeKind::ConstantNumber)
+	{
+		this->_bits = bits;
+		this->_signed = neg;
+		this->_floating = flt;
 	}
 	fir::Type* ConstantNumberType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
 		return this;
+	}
+
+
+	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b)
+	{
+		auto sgn = a->isSigned() || b->isSigned();
+		auto flt = a->isFloating() || b->isFloating();
+		auto bit = std::max(a->getMinBits(), b->getMinBits());
+
+		return ConstantNumberType::get(sgn, flt, bit);
 	}
 
 
@@ -113,6 +130,8 @@ namespace fir
 	{
 		return _substitute(subst, this);
 	}
+
+
 }
 
 

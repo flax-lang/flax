@@ -15,54 +15,58 @@ namespace cgn
 		auto cn = dcast(fir::ConstantNumber, cv);
 		iceAssert(cn);
 
-		auto num = cn->getValue();
-		if(mpfr::isint(num))
-		{
-			if(num > mpfr::mpreal(INT64_MAX) && num < mpfr::mpreal(UINT64_MAX))
-				return fir::ConstantInt::getUint64(num.toULLong());
+		// auto num = cn->getValue();
+		auto ty = cv->getType()->toConstantNumberType();
+		iceAssert(ty);
 
-			else if(num <= mpfr::mpreal(INT64_MAX) && num >= mpfr::mpreal(INT64_MIN))
-				return fir::ConstantInt::getInt64(num.toLLong());
+		if(ty->isFloating())
+		{
+			if(ty->getMinBits() > 64)
+				return fir::ConstantFP::getFloat80(cn->getValue<long double>());
+
+			else
+				return fir::ConstantFP::getFloat64(cn->getValue<double>());
+		}
+		else
+		{
+			if(ty->isSigned() && ty->getMinBits() <= 63)
+				return fir::ConstantInt::getInt64(cn->getValue<int64_t>());
+
+			else if(ty->getMinBits() <= 64)
+				return fir::ConstantInt::getInt64(cn->getValue<uint64_t>());
 
 			else
 				error("overflow");
 		}
-		else
-		{
-			if(num > DBL_MAX)
-				return fir::ConstantFP::getFloat80(num.toLDouble());
-
-			else
-				return fir::ConstantFP::getFloat64(num.toLDouble());
-		}
 	}
 
 
-	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, mpfr::mpreal num, fir::Type* target, bool isAutocast)
+	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, fir::ConstantNumber* num, fir::Type* target, bool isAutocast)
 	{
 		if(!(target->isIntegerType() || target->isFloatingPointType()))
 			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target);
 
+		auto ty = num->getType()->toConstantNumberType();
 
 		bool signConvert = false;
-		if(!mpfr::isint(num) && target->isIntegerType())
+		if(ty->isFloating() && target->isIntegerType())
 		{
 			if(isAutocast) return 0;
 			warn(cs->loc(), "Casting floating-point literal to integer type '%s' will cause a truncation", target);
 		}
-		else if(target->isIntegerType() && !target->isSignedIntType() && num < 0)
+		else if(target->isIntegerType() && !target->isSignedIntType() && ty->isSigned())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target), signConvert = true;
+			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target);
+			signConvert = true;
 		}
 
-		// ok, just do it
-		auto _doWarn = [](Location e, fir::Type* t) {
-			warn(e, "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type", t);
-		};
 
-		if(!fir::checkLiteralFitsIntoType(target->toPrimitiveType(), num))
-			_doWarn(cs->loc(), target);
+		if(target->toPrimitiveType()->getBitWidth() > ty->getMinBits())
+		{
+			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type",
+				target);
+		}
 
 		if(signConvert)
 		{
@@ -71,40 +75,40 @@ namespace cgn
 			// then subtract (num - 1)
 
 			if(target == fir::Type::getUint8())
-				return fir::ConstantInt::get(target, (uint8_t) (uint64_t) num.toLLong());
+				return fir::ConstantInt::get(target, num->getValue<uint8_t>());
 
 			else if(target == fir::Type::getUint16())
-				return fir::ConstantInt::get(target, (uint16_t) (uint64_t) num.toLLong());
+				return fir::ConstantInt::get(target, num->getValue<uint16_t>());
 
 			else if(target == fir::Type::getUint32())
-				return fir::ConstantInt::get(target, (uint32_t) (uint64_t) num.toLLong());
+				return fir::ConstantInt::get(target, num->getValue<uint32_t>());
 
 			else if(target == fir::Type::getUint64())
-				return fir::ConstantInt::get(target, (uint64_t) (uint64_t) num.toLLong());
+				return fir::ConstantInt::get(target, num->getValue<uint64_t>());
 
 			else
 				error("what %s", target);
 		}
 
-		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num.toFloat());
-		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num.toDouble());
-		else if(target == fir::Type::getFloat80())	return fir::ConstantFP::getFloat80(num.toLDouble());
-		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, (int8_t) num.toLLong());
-		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, (int16_t) num.toLLong());
-		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, (int32_t) num.toLLong());
-		else if(target == fir::Type::getInt64())	return fir::ConstantInt::get(target, (int64_t) num.toLLong());
-		else if(target == fir::Type::getUint8())	return fir::ConstantInt::get(target, (uint8_t) num.toULLong());
-		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, (uint16_t) num.toULLong());
-		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, (uint32_t) num.toULLong());
-		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, (uint64_t) num.toULLong());
+		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num->getValue<float>());
+		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num->getValue<double>());
+		else if(target == fir::Type::getFloat80())	return fir::ConstantFP::getFloat80(num->getValue<long double>());
+		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, num->getValue<int8_t>());
+		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, num->getValue<int16_t>());
+		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, num->getValue<int32_t>());
+		else if(target == fir::Type::getInt64())	return fir::ConstantInt::get(target, num->getValue<int64_t>());
+		else if(target == fir::Type::getUint8())	return fir::ConstantInt::get(target, num->getValue<uint8_t>());
+		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getValue<uint16_t>());
+		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getValue<uint32_t>());
+		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getValue<uint64_t>());
 		else										error("unsupported type '%s'", target);
 	}
 
 
 
-	fir::ConstantValue* CodegenState::unwrapConstantNumber(mpfr::mpreal num, fir::Type* target)
+	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target)
 	{
-		return _unwrapConstantNumber(this, num, target, false);
+		return _unwrapConstantNumber(this, cv, target, false);
 	}
 
 
@@ -128,7 +132,7 @@ namespace cgn
 			auto cn = dcast(fir::ConstantNumber, from.value);
 			iceAssert(cn);
 
-			auto res = _unwrapConstantNumber(this, cn->getValue(), target, true);
+			auto res = _unwrapConstantNumber(this, cn, target, true);
 			if(!res)	return from;
 			else		return CGResult(res);
 		}
@@ -254,7 +258,7 @@ namespace cgn
 			auto cn = dcast(fir::ConstantNumber, lhs.value);
 			iceAssert(cn);
 
-			auto res = _unwrapConstantNumber(this, cn->getValue(), rt, true);
+			auto res = _unwrapConstantNumber(this, cn, rt, true);
 			if(!res)	return { lhs, rhs };
 			else		return { CGResult(res), rhs };
 		}

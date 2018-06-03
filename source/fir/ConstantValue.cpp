@@ -48,19 +48,14 @@ namespace fir
 
 
 
-	ConstantNumber* ConstantNumber::get(mpfr::mpreal n)
+	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, long double n)
 	{
-		return new ConstantNumber(n);
+		return new ConstantNumber(cnt, n);
 	}
 
-	mpfr::mpreal ConstantNumber::getValue()
+	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, long double n) : ConstantValue(cnt)
 	{
-		return this->number;
-	}
-
-	ConstantNumber::ConstantNumber(mpfr::mpreal n) : ConstantValue(fir::Type::getConstantNumber(n))
-	{
-		this->number = n;
+		this->bits = n;
 	}
 
 
@@ -400,33 +395,33 @@ namespace fir
 
 
 
-	bool checkLiteralFitsIntoType(fir::PrimitiveType* target, mpfr::mpreal num)
-	{
-		using mpr = mpfr::mpreal;
-		if(mpfr::isint(num) && target->isFloatingPointType())
-		{
-			if(target == fir::Type::getFloat32())		return (num >= -mpr(FLT_MAX) && num <= mpr(FLT_MAX));
-			else if(target == fir::Type::getFloat64())	return (num >= -mpr(DBL_MAX) && num <= mpr(DBL_MAX));
-			else if(target == fir::Type::getFloat80())	return (num >= -mpr(LDBL_MAX) && num <= mpr(LDBL_MAX));
-			else										error("Unsupported type '%s' for literal number", target);
-		}
-		else
-		{
-			if(target == fir::Type::getFloat32())		return (mpfr::abs(num) >= mpr(FLT_MIN) && mpfr::abs(num) <= mpr(FLT_MAX));
-			else if(target == fir::Type::getFloat64())	return (mpfr::abs(num) >= mpr(DBL_MIN) && mpfr::abs(num) <= mpr(DBL_MAX));
-			else if(target == fir::Type::getFloat80())	return (mpfr::abs(num) >= mpr(LDBL_MIN) && mpfr::abs(num) <= mpr(LDBL_MAX));
+	// bool checkLiteralFitsIntoType(fir::PrimitiveType* target, mpfr::mpreal num)
+	// {
+	// 	using mpr = mpfr::mpreal;
+	// 	if(mpfr::isint(num) && target->isFloatingPointType())
+	// 	{
+	// 		if(target == fir::Type::getFloat32())		return (num >= -mpr(FLT_MAX) && num <= mpr(FLT_MAX));
+	// 		else if(target == fir::Type::getFloat64())	return (num >= -mpr(DBL_MAX) && num <= mpr(DBL_MAX));
+	// 		else if(target == fir::Type::getFloat80())	return (num >= -mpr(LDBL_MAX) && num <= mpr(LDBL_MAX));
+	// 		else										error("Unsupported type '%s' for literal number", target);
+	// 	}
+	// 	else
+	// 	{
+	// 		if(target == fir::Type::getFloat32())		return (mpfr::abs(num) >= mpr(FLT_MIN) && mpfr::abs(num) <= mpr(FLT_MAX));
+	// 		else if(target == fir::Type::getFloat64())	return (mpfr::abs(num) >= mpr(DBL_MIN) && mpfr::abs(num) <= mpr(DBL_MAX));
+	// 		else if(target == fir::Type::getFloat80())	return (mpfr::abs(num) >= mpr(LDBL_MIN) && mpfr::abs(num) <= mpr(LDBL_MAX));
 
-			else if(target == fir::Type::getInt8())		return (num >= mpr(INT8_MIN) && num <= mpr(INT8_MAX));
-			else if(target == fir::Type::getInt16())	return (num >= mpr(INT16_MIN) && num <= mpr(INT16_MAX));
-			else if(target == fir::Type::getInt32())	return (num >= mpr(INT32_MIN) && num <= mpr(INT32_MAX));
-			else if(target == fir::Type::getInt64())	return (num >= mpr(INT64_MIN) && num <= mpr(INT64_MAX));
-			else if(target == fir::Type::getUint8())	return (num <= mpr(UINT8_MAX));
-			else if(target == fir::Type::getUint16())	return (num <= mpr(UINT16_MAX));
-			else if(target == fir::Type::getUint32())	return (num <= mpr(UINT32_MAX));
-			else if(target == fir::Type::getUint64())	return (num <= mpr(UINT64_MAX));
-			else										error("Unsupported type '%s' for literal number", target);
-		}
-	}
+	// 		else if(target == fir::Type::getInt8())		return (num >= mpr(INT8_MIN) && num <= mpr(INT8_MAX));
+	// 		else if(target == fir::Type::getInt16())	return (num >= mpr(INT16_MIN) && num <= mpr(INT16_MAX));
+	// 		else if(target == fir::Type::getInt32())	return (num >= mpr(INT32_MIN) && num <= mpr(INT32_MAX));
+	// 		else if(target == fir::Type::getInt64())	return (num >= mpr(INT64_MIN) && num <= mpr(INT64_MAX));
+	// 		else if(target == fir::Type::getUint8())	return (num <= mpr(UINT8_MAX));
+	// 		else if(target == fir::Type::getUint16())	return (num <= mpr(UINT16_MAX));
+	// 		else if(target == fir::Type::getUint32())	return (num <= mpr(UINT32_MAX));
+	// 		else if(target == fir::Type::getUint64())	return (num <= mpr(UINT64_MAX));
+	// 		else										error("Unsupported type '%s' for literal number", target);
+	// 	}
+	// }
 }
 
 

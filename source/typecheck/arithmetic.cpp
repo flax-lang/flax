@@ -84,7 +84,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::Plus)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() + right->toConstantNumberType()->getValue());
+			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
 
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
@@ -116,7 +116,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::Minus)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() - right->toConstantNumberType()->getValue());
+			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
 
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
@@ -133,7 +133,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::Multiply)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() * right->toConstantNumberType()->getValue());
+			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
 
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
@@ -145,7 +145,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::Divide)
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::Type::getConstantNumber(left->toConstantNumberType()->getValue() / right->toConstantNumberType()->getValue());
+			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
 
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
@@ -157,8 +157,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	{
 		if(left->isConstantNumberType() && right->isConstantNumberType())
 		{
-			return fir::Type::getConstantNumber( mpfr::fmod(left->toConstantNumberType()->getValue(),
-				right->toConstantNumberType()->getValue()));
+			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
 		}
 		else if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
 		{
@@ -297,14 +296,18 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else if(this->op == Operator::UnaryPlus || this->op == Operator::UnaryMinus)
 	{
 		if(t->isConstantNumberType())
-			out = (op == "-" ? fir::Type::getConstantNumber(-1 * t->toConstantNumberType()->getValue()) : t);
-
+		{
+			out = (op == "-" ? fir::ConstantNumberType::get(t->toConstantNumberType()->isSigned(),
+				t->toConstantNumberType()->isFloating(), t->toConstantNumberType()->getMinBits()) : t);
+		}
 		else if(!t->isIntegerType() && !t->isFloatingPointType())
+		{
 			error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
-
+		}
 		else if(op == "-" && t->isIntegerType() && !t->isSignedIntType())
+		{
 			error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t);
-
+		}
 		out = t;
 	}
 	else if(this->op == Operator::BitwiseNot)
