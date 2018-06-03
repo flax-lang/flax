@@ -652,7 +652,7 @@ namespace array
 								auto ctr = cs->irb.Load(ctrp);
 								auto p = cs->irb.PointerAdd(ptr, ctr);
 
-								cs->decrementRefCount(cs->irb.Load(p));
+								// cs->decrementRefCount(cs->irb.Load(p));
 
 								cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
 							});

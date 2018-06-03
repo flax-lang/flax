@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(4d0aa96)`
 - fix a massive design flaw wrt. arrays -- they now no longer modify the refcount of their elements. only when they are completely freed,
 	then we run a decrement loop (once!) over the elements.
 - this should fix the linux crash as well. note: classes test fails, so we've turned that off for now.
