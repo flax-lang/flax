@@ -363,6 +363,7 @@ namespace backend
 
 	void LLVMBackend::setupTargetMachine()
 	{
+		#if 1
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmParser();
 		llvm::InitializeNativeTargetAsmPrinter();
@@ -419,7 +420,11 @@ namespace backend
 		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
 			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
 
-		// this->targetMachine = llvm::EngineBuilder().selectTarget();
+		#else
+
+		this->targetMachine = llvm::EngineBuilder().selectTarget();
+
+		#endif
 	}
 
 

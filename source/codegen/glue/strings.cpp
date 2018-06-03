@@ -158,9 +158,9 @@ namespace string
 			#if DEBUG_STRING_REFCOUNTING
 			{
 				std::string x = decrement ? "(decr)" : "(incr)";
-				fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of string: (ptr: %p, len: %ld, cap: %ld) = %d\n");
 
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.GetSAAData(str), cs->irb.GetSAALength(str), cs->irb.GetSAACapacity(str), cs->irb.GetSAARefCount(str) });
+				cs->printIRDebugMessage("* STRING: " + x + " - new rc of: (ptr: %p, len: %ld, cap: %ld) = %d",
+					{ cs->irb.GetSAAData(str), cs->irb.GetSAALength(str), cs->irb.GetSAACapacity(str), cs->irb.GetSAARefCount(str) });
 			}
 			#endif
 
@@ -183,8 +183,8 @@ namespace string
 
 					#if DEBUG_STRING_ALLOCATION
 					{
-						fir::Value* tmpstr = cs->module->createGlobalString("freed str: (ptr: %p / rcp: %p)\n");
-						cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, buf, cs->irb.GetSAARefCountPointer(str) });
+						cs->printIRDebugMessage("* STRING: free(): (ptr: %p / rcp: %p)", {
+							buf, cs->irb.GetSAARefCountPointer(str) });
 					}
 					#endif
 				}

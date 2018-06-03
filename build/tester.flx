@@ -94,7 +94,7 @@ fn runTests()
 
 	// classes
 	libc.printf("%s%s", classTitle, thinLine)
-	test_classes.doClassTest()
+	// test_classes.doClassTest()
 	libc.printf("\n\n\n")
 
 

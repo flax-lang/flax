@@ -545,23 +545,9 @@ namespace array
 
 
 
-	/*
-		How this works is simple, but at the same time not really. 'make-recursive-dealloc' will return a function that simply frees the memory
-		pointed to by the first argument.
-
-		Additionally, if the 'nest' parameter is greater than 0, it will call itself with nest - 1, to create a function that frees each *element*
-		of the array (ptr, len) using the same, recursive method.
-
-		After calling itself if necessary, it then simply does free() on the memory pointer.
-
-		It's quite clever, I know.
-
-		Oops, a last-minute addition and i'm too lazy to rewrite the above;
-		We now handle both incrementing and decrementing, to greatly simplify all the code. Incrementing simply ignores the part where we free things.
-	*/
-	static fir::Function* makeRecursiveRefCountingFunction(CodegenState* cs, fir::DynamicArrayType* arrtype, int nest, bool incr)
+	static fir::Function* makeRecursiveRefCountingFunction(CodegenState* cs, fir::DynamicArrayType* arrtype, bool incr)
 	{
-		auto name = BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME + ("_" + std::to_string(nest) + (incr ? "_incr_" : "_decr_")) + arrtype->encodedStr();
+		auto name = BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME + std::string(incr ? "_incr_" : "_decr_") + arrtype->encodedStr();
 		fir::Function* retf = cs->module->getFunction(Identifier(name, IdKind::Name));
 
 		if(!retf)
@@ -583,66 +569,11 @@ namespace array
 			auto cap = cs->irb.GetDynamicArrayCapacity(arr);
 
 
-			// we combine these a little bit more than maybe you're expecting, but that's because fundamentally we're really
-			// doing the same thing, whether nest is > 1 or whether we're refcounting -- still a loop through the elements,
-			// the only thing that changes is what we do with each element.
 			{
 				auto elmtype = arrtype->getElementType();
 
-				if(nest > 1)	iceAssert(elmtype->isDynamicArrayType());
-				else			iceAssert(!elmtype->isDynamicArrayType());
-
-				// handle the refcount if we're nested, or if we're the final layer but our element type is refcounted (eg. strings)
-				if(nest > 1 || cs->isRefCountedType(elmtype))
-				{
-					fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
-					fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
-					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-					auto idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
-
-					// already set to 0 internally
-					// cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
-
-					cs->irb.UnCondBranch(check);
-					cs->irb.setCurrentBlock(check);
-					{
-						auto cond = cs->irb.ICmpLT(cs->irb.Load(idxptr), len);
-						cs->irb.CondBranch(cond, body, merge);
-					}
-
-					cs->irb.setCurrentBlock(body);
-					{
-						auto val = cs->irb.Load(cs->irb.PointerAdd(ptr, cs->irb.Load(idxptr)));
-
-						// this is where things differ a bit -- for nest > 1, it's a dynamic array.
-						// note that cs->(incr|decr)ementRefCount() eventually calls back to us, leading
-						// to a recursion fail, so we must do it ourselves, basically.
-
-						if(nest > 1)
-						{
-							auto fn = makeRecursiveRefCountingFunction(cs, elmtype->toDynamicArrayType(), nest - 1, incr);
-							iceAssert(fn);
-
-							cs->irb.Call(fn, val);
-						}
-						else
-						{
-							if(incr)	cs->incrementRefCount(val);
-							else		cs->decrementRefCount(val);
-						}
-
-						cs->irb.Store(cs->irb.Add(cs->irb.Load(idxptr), fir::ConstantInt::getInt64(1)), idxptr);
-
-						cs->irb.UnCondBranch(check);
-					}
-
-					cs->irb.setCurrentBlock(merge);
-				}
-
 				// here we check whether we actually have a refcount pointer. If we don't, then we're a literal, and there's no need to change
 				// the refcount anyway.
-				// make the blocks
 				auto prevblk = cs->irb.getCurrentBlock();
 				auto dorc = cs->irb.addNewBlockInFunction("dorc", cs->irb.getCurrentFunction());
 				auto dontrc = cs->irb.addNewBlockInFunction("dontrcliteral", cs->irb.getCurrentFunction());
@@ -656,12 +587,15 @@ namespace array
 				fir::Value* therefc = 0;
 				cs->irb.setCurrentBlock(dorc);
 				{
-					// here it's the same thing regardless of nest.
 					therefc = cs->irb.GetDynamicArrayRefCount(arr);
 
-					if(incr)	cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Add(therefc, fir::ConstantInt::getInt64(1)));
-					else		cs->irb.SetDynamicArrayRefCount(arr, cs->irb.Subtract(therefc, fir::ConstantInt::getInt64(1)));
+					fir::Value* newrc = 0;
+					if(incr)    newrc = cs->irb.Add(therefc, fir::ConstantInt::getInt64(1));
+					else        newrc = cs->irb.Subtract(therefc, fir::ConstantInt::getInt64(1));
 
+					// update it.
+					therefc = newrc;
+					cs->irb.SetDynamicArrayRefCount(arr, newrc);
 					cs->irb.UnCondBranch(dontrc);
 				}
 
@@ -670,9 +604,9 @@ namespace array
 				#if DEBUG_ARRAY_REFCOUNTING
 				{
 					std::string x = incr ? "(incr)" : "(decr)";
-					fir::Value* tmpstr = cs->module->createGlobalString(x + " new rc of arr: (ptr: %p, len: %ld, cap: %ld) = %d\n");
 
-					cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, cs->irb.GetSAAData(arr), cs->irb.GetSAALength(arr), cs->irb.GetSAACapacity(arr), cs->irb.GetSAARefCount(arr) });
+					cs->printIRDebugMessage("* ARRAY:  " + x + " - new rc of: (ptr: %p, len: %ld, cap: %ld) = %d",
+						{ cs->irb.GetSAAData(arr), cs->irb.GetSAALength(arr), cs->irb.GetSAACapacity(arr), cs->irb.GetSAARefCount(arr) });
 				}
 				#endif
 
@@ -687,27 +621,50 @@ namespace array
 					//! NOTE: what we want to happen here is for us to free the memory, but only if refcnt == 0 && capacity >= 0
 					//* so our condition is (REFCOUNT == 0) & (CAP >= 0)
 
-					auto shouldfree = cs->irb.CreatePHINode(fir::Type::getInt64());
-					shouldfree->addIncoming(therefc, dorc);
-					shouldfree->addIncoming(fir::ConstantInt::getInt64(-1), prevblk);
+					auto refc = cs->irb.CreatePHINode(fir::Type::getInt64());
+					refc->addIncoming(therefc, dorc);
+					refc->addIncoming(fir::ConstantInt::getInt64(-1), prevblk);
 
-					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(shouldfree, zv), cs->irb.ICmpGEQ(cap, zv));
+					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(refc, zv), cs->irb.ICmpGEQ(cap, zv));
+
+
 					cs->irb.CondBranch(dofree, dealloc, merge);
 
 					cs->irb.setCurrentBlock(dealloc);
 					{
-						ptr = cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr());
+						auto memptr = cs->irb.PointerTypeCast(ptr, fir::Type::getMutInt8Ptr());
 
 						auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 						iceAssert(freefn);
 
-						cs->irb.Call(freefn, ptr);
+						// only when we free, do we loop through our array and decrement its refcount.
+						if(cs->isRefCountedType(elmtype))
+						{
+							auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
+							cs->irb.Store(zv, ctrp);
+
+							cs->createWhileLoop([cs, ctrp, len](auto pass, auto fail) {
+								auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrp), len);
+								cs->irb.CondBranch(cond, pass, fail);
+							},
+							[cs, ctrp, ptr]() {
+
+								auto ctr = cs->irb.Load(ctrp);
+								auto p = cs->irb.PointerAdd(ptr, ctr);
+
+								cs->decrementRefCount(cs->irb.Load(p));
+
+								cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+							});
+						}
+
+						cs->irb.Call(freefn, memptr);
 						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetDynamicArrayRefCountPointer(arr), fir::Type::getMutInt8Ptr()));
 
 						#if DEBUG_ARRAY_ALLOCATION
 						{
-							fir::Value* tmpstr = cs->module->createGlobalString("freed arr: (ptr: %p / rcp: %p)\n");
-							cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, ptr, cs->irb.GetSAARefCountPointer(arr) });
+							cs->printIRDebugMessage("* ARRAY:  free(): (ptr: %p / rcp: %p)", {
+								memptr, cs->irb.GetSAARefCountPointer(arr) });
 						}
 						#endif
 
@@ -755,15 +712,8 @@ namespace array
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
 
-
 			fir::Value* arr = func->getArguments()[0];
-
-			int nest = 0;
-			auto ty = arr->getType();
-			while(ty->isDynamicArrayType())
-				ty = ty->getArrayElementType(), nest++;
-
-			auto fn = makeRecursiveRefCountingFunction(cs, arr->getType()->toDynamicArrayType(), nest, increment);
+			auto fn = makeRecursiveRefCountingFunction(cs, arr->getType()->toDynamicArrayType(), increment);
 			iceAssert(fn);
 
 			cs->irb.Call(fn, arr);
@@ -780,6 +730,8 @@ namespace array
 
 	static fir::Function* _getDoRefCountFunctionForArray(CodegenState* cs, fir::ArrayType* arrtype, bool incr)
 	{
+		error("NO!");
+		#if 0
 		auto elmtype = arrtype->getElementType();
 
 		//* note that we don't need a separate name for it, since the type of the array is added to the name itself
@@ -837,7 +789,10 @@ namespace array
 				else if(elmtype->isArrayType())
 				{
 					// call ourselves. we already declared and everything, so it should be fine.
-					cs->irb.Call(func, valptr);
+					auto fn = _getDoRefCountFunctionForArray(cs, elmtype->toArrayType(), incr);
+					iceAssert(fn);
+
+					cs->irb.Call(fn, valptr);
 				}
 				else
 				{
@@ -859,6 +814,7 @@ namespace array
 
 		iceAssert(cmpf);
 		return cmpf;
+		#endif
 	}
 
 

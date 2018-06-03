@@ -579,10 +579,14 @@ namespace frontend
 
 std::string Location::toString() const
 {
-	return strprintf("(%s:%d:%d)", frontend::getFilenameFromID(this->fileID), this->line, this->col);
+	return strprintf("(%s:%d:%d)", frontend::getFilenameFromID(this->fileID), this->line + 1, this->col + 1);
 }
 
-
+std::string Location::shortString() const
+{
+	return strprintf("(%s:%d:%d)", frontend::getFilenameFromPath(frontend::getFilenameFromID(this->fileID)),
+		this->line + 1, this->col + 1);
+}
 
 
 
