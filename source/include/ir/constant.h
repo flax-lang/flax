@@ -16,11 +16,6 @@ namespace fir
 	struct Value;
 	struct ConstantValue;
 
-	bool checkLiteralFitsIntoType(fir::PrimitiveType* type, mpfr::mpreal num);
-
-	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type);
-
-
 	// base class implicitly stores null
 	struct ConstantValue : Value
 	{
@@ -40,12 +35,14 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantNumber* get(mpfr::mpreal n);
-		mpfr::mpreal getValue();
+		static ConstantNumber* get(ConstantNumberType* cnt, long double n);
+
+		template <typename T>
+		T getValue() { return *reinterpret_cast<T*>(&this->bits); }
 
 		protected:
-		ConstantNumber(mpfr::mpreal n);
-		mpfr::mpreal number;
+		ConstantNumber(ConstantNumberType* cnt, long double n);
+		long double bits = 0;
 	};
 
 	struct ConstantBool : ConstantValue

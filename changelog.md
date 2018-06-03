@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(ef6326c)`
 - actually fix the bug. we were previously *moving out* of arrays in a destructuring binding, which is definitely not what we want.
 	now we increment the refcount before passing it off to the binding, so we don't prematurely free.
 

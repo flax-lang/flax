@@ -36,7 +36,6 @@ public fn doGenericsTest()
 
 		let new = map([ "a", "b", "c", "d", "e" ], twice)
 		for it in new => printf(" %s", it)
-		for it in new => printf(" %s", it)
 
 		printf("\n")
 	}
@@ -76,9 +75,7 @@ public fn doGenericsTest()
 		printf("\n")
 	}
 
-
 	do {
-
 		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
 		{
 			var i = 0
@@ -92,9 +89,7 @@ public fn doGenericsTest()
 			return ret
 		}
 
-
 		fn add2<A, B>(x: A, y: B) -> A => x + y
-
 
 		printf("set 5:")
 		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)

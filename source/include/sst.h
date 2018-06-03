@@ -448,7 +448,10 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		mpfr::mpreal number;
+		union {
+			uint64_t intgr;
+			double flt;
+		};
 	};
 
 	struct LiteralString : Expr
