@@ -121,7 +121,7 @@ namespace cgn
 		fir::Value* callVirtualMethod(sst::FunctionCall* call);
 
 		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
-		fir::ConstantValue* unwrapConstantNumber(mpfr::mpreal num, fir::Type* target);
+		fir::ConstantValue* unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target);
 
 		CGResult getStructFieldImplicitly(std::string name);
 

@@ -48,8 +48,7 @@ namespace sst
 				auto cn = dcast(fir::ConstantNumber, value);
 				if(!cn) error(this->left, "what");
 
-				return CGResult(cs->unwrapConstantNumber(cn->getValue(), target));
-				// return _csdoConstantCast(this, cn, target);
+				return CGResult(cs->unwrapConstantNumber(cn, target));
 			}
 			else if(vt->isEnumType())
 			{
