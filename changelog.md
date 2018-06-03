@@ -1,5 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- actually fix the bug. we were previously *moving out* of arrays in a destructuring binding, which is definitely not what we want.
+	now we increment the refcount before passing it off to the binding, so we don't prematurely free.
+
 `(4d0aa96)`
 - fix a massive design flaw wrt. arrays -- they now no longer modify the refcount of their elements. only when they are completely freed,
 	then we run a decrement loop (once!) over the elements.
