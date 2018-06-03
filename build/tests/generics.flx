@@ -7,7 +7,7 @@ export test_generics
 import "libc" as _
 
 
-@entry public fn doGenericsTest()
+public fn doGenericsTest()
 {
 	// some normal FP stuff
 	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
@@ -18,89 +18,90 @@ import "libc" as _
 		return ret
 	}
 
-	// do {
-	// 	printf("set 1:")
+	do {
+		printf("set 1:")
 
-	// 	fn twice<K>(a: K) -> K => a * 2
+		fn twice<K>(a: K) -> K => a * 2
 
-	// 	let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
-	// 	for it in new { printf(" %d", it) }
+		let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
+		for it in new { printf(" %d", it) }
 
-	// 	printf("\n")
-	// }
+		printf("\n")
+	}
 
 	do {
 		printf("set 2:")
 
 		fn twice(a: str) -> string => string(a) + string(a)
 
-		let new = map([ "a" ], twice)
+		let new = map([ "a", "b", "c", "d", "e" ], twice)
+		for it in new => printf(" %s", it)
 		for it in new => printf(" %s", it)
 
 		printf("\n")
 	}
 
-	// do {
-	// 	printf("set 3:")
+	do {
+		printf("set 3:")
 
-	// 	fn square<T, U>(a: T) -> U => (a * a)
+		fn square<T, U>(a: T) -> U => (a * a)
 
-	// 	let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
-	// 	for it in new { printf(" %.2f", it) }
+		let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
+		for it in new { printf(" %.2f", it) }
 
-	// 	printf("\n")
-	// }
+		printf("\n")
+	}
 
-	// do {
-	// 	fn gincr<A>(x: A) -> A => x + 1
-	// 	fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
 
-	// 	fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
-	// 	{
-	// 		var i = 0
-	// 		var ret: [F]
-	// 		while i < arr.length
-	// 		{
-	// 			ret.append(fa(arr[i], f))
-	// 			i += 1
-	// 		}
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
 
-	// 		return ret
-	// 	}
+			return ret
+		}
 
-	// 	printf("set 4:")
-	// 	let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
-	// 	for it in new { printf(" %d", it) }
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
 
-	// 	printf("\n")
-	// }
-
-
-	// do {
-
-	// 	fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
-	// 	{
-	// 		var i = 0
-	// 		var ret: [R]
-	// 		while i < arr.length
-	// 		{
-	// 			ret.append(f(arr[i].0, arr[i].1))
-	// 			i += 1
-	// 		}
-
-	// 		return ret
-	// 	}
+		printf("\n")
+	}
 
 
-	// 	fn add2<A, B>(x: A, y: B) -> A => x + y
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
 
 
-	// 	printf("set 5:")
-	// 	let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
-	// 	for it in new { printf(" %d", it) }
+		fn add2<A, B>(x: A, y: B) -> A => x + y
 
-	// 	printf("\n")
-	// }
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
 }
 
 

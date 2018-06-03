@@ -29,8 +29,14 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 	//* so, since everything that we generate from destructuring is an rvalue, we always need to remove it.
 
 	//* thus in order to remove it, we must first insert it.
+
+	//* also, since the vardefn adds itself to the counting stack, when it dies we will get decremented.
+	//* however, this cannot be allowed to happen, because we want a copy and not a move.
 	if(cs->isRefCountedType(res.value->getType()))
+	{
 		cs->addRefCountedValue(res.value);
+		cs->incrementRefCount(res.value);
+	}
 
 	if(defn)
 	{
