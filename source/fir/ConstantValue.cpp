@@ -48,12 +48,12 @@ namespace fir
 
 
 
-	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, long double n)
+	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, uint64_t n)
 	{
 		return new ConstantNumber(cnt, n);
 	}
 
-	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, long double n) : ConstantValue(cnt)
+	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, uint64_t n) : ConstantValue(cnt)
 	{
 		this->bits = n;
 	}

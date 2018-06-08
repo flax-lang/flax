@@ -34,15 +34,15 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		skipCheck = true;
 	}
 
-	if(rt->isConstantNumberType() && lt->isPrimitiveType())
-	{
-		auto num = rt->toConstantNumberType()->getValue();
-		if(fir::checkLiteralFitsIntoType(lt->toPrimitiveType(), num))
-			skipCheck = true;
+	// if(rt->isConstantNumberType() && lt->isPrimitiveType())
+	// {
+	// 	auto num = rt->toConstantNumberType()->getValue();
+	// 	if(fir::checkLiteralFitsIntoType(lt->toPrimitiveType(), num))
+	// 		skipCheck = true;
 
-		else
-			warn(this, "nofit");
-	}
+	// 	else
+	// 		warn(this, "nofit");
+	// }
 
 	if(!skipCheck && lt != rt && fs->getCastDistance(rt, lt) < 0)
 	{

@@ -21,22 +21,28 @@ namespace cgn
 
 		if(ty->isFloating())
 		{
-			if(ty->getMinBits() > 64)
+			if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
+				return fir::ConstantFP::getFloat64(cn->getValue<double>());
+
+			else if(ty->getMinBits() <= fir::Type::getFloat80()->getBitWidth())
 				return fir::ConstantFP::getFloat80(cn->getValue<long double>());
 
 			else
-				return fir::ConstantFP::getFloat64(cn->getValue<double>());
+				error("float overflow");
 		}
 		else
 		{
-			if(ty->isSigned() && ty->getMinBits() <= 63)
-				return fir::ConstantInt::getInt64(cn->getValue<int64_t>());
+				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
+					return fir::ConstantInt::getInt64(cn->getValue<int64_t>());
 
-			else if(ty->getMinBits() <= 64)
-				return fir::ConstantInt::getInt64(cn->getValue<uint64_t>());
+				// else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
+				// 	return fir::Type::getInt128();
 
-			else
-				error("overflow");
+				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
+					return fir::ConstantInt::getUint64(cn->getValue<uint64_t>());
+
+				else
+					error("int overflow");
 		}
 	}
 
@@ -62,7 +68,7 @@ namespace cgn
 		}
 
 
-		if(target->toPrimitiveType()->getBitWidth() > ty->getMinBits())
+		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
 		{
 			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type",
 				target);
@@ -124,18 +130,18 @@ namespace cgn
 		auto fromType = from.value->getType();
 		if(fromType == target) return from;
 
-		if(fromType->isConstantNumberType())
-		{
-			if(target->isConstantNumberType())
-				error("stop playing games bitch");
+		// if(fromType->isConstantNumberType())
+		// {
+		// 	if(target->isConstantNumberType())
+		// 		error("stop playing games bitch");
 
-			auto cn = dcast(fir::ConstantNumber, from.value);
-			iceAssert(cn);
+		// 	auto cn = dcast(fir::ConstantNumber, from.value);
+		// 	iceAssert(cn);
 
-			auto res = _unwrapConstantNumber(this, cn, target, true);
-			if(!res)	return from;
-			else		return CGResult(res);
-		}
+		// 	auto res = _unwrapConstantNumber(this, cn, target, true);
+		// 	if(!res)	return from;
+		// 	else		return CGResult(res);
+		// }
 
 		// else
 		if(fromType->isNullType() && target->isPointerType())
@@ -232,15 +238,16 @@ namespace cgn
 		LABEL_failure:
 		error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
 		return CGResult(0);
-		// return from;
 	}
 
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)
 	{
 		auto lt = lhs.value->getType();
 		auto rt = rhs.value->getType();
-		if(lt == rt || (lt->isConstantNumberType() && rt->isConstantNumberType()))
+		if(lt == rt)
+		{
 			return { lhs, rhs };
+		}
 
 		// prefer to cast the void pointer to the other one, not the other way around.
 		if(lt->isNullType() && rt->isPointerType())
@@ -250,11 +257,8 @@ namespace cgn
 			return std::make_pair(CGResult(lhs.value), CGResult(this->irb.PointerTypeCast(rhs.value, lt)));
 
 
-		if(lt->isConstantNumberType() && !rt->isConstantNumberType())
+		/* if(lt->isConstantNumberType() && !rt->isConstantNumberType())
 		{
-			if(rt->isConstantNumberType())
-				error("stop playing games bitch");
-
 			auto cn = dcast(fir::ConstantNumber, lhs.value);
 			iceAssert(cn);
 
@@ -267,7 +271,7 @@ namespace cgn
 			auto [ l, r ] = this->autoCastValueTypes(rhs, lhs);
 			return { r, l };
 		}
-		else if(lt->isIntegerType() && rt->isIntegerType() && lt->isSignedIntType() == rt->isSignedIntType())
+		else  */if(lt->isIntegerType() && rt->isIntegerType() && lt->isSignedIntType() == rt->isSignedIntType())
 		{
 			// ok, neither are constants
 			// do the normal thing

@@ -11,25 +11,31 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-		// error(this, "Non-numerical type '%s' inferred for literal number", infer);
-		return CGResult(fir::ConstantNumber::get(this->number));
+		error(this, "Non-numerical type '%s' inferred for literal number", infer);
 
-	// todo: do some proper thing
-	if((this->type->isConstantNumberType() && infer) || (infer || this->type->isIntegerType() || this->type->isFloatingPointType()))
+	if(this->type->isConstantNumberType())
 	{
-		if(!infer) infer = this->type;
+		if(infer)
+		{
+			if(this->type->toConstantNumberType()->isFloating() && !infer->isFloatingPointType())
+				error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
 
-		if(infer->isConstantNumberType())
-			error("stop playing games");
-
-		if(!mpfr::isint(this->number) && !infer->isFloatingPointType())
-			error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
-
-		return CGResult(cs->unwrapConstantNumber(this->number, infer), 0, CGResult::VK::LitRValue);
+			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr), infer),
+				0, CGResult::VK::LitRValue);
+		}
+		else
+		{
+			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr)),
+				0, CGResult::VK::LitRValue);
+		}
 	}
 	else
 	{
-		return CGResult(fir::ConstantNumber::get(this->number), 0, CGResult::VK::LitRValue);
+		if(this->type->isFloatingPointType())
+			return CGResult(fir::ConstantFP::get(this->type, this->flt), 0, CGResult::VK::LitRValue);
+
+		else
+			return CGResult(fir::ConstantInt::get(this->type, this->intgr), 0, CGResult::VK::LitRValue);
 	}
 }
 

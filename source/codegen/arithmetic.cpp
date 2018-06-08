@@ -88,6 +88,7 @@ namespace sst
 		auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
 
 
+		#if 0
 		// circumvent the '1 + 2 + 3'-expression-has-no-type issue by just computing whatever
 		// since both sides are constants, all should work just fine
 		if(lt->isConstantNumberType() && rt->isConstantNumberType())
@@ -113,7 +114,9 @@ namespace sst
 					return CGResult(fir::ConstantNumber::get(res));
 			}
 		}
-		else if(this->overloadedOpFunction)
+		else
+		#endif
+		if(this->overloadedOpFunction)
 		{
 			// fantastic, just call this piece of shit.
 			auto func = dcast(fir::Function, this->overloadedOpFunction->codegen(cs, 0).value);
@@ -209,10 +212,10 @@ namespace sst
 			{
 				return CGResult(fir::ConstantFP::get(cf->getType(), -1 * cf->getValue()));
 			}
-			else if(auto cn = dcast(fir::ConstantNumber, val))
-			{
-				return CGResult(fir::ConstantNumber::get(-1 * cn->getValue()));
-			}
+			// else if(auto cn = dcast(fir::ConstantNumber, val))
+			// {
+			// 	return CGResult(fir::ConstantNumber::get(-1 * cn->getValue()));
+			// }
 			else
 			{
 				return CGResult(cs->irb.Negate(val));
