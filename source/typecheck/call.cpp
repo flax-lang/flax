@@ -19,17 +19,17 @@ namespace sst
 
 		if(from->isConstantNumberType() && to->isPrimitiveType())
 		{
-			auto num = from->toConstantNumberType()->getValue();
-			if(mpfr::isint(num) && to->isIntegerType())
+			auto cty = from->toConstantNumberType();
+			if(!cty->isFloating() && to->isIntegerType())
 				return 0;
 
-			else if(mpfr::isint(num) && to->isFloatingPointType())
+			else if(!cty->isFloating() && to->isFloatingPointType())
 				return 1;
 
-			else if(to->isFloatingPointType())      // not isint means isfloat, so if we're doing float -> float the cost is 0
+			else if(cty->isFloating())      // not isint means isfloat, so if we're doing float -> float the cost is 0
 				return 0;
 
-			else                                    // if we reach here, we're trying to do float -> int, which is a no-go.
+			else                            // if we reach here, we're trying to do float -> int, which is a no-go.
 				return -1;
 		}
 		else if(from->isIntegerType() && to->isIntegerType())

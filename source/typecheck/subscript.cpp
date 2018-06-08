@@ -20,19 +20,9 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto lt = ls->type;
 	auto rt = rs->type;
 
-	// make sure the inside is legit
-	if(rt->isConstantNumberType())
-	{
-		if(!mpfr::isint(rt->toConstantNumberType()->getValue()))
-			error(this->inside, "Floating-point literal '%s' cannot be used as an subscript index, expected integer type",
-				rt->toConstantNumberType()->getValue().toString());
-
-		// ok...
-	}
-	else if(!rt->isIntegerType())
-	{
+	if((rt->isConstantNumberType() && rt->toConstantNumberType()->isFloating()) && !rt->isIntegerType())
 		error(this->inside, "Subscript index must be an integer type, found '%s'", rt);
-	}
+
 
 	fir::Type* res = 0;
 

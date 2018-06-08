@@ -13,9 +13,44 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto n = mpfr::mpreal(this->num);
-	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::Type::getConstantNumber(n));
-	ret->number = n;
+	uint64_t raw = 0;
+	int bits = 0;
+	bool flt = 0;
+	bool sgn = false;
+
+	try
+	{
+		if(std::find(this->num.begin(), this->num.end(), '.') == this->num.end())
+		{
+			if(infer && infer->isPrimitiveType() && !infer->toPrimitiveType()->isSigned())
+			{
+				bits = 64;
+				raw = std::stoull(this->num, nullptr, 0);
+				sgn = false;
+			}
+			else
+			{
+				bits = 63;
+				raw = std::stoll(this->num, nullptr, 0);
+				sgn = (raw < 0);
+			}
+		}
+		else
+		{
+			auto d = std::stod(this->num, nullptr);
+			bits = 64;
+			flt = true;
+			raw = *reinterpret_cast<uint64_t*>(&d);
+			sgn = (raw < 0);
+		}
+	}
+	catch(const std::exception& e)
+	{
+		error("cannot do this thing");
+	}
+
+	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
+	ret->intgr = raw;
 
 	return TCResult(ret);
 }

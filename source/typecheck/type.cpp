@@ -12,15 +12,38 @@ namespace sst
 {
 	fir::Type* TypecheckState::inferCorrectTypeForLiteral(fir::ConstantNumberType* type)
 	{
-		auto num = type->toConstantNumberType()->getValue();
-
-		// if(auto lit = dcast(sst::LiteralNumber, expr))
+		auto ty = type->toConstantNumberType();
 		{
-			// auto num = lit->number;
-
-			// check if we're an integer
-			if(mpfr::isint(num))
+			if(ty->isFloating())
 			{
+				if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
+					return fir::Type::getFloat64();
+
+				else if(ty->getMinBits() <= fir::Type::getFloat80()->getBitWidth())
+					return fir::Type::getFloat80();
+
+				else if(ty->getMinBits() <= fir::Type::getFloat128()->getBitWidth())
+					return fir::Type::getFloat128();
+
+				else
+					error("float overflow");
+			}
+			else
+			{
+				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
+					return fir::Type::getInt64();
+
+				else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
+					return fir::Type::getInt128();
+
+				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint128()->getBitWidth())
+					return fir::Type::getUint128();
+
+				else
+					error("int overflow");
+			}
+
+			# if 0
 				// ok, check if it fits anywhere
 				if(num <= mpfr::mpreal(INT64_MAX) && num >= mpfr::mpreal(INT64_MIN))
 					return fir::Type::getInt64();
@@ -42,6 +65,7 @@ namespace sst
 				else
 					error(this->loc(), "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80());
 			}
+			#endif
 		}
 	}
 
