@@ -563,17 +563,14 @@ static fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 {
 	if(a->isConstantNumberType() && b->isConstantNumberType())
 	{
-		auto an = a->toConstantNumberType()->getValue();
-		auto bn = b->toConstantNumberType()->getValue();
+		auto at = a->toConstantNumberType();
+		auto bt = b->toConstantNumberType();
 
-		if(mpfr::isint(an) && mpfr::isint(bn))
-			return (mpfr::abs(an) > mpfr::abs(bn) ? a : b);
-
-		else if(mpfr::isint(an) && !mpfr::isint(bn))
-			return b;
+		if(at->isFloating() == bt->isFloating())
+			return (at->getMinBits() > bt->getMinBits()) ? at : bt;
 
 		else
-			return a;
+			return at->isFloating() ? at : bt;
 	}
 	else if(a->isFloatingPointType() && b->isIntegerType())
 	{
@@ -588,7 +585,7 @@ static fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 		if(a->getBitWidth() > b->getBitWidth())
 			return a;
 
-		else
+	else
 			return b;
 	}
 }

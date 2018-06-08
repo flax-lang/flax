@@ -35,14 +35,14 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantNumber* get(ConstantNumberType* cnt, long double n);
+		static ConstantNumber* get(ConstantNumberType* cnt, uint64_t n);
 
 		template <typename T>
 		T getValue() { return *reinterpret_cast<T*>(&this->bits); }
 
 		protected:
-		ConstantNumber(ConstantNumberType* cnt, long double n);
-		long double bits = 0;
+		ConstantNumber(ConstantNumberType* cnt, uint64_t n);
+		uint64_t bits = 0;
 	};
 
 	struct ConstantBool : ConstantValue

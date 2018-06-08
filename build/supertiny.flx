@@ -100,9 +100,9 @@ class LinkedList<T>
 		}
 		// 6. clean up generic error output -- we have the content, just need to trim and arrange.
 		7. move long error messages on spans nearer to the left margin when there's only one span in the error.
-		8. return type inference for generics don't seem to work {
-			a. no idea why. too sleepy.
-		}
+		// 8. return type inference for generics don't seem to work {
+		// 	a. no idea why. too sleepy.
+		// }
 		9. fix errors (in general?) {
 			a. the generic solver should basically return only a Span, ie. a location with text.
 			b. maybe find some way to 'link' two spans together with one message.
@@ -110,6 +110,7 @@ class LinkedList<T>
 				- do we duplicate the context?
 				- if not then???
 		}
+		// 10. memory corruption for 'set 3' of generic test???????
 	 */
 
 
