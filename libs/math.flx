@@ -17,4 +17,5 @@ public ffi fn pow(x: f64, y: f64) -> f64
 public ffi fn powf(x: f32, y: f32) -> f32
 
 
-public let π: f64 = 3.14159265358979323846264338327950
+public let π: f64  = 3.14159265358979323846264338327950
+public let pi: f64 = 3.14159265358979323846264338327950

@@ -6,7 +6,7 @@ export supertiny
 
 import "libc" as _
 import "math" as _
-
+/*
 
 class LinkedList<T>
 {
@@ -46,7 +46,7 @@ class LinkedList<T>
 	}
 
 	static fn hello() { printf("hi\n"); }
-}
+} */
 
 
 
@@ -111,12 +111,35 @@ class LinkedList<T>
 				- if not then???
 		}
 		// 10. memory corruption for 'set 3' of generic test???????
+		11. fix generic instantiation of generic types {
+			a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
+			b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
+			c. then we match against the generic type context stack.
+			d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
+		}
 	 */
 
 
 	do {
 
+		printf("%.15f\n", pi)
+		class Qux<T>
+		{
+			init(x: T)
+			{
+				printf("init class\n")
+			}
+		}
 
+		fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>)
+		{
+		}
+
+
+		let a = Qux<T: int>(x: 10)
+		let b = Qux<T: str>(x: "foo")
+
+		foobar<A: int, B: str>(a, b)
 	}
 
 	// do {
@@ -125,63 +148,63 @@ class LinkedList<T>
 	// }
 
 
-	do {
-		class Foo<T>
-		{
-			var x: T
+	// do {
+	// 	class Foo<T>
+	// 	{
+	// 		var x: T
 
-			init() { }
-		}
+	// 		init() { }
+	// 	}
 
-		class Bar<T> : Foo<T: T>
-		{
-			var y: T
+	// 	class Bar<T> : Foo<T: T>
+	// 	{
+	// 		var y: T
 
-			init(y: T) : super()
-			{
-				self.y = y
-				self.x = y + y
-			}
-		}
+	// 		init(y: T) : super()
+	// 		{
+	// 			self.y = y
+	// 			self.x = y + y
+	// 		}
+	// 	}
 
-		let k = Bar<T: int>(y: 30)
-		printf("y = %d\n", k.x)
-	}
-
-
+	// 	let k = Bar<T: int>(y: 30)
+	// 	printf("y = %d\n", k.x)
+	// }
 
 
-	do {
-		var list = LinkedList<T: int>(data: 41)
-		LinkedList<T: int>.hello()
 
-		var list2 = LinkedList<T: str>(data: "foo")
-		list2.insert("hello")
-		list2.insert("world")
 
-		list.insert(10)
-		list.insert(20)
-		list.insert(30)
-		list.insert(40)
+	// do {
+	// 	var list = LinkedList<T: int>(data: 41)
+	// 	LinkedList<T: int>.hello()
 
-		do {
-			var head = list.head
-			while(head)
-			{
-				printf("%d\n", head.data)
-				head = head.next
-			}
-		}
+	// 	var list2 = LinkedList<T: str>(data: "foo")
+	// 	list2.insert("hello")
+	// 	list2.insert("world")
 
-		do {
-			var head = list2.head
-			while(head)
-			{
-				printf("%s\n", head.data)
-				head = head.next
-			}
-		}
-	}
+	// 	list.insert(10)
+	// 	list.insert(20)
+	// 	list.insert(30)
+	// 	list.insert(40)
+
+	// 	do {
+	// 		var head = list.head
+	// 		while(head)
+	// 		{
+	// 			printf("%d\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
+
+	// 	do {
+	// 		var head = list2.head
+	// 		while(head)
+	// 		{
+	// 			printf("%s\n", head.data)
+	// 			head = head.next
+	// 		}
+	// 	}
+	// }
 }
 
 

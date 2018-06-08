@@ -477,10 +477,11 @@ namespace sst
 		return false;
 	}
 
-	static size_t _anonId = 0;
 	std::string TypecheckState::getAnonymousScopeName()
 	{
-		return "__anon_scope_" + std::to_string(_anonId++);
+		// static size_t _anonId = 0;
+		// return "__anon_scope_" + std::to_string(_anonId++);
+		return "";
 	}
 }
 
