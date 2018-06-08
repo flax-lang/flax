@@ -27,6 +27,7 @@ llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/std:c++17', language: 'cpp')
+	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
