@@ -93,11 +93,11 @@ class LinkedList<T>
 		// }
 		// 3. variadic functions
 		// 3a. make variadic forwarding work properly
-		5. fix SAA types {
-			a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
-			// b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
-			// c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
-		}
+		// 5. fix SAA types {
+		// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
+		// 	b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
+		// 	c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
+		// }
 		// 6. clean up generic error output -- we have the content, just need to trim and arrange.
 		7. move long error messages on spans nearer to the left margin when there's only one span in the error.
 		// 8. return type inference for generics don't seem to work {
@@ -111,15 +111,15 @@ class LinkedList<T>
 				- if not then???
 		}
 		// 10. memory corruption for 'set 3' of generic test???????
-		11. fix generic instantiation of generic types {
-			a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
-			b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
-			c. then we match against the generic type context stack.
-			d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
-		}
+		// 11. fix generic instantiation of generic types {
+		// 	a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
+		// 	b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
+		// 	c. then we match against the generic type context stack.
+		// 	d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
+		// }
 	 */
 
-
+/*
 	do {
 
 		printf("%.15f\n", pi)
@@ -141,6 +141,12 @@ class LinkedList<T>
 
 		foobar<A: int, B: str>(a, b)
 	}
+	 */
+
+	 do {
+		 var x: string
+		 printf("x.rc = %d\n", x.refcount)
+	 }
 
 	// do {
 	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
