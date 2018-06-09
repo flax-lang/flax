@@ -92,8 +92,9 @@ namespace backend
 	{
 		auto ts = std::chrono::high_resolution_clock::now();
 
-
 		llvm::InitializeNativeTarget();
+
+		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
 
 		auto mainModule = this->translateFIRtoLLVM(this->compiledData.module);
 		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
@@ -109,7 +110,6 @@ namespace backend
 		this->setupTargetMachine();
 		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
 
-		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
 		// this->linkedModule->print(llvm::errs(), 0);
 
 		_printTiming(ts, "translation to llvm");
