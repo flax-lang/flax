@@ -95,8 +95,28 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				return CGResult(cs->irb.GetSAACapacity(res.value));
 
 			else if(this->name == BUILTIN_SAA_FIELD_REFCOUNT)
-				return CGResult(cs->irb.GetSAARefCount(res.value));
+			{
+				// additional thing, check if the refcount pointer is null -- if so, return 0 instead of derefencing nothing.
+				auto isnull = cs->irb.ICmpEQ(cs->irb.GetSAARefCountPointer(res.value), fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
+				auto prevb = cs->irb.getCurrentBlock();
+				auto deref = cs->irb.addNewBlockAfter("deref", prevb);
+				auto merge = cs->irb.addNewBlockAfter("merge", deref);
+
+				cs->irb.CondBranch(isnull, merge, deref);
+
+				cs->irb.setCurrentBlock(deref);
+				auto rc = cs->irb.GetSAARefCount(res.value);
+				cs->irb.UnCondBranch(merge);
+
+				cs->irb.setCurrentBlock(merge);
+				auto phi = cs->irb.CreatePHINode(fir::Type::getInt64());
+				phi->addIncoming(fir::ConstantInt::getInt64(0), prevb);
+				phi->addIncoming(rc, deref);
+
+				return CGResult(phi);
+
+			}
 			else if(ty->isStringType() && this->name == BUILTIN_STRING_FIELD_COUNT)
 			{
 				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);

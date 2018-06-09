@@ -1,5 +1,8 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- finally add the check for accessing `refcount` when the pointer is `null`; now we return `0` instead of crashing.
+
 `(8d9c0d2)`
 - fix a bug where we added generic versions for operators twice. (this caused an assertion to fire)
 
