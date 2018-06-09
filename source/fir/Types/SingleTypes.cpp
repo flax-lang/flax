@@ -65,13 +65,13 @@ namespace fir
 	std::string ConstantNumberType::encodedStr()                { return "number"; }
 	bool ConstantNumberType::isSigned()                         { return this->_signed; }
 	bool ConstantNumberType::isFloating()                       { return this->_floating; }
-	int ConstantNumberType::getMinBits()                        { return this->_bits; }
+	size_t ConstantNumberType::getMinBits()                     { return this->_bits; }
 	bool ConstantNumberType::isTypeEqual(Type* other)           { return other && other->isConstantNumberType(); }
-	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, int bits)
+	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, size_t bits)
 	{
 		return new ConstantNumberType(neg, flt, bits);
 	}
-	ConstantNumberType::ConstantNumberType(bool neg, bool flt, int bits) : Type(TypeKind::ConstantNumber)
+	ConstantNumberType::ConstantNumberType(bool neg, bool flt, size_t bits) : Type(TypeKind::ConstantNumber)
 	{
 		this->_bits = bits;
 		this->_signed = neg;

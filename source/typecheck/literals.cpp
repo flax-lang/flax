@@ -14,7 +14,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	uint64_t raw = 0;
-	int bits = 0;
+	size_t bits = 0;
 	bool flt = 0;
 	bool sgn = false;
 
