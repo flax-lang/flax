@@ -126,14 +126,20 @@ namespace sst
 		void leaveStructBody();
 
 
-		std::vector<TypeParamMap_t> genericTypeContextStack;
-		std::vector<TypeParamMap_t> getCurrentGenericContextStack();
+		// std::vector<TypeParamMap_t> genericTypeStack;
+		// std::vector<TypeParamMap_t> getGenericTypeStack();
 
-		void pushGenericTypeContext();
-		fir::Type* findGenericTypeMapping(const std::string& name, bool allowFail);
-		void addGenericTypeMapping(const std::string& name, fir::Type* ty);
-		void removeGenericTypeMapping(const std::string& name);
-		void popGenericTypeContext();
+		std::vector<TypeParamMap_t> genericContextStack;
+		std::vector<TypeParamMap_t> getGenericContextStack();
+
+		// void pushGenericType();
+		// void popGenericType();
+
+		void pushGenericContext();
+		fir::Type* findGenericMapping(const std::string& name, bool allowFail);
+		void addGenericMapping(const std::string& name, fir::Type* ty);
+		void removeGenericMapping(const std::string& name);
+		void popGenericContext();
 
 
 		int breakableBodyNest = 0;
