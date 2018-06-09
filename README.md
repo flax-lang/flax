@@ -3,8 +3,8 @@
 A low level language with high level syntax and expressibility, aimed at OSDev work.
 
 
-[![forthebadge](http://forthebadge.com/images/badges/powered-by-electricity.svg)](http://forthebadge.com)
-[![forthebadge](http://forthebadge.com/images/badges/fuck-it-ship-it.svg)](http://forthebadge.com)
+[![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
+[![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/rewrite/badge.svg)](https://semaphoreci.com/zhiayang/flax)
 &nbsp;&nbsp;&nbsp;&nbsp;[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=rewrite)](https://travis-ci.org/flax-lang/flax)
