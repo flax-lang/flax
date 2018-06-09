@@ -1,6 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix a bug where we added generic versions for operators twice. (this caused an assertion to fire)
+
+`(aa8f9a9)`
 - fixed a bug wrt. passing generic stuff to generic functions -- now we check only for a subset of the generic stack instead of the whole thing
 	when checking for existing stuff.
 

@@ -321,24 +321,24 @@ namespace fir
 
 		bool isSigned();
 		bool isFloating();
-		int getMinBits();
+		size_t getMinBits();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
 		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
 
-		static ConstantNumberType* get(bool neg, bool flt, int bits);
+		static ConstantNumberType* get(bool neg, bool flt, size_t bits);
 
 		virtual ~ConstantNumberType() override { }
 
 
 		protected:
-		ConstantNumberType(bool neg, bool floating, int bits);
+		ConstantNumberType(bool neg, bool floating, size_t bits);
 
 		bool _floating = false;
 		bool _signed = false;
-		int _bits = 0;
+		size_t _bits = 0;
 	};
 
 
