@@ -155,7 +155,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	fs->stree->addDefinition(this->name, defn);
 
 	// add to our versions.
-	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
+	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
 }
 

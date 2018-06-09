@@ -123,8 +123,10 @@ namespace fir
 
 	fir::Type* StructType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		error("not supported!");
-		return 0;
+		if(this->containsPlaceholders())
+			error("not supported!");
+
+		return this;
 
 		// std::vector<std::pair<std::string, Type*>> mems;
 		// for(const auto& p : this->structMembers)
