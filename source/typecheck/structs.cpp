@@ -95,7 +95,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	}
 	fs->popTree();
 
-	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
+	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
 }
 
@@ -270,7 +270,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	}
 	fs->popTree();
 
-	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
+	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
 }
 

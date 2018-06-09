@@ -331,8 +331,10 @@ namespace fir
 
 	fir::Type* ClassType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
-		error("not supported!");
-		return 0;
+		if(this->containsPlaceholders())
+			error("not supported!");
+
+		return this;
 	}
 }
 

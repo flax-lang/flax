@@ -32,63 +32,85 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 			? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
 			? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
 			? the generic types match in the stack.
+
+			* note: bug fix: what we should really be checking for is that the stored generic map is a strict child (ie. the last N elements match
+			* our stored state, while the preceding ones don't matter). (this is why we use reverse iterators for std::equal)
 		*/
 
-		for(const auto& gv : this->genericVersions)
+		if(this->generics.empty())
 		{
-			if(gv.second == fs->getCurrentGenericContextStack())
-				return { true, gv.first };
-		}
+			iceAssert(this->genericVersions.size() <= 1);
+			if(this->genericVersions.empty())
+				return { true, 0 };
 
-		//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
-		//? the genericVersions list will have 1 entry which is just the type itself.
-		return { true, 0 };
+			else
+				return { true, this->genericVersions[0].first };
+		}
+		else
+		{
+			auto doRootsMatch = [](const std::vector<TypeParamMap_t>& expected, const std::vector<TypeParamMap_t>& given) -> bool {
+				if(given.size() < expected.size())
+					return false;
+
+				return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
+			};
+
+			for(const auto& gv : this->genericVersions)
+			{
+				if(doRootsMatch(gv.second, fs->getGenericContextStack()))
+					return { true, gv.first };
+			}
+
+			//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
+			//? the genericVersions list will have 1 entry which is just the type itself.
+			return { true, 0 };
+		}
 	}
 }
 
 
 namespace sst
 {
-	std::vector<TypeParamMap_t> TypecheckState::getCurrentGenericContextStack()
+	std::vector<TypeParamMap_t> TypecheckState::getGenericContextStack()
 	{
-		return this->genericTypeContextStack;
+		return this->genericContextStack;
 	}
 
-	void TypecheckState::pushGenericTypeContext()
+	void TypecheckState::pushGenericContext()
 	{
-		this->genericTypeContextStack.push_back({ });
+		this->genericContextStack.push_back({ });
 	}
 
-	void TypecheckState::addGenericTypeMapping(const std::string& name, fir::Type* ty)
+	void TypecheckState::addGenericMapping(const std::string& name, fir::Type* ty)
 	{
-		iceAssert(this->genericTypeContextStack.size() > 0);
-		if(auto it = this->genericTypeContextStack.back().find(name); it != this->genericTypeContextStack.back().end())
+		iceAssert(this->genericContextStack.size() > 0);
+		if(auto it = this->genericContextStack.back().find(name); it != this->genericContextStack.back().end())
 			error(this->loc(), "Mapping for type parameter '%s' already exists in current context (is currently '%s')", name, it->second);
 
-		this->genericTypeContextStack.back()[name] = ty;
+		this->genericContextStack.back()[name] = ty;
 	}
 
-	void TypecheckState::removeGenericTypeMapping(const std::string& name)
+	void TypecheckState::removeGenericMapping(const std::string& name)
 	{
-		iceAssert(this->genericTypeContextStack.size() > 0);
-		if(auto it = this->genericTypeContextStack.back().find(name); it == this->genericTypeContextStack.back().end())
+		iceAssert(this->genericContextStack.size() > 0);
+		if(auto it = this->genericContextStack.back().find(name); it == this->genericContextStack.back().end())
 			error(this->loc(), "No mapping for type parameter '%s' exists in current context, cannot remove", name);
 
 		else
-			this->genericTypeContextStack.back().erase(it);
+			this->genericContextStack.back().erase(it);
 	}
 
-	void TypecheckState::popGenericTypeContext()
+	void TypecheckState::popGenericContext()
 	{
-		iceAssert(this->genericTypeContextStack.size() > 0);
-		this->genericTypeContextStack.pop_back();
+		iceAssert(this->genericContextStack.size() > 0);
+		this->genericContextStack.pop_back();
 	}
 
 
-	fir::Type* TypecheckState::findGenericTypeMapping(const std::string& name, bool allowFail)
+	fir::Type* TypecheckState::findGenericMapping(const std::string& name, bool allowFail)
 	{
 		// look upwards.
-		for(auto it = this->genericTypeContextStack.rbegin(); it != this->genericTypeContextStack.rend(); it++)
+		for(auto it = this->genericContextStack.rbegin(); it != this->genericContextStack.rend(); it++)
 			if(auto iit = it->find(name); iit != it->end())
 				return iit->second;
 
@@ -105,6 +127,9 @@ namespace sst
 
 		return ret;
 	}
+
+
+
 
 
 
@@ -167,8 +192,8 @@ namespace sst
 		iceAssert(thing);
 		iceAssert(!thing->generics.empty());
 
-		this->pushGenericTypeContext();
-		defer(this->popGenericTypeContext());
+		this->pushGenericContext();
+		defer(this->popGenericContext());
 
 		//* allowFail is only allowed to forgive a failure when we're checking for type conformance to protocols or something like that.
 		//* we generally don't look into type or function bodies when checking stuff, and it'd be hard to check for something like this (eg.
@@ -198,7 +223,7 @@ namespace sst
 			//* check if it satisfies the protocols.
 
 			// ok, push the thing.
-			this->addGenericTypeMapping(map.first, map.second);
+			this->addGenericMapping(map.first, map.second);
 		}
 
 

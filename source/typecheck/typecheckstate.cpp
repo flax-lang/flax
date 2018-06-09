@@ -479,9 +479,8 @@ namespace sst
 
 	std::string TypecheckState::getAnonymousScopeName()
 	{
-		// static size_t _anonId = 0;
-		// return "__anon_scope_" + std::to_string(_anonId++);
-		return "";
+		static size_t _anonId = 0;
+		return std::to_string(_anonId++);
 	}
 }
 

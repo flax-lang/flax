@@ -170,7 +170,7 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 
 	// ok, we should be good now.
 	(*thelist)[this->symbol].push_back(defn);
-	this->genericVersions.push_back({ defn, fs->getCurrentGenericContextStack() });
+	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 
 	return TCResult(defn);
 }

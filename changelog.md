@@ -1,5 +1,12 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- fixed a bug wrt. passing generic stuff to generic functions -- now we check only for a subset of the generic stack instead of the whole thing
+	when checking for existing stuff.
+
+`(e530c81)`
+- remove mpfr from our code
+
 `(ef6326c)`
 - actually fix the bug. we were previously *moving out* of arrays in a destructuring binding, which is definitely not what we want.
 	now we increment the refcount before passing it off to the binding, so we don't prematurely free.

@@ -92,7 +92,7 @@ namespace sst
 
 				auto returnTheThing = [this, pt](StateTree* tree, const std::string& name, bool scoped, bool allowFail) -> fir::Type* {
 
-					if(auto gmt = this->findGenericTypeMapping(name, true))
+					if(auto gmt = this->findGenericMapping(name, true))
 						return gmt;
 
 					std::vector<Defn*> defs;
