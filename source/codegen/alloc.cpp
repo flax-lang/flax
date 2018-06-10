@@ -246,7 +246,7 @@ CGResult sst::DeallocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(ty->isPointerType());
 
-	fir::Value* ptr = cs->irb.PointerTypeCast(value, fir::Type::getInt8Ptr());
+	fir::Value* ptr = cs->irb.PointerTypeCast(value, fir::Type::getMutInt8Ptr());
 
 	cs->irb.Call(freef, ptr);
 	return CGResult(0);

@@ -5,4 +5,109 @@
 export stdio
 import "libc"
 
-public fn
+let ASCII_BACKSLASH: i8     = 92
+let ASCII_PERCENT: i8       = 37
+
+fn error(msg: str)
+{
+	libc.printf("Invalid format specifier: %s\n", msg)
+	libc.abort()
+}
+
+fn to_string_i64(n: i64) -> string
+{
+	var ret = @raw alloc i8 [16]
+	let len = libc.sprintf(ret, "%lld", n)
+
+	let s = string(ret, len)
+	free ret
+
+	return s
+}
+
+fn to_string_u64(n: u64) -> string
+{
+	var ret = @raw alloc i8 [16]
+	let len = libc.sprintf(ret, "%llu", n)
+
+	let s = string(ret, len)
+	free ret
+
+	return s
+}
+
+
+
+public fn format(fmt: str, args: [any: ...]) -> string
+{
+	// todo: this is quite inefficient.
+	// should we make some kind of stringbuilder class?
+
+	var ret: string
+	var argi = 0
+
+	var idx = 0
+	while idx < fmt.length
+	{
+		let ch = fmt[idx]
+		if ch == ASCII_PERCENT
+		{
+			if argi >= args.length
+			{
+				error(format("too few arguments: got only %, expected at least %", args.length, argi + 1))
+			}
+			else
+			{
+				let arg = args[argi]
+				argi += 1
+
+				if arg.id == typeid(u8) || arg.id == typeid(u16) || arg.id == typeid(u32) || arg.id == typeid(u64)
+					=> ret.append(to_string_u64(arg as u64))
+
+				else if arg.id == typeid(i8) || arg.id == typeid(i16) || arg.id == typeid(i32) || arg.id == typeid(i64)
+					=> ret.append(to_string_i64(arg as i64))
+
+				else if arg.id == typeid(str)
+					=> ret.append(arg as str)
+
+				else if arg.id == typeid(string)
+					=> ret.append(arg as string)
+
+				else
+					=> ret.append("(unknown)")
+			}
+		}
+		else
+		{
+			if ch == ASCII_BACKSLASH
+			{
+				idx += 1
+				ret.append(fmt[idx])
+			}
+			else
+			{
+				ret.append(ch)
+			}
+		}
+
+		idx += 1
+	}
+
+	return ret
+}
+
+
+public fn println(fmt: str, args: [any: ...])
+{
+	libc.printf("%s\n", format(fmt, ...args).ptr)
+}
+
+
+
+
+
+
+
+
+
+

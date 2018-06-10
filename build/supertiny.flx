@@ -6,47 +6,67 @@ export supertiny
 
 import "libc" as _
 import "math" as _
-/*
 
-class LinkedList<T>
+import "stdio"
+
+@entry fn main()
 {
-	struct Node
-	{
-		var data: T
+	stdio.println("hello, %, %!", "world", 50)
+}
 
-		var prev: &Node
-		var next: &Node
+
+
+
+
+
+/*
+	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
+
+	// 1. constructor syntax for builtin types
+	// 2. start work on the generic type solver? {
+	// 	a. placeholder types for references to generic functions in a function call.
+	//	b. make sure that instantiating a generic function by assinging it to a variable works.
+	// }
+	// 3. variadic functions
+	// 3a. make variadic forwarding work properly
+	// 5. fix SAA types {
+	// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
+	// 	b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
+	// 	c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
+	// }
+	// 6. clean up generic error output -- we have the content, just need to trim and arrange.
+	7. move long error messages on spans nearer to the left margin when there's only one span in the error.
+	// 8. return type inference for generics don't seem to work {
+	// 	a. no idea why. too sleepy.
+	// }
+	9. fix errors (in general?) {
+		a. the generic solver should basically return only a Span, ie. a location with text.
+		b. maybe find some way to 'link' two spans together with one message.
+		c. figure out if/how we should split up errors when there are too many spans in one context.
+			- do we duplicate the context?
+			- if not then???
 	}
-
-	var head: &Node
-	var tail: &Node
-
-	var count: int
-
-	init(data: T)
-	{
-		printf("called init with %p\n", data)
+	// 10. memory corruption for 'set 3' of generic test???????
+	// 11. fix generic instantiation of generic types {
+	// 	a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
+	// 	b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
+	// 	c. then we match against the generic type context stack.
+	// 	d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
+	// }
+	12. allow generic solver to infer things from generic types passed in {
+		eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
+		foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
 	}
+	13. fix cross-module generic types -- see linkedlist.flx.
+	14. `i8.min` prints `128` instead of `-128` only on windows...
+	15. some way to do character literals.
+	16. overloading based on signedness seems to fail.
+*/
 
-	mut fn insert(thing: T)
-	{
-		var nn = alloc mut Node (data: thing, prev: null, next: null)
 
-		if head == null { head = nn; tail = nn }
-		else
-		{
-			var ot = tail as mut
-			tail = nn
 
-			nn.prev = ot
-			ot.next = nn
-		}
 
-		count += 1
-	}
 
-	static fn hello() { printf("hi\n"); }
-} */
 
 
 
@@ -79,184 +99,3 @@ class LinkedList<T>
 // 		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
 // 	}
 // }
-
-
-@entry fn main()
-{
-	/*
-		TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
-
-		// 1. constructor syntax for builtin types
-		// 2. start work on the generic type solver? {
-		// 	a. placeholder types for references to generic functions in a function call.
-		//	b. make sure that instantiating a generic function by assinging it to a variable works.
-		// }
-		// 3. variadic functions
-		// 3a. make variadic forwarding work properly
-		// 5. fix SAA types {
-		// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
-		// 	b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
-		// 	c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
-		// }
-		// 6. clean up generic error output -- we have the content, just need to trim and arrange.
-		7. move long error messages on spans nearer to the left margin when there's only one span in the error.
-		// 8. return type inference for generics don't seem to work {
-		// 	a. no idea why. too sleepy.
-		// }
-		9. fix errors (in general?) {
-			a. the generic solver should basically return only a Span, ie. a location with text.
-			b. maybe find some way to 'link' two spans together with one message.
-			c. figure out if/how we should split up errors when there are too many spans in one context.
-				- do we duplicate the context?
-				- if not then???
-		}
-		// 10. memory corruption for 'set 3' of generic test???????
-		// 11. fix generic instantiation of generic types {
-		// 	a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
-		// 	b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
-		// 	c. then we match against the generic type context stack.
-		// 	d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
-		// }
-		12. allow generic solver to infer things from generic types passed in {
-			eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
-			foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
-		}
-	 */
-
-	do {
-		var x: any = 30
-		x = "foo"
-
-
-		printf("x = %d\n", x.id == typeid(str))
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-	do {
-
-		printf("%.15f\n", pi)
-		class Qux<T>
-		{
-			init(x: T)
-			{
-				printf("init class\n")
-			}
-		}
-
-		fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>)
-		{
-		}
-
-
-		let a = Qux<T: int>(x: 10)
-		let b = Qux<T: str>(x: "foo")
-
-		foobar<A: int, B: str>(a, b)
-
-
-		let x = alloc int [10] {
-			if i % 2 == 0 =>    it = 34
-			else          =>    it = 17
-		}
-
-		for it in x { printf("%d ", it) }
-		printf("\n")
-	}
- */
-
-
-	// do {
-	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)
-	// 	printf("foo = '%s'\n", foo)
-	// }
-
-
-	// do {
-	// 	class Foo<T>
-	// 	{
-	// 		var x: T
-
-	// 		init() { }
-	// 	}
-
-	// 	class Bar<T> : Foo<T: T>
-	// 	{
-	// 		var y: T
-
-	// 		init(y: T) : super()
-	// 		{
-	// 			self.y = y
-	// 			self.x = y + y
-	// 		}
-	// 	}
-
-	// 	let k = Bar<T: int>(y: 30)
-	// 	printf("y = %d\n", k.x)
-	// }
-
-
-
-
-	// do {
-	// 	var list = LinkedList<T: int>(data: 41)
-	// 	LinkedList<T: int>.hello()
-
-	// 	var list2 = LinkedList<T: str>(data: "foo")
-	// 	list2.insert("hello")
-	// 	list2.insert("world")
-
-	// 	list.insert(10)
-	// 	list.insert(20)
-	// 	list.insert(30)
-	// 	list.insert(40)
-
-	// 	do {
-	// 		var head = list.head
-	// 		while(head)
-	// 		{
-	// 			printf("%d\n", head.data)
-	// 			head = head.next
-	// 		}
-	// 	}
-
-	// 	do {
-	// 		var head = list2.head
-	// 		while(head)
-	// 		{
-	// 			printf("%s\n", head.data)
-	// 			head = head.next
-	// 		}
-	// 	}
-	// }
-}
-
-
-
-
-
-
-
-

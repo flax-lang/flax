@@ -30,7 +30,7 @@ public ffi fn strncmp(str1: &i8, str2: &i8, length: i64) -> i32
 public ffi fn usleep(usec: u32) -> i32
 public ffi fn sleep(sec: u32) -> u32
 public ffi fn abort()
-
+public ffi fn exit(status: i32)
 
 // file stuff
 public ffi fn fsync(fd: i32) -> i32

@@ -17,6 +17,7 @@ import "tests/defertest"
 import "tests/decomposition"
 import "tests/intlimits"
 import "tests/generics"
+import "tests/linkedlist"
 
 fn runTests()
 {
@@ -35,6 +36,7 @@ fn runTests()
 	let slicesTitle     = "     *** SLICES REGRESSION TEST ***     \n"
 	let decomposeTitle  = " *** DECOMPOSITION REGRESSION TEST ***  \n"
 	let forLoopTitle    = "    *** FOR LOOP REGRESSION TEST ***    \n"
+	let linkedListTitle = "        *** LINKED LIST TEST ***        \n"
 	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine        = "----------------------------------------\n"
 	let endTitle        = "============ TESTS COMPLETE ============\n"
@@ -134,6 +136,11 @@ fn runTests()
 	libc.printf("\n\n\n")
 
 
+
+	// linked-list (generics)
+	libc.printf("%s%s", linkedListTitle, thinLine)
+	// test_linkedlist.doLinkedListTest()
+	libc.printf("\n\n\n")
 
 
 

@@ -1,6 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix a bug wrt. scopes; refcount decrementing now happens at every block scope (not just loops) -- added a new `BlockPoint` thing to convey this.
+- fix a massive bug where `else-if` cases were never even being evaluated.
+- `stdio.flx`!
+
+`(1aade5f)`
 - replace the individual IR stuff for strings and dynamic arrays with their SAA equivalents.
 - add an `any` type -- kinda works like pre-rewrite. contains 32-byte internal buffer to store SAA types without additional heap allocations,
 	types larger than 32-bytes get heap-allocated.

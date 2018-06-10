@@ -24,15 +24,29 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer && infer->isPrimitiveType() && !infer->toPrimitiveType()->isSigned())
 			{
-				bits = 64;
-				raw = std::stoull(this->num, nullptr, 0);
+				auto got = std::stoull(this->num, nullptr, 0);
 				sgn = false;
+
+				if(got <= UINT8_MAX)        bits = 8;
+				else if(got <= UINT16_MAX)  bits = 16;
+				else if(got <= UINT32_MAX)  bits = 32;
+				else if(got <= UINT64_MAX)  bits = 64;
+				else                        error("???");
+
+				raw = (uint64_t) got;
 			}
 			else
 			{
-				bits = 63;
-				raw = std::stoll(this->num, nullptr, 0);
-				sgn = (raw < 0);
+				auto got = std::stoll(this->num, nullptr, 0);
+				sgn = (got < 0);
+
+				if(got <= INT8_MAX && got >= INT8_MIN)          bits = 7;
+				else if(got <= INT16_MAX && got >= INT16_MIN)   bits = 15;
+				else if(got <= INT32_MAX && got >= INT32_MIN)   bits = 31;
+				else if(got <= INT64_MAX && got >= INT64_MIN)   bits = 63;
+				else                                            error("???");
+
+				raw = (uint64_t) got;
 			}
 		}
 		else
