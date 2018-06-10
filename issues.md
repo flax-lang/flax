@@ -6,9 +6,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 ### FEATURES TO IMPLEMENT
 
 
-2. Type solver/unifier for generic function calls
-
-
 3. Optional arguments.
 
 
@@ -37,7 +34,11 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling `abort()`)
 
 
-17. `i8.min` prints `128` instead of `-128`     UPDATE: only on windows????
+17. `i8.min` prints `128` instead of `-128` only on windows????
+
+
+18. Some way of handling both types and expressions in `sizeof`/`typeid`/`typeof`. Might work if we just check for identifiers, but then
+	what about polymorphic types? Those won't even parse as expressions.
 
 -----
 
@@ -182,18 +183,6 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
 
 
-9. Some kind of metaprogramming system, but on more than one level. To have some level of useful metaprogramming, the metaprogram must be able to inspect,
-	and to some extent modify, the internal state of the compiler. It must also integrate well with the existing system, and our Compile-Time-Execution
-	engine must be robust enough to seamlessly handle passing values between the compiler itself, and any compile-time program and/or metaprogram. This is
-	paramount to anything working properly.
-
-	If we allow the user-level metaprogram to create new constructs in the language, then we must be able to call user-defined typecheck functions, not
-	to mention allowing the user to access the IRBuilder to facilitate code generation. This might be far too complex already.
-
-	For the first, entry-level kind of metaprogramming (if you can call it that, can you?), we should start with some kind of macro system, but instead of
-	textual manipulation we should be aiming for AST manipulation. For instance transforming one kind of AST node into another kind, etc. There's not an
-	immediately obvious use-case I can think of for this right now, but hopefully it'll come eventually.
-
 
 10. Arguments-after-varargs (see https://youtu.be/mGe5d6dPHAU?t=1379)
 	Basically, allow passing named parameters after var-args.
@@ -203,9 +192,14 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
 
 
-14. Flesh out the builtin methods for arrays/strings. In particular, do we want to keep allowing `+` and `+=` to work on arrays? Seems a bit dubious. We
-	already encounter the issue where we do `[string] + [char:]`, which can be seen as trying to append a string literal `[char:]` to an array of strings,
-	which doesn't work.
+
+12. Right now we design the `any` type to not handle refcounted types at all -- meaning it doesn't touch the refcount of those, and thus
+	the `any` can outlive the referred-to value.
+
+	To change this, `any` itself would need to be refcounted, but then we'd need to be able to check whether something was refcounted
+	** AT RUNTIME **, which is a whole bucket of shit I don't want to deal with yet.
+
+	So for now, we are documenting that `any` does not care about reference counting, and deal with it later.
 
 -----
 

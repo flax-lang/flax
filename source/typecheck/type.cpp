@@ -75,8 +75,6 @@ namespace sst
 		//* note: 'allowFail' allows failure when we *don't find anything*
 		//* but if we find something _wrong_, then we will always fail.
 
-		#define convert(...)	(this->convertParserTypeToFIR)(__VA_ARGS__)
-
 		iceAssert(pt);
 
 		if(pt->isNamedType())
@@ -245,42 +243,42 @@ namespace sst
 		else if(pt->isPointerType())
 		{
 			if(pt->toPointerType()->isMutable)
-				return convert(pt->toPointerType()->base)->getMutablePointerTo();
+				return this->convertParserTypeToFIR(pt->toPointerType()->base)->getMutablePointerTo();
 
 			else
-				return convert(pt->toPointerType()->base)->getPointerTo();
+				return this->convertParserTypeToFIR(pt->toPointerType()->base)->getPointerTo();
 		}
 		else if(pt->isTupleType())
 		{
 			std::vector<fir::Type*> ts;
 			for(auto t : pt->toTupleType()->types)
-				ts.push_back(convert(t));
+				ts.push_back(this->convertParserTypeToFIR(t));
 
 			return fir::TupleType::get(ts);
 		}
 		else if(pt->isArraySliceType())
 		{
-			return fir::ArraySliceType::get(convert(pt->toArraySliceType()->base), pt->toArraySliceType()->mut);
+			return fir::ArraySliceType::get(this->convertParserTypeToFIR(pt->toArraySliceType()->base), pt->toArraySliceType()->mut);
 		}
 		else if(pt->isDynamicArrayType())
 		{
-			return fir::DynamicArrayType::get(convert(pt->toDynamicArrayType()->base));
+			return fir::DynamicArrayType::get(this->convertParserTypeToFIR(pt->toDynamicArrayType()->base));
 		}
 		else if(pt->isVariadicArrayType())
 		{
-			return fir::ArraySliceType::getVariadic(convert(pt->toVariadicArrayType()->base));
+			return fir::ArraySliceType::getVariadic(this->convertParserTypeToFIR(pt->toVariadicArrayType()->base));
 		}
 		else if(pt->isFixedArrayType())
 		{
-			return fir::ArrayType::get(convert(pt->toFixedArrayType()->base), pt->toFixedArrayType()->size);
+			return fir::ArrayType::get(this->convertParserTypeToFIR(pt->toFixedArrayType()->base), pt->toFixedArrayType()->size);
 		}
 		else if(pt->isFunctionType())
 		{
 			std::vector<fir::Type*> ps;
 			for(auto p : pt->toFunctionType()->argTypes)
-				ps.push_back(convert(p));
+				ps.push_back(this->convertParserTypeToFIR(p));
 
-			auto ret = convert(pt->toFunctionType()->returnType);
+			auto ret = this->convertParserTypeToFIR(pt->toFunctionType()->returnType);
 			return fir::FunctionType::get(ps, ret);
 		}
 		else
@@ -289,6 +287,8 @@ namespace sst
 		}
 	}
 }
+
+
 
 
 

@@ -23,6 +23,7 @@
 	#pragma warning(pop)
 #endif
 
+#include "gluecode.h"
 #include "ir/module.h"
 #include "ir/constant.h"
 
@@ -39,7 +40,9 @@
 #define SAA_CAPACITY_INDEX          2
 #define SAA_REFCOUNTPTR_INDEX       3
 
-
+#define ANY_TYPEID_INDEX            0
+#define ANY_REFCOUNTPTR_INDEX       1
+#define ANY_DATA_ARRAY_INDEX        2
 
 namespace backend
 {
@@ -242,7 +245,7 @@ namespace backend
 		else if(type->isAnyType())
 		{
 			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
-			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), 24);
+			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
 
 			auto id = Identifier("__any", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
@@ -250,8 +253,8 @@ namespace backend
 
 			auto str = llvm::StructType::create(gc, id.mangled());
 
-			// typeid, flag, data
-			str->setBody({ i64type, i64type, arrtype });
+			// typeid (+ highest-bit-mask), refcount, data.
+			str->setBody({ i64type, i64type->getPointerTo(), arrtype });
 
 			return createdTypes[id] = str;
 		}
@@ -1927,15 +1930,10 @@ namespace backend
 
 
 
-						case fir::OpKind::String_GetData:
-						case fir::OpKind::String_GetLength:
-						case fir::OpKind::String_GetCapacity:
-						case fir::OpKind::String_GetRefCountPtr:
-
-						case fir::OpKind::DynamicArray_GetData:
-						case fir::OpKind::DynamicArray_GetLength:
-						case fir::OpKind::DynamicArray_GetCapacity:
-						case fir::OpKind::DynamicArray_GetRefCountPtr:
+						case fir::OpKind::SAA_GetData:
+						case fir::OpKind::SAA_GetLength:
+						case fir::OpKind::SAA_GetCapacity:
+						case fir::OpKind::SAA_GetRefCountPtr:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -1943,16 +1941,16 @@ namespace backend
 							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
-							if(inst->opKind == fir::OpKind::DynamicArray_GetData || inst->opKind == fir::OpKind::String_GetData)
+							if(inst->opKind == fir::OpKind::SAA_GetData)
 								ind = SAA_DATA_INDEX;
 
-							else if(inst->opKind == fir::OpKind::DynamicArray_GetLength || inst->opKind == fir::OpKind::String_GetLength)
+							else if(inst->opKind == fir::OpKind::SAA_GetLength)
 								ind = SAA_LENGTH_INDEX;
 
-							else if(inst->opKind == fir::OpKind::DynamicArray_GetCapacity || inst->opKind == fir::OpKind::String_GetCapacity)
+							else if(inst->opKind == fir::OpKind::SAA_GetCapacity)
 								ind = SAA_CAPACITY_INDEX;
 
-							else if(inst->opKind == fir::OpKind::DynamicArray_GetRefCountPtr || inst->opKind == fir::OpKind::String_GetRefCountPtr)
+							else if(inst->opKind == fir::OpKind::SAA_GetRefCountPtr)
 								ind = SAA_REFCOUNTPTR_INDEX;
 
 							else
@@ -1963,10 +1961,10 @@ namespace backend
 							break;
 						}
 
-
-
-						case fir::OpKind::String_SetData:
-						case fir::OpKind::DynamicArray_SetData:
+						case fir::OpKind::SAA_SetData:
+						case fir::OpKind::SAA_SetLength:
+						case fir::OpKind::SAA_SetCapacity:
+						case fir::OpKind::SAA_SetRefCountPtr:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -1974,52 +1972,19 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == typeToLlvm((inst->operands[0]->getType()->isStringType()
-								? fir::Type::getInt8()->getPointerTo()
-								: inst->operands[0]->getType()->getArrayElementType()->getPointerTo()), module));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, SAA_DATA_INDEX);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-						case fir::OpKind::String_SetRefCountPtr:
-						case fir::OpKind::DynamicArray_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64PtrTy(gc));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, SAA_REFCOUNTPTR_INDEX);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-						case fir::OpKind::String_SetLength:
-						case fir::OpKind::String_SetCapacity:
-						case fir::OpKind::DynamicArray_SetLength:
-						case fir::OpKind::DynamicArray_SetCapacity:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
 							int ind = 0;
-							if(inst->opKind == fir::OpKind::DynamicArray_SetLength || inst->opKind == fir::OpKind::String_SetLength)
+							if(inst->opKind == fir::OpKind::SAA_SetData)
+								ind = SAA_DATA_INDEX;
+
+							else if(inst->opKind == fir::OpKind::SAA_SetLength)
 								ind = SAA_LENGTH_INDEX;
 
-							else if(inst->opKind == fir::OpKind::DynamicArray_SetCapacity || inst->opKind == fir::OpKind::String_SetCapacity)
+							else if(inst->opKind == fir::OpKind::SAA_SetCapacity)
 								ind = SAA_CAPACITY_INDEX;
+
+							else if(inst->opKind == fir::OpKind::SAA_SetRefCountPtr)
+								ind = SAA_REFCOUNTPTR_INDEX;
 
 							else
 								iceAssert(0 && "invalid");
@@ -2028,39 +1993,6 @@ namespace backend
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
-
-
-						case fir::OpKind::String_GetRefCount:
-						case fir::OpKind::DynamicArray_GetRefCount:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							llvm::Value* ret = builder.CreateLoad(builder.CreateExtractValue(a, SAA_REFCOUNTPTR_INDEX));
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::String_SetRefCount:
-						case fir::OpKind::DynamicArray_SetRefCount:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
-
-							builder.CreateStore(b, builder.CreateExtractValue(a, SAA_REFCOUNTPTR_INDEX));
-
-							break;
-						}
-
-
-
 
 
 
@@ -2091,21 +2023,6 @@ namespace backend
 
 
 						case fir::OpKind::ArraySlice_SetData:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == typeToLlvm(inst->operands[0]->getType()->getArrayElementType()->getPointerTo(), module));
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, SLICE_DATA_INDEX);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
 						case fir::OpKind::ArraySlice_SetLength:
 						{
 							iceAssert(inst->operands.size() == 2);
@@ -2114,9 +2031,13 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
 
-							llvm::Value* ret = builder.CreateInsertValue(a, b, SLICE_LENGTH_INDEX);
+							int ind = 0;
+							if(inst->opKind == fir::OpKind::ArraySlice_SetData)         ind = SLICE_DATA_INDEX;
+							else if(inst->opKind == fir::OpKind::ArraySlice_SetLength)  ind = SLICE_LENGTH_INDEX;
+							else                                                        iceAssert(0 && "invalid");
+
+							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
@@ -2130,102 +2051,57 @@ namespace backend
 
 
 						case fir::OpKind::Any_GetData:
+						case fir::OpKind::Any_GetTypeID:
+						case fir::OpKind::Any_GetRefCountPtr:
 						{
 							iceAssert(inst->operands.size() == 1);
 
 							llvm::Value* a = getOperand(inst, 0);
+							iceAssert(a->getType()->isStructTy());
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
+							int ind = 0;
+							if(inst->opKind == fir::OpKind::Any_GetTypeID)
+								ind = ANY_TYPEID_INDEX;
 
-							// get the array via GEP
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
-							iceAssert(data->getType()->getPointerElementType()->isArrayTy());
+							else if(inst->opKind == fir::OpKind::Any_GetRefCountPtr)
+								ind = ANY_REFCOUNTPTR_INDEX;
 
-							// get the pointer via GEP (again)
-							llvm::Value* ret = builder.CreateConstGEP2_64(data, 0, 0);
+							else if(inst->opKind == fir::OpKind::Any_GetData)
+								ind = ANY_DATA_ARRAY_INDEX;
 
+							else
+								iceAssert(0 && "invalid");
+
+							llvm::Value* ret = builder.CreateExtractValue(a, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
 
 						case fir::OpKind::Any_SetData:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-							iceAssert(module->getDataLayout().getTypeSizeInBits(b->getType()) <= 24 * CHAR_BIT);
-
-							// get the pointer to array
-							llvm::Value* data = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, 2);
-
-							// get the real pointer
-							llvm::Value* ptr = builder.CreateConstGEP2_64(data, 0, 0);
-
-							// cast it
-							ptr = builder.CreatePointerCast(ptr, b->getType()->getPointerTo());
-
-							// store it
-							builder.CreateStore(b, ptr);
-
-							addValueToMap(builder.CreateLoad(ptr), inst->realOutput);
-							break;
-						}
-
-
-
-
-						case fir::OpKind::Any_GetTypeID:
-						case fir::OpKind::Any_GetFlag:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::Any_GetTypeID)
-								ind = 0;
-							else
-								ind = 1;
-
-							llvm::Value* gep = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							llvm::Value* ret = builder.CreateLoad(gep);
-
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
 						case fir::OpKind::Any_SetTypeID:
-						case fir::OpKind::Any_SetFlag:
+						case fir::OpKind::Any_SetRefCountPtr:
 						{
 							iceAssert(inst->operands.size() == 2);
 
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(a->getType()->getPointerElementType()->isStructTy());
-
-							iceAssert(b->getType() == llvm::Type::getInt64Ty(gc));
+							iceAssert(a->getType()->isStructTy());
 
 							int ind = 0;
 							if(inst->opKind == fir::OpKind::Any_SetTypeID)
-								ind = 0;
+								ind = ANY_TYPEID_INDEX;
+
+							else if(inst->opKind == fir::OpKind::Any_SetRefCountPtr)
+								ind = ANY_REFCOUNTPTR_INDEX;
+
+							else if(inst->opKind == fir::OpKind::Any_SetData)
+								ind = ANY_DATA_ARRAY_INDEX;
+
 							else
-								ind = 1;
+								iceAssert(0 && "invalid");
 
-							llvm::Value* len = builder.CreateStructGEP(a->getType()->getPointerElementType(), a, ind);
-							builder.CreateStore(b, len);
-
-							llvm::Value* ret = builder.CreateLoad(len);
+							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}

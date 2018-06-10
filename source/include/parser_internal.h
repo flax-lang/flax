@@ -179,8 +179,8 @@ namespace parser
 
 		bool isInStructBody()
 		{
-			iceAssert(this->bodyNesting.size() > 0);
-			return this->bodyNesting.back() == 2;
+			// iceAssert();
+			return this->bodyNesting.size() > 0 && this->bodyNesting.back() == 2;
 		}
 
 

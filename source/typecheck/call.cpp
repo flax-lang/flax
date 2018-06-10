@@ -119,6 +119,11 @@ namespace sst
 
 			return sum;
 		}
+		else if(to->isAnyType())
+		{
+			// lol. completely arbitrary.
+			return 15;
+		}
 
 		return -1;
 	}

@@ -12,6 +12,6 @@ IF /I "%1"=="release" (
 	SET buildDir="build\meson-dbg"
 )
 
-ninja -C %buildDir% && copy /B %buildDir%\flaxc.exe build\sysroot\windows\%1\ && copy /B %buildDir%\flaxc.pdb build\sysroot\windows\%1\
+ninja -C %buildDir%
 
 ENDLOCAL

@@ -13,13 +13,17 @@
 
 #define DEBUG_RUNTIME_GLUE_MASTER	0
 
-#define DEBUG_STRING_MASTER			(1 & DEBUG_RUNTIME_GLUE_MASTER)
+#define DEBUG_STRING_MASTER			(0 & DEBUG_RUNTIME_GLUE_MASTER)
 #define DEBUG_STRING_ALLOCATION		(1 & DEBUG_STRING_MASTER)
 #define DEBUG_STRING_REFCOUNTING	(1 & DEBUG_STRING_MASTER)
 
-#define DEBUG_ARRAY_MASTER			(1 & DEBUG_RUNTIME_GLUE_MASTER)
+#define DEBUG_ARRAY_MASTER			(0 & DEBUG_RUNTIME_GLUE_MASTER)
 #define DEBUG_ARRAY_ALLOCATION		(1 & DEBUG_ARRAY_MASTER)
 #define DEBUG_ARRAY_REFCOUNTING		(1 & DEBUG_ARRAY_MASTER)
+
+#define DEBUG_ANY_MASTER			(1 & DEBUG_RUNTIME_GLUE_MASTER)
+#define DEBUG_ANY_ALLOCATION		(1 & DEBUG_ANY_MASTER)
+#define DEBUG_ANY_REFCOUNTING		(1 & DEBUG_ANY_MASTER)
 
 
 #define BUILTIN_SAA_FN_APPEND       "append"
@@ -42,6 +46,12 @@
 #define BUILTIN_RANGE_FIELD_BEGIN   "begin"
 #define BUILTIN_RANGE_FIELD_END     "end"
 #define BUILTIN_RANGE_FIELD_STEP    "step"
+
+#define BUILTIN_ANY_FIELD_TYPEID    "id"
+#define BUILTIN_ANY_FIELD_REFCOUNT  "refcount"
+
+#define BUILTIN_ANY_DATA_BYTECOUNT  32
+#define BUILTIN_ANY_FLAG_MASK       0x8000000000000000
 
 
 
@@ -120,6 +130,15 @@ namespace cgn
 
 			fir::Value* makeNewRefCountPointer(CodegenState* cs, fir::Value* rc);
 			fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* str, fir::Value* rc);
+		}
+
+		namespace any
+		{
+			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
+			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
+
+			fir::Value* createAnyWithValue(CodegenState* cs, fir::Value* val);
+			fir::Value* getAnyValue(CodegenState* cs, fir::Value* any, fir::Type* type);
 		}
 
 		namespace misc

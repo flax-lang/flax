@@ -177,6 +177,16 @@ namespace sst
 		fir::Type* typeToSize = 0;
 	};
 
+	struct TypeidOp : Expr
+	{
+		TypeidOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "sizeof expression"; }
+		~TypeidOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		fir::Type* typeToId = 0;
+	};
+
 	struct FunctionDefn;
 	struct AllocOp : Expr
 	{

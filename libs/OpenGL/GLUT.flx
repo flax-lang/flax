@@ -2,8 +2,6 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
-
 public namespace GLUT
 {
 	public let RGB: i32			= 0
@@ -19,14 +17,14 @@ public namespace GLUT
 }
 
 
-public ffi fn glutInit(argcp: i32*, argv: i8**)
+public ffi fn glutInit(argcp: &i32, argv: &&i8)
 public ffi fn glutInitDisplayMode(mode: u32)
-public ffi fn glutInitDisplayString(str: i8*)
+public ffi fn glutInitDisplayString(s: &i8)
 public ffi fn glutInitWindowPosition(x: i32, y: i32)
-public ffi fn glutInitWindowSize(width: i32, height: i32);
+public ffi fn glutInitWindowSize(width: i32, height: i32)
 public ffi fn glutMainLoop()
 
-public ffi fn glutCreateWindow(title: i8*) -> i32
+public ffi fn glutCreateWindow(title: &i8) -> i32
 public ffi fn glutCreateSubWindow(win: i32, x: i32, y: i32, width: i32, height: i32) -> i32
 public ffi fn glutDestroyWindow(win: i32) -> void
 public ffi fn glutPostRedisplay() -> void
@@ -34,8 +32,8 @@ public ffi fn glutPostWindowRedisplay(win: i32) -> void
 public ffi fn glutSwapBuffers() -> void
 public ffi fn glutGetWindow() -> i32
 public ffi fn glutSetWindow(win: i32) -> void
-public ffi fn glutSetWindowTitle(title: i8*) -> void
-public ffi fn glutSetIconTitle(title: i8*) -> void
+public ffi fn glutSetWindowTitle(title: &i8) -> void
+public ffi fn glutSetIconTitle(title: &i8) -> void
 public ffi fn glutPositionWindow(x: i32, y: i32) -> void
 public ffi fn glutReshapeWindow(width: i32, height: i32) -> void
 public ffi fn glutPopWindow() -> void
