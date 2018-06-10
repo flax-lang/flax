@@ -30,23 +30,23 @@ namespace cgn
 
 	void CodegenState::addRefCountedValue(fir::Value* val)
 	{
-		_addRC(this->loc(), val, &this->breakingPointStack.back().refCountedValues, "value");
+		_addRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value");
 	}
 
 	void CodegenState::removeRefCountedValue(fir::Value* val, bool ignore)
 	{
-		_removeRC(this->loc(), val, &this->breakingPointStack.back().refCountedValues, "value", ignore);
+		_removeRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value", ignore);
 	}
 
 
 	void CodegenState::addRefCountedPointer(fir::Value* val)
 	{
-		_addRC(this->loc(), val, &this->breakingPointStack.back().refCountedPointers, "pointer");
+		_addRC(this->loc(), val, &this->blockPointStack.back().refCountedPointers, "pointer");
 	}
 
 	void CodegenState::removeRefCountedPointer(fir::Value* val, bool ignore)
 	{
-		_removeRC(this->loc(), val, &this->breakingPointStack.back().refCountedPointers, "pointer", ignore);
+		_removeRC(this->loc(), val, &this->blockPointStack.back().refCountedPointers, "pointer", ignore);
 	}
 
 
@@ -54,12 +54,12 @@ namespace cgn
 
 	std::vector<fir::Value*> CodegenState::getRefCountedValues()
 	{
-		return this->breakingPointStack.back().refCountedValues;
+		return this->blockPointStack.back().refCountedValues;
 	}
 
 	std::vector<fir::Value*> CodegenState::getRefCountedPointers()
 	{
-		return this->breakingPointStack.back().refCountedPointers;
+		return this->blockPointStack.back().refCountedPointers;
 	}
 
 

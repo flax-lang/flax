@@ -17,11 +17,11 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto trueblk = cs->irb.addNewBlockAfter("trueCase", cs->irb.getCurrentBlock());
-	auto mergeblk = cs->irb.addNewBlockAfter("mergeCase", cs->irb.getCurrentBlock());
+	auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + this->loc.shortString(), cs->irb.getCurrentBlock());
+	auto mergeblk = cs->irb.addNewBlockAfter("mergeCase-" + this->loc.shortString(), trueblk);
 
 	fir::IRBlock* elseblk = 0;
-	if(this->elseCase)	elseblk = cs->irb.addNewBlockAfter("elseCase", trueblk);
+	if(this->elseCase)	elseblk = cs->irb.addNewBlockAfter("elseCase-" + this->elseCase->loc.shortString(), trueblk);
 	else				elseblk = mergeblk;
 
 
@@ -43,7 +43,10 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// do a comparison
 	fir::Value* cmpRes = cs->irb.ICmpEQ(firstCond, fir::ConstantBool::get(true));
-	cs->irb.CondBranch(cmpRes, trueblk, elseblk);
+	auto restore = cs->irb.getCurrentBlock();
+
+	//! ACHTUNG !
+	//* we are not finished here; we will come back and insert an appropriate branch later.
 
 
 	// now, then.
@@ -61,7 +64,13 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(remaining.size() > 0)
 	{
 		// this block serves the purpose of initialising the conditions and stuff
-		auto falseblk = cs->irb.addNewBlockAfter("falseCase", cs->irb.getCurrentBlock());
+		auto falseblk = cs->irb.addNewBlockAfter("falseCase", trueblk);
+		{
+			//* the patching -- if we have 'else-if' cases.
+			cs->irb.setCurrentBlock(restore);
+			cs->irb.CondBranch(cmpRes, trueblk, falseblk);
+		}
+
 		cs->irb.setCurrentBlock(falseblk);
 
 		for(auto elif : remaining)
@@ -103,6 +112,12 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 		}
 	}
+	else
+	{
+		//* the patching -- if we have no 'else-if' cases.
+		cs->irb.setCurrentBlock(restore);
+		cs->irb.CondBranch(cmpRes, trueblk, elseblk);
+	}
 
 
 	cs->irb.setCurrentBlock(elseblk);
@@ -141,7 +156,7 @@ std::vector<sst::Block*> sst::IfStmt::getBlocks()
 
 
 
-static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
+static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint& cfp, const cgn::BlockPoint& bp)
 {
 	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
 	{
@@ -154,10 +169,10 @@ static void doBlockEndThings(cgn::CodegenState* cs, cgn::ControlFlowPoint cfp)
 	for(auto stmt : cfp.block->deferred)
 		stmt->codegen(cs);
 
-	for(auto v : cfp.refCountedValues)
+	for(auto v : bp.refCountedValues)
 		cs->decrementRefCount(v);
 
-	for(auto p : cfp.refCountedPointers)
+	for(auto p : bp.refCountedPointers)
 		cs->decrementRefCount(cs->irb.Load(p));
 
 
@@ -178,7 +193,7 @@ CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(bp);
 
 	// do the necessary
-	doBlockEndThings(cs, cs->getCurrentCFPoint());
+	doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 	cs->irb.UnCondBranch(bp);
 
 	return CGResult(0, 0, CGResult::VK::Break);
@@ -193,7 +208,7 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(cp);
 
 	// do the necessary
-	doBlockEndThings(cs, cs->getCurrentCFPoint());
+	doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 	cs->irb.UnCondBranch(cp);
 
 	return CGResult(0, 0, CGResult::VK::Continue);
@@ -212,12 +227,12 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(cs->isRefCountedType(v->getType()))
 			cs->incrementRefCount(v);
 
-		doBlockEndThings(cs, cs->getCurrentCFPoint());
+		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 		cs->irb.Return(v);
 	}
 	else
 	{
-		doBlockEndThings(cs, cs->getCurrentCFPoint());
+		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 
 		iceAssert(this->expectedType->isVoidType());
 		cs->irb.ReturnVoid();
@@ -236,18 +251,16 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	// auto rsn = cs->setNamespace(this->scope);
-	// defer(cs->restoreNamespace(rsn));
+	cs->enterBlock(this);
+	defer(cs->leaveBlock());
 
 	bool broke = false;
-	// bool cont = false;
 	for(auto stmt : this->statements)
 	{
 		auto res = stmt->codegen(cs);
 		if(res.kind == CGResult::VK::Break || res.kind == CGResult::VK::Continue)
 		{
 			broke = true;
-			// cont = (res.kind == CGResult::VK::Continue);
 			break;
 		}
 	}

@@ -70,12 +70,10 @@ namespace cgn
 		return this->breakingPointStack.back();
 	}
 
-	void CodegenState::enterBreakableBody(ControlFlowPoint cfp)
+	void CodegenState::enterBreakableBody(const ControlFlowPoint& cfp)
 	{
 		// only the block needs to exist.
 		iceAssert(cfp.block);
-		// cfp.vtree = this->vtree;
-
 		this->breakingPointStack.push_back(cfp);
 	}
 
@@ -88,6 +86,25 @@ namespace cgn
 
 		return ret;
 	}
+
+
+	BlockPoint CodegenState::getCurrentBlockPoint()
+	{
+		return this->blockPointStack.back();
+	}
+
+	void CodegenState::enterBlock(const BlockPoint& bp)
+	{
+		iceAssert(bp.block);
+		this->blockPointStack.push_back(bp);
+	}
+
+	void CodegenState::leaveBlock()
+	{
+		iceAssert(this->blockPointStack.size() > 0);
+		this->blockPointStack.pop_back();
+	}
+
 
 
 
@@ -140,7 +157,8 @@ namespace cgn
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 
-			arr = this->irb.SetSAAData(arr, this->irb.GetArraySliceData(fir::ConstantString::get("")));
+			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantString::get("")),
+				fir::Type::getMutInt8Ptr()));
 			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
 			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
 			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));

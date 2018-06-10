@@ -205,6 +205,7 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 					ret += t->str() + ",";
 
 				ret = ret.substr(0, ret.length() - 1);
+				ret += ")";
 			}
 
 			return ret;
