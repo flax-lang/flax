@@ -746,10 +746,10 @@ namespace sst
 							error(arguments[0].loc, "First argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
 								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
 						}
-						else if(auto t2 = arguments[1].value->type; t2 != fir::Type::getInt64())
+						else if(auto t2 = arguments[1].value->type; this->getCastDistance(t2, fir::Type::getInt64()) < 0)
 						{
 							error(arguments[0].loc, "Second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								fir::Type::getInt64(), t1);
+								(fir::Type*) fir::Type::getInt64(), t2);
 						}
 						else
 						{

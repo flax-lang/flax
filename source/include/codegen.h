@@ -37,13 +37,22 @@ namespace cgn
 
 		sst::Block* block = 0;
 
-		std::vector<fir::Value*> refCountedValues;
-		std::vector<fir::Value*> refCountedPointers;
+		// std::vector<fir::Value*> refCountedValues;
+		// std::vector<fir::Value*> refCountedPointers;
 
 		fir::IRBlock* breakPoint = 0;
 		fir::IRBlock* continuePoint = 0;
 	};
 
+	struct BlockPoint
+	{
+		BlockPoint(sst::Block* b) : block(b) { }
+
+		sst::Block* block = 0;
+
+		std::vector<fir::Value*> refCountedValues;
+		std::vector<fir::Value*> refCountedPointers;
+	};
 
 	struct CodegenState
 	{
@@ -102,8 +111,13 @@ namespace cgn
 		std::vector<ControlFlowPoint> breakingPointStack;
 		ControlFlowPoint getCurrentCFPoint();
 
-		void enterBreakableBody(ControlFlowPoint cfp);
+		void enterBreakableBody(const ControlFlowPoint& cfp);
 		ControlFlowPoint leaveBreakableBody();
+
+		std::vector<BlockPoint> blockPointStack;
+		BlockPoint getCurrentBlockPoint();
+		void enterBlock(const BlockPoint& bp);
+		void leaveBlock();
 
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);

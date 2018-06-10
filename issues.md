@@ -34,9 +34,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 16. `[[noreturn]]` for functions, so we don't error when no value is returned (eg. when calling `abort()`)
 
 
-17. `i8.min` prints `128` instead of `-128` only on windows????
-
-
 18. Some way of handling both types and expressions in `sizeof`/`typeid`/`typeof`. Might work if we just check for identifiers, but then
 	what about polymorphic types? Those won't even parse as expressions.
 

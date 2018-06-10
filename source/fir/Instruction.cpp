@@ -255,7 +255,7 @@ namespace fir
 			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + " [" + std::to_string(this->realOutput->getUsers().size()) + "]) :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
 		}
 
-		return ret;
+		return strprintf("!%d ", this->id) + ret;
 	}
 }
 

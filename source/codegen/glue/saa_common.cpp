@@ -337,7 +337,7 @@ namespace saa_common
 		if(appendee == getSAAElm(saa))
 			return generateElementAppendFunction(cs, saa);
 
-		else if(util::match(appendee, getSAASlice(saa), saa))
+		else if(util::match(appendee, getSAASlice(saa), getSAASlice(saa, false), saa))
 			return generateAppendFunction(cs, saa);
 
 		else
@@ -357,7 +357,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, getSAASlice(saa) }, saa), fir::LinkageType::Internal);
+				fir::FunctionType::get({ saa, getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 

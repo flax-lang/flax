@@ -980,6 +980,12 @@ namespace fir
 				// this is ok. at the llvm level the cast should reduce to a no-op.
 				return this->PointerTypeCast(arg, target);
 			}
+			else if(at->isArraySliceType() && target->isArraySliceType()
+				&& at->getArrayElementType() == target->getArrayElementType()
+				&& at->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
+			{
+				return this->Bitcast(arg, target);
+			}
 			else
 			{
 				return arg;
@@ -1809,7 +1815,10 @@ namespace fir
 		auto pt = (st->isMutable() ? et->getMutablePointerTo() : et->getPointerTo());
 
 		if(val->getType() != pt)
-			error("val is not a pointer to elm type (need '%s', have '%s')", pt, val->getType());
+		{
+			if(pt->getPointerElementType() != val->getType()->getPointerElementType() || (pt->isMutablePointer() && val->getType()->isImmutablePointer()))
+				error("val is not a pointer to elm type (need '%s', have '%s')", pt, val->getType());
+		}
 
 		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
 			slc->getType(), { slc, val });

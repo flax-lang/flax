@@ -45,12 +45,13 @@ namespace parser
 					case 't':	ss << '\t';	break;
 					case '"':	ss << '\"'; break;
 					case '\\':	ss << '\\'; break;
+					default:    ss << std::string("\\") + tmp[i]; break;
 				}
-
-				continue;
 			}
-
-			ss << tmp[i];
+			else
+			{
+				ss << tmp[i];
+			}
 		}
 
 		return new LitString(st.ploc(), ss.str(), israw);
