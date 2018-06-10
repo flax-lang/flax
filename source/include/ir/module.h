@@ -19,8 +19,6 @@ namespace llvm
 
 namespace fir
 {
-	struct ExecutionTarget;
-
 	struct Module
 	{
 		Module(std::string nm);
@@ -58,8 +56,9 @@ namespace fir
 
 		std::string print();
 
-		void setExecutionTarget(ExecutionTarget* e);
-		ExecutionTarget* getExecutionTarget();
+		// in theory.
+		size_t getSizeOfType(Type* type);
+		size_t getAlignmentOfType(Type* type);
 
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
@@ -85,31 +84,6 @@ namespace fir
 		std::unordered_map<Identifier, Function*> intrinsicFunctions;
 
 		Function* entryFunction = 0;
-
-		ExecutionTarget* execTarget = 0;
-	};
-
-
-	struct ExecutionTarget
-	{
-		size_t getBitsPerByte();
-		size_t getPointerWidthInBits();
-		size_t getTypeSizeInBits(Type* type);
-		size_t getTypeSizeInBytes(Type* type);
-
-		Type* getPointerSizedIntegerType();
-
-		static ExecutionTarget* getLP64();
-		static ExecutionTarget* getILP32();
-
-		private:
-		ExecutionTarget(size_t ptrSize, size_t byteSize, size_t shortSize, size_t intSize, size_t longSize);
-
-		size_t psize;
-		size_t bsize;
-		size_t ssize;
-		size_t isize;
-		size_t lsize;
 	};
 }
 

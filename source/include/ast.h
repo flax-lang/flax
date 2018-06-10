@@ -509,6 +509,16 @@ namespace ast
 		~SizeofOp() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+
+		Expr* expr = 0;
+	};
+
+	struct TypeidOp : Expr
+	{
+		TypeidOp(const Location& l) : Expr(l) { this->readableName = "typeid expression"; }
+		~TypeidOp() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
 		Expr* expr = 0;
 	};
 

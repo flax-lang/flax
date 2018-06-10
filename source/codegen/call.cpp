@@ -101,7 +101,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		{
 			// auto-convert strings and char slices into char* when passing to va_args
 			if(val->getType()->isStringType())
-				val = cs->irb.GetStringData(val);
+				val = cs->irb.GetSAAData(val);
 
 			else if(val->getType()->isCharSliceType())
 				val = cs->irb.GetArraySliceData(val);

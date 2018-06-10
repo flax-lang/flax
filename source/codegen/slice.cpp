@@ -121,9 +121,9 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(ty == lhs->getType());
 
 	fir::Value* length = 0;
-	if(ty->isDynamicArrayType())	length = cs->irb.GetDynamicArrayLength(lhs, "orig_len");
+	if(ty->isDynamicArrayType())	length = cs->irb.GetSAALength(lhs, "orig_len");
 	else if(ty->isArraySliceType())	length = cs->irb.GetArraySliceLength(lhs, "orig_len");
-	else if(ty->isStringType())		length = cs->irb.GetStringLength(lhs, "orig_len");
+	else if(ty->isStringType())		length = cs->irb.GetSAALength(lhs, "orig_len");
 	else if(ty->isArrayType())		length = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize());
 	else if(ty->isPointerType())    length = fir::ConstantInt::getInt64(0);
 	else							error(this, "unsupported type '%s'", ty);
@@ -169,7 +169,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(ty->isDynamicArrayType())
 	{
-		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetDynamicArrayData(lhs),
+		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetSAAData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else if(ty->isArrayType())
@@ -191,7 +191,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(ty->isStringType())
 	{
-		return performSliceOperation(cs, this, true, fir::Type::getInt8(), cs->irb.GetStringData(lhs),
+		return performSliceOperation(cs, this, true, fir::Type::getInt8(), cs->irb.GetSAAData(lhs),
 			length, this->cgBegin, this->cgEnd, this->begin, this->end);
 	}
 	else

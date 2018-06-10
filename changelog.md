@@ -1,6 +1,12 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- replace the individual IR stuff for strings and dynamic arrays with their SAA equivalents.
+- add an `any` type -- kinda works like pre-rewrite. contains 32-byte internal buffer to store SAA types without additional heap allocations,
+	types larger than 32-bytes get heap-allocated.
+- add `typeid()` to deal with the `any` types.
+
+`(8ab9dad)`
 - finally add the check for accessing `refcount` when the pointer is `null`; now we return `0` instead of crashing.
 
 `(8d9c0d2)`

@@ -10,13 +10,16 @@ CGResult sst::SizeofOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto type = this->typeToSize;
-	iceAssert(type);
+	auto sz = fir::ConstantInt::getInt64(cs->module->getSizeOfType(this->typeToSize));
+	return CGResult(sz);
+}
 
-	// let llvm handle everything :D
-	// ie. use GEP.
-	auto nullp = fir::ConstantValue::getZeroValue(type->getPointerTo());
-	auto sz = cs->irb.PointerToIntCast(cs->irb.GetPointer(nullp, fir::ConstantInt::getInt64(1)), fir::Type::getInt64());
 
+CGResult sst::TypeidOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	auto sz = fir::ConstantInt::getUint64(this->typeToId->getID());
 	return CGResult(sz);
 }

@@ -7,6 +7,33 @@
 #include "gluecode.h"
 #include "typecheck.h"
 
+
+static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Value* ptr)
+{
+	iceAssert(ptr->getType() == fir::Type::getInt64Ptr());
+
+	auto isnull = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+
+	auto prevb = cs->irb.getCurrentBlock();
+	auto deref = cs->irb.addNewBlockAfter("deref", prevb);
+	auto merge = cs->irb.addNewBlockAfter("merge", deref);
+
+	cs->irb.CondBranch(isnull, merge, deref);
+
+	cs->irb.setCurrentBlock(deref);
+	auto rc = cs->irb.Load(ptr);
+	cs->irb.UnCondBranch(merge);
+
+	cs->irb.setCurrentBlock(merge);
+	auto phi = cs->irb.CreatePHINode(fir::Type::getInt64());
+	phi->addIncoming(fir::ConstantInt::getInt64(0), prevb);
+	phi->addIncoming(rc, deref);
+
+	return phi;
+}
+
+
+
 CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -96,33 +123,14 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			else if(this->name == BUILTIN_SAA_FIELD_REFCOUNT)
 			{
-				// additional thing, check if the refcount pointer is null -- if so, return 0 instead of derefencing nothing.
-				auto isnull = cs->irb.ICmpEQ(cs->irb.GetSAARefCountPointer(res.value), fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
-
-				auto prevb = cs->irb.getCurrentBlock();
-				auto deref = cs->irb.addNewBlockAfter("deref", prevb);
-				auto merge = cs->irb.addNewBlockAfter("merge", deref);
-
-				cs->irb.CondBranch(isnull, merge, deref);
-
-				cs->irb.setCurrentBlock(deref);
-				auto rc = cs->irb.GetSAARefCount(res.value);
-				cs->irb.UnCondBranch(merge);
-
-				cs->irb.setCurrentBlock(merge);
-				auto phi = cs->irb.CreatePHINode(fir::Type::getInt64());
-				phi->addIncoming(fir::ConstantInt::getInt64(0), prevb);
-				phi->addIncoming(rc, deref);
-
-				return CGResult(phi);
-
+				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetSAARefCountPointer(res.value)));
 			}
 			else if(ty->isStringType() && this->name == BUILTIN_STRING_FIELD_COUNT)
 			{
 				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);
 				iceAssert(fn);
 
-				auto ret = cs->irb.Call(fn, cs->irb.GetStringData(res.value));
+				auto ret = cs->irb.Call(fn, cs->irb.GetSAAData(res.value));
 				return CGResult(ret);
 			}
 		}
@@ -158,6 +166,14 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			else if(this->name == BUILTIN_RANGE_FIELD_STEP)
 				return CGResult(cs->irb.GetRangeStep(res.value));
 
+		}
+		else if(ty->isAnyType())
+		{
+			if(this->name == BUILTIN_ANY_FIELD_TYPEID)
+				return CGResult(cs->irb.GetAnyTypeID(res.value));
+
+			else if(this->name == BUILTIN_ANY_FIELD_REFCOUNT)
+				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetAnyRefCountPointer(res.value)));
 		}
 		else if(ty->isEnumType())
 		{

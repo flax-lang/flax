@@ -76,10 +76,10 @@ namespace string
 
 			{
 				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
-				cs->irb.Store(cs->irb.GetStringData(s1, "s1"), str1p);
+				cs->irb.Store(cs->irb.GetSAAData(s1, "s1"), str1p);
 
 				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
-				cs->irb.Store(cs->irb.GetStringData(s2, "s2"), str2p);
+				cs->irb.Store(cs->irb.GetSAAData(s2, "s2"), str2p);
 
 
 				fir::IRBlock* loopcond = cs->irb.addNewBlockInFunction("cond1", func);
@@ -140,7 +140,7 @@ namespace string
 	static void _doRefCount(CodegenState* cs, fir::Function* func, bool decrement)
 	{
 		auto str = func->getArguments()[0];
-		auto rcp = cs->irb.GetStringRefCountPointer(str, "rcp");
+		auto rcp = cs->irb.GetSAARefCountPointer(str, "rcp");
 
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 		fir::IRBlock* dorc = cs->irb.addNewBlockInFunction("dorc", func);
@@ -150,10 +150,10 @@ namespace string
 
 		cs->irb.setCurrentBlock(dorc);
 		{
-			auto oldrc = cs->irb.GetStringRefCount(str, "oldrc");
+			auto oldrc = cs->irb.Load(rcp, "oldrc");
 			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
 
-			cs->irb.SetStringRefCount(str, newrc);
+			cs->irb.SetSAARefCount(str, newrc);
 
 			#if DEBUG_STRING_REFCOUNTING
 			{
@@ -175,11 +175,11 @@ namespace string
 					auto freefn = cs->getOrDeclareLibCFunction(FREE_MEMORY_FUNC);
 					iceAssert(freefn);
 
-					auto buf = cs->irb.GetStringData(str, "buf");
+					auto buf = cs->irb.GetSAAData(str, "buf");
 					buf = cs->irb.PointerTypeCast(buf, fir::Type::getMutInt8Ptr());
 
 					cs->irb.Call(freefn, buf);
-					cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetStringRefCountPointer(str), fir::Type::getMutInt8Ptr()));
+					cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetSAARefCountPointer(str), fir::Type::getMutInt8Ptr()));
 
 					#if DEBUG_STRING_ALLOCATION
 					{

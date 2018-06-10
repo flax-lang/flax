@@ -5,6 +5,7 @@
 #include "sst.h"
 #include "errors.h"
 #include "codegen.h"
+#include "gluecode.h"
 #include "typecheck.h"
 
 namespace cgn
@@ -130,20 +131,6 @@ namespace cgn
 		auto fromType = from.value->getType();
 		if(fromType == target) return from;
 
-		// if(fromType->isConstantNumberType())
-		// {
-		// 	if(target->isConstantNumberType())
-		// 		error("stop playing games bitch");
-
-		// 	auto cn = dcast(fir::ConstantNumber, from.value);
-		// 	iceAssert(cn);
-
-		// 	auto res = _unwrapConstantNumber(this, cn, target, true);
-		// 	if(!res)	return from;
-		// 	else		return CGResult(res);
-		// }
-
-		// else
 		if(fromType->isNullType() && target->isPointerType())
 		{
 			return CGResult(this->irb.PointerTypeCast(from.value, target));
@@ -168,13 +155,13 @@ namespace cgn
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			return CGResult(this->irb.GetStringData(from.value));
+			return CGResult(this->irb.GetSAAData(from.value));
 		}
 		else if(fromType->isStringType() && target->isCharSliceType())
 		{
 			auto ret = this->irb.CreateValue(target);
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetStringData(from.value));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetStringLength(from.value));
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
 
 			return CGResult(ret);
 		}
@@ -184,8 +171,8 @@ namespace cgn
 			//! ACHTUNG !
 			//* note: see typecheck/slice.cpp -- slices of dynamic arrays are always mutable.
 			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), true));
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetDynamicArrayData(from.value));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetDynamicArrayLength(from.value));
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
 
 			return CGResult(ret);
 		}
@@ -230,6 +217,11 @@ namespace cgn
 			}
 
 			return CGResult(tuple);
+		}
+		else if(target->isAnyType())
+		{
+			// great.
+			return CGResult(glue::any::createAnyWithValue(this, from.value), 0, CGResult::VK::LitRValue);
 		}
 
 		// nope.
