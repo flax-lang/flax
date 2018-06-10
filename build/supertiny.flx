@@ -117,7 +117,42 @@ class LinkedList<T>
 		// 	c. then we match against the generic type context stack.
 		// 	d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
 		// }
+		12. allow generic solver to infer things from generic types passed in {
+			eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
+			foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
+		}
 	 */
+
+	do {
+		var x: any = 30
+		x = "foo"
+
+
+		printf("x = %d\n", x.id == typeid(str))
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
 	do {
@@ -140,13 +175,18 @@ class LinkedList<T>
 		let b = Qux<T: str>(x: "foo")
 
 		foobar<A: int, B: str>(a, b)
-	}
-	 */
 
-	 do {
-		 var x: string
-		 printf("x.rc = %d\n", x.refcount)
-	 }
+
+		let x = alloc int [10] {
+			if i % 2 == 0 =>    it = 34
+			else          =>    it = 17
+		}
+
+		for it in x { printf("%d ", it) }
+		printf("\n")
+	}
+ */
+
 
 	// do {
 	// 	let foo = string("HELLO") + string(" ") + string("WORLD") + string("???".ptr, "???".length)

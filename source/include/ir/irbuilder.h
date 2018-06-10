@@ -98,8 +98,6 @@ namespace fir
 		Value* ImmutStackAlloc(Type* type, Value* initialValue, std::string vname = "");
 
 
-		// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-
 		// equivalent to GEP(ptr*, 0, memberIndex)
 		Value* GetStructMember(Value* ptr, std::string memberName);
 		Value* StructGEP(Value* structPtr, size_t memberIndex, std::string vname = "");
@@ -154,35 +152,6 @@ namespace fir
 		void SetSAARefCount(Value* str, Value* val, std::string vname = "");
 
 
-
-
-
-		Value* GetStringData(Value* str, std::string vname = "");
-		Value* GetStringLength(Value* str, std::string vname = "");
-		Value* GetStringCapacity(Value* str, std::string vname = "");
-		Value* GetStringRefCount(Value* str, std::string vname = "");
-		Value* GetStringRefCountPointer(Value* str, std::string vname = "");
-
-		[[nodiscard]] Value* SetStringRefCountPointer(Value* str, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetStringCapacity(Value* str, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetStringLength(Value* str, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetStringData(Value* str, Value* val, std::string vname = "");
-		void SetStringRefCount(Value* str, Value* val, std::string vname = "");
-
-
-		Value* GetDynamicArrayData(Value* arr, std::string vname = "");
-		Value* GetDynamicArrayLength(Value* arr, std::string vname = "");
-		Value* GetDynamicArrayCapacity(Value* arr, std::string vname = "");
-		Value* GetDynamicArrayRefCount(Value* arr, std::string vname = "");
-		Value* GetDynamicArrayRefCountPointer(Value* arr, std::string vname = "");
-
-		[[nodiscard]] Value* SetDynamicArrayData(Value* arr, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetDynamicArrayLength(Value* arr, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname = "");
-		[[nodiscard]] Value* SetDynamicArrayRefCountPointer(Value* arr, Value* ptr, std::string vname = "");
-		void SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname = "");
-
-
 		Value* CreateSliceFromString(Value* str, bool mut, std::string vname = "");
 		Value* CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname = "");
 
@@ -195,13 +164,17 @@ namespace fir
 		[[nodiscard]] Value* SetArraySliceData(Value* arr, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetArraySliceLength(Value* arr, Value* val, std::string vname = "");
 
-		Value* GetAnyTypeID(Value* any, std::string vname = "");
-		Value* GetAnyFlag(Value* any, std::string vname = "");
-		Value* GetAnyData(Value* any, std::string vname = "");
 
-		[[nodiscard]] Value* SetAnyFlag(Value* any, Value* val, std::string vname = "");
+		Value* GetAnyData(Value* any, std::string vname = "");
+		Value* GetAnyTypeID(Value* any, std::string vname = "");
+		Value* GetAnyRefCount(Value* str, std::string vname = "");
+		Value* GetAnyRefCountPointer(Value* any, std::string vname = "");
+
+		void SetAnyRefCount(Value* str, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetAnyData(Value* any, Value* val, std::string vname = "");
 		[[nodiscard]] Value* SetAnyTypeID(Value* any, Value* val, std::string vname = "");
+		[[nodiscard]] Value* SetAnyRefCountPointer(Value* str, Value* val, std::string vname = "");
+
 
 		Value* GetRangeLower(Value* range, std::string vname = "");
 		Value* GetRangeUpper(Value* range, std::string vname = "");

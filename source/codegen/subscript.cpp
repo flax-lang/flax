@@ -43,7 +43,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(checkf);
 
 		fir::Value* max = 0;
-		if(lt->isDynamicArrayType())	max = cs->irb.GetDynamicArrayLength(lr.value);
+		if(lt->isDynamicArrayType())	max = cs->irb.GetSAALength(lr.value);
 		else if(lt->isArraySliceType())	max = cs->irb.GetArraySliceLength(lr.value);
 		else if(lt->isArrayType())		max = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
 
@@ -64,7 +64,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(lt->isDynamicArrayType())
 		{
-			data = cs->irb.GetDynamicArrayData(lr.value);
+			data = cs->irb.GetSAAData(lr.value);
 		}
 		else if(lt->isArraySliceType())
 		{
@@ -80,8 +80,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto locstr = fir::ConstantString::get(this->loc.toString());
 
 		// call it
-		cs->irb.Call(checkf, cs->irb.GetStringLength(lr.value), index, locstr);
-		data = cs->irb.GetStringData(lr.value);
+		cs->irb.Call(checkf, cs->irb.GetSAALength(lr.value), index, locstr);
+		data = cs->irb.GetSAAData(lr.value);
 	}
 	else if(lt->isPointerType())
 	{

@@ -947,6 +947,23 @@ namespace parser
 	}
 
 
+	ast::TypeidOp* parseTypeid(State& st)
+	{
+		Token tok = st.eat();
+		iceAssert(tok == TT::Typeid);
+
+		if(st.eat() != TT::LParen)
+			expectedAfter(st.ploc(), "'('", "typeid", st.prev().str());
+
+		auto ret = new ast::TypeidOp(tok.loc);
+		ret->expr = parseExpr(st);
+
+		if(st.eat() != TT::RParen)
+			expectedAfter(st.ploc(), "')'", "expression in typeid", st.prev().str());
+
+		return ret;
+	}
+
 
 	Expr* parseExpr(State& st)
 	{
@@ -1034,8 +1051,8 @@ namespace parser
 				// case TT::Typeof:
 				// 	return parseTypeof(ps);
 
-				// case TT::Typeid:
-				// 	return parseTypeid(ps);
+				case TT::Typeid:
+					return parseTypeid(st);
 
 				case TT::Sizeof:
 					return parseSizeof(st);

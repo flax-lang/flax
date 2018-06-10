@@ -181,18 +181,18 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		// ok, now return the array we created.
 		{
 			auto ret = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
-			ret = cs->irb.SetDynamicArrayData(ret, mem);
-			ret = cs->irb.SetDynamicArrayLength(ret, count);
-			ret = cs->irb.SetDynamicArrayCapacity(ret, count);
+			ret = cs->irb.SetSAAData(ret, mem);
+			ret = cs->irb.SetSAALength(ret, count);
+			ret = cs->irb.SetSAACapacity(ret, count);
 
 			// allocate memory for the refcount
 			{
 				fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
 				rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
-				ret = cs->irb.SetDynamicArrayRefCountPointer(ret, rcptr);
+				ret = cs->irb.SetSAARefCountPointer(ret, rcptr);
 			}
 
-			cs->irb.SetDynamicArrayRefCount(ret, fir::ConstantInt::getInt64(1));
+			cs->irb.SetSAARefCount(ret, fir::ConstantInt::getInt64(1));
 
 			#if DEBUG_ARRAY_ALLOCATION
 			{

@@ -95,11 +95,11 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			iceAssert(checkf);
 
 			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, cs->irb.GetStringLength(rhs.value), numbinds, strloc);
+			cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
 		}
 
 		//* note: special-case this, because 1. we want to return chars
-		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetStringData(rhs.value), fir::Type::getMutInt8Ptr());
+		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetSAAData(rhs.value), fir::Type::getMutInt8Ptr());
 		{
 			size_t idx = 0;
 			for(auto& b : bind.inner)
@@ -116,7 +116,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			if(bind.restRef)
 			{
 				// make a slice of char.
-				auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
+				auto remaining = cs->irb.Subtract(cs->irb.GetSAALength(rhs.value), numbinds);
 
 				auto slice = cs->irb.CreateValue(fir::Type::getCharSlice(shouldSliceBeMutable));
 				slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(strdat, numbinds));
@@ -127,7 +127,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			else
 			{
 				// make string.
-				// auto remaining = cs->irb.Subtract(cs->irb.GetStringLength(rhs.value), numbinds);
+				// auto remaining = cs->irb.Subtract(cs->irb.GetSAALength(rhs.value), numbinds);
 
 				auto clonef = cgn::glue::string::getCloneFunction(cs);
 				iceAssert(clonef);
@@ -151,7 +151,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 
 			if(rt->isArrayType())               arrlen = fir::ConstantInt::getInt64(rt->toArrayType()->getArraySize());
 			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
-			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetDynamicArrayLength(array);
+			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
 			else                                iceAssert(0);
 
 			auto strloc = fir::ConstantString::get(bind.loc.toString());
@@ -186,7 +186,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 
 			if(rt->isArrayType())               data = cs->irb.ConstGEP2(rhs.pointer, 0, 0);
 			else if(rt->isArraySliceType())     data = cs->irb.GetArraySliceData(array);
-			else if(rt->isDynamicArrayType())   data = cs->irb.GetDynamicArrayData(array);
+			else if(rt->isDynamicArrayType())   data = cs->irb.GetSAAData(array);
 			else                                iceAssert(0);
 
 

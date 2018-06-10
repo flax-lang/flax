@@ -71,6 +71,8 @@ namespace parser
 
 			else if(st.front() != TT::RParen)
 				expected(st, "')' or ',' in function parameter list", st.front().str());
+
+			st.skipWS();
 		}
 
 		iceAssert(st.front() == TT::RParen);

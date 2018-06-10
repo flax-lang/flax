@@ -199,13 +199,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(vr->name == "name")
+			if(vr->name == BUILTIN_ENUM_FIELD_NAME)
 				res = fir::Type::getString();
 
-			else if(vr->name == "index")
+			else if(vr->name == BUILTIN_ENUM_FIELD_INDEX)
 				res = fir::Type::getInt64();
 
-			else if(vr->name == "value")
+			else if(vr->name == BUILTIN_ENUM_FIELD_VALUE)
 				res = type->toEnumType()->getCaseType();
 
 
@@ -227,7 +227,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: extension support here
 			fir::Type* res = 0;
-			if(vr->name == "begin" || vr->name == "end" || vr->name == "step")
+			if(vr->name == BUILTIN_RANGE_FIELD_BEGIN || vr->name == BUILTIN_RANGE_FIELD_END || vr->name == BUILTIN_RANGE_FIELD_STEP)
 				res = fir::Type::getInt64();
 
 			if(res)
@@ -241,6 +241,31 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		}
 
 		// else: fallthrough;
+	}
+	else if(type->isAnyType())
+	{
+		auto rhs = dotop->right;
+		if(auto vr = dcast(ast::Ident, rhs))
+		{
+			// TODO: extension support here
+			fir::Type* res = 0;
+			if(vr->name == BUILTIN_ANY_FIELD_TYPEID)
+				res = fir::Type::getUint64();
+
+			else if(vr->name == BUILTIN_ANY_FIELD_REFCOUNT)
+				res = fir::Type::getInt64();
+
+			if(res)
+			{
+				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				tmp->lhs = lhs;
+				tmp->name = vr->name;
+
+				return tmp;
+			}
+		}
+
+		// else: fallthrough
 	}
 
 	// TODO: plug in extensions here.

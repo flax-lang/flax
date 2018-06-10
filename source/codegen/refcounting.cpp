@@ -219,13 +219,11 @@ namespace cgn
 		}
 		else if(type->isAnyType())
 		{
-			// fir::Function* rf = 0;
-			// if(incr) rf = glue::Any::getRefCountIncrementFunction(cgi);
-			// else rf = glue::Any::getRefCountDecrementFunction(cgi);
+			fir::Function* rf = 0;
+			if(incr) rf = glue::any::getRefCountIncrementFunction(cs);
+			else rf = glue::any::getRefCountDecrementFunction(cs);
 
-			// cgi->irb.Call(rf, type);
-
-			error("any not supported");
+			cs->irb.Call(rf, val);
 		}
 		else
 		{

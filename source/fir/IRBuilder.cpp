@@ -5,6 +5,8 @@
 #include <cmath>
 
 #include "ast.h"
+#include "gluecode.h"
+
 #include "ir/block.h"
 #include "ir/irbuilder.h"
 #include "ir/instruction.h"
@@ -1031,7 +1033,7 @@ namespace fir
 			{
 				// auto-convert strings and char slices into char* when passing to va_args
 				if(at->isStringType())
-					out.push_back(this->GetStringData(args[i]));
+					out.push_back(this->GetSAAData(args[i]));
 
 				else if(at->isCharSliceType())
 					out.push_back(this->GetArraySliceData(args[i]));
@@ -1253,8 +1255,8 @@ namespace fir
 
 		// this is one of those compound thingies.
 		auto slc = this->CreateValue(fir::Type::getCharSlice(mut));
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetStringData(str), mut ? fir::Type::getMutInt8Ptr() : fir::Type::getInt8Ptr()));
-		slc = this->SetArraySliceLength(slc, this->GetStringLength(str));
+		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? fir::Type::getMutInt8Ptr() : fir::Type::getInt8Ptr()));
+		slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
 
 		return slc;
 	}
@@ -1268,8 +1270,8 @@ namespace fir
 
 		// this is one of those compound thingies.
 		auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetDynamicArrayData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
-		slc = this->SetArraySliceLength(slc, this->GetDynamicArrayLength(str));
+		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
+		slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
 
 		return slc;
 	}
@@ -1616,174 +1618,51 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetStringData(Value* str, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
 
-		Instruction* instr = new Instruction(OpKind::String_GetData, false, this->currentBlock,
-			fir::Type::getMutInt8Ptr(), { str });
+
+
+
+
+
+	static bool isSAAType(fir::Type* t)
+	{
+		return t->isStringType() || t->isDynamicArrayType();
+	}
+
+	static fir::Type* getSAAElmType(fir::Type* t)
+	{
+		iceAssert(isSAAType(t));
+
+		if(t->isStringType())   return fir::Type::getInt8();
+		else                    return t->getArrayElementType();
+	}
+
+
+
+	Value* IRBuilder::GetSAAData(Value* arr, std::string vname)
+	{
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
+
+		Instruction* instr = new Instruction(OpKind::SAA_GetData, false, this->currentBlock,
+			getSAAElmType(arr->getType())->getMutablePointerTo(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetStringData(Value* str, Value* val, std::string vname)
+	Value* IRBuilder::SetSAAData(Value* arr, Value* val, std::string vname)
 	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		else if(!val->getType()->isPointerType())
-			error("val is not a pointer type");
-
-		else if(!val->getType()->getPointerElementType()->isCharType())
-			error("val is not a char*");
-
-		Instruction* instr = new Instruction(OpKind::String_SetData, true, this->currentBlock, fir::Type::getString(), { str, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetStringLength(Value* str, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		Instruction* instr = new Instruction(OpKind::String_GetLength, false, this->currentBlock,
-			fir::Type::getInt64(), { str });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetStringLength(Value* str, Value* val, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
-
-		Instruction* instr = new Instruction(OpKind::String_SetLength, true, this->currentBlock, fir::Type::getString(), { str, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetStringCapacity(Value* str, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		Instruction* instr = new Instruction(OpKind::String_GetCapacity, false, this->currentBlock,
-			fir::Type::getInt64(), { str });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetStringCapacity(Value* str, Value* val, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
-
-		Instruction* instr = new Instruction(OpKind::String_SetCapacity, true, this->currentBlock, fir::Type::getString(), { str, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetStringRefCountPointer(Value* str, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		Instruction* instr = new Instruction(OpKind::String_GetRefCountPtr, false, this->currentBlock,
-			fir::Type::getInt64Ptr(), { str });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetStringRefCountPointer(Value* str, Value* val, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		if(val->getType() != fir::Type::getInt64Ptr())
-			error("val is not an int64*");
-
-		Instruction* instr = new Instruction(OpKind::String_SetRefCountPtr, true, this->currentBlock,
-			fir::Type::getString(), { str, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetStringRefCount(Value* str, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		Instruction* instr = new Instruction(OpKind::String_GetRefCount, false, this->currentBlock,
-			fir::Type::getInt64(), { str });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	void IRBuilder::SetStringRefCount(Value* str, Value* val, std::string vname)
-	{
-		if(!str->getType()->isStringType())
-			error("str is not a string type (got '%s')", str->getType());
-
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
-
-		Instruction* instr = new Instruction(OpKind::String_SetRefCount, true, this->currentBlock,
-			fir::Type::getVoid(), { str, val });
-
-		this->addInstruction(instr, vname);
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Value* IRBuilder::GetDynamicArrayData(Value* arr, std::string vname)
-	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
-
-		Instruction* instr = new Instruction(OpKind::DynamicArray_GetData, false, this->currentBlock,
-			arr->getType()->toDynamicArrayType()->getElementType()->getMutablePointerTo(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetDynamicArrayData(Value* arr, Value* val, std::string vname)
-	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
-
-		auto t = arr->getType()->toDynamicArrayType()->getElementType();
+		auto t = getSAAElmType(arr->getType());
 		if(val->getType() != t->getMutablePointerTo())
 		{
 			error("val is not a pointer to elm type (need '%s', have '%s')",
 				t->getMutablePointerTo(), val->getType());
 		}
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_SetData, true, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_SetData, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1791,26 +1670,26 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetDynamicArrayLength(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAALength(Value* arr, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_GetLength, false, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetDynamicArrayLength(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAALength(Value* arr, Value* val, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_SetLength, true, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_SetLength, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1818,26 +1697,26 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetDynamicArrayCapacity(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAACapacity(Value* arr, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_GetCapacity, false, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_GetCapacity, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetDynamicArrayCapacity(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAACapacity(Value* arr, Value* val, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_SetCapacity, true, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_SetCapacity, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1845,26 +1724,26 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetDynamicArrayRefCountPointer(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAARefCountPointer(Value* arr, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_GetRefCountPtr, false, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_GetRefCountPtr, false, this->currentBlock,
 			fir::Type::getInt64Ptr(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetDynamicArrayRefCountPointer(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAARefCountPointer(Value* arr, Value* val, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
+		if(!isSAAType(arr->getType()))
+			error("thing is not an SAA type (got '%s')", arr->getType());
 
 		if(val->getType() != fir::Type::getInt64()->getPointerTo())
 			error("val is not an int64 pointer");
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_SetRefCountPtr, true, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::SAA_SetRefCountPtr, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1872,107 +1751,17 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetDynamicArrayRefCount(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAARefCount(Value* arr, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
-
-		Instruction* instr = new Instruction(OpKind::DynamicArray_GetRefCount, false, this->currentBlock,
-			fir::Type::getInt64(), { arr });
-
-		return this->addInstruction(instr, vname);
+		return this->Load(this->GetSAARefCountPointer(arr), vname);
 	}
 
-	void IRBuilder::SetDynamicArrayRefCount(Value* arr, Value* val, std::string vname)
+	void IRBuilder::SetSAARefCount(Value* arr, Value* val, std::string vname)
 	{
-		if(!arr->getType()->isDynamicArrayType())
-			error("arr is not a dynamic array type (got '%s')", arr->getType());
-
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::DynamicArray_SetRefCount, true, this->currentBlock,
-			fir::Type::getVoid(), { arr, val });
-
-		this->addInstruction(instr, vname);
-	}
-
-
-
-
-	Value* IRBuilder::GetSAAData(Value* saa, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->GetStringData(saa, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayData(saa, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::GetSAALength(Value* saa, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->GetStringLength(saa, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayLength(saa, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::GetSAACapacity(Value* saa, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->GetStringCapacity(saa, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayCapacity(saa, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::GetSAARefCountPointer(Value* saa, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->GetStringRefCountPointer(saa, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayRefCountPointer(saa, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::GetSAARefCount(Value* saa, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->GetStringRefCount(saa, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->GetDynamicArrayRefCount(saa, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-
-
-
-	Value* IRBuilder::SetSAAData(Value* saa, Value* val, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->SetStringData(saa, val, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayData(saa, val, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::SetSAALength(Value* saa, Value* val, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->SetStringLength(saa, val, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayLength(saa, val, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::SetSAACapacity(Value* saa, Value* val, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->SetStringCapacity(saa, val, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayCapacity(saa, val, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	Value* IRBuilder::SetSAARefCountPointer(Value* saa, Value* val, std::string vname)
-	{
-		if(saa->getType()->isStringType())              return this->SetStringRefCountPointer(saa, val, vname);
-		else if(saa->getType()->isDynamicArrayType())   return this->SetDynamicArrayRefCountPointer(saa, val, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-	}
-
-	void IRBuilder::SetSAARefCount(Value* saa, Value* val, std::string vname)
-	{
-		if(saa->getType()->isStringType())              this->SetStringRefCount(saa, val, vname);
-		else if(saa->getType()->isDynamicArrayType())   this->SetDynamicArrayRefCount(saa, val, vname);
-		else                                            error("'%s' is not an SAA type", saa->getType());
-
-		return;
+		this->Store(val, this->PointerTypeCast(this->GetSAARefCountPointer(arr), fir::Type::getMutInt64Ptr()));
 	}
 
 
@@ -2063,82 +1852,101 @@ namespace fir
 
 	Value* IRBuilder::GetAnyTypeID(Value* any, std::string vname)
 	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
+		if(!any->getType()->isAnyType())
+			error("not any type (got '%s')", any->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getInt64(), { any });
+		Instruction* instr = new Instruction(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getUint64(), { any });
 
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::SetAnyTypeID(Value* any, Value* val, std::string vname)
 	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
+		if(!any->getType()->isAnyType())
+			error("not any type (got '%s')", any->getType());
 
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
+		else if(val->getType() != fir::Type::getUint64())
+			error("val is not a uint64");
 
-		Instruction* instr = new Instruction(OpKind::Any_SetTypeID, true, this->currentBlock, fir::Type::getVoid(), { any, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::GetAnyFlag(Value* any, std::string vname)
-	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
-
-		Instruction* instr = new Instruction(OpKind::Any_GetFlag, false, this->currentBlock, fir::Type::getInt64(), { any });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyFlag(Value* any, Value* val, std::string vname)
-	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
-
-		if(val->getType() != fir::Type::getInt64())
-			error("val is not an int64");
-
-		Instruction* instr = new Instruction(OpKind::Any_SetFlag, true, this->currentBlock, fir::Type::getVoid(), { any, val });
+		Instruction* instr = new Instruction(OpKind::Any_SetTypeID, true, this->currentBlock, fir::Type::getAny(), { any, val });
 
 		return this->addInstruction(instr, vname);
 	}
 
 
-	// note: getData() returns i8*, to facilitate pointer tomfoolery.
-	// setData() just takes any type, as long as its size is <= 24 bytes, so we can let the LLVM translator
-	// handle the nitty-gritty
 	Value* IRBuilder::GetAnyData(Value* any, std::string vname)
 	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
+		if(!any->getType()->isAnyType())
+			error("not any type (got '%s')", any->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_GetData, false, this->currentBlock, fir::Type::getInt8()->getPointerTo(), { any });
+		Instruction* instr = new Instruction(OpKind::Any_GetData, false, this->currentBlock, fir::ArrayType::get(fir::Type::getInt8(),
+			BUILTIN_ANY_DATA_BYTECOUNT), { any });
 
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::SetAnyData(Value* any, Value* val, std::string vname)
 	{
-		if(!any->getType()->isPointerType() || !any->getType()->getPointerElementType()->isAnyType())
-			error("any is not a pointer to an any type (got '%s')", any->getType());
+		if(!any->getType()->isAnyType())
+			error("not any type (got '%s')", any->getType());
 
-		iceAssert(this->module);
+		else if(val->getType() != fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT))
+			error("val is not array type (got '%s')", val->getType());
 
-		size_t sz = this->module->getExecutionTarget()->getTypeSizeInBytes(val->getType());
-		if(sz > 24 || sz == (size_t) -1)
-		{
-			error("Type '%s' cannot be stored directly in 'any', size is too large (max 24 bytes, have %zd bytes)",
-				val->getType(), (int64_t) sz);
-		}
-
-		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getVoid(), { any, val });
+		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getAny(), { any, val });
 
 		return this->addInstruction(instr, vname);
 	}
+
+
+	Value* IRBuilder::GetAnyRefCountPointer(Value* arr, std::string vname)
+	{
+		if(!arr->getType()->isAnyType())
+			error("arr is not an any type (got '%s')", arr->getType());
+
+		Instruction* instr = new Instruction(OpKind::Any_GetRefCountPtr, false, this->currentBlock, fir::Type::getInt64Ptr(), { arr });
+
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::SetAnyRefCountPointer(Value* arr, Value* val, std::string vname)
+	{
+		if(!arr->getType()->isAnyType())
+			error("arr is not an any type (got '%s')", arr->getType());
+
+		if(val->getType() != fir::Type::getInt64()->getPointerTo())
+			error("val is not an int64 pointer");
+
+		Instruction* instr = new Instruction(OpKind::Any_SetRefCountPtr, true, this->currentBlock, arr->getType(), { arr, val });
+
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::GetAnyRefCount(Value* arr, std::string vname)
+	{
+		return this->Load(this->GetAnyRefCountPointer(arr), vname);
+	}
+
+	void IRBuilder::SetAnyRefCount(Value* arr, Value* val, std::string vname)
+	{
+		if(val->getType() != fir::Type::getInt64())
+			error("val is not an int64");
+
+		this->Store(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr), fir::Type::getMutInt64Ptr()));
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

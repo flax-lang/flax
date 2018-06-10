@@ -61,6 +61,10 @@ namespace sst
 
 				return CGResult(res);
 			}
+			else if(vt->isAnyType())
+			{
+				return CGResult(cgn::glue::any::getAnyValue(cs, value, target));
+			}
 			else
 			{
 				auto res = cs->irb.AppropriateCast(value, target);

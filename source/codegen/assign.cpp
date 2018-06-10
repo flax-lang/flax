@@ -132,7 +132,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(lr.pointer);
 	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());
 
-	cs->autoAssignRefCountedValue(lr, rr, false, true);
+	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false, /* performStore: */ true);
 
 	return CGResult(0);
 }

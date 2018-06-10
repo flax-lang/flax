@@ -346,8 +346,8 @@ namespace array
 
 		if(arrtype->isDynamicArrayType())
 		{
-			ptr1 = cs->irb.GetDynamicArrayData(arg1);
-			ptr2 = cs->irb.GetDynamicArrayData(arg2);
+			ptr1 = cs->irb.GetSAAData(arg1);
+			ptr2 = cs->irb.GetSAAData(arg2);
 		}
 		else if(arrtype->isArraySliceType())
 		{
@@ -368,8 +368,8 @@ namespace array
 
 		if(arrtype->isDynamicArrayType())
 		{
-			len1 = cs->irb.GetDynamicArrayLength(arg1);
-			len2 = cs->irb.GetDynamicArrayLength(arg2);
+			len1 = cs->irb.GetSAALength(arg1);
+			len2 = cs->irb.GetSAALength(arg2);
 		}
 		else if(arrtype->isArraySliceType())
 		{
@@ -564,9 +564,9 @@ namespace array
 
 			fir::Value* arr = func->getArguments()[0];
 
-			auto ptr = cs->irb.GetDynamicArrayData(arr);
-			auto len = cs->irb.GetDynamicArrayLength(arr);
-			auto cap = cs->irb.GetDynamicArrayCapacity(arr);
+			auto ptr = cs->irb.GetSAAData(arr);
+			auto len = cs->irb.GetSAALength(arr);
+			auto cap = cs->irb.GetSAACapacity(arr);
 
 
 			{
@@ -578,7 +578,7 @@ namespace array
 				auto dorc = cs->irb.addNewBlockInFunction("dorc", cs->irb.getCurrentFunction());
 				auto dontrc = cs->irb.addNewBlockInFunction("dontrcliteral", cs->irb.getCurrentFunction());
 				{
-					auto rcp = cs->irb.GetDynamicArrayRefCountPointer(arr);
+					auto rcp = cs->irb.GetSAARefCountPointer(arr);
 					auto cond = cs->irb.ICmpNEQ(cs->irb.PointerToIntCast(rcp, fir::Type::getInt64()), fir::ConstantInt::getInt64(0));
 
 					cs->irb.CondBranch(cond, dorc, dontrc);
@@ -587,7 +587,7 @@ namespace array
 				fir::Value* therefc = 0;
 				cs->irb.setCurrentBlock(dorc);
 				{
-					therefc = cs->irb.GetDynamicArrayRefCount(arr);
+					therefc = cs->irb.GetSAARefCount(arr);
 
 					fir::Value* newrc = 0;
 					if(incr)    newrc = cs->irb.Add(therefc, fir::ConstantInt::getInt64(1));
@@ -595,7 +595,7 @@ namespace array
 
 					// update it.
 					therefc = newrc;
-					cs->irb.SetDynamicArrayRefCount(arr, newrc);
+					cs->irb.SetSAARefCount(arr, newrc);
 					cs->irb.UnCondBranch(dontrc);
 				}
 
@@ -659,7 +659,7 @@ namespace array
 						}
 
 						cs->irb.Call(freefn, memptr);
-						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetDynamicArrayRefCountPointer(arr), fir::Type::getMutInt8Ptr()));
+						cs->irb.Call(freefn, cs->irb.PointerTypeCast(cs->irb.GetSAARefCountPointer(arr), fir::Type::getMutInt8Ptr()));
 
 						#if DEBUG_ARRAY_ALLOCATION
 						{
@@ -874,7 +874,7 @@ namespace array
 			fir::Value* arr = func->getArguments()[0];
 			fir::Value* loc = func->getArguments()[1];
 
-			fir::Value* origlen = (isslice ? cs->irb.GetArraySliceLength(arr) : cs->irb.GetDynamicArrayLength(arr));
+			fir::Value* origlen = (isslice ? cs->irb.GetArraySliceLength(arr) : cs->irb.GetSAALength(arr));
 
 			fir::IRBlock* fail = cs->irb.addNewBlockInFunction("fail", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
@@ -906,10 +906,10 @@ namespace array
 				}
 				else
 				{
-					auto ptr = cs->irb.GetDynamicArrayData(arr);
+					auto ptr = cs->irb.GetSAAData(arr);
 					auto val = cs->irb.Load(cs->irb.PointerAdd(ptr, newlen));
 
-					auto newarr = cs->irb.SetDynamicArrayLength(arr, newlen);
+					auto newarr = cs->irb.SetSAALength(arr, newlen);
 					ret = cs->irb.CreateValue(retTy);
 					ret = cs->irb.InsertValue(ret, { 0 }, newarr);
 					ret = cs->irb.InsertValue(ret, { 1 }, val);

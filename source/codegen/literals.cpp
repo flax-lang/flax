@@ -10,12 +10,12 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-		error(this, "Non-numerical type '%s' inferred for literal number", infer);
+	// if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
+	// 	error(this, "Non-numerical type '%s' inferred for literal number", infer);
 
 	if(this->type->isConstantNumberType())
 	{
-		if(infer)
+		if(infer && infer->isPrimitiveType())
 		{
 			if(this->type->toConstantNumberType()->isFloating() && !infer->isFloatingPointType())
 				error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
@@ -168,10 +168,10 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
-			aa = cs->irb.SetDynamicArrayData(aa, cs->irb.ConstGEP2(array, 0, 0));
-			aa = cs->irb.SetDynamicArrayLength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			aa = cs->irb.SetDynamicArrayCapacity(aa, fir::ConstantInt::getInt64(-1));
-			aa = cs->irb.SetDynamicArrayRefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(array, 0, 0));
+			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getInt64(this->values.size()));
+			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getInt64(-1));
+			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
 			return CGResult(aa, 0, CGResult::VK::LitRValue);
 		}

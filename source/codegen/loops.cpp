@@ -158,7 +158,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		if(array->getType()->isDynamicArrayType())
 		{
-			end = cs->irb.GetDynamicArrayLength(array);
+			end = cs->irb.GetSAALength(array);
 		}
 		else if(array->getType()->isArraySliceType())
 		{
@@ -166,7 +166,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		}
 		else if(array->getType()->isStringType())
 		{
-			end = cs->irb.GetStringLength(array);
+			end = cs->irb.GetSAALength(array);
 		}
 		else if(array->getType()->isArrayType())
 		{
@@ -205,13 +205,13 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			theptr = idxptr;
 
 		else if(array->getType()->isDynamicArrayType())
-			theptr = cs->irb.PointerAdd(cs->irb.GetDynamicArrayData(array), cs->irb.Load(idxptr));
+			theptr = cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.Load(idxptr));
 
 		else if(array->getType()->isArraySliceType())
 			theptr = cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr));
 
 		else if(array->getType()->isStringType())
-			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetStringData(array), cs->irb.Load(idxptr)), fir::Type::getInt8Ptr());
+			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.Load(idxptr)), fir::Type::getInt8Ptr());
 
 		else if(array->getType()->isArrayType())
 			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr));
