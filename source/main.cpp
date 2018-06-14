@@ -12,7 +12,7 @@
 struct timer
 {
 	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
-	~timer()                    { *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
 	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
 
 	double* out = 0;
