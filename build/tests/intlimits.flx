@@ -9,7 +9,7 @@ import "limits"
 
 public fn printIntegerLimits()
 {
-	libc.printf("i8.min   = %hhd\t\t\t\ti8.max   = %hhd\n", limits.i8.min,limits. i8.max);
+	libc.printf("i8.min   = %hd\t\t\t\ti8.max   = %hhd\n", limits.i8.min as i16, limits. i8.max);
 	libc.printf("i16.min  = %hd\t\t\ti16.max  = %hd\n", limits.i16.min, limits.i16.max);
 	libc.printf("i32.min  = %d\t\t\ti32.max  = %d\n", limits.i32.min, limits.i32.max);
 	libc.printf("i64.min  = %lld\t\ti64.max  = %lld\n", limits.i64.min, limits.i64.max);

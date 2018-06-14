@@ -724,7 +724,6 @@ namespace fir
 		// static funcs
 		public:
 		static DynamicArrayType* get(Type* elementType);
-		static DynamicArrayType* getVariadic(Type* elementType);
 	};
 
 

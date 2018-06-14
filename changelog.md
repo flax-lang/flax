@@ -1,6 +1,14 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix the bug where we were dealing incorrectly with non-generic types nested inside generic types.
+- fix calling variadic functions with no variadic args (by inserting an empty thing varslice in the generated arg list)
+- fix 0-cost casting between signed/unsigned ints causing overload failure.
+
+`(7e8322d)`
+- add `is` to streamline checking the `typeid` of `any` types.
+
+`(d1284a9)`
 - fix a bug wrt. scopes; refcount decrementing now happens at every block scope (not just loops) -- added a new `BlockPoint` thing to convey this.
 - fix a massive bug where `else-if` cases were never even being evaluated.
 - `stdio.flx`!

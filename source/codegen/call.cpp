@@ -107,11 +107,17 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 				val = cs->irb.GetArraySliceData(val);
 		}
 
-
-		// args.push_back(val);
 		ret[i] = val;
-
 		counter++;
+	}
+
+
+	// if we're calling a variadic function without any extra args, insert the slice at the back.
+	if(ft->isVariadicFunc() && arguments.size() == numArgs - 1)
+	{
+		auto et = ft->getArgumentTypes().back()->getArrayElementType();
+		ret.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(et),
+			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getInt64(0)));
 	}
 
 	return ret;
