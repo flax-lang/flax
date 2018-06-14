@@ -37,6 +37,18 @@ fn to_string_u64(n: u64) -> string
 }
 
 
+fn to_string_f64(n: f64) -> string
+{
+	var ret = @raw alloc i8 [24]
+	let len = libc.sprintf(ret, "%f", n)
+
+	let s = string(ret, len)
+	free ret
+
+	return s
+}
+
+
 
 public fn format(fmt: str, args: [any: ...]) -> string
 {
@@ -61,20 +73,23 @@ public fn format(fmt: str, args: [any: ...]) -> string
 				let arg = args[argi]
 				argi += 1
 
-				if arg.id == typeid(u8) || arg.id == typeid(u16) || arg.id == typeid(u32) || arg.id == typeid(u64)
-					=> ret.append(to_string_u64(arg as u64))
+				if arg is u8            => ret.append(to_string_u64(arg as u8))
+				else if arg is u16      => ret.append(to_string_u64(arg as u16))
+				else if arg is u32      => ret.append(to_string_u64(arg as u32))
+				else if arg is u64      => ret.append(to_string_u64(arg as u64))
 
-				else if arg.id == typeid(i8) || arg.id == typeid(i16) || arg.id == typeid(i32) || arg.id == typeid(i64)
-					=> ret.append(to_string_i64(arg as i64))
+				else if arg is i8       => ret.append(to_string_i64(arg as i8))
+				else if arg is i16      => ret.append(to_string_i64(arg as i16))
+				else if arg is i32      => ret.append(to_string_i64(arg as i32))
+				else if arg is i64      => ret.append(to_string_i64(arg as i64))
 
-				else if arg.id == typeid(str)
-					=> ret.append(arg as str)
+				else if arg is f32      => ret.append(to_string_f64(arg as f32))
+				else if arg is f64      => ret.append(to_string_f64(arg as f64))
 
-				else if arg.id == typeid(string)
-					=> ret.append(arg as string)
+				else if arg is string   => ret.append(arg as string)
+				else if arg is str      => ret.append(arg as str)
 
-				else
-					=> ret.append("(unknown)")
+				else                    => ret.append("(?)")
 			}
 		}
 		else

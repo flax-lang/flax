@@ -139,7 +139,8 @@ namespace parser
 			case TT::CaretEq:           return "^=";
 
 			case TT::Period:            return ".";
-			case TT::As:                return "cast";
+			case TT::As:                return "as";
+			case TT::Is:                return "is";
 			case TT::At:                return "@";
 
 			case TT::Ellipsis:          return "...";
@@ -323,6 +324,9 @@ namespace Operator
 	const std::string BitwiseXorEquals          = "^=";
 	const std::string BitwiseAndEquals          = "&=";
 	const std::string BitwiseOrEquals           = "|=";
+
+	const std::string TypeCast                  = "as";
+	const std::string TypeIs                    = "is";
 
 
 	bool isArithmetic(const std::string& op)

@@ -77,7 +77,11 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	{
 		return fir::Type::getBool();
 	}
-	else if(op == "cast")
+	else if(op == Operator::TypeIs)
+	{
+		return fir::Type::getBool();
+	}
+	else if(op == Operator::TypeCast)
 	{
 		return right;
 	}

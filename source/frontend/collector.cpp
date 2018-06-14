@@ -25,6 +25,11 @@ namespace frontend
 		state->allFiles = checkForCycles(full, buildDependencyGraph(graph, full, visited));
 		state->fullMainFile = full;
 		state->graph = graph;
+
+
+		// pre-lex everything.
+		for(const auto& f : state->allFiles)
+			frontend::getFileTokens(f);
 	}
 
 

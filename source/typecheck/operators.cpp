@@ -61,7 +61,8 @@ static bool isBuiltinOperator(std::string op)
 			op == Operator::BitwiseShiftRightEquals ||
 			op == Operator::BitwiseAndEquals ||
 			op == Operator::BitwiseOrEquals ||
-			op == "cast" || op == ".");
+			op == Operator::TypeCast || op == Operator::TypeIs ||
+			op == ".");
 }
 
 
