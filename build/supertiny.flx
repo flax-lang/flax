@@ -16,17 +16,6 @@ import "stdio" as _
 
 
 
-fn do_thing(a: i64)
-{
-	println("signed")
-}
-
-fn do_thing(a: u64)
-{
-	println("unsigned")
-}
-
-
 /*
 	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
@@ -67,7 +56,10 @@ fn do_thing(a: u64)
 	}
 	// 13. fix cross-module generic types -- see linkedlist.flx.
 	// 14. `i8.min` prints `128` instead of `-128` only on windows...
-	15. some way to do character literals.
+	15. builtin way to get a character literal {
+		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
+		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
+	}
 	// 16. overloading based on signedness seems to fail.
 */
 

@@ -1,5 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- fix string-literal-backslash bug.
+- clean up some of the old cruft lying around.
+- we can just make our own function called `char` that takes a slice and returns the first character. no compile-time guarantees,
+	but until we figure out something better it's better than nothing.
+
 `(0e53fce)`
 - fix the bug where we were dealing incorrectly with non-generic types nested inside generic types.
 - fix calling variadic functions with no variadic args (by inserting an empty thing varslice in the generated arg list)
