@@ -613,6 +613,12 @@ namespace lexer
 						stream = lines[*line];
 						(*offset) = 0;
 					}
+					else if(stream[i + 1] == '\\')
+					{
+						i++;
+						didRead += 2;
+						pos.col += 2;
+					}
 					else
 					{
 						// just put the backslash in.

@@ -9,6 +9,7 @@
 
 namespace sst
 {
+	#if 0
 	// not a constable, but whether it's "const"-able
 	static bool constable(const std::string& op)
 	{
@@ -31,6 +32,7 @@ namespace sst
 
 		error("not supported in const op");
 	}
+	#endif
 
 
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
@@ -107,7 +109,7 @@ namespace sst
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
 		auto [ l, r ] = std::make_tuple(_lr, _rr);
-		auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
+		// auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
 
 
 		#if 0
