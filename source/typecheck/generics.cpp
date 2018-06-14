@@ -37,16 +37,6 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 			* our stored state, while the preceding ones don't matter). (this is why we use reverse iterators for std::equal)
 		*/
 
-		if(this->generics.empty())
-		{
-			iceAssert(this->genericVersions.size() <= 1);
-			if(this->genericVersions.empty())
-				return { true, 0 };
-
-			else
-				return { true, this->genericVersions[0].first };
-		}
-		else
 		{
 			auto doRootsMatch = [](const std::vector<TypeParamMap_t>& expected, const std::vector<TypeParamMap_t>& given) -> bool {
 				if(given.size() < expected.size())

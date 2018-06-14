@@ -187,9 +187,17 @@ static std::string mangleType(fir::Type* t)
 static std::string _doMangle(const Identifier& id, bool includeScope)
 {
 	if(id.kind == IdKind::Name || id.kind == IdKind::Type)
-		return id.name;
+	{
+		std::string scp;
+		if(includeScope)
+			scp += mangleScopeOnly(id);
 
-	if(!includeScope)
+		if(includeScope && id.scope.size() > 0)
+			scp += std::to_string(id.name.length());
+
+		return scp + id.name;
+	}
+	else if(!includeScope)
 	{
 		if(id.kind == IdKind::Function)
 		{
@@ -219,9 +227,9 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 	{
 		std::string ret = "_F";
 
-		if(id.kind == IdKind::Function)					ret += "F";
-		else if(id.kind == IdKind::Type)					ret += "T";
-		else												ret += "U";
+		if(id.kind == IdKind::Function)     ret += "F";
+		else if(id.kind == IdKind::Type)    ret += "T";
+		else                                ret += "U";
 
 		if(includeScope)
 			ret += mangleScopeOnly(id);

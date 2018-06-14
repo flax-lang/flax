@@ -34,20 +34,30 @@ namespace sst
 		}
 		else if(from->isIntegerType() && to->isIntegerType())
 		{
-			auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
-
-			switch(bitdiff)
+			if(from->isSignedIntType() == to->isSignedIntType())
 			{
-				case 0:		return 0;	// same
-				case 8:		return 1;	// i16 - i8
-				case 16:	return 1;	// i32 - i16
-				case 32:	return 1;	// i64 - i32
+				auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
+				switch(bitdiff)
+				{
+					case 0:		return 0;	// same
+					case 8:		return 1;	// i16 - i8
+					case 16:	return 1;	// i32 - i16
+					case 32:	return 1;	// i64 - i32
 
-				case 24:	return 2;	// i32 - i8
-				case 48:	return 2;	// i64 - i16
+					case 24:	return 2;	// i32 - i8
+					case 48:	return 2;	// i64 - i16
 
-				case 56:	return 3;	// i64 - i8
-				default:	iceAssert(0);
+					case 56:	return 3;	// i64 - i8
+					default:	iceAssert(0);
+				}
+			}
+			else
+			{
+				// only allow casting unsigned things to signed things... maybe??
+				// TODO: investigate whether we want such loose casting.
+
+				//? for now, no.
+				return -1;
 			}
 		}
 		else if(from->isDynamicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
@@ -56,7 +66,7 @@ namespace sst
 		}
 		else if(from->isDynamicArrayType() && from->getArrayElementType()->isVoidType() && (to->isDynamicArrayType() || to->isArraySliceType() || to->isArrayType()))
 		{
-			return 0;
+			return 2;
 		}
 		else if(from->isFloatingPointType() && to->isFloatingPointType())
 		{

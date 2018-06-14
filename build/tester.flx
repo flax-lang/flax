@@ -10,7 +10,6 @@ import "limits"
 import "tests/fizzbuzz"
 import "tests/recursiveFib"
 import "tests/slices"
-// import "tests/forloops"
 import "tests/classes"
 import "tests/scopes"
 import "tests/defertest"
@@ -139,7 +138,7 @@ fn runTests()
 
 	// linked-list (generics)
 	libc.printf("%s%s", linkedListTitle, thinLine)
-	// test_linkedlist.doLinkedListTest()
+	test_linkedlist.doLinkedListTest()
 	libc.printf("\n\n\n")
 
 
