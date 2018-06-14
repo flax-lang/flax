@@ -867,6 +867,9 @@ namespace Operator
 	extern const std::string BitwiseAndEquals;
 	extern const std::string BitwiseOrEquals;
 
+	extern const std::string TypeCast;
+	extern const std::string TypeIs;
+
 
 	std::string getNonAssignmentVersion(const std::string& op);
 	bool isArithmetic(const std::string& op);

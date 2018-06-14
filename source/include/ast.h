@@ -522,7 +522,6 @@ namespace ast
 		Expr* expr = 0;
 	};
 
-
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
