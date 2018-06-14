@@ -8,6 +8,10 @@ import "libc"
 let ASCII_BACKSLASH: i8     = 92
 let ASCII_PERCENT: i8       = 37
 
+// this exists solely for semantic reasons.
+fn char(c: i8) -> i8    => c
+fn char(c: str) -> i8   => c[0]
+
 fn error(msg: str)
 {
 	libc.printf("Invalid format specifier: %s\n", msg)
@@ -62,7 +66,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 	while idx < fmt.length
 	{
 		let ch = fmt[idx]
-		if ch == ASCII_PERCENT
+		if ch == char("%")
 		{
 			if argi >= args.length
 			{
@@ -94,7 +98,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 		}
 		else
 		{
-			if ch == ASCII_BACKSLASH
+			if ch == char("\\")
 			{
 				idx += 1
 				ret.append(fmt[idx])
