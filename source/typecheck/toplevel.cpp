@@ -70,7 +70,7 @@ namespace sst
 
 						for(auto ot : others)
 						{
-							if(auto fn = dynamic_cast<sst::FunctionDecl*>(def))
+							if(auto fn = dynamic_cast<FunctionDecl*>(def))
 							{
 								if(auto v = dynamic_cast<VarDefn*>(ot))
 								{
@@ -107,7 +107,7 @@ namespace sst
 							{
 								// probably a class or something
 
-								SimpleError::make(def, "Duplicate definition of '%s'", ot->id.name)
+								SimpleError::make(def, "Duplicate definition of '%s'", def->id.name)
 									.append(SimpleError::make(MsgType::Note, ot, "Conflicting definition was here:"))
 									.postAndQuit();
 							}

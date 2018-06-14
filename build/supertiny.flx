@@ -7,16 +7,24 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-import "stdio"
+import "stdio" as _
 
 @entry fn main()
 {
-	stdio.println("hello, %, %!", "world", 50)
+	println("hello, %, %!", "world", 50)
 }
 
 
 
+fn do_thing(a: i64)
+{
+	println("signed")
+}
 
+fn do_thing(a: u64)
+{
+	println("unsigned")
+}
 
 
 /*
@@ -57,10 +65,10 @@ import "stdio"
 		eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
 		foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
 	}
-	13. fix cross-module generic types -- see linkedlist.flx.
-	14. `i8.min` prints `128` instead of `-128` only on windows...
+	// 13. fix cross-module generic types -- see linkedlist.flx.
+	// 14. `i8.min` prints `128` instead of `-128` only on windows...
 	15. some way to do character literals.
-	16. overloading based on signedness seems to fail.
+	// 16. overloading based on signedness seems to fail.
 */
 
 
