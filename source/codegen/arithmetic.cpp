@@ -37,7 +37,7 @@ namespace sst
 	{
 		iceAssert(!Operator::isAssignment(this->op));
 
-		if(this->op == "cast")
+		if(this->op == Operator::TypeCast)
 		{
 			auto target = this->right->codegen(cs).value->getType();
 			auto value = this->left->codegen(cs).value;
@@ -77,6 +77,24 @@ namespace sst
 
 				return CGResult(res);
 			}
+		}
+		else if(this->op == Operator::TypeIs)
+		{
+			auto target = this->right->codegen(cs).value->getType();
+			auto value = this->left->codegen(cs).value;
+
+			fir::Value* res = 0;
+			if(value->getType()->isAnyType())
+			{
+				// get the type out.
+				res = cs->irb.GetAnyTypeID(value);
+			}
+			else
+			{
+				res = fir::ConstantInt::getUint64(value->getType()->getID());
+			}
+
+			return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
 		}
 
 

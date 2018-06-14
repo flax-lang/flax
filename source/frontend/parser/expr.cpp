@@ -260,6 +260,7 @@ namespace parser
 			// ^^ all have 950.
 
 			case TT::As:
+			case TT::Is:
 				return 900;
 
 			case TT::DoublePlus:
@@ -371,7 +372,7 @@ namespace parser
 
 
 			Expr* rhs = 0;
-			if(op == "cast")
+			if(op == Operator::TypeCast)
 			{
 				if(st.front() == TT::Mutable || (st.front() == TT::Exclamation && st.lookahead(1) == TT::Mutable))
 				{
@@ -391,6 +392,10 @@ namespace parser
 				{
 					rhs = new TypeExpr(loc, parseType(st));
 				}
+			}
+			else if(op == Operator::TypeIs)
+			{
+				rhs = new TypeExpr(loc, parseType(st));
 			}
 			else
 			{

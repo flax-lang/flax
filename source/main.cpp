@@ -9,36 +9,59 @@
 
 #include "ir/module.h"
 
+struct timer
+{
+	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
+	~timer()                    { *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+
+	double* out = 0;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+};
+
+
+
 static void compile(std::string in, std::string out)
 {
 	auto ts = std::chrono::high_resolution_clock::now();
 
+	double lexer_ms = 0;
+	double parser_ms = 0;
+	double typecheck_ms = 0;
+
+
 	frontend::CollectorState state;
 	sst::DefinitionTree* dtree = 0;
 	{
-		auto ts = std::chrono::high_resolution_clock::now();
-		frontend::collectFiles(in, &state);
-		frontend::parseFiles(&state);
+		{
+			timer t(&lexer_ms);
+			frontend::collectFiles(in, &state);
+		}
 
-		auto dur = std::chrono::high_resolution_clock::now() - ts;
-		auto ms = (double) dur.count() / 1000.0 / 1000.0;
-		fprintf(stderr, "frontend took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
+		{
+			timer t(&parser_ms);
+			frontend::parseFiles(&state);
+		}
 
-		ts = std::chrono::high_resolution_clock::now();
-		dtree = frontend::typecheckFiles(&state);
+		{
+			timer t(&typecheck_ms);
 
-		dur = std::chrono::high_resolution_clock::now() - ts;
-		ms = (double) dur.count() / 1000.0 / 1000.0;
-		fprintf(stderr, "typecheck took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
+			dtree = frontend::typecheckFiles(&state);
+			iceAssert(dtree);
+		}
 	}
 
-	iceAssert(dtree);
+	timer t(nullptr);
+
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	auto cd = backend::CompiledData { module };
 
-	auto dur = std::chrono::high_resolution_clock::now() - ts;
-	auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	fprintf(stderr, "compilation (excluding llvm) took %.1f ms  (aka %.2f s)\n", ms, ms / 1000.0);
+	auto codegen_ms = t.stop();
+
+	auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
+	fprintf(stderr, "compile took %.1f (lexer: %.1f parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
+		compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
+		compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
 
 	{
 		using namespace backend;
