@@ -12,31 +12,31 @@ matrix:
 addons:
     apt:
         sources:
-        - llvm-toolchain-trusty-5.0
+        - llvm-toolchain-trusty-6.0
         - ubuntu-toolchain-r-test
 
         packages:
         - g++-7
-        - llvm-5.0
-        - llvm-5.0-dev
-        - libllvm5.0
+        - llvm-6.0
+        - llvm-6.0-dev
+        - libllvm6.0
         - libmpfr-dev
         - libmpfr4
 
 before_script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        brew install llvm@5;
+        brew install llvm@6;
         brew upgrade mpfr;
-        cd $(brew --cellar)/llvm@5/*;
-        cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
-        patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
-        ls -R bin;
-        cd $TRAVIS_BUILD_DIR;
+        # cd $(brew --cellar)/llvm@5/*;
+        # cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
+        # patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
+        # ls -R bin;
+        # cd $TRAVIS_BUILD_DIR;
       fi
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then PATH="/usr/local/opt/llvm@5/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
+        then PATH="/usr/local/opt/llvm@6/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
       else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
       fi
 

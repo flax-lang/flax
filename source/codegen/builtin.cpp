@@ -50,7 +50,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(arguments.empty());
 			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
 
-			auto ret = cs->irb.Call(clonef, res.value, fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getInt64(0));
 			return CGResult(ret, 0, CGResult::VK::LitRValue);
 		}
 		else if(this->name == BUILTIN_ARRAY_FN_POP)
@@ -95,10 +95,10 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(appendf);
 
 			if(arg->getType()->isDynamicArrayType() && arg->getType() == ty)
-				arg = cs->irb.CreateSliceFromDynamicArray(arg, true);
+				arg = cs->irb.CreateSliceFromSAA(arg, true);
 
 			else if(arg->getType()->isStringType() && arg->getType() == ty)
-				arg = cs->irb.CreateSliceFromString(arg, true);
+				arg = cs->irb.CreateSliceFromSAA(arg, true);
 
 			auto ret = cs->irb.Call(appendf, res.value, arg);
 

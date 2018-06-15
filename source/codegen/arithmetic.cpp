@@ -65,7 +65,10 @@ namespace sst
 			}
 			else if(vt->isAnyType())
 			{
-				return CGResult(cgn::glue::any::getAnyValue(cs, value, target));
+				auto fn = cgn::glue::any::generateGetValueFromAnyFunction(cs, target);
+				iceAssert(fn);
+
+				return CGResult(cs->irb.Call(fn, value));
 			}
 			else
 			{
@@ -444,7 +447,7 @@ namespace cgn
 
 
 				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, false), this->irb.CreateSliceFromString(rv, false));
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, false), this->irb.CreateSliceFromSAA(rv, false));
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
@@ -462,7 +465,7 @@ namespace cgn
 				}
 
 				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, false), rv);
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, false), rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
@@ -493,7 +496,7 @@ namespace cgn
 
 
 				auto appfn = cgn::glue::string::getConstructWithCharFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromString(lv, true), rv);
+				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, true), rv);
 				this->addRefCountedValue(res);
 
 				return CGResult(res);
@@ -507,8 +510,8 @@ namespace cgn
 				// ok, do the append
 				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
 
-				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromDynamicArray(lv, false),
-					this->irb.CreateSliceFromDynamicArray(rv, false));
+				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromSAA(lv, false),
+					this->irb.CreateSliceFromSAA(rv, false));
 
 				this->addRefCountedValue(res);
 

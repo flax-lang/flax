@@ -69,12 +69,15 @@ class Dalmation : Dog
 public fn doClassTest()
 {
 	do {
-		// don't question.
-		srand(284811)
 
-		let dogs = alloc &Dog [5] {
-			if i % 2 == 1   { it = alloc Dalmation }
-			else            { it = alloc Dog }
+		// don't question.
+		srand(2848131)
+
+		let dogs = alloc &Dog [10] {
+			if i % 3 == 1   => it = alloc Dalmation
+			else            => it = alloc Dog
+
+			if i % 2 == 1   => (it as mut).tail = i + 1 * 3
 		}
 
 		for dog, i in dogs {

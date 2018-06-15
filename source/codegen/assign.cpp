@@ -58,7 +58,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, false));
 
 				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);
@@ -88,7 +88,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::string::getAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromString(rr.value, true));
+				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, true));
 
 				cs->irb.Store(res, lr.pointer);
 				return CGResult(0);

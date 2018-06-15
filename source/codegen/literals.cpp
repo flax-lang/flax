@@ -201,7 +201,9 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type->isTupleType());
-	auto tup = cs->irb.CreateValue(this->type);
+
+	bool allConst = true;
+	std::vector<fir::Value*> vals;
 
 	for(size_t i = 0; i < this->values.size(); i++)
 	{
@@ -217,10 +219,23 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				i, ty, vr.value->getType());
 		}
 
-		tup = cs->irb.InsertValue(tup, { i }, vr.value);
+		allConst &= (bool) dcast(fir::ConstantValue, vr.value);
+		vals.push_back(vr.value);
 	}
 
-	return CGResult(tup, 0, CGResult::VK::LitRValue);
+	if(allConst)
+	{
+		std::vector<fir::ConstantValue*> consts = util::map(vals, [](auto e) -> auto { return dcast(fir::ConstantValue, e); });
+		return CGResult(fir::ConstantTuple::get(consts), 0, CGResult::VK::LitRValue);
+	}
+	else
+	{
+		auto tup = cs->irb.CreateValue(this->type);
+		for(size_t i = 0; i < vals.size(); i++)
+			tup = cs->irb.InsertValue(tup, { i }, vals[i]);
+
+		return CGResult(tup, 0, CGResult::VK::LitRValue);
+	}
 }
 
 

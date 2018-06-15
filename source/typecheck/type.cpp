@@ -163,6 +163,8 @@ namespace sst
 						auto tyd = dcast(TypeDefn, d);
 						if(!tyd)
 						{
+							if(allowFail) return 0;
+
 							//* example of something 'wrong'
 							SimpleError::make(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name)
 								.append(SimpleError::make(MsgType::Note, d, "'%s' was defined here:", d->id.name))

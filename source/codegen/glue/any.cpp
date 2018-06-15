@@ -155,6 +155,156 @@ namespace any
 	}
 
 
+
+	fir::Function* generateCreateAnyWithValueFunction(CodegenState* cs, fir::Type* type)
+	{
+		auto fname = "__create_any_of_" + type->str();
+		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+
+		if(!retfn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+				fir::FunctionType::get({ type }, fir::Type::getAny()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+
+			auto any = cs->irb.CreateValue(fir::Type::getAny());
+			auto dataarrty = fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT);
+
+			// make the refcount pointer.
+			auto rcp = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
+				fir::ConstantInt::getInt64(REFCOUNT_SIZE)), fir::Type::getInt64Ptr());
+
+			any = cs->irb.SetAnyRefCountPointer(any, rcp);
+			cs->irb.SetAnyRefCount(any, fir::ConstantInt::getInt64(1));
+
+			size_t tid = type->getID();
+			if(auto typesz = cs->module->getSizeOfType(type); typesz > BUILTIN_ANY_DATA_BYTECOUNT)
+			{
+				tid |= BUILTIN_ANY_FLAG_MASK;
+
+				auto ptr = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
+					fir::ConstantInt::getInt64(typesz)), type->getMutablePointerTo());
+
+				#if DEBUG_ANY_ALLOCATION
+				{
+					cs->printIRDebugMessage("*    ANY: alloc(): (id: %lu, ptr: %p / rcp: %p)", {
+						fir::ConstantInt::getUint64(tid), ptr, rcp });
+				}
+				#endif
+
+				cs->irb.Store(func->getArguments()[0], ptr);
+				ptr = cs->irb.PointerToIntCast(ptr, fir::Type::getInt64());
+
+				// now, we make a fake data, and then store it.
+				auto arrptr = cs->irb.StackAlloc(dataarrty);
+				auto fakeptr = cs->irb.PointerTypeCast(arrptr, fir::Type::getMutInt64Ptr());
+				cs->irb.Store(ptr, fakeptr);
+
+				auto arr = cs->irb.Load(arrptr);
+				any = cs->irb.SetAnyData(any, arr);
+			}
+			else
+			{
+				auto arrptr = cs->irb.StackAlloc(dataarrty);
+				auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
+				cs->irb.Store(func->getArguments()[0], fakeptr);
+
+				auto arr = cs->irb.Load(arrptr);
+				any = cs->irb.SetAnyData(any, arr);
+			}
+
+			any = cs->irb.SetAnyTypeID(any, fir::ConstantInt::getUint64(tid));
+			cs->irb.Return(any);
+
+			cs->irb.setCurrentBlock(restore);
+			retfn = func;
+		}
+
+		iceAssert(retfn);
+		return retfn;
+	}
+
+	fir::Function* generateGetValueFromAnyFunction(CodegenState* cs, fir::Type* type)
+	{
+		auto fname = "__get_any_value_of_" + type->str();
+		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+
+		if(!retfn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getAny() }, type), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			auto any = func->getArguments()[0];
+
+			auto dataarrty = fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT);
+			auto tid = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUint64(~BUILTIN_ANY_FLAG_MASK));
+
+			fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
+			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
+
+			auto valid = cs->irb.ICmpEQ(tid, fir::ConstantInt::getUint64(type->getID()));
+			cs->irb.CondBranch(valid, merge, invalid);
+
+			cs->irb.setCurrentBlock(invalid);
+			{
+				printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
+					"invalid unwrap of 'any' with type id '%ld' into type '%s' (with id '%ld')",
+					{ tid, cs->module->createGlobalString(type->str()), fir::ConstantInt::getUint64(type->getID()) }
+				);
+			}
+
+			cs->irb.setCurrentBlock(merge);
+			{
+				if(cs->module->getSizeOfType(type) > BUILTIN_ANY_DATA_BYTECOUNT)
+				{
+					// same as above, but in reverse.
+					auto arrptr = cs->irb.StackAlloc(dataarrty);
+					cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
+
+					// cast the array* into a type**, so when we dereference it, we get the first 8 bytes interpreted as a type*.
+					// we then just load and return that.
+					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo()->getMutablePointerTo());
+					auto typeptr = cs->irb.Load(fakeptr);
+					cs->irb.Return(cs->irb.Load(typeptr));
+				}
+				else
+				{
+					auto arrptr = cs->irb.StackAlloc(dataarrty);
+					cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
+
+					// same as above but we skip a load.
+					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
+					cs->irb.Return(cs->irb.Load(fakeptr));
+				}
+			}
+
+
+			cs->irb.setCurrentBlock(restore);
+			retfn = func;
+		}
+
+		iceAssert(retfn);
+		return retfn;
+	}
+
+
+
+
+	#if 0
 	fir::Value* createAnyWithValue(CodegenState* cs, fir::Value* val)
 	{
 		auto type = val->getType();
@@ -254,6 +404,7 @@ namespace any
 			}
 		}
 	}
+	#endif
 }
 }
 }

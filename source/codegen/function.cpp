@@ -47,16 +47,16 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->parentTypeForMethod)
 		cs->enterMethodBody(fn, fn->getArguments()[0]);
 
+	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
+	cs->irb.setCurrentBlock(block);
+
 	for(auto a : this->arguments)
 		a->codegen(cs);
 
-	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
-	cs->irb.setCurrentBlock(block);
 
 	// special thing here:
 	// push a breakable block (ControlFlowPoint) so that a manual 'return' can know how to
 	// do refcounting and deferred things.
-
 
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
@@ -135,8 +135,11 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// get the arguments
 	auto arg = fn->getArgumentWithName(this->id.name);
 
+	// store the thing.
+	auto ptr = cs->irb.ImmutStackAlloc(arg->getType(), arg);
+
 	// ok...
-	cs->valueMap[this] = CGResult(arg);
+	cs->valueMap[this] = CGResult(arg, ptr, CGResult::VK::LValue);
 	return CGResult(arg);
 }
 

@@ -13,8 +13,8 @@ public fn doForLoopTest()
 		let r1 = 0 ... 3
 		let r2 = 0 ..< 1
 
-		printf("r1.l = %d, r1.u = %d\n", r1.lower, r1.upper)
-		printf("r2.l = %d, r2.u = %d\n\n", r2.lower, r2.upper)
+		printf("r1.l = %d, r1.u = %d\n", r1.begin, r1.end)
+		printf("r2.l = %d, r2.u = %d\n\n", r2.begin, r2.end)
 
 		for i, j in r1
 		{

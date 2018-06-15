@@ -154,7 +154,9 @@ namespace saa_common
 			fir::Value* clone = 0;
 
 			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
-			clone = cs->irb.Call(fn, cs->irb.Load(origElm), fir::ConstantInt::getInt64(0));
+			auto elm = cs->irb.Load(origElm);
+
+			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getInt64(0));
 
 			// store clone
 			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.Load(counter));
@@ -193,7 +195,7 @@ namespace saa_common
 			iceAssert(clonef);
 
 			// loop
-			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getMutablePointerTo());
 			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
 		}
 		else if(elmType->isArraySliceType())
@@ -203,7 +205,7 @@ namespace saa_common
 			iceAssert(clonef);
 
 			// loop
-			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getMutablePointerTo());
 			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
 		}
 		else if(elmType->isStringType())
@@ -212,7 +214,7 @@ namespace saa_common
 			iceAssert(clonef);
 
 			// loop
-			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getPointerTo());
+			fir::Value* cloneptr = cs->irb.PointerTypeCast(newptr, elmType->getMutablePointerTo());
 			_callCloneFunctionInLoop(cs, func, clonef, oldptr, oldlen, cloneptr, startIndex);
 		}
 		else if(elmType->isStructType() || elmType->isClassType() || elmType->isTupleType() || elmType->isArrayType())
