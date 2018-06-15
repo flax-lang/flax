@@ -82,8 +82,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType());
 
 			// ok
-			auto trueblk = cs->irb.addNewBlockAfter("trueCaseR", cs->irb.getCurrentBlock());
-			auto falseblkr = cs->irb.addNewBlockAfter("falseCaseR", cs->irb.getCurrentBlock());
+			auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + elif.cond->loc.shortString(), cs->irb.getCurrentBlock());
+			auto falseblkr = cs->irb.addNewBlockAfter("falseCase-" + elif.cond->loc.shortString(), cs->irb.getCurrentBlock());
 
 			fir::Value* cmpr = cs->irb.ICmpEQ(cond, fir::ConstantBool::get(true));
 
@@ -105,7 +105,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				if(elif == remaining.back())
 				{
 					if(!cs->irb.getCurrentBlock()->isTerminated())
-						cs->irb.UnCondBranch(mergeblk);
+						cs->irb.UnCondBranch(elseblk);
 
 					break;
 				}

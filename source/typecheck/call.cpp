@@ -271,13 +271,9 @@ namespace sst
 			if(target.size() == args.size())
 			{
 				auto lasty = args.back().type;
-				if(lasty->isArraySliceType())
+				if(lasty->isArraySliceType() && args.back().wasSplat)
 				{
-					if(!args.back().wasSplat)
-					{
-						spanerr.add(Span(target.back().loc, strprintf("To forward a parameter pack, or to pass a slice as a parameter pack to a variadic function, use the splat (`...`) operator")));
-					}
-					else if(lasty->getArrayElementType() != elmTy)
+					if(lasty->getArrayElementType() != elmTy)
 					{
 						spanerr.add(Span(target.back().loc, strprintf("Mismatched type in parameter pack forwarding: expected element type of '%s', but found '%s' instead", elmTy, lasty->getArrayElementType())));
 					}

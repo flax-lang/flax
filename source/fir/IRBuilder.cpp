@@ -14,6 +14,21 @@
 #define DO_IN_SITU_CONSTANT_FOLDING		0
 
 
+
+static bool isSAAType(fir::Type* t)
+{
+	return t->isStringType() || t->isDynamicArrayType();
+}
+
+static fir::Type* getSAAElmType(fir::Type* t)
+{
+	iceAssert(isSAAType(t));
+
+	if(t->isStringType())   return fir::Type::getInt8();
+	else                    return t->getArrayElementType();
+}
+
+
 namespace fir
 {
 	IRBuilder::IRBuilder(Module* mod)
@@ -1253,34 +1268,38 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateSliceFromString(Value* str, bool mut, std::string vname)
+	Value* IRBuilder::CreateSliceFromSAA(Value* saa, bool mut, std::string vname)
 	{
-		if(!str->getType()->isStringType())
-			error("expected string type, found '%s' instead", str->getType());
+		if(!isSAAType(saa->getType()))
+			error("expected string or dynamic array type, found '%s' instead", saa->getType());
 
+		auto slc = this->CreateValue(saa->getType()->isStringType() ? fir::Type::getCharSlice(mut)
+			: fir::ArraySliceType::get(saa->getType()->getArrayElementType(), mut));
 
-		// this is one of those compound thingies.
-		auto slc = this->CreateValue(fir::Type::getCharSlice(mut));
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? fir::Type::getMutInt8Ptr() : fir::Type::getInt8Ptr()));
-		slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
+		auto slcelmty = slc->getType()->getArrayElementType();
+
+		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(saa), mut ? slcelmty->getMutablePointerTo()
+			: slcelmty->getPointerTo()));
+
+		slc = this->SetArraySliceLength(slc, this->GetSAALength(saa));
 
 		return slc;
 	}
 
-	Value* IRBuilder::CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname)
-	{
-		if(!str->getType()->isDynamicArrayType())
-			error("expected dynamic array type, found '%s' instead", str->getType());
+	// Value* IRBuilder::CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname)
+	// {
+	// 	if(!str->getType()->isDynamicArrayType())
+	// 		error("expected dynamic array type, found '%s' instead", str->getType());
 
-		auto elmty = str->getType()->getArrayElementType();
+	// 	auto elmty = str->getType()->getArrayElementType();
 
-		// this is one of those compound thingies.
-		auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
-		slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
+	// 	// this is one of those compound thingies.
+	// 	auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
+	// 	slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
+	// 	slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
 
-		return slc;
-	}
+	// 	return slc;
+	// }
 
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
@@ -1629,19 +1648,6 @@ namespace fir
 
 
 
-
-	static bool isSAAType(fir::Type* t)
-	{
-		return t->isStringType() || t->isDynamicArrayType();
-	}
-
-	static fir::Type* getSAAElmType(fir::Type* t)
-	{
-		iceAssert(isSAAType(t));
-
-		if(t->isStringType())   return fir::Type::getInt8();
-		else                    return t->getArrayElementType();
-	}
 
 
 
