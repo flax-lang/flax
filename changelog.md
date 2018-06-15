@@ -1,6 +1,12 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- factor the any-making/getting stuff into functions for less IR mess.
+- fix a massive bug in `alloc` where we never called the user-code, or set the length.
+- add stack-allocs for arguments so we can take their address. might be in poor taste, we'll see.
+- enable more tests in `tester.flx`.
+
+`(70d78b4)`
 - fix string-literal-backslash bug.
 - clean up some of the old cruft lying around.
 - we can just make our own function called `char` that takes a slice and returns the first character. no compile-time guarantees,

@@ -168,9 +168,7 @@ namespace cgn
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
 			// ok, then
-			//! ACHTUNG !
-			//* note: see typecheck/slice.cpp -- slices of dynamic arrays are always mutable.
-			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), true));
+			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), target->toArraySliceType()->isMutable()));
 			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
 			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
 
@@ -221,7 +219,10 @@ namespace cgn
 		else if(target->isAnyType())
 		{
 			// great.
-			return CGResult(glue::any::createAnyWithValue(this, from.value), 0, CGResult::VK::LitRValue);
+			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from.value->getType());
+			iceAssert(fn);
+
+			return CGResult(this->irb.Call(fn, from.value), 0, CGResult::VK::LitRValue);
 		}
 
 		// nope.

@@ -95,7 +95,15 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 				}
 				else
 				{
+					//! ACHTUNG !
+					//* hack: the only reason to add to the refcount table is so we can remove it later
+					//* when we move-assign below.
+
 					auto value = cs->getDefaultValue(type);
+
+					if(cs->isRefCountedType(type))
+						cs->addRefCountedValue(value);
+
 					cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value), true, true);
 				}
 			};
@@ -166,6 +174,10 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		iceAssert(expandfn);
 
 		arr = cs->irb.Call(expandfn, arr, count);
+		arr = cs->irb.SetSAALength(arr, count);
+
+		callSetFunction(type, alloc, cs->irb.GetSAAData(arr), count);
+
 		return arr;
 
 		#if 0

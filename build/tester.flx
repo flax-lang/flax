@@ -13,10 +13,13 @@ import "tests/slices"
 import "tests/classes"
 import "tests/scopes"
 import "tests/defertest"
+import "tests/anytest"
 import "tests/decomposition"
 import "tests/intlimits"
 import "tests/generics"
 import "tests/linkedlist"
+import "tests/forloops"
+import "tests/arraytest"
 
 fn runTests()
 {
@@ -83,7 +86,7 @@ fn runTests()
 
 	// arrays
 	libc.printf("%s%s", arrayTitle, thinLine)
-	// doArrayTest()
+	test_arrays.doArrayTest()
 	libc.printf("\n\n\n")
 
 
@@ -95,7 +98,7 @@ fn runTests()
 
 	// classes
 	libc.printf("%s%s", classTitle, thinLine)
-	// test_classes.doClassTest()
+	test_classes.doClassTest()
 	libc.printf("\n\n\n")
 
 
@@ -113,7 +116,7 @@ fn runTests()
 
 	// any
 	libc.printf("%s%s", anyTitle, thinLine)
-	// doAnyTest()
+	test_any.doAnyTest()
 	libc.printf("\n\n\n")
 
 
@@ -131,7 +134,7 @@ fn runTests()
 
 	// for-loops
 	libc.printf("%s%s", forLoopTitle, thinLine)
-	// test_forloops.doForLoopTest()
+	test_forloops.doForLoopTest()
 	libc.printf("\n\n\n")
 
 

@@ -137,8 +137,8 @@ namespace cgn
 			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
 			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
 
-			fir::Value* createAnyWithValue(CodegenState* cs, fir::Value* val);
-			fir::Value* getAnyValue(CodegenState* cs, fir::Value* any, fir::Type* type);
+			fir::Function* generateCreateAnyWithValueFunction(CodegenState* cs, fir::Type* type);
+			fir::Function* generateGetValueFromAnyFunction(CodegenState* cs, fir::Type* type);
 		}
 
 		namespace misc

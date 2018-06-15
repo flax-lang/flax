@@ -170,7 +170,7 @@ namespace pts
 
 	std::string PointerType::str()
 	{
-		return "&" + this->base->str();
+		return (this->isMutable ? "&mut " : "&") + this->base->str();
 	}
 
 	std::string TupleType::str()

@@ -75,10 +75,10 @@ namespace string
 			*/
 
 			{
-				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getMutInt8Ptr());
 				cs->irb.Store(cs->irb.GetSAAData(s1, "s1"), str1p);
 
-				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
+				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getMutInt8Ptr());
 				cs->irb.Store(cs->irb.GetSAAData(s2, "s2"), str2p);
 
 

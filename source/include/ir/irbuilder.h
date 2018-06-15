@@ -152,8 +152,7 @@ namespace fir
 		void SetSAARefCount(Value* str, Value* val, std::string vname = "");
 
 
-		Value* CreateSliceFromString(Value* str, bool mut, std::string vname = "");
-		Value* CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname = "");
+		Value* CreateSliceFromSAA(Value* str, bool mut, std::string vname = "");
 
 
 
