@@ -173,7 +173,7 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::vector<Value*> vals);
+		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, std::vector<Value*> vals, Value::Kind k = Value::Kind::rvalue);
 		std::string str();
 
 		Value* getResult();

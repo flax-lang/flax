@@ -13,15 +13,14 @@ namespace fir
 {
 	ConstantValue::ConstantValue(Type* t) : Value(t)
 	{
-		// nothing.
+		this->kind = Kind::literal;
 	}
 
 	ConstantValue* ConstantValue::getZeroValue(Type* type)
 	{
 		iceAssert(!type->isVoidType() && "cannot make void constant");
 
-		auto ret = new ConstantValue(type);
-		return ret;
+		return new ConstantValue(type);
 	}
 
 	ConstantValue* ConstantValue::getNull()

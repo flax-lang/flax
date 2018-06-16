@@ -215,7 +215,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		else if(array->getType()->isArrayType())
 		{
 			fir::Value* arrptr = 0;
-			if(array->islorclvalue())   arrptr = cs->irb.AddressOf(array);
+			if(array->islorclvalue())   arrptr = cs->irb.AddressOf(array, false);
 			else                        arrptr = cs->irb.CreateConstLValue(array);
 
 			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrptr, 0, 0), cs->irb.ReadPtr(idxptr));
@@ -229,7 +229,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		// make the block
 		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, check));
 		{
-			auto res = CGResult(theptr);
+			// TODO: is this correct???
+			auto res = CGResult(cs->irb.Dereference(theptr));
 			cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
 
 			if(this->indexVar)

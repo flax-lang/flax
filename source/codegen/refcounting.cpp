@@ -80,7 +80,7 @@ namespace cgn
 
 		// then, remove the rhs from any refcounting table
 		// but don't change the refcount itself.
-		if(!rhs->isclvalue())
+		if(!rhs->isLiteral())
 			this->removeRefCountedValue(rhs);
 	}
 
@@ -108,20 +108,38 @@ namespace cgn
 	void CodegenState::autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isinit, bool performstore)
 	{
 		iceAssert(lhs && rhs);
+		bool isPointer = false;
+
 		if(!lhs->islorclvalue())
-			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
+		{
+			if(lhs->getType()->isPointerType())
+			{
+				if(rhs->getType() != lhs->getType()->getPointerElementType())
+					error(this->loc(), "mismatched types in assignment (move); cannot store value '%s' in '%s'", rhs->getType(), lhs->getType());
+
+				lhs = this->irb.Dereference(lhs);
+			}
+			else
+			{
+				error(this->loc(), "assignment (move) to non-lvalue and non-pointer (type '%s')", lhs->getType());
+			}
+		}
+
 
 		if(this->isRefCountedType(rhs->getType()))
 		{
-			if(rhs->islorclvalue())
+			// if(rhs->islorclvalue())
 				this->performRefCountingAssignment(lhs, rhs, isinit);
 
-			else
-				this->moveRefCountedValue(lhs, rhs, isinit);
+			// else
+				// this->moveRefCountedValue(lhs, rhs, isinit);
 		}
 
 		if(performstore)
-			this->irb.WritePtr(rhs, lhs);
+		{
+			if(isPointer)   this->irb.WritePtr(rhs, lhs);
+			else            this->irb.Store(rhs, lhs);
+		}
 	}
 
 

@@ -58,7 +58,8 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		cs->autoAssignRefCountedValue(alloc, res, true, true);
 
 		// go and fix the thing.
-		if(this->immutable) alloc->setType(alloc->getType()->getImmutablePointerVersion());
+		if(this->immutable)
+			alloc->makeConst();
 
 		cs->leaveGlobalInitFunction(rest);
 
@@ -115,7 +116,7 @@ void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* a
 		this->autoAssignRefCountedValue(alloc, val.value, true, !var->immutable);
 
 	if(this->isRefCountedType(var->type))
-		this->addRefCountedPointer(alloc);
+		this->addRefCountedValue(alloc);
 }
 
 
@@ -132,13 +133,13 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	CGResult defn;
+	fir::Value* value = 0;
 	{
 		auto it = cs->valueMap.find(this->def);
 
 		if(it != cs->valueMap.end())
 		{
-			defn = it->second;
+			value = it->second.value;
 		}
 		else
 		{
@@ -148,7 +149,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				iceAssert(cs->isInMethodBody());
 				return cs->getStructFieldImplicitly(this->name);
 			}
-			else if(!defn.value)
+			else
 			{
 				// warn(this, "forcing codegen of this");
 				// warn(this->def, "here");
@@ -162,7 +163,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 						.postAndQuit();
 				}
 
-				defn = it->second;
+				value = it->second.value;
 			}
 		}
 	}
@@ -180,11 +181,10 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// }
 
 	// make sure types match... should we bother?
-	if(defn.value->getType() != this->type)
-		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, defn.value->getType());
+	if(value->getType() != this->type)
+		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
-	// return CGResult(value, defn.pointer, CGResult::VK::LValue);
-	return CGResult(defn.value);
+	return CGResult(value);
 }
 
 

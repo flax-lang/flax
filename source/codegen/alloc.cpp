@@ -66,8 +66,8 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			iceAssert(alloc->initBlockVar);
 
 			// ok, then. create the variables:
-			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(cs->irb.ReadPtr(idxp)));
-			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(cs->irb.ReadPtr(elmp)));
+			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(0));
+			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(0));
 
 			alloc->initBlock->codegen(cs);
 		};
@@ -76,7 +76,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 		{
 			auto arrp = ptr;
-			auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
+			auto ctrp = cs->irb.CreateLValue(fir::Type::getInt64());
 
 			auto actuallyStore = [cs, type, alloc](fir::Value* ptr) -> void {
 
@@ -116,20 +116,19 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			else
 			{
 				cs->createWhileLoop([cs, ctrp, count](auto pass, auto fail) {
-					auto cond = cs->irb.ICmpLT(cs->irb.ReadPtr(ctrp), count);
+					auto cond = cs->irb.ICmpLT(ctrp, count);
 					cs->irb.CondBranch(cond, pass, fail);
 				},
 				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
 
-					auto ctr = cs->irb.ReadPtr(ctrp);
-					auto ptr = cs->irb.PointerAdd(arrp, ctr);
+					auto ptr = cs->irb.PointerAdd(arrp, ctrp);
 
 					actuallyStore(ptr);
 
 					if(alloc->initBlock)
-						callUserCode(ptr, ctrp);
+						callUserCode(cs->irb.Dereference(ptr), ctrp);
 
-					cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+					cs->irb.Store(cs->irb.Add(ctrp, fir::ConstantInt::getInt64(1)), ctrp);
 				});
 			}
 		}
@@ -177,6 +176,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		arr = cs->irb.SetSAALength(arr, count);
 
 		callSetFunction(type, alloc, cs->irb.GetSAAData(arr), count);
+		// arr->setKind(fir::Value::Kind::clvalue);
 
 		return arr;
 	}

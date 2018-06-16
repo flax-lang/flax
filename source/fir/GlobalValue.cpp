@@ -14,8 +14,10 @@ namespace fir
 		this->linkageType = linkage;
 		this->parentModule = m;
 
+		//* not a typo; only variables deserve to be 'lvalue', global values (eg. functions)
+		//* should just be rvalues.
 		if(mut) this->kind = Kind::lvalue;
-		else    this->kind = Kind::clvalue;
+		else    this->kind = Kind::rvalue;
 	}
 
 

@@ -119,6 +119,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
 			_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
 
+		auto arrptr = cs->irb.AddressOf(array, true);
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
@@ -150,7 +151,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			for(size_t i = 0; i < vals.size(); i++)
 			{
 				// offset by 1
-				fir::Value* ptr = cs->irb.ConstGEP2(array, 0, i);
+				fir::Value* ptr = cs->irb.ConstGEP2(arrptr, 0, i);
 				cs->irb.WritePtr(vals[i], ptr);
 			}
 
@@ -166,7 +167,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
-			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(array, 0, 0));
+			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
 			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getInt64(this->values.size()));
 			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getInt64(-1));
 			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
@@ -177,7 +178,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
 
-			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(array, 0, 0), elmty->getPointerTo()));
+			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));
 			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getInt64(this->values.size()));
 
 			return CGResult(aa);
