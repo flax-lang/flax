@@ -135,11 +135,8 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// get the arguments
 	auto arg = fn->getArgumentWithName(this->id.name);
 
-	// store the thing.
-	auto ptr = cs->irb.ImmutStackAlloc(arg->getType(), arg);
-
 	// ok...
-	cs->valueMap[this] = CGResult(arg, ptr, CGResult::VK::LValue);
+	cs->valueMap[this] = CGResult(arg);
 	return CGResult(arg);
 }
 

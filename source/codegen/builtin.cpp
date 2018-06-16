@@ -21,7 +21,7 @@ static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Valu
 	cs->irb.CondBranch(isnull, merge, deref);
 
 	cs->irb.setCurrentBlock(deref);
-	auto rc = cs->irb.Load(ptr);
+	auto rc = cs->irb.ReadPtr(ptr);
 	cs->irb.UnCondBranch(merge);
 
 	cs->irb.setCurrentBlock(merge);
@@ -51,13 +51,13 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
 
 			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getInt64(0));
-			return CGResult(ret, 0, CGResult::VK::LitRValue);
+			return CGResult(ret);
 		}
 		else if(this->name == BUILTIN_ARRAY_FN_POP)
 		{
 			iceAssert(!ty->isStringType());
 
-			if(res.kind != CGResult::VK::LValue)
+			if(!res->islvalue())
 				error(this->lhs, "Cannot call 'pop()' on an rvalue");
 
 			else if(ty->isArrayType())
@@ -78,8 +78,9 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			//* there are cases (ie. function arguments) where we are an lvalue, but we don't have a pointer.
 			//* in those cases, we just don't store anything.
-			if(res.pointer)
-				cs->irb.Store(newarr, res.pointer);
+			// if(res.pointer)
+
+			cs->irb.Store(newarr, res.value);
 
 			return CGResult(retelm);
 		}
@@ -87,7 +88,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(arguments.size() == 1);
 
-			if(res.kind != CGResult::VK::LValue)
+			if(!res->islvalue())
 				error(this->lhs, "Cannot call 'append' on an rvalue");
 
 			auto arg = arguments[0];
@@ -102,10 +103,9 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			auto ret = cs->irb.Call(appendf, res.value, arg);
 
-			if(res.pointer)
-				cs->irb.Store(ret, res.pointer);
+			cs->irb.Store(ret, res.value);
 
-			return CGResult(ret, res.pointer, CGResult::VK::LValue);
+			return CGResult(res);
 		}
 	}
 	else
@@ -150,8 +150,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
 			{
-				iceAssert(res.pointer);
-				auto ret = cs->irb.ConstGEP2(res.pointer, 0, 0);
+				auto ret = cs->irb.ConstGEP2(res.value, 0, 0);
 				return CGResult(ret);
 			}
 		}
@@ -193,7 +192,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto idx = cs->irb.GetEnumCaseIndex(res.value);
 				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getInt64(0), idx);
 
-				return CGResult(cs->irb.Load(n));
+				return CGResult(cs->irb.ReadPtr(n));
 			}
 		}
 	}

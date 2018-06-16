@@ -94,8 +94,8 @@ namespace fir
 		Logical_Not,
 
 		// values
-		Value_Load,
-		Value_Store,
+		Value_ReadPtr,
+		Value_WritePtr,
 		Value_StackAlloc,
 		Value_CallFunction,
 		Value_CallFunctionPointer,
@@ -116,6 +116,11 @@ namespace fir
 		Value_CreatePHI,
 
 		Misc_Sizeof,						// portable sizeof using GEP
+
+		Value_Dereference,
+		Value_AddressOf,
+		Value_Store,
+		Value_CreateLVal,
 
 
 		// string-specific things

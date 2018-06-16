@@ -32,7 +32,7 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 
 	//* also, since the vardefn adds itself to the counting stack, when it dies we will get decremented.
 	//* however, this cannot be allowed to happen, because we want a copy and not a move.
-	if(cs->isRefCountedType(res.value->getType()))
+	if(cs->isRefCountedType(res->getType()))
 	{
 		cs->addRefCountedValue(res.value);
 		cs->incrementRefCount(res.value);
@@ -62,14 +62,14 @@ static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	{
 		CGResult v;
 
-		if(rhs.pointer)
+		if(rhs->islorclvalue())
 		{
-			auto gep = cs->irb.StructGEP(rhs.pointer, i);
-			v = CGResult(cs->irb.Load(gep), gep);
+			auto gep = cs->irb.StructGEP(rhs.value, i);
+			v = CGResult(gep);
 		}
 		else
 		{
-			v = CGResult(cs->irb.ExtractValue(rhs.value, { i }), 0);
+			v = CGResult(cs->irb.ExtractValue(rhs.value, { i }));
 		}
 
 		cs->generateDecompositionBindings(bind.inner[i], v, true);
@@ -104,7 +104,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto v = CGResult(cs->irb.Load(cs->irb.PointerAdd(strdat, fir::ConstantInt::getInt64(idx))), 0);
+				auto v = CGResult(cs->irb.ReadPtr(cs->irb.PointerAdd(strdat, fir::ConstantInt::getInt64(idx))));
 				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
@@ -122,7 +122,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(strdat, numbinds));
 				slice = cs->irb.SetArraySliceLength(slice, remaining);
 
-				handleDefn(cs, bind.restDefn, CGResult(slice, 0));
+				handleDefn(cs, bind.restDefn, CGResult(slice));
 			}
 			else
 			{
@@ -134,7 +134,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 
 				auto string = cs->irb.Call(clonef, rhs.value, numbinds);
 
-				handleDefn(cs, bind.restDefn, CGResult(string, 0));
+				handleDefn(cs, bind.restDefn, CGResult(string));
 			}
 		}
 	}
@@ -158,7 +158,8 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			cs->irb.Call(checkf, arrlen, numbinds, strloc);
 		}
 
-		if(!rhs.pointer && rt->isArrayType())
+		// # if 0
+		if(!rhs->islorclvalue() && rt->isArrayType())
 		{
 			//* because of the way LLVM is designed, and hence by extension how we are designed,
 			//* fixed-sized arrays are kinda dumb. If we don't have a pointer to the array (for whatever reason???),
@@ -170,7 +171,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto v = CGResult(cs->irb.ExtractValue(array, { idx }), 0);
+				auto v = CGResult(cs->irb.ExtractValue(array, { idx }));
 				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
@@ -181,10 +182,12 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				error(bind.loc, "Could not get pointer to array (of type '%s') to create binding for '...'", rt);
 		}
 		else
+		// #endif
+
 		{
 			fir::Value* data = 0;
 
-			if(rt->isArrayType())               data = cs->irb.ConstGEP2(rhs.pointer, 0, 0);
+			if(rt->isArrayType())               data = cs->irb.ConstGEP2(rhs.value, 0, 0);
 			else if(rt->isArraySliceType())     data = cs->irb.GetArraySliceData(array);
 			else if(rt->isDynamicArrayType())   data = cs->irb.GetSAAData(array);
 			else                                iceAssert(0);
@@ -195,7 +198,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			{
 				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getInt64(idx));
 
-				auto v = CGResult(cs->irb.Load(ptr), ptr);
+				auto v = CGResult(cs->irb.Dereference(ptr));
 				cs->generateDecompositionBindings(b, v, true);
 
 				idx++;
@@ -213,7 +216,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 					slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(data, numbinds));
 					slice = cs->irb.SetArraySliceLength(slice, remaining);
 
-					handleDefn(cs, bind.restDefn, CGResult(slice, 0));
+					handleDefn(cs, bind.restDefn, CGResult(slice));
 				}
 				else
 				{
@@ -238,7 +241,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 
 					auto ret = cs->irb.Call(clonef, clonee, numbinds);
 
-					handleDefn(cs, bind.restDefn, CGResult(ret, 0));
+					handleDefn(cs, bind.restDefn, CGResult(ret));
 				}
 			}
 		}
@@ -256,8 +259,7 @@ void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind,
 
 		if(bind.ref)
 		{
-			rhs.value = rhs.pointer;
-			rhs.pointer = 0;
+			rhs.value = this->irb.AddressOf(rhs.value);
 		}
 
 		handleDefn(this, bind.createdDefn, rhs);

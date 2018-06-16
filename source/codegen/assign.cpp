@@ -18,14 +18,13 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lr = this->left->codegen(cs);
 	auto lt = lr.value->getType();
 
-	if(!lr.pointer || lr.kind != CGResult::VK::LValue)
+	if(!lr->islorclvalue())
 	{
 		SpanError(SimpleError::make(this, "Cannot assign to non-lvalue (most likely a temporary) expression"))
 			.add(SpanError::Span(this->left->loc, "here"))
 			.postAndQuit();
 	}
-
-	if(lr.pointer && lr.pointer->getType()->isImmutablePointer())
+	else if(lr->isclvalue())
 	{
 		SpanError(SimpleError::make(this, "Cannot assign to immutable expression"))
 			.add(SpanError::Span(this->left->loc, "here"))
@@ -51,61 +50,57 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(lt->isDynamicArrayType() && lt == rt)
 			{
 				// right then.
-				if(lr.kind != CGResult::VK::LValue)
+				if(!lr->islvalue())
 					error(this, "Cannot append to an r-value array");
 
-				iceAssert(lr.pointer);
 				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
 				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, false));
 
-				cs->irb.Store(res, lr.pointer);
+				cs->irb.Store(res, lr.value);
 				return CGResult(0);
 			}
 			else if(lt->isDynamicArrayType() && lt->getArrayElementType() == rt)
 			{
 				// right then.
-				if(lr.kind != CGResult::VK::LValue)
+				if(!lr->islvalue())
 					error(this, "Cannot append to an r-value array");
 
-				iceAssert(lr.pointer);
 				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
 				auto res = cs->irb.Call(appendf, lr.value, rr.value);
 
-				cs->irb.Store(res, lr.pointer);
+				cs->irb.Store(res, lr.value);
 				return CGResult(0);
 			}
 			else if(lt->isStringType() && lt == rt)
 			{
 				// right then.
-				if(lr.kind != CGResult::VK::LValue)
-					error(this, "Cannot append to an r-value string");
+				if(!lr->islvalue())
+					error(this, "Cannot append to an r-value array");
 
-				iceAssert(lr.pointer);
 				auto appendf = cgn::glue::string::getAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
 				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, true));
 
-				cs->irb.Store(res, lr.pointer);
+				cs->irb.Store(res, lr.value);
 				return CGResult(0);
 			}
 			else if(lt->isStringType() && rt->isCharType())
 			{
 				// right then.
-				if(lr.kind != CGResult::VK::LValue)
+				if(!lr->islvalue())
 					error(this, "Cannot append to an r-value string");
 
-				iceAssert(lr.pointer);
 				auto appendf = cgn::glue::string::getCharAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
 				auto res = cs->irb.Call(appendf, lr.value, rr.value);
 
-				cs->irb.Store(res, lr.pointer);
+				cs->irb.Store(res, lr.value);
 				return CGResult(0);
 			}
 		}
@@ -129,11 +124,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(lt != rr.value->getType())
 		error(this, "What? left = %s, right = %s", lt, rr.value->getType());
 
-	iceAssert(lr.pointer);
-	iceAssert(rr.value->getType() == lr.pointer->getType()->getPointerElementType());
-
-	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false, /* performStore: */ true);
-
+	cs->autoAssignRefCountedValue(lr.value, rr.value, /* isInitial: */ false, /* performStore: */ true);
 	return CGResult(0);
 }
 
@@ -158,16 +149,10 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(auto v : this->lefts)
 	{
 		auto res = v->codegen(cs, tty->getElementN(idx));
-		if(res.kind != CGResult::VK::LValue)
+		if(res->islvalue())
 			error(v, "Cannot assign to non-lvalue expression in tuple assignment");
 
-		if(!res.pointer)
-			error(v, "didn't get pointer???");
-
-
-		iceAssert(res.pointer);
 		results.push_back(res);
-
 		idx++;
 	}
 
@@ -176,14 +161,14 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto lr = results[i];
 		auto val = cs->irb.ExtractValue(tuple, { i });
 
-		auto rr = cs->oneWayAutocast(CGResult(val, 0), lr.value->getType());
+		auto rr = cs->oneWayAutocast(CGResult(val), lr.value->getType());
 		if(!rr.value || rr.value->getType() != lr.value->getType())
 		{
 			error(this->right, "Mismatched types in assignment to tuple element %d; assigning type '%s' to '%s'",
 				val->getType(), lr.value->getType());
 		}
 
-		cs->autoAssignRefCountedValue(lr, rr, false, true);
+		cs->autoAssignRefCountedValue(lr.value, rr.value, /* isInitial: */ false, /* performStore: */ true);
 	}
 
 	return CGResult(0);

@@ -15,13 +15,11 @@ namespace fir
 	IRBlock::IRBlock(Function* fn) : Value(Type::getVoid())
 	{
 		this->parentFunction = fn;
-		this->addUser(fn);
 	}
 
 	void IRBlock::setFunction(Function* fn)
 	{
 		this->parentFunction = fn;
-		this->addUser(fn);
 	}
 
 	Function* IRBlock::getParentFunction()

@@ -7,15 +7,10 @@
 
 namespace fir
 {
-	Value::Value(Type* t)
-		: ident()
+	static size_t vnames = 0;
+	Value::Value(Type* t, Kind k) : ident(), valueType(t), kind(k)
 	{
-		static size_t vnames = 0;
-		this->valueType = t;
-
-		this->id = vnames;
-		this->source = 0;
-		vnames++;
+		this->id = vnames++;
 	}
 
 	Type* Value::getType()
@@ -45,39 +40,6 @@ namespace fir
 		return this->ident;
 	}
 
-	void Value::addUser(Value* user)
-	{
-		for(auto v : this->users)
-			if(v == user) return;
-
-		this->users.push_back(user);
-	}
-
-	void Value::transferUsesTo(Value* other)
-	{
-		// check.
-		std::vector<Value*> culled;
-
-		// todo: O(N^2)
-		for(auto v : this->users)
-		{
-			bool found = false;
-			for(auto ov : other->users)
-			{
-				if(v == ov)
-				{
-					found = true;
-					break;
-				}
-			}
-
-			if(!found)
-				culled.push_back(v);
-		}
-
-		for(auto c : culled)
-			other->users.push_back(c);
-	}
 
 
 
