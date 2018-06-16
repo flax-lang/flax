@@ -176,6 +176,9 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 		retp = res.pointer;
 
 		*baseType = restype;
+
+		// if(!retp)
+		// 	warn(cs->loc(), "no pointer");
 	}
 	else if(restype->isTupleType())
 	{

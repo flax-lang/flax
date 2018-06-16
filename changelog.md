@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(fdc65d7)`
 - factor the any-making/getting stuff into functions for less IR mess.
 - fix a massive bug in `alloc` where we never called the user-code, or set the length.
 - add stack-allocs for arguments so we can take their address. might be in poor taste, we'll see.
