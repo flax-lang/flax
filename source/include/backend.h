@@ -5,34 +5,31 @@
 #pragma once
 
 #include "defs.h"
-// #include "compiler.h"
-
-#ifndef __STDC_CONSTANT_MACROS
-#define __STDC_CONSTANT_MACROS
-#endif
-
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
-#include "llvm/ADT/SmallVector.h"
-
-namespace llvm
-{
-	class Module;
-	class TargetMachine;
-	class ExecutionEngine;
-	class LLVMContext;
-}
 
 namespace fir
 {
 	struct Module;
+	struct Function;
 }
 
-namespace Compiler
+namespace backend
 {
-	struct CompiledData;
+	struct CompiledData
+	{
+		fir::Module* module = 0;
+	};
+
+	namespace BackendCaps
+	{
+		enum Capabilities : int
+		{
+			EmitProgram		= 0x01,
+			EmitObject		= 0x02,
+			EmitAssembly	= 0x04,
+			JIT				= 0x08,
+		};
+	}
+
 
 	enum class OptimisationLevel
 	{
@@ -64,17 +61,6 @@ namespace Compiler
 		Assembly_x64,
 	};
 
-	namespace BackendCaps
-	{
-		enum Capabilities : int
-		{
-			EmitProgram		= 0x01,
-			EmitObject		= 0x02,
-			EmitAssembly	= 0x04,
-			JIT				= 0x08,
-		};
-	}
-
 	std::string capabilitiesToString(BackendCaps::Capabilities caps);
 
 	struct Backend
@@ -101,31 +87,6 @@ namespace Compiler
 		CompiledData& compiledData;
 		std::vector<std::string> inputFilenames;
 		std::string outputFilename;
-	};
-
-	struct LLVMBackend : Backend
-	{
-		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
-		virtual ~LLVMBackend() { }
-
-		virtual void performCompilation() override;
-		virtual void optimiseProgram() override;
-		virtual void writeOutput() override;
-
-		virtual std::string str() override;
-
-		static llvm::LLVMContext& getLLVMContext();
-
-		static llvm::Module* translateFIRtoLLVM(fir::Module* mod);
-
-		private:
-		void setupTargetMachine();
-		void finaliseGlobalConstructors();
-		void runProgramWithJIT();
-		llvm::SmallVector<char, 0> initialiseLLVMStuff();
-
-		llvm::Module* linkedModule = 0;
-		llvm::TargetMachine* targetMachine = 0;
 	};
 
 	struct x64Backend : Backend

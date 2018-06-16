@@ -1,0 +1,15 @@
+@echo off
+
+robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /ns /np
+
+SETLOCAL
+
+IF /I "%1"=="release" (
+	SET buildDir="build\meson-rel"
+) ELSE (
+	SET buildDir="build\meson-dbg"
+)
+
+ninja -C %buildDir% && cls && %buildDir%\flaxc.exe -sysroot build\sysroot -run build\%2.flx
+
+ENDLOCAL

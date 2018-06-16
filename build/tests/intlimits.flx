@@ -1,0 +1,23 @@
+// intlimits.flx
+// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export test_limits
+
+import "libc"
+import "limits"
+
+public fn printIntegerLimits()
+{
+	libc.printf("i8.min   = %hd\t\t\t\ti8.max   = %hhd\n", limits.i8.min as i16, limits. i8.max);
+	libc.printf("i16.min  = %hd\t\t\ti16.max  = %hd\n", limits.i16.min, limits.i16.max);
+	libc.printf("i32.min  = %d\t\t\ti32.max  = %d\n", limits.i32.min, limits.i32.max);
+	libc.printf("i64.min  = %lld\t\ti64.max  = %lld\n", limits.i64.min, limits.i64.max);
+
+	libc.printf("\n")
+
+	libc.printf("u8.min   = %hhu\t\t\t\tu8.max   = %hhu\n", limits.u8.min,limits. u8.max);
+	libc.printf("u16.min  = %hu\t\t\t\tu16.max  = %hu\n", limits.u16.min, limits.u16.max);
+	libc.printf("u32.min  = %u\t\t\t\tu32.max  = %u\n", limits.u32.min, limits.u32.max);
+	libc.printf("u64.min  = %llu\t\t\t\tu64.max  = %llu\n", limits.u64.min, limits.u64.max);
+}

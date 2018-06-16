@@ -1,0 +1,90 @@
+// classes.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export test_classes
+
+import "libc" as _
+
+ffi fn srand(s: i32)
+ffi fn rand() -> i32
+
+let names = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names[rand() % names.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog : Animal
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation : Dog
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+public fn doClassTest()
+{
+	do {
+
+		// don't question.
+		srand(2848131)
+
+		let dogs = alloc &Dog [10] {
+			if i % 3 == 1   => it = alloc Dalmation
+			else            => it = alloc Dog
+
+			if i % 2 == 1   => (it as mut).tail = i + 1 * 3
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+}
+
+

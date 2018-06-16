@@ -1,0 +1,182 @@
+// tester.flx
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export tester
+
+import "libc"
+import "limits"
+
+import "tests/fizzbuzz"
+import "tests/recursiveFib"
+import "tests/slices"
+import "tests/classes"
+import "tests/scopes"
+import "tests/defertest"
+import "tests/anytest"
+import "tests/decomposition"
+import "tests/intlimits"
+import "tests/generics"
+import "tests/linkedlist"
+import "tests/forloops"
+import "tests/arraytest"
+
+fn runTests()
+{
+	// fib
+	let fibTitle        = "       *** FIBONACII SEQUENCE ***       \n"
+	let fizzbuzzTitle   = "            *** FIZZBUZZ ***            \n"
+	let intLimitsTitle  = "       *** PRINTING INT LIMITS ***      \n"
+	let scopeTitle      = "*** SCOPE RESOLUTION REGRESSION TEST ***\n"
+	let operatorTitle   = " *** OPERATOR/TUPLE REGRESSION TEST *** \n"
+	let arrayTitle      = "      *** ARRAY REGRESSION TEST ***     \n"
+	let genericsTitle   = "    *** GENERICS REGRESSION TEST ***    \n"
+	let functionsTitle  = "    *** FUNCTION REGRESSION TEST ***    \n"
+	let classTitle      = "      *** CLASS REGRESSION TEST ***     \n"
+	let deferTitle      = "       *** DEFER SEMANTICS TEST ***     \n"
+	let anyTitle        = "        *** ANY SEMANTICS TEST ***      \n"
+	let slicesTitle     = "     *** SLICES REGRESSION TEST ***     \n"
+	let decomposeTitle  = " *** DECOMPOSITION REGRESSION TEST ***  \n"
+	let forLoopTitle    = "    *** FOR LOOP REGRESSION TEST ***    \n"
+	let linkedListTitle = "        *** LINKED LIST TEST ***        \n"
+	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
+	let thinLine        = "----------------------------------------\n"
+	let endTitle        = "============ TESTS COMPLETE ============\n"
+
+
+	libc.printf("%s%s", fibTitle, thinLine)
+	do {
+		var n = 1
+		while n < 20
+		{
+			libc.printf("%d", test_fib.doRecursiveFib(n))
+			n += 1
+
+			if n != 20
+			{
+				libc.printf(", ")
+			}
+		}
+		libc.printf("\n\n\n")
+	}
+
+	// fizzbuzz
+	libc.printf("%s%s", fizzbuzzTitle, thinLine)
+	test_fizz.doFizzBuzz(15)
+	libc.printf("\n\n\n")
+
+
+	// int limits
+	libc.printf("%s%s", intLimitsTitle, thinLine)
+	test_limits.printIntegerLimits()
+	libc.printf("\n\n\n")
+
+
+	// scopes
+	libc.printf("%s%s", scopeTitle, thinLine)
+	test_scopes.doScopeTest("__llvm_jit__build/test")
+	libc.printf("\n\n\n")
+
+
+	// operators and tuples (vectors type, mainly)
+	libc.printf("%s%s", operatorTitle, thinLine)
+	// doOperatorTupleTest()
+	libc.printf("\n\n\n")
+
+
+	// arrays
+	libc.printf("%s%s", arrayTitle, thinLine)
+	test_arrays.doArrayTest()
+	libc.printf("\n\n\n")
+
+
+	// generics
+	libc.printf("%s%s", genericsTitle, thinLine)
+	test_generics.doGenericsTest()
+	libc.printf("\n\n\n")
+
+
+	// classes
+	libc.printf("%s%s", classTitle, thinLine)
+	test_classes.doClassTest()
+	libc.printf("\n\n\n")
+
+
+	// first-class-functions
+	libc.printf("%s%s", functionsTitle, thinLine)
+	// doFunctionTest()
+	libc.printf("\n\n\n")
+
+
+	// defer semantics
+	libc.printf("%s%s", deferTitle, thinLine)
+	test_defer.doDeferTest()
+	libc.printf("\n\n\n")
+
+
+	// any
+	libc.printf("%s%s", anyTitle, thinLine)
+	test_any.doAnyTest()
+	libc.printf("\n\n\n")
+
+
+	// slices
+	libc.printf("%s%s", slicesTitle, thinLine)
+	test_slices.doSlicesTest()
+	libc.printf("\n\n\n")
+
+
+	// decomposition
+	libc.printf("%s%s", decomposeTitle, thinLine)
+	test_decomposition.doDecompositionTest()
+	libc.printf("\n\n\n")
+
+
+	// for-loops
+	libc.printf("%s%s", forLoopTitle, thinLine)
+	test_forloops.doForLoopTest()
+	libc.printf("\n\n\n")
+
+
+
+	// linked-list (generics)
+	libc.printf("%s%s", linkedListTitle, thinLine)
+	test_linkedlist.doLinkedListTest()
+	libc.printf("\n\n\n")
+
+
+
+	// misc tests
+	libc.printf("%s%s", miscTitle, thinLine)
+	// miscellaneousTests()
+	libc.printf("\n\n\n")
+
+
+
+	// fin.
+	libc.printf("%s\n\n\n\n\n", endTitle)
+}
+
+
+
+
+
+// name idea: mill
+
+
+
+@entry fn main(argc: i32, argv: &&i8) -> int
+{
+	runTests()
+
+
+	libc.printf("\n<< done >>\n")
+	return 0
+}
+
+
+
+
+
+
+

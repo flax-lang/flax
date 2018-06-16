@@ -2,14 +2,22 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_slices
+import "libc"
+
 public fn doSlicesTest()
 {
 	do {
 		var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
 		let slice = arr[:]
-		printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
+		libc.printf("-- %d, %d, %d, %d, %d, %d, %d --\n", slice[0], slice[1], slice[2], slice[3], slice[4], slice[5], slice[6])
 
-		let str = "Hello, world!"
-		printf("original: %s\nslice: %.*s\n", str, str[3:10].length, str[3:10])
+		let s = "Hello, world!"
+		libc.printf("original: %s\nslice: %.*s\n", s, s[3:10].length, s[3:10])
 	}
+}
+
+@entry fn main()
+{
+	doSlicesTest()
 }

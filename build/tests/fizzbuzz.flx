@@ -2,30 +2,31 @@
 // Copyright (c) 2014 - 2015, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-import Foundation
+export test_fizz
+import "libc"
 
 public fn doFizzBuzz(num: int)
 {
 	var i = 0
 	while i <= num
 	{
-		printf("%02d:      ", i)
+		libc.printf("%02d:      ", i)
 
 		if i % 3 == 0
 		{
-			printf("Fizz")
+			libc.printf("Fizz")
 		}
 		if i % 5 == 0
 		{
-			printf("Buzz")
+			libc.printf("Buzz")
 		}
 
 		if i % 5 != 0 && i % 3 != 0
 		{
-			printf("%d", i)
+			libc.printf("%d", i)
 		}
 
-		printf("\n")
+		libc.printf("\n")
 		i += 1
 	}
 }

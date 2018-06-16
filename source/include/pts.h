@@ -4,18 +4,12 @@
 
 #pragma once
 
-#include <stddef.h>
-
 #include "defs.h"
+#include "precompile.h"
 
-namespace Ast
+namespace ast
 {
 	struct Expr;
-}
-
-namespace fir
-{
-	struct Type;
 }
 
 // Parser Type System
@@ -37,45 +31,11 @@ namespace pts
 	struct FunctionType;
 
 
-	struct TypeTransformer
-	{
-		enum class Type
-		{
-			None,
-			Pointer,
-			FixedArray,
-			DynamicArray,
-			VariadicArray
-		};
-
-		bool operator == (const TypeTransformer& other) const { return this->type == other.type && this->data == other.data; }
-		bool operator != (const TypeTransformer& other) const { return !(*this == other); }
-
-
-		TypeTransformer(Type t, size_t d) : type(t), data(d) { }
-
-		Type type = Type::None;
-		size_t data = 0;
-	};
-
-
-	fir::Type* applyTransformationsOnType(fir::Type* base, std::vector<TypeTransformer> trfs);
-
-	bool areTransformationsCompatible(std::vector<TypeTransformer> a, std::vector<TypeTransformer> b);
-	fir::Type* reduceMaximallyWithSubset(fir::Type* type, std::vector<TypeTransformer> a, std::vector<TypeTransformer> b);
-	std::pair<fir::Type*, std::vector<TypeTransformer>> decomposeFIRTypeIntoBaseTypeWithTransformations(fir::Type* type);
-	std::pair<pts::Type*, std::vector<TypeTransformer>> decomposeTypeIntoBaseTypeWithTransformations(pts::Type* type);
-
 
 	struct Type
 	{
 		virtual ~Type() { }
-		explicit Type(fir::Type* ft) : resolvedFType(ft) { }
-
 		virtual std::string str();
-
-		fir::Type* resolvedFType = 0;
-
 
 		NamedType* toNamedType();
 		TupleType* toTupleType();
@@ -119,30 +79,31 @@ namespace pts
 		virtual std::string str() override;
 		std::string name;
 
-		std::map<std::string, Type*> genericMapping;
+		std::unordered_map<std::string, Type*> genericMapping;
 
-		static NamedType* create(std::string s);
-		static NamedType* create(std::string s, std::map<std::string, Type*> genericMapping);
+		static NamedType* create(const std::string& s);
+		static NamedType* create(const std::string& s, const std::map<std::string, Type*>& genericMapping);
 
 		private:
-		explicit NamedType(std::string n) : name(n) { }
+		explicit NamedType(const std::string& n) : name(n) { }
 	};
 
 
 	struct PointerType : Type
 	{
 		virtual ~PointerType() { }
-		explicit PointerType(pts::Type* b) : base(b) { }
+		explicit PointerType(pts::Type* b, bool mut) : base(b), isMutable(mut) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
+		bool isMutable = false;
 	};
 
 
 	struct TupleType : Type
 	{
 		virtual ~TupleType() { }
-		explicit TupleType(std::vector<pts::Type*> ts) : types(ts) { }
+		explicit TupleType(const std::vector<pts::Type*>& ts) : types(ts) { }
 		virtual std::string str() override;
 
 		std::vector<pts::Type*> types;
@@ -185,28 +146,24 @@ namespace pts
 	struct ArraySliceType : Type
 	{
 		virtual ~ArraySliceType() { }
-		explicit ArraySliceType(pts::Type* b) : base(b) { }
+		explicit ArraySliceType(pts::Type* b, bool m) : base(b), mut(m) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
+		bool mut = false;
 	};
 
 
 	struct FunctionType : Type
 	{
 		virtual ~FunctionType() { }
-		explicit FunctionType(std::vector<pts::Type*> args, pts::Type* ret) : argTypes(args), returnType(ret) { }
+		explicit FunctionType(const std::vector<pts::Type*>& args, pts::Type* ret) : argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
-		std::map<std::string, TypeConstraints_t> genericTypes;
+		std::unordered_map<std::string, TypeConstraints_t> genericTypes;
 		std::vector<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};
-
-
-
-
-	pts::Type* parseType(std::string type);
 }
 
 

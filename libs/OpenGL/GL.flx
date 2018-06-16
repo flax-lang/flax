@@ -818,13 +818,13 @@ public ffi fn glLineWidth(width: f32) -> void
 public ffi fn glLineStipple(factor: i32, pattern: u16) -> void
 public ffi fn glPolygonMode(face: u32, mode: u32) -> void
 public ffi fn glPolygonOffset(factor: f32, units: f32) -> void
-public ffi fn glPolygonStipple(mask: i8*) -> void
-public ffi fn glGetPolygonStipple(mask: i8*) -> void
+public ffi fn glPolygonStipple(mask: &i8) -> void
+public ffi fn glGetPolygonStipple(mask: &i8) -> void
 public ffi fn glEdgeFlag(flag: bool) -> void
-public ffi fn glEdgeFlagv(flag: bool*) -> void
+public ffi fn glEdgeFlagv(flag: &bool) -> void
 public ffi fn glScissor(x: i32, y: i32, width: i32, height: i32) -> void
-public ffi fn glClipPlane(plane: u32, equation: f64*) -> void
-public ffi fn glGetClipPlane(plane: u32, equation: f64*) -> void
+public ffi fn glClipPlane(plane: u32, equation: &f64) -> void
+public ffi fn glGetClipPlane(plane: u32, equation: &f64) -> void
 public ffi fn glDrawBuffer(mode: u32) -> void
 public ffi fn glReadBuffer(mode: u32) -> void
 public ffi fn glEnable(cap: GL) -> void
@@ -832,17 +832,17 @@ public ffi fn glDisable(cap: GL) -> void
 public ffi fn glIsEnabled(cap: u32) -> bool
 public ffi fn glEnableClientState(cap: GL) -> void
 public ffi fn glDisableClientState(cap: GL) -> void
-public ffi fn glGetBooleanv(pname: u32, params: bool*) -> void
-public ffi fn glGetDoublev(pname: u32, params: f64*) -> void
-public ffi fn glGetFloatv(pname: u32, params: f32*) -> void
-public ffi fn glGetIntegerv(pname: u32, params: i32*) -> void
+public ffi fn glGetBooleanv(pname: u32, params: &bool) -> void
+public ffi fn glGetDoublev(pname: u32, params: &f64) -> void
+public ffi fn glGetFloatv(pname: u32, params: &f32) -> void
+public ffi fn glGetIntegerv(pname: u32, params: &i32) -> void
 public ffi fn glPushAttrib(mask: u32) -> void
 public ffi fn glPopAttrib() -> void
 public ffi fn glPushClientAttrib(mask: u32) -> void
 public ffi fn glPopClientAttrib() -> void
 public ffi fn glRenderMode(mode: u32) -> i32
 public ffi fn glGetError() -> u32
-public ffi fn glGetString(name: u32) -> i8*
+public ffi fn glGetString(name: u32) -> &i8
 public ffi fn glFinish() -> void
 public ffi fn glFlush() -> void
 public ffi fn glHint(target: u32, mode: u32) -> void
@@ -865,10 +865,10 @@ public ffi fn glViewport(x: i32, y: i32, width: i32, height: i32) -> void
 public ffi fn glPushMatrix() -> void
 public ffi fn glPopMatrix() -> void
 public ffi fn glLoadIdentity() -> void
-public ffi fn glLoadMatrixd(m: f64*) -> void
-public ffi fn glLoadMatrixf(m: f32*) -> void
-public ffi fn glMultMatrixd(m: f64*) -> void
-public ffi fn glMultMatrixf(m: f32*) -> void
+public ffi fn glLoadMatrixd(m: &f64) -> void
+public ffi fn glLoadMatrixf(m: &f32) -> void
+public ffi fn glMultMatrixd(m: &f64) -> void
+public ffi fn glMultMatrixf(m: &f32) -> void
 public ffi fn glRotated(angle: f64, x: f64, y: f64, z: f64) -> void
 public ffi fn glRotatef(angle: f32, x: f32, y: f32, z: f32) -> void
 public ffi fn glScaled(x: f64, y: f64, z: f64) -> void
@@ -884,7 +884,7 @@ public ffi fn glGenLists(range: i32) -> u32
 public ffi fn glNewList(list: u32, mode: u32) -> void
 public ffi fn glEndList() -> void
 public ffi fn glCallList(list: u32) -> void
-public ffi fn glCallLists(n: i32, type: u32, lists: void*) -> void
+public ffi fn glCallLists(n: i32, type: u32, lists: &void) -> void
 public ffi fn glListBase(base: u32) -> void
 
 // Drawing Functions
@@ -902,38 +902,38 @@ public ffi fn glVertex4d(x: f64, y: f64, z: f64, w: f64) -> void
 public ffi fn glVertex4f(x: f32, y: f32, z: f32, w: f32) -> void
 public ffi fn glVertex4i(x: i32, y: i32, z: i32, w: i32) -> void
 public ffi fn glVertex4s(x: i16, y: i16, z: i16, w: i16) -> void
-public ffi fn glVertex2dv(v: f64*) -> void
-public ffi fn glVertex2fv(v: f32*) -> void
-public ffi fn glVertex2iv(v: i32*) -> void
-public ffi fn glVertex2sv(v: i16*) -> void
-public ffi fn glVertex3dv(v: f64*) -> void
-public ffi fn glVertex3fv(v: f32*) -> void
-public ffi fn glVertex3iv(v: i32*) -> void
-public ffi fn glVertex3sv(v: i16*) -> void
-public ffi fn glVertex4dv(v: f64*) -> void
-public ffi fn glVertex4fv(v: f32*) -> void
-public ffi fn glVertex4iv(v: i32*) -> void
-public ffi fn glVertex4sv(v: i16*) -> void
+public ffi fn glVertex2dv(v: &f64) -> void
+public ffi fn glVertex2fv(v: &f32) -> void
+public ffi fn glVertex2iv(v: &i32) -> void
+public ffi fn glVertex2sv(v: &i16) -> void
+public ffi fn glVertex3dv(v: &f64) -> void
+public ffi fn glVertex3fv(v: &f32) -> void
+public ffi fn glVertex3iv(v: &i32) -> void
+public ffi fn glVertex3sv(v: &i16) -> void
+public ffi fn glVertex4dv(v: &f64) -> void
+public ffi fn glVertex4fv(v: &f32) -> void
+public ffi fn glVertex4iv(v: &i32) -> void
+public ffi fn glVertex4sv(v: &i16) -> void
 public ffi fn glNormal3b(nx: i8, ny: i8, nz: i8) -> void
 public ffi fn glNormal3d(nx: f64, ny: f64, nz: f64) -> void
 public ffi fn glNormal3f(nx: f32, ny: f32, nz: f32) -> void
 public ffi fn glNormal3i(nx: i32, ny: i32, nz: i32) -> void
 public ffi fn glNormal3s(nx: i16, ny: i16, nz: i16) -> void
-public ffi fn glNormal3bv(v: i8*) -> void
-public ffi fn glNormal3dv(v: f64*) -> void
-public ffi fn glNormal3fv(v: f32*) -> void
-public ffi fn glNormal3iv(v: i32*) -> void
-public ffi fn glNormal3sv(v: i16*) -> void
+public ffi fn glNormal3bv(v: &i8) -> void
+public ffi fn glNormal3dv(v: &f64) -> void
+public ffi fn glNormal3fv(v: &f32) -> void
+public ffi fn glNormal3iv(v: &i32) -> void
+public ffi fn glNormal3sv(v: &i16) -> void
 public ffi fn glIndexd(c: f64) -> void
 public ffi fn glIndexf(c: f32) -> void
 public ffi fn glIndexi(c: i32) -> void
 public ffi fn glIndexs(c: i16) -> void
 public ffi fn glIndexub(c: i8) -> void
-public ffi fn glIndexdv(c: f64*) -> void
-public ffi fn glIndexfv(c: f32*) -> void
-public ffi fn glIndexiv(c: i32*) -> void
-public ffi fn glIndexsv(c: i16*) -> void
-public ffi fn glIndexubv(c: i8*) -> void
+public ffi fn glIndexdv(c: &f64) -> void
+public ffi fn glIndexfv(c: &f32) -> void
+public ffi fn glIndexiv(c: &i32) -> void
+public ffi fn glIndexsv(c: &i16) -> void
+public ffi fn glIndexubv(c: &i8) -> void
 public ffi fn glColor3b(red: i8, green: i8, blue: i8) -> void
 public ffi fn glColor3d(red: f64, green: f64, blue: f64) -> void
 public ffi fn glColor3f(red: f32, green: f32, blue: f32) -> void
@@ -950,22 +950,22 @@ public ffi fn glColor4s(red: i16, green: i16, blue: i16, alpha: i16) -> void
 public ffi fn glColor4ub(red: i8, green: i8, blue: i8, alpha: i8) -> void
 public ffi fn glColor4ui(red: u32, green: u32, blue: u32, alpha: u32) -> void
 public ffi fn glColor4us(red: u16, green: u16, blue: u16, alpha: u16) -> void
-public ffi fn glColor3bv(v: i8*) -> void
-public ffi fn glColor3dv(v: f64*) -> void
-public ffi fn glColor3fv(v: f32*) -> void
-public ffi fn glColor3iv(v: i32*) -> void
-public ffi fn glColor3sv(v: i16*) -> void
-public ffi fn glColor3ubv(v: i8*) -> void
-public ffi fn glColor3uiv(v: u32*) -> void
-public ffi fn glColor3usv(v: u16*) -> void
-public ffi fn glColor4bv(v: i8*) -> void
-public ffi fn glColor4dv(v: f64*) -> void
-public ffi fn glColor4fv(v: f32*) -> void
-public ffi fn glColor4iv(v: i32*) -> void
-public ffi fn glColor4sv(v: i16*) -> void
-public ffi fn glColor4ubv(v: i8*) -> void
-public ffi fn glColor4uiv(v: u32*) -> void
-public ffi fn glColor4usv(v: u16*) -> void
+public ffi fn glColor3bv(v: &i8) -> void
+public ffi fn glColor3dv(v: &f64) -> void
+public ffi fn glColor3fv(v: &f32) -> void
+public ffi fn glColor3iv(v: &i32) -> void
+public ffi fn glColor3sv(v: &i16) -> void
+public ffi fn glColor3ubv(v: &i8) -> void
+public ffi fn glColor3uiv(v: &u32) -> void
+public ffi fn glColor3usv(v: &u16) -> void
+public ffi fn glColor4bv(v: &i8) -> void
+public ffi fn glColor4dv(v: &f64) -> void
+public ffi fn glColor4fv(v: &f32) -> void
+public ffi fn glColor4iv(v: &i32) -> void
+public ffi fn glColor4sv(v: &i16) -> void
+public ffi fn glColor4ubv(v: &i8) -> void
+public ffi fn glColor4uiv(v: &u32) -> void
+public ffi fn glColor4usv(v: &u16) -> void
 public ffi fn glTexCoord1d(s: f64) -> void
 public ffi fn glTexCoord1f(s: f32) -> void
 public ffi fn glTexCoord1i(s: i32) -> void
@@ -982,22 +982,22 @@ public ffi fn glTexCoord4d(s: f64, t: f64, r: f64, q: f64) -> void
 public ffi fn glTexCoord4f(s: f32, t: f32, r: f32, q: f32) -> void
 public ffi fn glTexCoord4i(s: i32, t: i32, r: i32, q: i32) -> void
 public ffi fn glTexCoord4s(s: i16, t: i16, r: i16, q: i16) -> void
-public ffi fn glTexCoord1dv(v: f64*) -> void
-public ffi fn glTexCoord1fv(v: f32*) -> void
-public ffi fn glTexCoord1iv(v: i32*) -> void
-public ffi fn glTexCoord1sv(v: i16*) -> void
-public ffi fn glTexCoord2dv(v: f64*) -> void
-public ffi fn glTexCoord2fv(v: f32*) -> void
-public ffi fn glTexCoord2iv(v: i32*) -> void
-public ffi fn glTexCoord2sv(v: i16*) -> void
-public ffi fn glTexCoord3dv(v: f64*) -> void
-public ffi fn glTexCoord3fv(v: f32*) -> void
-public ffi fn glTexCoord3iv(v: i32*) -> void
-public ffi fn glTexCoord3sv(v: i16*) -> void
-public ffi fn glTexCoord4dv(v: f64*) -> void
-public ffi fn glTexCoord4fv(v: f32*) -> void
-public ffi fn glTexCoord4iv(v: i32*) -> void
-public ffi fn glTexCoord4sv(v: i16*) -> void
+public ffi fn glTexCoord1dv(v: &f64) -> void
+public ffi fn glTexCoord1fv(v: &f32) -> void
+public ffi fn glTexCoord1iv(v: &i32) -> void
+public ffi fn glTexCoord1sv(v: &i16) -> void
+public ffi fn glTexCoord2dv(v: &f64) -> void
+public ffi fn glTexCoord2fv(v: &f32) -> void
+public ffi fn glTexCoord2iv(v: &i32) -> void
+public ffi fn glTexCoord2sv(v: &i16) -> void
+public ffi fn glTexCoord3dv(v: &f64) -> void
+public ffi fn glTexCoord3fv(v: &f32) -> void
+public ffi fn glTexCoord3iv(v: &i32) -> void
+public ffi fn glTexCoord3sv(v: &i16) -> void
+public ffi fn glTexCoord4dv(v: &f64) -> void
+public ffi fn glTexCoord4fv(v: &f32) -> void
+public ffi fn glTexCoord4iv(v: &i32) -> void
+public ffi fn glTexCoord4sv(v: &i16) -> void
 public ffi fn glRasterPos2d(x: f64, y: f64) -> void
 public ffi fn glRasterPos2f(x: f32, y: f32) -> void
 public ffi fn glRasterPos2i(x: i32, y: i32) -> void
@@ -1010,59 +1010,59 @@ public ffi fn glRasterPos4d(x: f64, y: f64, z: f64, w: f64) -> void
 public ffi fn glRasterPos4f(x: f32, y: f32, z: f32, w: f32) -> void
 public ffi fn glRasterPos4i(x: i32, y: i32, z: i32, w: i32) -> void
 public ffi fn glRasterPos4s(x: i16, y: i16, z: i16, w: i16) -> void
-public ffi fn glRasterPos2dv(v: f64*) -> void
-public ffi fn glRasterPos2fv(v: f32*) -> void
-public ffi fn glRasterPos2iv(v: i32*) -> void
-public ffi fn glRasterPos2sv(v: i16*) -> void
-public ffi fn glRasterPos3dv(v: f64*) -> void
-public ffi fn glRasterPos3fv(v: f32*) -> void
-public ffi fn glRasterPos3iv(v: i32*) -> void
-public ffi fn glRasterPos3sv(v: i16*) -> void
-public ffi fn glRasterPos4dv(v: f64*) -> void
-public ffi fn glRasterPos4fv(v: f32*) -> void
-public ffi fn glRasterPos4iv(v: i32*) -> void
-public ffi fn glRasterPos4sv(v: i16*) -> void
+public ffi fn glRasterPos2dv(v: &f64) -> void
+public ffi fn glRasterPos2fv(v: &f32) -> void
+public ffi fn glRasterPos2iv(v: &i32) -> void
+public ffi fn glRasterPos2sv(v: &i16) -> void
+public ffi fn glRasterPos3dv(v: &f64) -> void
+public ffi fn glRasterPos3fv(v: &f32) -> void
+public ffi fn glRasterPos3iv(v: &i32) -> void
+public ffi fn glRasterPos3sv(v: &i16) -> void
+public ffi fn glRasterPos4dv(v: &f64) -> void
+public ffi fn glRasterPos4fv(v: &f32) -> void
+public ffi fn glRasterPos4iv(v: &i32) -> void
+public ffi fn glRasterPos4sv(v: &i16) -> void
 public ffi fn glRectd(x1: f64, y1: f64, x2: f64, y2: f64) -> void
 public ffi fn glRectf(x1: f32, y1: f32, x2: f32, y2: f32) -> void
 public ffi fn glRecti(x1: i32, y1: i32, x2: i32, y2: i32) -> void
 public ffi fn glRects(x1: i16, y1: i16, x2: i16, y2: i16) -> void
-public ffi fn glRectdv(v1: f64*, v2: f64*) -> void
-public ffi fn glRectfv(v1: f32*, v2: f32*) -> void
-public ffi fn glRectiv(v1: i32*, v2: i32*) -> void
-public ffi fn glRectsv(v1: i16*, v2: i16*) -> void
+public ffi fn glRectdv(v1: &f64, v2: &f64) -> void
+public ffi fn glRectfv(v1: &f32, v2: &f32) -> void
+public ffi fn glRectiv(v1: &i32, v2: &i32) -> void
+public ffi fn glRectsv(v1: &i16, v2: &i16) -> void
 
 
 // Vertex Arrays
-public ffi fn glVertexPointer(size: i32, type: GL, stride: i32, ptr: void*) -> void
-public ffi fn glNormalPointer(type: GL, stride: i32, ptr: void*) -> void
-public ffi fn glColorPointer(size: i32, type: GL, stride: i32, ptr: void*) -> void
-public ffi fn glIndexPointer(type: GL, stride: i32, ptr: void*) -> void
-public ffi fn glTexCoordPointer(size: i32, type: GL, stride: i32, ptr: void*) -> void
-public ffi fn glEdgeFlagPointer(stride: i32, ptr: void*) -> void
-public ffi fn glGetPointerv(pname: u32, params: void**) -> void
+public ffi fn glVertexPointer(size: i32, type: GL, stride: i32, ptr: &void) -> void
+public ffi fn glNormalPointer(type: GL, stride: i32, ptr: &void) -> void
+public ffi fn glColorPointer(size: i32, type: GL, stride: i32, ptr: &void) -> void
+public ffi fn glIndexPointer(type: GL, stride: i32, ptr: &void) -> void
+public ffi fn glTexCoordPointer(size: i32, type: GL, stride: i32, ptr: &void) -> void
+public ffi fn glEdgeFlagPointer(stride: i32, ptr: &void) -> void
+public ffi fn glGetPointerv(pname: u32, params: &&void) -> void
 public ffi fn glArrayElement(i: i32) -> void
 public ffi fn glDrawArrays(mode: GL, first: i32, count: i32) -> void
-public ffi fn glDrawElements(mode: GL, count: i32, type: GL, indices: void*) -> void
-public ffi fn glInterleavedArrays(format: u32, stride: i32, pointer: void*) -> void
+public ffi fn glDrawElements(mode: GL, count: i32, type: GL, indices: &void) -> void
+public ffi fn glInterleavedArrays(format: u32, stride: i32, pointer: &void) -> void
 
 // Lighting
 public ffi fn glShadeModel(mode: u32) -> void
 public ffi fn glLightf(light: u32, pname: u32, param: f32) -> void
 public ffi fn glLighti(light: u32, pname: u32, param: i32) -> void
-public ffi fn glLightfv(light: u32, pname: u32, params: f32*) -> void
-public ffi fn glLightiv(light: u32, pname: u32, params: i32*) -> void
-public ffi fn glGetLightfv(light: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetLightiv(light: u32, pname: u32, params: i32*) -> void
+public ffi fn glLightfv(light: u32, pname: u32, params: &f32) -> void
+public ffi fn glLightiv(light: u32, pname: u32, params: &i32) -> void
+public ffi fn glGetLightfv(light: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetLightiv(light: u32, pname: u32, params: &i32) -> void
 public ffi fn glLightModelf(pname: u32, param: f32) -> void
 public ffi fn glLightModeli(pname: u32, param: i32) -> void
-public ffi fn glLightModelfv(pname: u32, params: f32*) -> void
-public ffi fn glLightModeliv(pname: u32, params: i32*) -> void
+public ffi fn glLightModelfv(pname: u32, params: &f32) -> void
+public ffi fn glLightModeliv(pname: u32, params: &i32) -> void
 public ffi fn glMaterialf(face: u32, pname: u32, param: f32) -> void
 public ffi fn glMateriali(face: u32, pname: u32, param: i32) -> void
-public ffi fn glMaterialfv(face: u32, pname: u32, params: f32*) -> void
-public ffi fn glMaterialiv(face: u32, pname: u32, params: i32*) -> void
-public ffi fn glGetMaterialfv(face: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetMaterialiv(face: u32, pname: u32, params: i32*) -> void
+public ffi fn glMaterialfv(face: u32, pname: u32, params: &f32) -> void
+public ffi fn glMaterialiv(face: u32, pname: u32, params: &i32) -> void
+public ffi fn glGetMaterialfv(face: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetMaterialiv(face: u32, pname: u32, params: &i32) -> void
 public ffi fn glColorMaterial(face: u32, mode: u32) -> void
 
 
@@ -1072,16 +1072,16 @@ public ffi fn glPixelStoref(pname: u32, param: f32) -> void
 public ffi fn glPixelStorei(pname: u32, param: i32) -> void
 public ffi fn glPixelTransferf(pname: u32, param: f32) -> void
 public ffi fn glPixelTransferi(pname: u32, param: i32) -> void
-public ffi fn glPixelMapfv(map: u32, mapsize: i32, values: f32*) -> void
-public ffi fn glPixelMapuiv(map: u32, mapsize: i32, values: u32*) -> void
-public ffi fn glPixelMapusv(map: u32, mapsize: i32, values: u16*) -> void
-public ffi fn glGetPixelMapfv(map: u32, values: f32*) -> void
-public ffi fn glGetPixelMapuiv(map: u32, values: u32*) -> void
-public ffi fn glGetPixelMapusv(map: u32, values: u16*) -> void
+public ffi fn glPixelMapfv(map: u32, mapsize: i32, values: &f32) -> void
+public ffi fn glPixelMapuiv(map: u32, mapsize: i32, values: &u32) -> void
+public ffi fn glPixelMapusv(map: u32, mapsize: i32, values: &u16) -> void
+public ffi fn glGetPixelMapfv(map: u32, values: &f32) -> void
+public ffi fn glGetPixelMapuiv(map: u32, values: &u32) -> void
+public ffi fn glGetPixelMapusv(map: u32, values: &u16) -> void
 public ffi fn glBitmap(width: i32, height: i32, xorig: f32, yorig: f32, xmove: f32,
-    ymove: f32, bitmap: i8*) -> void
-public ffi fn glReadPixels(x: i32, y: i32, width: i32, height: i32, format: u32, type: u32, pixels: void*) -> void
-public ffi fn glDrawPixels(width: i32, height: i32, format: u32, type: u32, pixels: void*) -> void
+    ymove: f32, bitmap: &i8) -> void
+public ffi fn glReadPixels(x: i32, y: i32, width: i32, height: i32, format: u32, type: u32, pixels: &void) -> void
+public ffi fn glDrawPixels(width: i32, height: i32, format: u32, type: u32, pixels: &void) -> void
 public ffi fn glCopyPixels(x: i32, y: i32, width: i32, height: i32, type: u32) -> void
 
 // Stenciling
@@ -1112,26 +1112,26 @@ public ffi fn glTexParameterfv(target: u32, pname: u32, params: f32) -> void
 public ffi fn glTexParameteriv(target: u32, pname: u32, params: i32) -> void
 public ffi fn glGetTexParameterfv(target: u32, pname: u32, params: f32) -> void
 public ffi fn glGetTexParameteriv(target: u32, pname: u32, params: i32) -> void
-public ffi fn glGetTexLevelParameterfv(target: u32, level: i32, pname: u32, params: f32*) -> void
-public ffi fn glGetTexLevelParameteriv(target: u32, level: i32, pname: u32, params: i32*) -> void
+public ffi fn glGetTexLevelParameterfv(target: u32, level: i32, pname: u32, params: &f32) -> void
+public ffi fn glGetTexLevelParameteriv(target: u32, level: i32, pname: u32, params: &i32) -> void
 public ffi fn glTexImage1D(target: u32, level: i32, internalFormat: i32, width: i32, border: i32,
-    format: u32, type: u32, pixels: void*) -> void
+    format: u32, type: u32, pixels: &void) -> void
 public ffi fn glTexImage2D(target: u32, level: i32, internalFormat: i32, width: i32, height: i32,
-    border: i32, format: u32, type: u32, pixels: void*) -> void
-public ffi fn glGetTexImage(target: u32, level: i32, format: u32, type: u32, pixels: void*) -> void
+    border: i32, format: u32, type: u32, pixels: &void) -> void
+public ffi fn glGetTexImage(target: u32, level: i32, format: u32, type: u32, pixels: &void) -> void
 
 // OpenGL 1.1 functions
-public ffi fn glGenTextures(n: i32, textures: u32*) -> void
-public ffi fn glDeleteTextures(n: i32, textures: u32*) -> void
+public ffi fn glGenTextures(n: i32, textures: &u32) -> void
+public ffi fn glDeleteTextures(n: i32, textures: &u32) -> void
 public ffi fn glBindTexture(target: u32, texture: u32) -> void
-public ffi fn glPrioritizeTextures(n: i32, textures: u32*, priorities: f32*) -> void
-public ffi fn glAreTexturesResident(n: i32, textures: u32*, residences: bool*) -> bool
+public ffi fn glPrioritizeTextures(n: i32, textures: &u32, priorities: &f32) -> void
+public ffi fn glAreTexturesResident(n: i32, textures: &u32, residences: &bool) -> bool
 public ffi fn glIsTexture(texture: u32) -> bool
 public ffi fn glTexSubImage1D(target: u32, level: i32, xoffset: i32, width: i32, format: u32,
-    type: u32, pixels: void*) -> void
+    type: u32, pixels: &void) -> void
 
 public ffi fn glTexSubImage2D(target: u32, level: i32, xoffset: i32, yoffset: i32, width: i32,
-    height: i32, format: u32, type: u32, pixels: void*) -> void
+    height: i32, format: u32, type: u32, pixels: &void) -> void
 
 public ffi fn glCopyTexImage1D(target: u32, level: i32, internalformat: u32, x: i32, y: i32,
     width: i32, border: i32) -> void
@@ -1144,23 +1144,23 @@ public ffi fn glCopyTexSubImage2D(target: u32, level: i32, xoffset: i32, yoffset
     width: i32, height: i32) -> void
 
 // Evaluators
-public ffi fn glMap1d(target: u32, u1: f64, u2: f64, stride: i32, order: i32, points: f64*) -> void
-public ffi fn glMap1f(target: u32, u1: f32, u2: f32, stride: i32, order: i32, points: f32*) -> void
+public ffi fn glMap1d(target: u32, u1: f64, u2: f64, stride: i32, order: i32, points: &f64) -> void
+public ffi fn glMap1f(target: u32, u1: f32, u2: f32, stride: i32, order: i32, points: &f32) -> void
 public ffi fn glMap2d(target: u32, u1: f64, u2: f64, ustride: i32, uorder: i32,
-    v1: f64, v2: f64, vstride: i32, vorder: i32, points: f64*) -> void
+    v1: f64, v2: f64, vstride: i32, vorder: i32, points: &f64) -> void
 public ffi fn glMap2f(target: u32, u1: f32, u2: f32, ustride: i32, uorder: i32,
-    v1: f32, v2: f32, vstride: i32, vorder: i32, points: f32*) -> void
-public ffi fn glGetMapdv(target: u32, query: u32, v: f64*) -> void
-public ffi fn glGetMapfv(target: u32, query: u32, v: f32*) -> void
-public ffi fn glGetMapiv(target: u32, query: u32, v: i32*) -> void
+    v1: f32, v2: f32, vstride: i32, vorder: i32, points: &f32) -> void
+public ffi fn glGetMapdv(target: u32, query: u32, v: &f64) -> void
+public ffi fn glGetMapfv(target: u32, query: u32, v: &f32) -> void
+public ffi fn glGetMapiv(target: u32, query: u32, v: &i32) -> void
 public ffi fn glEvalCoord1d(u: f64) -> void
 public ffi fn glEvalCoord1f(u: f32) -> void
-public ffi fn glEvalCoord1dv(u: f64*) -> void
-public ffi fn glEvalCoord1fv(u: f32*) -> void
+public ffi fn glEvalCoord1dv(u: &f64) -> void
+public ffi fn glEvalCoord1fv(u: &f32) -> void
 public ffi fn glEvalCoord2d(u: f64, v: f64) -> void
 public ffi fn glEvalCoord2f(u: f32, v: f32) -> void
-public ffi fn glEvalCoord2dv(u: f64*) -> void
-public ffi fn glEvalCoord2fv(u: f32*) -> void
+public ffi fn glEvalCoord2dv(u: &f64) -> void
+public ffi fn glEvalCoord2fv(u: &f32) -> void
 public ffi fn glMapGrid1d(un: i32, u1: f64, u2: f64) -> void
 public ffi fn glMapGrid1f(un: i32, u1: f32, u2: f32) -> void
 public ffi fn glMapGrid2d(un: i32, u1: f64, u2: f64, vn: i32, v1: f64, v2: f64) -> void
@@ -1173,162 +1173,162 @@ public ffi fn glEvalMesh2(mode: u32, i1: i32, i2: i32, j1: i32, j2: i32) -> void
 // Fog
 public ffi fn glFogf(pname: u32, param: f32) -> void
 public ffi fn glFogi(pname: u32, param: i32) -> void
-public ffi fn glFogfv(pname: u32, params: f32*) -> void
-public ffi fn glFogiv(pname: u32, params: i32*) -> void
+public ffi fn glFogfv(pname: u32, params: &f32) -> void
+public ffi fn glFogiv(pname: u32, params: &i32) -> void
 
 // Selection and Feedback
-public ffi fn glFeedbackBuffer(size: i32, type: u32, buffer: f32*) -> void
+public ffi fn glFeedbackBuffer(size: i32, type: u32, buffer: &f32) -> void
 public ffi fn glPassThrough(token: f32) -> void
-public ffi fn glSelectBuffer(size: i32, buffer: u32*) -> void
+public ffi fn glSelectBuffer(size: i32, buffer: &u32) -> void
 public ffi fn glInitNames() -> void
 public ffi fn glLoadName(name: u32) -> void
 public ffi fn glPushName(name: u32) -> void
 public ffi fn glPopName() -> void
-public ffi fn glDrawRangeElements(mode: u32, start: u32, end: u32, count: i32, type: u32, indices: void*) -> void
+public ffi fn glDrawRangeElements(mode: u32, start: u32, end: u32, count: i32, type: u32, indices: &void) -> void
 public ffi fn glTexImage3D(target: u32, level: i32, internalFormat: i32, width: i32, height: i32,
-    depth: i32, border: i32, format: u32, type: u32, pixels: void*) -> void
+    depth: i32, border: i32, format: u32, type: u32, pixels: &void) -> void
 public ffi fn glTexSubImage3D(target: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: i32,
-    height: i32, depth: i32, format: u32, type: u32, pixels: void*) -> void
+    height: i32, depth: i32, format: u32, type: u32, pixels: &void) -> void
 public ffi fn glCopyTexSubImage3D(target: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, x: i32,
     y: i32, width: i32, height: i32) -> void
 public ffi fn glColorTable(target: u32, internalformat: u32, width: i32, format: u32, type: u32,
-    table: void*) -> void
-public ffi fn glColorSubTable(target: u32, start: i32, count: i32, format: u32, type: u32, data: void*) -> void
-public ffi fn glColorTableParameteriv(target: u32, pname: u32, params: i32*) -> void
-public ffi fn glColorTableParameterfv(target: u32, pname: u32, params: f32*) -> void
+    table: &void) -> void
+public ffi fn glColorSubTable(target: u32, start: i32, count: i32, format: u32, type: u32, data: &void) -> void
+public ffi fn glColorTableParameteriv(target: u32, pname: u32, params: &i32) -> void
+public ffi fn glColorTableParameterfv(target: u32, pname: u32, params: &f32) -> void
 public ffi fn glCopyColorSubTable(target: u32, start: i32, x: i32, y: i32, width: i32) -> void
 public ffi fn glCopyColorTable(target: u32, internalformat: u32, x: i32, y: i32, width: i32) -> void
-public ffi fn glGetColorTable(target: u32, format: u32, type: u32, table: void*) -> void
-public ffi fn glGetColorTableParameterfv(target: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetColorTableParameteriv(target: u32, pname: u32, params: i32*) -> void
+public ffi fn glGetColorTable(target: u32, format: u32, type: u32, table: &void) -> void
+public ffi fn glGetColorTableParameterfv(target: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetColorTableParameteriv(target: u32, pname: u32, params: &i32) -> void
 public ffi fn glBlendEquation(mode: u32) -> void
 public ffi fn glBlendColor(red: f32, green: f32, blue: f32, alpha: f32) -> void
 public ffi fn glHistogram(target: u32, width: i32, internalformat: u32, sink: bool) -> void
 public ffi fn glResetHistogram(target: u32) -> void
-public ffi fn glGetHistogram(target: u32, reset: bool, format: u32, type: u32, values: void*) -> void
-public ffi fn glGetHistogramParameterfv(target: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetHistogramParameteriv(target: u32, pname: u32, params: i32*) -> void
+public ffi fn glGetHistogram(target: u32, reset: bool, format: u32, type: u32, values: &void) -> void
+public ffi fn glGetHistogramParameterfv(target: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetHistogramParameteriv(target: u32, pname: u32, params: &i32) -> void
 public ffi fn glMinmax(target: u32, internalformat: u32, sink: bool) -> void
 public ffi fn glResetMinmax(target: u32) -> void
-public ffi fn glGetMinmax(target: u32, reset: bool, format: u32, types: u32, values: void*) -> void
-public ffi fn glGetMinmaxParameterfv(target: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetMinmaxParameteriv(target: u32, pname: u32, params: i32*) -> void
+public ffi fn glGetMinmax(target: u32, reset: bool, format: u32, types: u32, values: &void) -> void
+public ffi fn glGetMinmaxParameterfv(target: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetMinmaxParameteriv(target: u32, pname: u32, params: &i32) -> void
 public ffi fn glConvolutionFilter1D(target: u32, internalformat: u32, width: i32, format: u32, type: u32,
-    image: void*) -> void
+    image: &void) -> void
 
 public ffi fn glConvolutionFilter2D(target: u32, internalformat: u32, width: i32, height: i32, format: u32,
-    type: u32, image: void*) -> void
+    type: u32, image: &void) -> void
 
 public ffi fn glConvolutionParameterf(target: u32, pname: u32, params: f32) -> void
-public ffi fn glConvolutionParameterfv(target: u32, pname: u32, params: f32*) -> void
+public ffi fn glConvolutionParameterfv(target: u32, pname: u32, params: &f32) -> void
 public ffi fn glConvolutionParameteri(target: u32, pname: u32, params: i32) -> void
-public ffi fn glConvolutionParameteriv(target: u32, pname: u32, params: i32*) -> void
+public ffi fn glConvolutionParameteriv(target: u32, pname: u32, params: &i32) -> void
 public ffi fn glCopyConvolutionFilter1D(target: u32, internalformat: u32, x: i32, y: i32, width: i32) -> void
 public ffi fn glCopyConvolutionFilter2D(target: u32, internalformat: u32, x: i32, y: i32, width: i32,
     height: i32) -> void
 
-public ffi fn glGetConvolutionFilter(target: u32, format: u32, type: u32, image: void*) -> void
-public ffi fn glGetConvolutionParameterfv(target: u32, pname: u32, params: f32*) -> void
-public ffi fn glGetConvolutionParameteriv(target: u32, pname: u32, params: i32*) -> void
+public ffi fn glGetConvolutionFilter(target: u32, format: u32, type: u32, image: &void) -> void
+public ffi fn glGetConvolutionParameterfv(target: u32, pname: u32, params: &f32) -> void
+public ffi fn glGetConvolutionParameteriv(target: u32, pname: u32, params: &i32) -> void
 
 public ffi fn glSeparableFilter2D(target: u32, internalformat: u32, width: i32, height: i32, format: u32,
-    type: u32, row: void*, column: void*) -> void
+    type: u32, row: &void, column: &void) -> void
 
-public ffi fn glGetSeparableFilter(target: u32, format: u32, type: u32, row: void*, column: void*, span: void*) -> void
+public ffi fn glGetSeparableFilter(target: u32, format: u32, type: u32, row: &void, column: &void, span: &void) -> void
 
 public ffi fn glActiveTexture(texture: u32) -> void
 public ffi fn glClientActiveTexture(texture: u32) -> void
 
 public ffi fn glCompressedTexImage1D(target: u32, level: i32, internalformat: u32, width: i32, border: i32,
-    imageSize: i32, data: void*) -> void
+    imageSize: i32, data: &void) -> void
 
 public ffi fn glCompressedTexImage2D(target: u32, level: i32, internalformat: u32, width: i32, height: i32,
-    border: i32, imageSize: i32, data: void*) -> void
+    border: i32, imageSize: i32, data: &void) -> void
 
 public ffi fn glCompressedTexImage3D(target: u32, level: i32, internalformat: u32, width: i32, height: i32,
-     voiddepth: i32, border: i32, imageSize: i32, data: void*)
+     voiddepth: i32, border: i32, imageSize: i32, data: &void)
 
 public ffi fn glCompressedTexSubImage1D(target: u32, level: i32, xoffset: i32, width: i32, format: u32,
-    imageSize: i32, data: void*) -> void
+    imageSize: i32, data: &void) -> void
 
 public ffi fn glCompressedTexSubImage2D(target: u32, level: i32, xoffset: i32, yoffset: i32, width: i32,
-    height: i32, format: u32, imageSize: i32, data: void*) -> void
+    height: i32, format: u32, imageSize: i32, data: &void) -> void
 
 public ffi fn glCompressedTexSubImage3D(target: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32,
-    width: i32, height: i32, depth: i32, format: u32, imageSize: i32, data: void*) -> void
+    width: i32, height: i32, depth: i32, format: u32, imageSize: i32, data: &void) -> void
 
-public ffi fn glGetCompressedTexImage(target: u32, lod: i32, img: void*) -> void
+public ffi fn glGetCompressedTexImage(target: u32, lod: i32, img: &void) -> void
 public ffi fn glMultiTexCoord1d(target: u32, s: f64) -> void
-public ffi fn glMultiTexCoord1dv(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord1dv(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord1f(target: u32, s: f32) -> void
-public ffi fn glMultiTexCoord1fv(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord1fv(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord1i(target: u32, s: i32) -> void
-public ffi fn glMultiTexCoord1iv(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord1iv(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord1s(target: u32, s: i16) -> void
-public ffi fn glMultiTexCoord1sv(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord1sv(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord2d(target: u32, s: f64, t: f64) -> void
-public ffi fn glMultiTexCoord2dv(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord2dv(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord2f(target: u32, s: f32, t: f32) -> void
-public ffi fn glMultiTexCoord2fv(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord2fv(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord2i(target: u32, s: i32, t: i32) -> void
-public ffi fn glMultiTexCoord2iv(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord2iv(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord2s(target: u32, s: i16, t: i16) -> void
-public ffi fn glMultiTexCoord2sv(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord2sv(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord3d(target: u32, s: f64, t: f64, r: f64) -> void
-public ffi fn glMultiTexCoord3dv(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord3dv(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord3f(target: u32, s: f32, t: f32, r: f32) -> void
-public ffi fn glMultiTexCoord3fv(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord3fv(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord3i(target: u32, s: i32, t: i32, r: i32) -> void
-public ffi fn glMultiTexCoord3iv(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord3iv(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord3s(target: u32, s: i16, t: i16, r: i16) -> void
-public ffi fn glMultiTexCoord3sv(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord3sv(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord4d(target: u32, s: f64, t: f64, r: f64, q: f64) -> void
-public ffi fn glMultiTexCoord4dv(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord4dv(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord4f(target: u32, s: f32, t: f32, r: f32, q: f32) -> void
-public ffi fn glMultiTexCoord4fv(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord4fv(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord4i(target: u32, s: i32, t: i32, r: i32, q: i32) -> void
-public ffi fn glMultiTexCoord4iv(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord4iv(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord4s(target: u32, s: i16, t: i16, r: i16, q: i16) -> void
-public ffi fn glMultiTexCoord4sv(target: u32, v: i16*) -> void
-public ffi fn glLoadTransposeMatrixd(m: f64[16]) -> void
-public ffi fn glLoadTransposeMatrixf(m: f32[16]) -> void
-public ffi fn glMultTransposeMatrixd(m: f64[16]) -> void
-public ffi fn glMultTransposeMatrixf(m: f32[16]) -> void
+public ffi fn glMultiTexCoord4sv(target: u32, v: &i16) -> void
+public ffi fn glLoadTransposeMatrixd(m: [f64: 16]) -> void
+public ffi fn glLoadTransposeMatrixf(m: [f32: 16]) -> void
+public ffi fn glMultTransposeMatrixd(m: [f64: 16]) -> void
+public ffi fn glMultTransposeMatrixf(m: [f32: 16]) -> void
 public ffi fn glSampleCoverage(value: f32, invert: bool) -> void
 public ffi fn glActiveTextureARB(texture: u32) -> void
 public ffi fn glClientActiveTextureARB(texture: u32) -> void
 public ffi fn glMultiTexCoord1dARB(target: u32, s: f64) -> void
-public ffi fn glMultiTexCoord1dvARB(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord1dvARB(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord1fARB(target: u32, s: f32) -> void
-public ffi fn glMultiTexCoord1fvARB(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord1fvARB(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord1iARB(target: u32, s: i32) -> void
-public ffi fn glMultiTexCoord1ivARB(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord1ivARB(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord1sARB(target: u32, s: i16) -> void
-public ffi fn glMultiTexCoord1svARB(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord1svARB(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord2dARB(target: u32, s: f64, t: f64) -> void
-public ffi fn glMultiTexCoord2dvARB(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord2dvARB(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord2fARB(target: u32, s: f32, t: f32) -> void
-public ffi fn glMultiTexCoord2fvARB(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord2fvARB(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord2iARB(target: u32, s: i32, t: i32) -> void
-public ffi fn glMultiTexCoord2ivARB(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord2ivARB(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord2sARB(target: u32, s: i16, t: i16) -> void
-public ffi fn glMultiTexCoord2svARB(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord2svARB(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord3dARB(target: u32, s: f64, t: f64, r: f64) -> void
-public ffi fn glMultiTexCoord3dvARB(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord3dvARB(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord3fARB(target: u32, s: f32, t: f32, r: f32) -> void
-public ffi fn glMultiTexCoord3fvARB(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord3fvARB(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord3iARB(target: u32, s: i32, t: i32, r: i32) -> void
-public ffi fn glMultiTexCoord3ivARB(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord3ivARB(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord3sARB(target: u32, s: i16, t: i16, r: i16) -> void
-public ffi fn glMultiTexCoord3svARB(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord3svARB(target: u32, v: &i16) -> void
 public ffi fn glMultiTexCoord4dARB(target: u32, s: f64, t: f64, r: f64, q: f64) -> void
-public ffi fn glMultiTexCoord4dvARB(target: u32, v: f64*) -> void
+public ffi fn glMultiTexCoord4dvARB(target: u32, v: &f64) -> void
 public ffi fn glMultiTexCoord4fARB(target: u32, s: f32, t: f32, r: f32, q: f32) -> void
-public ffi fn glMultiTexCoord4fvARB(target: u32, v: f32*) -> void
+public ffi fn glMultiTexCoord4fvARB(target: u32, v: &f32) -> void
 public ffi fn glMultiTexCoord4iARB(target: u32, s: i32, t: i32, r: i32, q: i32) -> void
-public ffi fn glMultiTexCoord4ivARB(target: u32, v: i32*) -> void
+public ffi fn glMultiTexCoord4ivARB(target: u32, v: &i32) -> void
 public ffi fn glMultiTexCoord4sARB(target: u32, s: i16, t: i16, r: i16, q: i16) -> void
-public ffi fn glMultiTexCoord4svARB(target: u32, v: i16*) -> void
+public ffi fn glMultiTexCoord4svARB(target: u32, v: &i16) -> void
 
 
 

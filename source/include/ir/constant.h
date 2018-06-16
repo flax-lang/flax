@@ -16,13 +16,6 @@ namespace fir
 	struct Value;
 	struct ConstantValue;
 
-	bool checkSignedIntLiteralFitsIntoType(fir::PrimitiveType* type, ssize_t val);
-	bool checkUnsignedIntLiteralFitsIntoType(fir::PrimitiveType* type, size_t val);
-	bool checkFloatingPointLiteralFitsIntoType(fir::PrimitiveType* type, long double val);
-
-	ConstantValue* createConstantValueCast(ConstantValue* cv, fir::Type* type);
-
-
 	// base class implicitly stores null
 	struct ConstantValue : Value
 	{
@@ -38,44 +31,57 @@ namespace fir
 		ConstantValue(Type* type);
 	};
 
+	struct ConstantNumber : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantNumber* get(ConstantNumberType* cnt, uint64_t n);
+
+		template <typename T>
+		T getValue() { return *reinterpret_cast<T*>(&this->bits); }
+
+		protected:
+		ConstantNumber(ConstantNumberType* cnt, uint64_t n);
+		uint64_t bits = 0;
+	};
+
+	struct ConstantBool : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantBool* get(bool value);
+		bool getValue();
+
+		protected:
+		ConstantBool(bool val);
+
+		bool value;
+	};
+
 	struct ConstantInt : ConstantValue
 	{
 		friend struct Module;
 
-		static ConstantInt* get(Type* intType, size_t val);
+		static ConstantInt* get(Type* intType, uint64_t val);
 
-		static ConstantInt* getBool(bool value, FTContext* tc = 0);
-		static ConstantInt* getInt8(int8_t value, FTContext* tc = 0);
-		static ConstantInt* getInt16(int16_t value, FTContext* tc = 0);
-		static ConstantInt* getInt32(int32_t value, FTContext* tc = 0);
-		static ConstantInt* getInt64(int64_t value, FTContext* tc = 0);
-		static ConstantInt* getUint8(uint8_t value, FTContext* tc = 0);
-		static ConstantInt* getUint16(uint16_t value, FTContext* tc = 0);
-		static ConstantInt* getUint32(uint32_t value, FTContext* tc = 0);
-		static ConstantInt* getUint64(uint64_t value, FTContext* tc = 0);
+		static ConstantInt* getInt8(int8_t value);
+		static ConstantInt* getInt16(int16_t value);
+		static ConstantInt* getInt32(int32_t value);
+		static ConstantInt* getInt64(int64_t value);
+		static ConstantInt* getUint8(uint8_t value);
+		static ConstantInt* getUint16(uint16_t value);
+		static ConstantInt* getUint32(uint32_t value);
+		static ConstantInt* getUint64(uint64_t value);
 
 
-		ssize_t getSignedValue();
-		size_t getUnsignedValue();
-
-		protected:
-		ConstantInt(Type* type, ssize_t val);
-		ConstantInt(Type* type, size_t val);
-
-		size_t value;
-	};
-
-	struct ConstantChar : ConstantValue
-	{
-		friend struct Module;
-
-		static ConstantChar* get(char c, FTContext* tc = 0) { return new ConstantChar(c); }
-
-		char getValue() { return this->value; }
+		int64_t getSignedValue();
+		uint64_t getUnsignedValue();
 
 		protected:
-		ConstantChar(char v) : ConstantValue(Type::getCharType()), value(v) { }
-		char value;
+		ConstantInt(Type* type, int64_t val);
+		ConstantInt(Type* type, uint64_t val);
+
+		uint64_t value;
 	};
 
 
@@ -87,9 +93,9 @@ namespace fir
 		static ConstantFP* get(Type* intType, double val);
 		static ConstantFP* get(Type* intType, long double val);
 
-		static ConstantFP* getFloat32(float value, FTContext* tc = 0);
-		static ConstantFP* getFloat64(double value, FTContext* tc = 0);
-		static ConstantFP* getFloat80(long double value, FTContext* tc = 0);
+		static ConstantFP* getFloat32(float value);
+		static ConstantFP* getFloat64(double value);
+		static ConstantFP* getFloat80(long double value);
 
 		long double getValue();
 
@@ -124,6 +130,22 @@ namespace fir
 		protected:
 		ConstantStruct(StructType* st, std::vector<ConstantValue*> members);
 		std::vector<ConstantValue*> members;
+	};
+
+	struct ConstantEnumCase : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantEnumCase* get(EnumType* en, ConstantInt* index, ConstantValue* value);
+
+		ConstantInt* getIndex();
+		ConstantValue* getValue();
+
+		protected:
+		ConstantEnumCase(EnumType* en, ConstantInt* index, ConstantValue* value);
+
+		ConstantInt* index = 0;
+		ConstantValue* value = 0;
 	};
 
 	struct ConstantString : ConstantValue
@@ -174,6 +196,21 @@ namespace fir
 		ConstantArray* arr = 0;
 	};
 
+	struct ConstantArraySlice : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantArraySlice* get(ArraySliceType* type, ConstantValue* data, ConstantValue* length);
+
+		ConstantValue* getData() { return this->data; }
+		ConstantValue* getLength() { return this->length; }
+
+		protected:
+		ConstantArraySlice(ArraySliceType* type);
+
+		ConstantValue* data = 0;
+		ConstantValue* length = 0;
+	};
 
 
 	struct GlobalValue : ConstantValue
@@ -185,7 +222,7 @@ namespace fir
 		Module* getParentModule() { return this->parentModule; }
 
 		protected:
-		GlobalValue(Module* mod, Type* type, LinkageType linkage);
+		GlobalValue(Module* mod, Type* type, LinkageType linkage, bool mut = false);
 
 		Module* parentModule = 0;
 	};

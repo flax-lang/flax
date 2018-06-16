@@ -3,10 +3,10 @@
 // Licensed under the Apache License Version 2.0.
 
 // import Foundation
-import OpenGL.GL
-import SDL2.SDL
+import "OpenGL/GL"
+import "SDL2/SDL"
 
-import LibCInterface
+import "LibCInterface"
 
 ffi fn rand() -> i32
 

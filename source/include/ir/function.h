@@ -50,20 +50,17 @@ namespace fir
 
 		bool isCStyleVarArg();
 		bool isVariadic();
-		bool isGeneric();
 
 		Type* getReturnType();
 		size_t getArgumentCount();
 		std::vector<Argument*> getArguments();
+		Argument* getArgumentWithName(std::string name);
 
 		std::vector<IRBlock*>& getBlockList();
 		void deleteBody();
 
 		bool wasDeclaredWithBodyElsewhere();
 		void setHadBodyElsewhere();
-
-		bool isGenericInstantiation();
-		void setIsGenericInstantiation();
 
 		bool isAlwaysInlined();
 		void setAlwaysInline();
@@ -72,9 +69,6 @@ namespace fir
 
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
-		Function* reify(std::map<std::string, Type*> names, FTContext* tc = 0);
-		Function* reifyUsingFunctionType(FunctionType* ft, FTContext* tc = 0);
-
 
 		static Function* create(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
 
@@ -87,7 +81,6 @@ namespace fir
 
 		bool alwaysInlined = false;
 		bool hadBodyElsewhere = false;
-		bool wasGenericInstantiation = false;
 	};
 }
 
