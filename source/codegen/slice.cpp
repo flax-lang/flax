@@ -112,7 +112,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ty = this->expr->type;
 	auto res = this->expr->codegen(cs);
 
-	this->cgSubscripteePtr = res.pointer;
+	// this->cgSubscripteePtr = res.pointer;
 	this->cgSubscriptee = res.value;
 
 	auto lhs = res.value;
@@ -174,7 +174,8 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else if(ty->isArrayType())
 	{
-		auto lhsptr = res.pointer;
+		// TODO: LVALUE HOLE
+		fir::Value* lhsptr = 0;
 
 		if(!lhsptr) lhsptr = cs->irb.ImmutStackAlloc(lhs->getType(), lhs);
 		iceAssert(lhsptr);

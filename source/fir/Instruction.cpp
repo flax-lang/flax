@@ -17,10 +17,6 @@ namespace fir
 		this->sideEffects = sideeff;
 		this->parentBlock = parent;
 		this->realOutput = new Value(out);
-		this->realOutput->source = this;
-
-		for(auto v : vals)
-			v->addUser(this);
 	}
 
 	Value* Instruction::getResult()
@@ -106,9 +102,9 @@ namespace fir
 			case OpKind::Cast_IntSignedness:                instrname = "signcast"; break;
 			case OpKind::Integer_ZeroExt:                   instrname = "izeroext"; break;
 			case OpKind::Integer_Truncate:                  instrname = "itrunc"; break;
-			case OpKind::Value_Store:                       instrname = "store"; break;
+			case OpKind::Value_WritePtr:                       instrname = "store"; break;
 			case OpKind::Logical_Not:                       instrname = "logicalNot"; break;
-			case OpKind::Value_Load:                        instrname = "load"; break;
+			case OpKind::Value_ReadPtr:                        instrname = "load"; break;
 			case OpKind::Value_StackAlloc:                  instrname = "stackAlloc"; break;
 			case OpKind::Value_CallFunction:                instrname = "call"; break;
 			case OpKind::Value_CallFunctionPointer:         instrname = "callfp"; break;
@@ -252,7 +248,7 @@ namespace fir
 		else
 		{
 			auto name = this->realOutput->getName().str();
-			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + " [" + std::to_string(this->realOutput->getUsers().size()) + "]) :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
+			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + ") :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
 		}
 
 		return strprintf("!%d ", this->id) + ret;

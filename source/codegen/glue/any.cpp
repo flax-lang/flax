@@ -24,7 +24,7 @@ namespace any
 
 		cs->irb.setCurrentBlock(dorc);
 		{
-			auto oldrc = cs->irb.Load(rcp, "oldrc");
+			auto oldrc = cs->irb.ReadPtr(rcp, "oldrc");
 			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
 
 			cs->irb.SetAnyRefCount(any, newrc);
@@ -64,14 +64,14 @@ namespace any
 					// 1. this gets us a memory location we can use.
 					auto _buf = cs->irb.GetAnyData(any, "buf");
 					auto buf = cs->irb.StackAlloc(_buf->getType());
-					cs->irb.Store(_buf, buf);
+					cs->irb.WritePtr(_buf, buf);
 
 					// 2. 'buf' is a pointer to the array itself -- we cast it to i64*, so the dereference
 					//    gives us the first 8 bytes of the data buffer.
 					buf = cs->irb.PointerTypeCast(buf, fir::Type::getInt64Ptr());
 
 					// 3. this is the dereference.
-					auto ptr = cs->irb.Load(buf);
+					auto ptr = cs->irb.ReadPtr(buf);
 
 					// 4. the first 8 bytes are actually a pointer to the heap memory.
 					ptr = cs->irb.IntToPointerCast(ptr, fir::Type::getMutInt8Ptr());
@@ -199,24 +199,24 @@ namespace any
 				}
 				#endif
 
-				cs->irb.Store(func->getArguments()[0], ptr);
+				cs->irb.WritePtr(func->getArguments()[0], ptr);
 				ptr = cs->irb.PointerToIntCast(ptr, fir::Type::getInt64());
 
 				// now, we make a fake data, and then store it.
 				auto arrptr = cs->irb.StackAlloc(dataarrty);
 				auto fakeptr = cs->irb.PointerTypeCast(arrptr, fir::Type::getMutInt64Ptr());
-				cs->irb.Store(ptr, fakeptr);
+				cs->irb.WritePtr(ptr, fakeptr);
 
-				auto arr = cs->irb.Load(arrptr);
+				auto arr = cs->irb.ReadPtr(arrptr);
 				any = cs->irb.SetAnyData(any, arr);
 			}
 			else
 			{
 				auto arrptr = cs->irb.StackAlloc(dataarrty);
 				auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
-				cs->irb.Store(func->getArguments()[0], fakeptr);
+				cs->irb.WritePtr(func->getArguments()[0], fakeptr);
 
-				auto arr = cs->irb.Load(arrptr);
+				auto arr = cs->irb.ReadPtr(arrptr);
 				any = cs->irb.SetAnyData(any, arr);
 			}
 
@@ -273,22 +273,22 @@ namespace any
 				{
 					// same as above, but in reverse.
 					auto arrptr = cs->irb.StackAlloc(dataarrty);
-					cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
+					cs->irb.WritePtr(cs->irb.GetAnyData(any), arrptr);
 
 					// cast the array* into a type**, so when we dereference it, we get the first 8 bytes interpreted as a type*.
 					// we then just load and return that.
 					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo()->getMutablePointerTo());
-					auto typeptr = cs->irb.Load(fakeptr);
-					cs->irb.Return(cs->irb.Load(typeptr));
+					auto typeptr = cs->irb.ReadPtr(fakeptr);
+					cs->irb.Return(cs->irb.ReadPtr(typeptr));
 				}
 				else
 				{
 					auto arrptr = cs->irb.StackAlloc(dataarrty);
-					cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
+					cs->irb.WritePtr(cs->irb.GetAnyData(any), arrptr);
 
 					// same as above but we skip a load.
 					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
-					cs->irb.Return(cs->irb.Load(fakeptr));
+					cs->irb.Return(cs->irb.ReadPtr(fakeptr));
 				}
 			}
 
@@ -300,111 +300,6 @@ namespace any
 		iceAssert(retfn);
 		return retfn;
 	}
-
-
-
-
-	#if 0
-	fir::Value* createAnyWithValue(CodegenState* cs, fir::Value* val)
-	{
-		auto type = val->getType();
-		auto any = cs->irb.CreateValue(fir::Type::getAny());
-		auto dataarrty = fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT);
-
-		// make the refcount pointer.
-		auto rcp = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
-			fir::ConstantInt::getInt64(REFCOUNT_SIZE)), fir::Type::getInt64Ptr());
-
-		any = cs->irb.SetAnyRefCountPointer(any, rcp);
-		cs->irb.SetAnyRefCount(any, fir::ConstantInt::getInt64(1));
-
-		size_t tid = type->getID();
-		if(auto typesz = cs->module->getSizeOfType(type); typesz > BUILTIN_ANY_DATA_BYTECOUNT)
-		{
-			tid |= BUILTIN_ANY_FLAG_MASK;
-
-			auto ptr = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
-				fir::ConstantInt::getInt64(typesz)), type->getMutablePointerTo());
-
-			#if DEBUG_ANY_ALLOCATION
-			{
-				cs->printIRDebugMessage("*    ANY: alloc(): (id: %lu, ptr: %p / rcp: %p)", {
-					fir::ConstantInt::getUint64(tid), ptr, rcp });
-			}
-			#endif
-
-			cs->irb.Store(val, ptr);
-			ptr = cs->irb.PointerToIntCast(ptr, fir::Type::getInt64());
-
-			// now, we make a fake data, and then store it.
-			auto arrptr = cs->irb.StackAlloc(dataarrty);
-			auto fakeptr = cs->irb.PointerTypeCast(arrptr, fir::Type::getMutInt64Ptr());
-			cs->irb.Store(ptr, fakeptr);
-
-			auto arr = cs->irb.Load(arrptr);
-			any = cs->irb.SetAnyData(any, arr);
-		}
-		else
-		{
-			auto arrptr = cs->irb.StackAlloc(dataarrty);
-			auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
-			cs->irb.Store(val, fakeptr);
-
-			auto arr = cs->irb.Load(arrptr);
-			any = cs->irb.SetAnyData(any, arr);
-		}
-
-		any = cs->irb.SetAnyTypeID(any, fir::ConstantInt::getUint64(tid));
-		return any;
-	}
-
-	fir::Value* getAnyValue(CodegenState* cs, fir::Value* any, fir::Type* type)
-	{
-		iceAssert(any->getType()->isAnyType());
-		auto dataarrty = fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT);
-
-		auto tid = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUint64(~BUILTIN_ANY_FLAG_MASK));
-
-		fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
-		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
-
-		auto valid = cs->irb.ICmpEQ(tid, fir::ConstantInt::getUint64(type->getID()));
-		cs->irb.CondBranch(valid, merge, invalid);
-
-		cs->irb.setCurrentBlock(invalid);
-		{
-			printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
-				"invalid unwrap of 'any' with type id '%ld' into type '%s' (with id '%ld')",
-				{ tid, cs->module->createGlobalString(type->str()), fir::ConstantInt::getUint64(type->getID()) }
-			);
-		}
-
-		cs->irb.setCurrentBlock(merge);
-		{
-			if(cs->module->getSizeOfType(type) > BUILTIN_ANY_DATA_BYTECOUNT)
-			{
-				// same as above, but in reverse.
-				auto arrptr = cs->irb.StackAlloc(dataarrty);
-				cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
-
-				// cast the array* into a type**, so when we dereference it, we get the first 8 bytes interpreted as a type*.
-				// we then just load and return that.
-				auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo()->getMutablePointerTo());
-				auto typeptr = cs->irb.Load(fakeptr);
-				return cs->irb.Load(typeptr);
-			}
-			else
-			{
-				auto arrptr = cs->irb.StackAlloc(dataarrty);
-				cs->irb.Store(cs->irb.GetAnyData(any), arrptr);
-
-				// same as above but we skip a load.
-				auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
-				return cs->irb.Load(fakeptr);
-			}
-		}
-	}
-	#endif
 }
 }
 }

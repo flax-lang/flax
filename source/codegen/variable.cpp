@@ -42,29 +42,28 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto rest = cs->enterGlobalInitFunction();
 
 		// else
-		CGResult res;
+		fir::Value* res = 0;
 
 		if(this->init)
-			res = this->init->codegen(cs, this->type);
+			res = this->init->codegen(cs, this->type).value;
 
 		else
-			res = CGResult(cs->getDefaultValue(this->type), 0, CGResult::VK::LitRValue);
+			res = cs->getDefaultValue(this->type);
 
-		fir::Value* val = checkStore(res.value);
+		fir::Value* val = checkStore(res);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
 		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		cs->autoAssignRefCountedValue(CGResult(val, alloc), res, true, true);
+		cs->autoAssignRefCountedValue(alloc, res, true, true);
 
 		// go and fix the thing.
 		if(this->immutable) alloc->setType(alloc->getType()->getImmutablePointerVersion());
 
 		cs->leaveGlobalInitFunction(rest);
 
-		cs->valueMap[this] = CGResult(0, alloc, CGResult::VK::LValue);
-
-		return CGResult(0, alloc);
+		cs->valueMap[this] = CGResult(alloc);
+		return CGResult(alloc);
 	}
 
 
@@ -93,27 +92,27 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->immutable)
 	{
 		iceAssert(val);
-		alloc = cs->irb.ImmutStackAlloc(this->type, val, this->id.name);
+		alloc = cs->irb.CreateConstLValue(val, this->id.name);
 	}
 	else
 	{
-		alloc = cs->irb.StackAlloc(this->type, this->id.name);
+		alloc = cs->irb.CreateLValue(this->type, this->id.name);
 	}
 
 	iceAssert(alloc);
 
 	cs->addVariableUsingStorage(this, alloc, res);
 
-	return CGResult(0, alloc);
+	return CGResult(alloc);
 }
 
 void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc, CGResult val)
 {
 	iceAssert(alloc);
-	this->valueMap[var] = CGResult(0, alloc, CGResult::VK::LValue);
+	this->valueMap[var] = CGResult(alloc);
 
-	if(val.value || val.pointer)
-		this->autoAssignRefCountedValue(CGResult(0, alloc), val, true, !var->immutable);
+	if(val.value)
+		this->autoAssignRefCountedValue(alloc, val.value, true, !var->immutable);
 
 	if(this->isRefCountedType(var->type))
 		this->addRefCountedPointer(alloc);
@@ -149,7 +148,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				iceAssert(cs->isInMethodBody());
 				return cs->getStructFieldImplicitly(this->name);
 			}
-			else if(!defn.pointer && !defn.value)
+			else if(!defn.value)
 			{
 				// warn(this, "forcing codegen of this");
 				// warn(this->def, "here");
@@ -168,23 +167,24 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 	}
 
-	fir::Value* value = 0;
-	if(!defn.pointer)
-	{
-		iceAssert(defn.value);
-		value = defn.value;
-	}
-	else
-	{
-		iceAssert(defn.pointer);
-		value = cs->irb.Load(defn.pointer);
-	}
+	// fir::Value* value = 0;
+	// if(!defn.pointer)
+	// {
+	// 	iceAssert(defn.value);
+	// 	value = defn.value;
+	// }
+	// else
+	// {
+	// 	iceAssert(defn.pointer);
+	// 	value = cs->irb.ReadPtr(defn.pointer);
+	// }
 
 	// make sure types match... should we bother?
-	if(value->getType() != this->type)
-		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
+	if(defn.value->getType() != this->type)
+		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, defn.value->getType());
 
-	return CGResult(value, defn.pointer, CGResult::VK::LValue);
+	// return CGResult(value, defn.pointer, CGResult::VK::LValue);
+	return CGResult(defn.value);
 }
 
 

@@ -114,22 +114,21 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			if(fd->init)
 			{
-				auto res = fd->init->codegen(cs, fd->type);
-
+				auto res = fd->init->codegen(cs, fd->type).value;
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
-				cs->autoAssignRefCountedValue(CGResult(0, elmptr), res, true, true);
+
+				cs->autoAssignRefCountedValue(elmptr, res, true, true);
 			}
 			else
 			{
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
 				if(fd->type->isClassType())
 				{
-					cs->irb.Store(cs->irb.CreateValue(fd->type), elmptr);
+					cs->irb.WritePtr(cs->irb.CreateValue(fd->type), elmptr);
 				}
 				else
 				{
-					cs->autoAssignRefCountedValue(CGResult(0, elmptr), CGResult(cs->getDefaultValue(fd->type), 0, CGResult::VK::LitRValue),
-						true, true);
+					cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true, true);
 				}
 			}
 		}
@@ -165,7 +164,6 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	auto restype = res.value->getType();
 
 	fir::Value* retv = 0;
-	fir::Value* retp = 0;
 
 	if(restype->isStructType() || restype->isClassType())
 	{
@@ -173,27 +171,18 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 		iceAssert(t->isStructType() || t->isClassType());
 
 		retv = res.value;
-		retp = res.pointer;
-
 		*baseType = restype;
-
-		// if(!retp)
-		// 	warn(cs->loc(), "no pointer");
 	}
 	else if(restype->isTupleType())
 	{
 		retv = res.value;
-		retp = res.pointer;
-
 		*baseType = restype;
 	}
 	else if(restype->isPointerType() && (restype->getPointerElementType()->isStructType() || restype->getPointerElementType()->isClassType()))
 	{
 		iceAssert(res.value->getType()->getPointerElementType()->isStructType() || res.value->getType()->getPointerElementType()->isClassType());
 
-		retv = 0;
-		retp = res.value;
-
+		retv = cs->irb.Dereference(res.value);
 		*baseType = restype->getPointerElementType();
 	}
 	else
@@ -201,7 +190,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 		error(user, "Invalid type '%s' for instance dot op", restype);
 	}
 
-	return CGResult(retv, retp);
+	return CGResult(retv);
 }
 
 
@@ -218,12 +207,12 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// basically what we need to do is just get the pointer
 		fir::Type* sty = 0;
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
-		if(!res.pointer)
-			res.pointer = cs->irb.ImmutStackAlloc(sty, res.value);
+		// if(!res.pointer)
+		// 	res.pointer = cs->irb.ImmutStackAlloc(sty, res.value);
 
 		// then we insert it as the first argument
-		auto rv = new sst::RawValueExpr(this->loc, res.pointer->getType());
-		rv->rawValue = CGResult(res.pointer);
+		auto rv = new sst::RawValueExpr(this->loc, res.value->getType()->getMutablePointerTo());
+		rv->rawValue = CGResult(cs->irb.AddressOf(res.value));
 
 		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));
 		return fc->codegen(cs);
@@ -251,20 +240,15 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::Type* sty = 0;
 	auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
-	if(!res.pointer)
+	if(!res->islorclvalue())
 	{
 		// use extractvalue.
-		return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent), 0, CGResult::VK::RValue);
+		return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent));
 	}
 	else
 	{
-		auto ptr = res.pointer;
-
 		// ok, at this point it's just a normal, instance field.
-		auto val = cs->irb.GetStructMember(ptr, this->rhsIdent);
-		iceAssert(val);
-
-		return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
+		return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
 	}
 }
 
@@ -289,17 +273,14 @@ CGResult sst::TupleDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::Value* retv = 0;
 	fir::Value* retp = 0;
-	if(res.pointer)
+	if(res->islorclvalue())
 	{
-		retp = cs->irb.StructGEP(res.pointer, this->index);
-		retv = cs->irb.Load(retp);
+		return CGResult(cs->irb.StructGEP(res.value, this->index));
 	}
 	else
 	{
-		retv = cs->irb.ExtractValue(res.value, { this->index });
+		return CGResult(cs->irb.ExtractValue(res.value, { this->index }));
 	}
-
-	return CGResult(retv, retp, retp ? CGResult::VK::LValue : CGResult::VK::RValue);
 }
 
 
@@ -315,7 +296,7 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		{
 			// ok -- return directly from here.
 			fir::Value* ptr = this->irb.GetStructMember(self, name);
-			return CGResult(this->irb.Load(ptr), ptr, CGResult::VK::LValue);
+			return CGResult(ptr);
 		}
 		else
 		{

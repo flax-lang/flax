@@ -174,10 +174,10 @@ namespace cgn
 		std::vector<fir::Value*> getRefCountedValues();
 		std::vector<fir::Value*> getRefCountedPointers();
 
-		void performRefCountingAssignment(CGResult lhs, CGResult rhs, bool isInitial);
-		void moveRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial);
+		void performRefCountingAssignment(fir::Value* lhs, fir::Value* rhs, bool isInitial);
+		void moveRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
 
-		void autoAssignRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial, bool performStore);
+		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial, bool performStore);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* dtr);

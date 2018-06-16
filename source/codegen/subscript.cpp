@@ -31,7 +31,8 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lt = lr.value->getType();
 
 	// assists checking for literal writes later on
-	this->cgSubscripteePtr = lr.pointer;
+	// this->cgSubscripteePtr = lr.pointer;
+
 	this->cgSubscriptee = lr.value;
 	this->cgIndex = index;
 
@@ -56,11 +57,16 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok.
 		if(lt->isArrayType())
 		{
-			iceAssert(lr.pointer);
-
-			// do a manual thing, return here immediately.
-			auto ret = cs->irb.GEP2(lr.pointer, fir::ConstantInt::getInt64(0), ind);
-			return CGResult(cs->irb.Load(ret), ret, CGResult::VK::LValue);
+			// TODO: LVALUE HOLE
+			if(lr->islorclvalue())
+			{
+				return CGResult(cs->irb.GEP2(lr.value, fir::ConstantInt::getInt64(0), ind));
+			}
+			else
+			{
+				// return CGResult(cs->irb.ExtractValue(lr.value, { ind }));
+				error("NOT SUP");
+			}
 		}
 		else if(lt->isDynamicArrayType())
 		{
@@ -95,9 +101,9 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok, do it
 	fir::Value* ptr = cs->irb.GetPointer(data, index);
-	fir::Value* val = cs->irb.Load(ptr);
+	// fir::Value* val = cs->irb.ReadPtr(ptr);
 
-	return CGResult(val, ptr, CGResult::VK::LValue);
+	return CGResult(cs->irb.Dereference(ptr));
 }
 
 

@@ -128,12 +128,12 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
 	fir::Value* iterptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
-	auto [ array, arrayptr, vk ] = this->array->codegen(cs);
+	auto [ array, vk ] = this->array->codegen(cs);
 	(void) vk;
 
 	if(array->getType()->isRangeType())
 	{
-		cs->irb.Store(cs->irb.GetRangeLower(array), idxptr);
+		cs->irb.WritePtr(cs->irb.GetRangeLower(array), idxptr);
 		end = cs->irb.GetRangeUpper(array);
 		step = cs->irb.GetRangeStep(array);
 
@@ -153,7 +153,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	}
 	else
 	{
-		cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
+		cs->irb.WritePtr(fir::ConstantInt::getInt64(0), idxptr);
 		step = fir::ConstantInt::getInt64(1);
 
 		if(array->getType()->isDynamicArrayType())
@@ -171,7 +171,6 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		else if(array->getType()->isArrayType())
 		{
 			end = fir::ConstantInt::getInt64(array->getType()->toArrayType()->getArraySize());
-			iceAssert(arrayptr);
 		}
 		else
 		{
@@ -187,12 +186,12 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	if(array->getType()->isRangeType())
 	{
 		cond = cs->irb.Select(cs->irb.ICmpGT(step, fir::ConstantInt::getInt64(0)),
-			cs->irb.ICmpLT(cs->irb.Load(idxptr), end),		// i < end for step > 0
-			cs->irb.ICmpGT(cs->irb.Load(idxptr), end));		// i > end for step < 0
+			cs->irb.ICmpLT(cs->irb.ReadPtr(idxptr), end),		// i < end for step > 0
+			cs->irb.ICmpGT(cs->irb.ReadPtr(idxptr), end));		// i > end for step < 0
 	}
 	else
 	{
-		cond = cs->irb.ICmpLT(cs->irb.Load(idxptr), end);
+		cond = cs->irb.ICmpLT(cs->irb.ReadPtr(idxptr), end);
 	}
 
 	iceAssert(cond);
@@ -205,31 +204,38 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			theptr = idxptr;
 
 		else if(array->getType()->isDynamicArrayType())
-			theptr = cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.Load(idxptr));
+			theptr = cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.ReadPtr(idxptr));
 
 		else if(array->getType()->isArraySliceType())
-			theptr = cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.Load(idxptr));
+			theptr = cs->irb.PointerAdd(cs->irb.GetArraySliceData(array), cs->irb.ReadPtr(idxptr));
 
 		else if(array->getType()->isStringType())
-			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.Load(idxptr)), fir::Type::getInt8Ptr());
+			theptr = cs->irb.PointerTypeCast(cs->irb.PointerAdd(cs->irb.GetSAAData(array), cs->irb.ReadPtr(idxptr)), fir::Type::getInt8Ptr());
 
 		else if(array->getType()->isArrayType())
-			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrayptr, 0, 0), cs->irb.Load(idxptr));
+		{
+			fir::Value* arrptr = 0;
+			if(array->islorclvalue())   arrptr = cs->irb.AddressOf(array);
+			else                        arrptr = cs->irb.CreateConstLValue(array);
 
+			theptr = cs->irb.PointerAdd(cs->irb.ConstGEP2(arrptr, 0, 0), cs->irb.ReadPtr(idxptr));
+		}
 		else
+		{
 			iceAssert(0);
+		}
 
 
 		// make the block
 		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, check));
 		{
-			auto res = CGResult(cs->irb.Load(theptr), theptr);
+			auto res = CGResult(theptr);
 			cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
 
 			if(this->indexVar)
 			{
 				auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
-				idx->rawValue = CGResult(cs->irb.Load(iterptr));
+				idx->rawValue = CGResult(cs->irb.ReadPtr(iterptr));
 
 				this->indexVar->init = idx;
 				this->indexVar->codegen(cs);
@@ -241,8 +247,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 
 		// increment the index
-		cs->irb.Store(cs->irb.Add(cs->irb.Load(idxptr), step), idxptr);
-		cs->irb.Store(cs->irb.Add(cs->irb.Load(iterptr), fir::ConstantInt::getInt64(1)), iterptr);
+		cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(idxptr), step), idxptr);
+		cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(iterptr), fir::ConstantInt::getInt64(1)), iterptr);
 
 		cs->irb.UnCondBranch(check);
 	}

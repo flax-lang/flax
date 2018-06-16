@@ -66,8 +66,8 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			iceAssert(alloc->initBlockVar);
 
 			// ok, then. create the variables:
-			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(cs->irb.Load(idxp)));
-			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(cs->irb.Load(elmp)));
+			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(cs->irb.ReadPtr(idxp)));
+			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(cs->irb.ReadPtr(elmp)));
 
 			alloc->initBlock->codegen(cs);
 		};
@@ -91,7 +91,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 				else if(type->isStructType())
 				{
 					auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
-					cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value), true, true);
+					cs->autoAssignRefCountedValue(ptr, value, true, true);
 				}
 				else
 				{
@@ -104,7 +104,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 					if(cs->isRefCountedType(type))
 						cs->addRefCountedValue(value);
 
-					cs->autoAssignRefCountedValue(CGResult(0, ptr), CGResult(value), true, true);
+					cs->autoAssignRefCountedValue(ptr, value, true, true);
 				}
 			};
 
@@ -116,12 +116,12 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			else
 			{
 				cs->createWhileLoop([cs, ctrp, count](auto pass, auto fail) {
-					auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrp), count);
+					auto cond = cs->irb.ICmpLT(cs->irb.ReadPtr(ctrp), count);
 					cs->irb.CondBranch(cond, pass, fail);
 				},
 				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
 
-					auto ctr = cs->irb.Load(ctrp);
+					auto ctr = cs->irb.ReadPtr(ctrp);
 					auto ptr = cs->irb.PointerAdd(arrp, ctr);
 
 					actuallyStore(ptr);
@@ -129,7 +129,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 					if(alloc->initBlock)
 						callUserCode(ptr, ctrp);
 
-					cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+					cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
 				});
 			}
 		}
@@ -179,43 +179,6 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		callSetFunction(type, alloc, cs->irb.GetSAAData(arr), count);
 
 		return arr;
-
-		#if 0
-		// ok, now we have a length -- allocate enough memory for length * sizeof(elm) + refcount size
-		auto alloclen = cs->irb.Multiply(count, cs->irb.Sizeof(type));
-		auto mem = cs->irb.Call(mallocf, alloclen);
-
-		mem = cs->irb.PointerTypeCast(mem, type->getMutablePointerTo());
-
-		// make them valid things
-		callSetFunction(type, alloc, mem, count);
-
-		// ok, now return the array we created.
-		{
-			auto ret = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
-			ret = cs->irb.SetSAAData(ret, mem);
-			ret = cs->irb.SetSAALength(ret, count);
-			ret = cs->irb.SetSAACapacity(ret, count);
-
-			// allocate memory for the refcount
-			{
-				fir::Value* rcptr = cs->irb.Call(mallocf, fir::ConstantInt::getInt64(REFCOUNT_SIZE));
-				rcptr = cs->irb.PointerTypeCast(rcptr, fir::Type::getInt64Ptr());
-				ret = cs->irb.SetSAARefCountPointer(ret, rcptr);
-			}
-
-			cs->irb.SetSAARefCount(ret, fir::ConstantInt::getInt64(1));
-
-			#if DEBUG_ARRAY_ALLOCATION
-			{
-				fir::Value* tmpstr = cs->module->createGlobalString("alloc new array: (ptr: %p, len: %ld, cap: %ld)\n");
-				cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), { tmpstr, mem, count, count });
-			}
-			#endif
-
-			return ret;
-		}
-		#endif
 	}
 }
 
@@ -238,8 +201,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->counts.size() > 1)
 		error(this, "Multi-dimensional arrays are not supported yet.");
 
-	auto result = performAllocation(cs, this, this->elmType, this->counts, this->isRaw);
-	return CGResult(result, 0, CGResult::VK::LitRValue);
+	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->isRaw));
 }
 
 

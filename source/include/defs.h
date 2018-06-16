@@ -526,22 +526,18 @@ struct CGResult
 	enum class VK
 	{
 		Invalid,
-		LValue,		// lvalue, as in c/c++
-		RValue,		// rvalue, as in c/c++
-		LitRValue,	// literal rvalue, simplifies refcounting a little I guess
 
-		Break,
-		Continue,
+		Normal,
+		EarlyOut,
 	};
 
 	CGResult() : CGResult(0) { }
-	explicit CGResult(fir::Value* v) noexcept : value(v), pointer(0), kind(VK::RValue) { }
-	explicit CGResult(fir::Value* v, fir::Value* p) noexcept : value(v), pointer(p), kind(VK::RValue) { }
-	explicit CGResult(fir::Value* v, fir::Value* p, VK k) noexcept : value(v), pointer(p), kind(k) { }
+	explicit CGResult(fir::Value* v) noexcept : value(v), kind(VK::Normal) { }
+	explicit CGResult(fir::Value* v, VK k) noexcept : value(v), kind(k) { }
+
+	fir::Value* operator -> () { return this->value; }
 
 	fir::Value* value = 0;
-	fir::Value* pointer = 0;
-
 	VK kind = VK::Invalid;
 };
 

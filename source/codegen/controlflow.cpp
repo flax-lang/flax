@@ -173,7 +173,7 @@ static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint&
 		cs->decrementRefCount(v);
 
 	for(auto p : bp.refCountedPointers)
-		cs->decrementRefCount(cs->irb.Load(p));
+		cs->decrementRefCount(cs->irb.ReadPtr(p));
 
 
 	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
@@ -196,7 +196,7 @@ CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 	cs->irb.UnCondBranch(bp);
 
-	return CGResult(0, 0, CGResult::VK::Break);
+	return CGResult(0, CGResult::VK::EarlyOut);
 }
 
 CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -211,7 +211,7 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 	cs->irb.UnCondBranch(cp);
 
-	return CGResult(0, 0, CGResult::VK::Continue);
+	return CGResult(0, CGResult::VK::EarlyOut);
 }
 
 
@@ -238,7 +238,7 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		cs->irb.ReturnVoid();
 	}
 
-	return CGResult(0, 0, CGResult::VK::Break);
+	return CGResult(0, CGResult::VK::EarlyOut);
 }
 
 
@@ -258,7 +258,7 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(auto stmt : this->statements)
 	{
 		auto res = stmt->codegen(cs);
-		if(res.kind == CGResult::VK::Break || res.kind == CGResult::VK::Continue)
+		if(res.kind == CGResult::VK::EarlyOut)
 		{
 			broke = true;
 			break;
@@ -283,7 +283,7 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->decrementRefCount(v);
 
 		for(auto p : cs->getRefCountedPointers())
-			cs->decrementRefCount(cs->irb.Load(p));
+			cs->decrementRefCount(cs->irb.ReadPtr(p));
 
 
 		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING

@@ -157,13 +157,9 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		CGResult r = cs->valueMap[this->target];
 		// auto r = cs->findValueInTree(this->name);
 
-		if(r.value || r.pointer)
+		if(r.value)
 		{
-			if(!r.value)
-				defn = CGResult(cs->irb.Load(r.pointer), r.pointer);
-
-			else
-				defn = r;
+			defn = r;
 		}
 		else if(cs->isInMethodBody())
 		{
@@ -241,7 +237,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		iceAssert(vf->getType()->getPointerElementType()->isFunctionType());
-		auto fptr = cs->irb.Load(vf);
+		auto fptr = cs->irb.ReadPtr(vf);
 
 		ret = cs->irb.CallToFunctionPointer(fptr, ft, args);
 	}
@@ -260,7 +256,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 	// for non-strings it's trivial
 	if(args.empty())
 	{
-		return CGResult(cs->getDefaultValue(type), 0, CGResult::VK::LitRValue);
+		return CGResult(cs->getDefaultValue(type));
 	}
 	else if(!type->isStringType())
 	{
