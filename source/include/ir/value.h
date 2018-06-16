@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
@@ -14,17 +13,6 @@
 
 namespace fir
 {
-	enum class FValueKind
-	{
-		Invalid,
-
-		NullValue,
-
-		Constant,
-		Normal,
-		Global,
-	};
-
 	enum class LinkageType
 	{
 		Invalid,
@@ -61,10 +49,6 @@ namespace fir
 		void addUser(Value* user);
 		void transferUsesTo(Value* other);
 
-		bool isImmutable() { return this->immut; }
-		void makeImmutable() { this->immut = true; }
-		void makeNotImmutable() { this->immut = false; }
-
 		std::vector<Value*>& getUsers() { return this->users; }
 
 		Instruction* getSource() { return this->source; }
@@ -76,12 +60,9 @@ namespace fir
 		virtual ~Value() { }
 
 		// fields
-		bool immut = 0;
-
 		Identifier ident;
 		Type* valueType;
 		Instruction* source;
-		FValueKind valueKind;
 		std::vector<Value*> users;
 	};
 
@@ -89,6 +70,8 @@ namespace fir
 	{
 		friend struct IRBuilder;
 		void addIncoming(Value* v, IRBlock* block);
+
+		std::map<IRBlock*, Value*> getValues();
 
 		protected:
 		PHINode(Type* type);

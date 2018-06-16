@@ -1,79 +1,117 @@
 // errors.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdarg.h>
-
 #include "defs.h"
 
-namespace Ast
+#include "precompile.h"
+
+template <typename... Ts>
+inline void debuglog(const char* s, Ts... ts)
 {
-	struct Expr;
+	auto out = tinyformat::format(s, ts...);
+	fprintf(stderr, "%s", out.c_str());
 }
 
-namespace Parser
+template <typename... Ts>
+inline void debuglogln(const char* s, Ts... ts)
 {
-	struct Token;
-	struct ParserState;
+	auto out = tinyformat::format(s, ts...);
+	fprintf(stderr, "%s\n", out.c_str());
 }
 
-struct HighlightOptions
+
+// error shortcuts
+
+// Expected $, found '$' instead
+[[noreturn]] void expected(const Location& loc, std::string, std::string);
+
+// Expected $ after $, found '$' instead
+[[noreturn]] void expectedAfter(const Location& loc, std::string, std::string, std::string);
+
+// Unexpected $
+[[noreturn]] void unexpected(const Location& loc, std::string);
+
+
+#define INTUNSPEC_TYPE_STRING			"int"
+#define UINTUNSPEC_TYPE_STRING			"uint"
+
+#define FLOAT_TYPE_STRING				"float"
+#define DOUBLE_TYPE_STRING				"double"
+
+#define INT8_TYPE_STRING				"i8"
+#define INT16_TYPE_STRING				"i16"
+#define INT32_TYPE_STRING				"i32"
+#define INT64_TYPE_STRING				"i64"
+#define INT128_TYPE_STRING				"i128"
+
+#define UINT8_TYPE_STRING				"u8"
+#define UINT16_TYPE_STRING				"u16"
+#define UINT32_TYPE_STRING				"u32"
+#define UINT64_TYPE_STRING				"u64"
+#define UINT128_TYPE_STRING				"u128"
+
+#define FLOAT32_TYPE_STRING				"f32"
+#define FLOAT64_TYPE_STRING				"f64"
+#define FLOAT80_TYPE_STRING				"f80"
+#define FLOAT128_TYPE_STRING			"f128"
+
+#define STRING_TYPE_STRING				"string"
+#define CHARACTER_TYPE_STRING			"char"
+#define CHARACTER_SLICE_TYPE_STRING		"str"
+
+#define UNICODE_STRING_TYPE_STRING		"ustring"
+#define UNICODE_CHARACTER_TYPE_STRING	"rune"
+
+#define BOOL_TYPE_STRING				"bool"
+#define VOID_TYPE_STRING				"void"
+
+#define ANY_TYPE_STRING					"any"
+
+
+
+
+
+
+
+
+namespace ast { struct Expr; }
+namespace sst { struct Expr; }
+
+namespace frontend
 {
-	Parser::Pin caret;
-	std::vector<Parser::Pin> underlines;
-	bool drawCaret;
-
-	HighlightOptions() : drawCaret(true) { }
-	HighlightOptions(const Parser::Pin& c) : caret(c), underlines({ }), drawCaret(true) { }
-	HighlightOptions(const Parser::Pin& c, std::vector<Parser::Pin> u) : caret(c), underlines(u), drawCaret(true) { }
-	HighlightOptions(const Parser::Pin& c, std::vector<Parser::Pin> u, bool dc) : caret(c), underlines(u), drawCaret(dc) { }
-};
-
-Parser::Pin getHighlightExtent(Ast::Expr* e);
-
-void doTheExit() __attribute__ ((noreturn));
-
-void __error_gen(HighlightOptions ops, const char* msg, const char* type,
-	bool doExit, va_list ap);
-
-void error(const char* msg, ...) __attribute__((noreturn, format(printf, 1, 2)));
-void error(Ast::Expr* e, const char* msg, ...) __attribute__((noreturn, format(printf, 2, 3)));
-void error(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((noreturn, format(printf, 3, 4)));
-
-void exitless_error(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void exitless_error(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void exitless_error(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-
-void warn(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void warn(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void warn(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
-
-void info(const char* msg, ...) __attribute__((format(printf, 1, 2)));
-void info(Ast::Expr* e, const char* msg, ...) __attribute__((format(printf, 2, 3)));
-void info(Ast::Expr* e, HighlightOptions ops, const char* msg, ...) __attribute__((format(printf, 3, 4)));
+	const std::string& getFilenameFromID(size_t fileID);
+	std::string getFilenameFromPath(std::string path);
+}
 
 
+std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context);
 
-enum class Err
+template <typename... Ts>
+std::string __error_gen(const Location& loc, const char* msg, const char* type, bool, Ts... ts)
 {
-	Info,
-	Warn,
-	Error,
-};
+	return __error_gen_internal(loc, tinyformat::format(msg, ts...), type, true);
+}
 
-void parserMessage(Err severity, const char* msg, ...)							__attribute__((format(printf, 2, 3)));
-void parserMessage(Err severity, const Parser::Pin& pin, const char* msg, ...)	__attribute__((format(printf, 3, 4)));
-void parserMessage(Err severity, const Parser::Token& tok, const char* msg, ...)__attribute__((format(printf, 3, 4)));
-void parserMessage(Err severity, Parser::ParserState& ps, const char* msg, ...)	__attribute__((format(printf, 3, 4)));
 
-void parserError(const char* msg, ...)											__attribute__((format(printf, 1, 2), noreturn));
-void parserError(const Parser::Pin& pin, const char* msg, ...)					__attribute__((format(printf, 2, 3), noreturn));
-void parserError(const Parser::Token& tok, const char* msg, ...)				__attribute__((format(printf, 2, 3), noreturn));
-void parserError(Parser::ParserState& ps, const char* msg, ...)					__attribute__((format(printf, 2, 3), noreturn));
+#define ERROR_FUNCTION(name, type, attr, doexit)                                                                                            \
+template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)                                                                    \
+{ fputs(__error_gen(Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }                                  \
+																																			\
+template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)                                                      \
+{ fputs(__error_gen(e ? e->loc : Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }                     \
+																																			\
+template <typename... Ts> [[attr]] void name (const Location& loc, const char* fmt, Ts... ts)                                               \
+{ fputs(__error_gen(loc, fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }
+
+
+
+ERROR_FUNCTION(error, "error", noreturn, true);
+ERROR_FUNCTION(info, "note", maybe_unused, false);
+ERROR_FUNCTION(warn, "warning", maybe_unused, false);
+
 
 
 

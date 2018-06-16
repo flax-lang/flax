@@ -1,0 +1,7728 @@
+export massive
+import "libc" as _
+import "math" as _
+ffi fn srand(s: i32)
+ffi fn rand() -> i32
+
+let names0 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal0
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names0[rand() % names0.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog0 : Animal0
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation0 : Dog0
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList0<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff0()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog0 [5] {
+			if i % 2 == 1   { it = alloc Dalmation0 }
+			else            { it = alloc Dog0 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList0<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff0()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names1 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal1
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names1[rand() % names1.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog1 : Animal1
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation1 : Dog1
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList1<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff1()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog1 [5] {
+			if i % 2 == 1   { it = alloc Dalmation1 }
+			else            { it = alloc Dog1 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList1<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff1()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names2 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal2
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names2[rand() % names2.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog2 : Animal2
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation2 : Dog2
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList2<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff2()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog2 [5] {
+			if i % 2 == 1   { it = alloc Dalmation2 }
+			else            { it = alloc Dog2 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList2<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff2()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names3 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal3
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names3[rand() % names3.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog3 : Animal3
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation3 : Dog3
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList3<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff3()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog3 [5] {
+			if i % 2 == 1   { it = alloc Dalmation3 }
+			else            { it = alloc Dog3 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList3<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff3()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names4 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal4
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names4[rand() % names4.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog4 : Animal4
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation4 : Dog4
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList4<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff4()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog4 [5] {
+			if i % 2 == 1   { it = alloc Dalmation4 }
+			else            { it = alloc Dog4 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList4<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff4()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names5 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal5
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names5[rand() % names5.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog5 : Animal5
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation5 : Dog5
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList5<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff5()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog5 [5] {
+			if i % 2 == 1   { it = alloc Dalmation5 }
+			else            { it = alloc Dog5 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList5<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff5()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names6 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal6
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names6[rand() % names6.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog6 : Animal6
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation6 : Dog6
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList6<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff6()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog6 [5] {
+			if i % 2 == 1   { it = alloc Dalmation6 }
+			else            { it = alloc Dog6 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList6<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff6()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names7 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal7
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names7[rand() % names7.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog7 : Animal7
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation7 : Dog7
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList7<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff7()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog7 [5] {
+			if i % 2 == 1   { it = alloc Dalmation7 }
+			else            { it = alloc Dog7 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList7<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff7()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names8 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal8
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names8[rand() % names8.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog8 : Animal8
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation8 : Dog8
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList8<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff8()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog8 [5] {
+			if i % 2 == 1   { it = alloc Dalmation8 }
+			else            { it = alloc Dog8 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList8<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff8()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names9 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal9
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names9[rand() % names9.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog9 : Animal9
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation9 : Dog9
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList9<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff9()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog9 [5] {
+			if i % 2 == 1   { it = alloc Dalmation9 }
+			else            { it = alloc Dog9 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList9<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff9()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names10 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal10
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names10[rand() % names10.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog10 : Animal10
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation10 : Dog10
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList10<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff10()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog10 [5] {
+			if i % 2 == 1   { it = alloc Dalmation10 }
+			else            { it = alloc Dog10 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList10<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff10()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names11 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal11
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names11[rand() % names11.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog11 : Animal11
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation11 : Dog11
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList11<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff11()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog11 [5] {
+			if i % 2 == 1   { it = alloc Dalmation11 }
+			else            { it = alloc Dog11 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList11<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff11()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names12 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal12
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names12[rand() % names12.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog12 : Animal12
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation12 : Dog12
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList12<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff12()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog12 [5] {
+			if i % 2 == 1   { it = alloc Dalmation12 }
+			else            { it = alloc Dog12 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList12<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff12()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names13 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal13
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names13[rand() % names13.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog13 : Animal13
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation13 : Dog13
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList13<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff13()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog13 [5] {
+			if i % 2 == 1   { it = alloc Dalmation13 }
+			else            { it = alloc Dog13 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList13<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff13()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names14 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal14
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names14[rand() % names14.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog14 : Animal14
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation14 : Dog14
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList14<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff14()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog14 [5] {
+			if i % 2 == 1   { it = alloc Dalmation14 }
+			else            { it = alloc Dog14 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList14<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff14()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names15 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal15
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names15[rand() % names15.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog15 : Animal15
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation15 : Dog15
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList15<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff15()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog15 [5] {
+			if i % 2 == 1   { it = alloc Dalmation15 }
+			else            { it = alloc Dog15 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList15<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff15()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names16 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal16
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names16[rand() % names16.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog16 : Animal16
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation16 : Dog16
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList16<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff16()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog16 [5] {
+			if i % 2 == 1   { it = alloc Dalmation16 }
+			else            { it = alloc Dog16 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList16<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff16()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names17 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal17
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names17[rand() % names17.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog17 : Animal17
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation17 : Dog17
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList17<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff17()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog17 [5] {
+			if i % 2 == 1   { it = alloc Dalmation17 }
+			else            { it = alloc Dog17 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList17<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff17()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names18 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal18
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names18[rand() % names18.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog18 : Animal18
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation18 : Dog18
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList18<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff18()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog18 [5] {
+			if i % 2 == 1   { it = alloc Dalmation18 }
+			else            { it = alloc Dog18 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList18<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff18()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names19 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal19
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names19[rand() % names19.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog19 : Animal19
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation19 : Dog19
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList19<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff19()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog19 [5] {
+			if i % 2 == 1   { it = alloc Dalmation19 }
+			else            { it = alloc Dog19 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList19<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff19()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names20 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal20
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names20[rand() % names20.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog20 : Animal20
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation20 : Dog20
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList20<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff20()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog20 [5] {
+			if i % 2 == 1   { it = alloc Dalmation20 }
+			else            { it = alloc Dog20 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList20<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff20()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names21 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal21
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names21[rand() % names21.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog21 : Animal21
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation21 : Dog21
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList21<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff21()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog21 [5] {
+			if i % 2 == 1   { it = alloc Dalmation21 }
+			else            { it = alloc Dog21 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList21<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff21()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names22 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal22
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names22[rand() % names22.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog22 : Animal22
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation22 : Dog22
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList22<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff22()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog22 [5] {
+			if i % 2 == 1   { it = alloc Dalmation22 }
+			else            { it = alloc Dog22 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList22<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff22()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names23 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal23
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names23[rand() % names23.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog23 : Animal23
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation23 : Dog23
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList23<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff23()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog23 [5] {
+			if i % 2 == 1   { it = alloc Dalmation23 }
+			else            { it = alloc Dog23 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList23<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff23()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names24 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal24
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names24[rand() % names24.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog24 : Animal24
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation24 : Dog24
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList24<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff24()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog24 [5] {
+			if i % 2 == 1   { it = alloc Dalmation24 }
+			else            { it = alloc Dog24 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList24<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff24()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names25 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal25
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names25[rand() % names25.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog25 : Animal25
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation25 : Dog25
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList25<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff25()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog25 [5] {
+			if i % 2 == 1   { it = alloc Dalmation25 }
+			else            { it = alloc Dog25 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList25<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff25()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names26 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal26
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names26[rand() % names26.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog26 : Animal26
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation26 : Dog26
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList26<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff26()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog26 [5] {
+			if i % 2 == 1   { it = alloc Dalmation26 }
+			else            { it = alloc Dog26 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList26<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff26()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names27 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal27
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names27[rand() % names27.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog27 : Animal27
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation27 : Dog27
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList27<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff27()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog27 [5] {
+			if i % 2 == 1   { it = alloc Dalmation27 }
+			else            { it = alloc Dog27 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList27<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff27()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names28 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal28
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names28[rand() % names28.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog28 : Animal28
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation28 : Dog28
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList28<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff28()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog28 [5] {
+			if i % 2 == 1   { it = alloc Dalmation28 }
+			else            { it = alloc Dog28 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList28<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff28()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names29 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal29
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names29[rand() % names29.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog29 : Animal29
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation29 : Dog29
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList29<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff29()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog29 [5] {
+			if i % 2 == 1   { it = alloc Dalmation29 }
+			else            { it = alloc Dog29 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList29<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff29()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names30 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal30
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names30[rand() % names30.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog30 : Animal30
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation30 : Dog30
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList30<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff30()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog30 [5] {
+			if i % 2 == 1   { it = alloc Dalmation30 }
+			else            { it = alloc Dog30 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList30<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff30()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names31 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal31
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names31[rand() % names31.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog31 : Animal31
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation31 : Dog31
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList31<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff31()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog31 [5] {
+			if i % 2 == 1   { it = alloc Dalmation31 }
+			else            { it = alloc Dog31 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList31<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff31()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names32 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal32
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names32[rand() % names32.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog32 : Animal32
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation32 : Dog32
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList32<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff32()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog32 [5] {
+			if i % 2 == 1   { it = alloc Dalmation32 }
+			else            { it = alloc Dog32 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList32<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff32()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names33 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal33
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names33[rand() % names33.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog33 : Animal33
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation33 : Dog33
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList33<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff33()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog33 [5] {
+			if i % 2 == 1   { it = alloc Dalmation33 }
+			else            { it = alloc Dog33 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList33<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff33()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names34 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal34
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names34[rand() % names34.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog34 : Animal34
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation34 : Dog34
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList34<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff34()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog34 [5] {
+			if i % 2 == 1   { it = alloc Dalmation34 }
+			else            { it = alloc Dog34 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList34<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff34()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names35 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal35
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names35[rand() % names35.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog35 : Animal35
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation35 : Dog35
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList35<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff35()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog35 [5] {
+			if i % 2 == 1   { it = alloc Dalmation35 }
+			else            { it = alloc Dog35 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList35<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff35()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names36 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal36
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names36[rand() % names36.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog36 : Animal36
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation36 : Dog36
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList36<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff36()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog36 [5] {
+			if i % 2 == 1   { it = alloc Dalmation36 }
+			else            { it = alloc Dog36 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList36<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff36()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names37 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal37
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names37[rand() % names37.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog37 : Animal37
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation37 : Dog37
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList37<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff37()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog37 [5] {
+			if i % 2 == 1   { it = alloc Dalmation37 }
+			else            { it = alloc Dog37 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList37<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff37()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names38 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal38
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names38[rand() % names38.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog38 : Animal38
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation38 : Dog38
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList38<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff38()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog38 [5] {
+			if i % 2 == 1   { it = alloc Dalmation38 }
+			else            { it = alloc Dog38 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList38<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff38()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+
+let names39 = [ "max", "ollie", "coco", "piper", "tim", "bill", "alex", "ron", "isaac", "jim" ]
+
+class Animal39
+{
+	init(w: f64)
+	{
+		// printf("make animal w = %f\n", w)
+		weight = w
+		name = names39[rand() % names39.length]
+	}
+
+	virtual fn makeNoise()
+	{
+		printf("some generic sound\n")
+	}
+
+	var name: str
+	var weight: f64
+	var cute: bool = true
+}
+
+class Dog39 : Animal39
+{
+	init() : super(w: 300)
+	{
+		// printf("make dog (w = %f)\n", weight)
+	}
+
+	override fn makeNoise()
+	{
+		printf("bark bark (%f)\n", weight)
+	}
+
+	virtual fn wag()
+	{
+		printf("wagging tail of length %d\n", tail)
+	}
+
+	var tail: int = 37
+}
+
+class Dalmation39 : Dog39
+{
+	init() : super()
+	{
+		printf("make dalmation\n")
+	}
+
+	override fn wag()
+	{
+		printf("dalmation wags %d\n", tail)
+	}
+
+	var numSpots: int
+}
+
+
+class LinkedList39<T>
+{
+	struct Node
+	{
+		var data: T
+
+		var prev: &Node
+		var next: &Node
+	}
+
+	var head: &Node
+	var tail: &Node
+
+	var count: int
+
+	init()
+	{
+	}
+
+	mut fn insert(thing: T)
+	{
+		var nn = alloc mut Node (data: thing, prev: null, next: null)
+
+		if head == null { head = nn; tail = nn }
+		else
+		{
+			var ot = tail as mut
+			tail = nn
+
+			nn.prev = ot
+			ot.next = nn
+		}
+
+		count += 1
+	}
+
+	static fn hello() -> T { printf("hi\n"); return 10 }
+}
+
+
+
+
+fn stuff39()
+{
+	do {
+		// don't question.
+		srand(284811)
+
+		// fn test() -> f64 { printf("hi\n"); return 31.51 }
+
+		let dogs = alloc &Dog39 [5] {
+			if i % 2 == 1   { it = alloc Dalmation39 }
+			else            { it = alloc Dog39 }
+		}
+
+		for dog, i in dogs {
+			printf("%d: %s - ", i, dog.name)
+			dog.wag()
+		}
+	}
+
+
+	do {
+		var list: LinkedList39<T: int>
+
+		list.insert(10)
+		list.insert(20)
+		list.insert(30)
+		list.insert(40)
+
+		var head = list.head
+		while(head)
+		{
+			printf("%d\n", head.data)
+			head = head.next
+		}
+	}
+}
+
+fn genericstuff39()
+{
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+
+	do {
+
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
+
+			return ret
+		}
+
+
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+}
+
+@entry fn main() -> i32 {
+	stuff0()
+	genericstuff0()
+	stuff1()
+	genericstuff1()
+	stuff2()
+	genericstuff2()
+	stuff3()
+	genericstuff3()
+	stuff4()
+	genericstuff4()
+	stuff5()
+	genericstuff5()
+	stuff6()
+	genericstuff6()
+	stuff7()
+	genericstuff7()
+	stuff8()
+	genericstuff8()
+	stuff9()
+	genericstuff9()
+	stuff10()
+	genericstuff10()
+	stuff11()
+	genericstuff11()
+	stuff12()
+	genericstuff12()
+	stuff13()
+	genericstuff13()
+	stuff14()
+	genericstuff14()
+	stuff15()
+	genericstuff15()
+	stuff16()
+	genericstuff16()
+	stuff17()
+	genericstuff17()
+	stuff18()
+	genericstuff18()
+	stuff19()
+	genericstuff19()
+	stuff20()
+	genericstuff20()
+	stuff21()
+	genericstuff21()
+	stuff22()
+	genericstuff22()
+	stuff23()
+	genericstuff23()
+	stuff24()
+	genericstuff24()
+	stuff25()
+	genericstuff25()
+	stuff26()
+	genericstuff26()
+	stuff27()
+	genericstuff27()
+	stuff28()
+	genericstuff28()
+	stuff29()
+	genericstuff29()
+	stuff30()
+	genericstuff30()
+	stuff31()
+	genericstuff31()
+	stuff32()
+	genericstuff32()
+	stuff33()
+	genericstuff33()
+	stuff34()
+	genericstuff34()
+	stuff35()
+	genericstuff35()
+	stuff36()
+	genericstuff36()
+	stuff37()
+	genericstuff37()
+	stuff38()
+	genericstuff38()
+	stuff39()
+	genericstuff39()
+	return 0
+}

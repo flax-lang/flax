@@ -16,19 +16,11 @@ namespace llvm
 	class Module;
 }
 
-namespace Compiler
-{
-	struct Backend;
-}
 
 namespace fir
 {
-	struct ExecutionTarget;
-
 	struct Module
 	{
-		friend struct Backend;
-
 		Module(std::string nm);
 
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
@@ -37,6 +29,7 @@ namespace fir
 		GlobalVariable* tryGetGlobalVariable(const Identifier& id);
 		GlobalVariable* getGlobalVariable(const Identifier& id);
 
+		GlobalVariable* getOrCreateVirtualTableForClass(ClassType* cls);
 
 		GlobalVariable* createGlobalString(std::string str);
 
@@ -63,11 +56,14 @@ namespace fir
 
 		std::string print();
 
-		void setExecutionTarget(ExecutionTarget* e);
-		ExecutionTarget* getExecutionTarget();
+		// in theory.
+		size_t getSizeOfType(Type* type);
+		size_t getAlignmentOfType(Type* type);
 
+		Function* getEntryFunction();
+		void setEntryFunction(Function* fn);
 
-
+		std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> _getVtables() { return this->vtables; }
 		std::unordered_map<Identifier, Function*> _getIntrinsicFunctions() { return this->intrinsicFunctions; }
 		std::unordered_map<std::string, GlobalVariable*> _getGlobalStrings() { return this->globalStrings; }
 		std::unordered_map<Identifier, GlobalVariable*> _getGlobals() { return this->globals; }
@@ -78,6 +74,7 @@ namespace fir
 
 		private:
 		std::string moduleName;
+		std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
 		std::unordered_map<std::string, GlobalVariable*> globalStrings;
 
 		std::unordered_map<Identifier, GlobalVariable*> globals;
@@ -86,30 +83,7 @@ namespace fir
 
 		std::unordered_map<Identifier, Function*> intrinsicFunctions;
 
-		ExecutionTarget* execTarget = 0;
-	};
-
-
-	struct ExecutionTarget
-	{
-		size_t getBitsPerByte();
-		size_t getPointerWidthInBits();
-		size_t getTypeSizeInBits(Type* type);
-		size_t getTypeSizeInBytes(Type* type);
-
-		Type* getPointerSizedIntegerType();
-
-		static ExecutionTarget* getLP64();
-		static ExecutionTarget* getILP32();
-
-		private:
-		ExecutionTarget(size_t ptrSize, size_t byteSize, size_t shortSize, size_t intSize, size_t longSize);
-
-		size_t psize;
-		size_t bsize;
-		size_t ssize;
-		size_t isize;
-		size_t lsize;
+		Function* entryFunction = 0;
 	};
 }
 

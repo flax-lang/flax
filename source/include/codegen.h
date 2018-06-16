@@ -1,360 +1,191 @@
 // codegen.h
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
-#include "typeinfo.h"
 
-#include "errors.h"
+#include "defs.h"
+#include "stcommon.h"
 #include "ir/irbuilder.h"
 
-#include <vector>
-#include <map>
-
-#include "mpark/variant.hpp"
-
-enum class SymbolType
+namespace fir
 {
-	Generic,
-	Function,
-	Variable,
-	Type
-};
-
-namespace Ast
-{
-	struct Root;
-	struct VarRef;
-	struct FuncCall;
-	struct ClassDef;
-	struct MemberAccess;
-	struct NamespaceDecl;
-
-	struct Result_t;
-	enum class ValueKind;
+	struct Module;
+	struct IRBuilder;
 }
 
-namespace pts
+namespace sst
 {
-	struct Type;
+	struct Expr;
+	struct Stmt;
+	struct Defn;
+	struct Block;
+	struct TypeDefn;
+	struct BinaryOp;
+	struct StateTree;
+	struct FunctionDefn;
+	struct FunctionCall;
+	struct DefinitionTree;
 }
 
-namespace GenError
+namespace cgn
 {
-	void unknownSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void duplicateSymbol(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string symname, SymbolType st) __attribute__((noreturn));
-	void noOpOverload(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, Ast::ArithmeticOp op) __attribute__((noreturn));
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Value* a, fir::Value* b) __attribute__((noreturn));
-	void invalidAssignment(Codegen::CodegenInstance* cgi, Ast::Expr* e, fir::Type* a, fir::Type* b) __attribute__((noreturn));
-
-	void nullValue(Codegen::CodegenInstance* cgi, Ast::Expr* e) __attribute__((noreturn));
-	void assignToImmutable(Codegen::CodegenInstance* cgi, Ast::Expr* op, Ast::Expr* value) __attribute__((noreturn));
-
-	void invalidInitialiser(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name,
-		std::vector<fir::Value*> args) __attribute__((noreturn));
-
-	void expected(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string exp) __attribute__((noreturn));
-	void noSuchMember(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string member);
-	void noFunctionTakingParams(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string type, std::string name, std::vector<Ast::Expr*> ps);
-
-	std::tuple<std::string, std::string, HighlightOptions> getPrettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, std::vector<Ast::Expr*> args, std::vector<Codegen::FuncDefPair> cands);
-
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::vector<Ast::Expr*> args, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>> errs) __attribute__((noreturn));
-
-	void prettyNoSuchFunctionError(Codegen::CodegenInstance* cgi, Ast::Expr* e, std::string name, std::vector<Ast::Expr*> args) __attribute__((noreturn));
-}
-
-
-
-
-namespace Codegen
-{
-	struct DependencyGraph;
-
-	struct _OpOverloadData
+	struct ControlFlowPoint
 	{
-		bool found					= 0;
+		ControlFlowPoint(sst::Block* b, fir::IRBlock* bp, fir::IRBlock* cp) :
+			block(b), breakPoint(bp), continuePoint(cp) { }
 
-		bool isBinOp				= 0;
-		bool isPrefix				= 0;
-		bool needsSwap				= 0;
-		bool needsNot				= 0;
-		bool isMember				= 0;
+		sst::Block* block = 0;
 
-		bool isBuiltin				= 0;
+		// std::vector<fir::Value*> refCountedValues;
+		// std::vector<fir::Value*> refCountedPointers;
 
-		fir::Function* opFunc		= 0;
+		fir::IRBlock* breakPoint = 0;
+		fir::IRBlock* continuePoint = 0;
 	};
 
-
-	struct CodegenInstance
+	struct BlockPoint
 	{
-		Ast::Root* rootNode;
-		fir::Module* module;
-		std::vector<SymTab_t> symTabStack;
+		BlockPoint(sst::Block* b) : block(b) { }
 
-		FunctionTree* currentFuncTree;
-		std::vector<BracedBlockScope> blockStack;
-		std::vector<Ast::StructBase*> nestedTypeStack;
+		sst::Block* block = 0;
 
-		// refcounting, holds a stack of *POINTERS* to refcounted types
-		std::vector<std::vector<fir::Value*>> refCountingStack;
+		std::vector<fir::Value*> refCountedValues;
+		std::vector<fir::Value*> refCountedPointers;
+	};
 
-		// generic stuff
-		std::vector<std::map<std::string, fir::Type*>> instantiatedGenericTypeStack;
-
-		std::map<std::pair<Ast::Func*, std::map<std::string, fir::Type*>>, fir::Function*> reifiedGenericFunctions;
-		std::map<std::pair<Ast::StructBase*, std::map<std::string, fir::Type*>>, fir::Type*> reifiedGenericTypes;
-
-
-		TypeMap_t typeMap;
-
-		// custom operator stuff
-		std::map<Ast::ArithmeticOp, std::pair<std::string, int>> customOperatorMap;
-		std::map<std::string, Ast::ArithmeticOp> customOperatorMapRev;
-		std::vector<Ast::Func*> funcScopeStack;
-
-		fir::IRBuilder irb = fir::IRBuilder(fir::getDefaultFTContext());
-
-
-		struct
+	struct CodegenState
+	{
+		enum class OperatorFn
 		{
-			std::map<fir::Value*, fir::Function*> funcs;
-			std::map<fir::Value*, fir::Value*> values;
+			None,
 
-		} globalConstructors;
-
-		void addGlobalConstructor(const Identifier& name, fir::Function* constructor);
-		void addGlobalConstructor(fir::Value* ptr, fir::Function* constructor);
-		void addGlobalConstructedValue(fir::Value* ptr, fir::Value* val);
-
-		fir::Function* procureAnonymousConstructorFunction(fir::Value* arg);
-
-		void finishGlobalConstructors();
-
-
-		void importOtherCgi(CodegenInstance* other);
+			Builtin,
+			UserDefined
+		};
 
 
 
+		CodegenState(const fir::IRBuilder& i) : irb(i) { }
+		fir::Module* module = 0;
+		sst::StateTree* stree = 0;
+
+		fir::IRBuilder irb;
+
+		std::pair<fir::Function*, Location> entryFunction = { };
+
+		std::vector<Location> locationStack;
+		std::unordered_map<sst::Defn*, CGResult> valueMap;
+		std::vector<fir::Value*> methodSelfStack;
+
+		fir::Function* globalInitFunc = 0;
+		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
+
+		std::unordered_map<fir::Function*, fir::Type*> methodList;
+
+		std::unordered_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
 
 
-		// "block" scopes, ie. breakable bodies (loops)
-		void pushBracedBlock(Ast::BreakableBracedBlock* block, fir::IRBlock* body, fir::IRBlock* after);
-		BracedBlockScope* getCurrentBracedBlockScope();
-
-		Ast::Func* getCurrentFunctionScope();
-		void setCurrentFunctionScope(Ast::Func* f);
-		void clearCurrentFunctionScope();
-
-		void popBracedBlock();
-
-		// normal scopes, ie. variable scopes within braces
-		void pushScope();
-		SymTab_t& getSymTab();
-		bool isDuplicateSymbol(const std::string& name);
-		fir::Value* getSymInst(Ast::Expr* user, const std::string& name);
-		SymbolPair_t* getSymPair(Ast::Expr* user, const std::string& name);
-		Ast::VarDecl* getSymDecl(Ast::Expr* user, const std::string& name);
-		void addSymbol(std::string name, fir::Value* ai, Ast::VarDecl* vardecl);
-		void popScope();
-		void addRefCountedValue(fir::Value* ptr);
-		void removeRefCountedValue(fir::Value* ptr);
-		void removeRefCountedValueIfExists(fir::Value* ptr);
-		std::vector<fir::Value*> getRefCountedValues();
-		void clearScope();
-
-		std::tuple<std::vector<SymTab_t>, std::vector<std::vector<fir::Value*>>, FunctionTree*> saveAndClearScope();
-		void restoreScope(std::tuple<std::vector<SymTab_t>, std::vector<std::vector<fir::Value*>>, FunctionTree*> s);
-
-		// function scopes: namespaces, nested functions.
-		void pushNamespaceScope(std::string namespc);
-		void clearNamespaceScope();
-		void popNamespaceScope();
-
-		void addFunctionToScope(FuncDefPair func, FunctionTree* root = 0);
-		void removeFunctionFromScope(FuncDefPair func);
-		void addNewType(fir::Type* ltype, Ast::StructBase* atype, TypeKind e);
-
-		void importFunctionTreeInto(FunctionTree* orig, FunctionTree* import);
+		size_t _debugIRIndent = 0;
+		void pushIRDebugIndentation();
+		void printIRDebugMessage(const std::string& msg, const std::vector<fir::Value*>& vals);
+		void popIRDebugIndentation();
 
 
+		void pushLoc(sst::Stmt* stmt);
+		void popLoc();
 
-		// generic type 'scopes': contains a map resolving generic type names (K, T, U etc) to
-		// legitimate, fir::Type* things.
+		Location loc();
 
-		void pushGenericTypeStack();
-		void popGenericTypeStack();
-		void pushGenericType(std::string id, fir::Type* type);
-		void pushGenericTypeMap(std::map<std::string, fir::Type*> types);
-		fir::Type* resolveGenericType(std::string id);
+		void enterMethodBody(fir::Function* method, fir::Value* self);
+		void leaveMethodBody();
+
+		bool isInMethodBody();
+		fir::Value* getMethodSelf();
+
+		std::vector<fir::Function*> functionStack;
+		fir::Function* getCurrentFunction();
+		void enterFunction(fir::Function* fn);
+		void leaveFunction();
+
+		std::vector<ControlFlowPoint> breakingPointStack;
+		ControlFlowPoint getCurrentCFPoint();
+
+		void enterBreakableBody(const ControlFlowPoint& cfp);
+		ControlFlowPoint leaveBreakableBody();
+
+		std::vector<BlockPoint> blockPointStack;
+		BlockPoint getCurrentBlockPoint();
+		void enterBlock(const BlockPoint& bp);
+		void leaveBlock();
 
 
-		bool isArithmeticOpAssignment(Ast::ArithmeticOp op);
+		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);
+		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
 
-		void pushNestedTypeScope(Ast::StructBase* nest);
-		void popNestedTypeScope();
+		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
+		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);
 
-		FunctionTree* getCurrentFuncTree();
-		FunctionTree* getFuncTreeFromNS(std::vector<std::string> scope);
-		std::vector<std::string> getNSFromFuncTree(FunctionTree* ftree);
+		fir::Value* getDefaultValue(fir::Type* type);
 
-		std::vector<std::string> getFullScope();
-		TypePair_t* findTypeInFuncTree(std::vector<std::string> scope, std::string name);
+		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
+		void constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, fir::Value* selfptr, const std::vector<FnCallArgument>& args,
+			bool callInlineInitialiser);
 
-		std::vector<std::string> unwrapNamespacedType(std::string raw);
+		fir::Value* callVirtualMethod(sst::FunctionCall* call);
 
+		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
+		fir::ConstantValue* unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target);
 
-		bool isValidFuncOverload(FuncDefPair fp, std::vector<fir::Type*> params, int* castingDistance, bool exactMatch);
-		bool isValidFuncOverload(FuncDefPair fp, std::vector<Ast::Expr*> params, int* castingDistance, bool exactMatch,
-			std::vector<fir::Type*>* resolvedTypes);
+		CGResult getStructFieldImplicitly(std::string name);
 
-		std::vector<FuncDefPair> resolveFunctionName(std::string basename);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::vector<FuncDefPair> list, std::string basename,
-			std::vector<Ast::Expr*> params, bool exactMatch = false);
-		Resolved_t resolveFunctionFromList(Ast::Expr* user, std::vector<FuncDefPair> list, std::string basename,
-			std::vector<fir::Type*> params, bool exactMatch = false);
+		fir::Function* getOrDeclareLibCFunction(std::string name);
 
-		std::vector<Ast::Func*> findGenericFunctions(std::string basename);
+		void addGlobalInitialiser(fir::Value* storage, fir::Value* value);
 
-		Resolved_t resolveFunction(Ast::Expr* user, std::string basename, std::vector<Ast::Expr*> params, bool exactMatch = false);
+		fir::IRBlock* enterGlobalInitFunction();
+		void leaveGlobalInitFunction(fir::IRBlock* restore);
+		void finishGlobalInitFunction();
 
-		fir::Function* getDefaultConstructor(Ast::Expr* user, fir::Type* ptrType, Ast::StructBase* sb);
+		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 
-		TypePair_t* getTypeByString(std::string name);
-		TypePair_t* getType(const Identifier& id);
-		TypePair_t* getType(fir::Type* type);
-		fir::Function* getOrDeclareLibCFunc(std::string name);
+		std::unordered_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
+
+		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
 
 
 
-		fir::Type* getTypeFromParserType(Ast::Expr* user, pts::Type* type, bool allowFail = false);
+		void addVariableUsingStorage(sst::VarDefn* var, fir::Value* ptr, CGResult val);
 
-		fir::Value* autoCastType(fir::Type* target, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
-		__attribute__ ((warn_unused_result, /*deprecated*/));
+		void createWhileLoop(const std::function<void (fir::IRBlock*, fir::IRBlock*)>& check, const std::function<void ()>& body);
 
-		fir::Value* autoCastType(fir::Value* left, fir::Value* right, fir::Value* rhsPtr = 0, int* distance = 0)
-		__attribute__ ((warn_unused_result, /*deprecated*/));
+		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op);
 
-		std::pair<fir::Value*, fir::Value*> attemptTypeAutoCasting(fir::Value* lhs, fir::Value* lhsptr, fir::Value* rhs, fir::Value* rhsptr,
-			int* distance = 0) __attribute__ ((warn_unused_result));
-
-		fir::Value* attemptTypeCast(fir::Value* lhs, fir::Value* lhsptr, fir::Type* type, int* dist = 0) __attribute__ ((warn_unused_result));
-
-		int getAutoCastDistance(fir::Type* from, fir::Type* to);
-
-		bool isArrayType(Ast::Expr* e);
-		bool isSignedType(Ast::Expr* e);
-		bool isBuiltinType(Ast::Expr* e);
-		bool isIntegerType(Ast::Expr* e);
-		bool isBuiltinType(fir::Type* e);
 		bool isRefCountedType(fir::Type* type);
+		void incrementRefCount(fir::Value* val);
+		void decrementRefCount(fir::Value* val);
 
-		bool isDuplicateType(const Identifier& id);
+		void addRefCountedValue(fir::Value* val);
+		void removeRefCountedValue(fir::Value* val, bool ignoreMissing = false);
 
-		void performComplexValueStore(Ast::Expr* user, fir::Type* type, fir::Value* srcptr, fir::Value* dstptr, std::string name,
-			Parser::Pin pos, Ast::ValueKind rhsvk);
+		void addRefCountedPointer(fir::Value* ptr);
+		void removeRefCountedPointer(fir::Value* ptr, bool ignoreMissing = false);
 
-		fir::Value* getStackAlloc(fir::Type* type, std::string name = "");
-		fir::Value* getImmutStackAllocValue(fir::Value* initValue, std::string name = "");
+		std::vector<fir::Value*> getRefCountedValues();
+		std::vector<fir::Value*> getRefCountedPointers();
 
-		std::string printAst(Ast::Expr*);
+		void performRefCountingAssignment(CGResult lhs, CGResult rhs, bool isInitial);
+		void moveRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial);
 
-		Ast::Result_t makeAnyFromValue(Ast::Expr* user, fir::Value* val, fir::Value* ptr, Ast::ValueKind vk);
-		Ast::Result_t assignValueToAny(Ast::Expr* user, fir::Value* any, fir::Value* val, fir::Value* ptr, Ast::ValueKind vk);
-		Ast::Result_t extractValueFromAny(Ast::Expr* user, fir::Value* any, fir::Type* type);
-
-		Ast::Result_t getNullString();
-		Ast::Result_t getEmptyString();
-		Ast::Result_t makeStringLiteral(std::string str);
-
-		void incrementRefCount(fir::Value* strp);
-		void decrementRefCount(fir::Value* strp);
-
-		void assignRefCountedExpression(Ast::Expr* user, fir::Value* rhs, fir::Value* rhsptr, fir::Value* lhs, fir::Value* lhsptr,
-			Ast::ValueKind rhsVK, bool isInitialAssignment, bool doAssignment);
-
-		fir::Function* getFunctionFromModuleWithName(const Identifier& id, Ast::Expr* user);
-		fir::Function* getFunctionFromModuleWithNameAndType(const Identifier& id, fir::FunctionType* ft, Ast::Expr* user);
-
-		Ast::Result_t createDynamicArrayFromPointer(fir::Value* ptr, fir::Value* length, fir::Value* capacity);
-		Ast::Result_t createEmptyDynamicArray(fir::Type* elmType);
-
-		Ast::Result_t createParameterPack(fir::Type* type, std::vector<fir::Value*> parameters);
-
-
-		FuncDefPair tryResolveGenericFunctionCall(Ast::FuncCall* fc, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
-		FuncDefPair tryResolveGenericFunctionCallUsingCandidates(Ast::FuncCall* fc, std::vector<Ast::Func*> cands, std::map<Ast::Func*,
-			std::pair<std::string, Ast::Expr*>>* errs);
-
-		FuncDefPair tryResolveGenericFunctionFromCandidatesUsingFunctionType(Ast::Expr* user, std::vector<Ast::Func*> candidates,
-			fir::FunctionType* ft, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
-
-		FuncDefPair instantiateGenericFunctionUsingParameters(Ast::Expr* user, Ast::Func* func, std::vector<fir::Type*> params,
-			std::string* err, Ast::Expr** ex);
-
-		FuncDefPair instantiateGenericFunctionUsingMapping(Ast::Expr* user, std::map<std::string, fir::Type*> gtm, Ast::Func* func,
-			std::string* err, Ast::Expr** ex);
-
-		fir::Function* resolveAndInstantiateGenericFunctionReference(Ast::Expr* user, fir::FunctionType* originalft,
-			fir::FunctionType* instantiatedFT, Ast::MemberAccess* ma, std::map<Ast::Func*, std::pair<std::string, Ast::Expr*>>* errs);
-
-		fir::Function* instantiateGenericFunctionUsingValueAndType(Ast::Expr* user, fir::Function* oldf, fir::FunctionType* originalft,
-			fir::FunctionType* ft, Ast::MemberAccess* ma);
-
-
-		mpark::variant<fir::Type*, Ast::Result_t> tryResolveVarRef(Ast::VarRef* vr, fir::Type* extratype, bool actual);
-
-
-		std::vector<fir::Value*> checkAndCodegenFunctionCallParameters(Ast::FuncCall* fc, fir::FunctionType* ft,
-			std::vector<Ast::Expr*> params, bool variadic, bool cvar);
-
-
-		FuncDefPair tryGetMemberFunctionOfClass(Ast::StructBase* cls, Ast::Expr* user, std::string name, fir::Type* extratype);
-		fir::Function* tryDisambiguateFunctionVariableUsingType(Ast::Expr* user, std::string name, std::vector<fir::Function*> cands,
-			fir::Type* extratype);
-
-
-		Ast::ProtocolDef* resolveProtocolName(Ast::Expr* user, std::string pstr);
-
-		std::vector<Ast::ExtensionDef*> getExtensionsForType(Ast::StructBase* cls);
-		std::vector<Ast::ExtensionDef*> getExtensionsWithName(std::string name);
-		std::vector<Ast::ExtensionDef*> getExtensionsForBuiltinType(fir::Type* type);
-
-
-		mpark::variant<fir::Type*, FunctionTree*, TypePair_t, Ast::Result_t> resolveTypeOfMA(Ast::MemberAccess* ma,
-			fir::Type* extratype, bool actual);
-
-		bool isValidOperatorForBuiltinTypes(Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
-
-		void checkProtocolConformanceOfGenericSolutions(Ast::Expr* user, const std::map<std::string, fir::Type*>& mappings,
-			std::map<std::string, TypeConstraints_t> tm);
-
-		fir::FTContext* getContext();
-		fir::Value* getDefaultValue(fir::Type* t);
-		bool verifyAllPathsReturn(Ast::Func* func, size_t* stmtCounter, bool checkType, fir::Type* retType = 0);
-
-		fir::Type* getExprTypeOfBuiltin(std::string type);
-		Ast::ArithmeticOp determineArithmeticOp(std::string ch);
-		fir::Instruction getBinaryOperator(Ast::ArithmeticOp op, bool isSigned, bool isFP);
-
-		fir::Function* getStructInitialiser(Ast::Expr* user, TypePair_t* pair, std::vector<fir::Value*> args,
-			std::map<std::string, fir::Type*> tm, pts::Type* ptypeForMap);
-
-		Ast::Result_t callTypeInitialiser(TypePair_t* tp, Ast::Expr* user, std::vector<fir::Value*> args,
-			std::map<std::string, fir::Type*> tm);
-
-
-		_OpOverloadData getBinaryOperatorOverload(Ast::Expr* u, Ast::ArithmeticOp op, fir::Type* lhs, fir::Type* rhs);
-
-		Ast::Result_t callBinaryOperatorOverload(_OpOverloadData data, fir::Value* lhs, fir::Value* lhsRef, fir::Value* rhs, fir::Value* rhsRef, Ast::ArithmeticOp op);
-
-
-		~CodegenInstance();
+		void autoAssignRefCountedValue(CGResult lhs, CGResult rhs, bool isInitial, bool performStore);
 	};
 
-	void doCodegen(std::string filename, Ast::Root* root, CodegenInstance* cgi);
+	fir::Module* codegen(sst::DefinitionTree* dtr);
 }
+
+
+
+
 
 
 

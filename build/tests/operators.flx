@@ -56,13 +56,6 @@ public fn doOperatorTupleTest()
 
 
 	do {
-		var k = alloc CPTest
-		k.readwrite = 40
-		printf("k: %d\n", k.readwrite)
-	}
-
-
-	do {
 		// var args = alloc[10] Any
 		// args[0] = "HELLO"
 		// #(args + 1) = 40

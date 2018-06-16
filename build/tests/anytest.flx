@@ -2,22 +2,27 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_any
+// import "stdio" as _
+
+import "libc" as _
+
 var glob: any
 
-	struct Large
-	{
-		var a: i64 = 10
-		var b: i64 = 20
-		var c: i64 = 30
-		var d: i64 = 40
-		var e: i64 = 50
-	}
+struct Large
+{
+	var a: i64
+	var b: i64
+	var c: i64
+	var d: i64
+	var e: i64
+}
 
 public fn doAnyTest()
 {
 	fn foo(a: any)
 	{
-		if(typeid(a) == typeid(Large))
+		if(a is Large)
 		{
 			printf("a = %d\n", (a as Large).a)
 			glob = a
@@ -29,10 +34,10 @@ public fn doAnyTest()
 	}
 
 	do {
-		var k: any = 40 as any
+		var k: any = any(40)
 		k = "foo"
 
-		printf("k as string = %s\n", k as string)
+		printf("k as int = %s\n", k as str)
 
 		k = 301
 
@@ -42,10 +47,8 @@ public fn doAnyTest()
 	}
 
 	do {
-		var x: any = Large()
-		// (x as Large).c = 301443
+		var x: any = Large(10, 20, 30, 40, 50)
 
-		// let v = x// as Large
 		var k = x as Large
 		k.c = 5413
 		k.a = 631
@@ -54,7 +57,7 @@ public fn doAnyTest()
 		foo(k)
 		foo(401.3)
 
-		fn bar() -> any { 10 }
+		fn bar() -> any => any(10)
 
 		printf("bar = %d, qux = %d\n", bar(), 30)
 		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)

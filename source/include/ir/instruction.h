@@ -10,11 +10,6 @@
 
 #include "value.h"
 
-namespace Ast
-{
-	enum class ArithmeticOp;
-}
-
 
 namespace fir
 {
@@ -104,6 +99,7 @@ namespace fir
 		Value_StackAlloc,
 		Value_CallFunction,
 		Value_CallFunctionPointer,
+		Value_CallVirtualMethod,
 		Value_Return,
 		Value_PointerAddition,
 		Value_PointerSubtraction,
@@ -115,23 +111,22 @@ namespace fir
 		Value_InsertValue,					// corresponds to llvm.
 		Value_ExtractValue,					// same
 
+		Value_Select,						// same as llvm: takes 3 operands, the first being a bool and the others being a condition.
+											// if the bool == true, returns the first value, else returns the second.
+		Value_CreatePHI,
+
 		Misc_Sizeof,						// portable sizeof using GEP
 
 
 		// string-specific things
-		String_GetData,
-		String_SetData,
-		String_GetLength,
-		String_SetLength,
-		String_GetRefCount,
-		String_SetRefCount,
-
-		DynamicArray_GetData,
-		DynamicArray_SetData,
-		DynamicArray_GetLength,
-		DynamicArray_SetLength,
-		DynamicArray_GetCapacity,
-		DynamicArray_SetCapacity,
+		SAA_GetData,
+		SAA_SetData,
+		SAA_GetLength,
+		SAA_SetLength,
+		SAA_GetCapacity,
+		SAA_SetCapacity,
+		SAA_GetRefCountPtr,
+		SAA_SetRefCountPtr,
 
 		ArraySlice_GetData,
 		ArraySlice_SetData,
@@ -140,15 +135,22 @@ namespace fir
 
 		Any_GetData,
 		Any_SetData,
-		Any_GetFlag,
-		Any_SetFlag,
 		Any_GetTypeID,
 		Any_SetTypeID,
+		Any_GetRefCountPtr,
+		Any_SetRefCountPtr,
 
 		Range_GetLower,
 		Range_SetLower,
 		Range_GetUpper,
 		Range_SetUpper,
+		Range_GetStep,
+		Range_SetStep,
+
+		Enum_GetIndex,
+		Enum_SetIndex,
+		Enum_GetValue,
+		Enum_SetValue,
 
 		Branch_UnCond,
 		Branch_Cond,
