@@ -30,6 +30,8 @@ namespace fir
 		void addInstruction(Instruction* inst);
 		void eraseFromParentFunction();
 
+		bool isTerminated();
+
 		std::vector<Instruction*>& getInstructions();
 
 		private:

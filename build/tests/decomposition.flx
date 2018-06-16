@@ -2,9 +2,12 @@
 // Copyright (c) 2014 - 2016, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+export test_decomposition
+
+import "libc" as _
+
 public fn doDecompositionTest()
 {
-
 	do {
 		printf("\n\n>> tuple decomposition\n")
 
@@ -13,7 +16,7 @@ public fn doDecompositionTest()
 
 		printf("x = %d, y = %p\n", x, y)
 
-		let (a, (b, c, ...)) = ("a", (30, 40, 50, 60))
+		let (a, (b, c, _, _)) = ("a", (30, 40, 50, 60))
 		printf("a = '%s', b = %d, c = %d\n", a, b, c)
 	}
 
@@ -23,22 +26,22 @@ public fn doDecompositionTest()
 		var arr = [ 2, 3, 5, 7, 11, 13, 17 ]
 
 		var [ a, &b, &c, ... &x ] = arr
-		*b = 30
+		*(b as mut) = 30
 
 		printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
 
 
 		do {
 
-			var arr: string[]
-			arr += "hello"
-			arr += "world"
-			arr += "bouys"
+			var arr2: [str]
+			arr2.append("hello")
+			arr2.append("world")
+			arr2.append("bouys")
 
-			let [ a, ... &b ] = arr
+			let [ a, ... &b ] = arr2
 
 			// can bind directly, if you're that kind of person...
-			let [ ... &c ] = arr
+			let [ ... &c ] = arr2
 			printf("a = %s, b = %d, c = %d\n", a, b.length, c.length)
 		}
 

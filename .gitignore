@@ -5,8 +5,12 @@
 *.obj
 
 # Precompiled Headers
-*.gch
-*.pch
+*.gch*
+*.pch*
+
+# Makefile dependencies
+*.cpp.d
+*.c.d
 
 # Compiled Dynamic libraries
 *.so
@@ -26,6 +30,7 @@
 *.exe
 *.out
 *.app
+*.pdb
 
 
 
@@ -34,7 +39,11 @@ commit
 run
 *.sublime-*
 build/sysroot
+build/meson-*
 .modifydates
+
+# this is a generated file, so we ignore it.
+source/unity.cpp
 
 build/test
 build/gltest
@@ -43,7 +52,6 @@ build/standalone
 *.bc
 
 *.ir
-*.m
 shakefile.hi
 shakefile
 .shake.database
@@ -53,8 +61,12 @@ countloc
 .shake.lock
 bug-repro
 .clang_complete
+*.code-workspace
 
+.vscode
+*.vcxproj.filters
 
+countloc.bat
 
 prof.svg
 prof_with_square.svg
@@ -62,5 +74,21 @@ build/cmake-output
 .idea
 CMakeLists.txt
 
+source_old
+
+
+codealike.json
+
+build/test
+build/tester
+build/supertiny
+build/gltest
+
 release.fish
 macosx.zip
+flax.config
+flax.creator
+flax.creator.user
+flax.files
+flax.includes
+.vs/

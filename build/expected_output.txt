@@ -1,0 +1,255 @@
+       *** FIBONACII SEQUENCE ***       
+----------------------------------------
+1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181
+
+
+            *** FIZZBUZZ ***            
+----------------------------------------
+00:      FizzBuzz
+01:      1
+02:      2
+03:      Fizz
+04:      4
+05:      Buzz
+06:      Fizz
+07:      7
+08:      8
+09:      Fizz
+10:      Buzz
+11:      11
+12:      Fizz
+13:      13
+14:      14
+15:      FizzBuzz
+
+
+
+       *** PRINTING INT LIMITS ***      
+----------------------------------------
+i8.min   = -128				i8.max   = 127
+i16.min  = -32768			i16.max  = 32767
+i32.min  = -2147483648			i32.max  = 2147483647
+i64.min  = -9223372036854775808		i64.max  = 9223372036854775807
+
+u8.min   = 0				u8.max   = 255
+u16.min  = 0				u16.max  = 65535
+u32.min  = 0				u32.max  = 4294967295
+u64.min  = 0				u64.max  = 18446744073709551615
+
+
+
+*** SCOPE RESOLUTION REGRESSION TEST ***
+----------------------------------------
+gg.0: 4, gg.1: 100.39
+[400]
+p: 15.707317, g: 4, m: 511, argv[0]: _llvm_jit__build/test, 3.14159265358979
+
+x1: 3, x2: 4, x3: 23
+nested
+tup: HELLO, WORLD!
+t1 = 311, t2 = 9
+afoo: 311
+
+
+
+ *** OPERATOR/TUPLE REGRESSION TEST *** 
+----------------------------------------
+g is: 100
+m is [(1.000000, 2.000000, 3.000000), (4.000000, 5.000000, 6.000000)]
+dot = 32.000000
+v: (4.000000, 8.000000, 13.000000)
+v: (5.000000, 10.000000, 17.000000)
+vv: (15.000000, 30.000000, 51.000000)
+cross = (-3.000000, 6.000000, -3.000000)
+crossn = (3.000000, -6.000000, 3.000000)
+WRITE: 40
+READ
+k: 31
+(31.00), vr = -5.00
+E
+lol[2]: E // HELLO
+
+
+
+      *** ARRAY REGRESSION TEST ***     
+----------------------------------------
+a[0][0]: 1, a[0][1]: 2, a[1][0]: 5, a[1][1]: 400
+d[0]: 1.000000, d[1]: 2.000000, d[2]: 4.000000, d[3]: 8.000000
+arr[1] = 97
+arr[2] = 43
+
+
+s[1][2] = BOO YOU STRING, s[1][2].length = 14
+
+PRE X
+POST X
+k = 0x7fd49fc02a50, x = 0x7fd49fc02a50
+z <= x: 1
+z[0] = aaaAAA // 1
+z[1] = BBBbbb // 1
+z[2] = cccCCC // 1
+z[3] = DDDddd // 1
+z[4] = eeeEEE // 1
+z[5] =  // 1
+z[6] =  // 1
+z[7] =  // 1
+z[8] =  // 1
+z[9] = LAST ELEMENT // -1
+z.back() = LAST ELEMENT, length = 10, cap = 16
+sum = 120
+
+
+
+    *** GENERICS REGRESSION TEST ***    
+----------------------------------------
+foo: triple T
+instance generic
+extension generic
+static extension generic
+static generic
+namespace generic
+
+
+
+    *** FUNCTION REGRESSION TEST ***    
+----------------------------------------
+foo: 10
+bar: 20
+each test: 11 22 33 44
+
+scope test
+static bar in class: 10
+static bar in nested class: 20
+foo in namespace: 30
+
+method test
+foo in class: 0x7ffee53e3920 // 40
+foo in nested class: 0x7ffee53e3920 // 50
+
+generic test
+
+class test
+et: 300
+static: 0x7ffee53e3928, 500
+static: 0x7ffee53e3928, 600
+
+generic member test
+static generic: 10
+method generic: 0x7ffee53e3920 // 10
+
+direct field calling
+static: 0x7ffee53e3928, 10
+
+
+
+       *** DEFER SEMANTICS TEST ***     
+----------------------------------------
+calling foo 1
+calling foo 2
+calling foo 3
+
+
+
+        *** ANY SEMANTICS TEST ***      
+----------------------------------------
+k as string = foo
+k as int = 301
+typeid(k): 6
+a = 10
+a = 631
+not large
+bar = 6, qux = -1
+a = 631, b = 20, c = 5413/30, d = 40, e = 50
+
+
+
+     *** SLICES REGRESSION TEST ***     
+----------------------------------------
+-- 2, 3, 5, 7, 11, 13, 17 --
+original: Hello, world!
+slice: lo, wor
+
+
+
+ *** DECOMPOSITION REGRESSION TEST ***  
+----------------------------------------
+
+
+>> tuple decomposition
+x = 10, y = 0x7ffee53e38f0
+a = 'a', b = 30, c = 40
+
+>> array decomposition
+a = 2, b = 30, c = 0x10a82a120, d = 7, e = 11 (x.length = 4)
+a = hello, b = 2, c = 3
+
+>> string decomposition
+a = 'I', b = 'n', c = ' '
+the event of unexpected shutdown, all personnel are to evacuate the area immediately.
+
+
+
+
+    *** FOR LOOP REGRESSION TEST ***    
+----------------------------------------
+
+
+>> C-style for loops
+i = 1, k = 0, v = 30
+i = 2, k = 10, v = 27
+i = 3, k = 20, v = 24
+i = 4, k = 30, v = 21
+
+>> ranges
+r1.l = 0, r1.u = 3
+r2.l = 0, r2.u = 0
+
+0: i = 0
+1: i = 1
+2: i = 2
+3: i = 3
+
+>> for-in array
+0: 1 / a
+1: 2 / b
+2: 3 / c
+3: 4 / d
+
+>> for-in string
+0: 'w', 1: 'o', 2: 'o', 3: 'h', 4: 'o', 5: 'o', 
+
+
+
+       *** MISCELLANEOUS TESTS ***      
+----------------------------------------
+(10, 41)
+10
+30
+40
+50
+60
+hi: [1, 2, 3, 4]
+0, (40, hello, 40, hello)
+439, 67
+'4' is digit: 1
+terminal size: 0x0 (chars), 0x0 (pixels)
+test = 0x10a82674b 10
+(if-let) k > 27
+f.x = 10, b.c = 3, fo = 40
+k = 40
+s = some string 		broken over 		multiple lines
+40, 3.0001410
+> 16 / 16 / 8 <
+ta == tb: 1
+ints: [10, 20, 30, 40, 50, 60]
+
+
+
+============ TESTS COMPLETE ============
+
+
+
+
+
+
+<< done >>

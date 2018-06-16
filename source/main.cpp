@@ -1,172 +1,111 @@
 // main.cpp
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-#include <iostream>
-#include <fstream>
-#include <cassert>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include "ast.h"
-#include "parser.h"
+#include "defs.h"
+#include "errors.h"
 #include "backend.h"
-#include "codegen.h"
-#include "compiler.h"
-#include "dependency.h"
+#include "frontend.h"
 
-#include "llvm/Support/TargetSelect.h"
-
-#include "ir/type.h"
-#include "ir/value.h"
 #include "ir/module.h"
-#include "ir/irbuilder.h"
 
-using namespace Ast;
-
-int main(int argc, char* argv[])
+struct timer
 {
-	// parse arguments
-	auto names = Compiler::parseCmdLineArgs(argc, argv);
+	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
+	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
 
-	// any profiling needs to come after parsing args, since that tells us whether or not to enable the damn thing.
-	auto top = prof::Profile(PROFGROUP_TOP, "total");
+	double* out = 0;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+};
 
-	std::string outname;
-	std::string filename;
-	Codegen::CodegenInstance* _cgi = 0;
 
-	std::vector<std::vector<Codegen::DepNode*>> groups;
+
+static void compile(std::string in, std::string out)
+{
+	auto ts = std::chrono::high_resolution_clock::now();
+
+	double lexer_ms = 0;
+	double parser_ms = 0;
+	double typecheck_ms = 0;
+
+
+	frontend::CollectorState state;
+	sst::DefinitionTree* dtree = 0;
 	{
-		std::string curpath;
-
 		{
-			auto p = prof::Profile(PROFGROUP_TOP, "preflight");
-
-			filename = names.first;
-			outname = names.second;
-
-			// compile the file.
-			// the file Compiler.cpp handles imports.
-
-			_cgi = new Codegen::CodegenInstance();
-
-			filename = Compiler::getFullPathOfFile(filename);
-			curpath = Compiler::getPathFromFile(filename);
+			timer t(&lexer_ms);
+			frontend::collectFiles(in, &state);
 		}
 
-
-
-
 		{
-			auto p = prof::Profile(PROFGROUP_TOP, "cycle check");
-			groups = Compiler::checkCyclicDependencies(filename);
+			timer t(&parser_ms);
+			frontend::parseFiles(&state);
 		}
 
-
-
-
 		{
-			auto p = prof::Profile("parse ops");
+			timer t(&typecheck_ms);
 
-			// parse and find all custom operators
-			Parser::parseAllCustomOperators(_cgi, filename, curpath);
+			dtree = frontend::typecheckFiles(&state);
+			iceAssert(dtree);
+		}
+	}
+
+	timer t(nullptr);
+
+	fir::Module* module = frontend::generateFIRModule(&state, dtree);
+	auto cd = backend::CompiledData { module };
+
+	auto codegen_ms = t.stop();
+
+	auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
+	fprintf(stderr, "compile took %.1f (lexer: %.1f parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
+		compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
+		compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
+
+	{
+		using namespace backend;
+		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
+
+		int capsneeded = 0;
+		{
+			if(frontend::getOutputMode() == ProgOutputMode::RunJit)
+				capsneeded |= BackendCaps::JIT;
+
+			if(frontend::getOutputMode() == ProgOutputMode::ObjectFile)
+				capsneeded |= BackendCaps::EmitObject;
+
+			if(frontend::getOutputMode() == ProgOutputMode::Program)
+				capsneeded |= BackendCaps::EmitProgram;
 		}
 
+		if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
+		{
+			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
+			backend->performCompilation();
+			// backend->optimiseProgram();
+			backend->writeOutput();
+		}
+		else
+		{
+			error("Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str(),
+				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
+		}
 	}
-
-	Compiler::CompiledData cd;
-	{
-		auto p = prof::Profile(PROFGROUP_TOP, "compile");
-		cd = Compiler::compileFile(filename, groups, _cgi->customOperatorMap, _cgi->customOperatorMapRev);
-	}
+}
 
 
-	// do FIR optimisations
-	for(auto mod : cd.moduleList)
-	{
-		for(auto f : mod.second->getAllFunctions())
-			f->cullUnusedValues();
 
-		if(Compiler::getDumpFir())
-			printf("%s\n\n", mod.second->print().c_str());
-	}
-
-
-	// check caps that we need
-	using namespace Compiler;
-	int capsneeded = 0;
-	{
-		if(getOutputMode() == ProgOutputMode::RunJit)
-			capsneeded |= BackendCaps::JIT;
-
-		if(getOutputMode() == ProgOutputMode::ObjectFile)
-			capsneeded |= BackendCaps::EmitObject;
-
-		if(getOutputMode() == ProgOutputMode::Program)
-			capsneeded |= BackendCaps::EmitProgram;
-	}
-
-	Backend* backend = Backend::getBackendFromOption(getSelectedBackend(), cd, { filename }, outname);
-
-	if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
-	{
-		auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
-		backend->performCompilation();
-		backend->optimiseProgram();
-		backend->writeOutput();
-	}
-	else
-	{
-		fprintf(stderr, "Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str().c_str(),
-			capabilitiesToString((BackendCaps::Capabilities) capsneeded).c_str());
-
-		exit(-1);
-	}
-
-	delete _cgi;
-
-	top.finish();
-
-	if(Compiler::showProfilerOutput())
-		prof::printResults();
+int main(int argc, char** argv)
+{
+	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
+	compile(input_file, output_file);
+	return 0;
 }
 
 
 
 
-
-
-
-std::string strprintf(const char* fmt, ...)
-{
-	va_list ap;
-	va_list ap2;
-
-	va_start(ap, fmt);
-	va_copy(ap2, ap);
-
-	ssize_t size = vsnprintf(0, 0, fmt, ap2);
-
-	va_end(ap2);
-
-
-	// return -1 to be compliant if
-	// size is less than 0
-	iceAssert(size >= 0);
-
-	// alloc with size plus 1 for `\0'
-	char* str = new char[size + 1];
-
-	// format string with original
-	// variadic arguments and set new size
-	vsprintf(str, fmt, ap);
-
-	std::string ret = str;
-	delete[] str;
-
-	return ret;
-}
 
 
 

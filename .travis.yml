@@ -1,19 +1,44 @@
 language: cpp
 compiler: clang
-dist: trusty
-sudo: required
 
-install:
-    - echo "LLVM $LLVM_VERSION"
-    - sudo echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-$LLVM_VERSION main" | sudo tee -a /etc/apt/sources.list
-    - sudo echo "deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-$LLVM_VERSION main" | sudo tee -a /etc/apt/sources.list
-    - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-    - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
-    - sudo apt-get --force-yes update
-    - sudo apt-get -o Dpkg::Options::="--force-overwrite" --force-yes install g++-6 llvm-$LLVM_VERSION llvm-$LLVM_VERSION-dev llvm-$LLVM_VERSION libllvm$LLVM_VERSION
+matrix:
+    include:
+    - os: linux
+      dist: trusty
+      sudo: false
+    - os: osx
+      osx_image: xcode9.2
+
+addons:
+    apt:
+        sources:
+        - llvm-toolchain-trusty-6.0
+        - ubuntu-toolchain-r-test
+
+        packages:
+        - g++-7
+        - llvm-6.0
+        - llvm-6.0-dev
+        - libllvm6.0
+        - libmpfr-dev
+        - libmpfr4
+
+before_script:
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        brew install llvm@6;
+        brew upgrade mpfr;
+        # cd $(brew --cellar)/llvm@5/*;
+        # cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
+        # patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
+        # ls -R bin;
+        # cd $TRAVIS_BUILD_DIR;
+      fi
 
 script:
-    - CXX=g++-6 CC=gcc-6 make -j2 ci
+    - if [ "$TRAVIS_OS_NAME" == "osx" ];
+        then PATH="/usr/local/opt/llvm@6/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
+      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
+      fi
 
 notifications:
     email: false
