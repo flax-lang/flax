@@ -235,7 +235,7 @@ namespace sst
 			else if(ex.value->getType()->isFunctionType())
 				error(this, "Cannot take the address of a function; use it as a value type");
 
-			return CGResult(cs->irb.AddressOf(ex.value));
+			return CGResult(cs->irb.AddressOf(ex.value, false));
 		}
 		else if(this->op == Operator::BitwiseNot)
 		{

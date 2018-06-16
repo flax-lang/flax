@@ -46,7 +46,8 @@ namespace fir
 
 		// virtual funcs
 		virtual Type* getType();
-		void setType(Type* t) { this->valueType = t; }
+		void setType(Type* t)   { this->valueType = t; }
+		void setKind(Kind k)    { this->kind = k; }
 
 		bool islvalue()     { return this->kind == Kind::lvalue; }
 		bool isrvalue()     { return this->kind == Kind::rvalue; }

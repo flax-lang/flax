@@ -259,7 +259,11 @@ void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind,
 
 		if(bind.ref)
 		{
-			rhs.value = this->irb.AddressOf(rhs.value);
+			rhs.value = this->irb.AddressOf(rhs.value, false);
+		}
+		else
+		{
+			// rhs.value = this->irb.Dereference(rhs.value);
 		}
 
 		handleDefn(this, bind.createdDefn, rhs);

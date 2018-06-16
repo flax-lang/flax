@@ -10,13 +10,13 @@
 namespace fir
 {
 
-	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::vector<Value*> vals) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::vector<Value*> vals, Value::Kind k) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 		this->sideEffects = sideeff;
 		this->parentBlock = parent;
-		this->realOutput = new Value(out);
+		this->realOutput = new Value(out, k);
 	}
 
 	Value* Instruction::getResult()

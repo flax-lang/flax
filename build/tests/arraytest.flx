@@ -42,7 +42,8 @@ public fn doArrayTest()
 public fn foldl(first: int, arr: [int:], f: fn(int, int) -> int) -> int
 {
 	if arr.length == 0 { return first }
-	return foldl(f(first, pop(&arr as mut)), arr[:arr.length], f)
+	return 10
+	// return foldl(f(first, pop(&arr as mut)), arr[:arr.length], f)
 }
 
 fn pop<T>(s: &mut [T:]) -> T

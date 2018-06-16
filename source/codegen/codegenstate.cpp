@@ -13,9 +13,9 @@ namespace cgn
 	{
 		this->methodSelfStack.push_back(self);
 
-		iceAssert(self->getType()->isPointerType());
+		iceAssert(self->islorclvalue());
 
-		auto ty = self->getType()->getPointerElementType();
+		auto ty = self->getType();
 		iceAssert(ty->isClassType() || ty->isStructType());
 
 		this->methodList[method] = ty;
@@ -153,6 +153,7 @@ namespace cgn
 
 	fir::Value* CodegenState::getDefaultValue(fir::Type* type)
 	{
+		fir::Value* ret = 0;
 		if(type->isStringType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
@@ -163,7 +164,7 @@ namespace cgn
 			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
 			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
-			return arr;
+			ret = arr;
 		}
 		else if(type->isDynamicArrayType())
 		{
@@ -174,7 +175,7 @@ namespace cgn
 			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
 			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
-			return arr;
+			ret = arr;
 		}
 		else if(type->isArraySliceType())
 		{
@@ -182,7 +183,7 @@ namespace cgn
 			arr = this->irb.SetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
 			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
 
-			return arr;
+			ret = arr;
 		}
 		else if(type->isClassType())
 		{
@@ -217,10 +218,15 @@ namespace cgn
 			this->irb.Call(cls->getInlineInitialiser(), self);
 			this->irb.Call(ifn, self);
 
-			return this->irb.ReadPtr(self);
+			ret = this->irb.ReadPtr(self);
+		}
+		else
+		{
+			ret = fir::ConstantValue::getZeroValue(type);
 		}
 
-		return fir::ConstantValue::getZeroValue(type);
+		ret->setKind(fir::Value::Kind::literal);
+		return ret;
 	}
 
 	void CodegenState::pushIRDebugIndentation()

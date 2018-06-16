@@ -125,11 +125,11 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	auto cls = this->classty->type;
 	auto self = cs->irb.CreateLValue(cls);
 
-	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments, true);
+	cs->constructClassWithArguments(cls->toClassType(), this->target, cs->irb.AddressOf(self, true), this->arguments, true);
 
-	auto value = cs->irb.Dereference(self);
+	// auto value = cs->irb.Dereference(self);
 	if(cs->isRefCountedType(cls))
-		cs->addRefCountedValue(value);
+		cs->addRefCountedValue(self);
 
 	return CGResult(self);
 }
@@ -144,7 +144,7 @@ CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Typ
 	this->classty->codegen(cs);
 
 	auto cls = this->classty->type;
-	auto self = cs->getMethodSelf();
+	auto self = cs->irb.AddressOf(cs->getMethodSelf(), true);
 
 	iceAssert(self->getType()->isPointerType() && self->getType()->getPointerElementType()->isClassType());
 
@@ -156,8 +156,6 @@ CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Typ
 
 	//* note: we don't call the inline initialiser of the base class, because the inline initialiser of our own class would've already called it.
 	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments, false);
-	// auto value = cs->irb.ReadPtr(self);
-
 	return CGResult(self);
 }
 

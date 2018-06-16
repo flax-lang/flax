@@ -44,14 +44,11 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterFunction(fn);
 	defer(cs->leaveFunction());
 
-	if(this->parentTypeForMethod)
-		cs->enterMethodBody(fn, fn->getArguments()[0]);
-
 	auto block = cs->irb.addNewBlockInFunction(this->id.name + "_entry", fn);
 	cs->irb.setCurrentBlock(block);
 
-	for(auto a : this->arguments)
-		a->codegen(cs);
+	if(this->parentTypeForMethod)
+		cs->enterMethodBody(fn, cs->irb.Dereference(fn->getArguments()[0]));
 
 
 	// special thing here:
@@ -60,6 +57,9 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
+		for(auto a : this->arguments)
+			a->codegen(cs);
+
 		this->body->codegen(cs);
 	}
 	cs->leaveBreakableBody();
@@ -117,8 +117,6 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
 
 	cs->valueMap[this] = CGResult(fn);
-	// cs->vtree->values[this->id.name].push_back(CGResult(fn));
-
 	return CGResult(fn);
 }
 
@@ -134,6 +132,8 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// get the arguments
 	auto arg = fn->getArgumentWithName(this->id.name);
+	if(cs->isRefCountedType(arg->getType()))
+		cs->addRefCountedValue(arg);
 
 	// ok...
 	cs->valueMap[this] = CGResult(arg);

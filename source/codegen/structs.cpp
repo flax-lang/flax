@@ -93,7 +93,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 		cs->irb.setCurrentBlock(entry);
 
-		auto self = func->getArguments()[0];
+		auto self = cs->irb.Dereference(func->getArguments()[0], "self");
 
 		// make sure we call the base init first.
 		if(clsty->getBaseClass())
@@ -101,12 +101,12 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto bii = clsty->getBaseClass()->getInlineInitialiser();
 			iceAssert(bii);
 
-			cs->irb.Call(bii, cs->irb.PointerTypeCast(self, clsty->getBaseClass()->getMutablePointerTo()));
+			cs->irb.Call(bii, cs->irb.PointerTypeCast(cs->irb.AddressOf(self, true), clsty->getBaseClass()->getMutablePointerTo()));
 		}
 
 		// set our vtable
 		{
-			auto vtable = cs->irb.PointerTypeCast(cs->module->getOrCreateVirtualTableForClass(clsty), fir::Type::getInt8Ptr());
+			auto vtable = cs->irb.PointerTypeCast(cs->irb.AddressOf(cs->module->getOrCreateVirtualTableForClass(clsty), false), fir::Type::getInt8Ptr());
 			cs->irb.SetVtable(self, vtable);
 		}
 
@@ -122,14 +122,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			else
 			{
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
-				if(fd->type->isClassType())
-				{
-					cs->irb.WritePtr(cs->irb.CreateValue(fd->type), elmptr);
-				}
-				else
-				{
-					cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true, true);
-				}
+				cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true, true);
 			}
 		}
 
@@ -212,7 +205,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		// then we insert it as the first argument
 		auto rv = new sst::RawValueExpr(this->loc, res.value->getType()->getMutablePointerTo());
-		rv->rawValue = CGResult(cs->irb.AddressOf(res.value));
+		rv->rawValue = CGResult(cs->irb.AddressOf(res.value, true));
 
 		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));
 		return fc->codegen(cs);
@@ -304,11 +297,11 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		}
 	};
 
-	if(ty->isPointerType() && ty->getPointerElementType()->isStructType())
-		return dothing(ty->getPointerElementType()->toStructType());
+	if(ty->isStructType())
+		return dothing(ty->toStructType());
 
-	else if(ty->isPointerType() && ty->getPointerElementType()->isClassType())
-		return dothing(ty->getPointerElementType()->toClassType());
+	else if(ty->isClassType())
+		return dothing(ty->toClassType());
 
 	else
 		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty, name);

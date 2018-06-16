@@ -60,7 +60,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			// TODO: LVALUE HOLE
 			if(lr->islorclvalue())
 			{
-				return CGResult(cs->irb.GEP2(lr.value, fir::ConstantInt::getInt64(0), ind));
+				return CGResult(cs->irb.Dereference(cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getInt64(0), ind)));
 			}
 			else
 			{
