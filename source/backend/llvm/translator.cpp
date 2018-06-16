@@ -621,7 +621,7 @@ namespace backend
 		for(auto global : firmod->_getGlobals())
 		{
 			llvm::Constant* initval = 0;
-			llvm::Type* ty = typeToLlvm(global.second->getType()->getPointerElementType(), module);
+			llvm::Type* ty = typeToLlvm(global.second->getType(), module);
 
 			if(global.second->getInitialValue() != 0)
 				initval = constToLlvm(global.second->getInitialValue(), valueMap, module);
@@ -1505,7 +1505,7 @@ namespace backend
 							llvm::PHINode* ret = builder.CreatePHI(t, (unsigned int) phi->getValues().size());
 
 							for(auto v : phi->getValues())
-								ret->addIncoming(getValue(v.second), llvm::cast<llvm::BasicBlock>(getValue(v.first)));
+								ret->addIncoming(decay(v.second, getValue(v.second)), llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first))));
 
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1517,15 +1517,19 @@ namespace backend
 							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
 							iceAssert(fn);
 
-							llvm::Function* a = llvm::cast<llvm::Function>(getOperand(inst, 0));
+							llvm::Function* a = llvm::cast<llvm::Function>(getUndecayedOperand(inst, 0));
 
 							std::vector<llvm::Value*> args;
 
 							std::vector<fir::Value*> fargs = inst->operands;
 
 							for(size_t i = 1; i < fargs.size(); ++i)
-								args.push_back(getValue(fargs[i]));
+							{
+								args.push_back(decay(fargs[i], getValue(fargs[i])));
+								args.back()->dump();
+							}
 
+							a->dump();
 							llvm::Value* ret = builder.CreateCall(a, args);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1541,7 +1545,7 @@ namespace backend
 							std::vector<fir::Value*> fargs = inst->operands;
 
 							for(size_t i = 1; i < fargs.size(); ++i)
-								args.push_back(getValue(fargs[i]));
+								args.push_back(decay(fargs[i], getValue(fargs[i])));
 
 							llvm::Type* lft = typeToLlvm(inst->operands.front()->getType(), module);
 
@@ -1566,7 +1570,7 @@ namespace backend
 
 							std::vector<llvm::Value*> args;
 							for(size_t i = 3; i < inst->operands.size(); i++)
-								args.push_back(getValue(inst->operands[i]));
+								args.push_back(decay(inst->operands[i], getValue(inst->operands[i])));
 
 							llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
 
@@ -1754,25 +1758,6 @@ namespace backend
 
 
 
-						case fir::OpKind::Value_GetPointerToStructMember:
-						{
-							// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-							error("llvm: enotsup");
-						}
-
-						case fir::OpKind::Value_GetStructMember:
-						{
-							// equivalent to GEP(ptr*, 0, memberIndex)
-							iceAssert(inst->operands.size() == 2);
-							llvm::Value* ptr = getOperand(inst, 0);
-
-							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
-							iceAssert(ci);
-
-							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(), ptr, (unsigned int) ci->getUnsignedValue());
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 						case fir::OpKind::Value_GetPointer:
 						{
@@ -2266,15 +2251,38 @@ namespace backend
 						case fir::OpKind::Value_Dereference:
 						{
 							iceAssert(inst->operands.size() == 1);
-							llvm::Value* a = getOperand(inst, 0);
-
-							if(a->getType()->isPointerTy())
-								error("llvm: cannot dereference non-pointer type '%s'", inst->operands[0]->getType());
+							llvm::Value* a = getUndecayedOperand(inst, 0);
 
 							addValueToMap(a, inst->realOutput);
 							break;
 						}
 
+
+
+
+						case fir::OpKind::Value_GetPointerToStructMember:
+						{
+							// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
+							error("llvm: enotsup");
+						}
+
+						case fir::OpKind::Value_GetStructMember:
+						{
+							// equivalent to GEP(ptr*, 0, memberIndex)
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* ptr = getUndecayedOperand(inst, 0);
+
+							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
+							iceAssert(ci);
+
+							// ptr->dump();
+							ptr->dump();
+							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
+								ptr, (unsigned int) ci->getUnsignedValue());
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
 
 
 

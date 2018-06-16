@@ -1288,13 +1288,15 @@ namespace fir
 	template <typename T>
 	static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* structPtr, size_t memberIndex)
 	{
+		if(!structPtr->islorclvalue())
+			error("cannot do GEP on non-lvalue");
+
 		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
 
 		bool mut = structPtr->getType()->isMutablePointer();
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent,
-			mut ? type->getElementN(memberIndex)->getMutablePointerTo() : type->getElementN(memberIndex)->getPointerTo(),
-			{ structPtr, ConstantInt::getUint64(memberIndex) });
+		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent, type->getElementN(memberIndex),
+			{ structPtr, ConstantInt::getUint64(memberIndex) }, Value::Kind::lvalue);
 
 		return instr;
 	}
@@ -1304,60 +1306,64 @@ namespace fir
 
 	Value* IRBuilder::StructGEP(Value* structPtr, size_t memberIndex, const std::string& vname)
 	{
-		iceAssert(structPtr->getType()->isPointerType() && "ptr is not a pointer");
+		if(!structPtr->islorclvalue())
+			error("cannot do GEP on non-lvalue");
 
-		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
+		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		if(ClassType* st = dynamic_cast<ClassType*>(structPtr->getType()->getPointerElementType()))
+		if(ClassType* st = dynamic_cast<ClassType*>(structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		else if(TupleType* tt = dynamic_cast<TupleType*>(structPtr->getType()->getPointerElementType()))
+		else if(TupleType* tt = dynamic_cast<TupleType*>(structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, structPtr, memberIndex), vname);
 		}
 		else
 		{
-			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType());
+			error("type '%s' is not a valid type to GEP into", structPtr->getType());
 		}
 	}
 
-	Value* IRBuilder::GetStructMember(Value* structPtr, std::string memberName)
+	Value* IRBuilder::GetStructMember(Value* ptr, std::string memberName)
 	{
-		iceAssert(structPtr->getType()->isPointerType() && "ptr is not pointer");
-		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()->getPointerElementType()))
+		if(!ptr->islorclvalue())
+			error("cannot do GEP on non-lvalue");
+
+		if(ptr->getType()->isStructType())
 		{
-			auto spt = structPtr->getType();
+			auto st = ptr->getType()->toStructType();
+
+			auto spt = ptr->getType();
 			auto memt = st->getElement(memberName);
 
 			iceAssert(st->hasElementWithName(memberName) && "no element with such name");
 
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-				spt->isMutablePointer() ? memt->getMutablePointerTo() : memt->getPointerTo(),
-				{ structPtr, ConstantInt::getUint64(st->getElementIndex(memberName)) });
+				memt, { ptr, ConstantInt::getUint64(st->getElementIndex(memberName)) }, Value::Kind::lvalue);
 
 			return this->addInstruction(instr, memberName);
 		}
-		else if(ClassType* ct = dynamic_cast<ClassType*>(structPtr->getType()->getPointerElementType()))
+		else if(ptr->getType()->isClassType())
 		{
+			auto ct = ptr->getType()->toClassType();
+
 			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
 
-			auto cpt = structPtr->getType();
+			auto cpt = ptr->getType();
 			auto memt = ct->getElement(memberName);
 
 			//! '+1' is for vtable.
 			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-				cpt->isMutablePointer() ? memt->getMutablePointerTo() : memt->getPointerTo(),
-				{ structPtr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) });
-
+				memt, { ptr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) }, Value::Kind::lvalue);
 
 			return this->addInstruction(instr, memberName);
 		}
 		else
 		{
-			error("type '%s' is not a valid type to GEP into", structPtr->getType()->getPointerElementType());
+			error("type '%s' is not a valid type to GEP into", ptr->getType());
 		}
 	}
 
@@ -1365,17 +1371,18 @@ namespace fir
 
 	void IRBuilder::SetVtable(Value* ptr, Value* table, const std::string& vname)
 	{
+		if(!ptr->islorclvalue())
+			error("cannot do set vtable on non-lvalue");
+
 		auto ty = ptr->getType();
-		if(!ty->isPointerType())                        error("'%s' is not a pointer type", ty);
-		if(!ty->getPointerElementType()->isClassType()) error("'%s' is not a pointer-to-class type", ty);
+		if(!ty->isClassType()) error("'%s' is not a class type", ty);
 		if(table->getType() != fir::Type::getInt8Ptr()) error("expected i8* for vtable, got '%s'", table->getType());
 
 		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
-			fir::Type::getInt8Ptr()->getMutablePointerTo(), { ptr, ConstantInt::getUint64(0) });
+			fir::Type::getInt8Ptr(), { ptr, ConstantInt::getUint64(0) }, Value::Kind::lvalue);
 
 		auto gep = this->addInstruction(instr, vname);
-
-		this->WritePtr(table, gep);
+		this->Store(table, gep);
 	}
 
 
@@ -2091,22 +2098,19 @@ namespace fir
 	Value* IRBuilder::CreateLValue(Type* type, const std::string& vname)
 	{
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) });
-		auto ret = this->addInstruction(instr, "");
+		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
+			Value::Kind::lvalue);
 
-		ret->kind = Value::Kind::lvalue;
-		return ret;
+		return this->addInstruction(instr, "");
 	}
 
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
 	{
 		// ok...
 		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
-			{ ConstantValue::getZeroValue(val->getType()) });
+			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
 		auto ret = this->addInstruction(instr, "");
-
-		ret->kind = Value::Kind::lvalue;
 		this->Store(val, ret);
 
 		ret->makeConst();
@@ -2134,28 +2138,20 @@ namespace fir
 		if(!val->getType()->isPointerType())
 			error("cannot dereference non-pointer type '%s'", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_ReadPtr, false, this->currentBlock,
-			val->getType(), { val });
+		Instruction* instr = new Instruction(OpKind::Value_Dereference, false, this->currentBlock,
+			val->getType()->getPointerElementType(), { val }, val->getType()->isMutablePointer() ? Value::Kind::lvalue : Value::Kind::clvalue);
 
-		auto output = this->addInstruction(instr, vname);
-
-		// patch up the value category.
-		if(val->getType()->isMutablePointer())
-			output->kind = Value::Kind::lvalue;
-
-		else
-			output->kind = Value::Kind::clvalue;
-
-		return output;
+		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::AddressOf(Value* lval, const std::string& vname)
+	Value* IRBuilder::AddressOf(Value* lval, bool mut, const std::string& vname)
 	{
 		if(!lval->islorclvalue())
 			error("cannot take the address of a non-lvalue");
 
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock, lval->getType()->getPointerTo(), { lval });
+		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock,
+			mut ? lval->getType()->getMutablePointerTo() : lval->getType()->getPointerTo(), { lval });
 		return this->addInstruction(instr, "");
 	}
 

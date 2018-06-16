@@ -312,6 +312,7 @@ namespace fir
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
 			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
+		gs->setKind(Value::Kind::literal);
 		return (this->globalStrings[str] = gs);
 	}
 
@@ -352,7 +353,7 @@ namespace fir
 		for(auto global : this->globals)
 		{
 			ret += "global " + global.first.str() + " (%" + std::to_string(global.second->id) + ") :: "
-				+ global.second->getType()->getPointerElementType()->str() + "\n";
+				+ global.second->getType()->str() + "\n";
 		}
 
 		for(auto type : this->namedTypes)
