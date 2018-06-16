@@ -20,22 +20,20 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(this->type->toConstantNumberType()->isFloating() && !infer->isFloatingPointType())
 				error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
 
-			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr), infer),
-				0, CGResult::VK::LitRValue);
+			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr), infer));
 		}
 		else
 		{
-			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr)),
-				0, CGResult::VK::LitRValue);
+			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr)));
 		}
 	}
 	else
 	{
 		if(this->type->isFloatingPointType())
-			return CGResult(fir::ConstantFP::get(this->type, this->flt), 0, CGResult::VK::LitRValue);
+			return CGResult(fir::ConstantFP::get(this->type, this->flt));
 
 		else
-			return CGResult(fir::ConstantInt::get(this->type, this->intgr), 0, CGResult::VK::LitRValue);
+			return CGResult(fir::ConstantInt::get(this->type, this->intgr));
 	}
 }
 
@@ -68,7 +66,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto ret = cs->module->createGlobalVariable(Identifier("_FV_ARR_" + std::to_string(array->id), IdKind::Name), array->getType(),
 			array, true, fir::LinkageType::Internal);
 
-		return CGResult(array, ret, CGResult::VK::LitRValue);
+		return CGResult(ret);
 	}
 	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
 	{
@@ -94,7 +92,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 				auto z = fir::ConstantInt::getInt64(0);
 				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()),
-					z, z), 0, CGResult::VK::LitRValue);
+					z, z));
 			}
 			else if(infer->isArraySliceType())
 			{
@@ -104,7 +102,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 				//* note: it's clearly a null pointer, so it must be immutable.
 				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
-					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z), 0, CGResult::VK::LitRValue);
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z));
 			}
 			else
 			{
@@ -153,7 +151,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// offset by 1
 				fir::Value* ptr = cs->irb.ConstGEP2(array, 0, i);
-				cs->irb.Store(vals[i], ptr);
+				cs->irb.WritePtr(vals[i], ptr);
 			}
 
 			cs->irb.ReturnVoid();
@@ -173,7 +171,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getInt64(-1));
 			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
 
-			return CGResult(aa, 0, CGResult::VK::LitRValue);
+			return CGResult(aa);
 		}
 		else if(this->type->isArraySliceType())
 		{
@@ -182,7 +180,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(array, 0, 0), elmty->getPointerTo()));
 			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getInt64(this->values.size()));
 
-			return CGResult(aa, 0, CGResult::VK::LitRValue);
+			return CGResult(aa);
 		}
 		else
 		{
@@ -226,7 +224,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(allConst)
 	{
 		std::vector<fir::ConstantValue*> consts = util::map(vals, [](auto e) -> auto { return dcast(fir::ConstantValue, e); });
-		return CGResult(fir::ConstantTuple::get(consts), 0, CGResult::VK::LitRValue);
+		return CGResult(fir::ConstantTuple::get(consts));
 	}
 	else
 	{
@@ -234,7 +232,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		for(size_t i = 0; i < vals.size(); i++)
 			tup = cs->irb.InsertValue(tup, { i }, vals[i]);
 
-		return CGResult(tup, 0, CGResult::VK::LitRValue);
+		return CGResult(tup);
 	}
 }
 
@@ -251,7 +249,7 @@ CGResult sst::LiteralNull::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(infer)   val = fir::ConstantValue::getZeroValue(infer);
 	else        val = fir::ConstantValue::getNull();
 
-	return CGResult(val, 0, CGResult::VK::LitRValue);
+	return CGResult(val);
 }
 
 CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -259,7 +257,7 @@ CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantBool::get(this->value), 0, CGResult::VK::LitRValue);
+	return CGResult(fir::ConstantBool::get(this->value));
 }
 
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -272,14 +270,14 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		// good old i8*
 		fir::Value* stringVal = cs->module->createGlobalString(this->str);
-		return CGResult(stringVal, 0, CGResult::VK::LitRValue);
+		return CGResult(stringVal);
 	}
 	else
 	{
 		auto str = cs->module->createGlobalString(this->str);
 		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getInt64(this->str.length()));
 
-		return CGResult(slc, 0, CGResult::VK::LitRValue);
+		return CGResult(slc);
 	}
 }
 

@@ -35,10 +35,26 @@ namespace fir
 		friend struct Instruction;
 		friend struct ConstantValue;
 
+		//? might be renamed when we need more value categories.
+		enum class Kind
+		{
+			lvalue,     // lvalue. same as c
+			rvalue,     // same as c.
+			clvalue,    // const lvalue
+			literal     // literal value. mostly simplifies reference counting.
+		};
+
 		// virtual funcs
 		virtual Type* getType();
 		void setType(Type* t) { this->valueType = t; }
 
+		bool islvalue()     { return this->kind == Kind::lvalue; }
+		bool isrvalue()     { return this->kind == Kind::rvalue; }
+		bool isclvalue()    { return this->kind == Kind::clvalue; }
+		bool islorclvalue() { return this->islvalue() || this->isclvalue(); }
+		bool isLiteral()    { return this->kind == Kind::literal; }
+
+		void makeConst()    { iceAssert(this->islvalue()); this->kind = Kind::clvalue; }
 
 		// methods
 		void setName(const Identifier& idt);
@@ -46,24 +62,16 @@ namespace fir
 		const Identifier& getName();
 		bool hasName();
 
-		void addUser(Value* user);
-		void transferUsesTo(Value* other);
-
-		std::vector<Value*>& getUsers() { return this->users; }
-
-		Instruction* getSource() { return this->source; }
-
 		// protected shit
 		size_t id;
 		protected:
-		Value(Type* type);
+		Value(Type* type, Kind k = Kind::rvalue);
 		virtual ~Value() { }
 
 		// fields
 		Identifier ident;
 		Type* valueType;
-		Instruction* source;
-		std::vector<Value*> users;
+		Kind kind;
 	};
 
 	struct PHINode : Value

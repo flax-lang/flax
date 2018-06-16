@@ -75,11 +75,11 @@ namespace backend
 				else if(pt->getFloatingPointBitWidth() == 128)
 					return llvm::Type::getFP128Ty(gc);
 
-				error("what");
+				error("llvm: what");
 			}
 			else
 			{
-				error("what");
+				error("llvm: what");
 			}
 		}
 		else if(type->isStructType())
@@ -260,11 +260,11 @@ namespace backend
 		}
 		else if(type->isPolyPlaceholderType())
 		{
-			error("Unfulfilled polymorphic placeholder type '%s'", type);
+			error("llvm: Unfulfilled polymorphic placeholder type '%s'", type);
 		}
 		else
 		{
-			error("Unimplememented type '%s' for LLVM backend", type);
+			error("llvm: Unimplememented type '%s' for LLVM backend", type);
 		}
 	}
 
@@ -291,7 +291,7 @@ namespace backend
 				break;
 
 			default:
-				error("enotsup");
+				error("llvm: enotsup");
 		}
 
 
@@ -523,13 +523,24 @@ namespace backend
 
 		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
 
-		std::function<llvm::Value* (fir::Value*)> getValue = [&valueMap, &module, firmod](fir::Value* fv) -> llvm::Value*
+
+
+		auto decay = [&builder](fir::Value* fv, llvm::Value* lv) -> llvm::Value* {
+			if(fv->islorclvalue())
+				return builder.CreateLoad(lv);
+
+			else
+				return lv;
+		};
+
+
+		auto getValue = [&valueMap, &module, &firmod](fir::Value* fv) -> llvm::Value*
 		{
 			if(fir::GlobalVariable* gv = dcast(fir::GlobalVariable, fv))
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName());
+					error("llvm: failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName());
 
 				iceAssert(lgv);
 				return lgv;
@@ -538,7 +549,7 @@ namespace backend
 			else if(dcast(fir::Function, fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("!ret fn (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret fn (id = %zu)", fv->id);
 				return ret;
 			}
 			else if(fir::ConstantValue* cv = dcast(fir::ConstantValue, fv))
@@ -548,18 +559,28 @@ namespace backend
 			else
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("!ret (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret (id = %zu)", fv->id);
 				return ret;
 			}
 		};
 
-		auto getOperand = [&getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
+		auto getUndecayedOperand = [&getValue](fir::Instruction* inst, size_t op) -> llvm::Value* {
 
 			iceAssert(inst->operands.size() > op);
 			fir::Value* fv = inst->operands[op];
 
 			return getValue(fv);
 		};
+
+
+		auto getOperand = [&getValue, &decay](fir::Instruction* inst, size_t op) -> llvm::Value* {
+
+			iceAssert(inst->operands.size() > op);
+			fir::Value* fv = inst->operands[op];
+
+			return decay(fv, getValue(fv));
+		};
+
 
 		auto addValueToMap = [&valueMap](llvm::Value* v, fir::Value* fv) {
 
@@ -568,7 +589,7 @@ namespace backend
 			// fprintf(stderr, "add id %zu\n", fv->id);
 
 			if(valueMap.find(fv->id) != valueMap.end())
-				error("already have value with id %zu", fv->id);
+				error("llvm: already have value with id %zu", fv->id);
 
 			valueMap[fv->id] = v;
 			// printf("adding value %zu\n", fv->id);
@@ -576,8 +597,6 @@ namespace backend
 			if(!v->getType()->isVoidTy())
 				v->setName(fv->getName().mangled());
 		};
-
-
 
 
 		static size_t strn = 0;
@@ -811,7 +830,7 @@ namespace backend
 			}
 			else
 			{
-				error("unknown intrinsic '%s'", intr.first.str());
+				error("llvm: unknown intrinsic '%s'", intr.first.str());
 			}
 
 			valueMap[intr.second->id] = fn;
@@ -1437,14 +1456,14 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_Store:
+						case fir::OpKind::Value_WritePtr:
 						{
 							iceAssert(inst->operands.size() == 2);
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
 							if(a->getType() != b->getType()->getPointerElementType())
-								error("cannot store '%s' into '%s'", inst->operands[0]->getType(), inst->operands[1]->getType());
+								error("llvm: cannot store '%s' into '%s'", inst->operands[0]->getType(), inst->operands[1]->getType());
 
 
 							llvm::Value* ret = builder.CreateStore(a, b);
@@ -1452,7 +1471,7 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_Load:
+						case fir::OpKind::Value_ReadPtr:
 						{
 							iceAssert(inst->operands.size() == 1);
 							llvm::Value* a = getOperand(inst, 0);
@@ -1738,7 +1757,7 @@ namespace backend
 						case fir::OpKind::Value_GetPointerToStructMember:
 						{
 							// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-							error("enotsup");
+							error("llvm: enotsup");
 						}
 
 						case fir::OpKind::Value_GetStructMember:
@@ -2204,6 +2223,58 @@ namespace backend
 
 							break;
 						}
+
+
+
+
+						case fir::OpKind::Value_CreateLVal:
+						{
+							iceAssert(inst->operands.size() == 1);
+							fir::Type* ft = inst->operands[0]->getType();
+							llvm::Type* t = typeToLlvm(ft, module);
+
+							llvm::Value* ret = builder.CreateAlloca(t);
+							builder.CreateStore(llvm::Constant::getNullValue(t), ret);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case fir::OpKind::Value_Store:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getOperand(inst, 0);
+							llvm::Value* b = getUndecayedOperand(inst, 1);
+
+							if(a->getType() != b->getType()->getPointerElementType())
+								error("llvm: cannot store '%s' into '%s'", inst->operands[0]->getType(), inst->operands[1]->getType());
+
+							llvm::Value* ret = builder.CreateStore(a, b);
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+						case fir::OpKind::Value_AddressOf:
+						{
+							iceAssert(inst->operands.size() == 1);
+							llvm::Value* a = getUndecayedOperand(inst, 0);
+
+							addValueToMap(a, inst->realOutput);
+							break;
+						}
+
+						case fir::OpKind::Value_Dereference:
+						{
+							iceAssert(inst->operands.size() == 1);
+							llvm::Value* a = getOperand(inst, 0);
+
+							if(a->getType()->isPointerTy())
+								error("llvm: cannot dereference non-pointer type '%s'", inst->operands[0]->getType());
+
+							addValueToMap(a, inst->realOutput);
+							break;
+						}
+
 
 
 

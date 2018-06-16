@@ -217,7 +217,7 @@ namespace cgn
 			this->irb.Call(cls->getInlineInitialiser(), self);
 			this->irb.Call(ifn, self);
 
-			return this->irb.Load(self);
+			return this->irb.ReadPtr(self);
 		}
 
 		return fir::ConstantValue::getZeroValue(type);

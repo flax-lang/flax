@@ -222,7 +222,7 @@ namespace cgn
 			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from.value->getType());
 			iceAssert(fn);
 
-			return CGResult(this->irb.Call(fn, from.value), 0, CGResult::VK::LitRValue);
+			return CGResult(this->irb.Call(fn, from.value));
 		}
 
 		// nope.

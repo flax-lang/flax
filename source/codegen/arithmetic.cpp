@@ -9,32 +9,6 @@
 
 namespace sst
 {
-	#if 0
-	// not a constable, but whether it's "const"-able
-	static bool constable(const std::string& op)
-	{
-		return Operator::isArithmetic(op) || Operator::isComparison(op);
-	}
-
-	template <typename T>
-	static T doConstantThings(T l, T r, std::string op)
-	{
-		if(op == Operator::Plus)            return l + r;
-		else if(op == Operator::Minus)      return l - r;
-		else if(op == Operator::Multiply)   return l * r;
-		else if(op == Operator::Divide)     return l / r;
-		else if(op == Operator::CompareEQ)  return l == r;
-		else if(op == Operator::CompareNEQ) return l != r;
-		else if(op == Operator::CompareLT)  return l < r;
-		else if(op == Operator::CompareGT)  return l > r;
-		else if(op == Operator::CompareLEQ) return l <= r;
-		else if(op == Operator::CompareGEQ) return l >= r;
-
-		error("not supported in const op");
-	}
-	#endif
-
-
 	CGResult BinaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
 		iceAssert(!Operator::isAssignment(this->op));
@@ -251,21 +225,17 @@ namespace sst
 		else if(this->op == Operator::PointerDeref)
 		{
 			iceAssert(ty->isPointerType());
-			return CGResult(cs->irb.Load(val), val, CGResult::VK::LValue);
+			return CGResult(cs->irb.Dereference(val));
 		}
 		else if(this->op == Operator::AddressOf)
 		{
-			if(ex.kind != CGResult::VK::LValue)
+			if(!ex.value->islorclvalue())
 				error(this, "Cannot take address of a non-lvalue");
 
-			else if(!ex.pointer && ex.value->getType()->isFunctionType())
+			else if(ex.value->getType()->isFunctionType())
 				error(this, "Cannot take the address of a function; use it as a value type");
 
-			else if(!ex.pointer)
-				error(this, "Have lvalue without storage?");
-
-
-			return CGResult(ex.pointer);
+			return CGResult(cs->irb.AddressOf(ex.value));
 		}
 		else if(this->op == Operator::BitwiseNot)
 		{

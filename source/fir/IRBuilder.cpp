@@ -74,7 +74,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::addInstruction(Instruction* instr, std::string vname)
+	Value* IRBuilder::addInstruction(Instruction* instr, const std::string& vname)
 	{
 		iceAssert(this->currentBlock && "no current block");
 
@@ -295,7 +295,7 @@ namespace fir
 		return new Instruction(op, false, parent, out, { vlhs, vrhs });
 	}
 
-	Value* IRBuilder::BinaryOp(std::string ao, Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname)
 	{
 		Instruction* instr = getBinaryOpInstruction(this->currentBlock, ao, a, b);
 		if(instr == 0) return 0;
@@ -333,7 +333,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::Negate(Value* a, std::string vname)
+	Value* IRBuilder::Negate(Value* a, const std::string& vname)
 	{
 		iceAssert(a->getType()->toPrimitiveType() && "cannot negate non-primitive type");
 		iceAssert((a->getType()->isFloatingPointType() || a->getType()->toPrimitiveType()->isSigned()) && "cannot negate unsigned type");
@@ -344,7 +344,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Add(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Add(Value* a, Value* b, const std::string& vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating add instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -359,7 +359,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Subtract(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Subtract(Value* a, Value* b, const std::string& vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating sub instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -373,7 +373,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Multiply(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Multiply(Value* a, Value* b, const std::string& vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating mul instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -387,7 +387,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Divide(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Divide(Value* a, Value* b, const std::string& vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating div instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -402,7 +402,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Modulo(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::Modulo(Value* a, Value* b, const std::string& vname)
 	{
 		if(a->getType() != b->getType())
 			error("creating mod instruction with non-equal types ('%s' vs '%s')", a->getType(), b->getType());
@@ -416,7 +416,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FTruncate(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::FTruncate(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
@@ -425,7 +425,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FExtend(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::FExtend(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType,
@@ -438,7 +438,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::ICmpEQ(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpEQ(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -452,7 +452,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ICmpNEQ(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpNEQ(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -466,7 +466,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ICmpGT(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpGT(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -480,7 +480,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ICmpLT(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpLT(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -494,7 +494,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ICmpGEQ(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpGEQ(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -508,7 +508,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ICmpLEQ(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpLEQ(Value* a, Value* b, const std::string& vname)
 	{
 		//* note: allows comparing mutable and immutable pointers.
 		if(a->getType() != b->getType() && !(a->getType()->isPointerType() && b->getType()->isPointerType()
@@ -526,7 +526,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::FCmpEQ_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpEQ_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -535,7 +535,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpEQ_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpEQ_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -544,7 +544,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpNEQ_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpNEQ_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -553,7 +553,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpNEQ_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpNEQ_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -562,7 +562,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpGT_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpGT_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -571,7 +571,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpGT_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpGT_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -580,7 +580,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpLT_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpLT_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -589,7 +589,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpLT_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpLT_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -598,7 +598,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpGEQ_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpGEQ_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -607,7 +607,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpGEQ_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpGEQ_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -616,7 +616,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpLEQ_ORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpLEQ_ORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -625,7 +625,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpLEQ_UNORD(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpLEQ_UNORD(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -636,7 +636,7 @@ namespace fir
 
 
 	// returns -1 for a < b, 0 for a == b, 1 for a > b
-	Value* IRBuilder::ICmpMulti(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::ICmpMulti(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating icmp multi instruction with non-equal types");
 		// iceAssert(a->getType()->isIntegerType() && "creating icmp multi instruction with non-integer type");
@@ -645,7 +645,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FCmpMulti(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::FCmpMulti(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
@@ -663,62 +663,62 @@ namespace fir
 
 
 
-	Value* IRBuilder::BitwiseXOR(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseXOR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise xor instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Xor, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseLogicalSHR(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseLogicalSHR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise lshl instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Logical_Shr, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseArithmeticSHR(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseArithmeticSHR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise ashl instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Arithmetic_Shr, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseSHL(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseSHL(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise shr instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Shl, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseAND(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseAND(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise and instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_And, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseOR(Value* a, Value* b, std::string vname)
+	Value* IRBuilder::BitwiseOR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise or instruction with non-equal types");
 		Instruction* instr = new Instruction(OpKind::Bitwise_Or, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::BitwiseNOT(Value* a, std::string vname)
+	Value* IRBuilder::BitwiseNOT(Value* a, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Bitwise_Not, false, this->currentBlock, a->getType(), { a });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Bitcast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::Bitcast(Value* v, Type* targetType, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Cast_Bitcast, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::IntSizeCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntSizeCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert((v->getType()->isIntegerType() || v->getType()->isBoolType()) && "value is not integer type");
 		iceAssert((targetType->isIntegerType() || targetType->isBoolType()) && "target is not integer type");
@@ -735,7 +735,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::IntSignednessCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntSignednessCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
@@ -756,7 +756,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::FloatToIntCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::FloatToIntCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && "value is not floating point type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
@@ -778,7 +778,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::IntToFloatCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntToFloatCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isFloatingPointType() && "target is not floating point type");
@@ -817,7 +817,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::PointerTypeCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::PointerTypeCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert((v->getType()->isPointerType() || v->getType()->isNullType()) && "value is not pointer type");
 		iceAssert((targetType->isPointerType() || targetType->isNullType()) && "target is not pointer type");
@@ -828,7 +828,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::PointerToIntCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::PointerToIntCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isPointerType() && "value is not pointer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
@@ -838,7 +838,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::IntToPointerCast(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntToPointerCast(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isPointerType() && "target is not pointer type");
@@ -849,7 +849,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::IntTruncate(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntTruncate(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
@@ -859,7 +859,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::IntZeroExt(Value* v, Type* targetType, std::string vname)
+	Value* IRBuilder::IntZeroExt(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
@@ -873,7 +873,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::AppropriateCast(Value* v, Type* r, std::string vname)
+	Value* IRBuilder::AppropriateCast(Value* v, Type* r, const std::string& vname)
 	{
 		auto l = v->getType();
 
@@ -911,67 +911,29 @@ namespace fir
 
 
 
-	Value* IRBuilder::Load(Value* ptr, std::string vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got '%s')", ptr->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_Load, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
-		auto ret = this->addInstruction(instr, vname);
-
-		return ret;
-	}
-
-	Value* IRBuilder::Store(Value* v, Value* ptr)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not pointer type (got '%s')", ptr->getType());
-
-		if(ptr->getType()->isImmutablePointer())
-			error("Cannot store value to immutable pointer type '%s'", ptr->getType());
-
-		auto vt = v->getType();
-		auto pt = ptr->getType();
-
-		if(vt != pt->getPointerElementType())
-		{
-			//* here, we know that the storage pointer is mutable. there's a special edge-case we need to catch:
-			//* if we're storing a value of type &T to a & &mut T, or a &mut T to a & &T.
-			//* in those cases, the mutability of the base type doesn't matter at all. At the LLVM level, we don't even make a distinction,
-			//* so we can safely pass this onto the translation layer without worrying about it.
-
-			// if((vt->isPointerType() && pt->isPointerType() && vt->getPointerElementType() == pt->getPointerElementType()) == false)
-			error("ptr is not a pointer to type of value (base types '%s' -> '%s' differ)", vt, pt->getPointerElementType());
-		}
-
-
-		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { v, ptr });
-		return this->addInstruction(instr, "");
-	}
-
-
-	Value* IRBuilder::Call(Function* fn, std::string vname)
+	Value* IRBuilder::Call(Function* fn, const std::string& vname)
 	{
 		return this->Call(fn, { }, vname);
 	}
 
-	Value* IRBuilder::Call(Function* fn, Value* p1, std::string vname)
+	Value* IRBuilder::Call(Function* fn, Value* p1, const std::string& vname)
 	{
 		return this->Call(fn, { p1 }, vname);
 	}
 
-	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, std::string vname)
+	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, const std::string& vname)
 	{
 		return this->Call(fn, { p1, p2 }, vname);
 	}
 
-	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, Value* p3, std::string vname)
+	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, Value* p3, const std::string& vname)
 	{
 		return this->Call(fn, { p1, p2, p3 }, vname);
 	}
 
 
-	Value* IRBuilder::Call(Function* fn, const std::vector<Value*>& args, std::string vname)
+	Value* IRBuilder::Call(Function* fn, const std::vector<Value*>& args, const std::string& vname)
 	{
 		if(args.size() != fn->getArgumentCount() && !fn->isVariadic() && !fn->isCStyleVarArg())
 		{
@@ -1082,7 +1044,7 @@ namespace fir
 			auto arrptr = this->StackAlloc(arrty);
 
 			for(size_t i = 0; i < variadicArgs.size(); i++)
-				this->Store(variadicArgs[i], this->ConstGEP2(arrptr, 0, i));
+				this->WritePtr(variadicArgs[i], this->ConstGEP2(arrptr, 0, i));
 
 			// then we make a slice out of it
 			auto slcty = fir::ArraySliceType::getVariadic(elm);
@@ -1140,7 +1102,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::Call(Function* fn, const std::initializer_list<Value*>& args, std::string vname)
+	Value* IRBuilder::Call(Function* fn, const std::initializer_list<Value*>& args, const std::string& vname)
 	{
 		return this->Call(fn, std::vector<Value*>(args.begin(), args.end()), vname);
 	}
@@ -1149,7 +1111,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::CallToFunctionPointer(Value* fn, FunctionType* ft, const std::vector<Value*>& args, std::string vname)
+	Value* IRBuilder::CallToFunctionPointer(Value* fn, FunctionType* ft, const std::vector<Value*>& args, const std::string& vname)
 	{
 		//* note: we're using our operator overload here for T + VEC<T>
 		auto out = fn + args;
@@ -1158,7 +1120,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, std::string vname)
+	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, const std::string& vname)
 	{
 		// args[0] must be the self, for obvious reasons.
 		auto ty = args[0]->getType();
@@ -1205,14 +1167,14 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::LogicalNot(Value* v, std::string vname)
+	Value* IRBuilder::LogicalNot(Value* v, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Logical_Not, false, this->currentBlock, Type::getBool(), { v });
 		return this->addInstruction(instr, vname);
 	}
 
 
-	PHINode* IRBuilder::CreatePHINode(Type* type, std::string vname)
+	PHINode* IRBuilder::CreatePHINode(Type* type, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
 			{ ConstantValue::getZeroValue(type) });
@@ -1232,7 +1194,7 @@ namespace fir
 		return (PHINode*) instr->realOutput;
 	}
 
-	Value* IRBuilder::StackAlloc(Type* type, std::string vname)
+	Value* IRBuilder::StackAlloc(Type* type, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
 			{ ConstantValue::getZeroValue(type) });
@@ -1257,10 +1219,10 @@ namespace fir
 		return ret;
 	}
 
-	Value* IRBuilder::ImmutStackAlloc(Type* type, Value* v, std::string vname)
+	Value* IRBuilder::ImmutStackAlloc(Type* type, Value* v, const std::string& vname)
 	{
 		Value* ret = this->StackAlloc(type, vname);
-		this->Store(v, ret);
+		this->WritePtr(v, ret);
 
 		// now make it immutable.
 		ret->setType(type->getPointerTo());
@@ -1268,7 +1230,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateSliceFromSAA(Value* saa, bool mut, std::string vname)
+	Value* IRBuilder::CreateSliceFromSAA(Value* saa, bool mut, const std::string& vname)
 	{
 		if(!isSAAType(saa->getType()))
 			error("expected string or dynamic array type, found '%s' instead", saa->getType());
@@ -1285,21 +1247,6 @@ namespace fir
 
 		return slc;
 	}
-
-	// Value* IRBuilder::CreateSliceFromDynamicArray(Value* str, bool mut, std::string vname)
-	// {
-	// 	if(!str->getType()->isDynamicArrayType())
-	// 		error("expected dynamic array type, found '%s' instead", str->getType());
-
-	// 	auto elmty = str->getType()->getArrayElementType();
-
-	// 	// this is one of those compound thingies.
-	// 	auto slc = this->CreateValue(fir::ArraySliceType::get(str->getType()->getArrayElementType(), mut));
-	// 	slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(str), mut ? elmty->getMutablePointerTo() : elmty->getPointerTo()));
-	// 	slc = this->SetArraySliceLength(slc, this->GetSAALength(str));
-
-	// 	return slc;
-	// }
 
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
@@ -1355,7 +1302,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::StructGEP(Value* structPtr, size_t memberIndex, std::string vname)
+	Value* IRBuilder::StructGEP(Value* structPtr, size_t memberIndex, const std::string& vname)
 	{
 		iceAssert(structPtr->getType()->isPointerType() && "ptr is not a pointer");
 
@@ -1416,7 +1363,7 @@ namespace fir
 
 
 
-	void IRBuilder::SetVtable(Value* ptr, Value* table, std::string vname)
+	void IRBuilder::SetVtable(Value* ptr, Value* table, const std::string& vname)
 	{
 		auto ty = ptr->getType();
 		if(!ty->isPointerType())                        error("'%s' is not a pointer type", ty);
@@ -1428,14 +1375,14 @@ namespace fir
 
 		auto gep = this->addInstruction(instr, vname);
 
-		this->Store(table, gep);
+		this->WritePtr(table, gep);
 	}
 
 
 
 
 	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
-	Value* IRBuilder::ConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, std::string vname)
+	Value* IRBuilder::ConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, const std::string& vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
@@ -1447,7 +1394,7 @@ namespace fir
 	}
 
 	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
-	Value* IRBuilder::GEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, std::string vname)
+	Value* IRBuilder::GEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, const std::string& vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
@@ -1472,7 +1419,7 @@ namespace fir
 	}
 
 	// equivalent to GEP(ptr*, index)
-	Value* IRBuilder::GetPointer(Value* ptr, Value* ptrIndex, std::string vname)
+	Value* IRBuilder::GetPointer(Value* ptr, Value* ptrIndex, const std::string& vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
@@ -1489,7 +1436,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::Select(Value* cond, Value* one, Value* two, std::string vname)
+	Value* IRBuilder::Select(Value* cond, Value* one, Value* two, const std::string& vname)
 	{
 		if(!cond->getType()->isBoolType())
 			error("cond is not a boolean type (got '%s')", cond->getType());
@@ -1503,7 +1450,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::Sizeof(Type* t, std::string vname)
+	Value* IRBuilder::Sizeof(Type* t, const std::string& vname)
 	{
 		Instruction* instr = new Instruction(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
 			{ ConstantValue::getZeroValue(t) });
@@ -1511,7 +1458,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::CreateValue(Type* t, std::string vname)
+	Value* IRBuilder::CreateValue(Type* t, const std::string& vname)
 	{
 		return fir::ConstantValue::getZeroValue(t);
 	}
@@ -1525,7 +1472,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::PointerAdd(Value* ptr, Value* num, std::string vname)
+	Value* IRBuilder::PointerAdd(Value* ptr, Value* num, const std::string& vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
@@ -1537,7 +1484,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::PointerSub(Value* ptr, Value* num, std::string vname)
+	Value* IRBuilder::PointerSub(Value* ptr, Value* num, const std::string& vname)
 	{
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not a pointer type (got '%s')", ptr->getType());
@@ -1551,7 +1498,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, std::string vname)
+	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
@@ -1583,7 +1530,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::ExtractValue(Value* val, const std::vector<size_t>& inds, std::string vname)
+	Value* IRBuilder::ExtractValue(Value* val, const std::vector<size_t>& inds, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
@@ -1611,7 +1558,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::InsertValueByName(Value* val, std::string n, Value* elm, std::string vname)
+	Value* IRBuilder::InsertValueByName(Value* val, std::string n, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
@@ -1625,7 +1572,7 @@ namespace fir
 		return this->InsertValue(val, { ind }, elm, vname);
 	}
 
-	Value* IRBuilder::ExtractValueByName(Value* val, std::string n, std::string vname)
+	Value* IRBuilder::ExtractValueByName(Value* val, std::string n, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
@@ -1651,7 +1598,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAAData(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAAData(Value* arr, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1662,7 +1609,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetSAAData(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAAData(Value* arr, Value* val, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1682,7 +1629,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAALength(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAALength(Value* arr, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1693,7 +1640,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetSAALength(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAALength(Value* arr, Value* val, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1709,7 +1656,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAACapacity(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAACapacity(Value* arr, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1720,7 +1667,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetSAACapacity(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAACapacity(Value* arr, Value* val, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1736,7 +1683,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAARefCountPointer(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAARefCountPointer(Value* arr, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1747,7 +1694,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetSAARefCountPointer(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetSAARefCountPointer(Value* arr, Value* val, const std::string& vname)
 	{
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
@@ -1763,17 +1710,17 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAARefCount(Value* arr, std::string vname)
+	Value* IRBuilder::GetSAARefCount(Value* arr, const std::string& vname)
 	{
-		return this->Load(this->GetSAARefCountPointer(arr), vname);
+		return this->ReadPtr(this->GetSAARefCountPointer(arr), vname);
 	}
 
-	void IRBuilder::SetSAARefCount(Value* arr, Value* val, std::string vname)
+	void IRBuilder::SetSAARefCount(Value* arr, Value* val, const std::string& vname)
 	{
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		this->Store(val, this->PointerTypeCast(this->GetSAARefCountPointer(arr), fir::Type::getMutInt64Ptr()));
+		this->WritePtr(val, this->PointerTypeCast(this->GetSAARefCountPointer(arr), fir::Type::getMutInt64Ptr()));
 	}
 
 
@@ -1797,7 +1744,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetArraySliceData(Value* slc, std::string vname)
+	Value* IRBuilder::GetArraySliceData(Value* slc, const std::string& vname)
 	{
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
@@ -1811,7 +1758,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetArraySliceData(Value* slc, Value* val, std::string vname)
+	Value* IRBuilder::SetArraySliceData(Value* slc, Value* val, const std::string& vname)
 	{
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
@@ -1833,7 +1780,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::GetArraySliceLength(Value* slc, std::string vname)
+	Value* IRBuilder::GetArraySliceLength(Value* slc, const std::string& vname)
 	{
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
@@ -1844,7 +1791,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetArraySliceLength(Value* slc, Value* val, std::string vname)
+	Value* IRBuilder::SetArraySliceLength(Value* slc, Value* val, const std::string& vname)
 	{
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
@@ -1865,7 +1812,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetAnyTypeID(Value* any, std::string vname)
+	Value* IRBuilder::GetAnyTypeID(Value* any, const std::string& vname)
 	{
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
@@ -1875,7 +1822,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetAnyTypeID(Value* any, Value* val, std::string vname)
+	Value* IRBuilder::SetAnyTypeID(Value* any, Value* val, const std::string& vname)
 	{
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
@@ -1889,7 +1836,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::GetAnyData(Value* any, std::string vname)
+	Value* IRBuilder::GetAnyData(Value* any, const std::string& vname)
 	{
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
@@ -1900,7 +1847,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetAnyData(Value* any, Value* val, std::string vname)
+	Value* IRBuilder::SetAnyData(Value* any, Value* val, const std::string& vname)
 	{
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
@@ -1914,7 +1861,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::GetAnyRefCountPointer(Value* arr, std::string vname)
+	Value* IRBuilder::GetAnyRefCountPointer(Value* arr, const std::string& vname)
 	{
 		if(!arr->getType()->isAnyType())
 			error("arr is not an any type (got '%s')", arr->getType());
@@ -1924,7 +1871,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetAnyRefCountPointer(Value* arr, Value* val, std::string vname)
+	Value* IRBuilder::SetAnyRefCountPointer(Value* arr, Value* val, const std::string& vname)
 	{
 		if(!arr->getType()->isAnyType())
 			error("arr is not an any type (got '%s')", arr->getType());
@@ -1939,17 +1886,17 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetAnyRefCount(Value* arr, std::string vname)
+	Value* IRBuilder::GetAnyRefCount(Value* arr, const std::string& vname)
 	{
-		return this->Load(this->GetAnyRefCountPointer(arr), vname);
+		return this->ReadPtr(this->GetAnyRefCountPointer(arr), vname);
 	}
 
-	void IRBuilder::SetAnyRefCount(Value* arr, Value* val, std::string vname)
+	void IRBuilder::SetAnyRefCount(Value* arr, Value* val, const std::string& vname)
 	{
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		this->Store(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr), fir::Type::getMutInt64Ptr()));
+		this->WritePtr(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr), fir::Type::getMutInt64Ptr()));
 	}
 
 
@@ -1967,7 +1914,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetRangeLower(Value* range, std::string vname)
+	Value* IRBuilder::GetRangeLower(Value* range, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
@@ -1978,7 +1925,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetRangeLower(Value* range, Value* val, std::string vname)
+	Value* IRBuilder::SetRangeLower(Value* range, Value* val, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (got '%s')", range->getType());
@@ -1992,7 +1939,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::GetRangeUpper(Value* range, std::string vname)
+	Value* IRBuilder::GetRangeUpper(Value* range, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
@@ -2003,7 +1950,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetRangeUpper(Value* range, Value* val, std::string vname)
+	Value* IRBuilder::SetRangeUpper(Value* range, Value* val, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (got '%s')", range->getType());
@@ -2017,7 +1964,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::GetRangeStep(Value* range, std::string vname)
+	Value* IRBuilder::GetRangeStep(Value* range, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
@@ -2028,7 +1975,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetRangeStep(Value* range, Value* val, std::string vname)
+	Value* IRBuilder::SetRangeStep(Value* range, Value* val, const std::string& vname)
 	{
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (got '%s')", range->getType());
@@ -2045,7 +1992,7 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetEnumCaseIndex(Value* ecs, std::string vname)
+	Value* IRBuilder::GetEnumCaseIndex(Value* ecs, const std::string& vname)
 	{
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
@@ -2056,7 +2003,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetEnumCaseIndex(Value* ecs, Value* idx, std::string vname)
+	Value* IRBuilder::SetEnumCaseIndex(Value* ecs, Value* idx, const std::string& vname)
 	{
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
@@ -2070,7 +2017,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::GetEnumCaseValue(Value* ecs, std::string vname)
+	Value* IRBuilder::GetEnumCaseValue(Value* ecs, const std::string& vname)
 	{
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
@@ -2081,7 +2028,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-	Value* IRBuilder::SetEnumCaseValue(Value* ecs, Value* val, std::string vname)
+	Value* IRBuilder::SetEnumCaseValue(Value* ecs, Value* val, const std::string& vname)
 	{
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
@@ -2104,16 +2051,112 @@ namespace fir
 
 
 
-
-
-
-
-
-
-
-	void IRBuilder::Unreachable()
+	Value* IRBuilder::ReadPtr(Value* ptr, const std::string& vname)
 	{
-		this->addInstruction(new Instruction(OpKind::Unreachable, true, this->currentBlock, fir::Type::getVoid(), { }), "");
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not pointer type (got '%s')", ptr->getType());
+
+		Instruction* instr = new Instruction(OpKind::Value_ReadPtr, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
+		return this->addInstruction(instr, vname);
+	}
+
+	void IRBuilder::WritePtr(Value* v, Value* ptr)
+	{
+		if(!ptr->getType()->isPointerType())
+			error("ptr is not pointer type (got '%s')", ptr->getType());
+
+		if(ptr->getType()->isImmutablePointer())
+			error("Cannot store value to immutable pointer type '%s'", ptr->getType());
+
+		auto vt = v->getType();
+		auto pt = ptr->getType();
+
+		if(vt != pt->getPointerElementType())
+		{
+			//* here, we know that the storage pointer is mutable. there's a special edge-case we need to catch:
+			//* if we're storing a value of type &T to a & &mut T, or a &mut T to a & &T.
+			//* in those cases, the mutability of the base type doesn't matter at all. At the LLVM level, we don't even make a distinction,
+			//* so we can safely pass this onto the translation layer without worrying about it.
+
+			// if((vt->isPointerType() && pt->isPointerType() && vt->getPointerElementType() == pt->getPointerElementType()) == false)
+			error("ptr is not a pointer to type of value (base types '%s' -> '%s' differ)", vt, pt->getPointerElementType());
+		}
+
+
+		Instruction* instr = new Instruction(OpKind::Value_WritePtr, true, this->currentBlock, Type::getVoid(), { v, ptr });
+		this->addInstruction(instr, "");
+	}
+
+
+	Value* IRBuilder::CreateLValue(Type* type, const std::string& vname)
+	{
+		// ok...
+		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) });
+		auto ret = this->addInstruction(instr, "");
+
+		ret->kind = Value::Kind::lvalue;
+		return ret;
+	}
+
+	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
+	{
+		// ok...
+		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
+			{ ConstantValue::getZeroValue(val->getType()) });
+
+		auto ret = this->addInstruction(instr, "");
+
+		ret->kind = Value::Kind::lvalue;
+		this->Store(val, ret);
+
+		ret->makeConst();
+		return ret;
+	}
+
+	void IRBuilder::Store(Value* val, Value* lval)
+	{
+		if(lval->isclvalue())
+			error("cannot store to constant lvalue");
+
+		else if(!lval->islvalue())
+			error("cannot store to non-lvalue");
+
+		else if(val->getType() != lval->getType())
+			error("cannot store value of type '%s' to lvalue of type '%s'", val->getType(), lval->getType());
+
+		// ok...
+		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { val, lval });
+		this->addInstruction(instr, "");
+	}
+
+	Value* IRBuilder::Dereference(Value* val, const std::string& vname)
+	{
+		if(!val->getType()->isPointerType())
+			error("cannot dereference non-pointer type '%s'", val->getType());
+
+		Instruction* instr = new Instruction(OpKind::Value_ReadPtr, false, this->currentBlock,
+			val->getType(), { val });
+
+		auto output = this->addInstruction(instr, vname);
+
+		// patch up the value category.
+		if(val->getType()->isMutablePointer())
+			output->kind = Value::Kind::lvalue;
+
+		else
+			output->kind = Value::Kind::clvalue;
+
+		return output;
+	}
+
+	Value* IRBuilder::AddressOf(Value* lval, const std::string& vname)
+	{
+		if(!lval->islorclvalue())
+			error("cannot take the address of a non-lvalue");
+
+		// ok...
+		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock, lval->getType()->getPointerTo(), { lval });
+		return this->addInstruction(instr, "");
 	}
 
 
@@ -2138,6 +2181,18 @@ namespace fir
 
 
 
+
+
+
+
+
+
+
+
+	void IRBuilder::Unreachable()
+	{
+		this->addInstruction(new Instruction(OpKind::Unreachable, true, this->currentBlock, fir::Type::getVoid(), { }), "");
+	}
 
 	IRBlock* IRBuilder::addNewBlockInFunction(std::string name, Function* func)
 	{

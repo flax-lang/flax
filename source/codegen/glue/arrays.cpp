@@ -180,23 +180,23 @@ namespace array
 			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
 			// already set to 0 internally
-			// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrptr);
+			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrptr);
 
 			cs->irb.UnCondBranch(check);
 			cs->irb.setCurrentBlock(check);
 			{
-				auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrptr), len);
+				auto cond = cs->irb.ICmpLT(cs->irb.ReadPtr(ctrptr), len);
 				cs->irb.CondBranch(cond, body, merge);
 			}
 
 			cs->irb.setCurrentBlock(body);
 			{
-				auto ctr = cs->irb.Load(ctrptr);
+				auto ctr = cs->irb.ReadPtr(ctrptr);
 				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
 
 				cs->constructClassWithArguments(cls, constr, ptr, args, true);
 
-				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
 
 				cs->irb.UnCondBranch(check);
 			}
@@ -246,23 +246,23 @@ namespace array
 			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
 
 			// already set to 0 internally
-			// cs->irb.Store(fir::ConstantInt::getInt64(0), ctrptr);
+			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrptr);
 
 			cs->irb.UnCondBranch(check);
 			cs->irb.setCurrentBlock(check);
 			{
-				auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrptr), len);
+				auto cond = cs->irb.ICmpLT(cs->irb.ReadPtr(ctrptr), len);
 				cs->irb.CondBranch(cond, body, merge);
 			}
 
 			cs->irb.setCurrentBlock(body);
 			{
-				auto ctr = cs->irb.Load(ctrptr);
+				auto ctr = cs->irb.ReadPtr(ctrptr);
 				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
 
-				cs->autoAssignRefCountedValue(CGResult(cs->irb.Load(ptr), ptr), CGResult(value, 0, CGResult::VK::LitRValue), true, true);
+				cs->autoAssignRefCountedValue(ptr, value, true, true);
 
-				cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
 
 				cs->irb.UnCondBranch(check);
 			}
@@ -388,10 +388,10 @@ namespace array
 
 		// we compare to this to break
 		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getInt64());
-		cs->irb.Store(zeroval, counter);
+		cs->irb.WritePtr(zeroval, counter);
 
 		fir::Value* res = cs->irb.StackAlloc(fir::Type::getInt64());
-		cs->irb.Store(zeroval, res);
+		cs->irb.WritePtr(zeroval, res);
 
 
 		cs->irb.UnCondBranch(cond);
@@ -407,8 +407,8 @@ namespace array
 			// if we got here, the arrays were equal *up to this point*
 			// if ptr1 exceeds or ptr2 exceeds, return len1 - len2
 
-			fir::Value* t1 = cs->irb.ICmpEQ(cs->irb.Load(counter), len1);
-			fir::Value* t2 = cs->irb.ICmpEQ(cs->irb.Load(counter), len2);
+			fir::Value* t1 = cs->irb.ICmpEQ(cs->irb.ReadPtr(counter), len1);
+			fir::Value* t2 = cs->irb.ICmpEQ(cs->irb.ReadPtr(counter), len2);
 
 			// if t1 is over, goto tmp1, if not goto t2
 			cs->irb.CondBranch(t1, tmp1, tmp2);
@@ -446,8 +446,8 @@ namespace array
 
 		cs->irb.setCurrentBlock(body);
 		{
-			fir::Value* v1 = cs->irb.Load(cs->irb.PointerAdd(ptr1, cs->irb.Load(counter)));
-			fir::Value* v2 = cs->irb.Load(cs->irb.PointerAdd(ptr2, cs->irb.Load(counter)));
+			fir::Value* v1 = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr1, cs->irb.ReadPtr(counter)));
+			fir::Value* v2 = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr2, cs->irb.ReadPtr(counter)));
 
 			fir::Value* c = cs->performBinaryOperation(cs->loc(), { cs->loc(), CGResult(v1) }, { cs->loc(), CGResult(v2) }, "==").value;
 
@@ -458,10 +458,10 @@ namespace array
 			c = cs->irb.LogicalNot(c);
 			c = cs->irb.IntSizeCast(c, fir::Type::getInt64());
 
-			cs->irb.Store(c, res);
+			cs->irb.WritePtr(c, res);
 
 			// compare to 0.
-			fir::Value* cmpres = cs->irb.ICmpEQ(cs->irb.Load(res), zeroval);
+			fir::Value* cmpres = cs->irb.ICmpEQ(cs->irb.ReadPtr(res), zeroval);
 
 			// if equal, go to incr, if not return directly
 			cs->irb.CondBranch(cmpres, incr, merge);
@@ -470,7 +470,7 @@ namespace array
 
 		cs->irb.setCurrentBlock(incr);
 		{
-			cs->irb.Store(cs->irb.Add(cs->irb.Load(counter), oneval), counter);
+			cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(counter), oneval), counter);
 			cs->irb.UnCondBranch(cond);
 		}
 
@@ -479,7 +479,7 @@ namespace array
 		cs->irb.setCurrentBlock(merge);
 		{
 			// load and return
-			cs->irb.Return(cs->irb.Load(res));
+			cs->irb.Return(cs->irb.ReadPtr(res));
 		}
 	}
 
@@ -641,20 +641,20 @@ namespace array
 						if(cs->isRefCountedType(elmtype))
 						{
 							auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
-							cs->irb.Store(zv, ctrp);
+							cs->irb.WritePtr(zv, ctrp);
 
 							cs->createWhileLoop([cs, ctrp, len](auto pass, auto fail) {
-								auto cond = cs->irb.ICmpLT(cs->irb.Load(ctrp), len);
+								auto cond = cs->irb.ICmpLT(cs->irb.ReadPtr(ctrp), len);
 								cs->irb.CondBranch(cond, pass, fail);
 							},
 							[cs, ctrp, ptr]() {
 
-								auto ctr = cs->irb.Load(ctrp);
+								auto ctr = cs->irb.ReadPtr(ctrp);
 								auto p = cs->irb.PointerAdd(ptr, ctr);
 
-								cs->decrementRefCount(cs->irb.Load(p));
+								cs->decrementRefCount(cs->irb.ReadPtr(p));
 
-								cs->irb.Store(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+								cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
 							});
 						}
 
@@ -731,90 +731,6 @@ namespace array
 	static fir::Function* _getDoRefCountFunctionForArray(CodegenState* cs, fir::ArrayType* arrtype, bool incr)
 	{
 		error("NO!");
-		#if 0
-		auto elmtype = arrtype->getElementType();
-
-		//* note that we don't need a separate name for it, since the type of the array is added to the name itself
-		auto name = (incr ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
-			+ std::string("_") + arrtype->encodedStr();
-
-		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
-
-		if(!cmpf)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype->getPointerTo() }, fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			func->setAlwaysInline();
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* arrptr = func->getArguments()[0];
-			fir::Value* ptr = cs->irb.ConstGEP2(arrptr, 0, 0);
-			fir::Value* len = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
-
-			fir::IRBlock* check = cs->irb.addNewBlockInFunction("check", func);
-			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-			auto idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
-
-			// already set to 0 internally
-			// cs->irb.Store(fir::ConstantInt::getInt64(0), idxptr);
-
-			cs->irb.UnCondBranch(check);
-			cs->irb.setCurrentBlock(check);
-			{
-				auto cond = cs->irb.ICmpLT(cs->irb.Load(idxptr), len);
-				cs->irb.CondBranch(cond, body, merge);
-			}
-
-			cs->irb.setCurrentBlock(body);
-			{
-				auto valptr = cs->irb.PointerAdd(ptr, cs->irb.Load(idxptr));
-				auto val = cs->irb.Load(valptr);
-
-				// if we're a dynamic array, then call the dynamic array version.
-				// if it's an array again, then call ourselves.
-				if(elmtype->isDynamicArrayType())
-				{
-					auto fn = (incr ? getIncrementArrayRefCountFunction(cs, elmtype) : getDecrementArrayRefCountFunction(cs, elmtype));
-					iceAssert(fn);
-
-					cs->irb.Call(fn, val);
-				}
-				else if(elmtype->isArrayType())
-				{
-					// call ourselves. we already declared and everything, so it should be fine.
-					auto fn = _getDoRefCountFunctionForArray(cs, elmtype->toArrayType(), incr);
-					iceAssert(fn);
-
-					cs->irb.Call(fn, valptr);
-				}
-				else
-				{
-					if(incr)	cs->incrementRefCount(val);
-					else		cs->decrementRefCount(val);
-				}
-
-				cs->irb.Store(cs->irb.Add(cs->irb.Load(idxptr), fir::ConstantInt::getInt64(1)), idxptr);
-
-				cs->irb.UnCondBranch(check);
-			}
-
-			cs->irb.setCurrentBlock(merge);
-			cs->irb.ReturnVoid();
-
-			cs->irb.setCurrentBlock(restore);
-			cmpf = func;
-		}
-
-		iceAssert(cmpf);
-		return cmpf;
-		#endif
 	}
 
 
@@ -897,7 +813,7 @@ namespace array
 				if(isslice)
 				{
 					auto ptr = cs->irb.GetArraySliceData(arr);
-					auto val = cs->irb.Load(cs->irb.PointerAdd(ptr, newlen));
+					auto val = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr, newlen));
 
 					auto newarr = cs->irb.SetArraySliceLength(arr, newlen);
 					ret = cs->irb.CreateValue(retTy);
@@ -907,7 +823,7 @@ namespace array
 				else
 				{
 					auto ptr = cs->irb.GetSAAData(arr);
-					auto val = cs->irb.Load(cs->irb.PointerAdd(ptr, newlen));
+					auto val = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr, newlen));
 
 					auto newarr = cs->irb.SetSAALength(arr, newlen);
 					ret = cs->irb.CreateValue(retTy);

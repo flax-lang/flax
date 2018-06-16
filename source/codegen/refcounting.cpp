@@ -63,59 +63,57 @@ namespace cgn
 	}
 
 
-	void CodegenState::moveRefCountedValue(CGResult lhs, CGResult rhs, bool initial)
+	void CodegenState::moveRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool initial)
 	{
 		// decrement the lhs refcount (only if not initial)
+		iceAssert(lhs && rhs);
+		if(!lhs->islorclvalue())
+			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
 
 		if(!initial)
 		{
-			iceAssert(lhs.value);
-			this->decrementRefCount(lhs.value);
+			this->decrementRefCount(lhs);
 
 			// then do the store
-			iceAssert(lhs.pointer);
-			this->irb.Store(rhs.value, lhs.pointer);
+			this->irb.Store(rhs, lhs);
 		}
 
 		// then, remove the rhs from any refcounting table
 		// but don't change the refcount itself.
-		if(rhs.kind != CGResult::VK::LitRValue)
-			this->removeRefCountedValue(rhs.value);
+		if(!rhs->isclvalue())
+			this->removeRefCountedValue(rhs);
 	}
 
-	void CodegenState::performRefCountingAssignment(CGResult lhs, CGResult rhs, bool initial)
+	void CodegenState::performRefCountingAssignment(fir::Value* lhs, fir::Value* rhs, bool initial)
 	{
-		auto rv = rhs.value;
+		// ok, increment the rhs refcount;
+		// and decrement the lhs refcount (only if not initial)
+		iceAssert(lhs && rhs);
+		if(!lhs->islorclvalue())
+			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
 
-		if(lhs.value) iceAssert(this->isRefCountedType(lhs.value->getType()));
-		iceAssert(this->isRefCountedType(rv->getType()));
 
+		this->incrementRefCount(rhs);
+
+		if(!initial)
 		{
-			// ok, increment the rhs refcount;
-			// and decrement the lhs refcount (only if not initial)
+			this->decrementRefCount(lhs);
 
-			this->incrementRefCount(rv);
-
-			if(!initial)
-			{
-				iceAssert(lhs.value);
-				this->decrementRefCount(lhs.value);
-
-				// do the store -- if not initial.
-				// avoids immut shenanigans
-				iceAssert(lhs.pointer);
-				this->irb.Store(rv, lhs.pointer);
-			}
+			// do the store -- if not initial.
+			// avoids immut shenanigans
+			this->irb.Store(rhs, lhs);
 		}
 	}
 
-	void CodegenState::autoAssignRefCountedValue(CGResult lhs, CGResult rhs, bool isinit, bool performstore)
+	void CodegenState::autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isinit, bool performstore)
 	{
-		bool refcounted = this->isRefCountedType(rhs.value->getType());
+		iceAssert(lhs && rhs);
+		if(!lhs->islorclvalue())
+			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
 
-		if(refcounted)
+		if(this->isRefCountedType(rhs->getType()))
 		{
-			if(rhs.kind == CGResult::VK::LValue)
+			if(rhs->islorclvalue())
 				this->performRefCountingAssignment(lhs, rhs, isinit);
 
 			else
@@ -123,7 +121,7 @@ namespace cgn
 		}
 
 		if(performstore)
-			this->irb.Store(rhs.value, lhs.pointer);
+			this->irb.WritePtr(rhs, lhs);
 	}
 
 

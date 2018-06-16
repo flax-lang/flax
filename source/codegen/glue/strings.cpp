@@ -76,10 +76,10 @@ namespace string
 
 			{
 				fir::Value* str1p = cs->irb.StackAlloc(fir::Type::getMutInt8Ptr());
-				cs->irb.Store(cs->irb.GetSAAData(s1, "s1"), str1p);
+				cs->irb.WritePtr(cs->irb.GetSAAData(s1, "s1"), str1p);
 
 				fir::Value* str2p = cs->irb.StackAlloc(fir::Type::getMutInt8Ptr());
-				cs->irb.Store(cs->irb.GetSAAData(s2, "s2"), str2p);
+				cs->irb.WritePtr(cs->irb.GetSAAData(s2, "s2"), str2p);
 
 
 				fir::IRBlock* loopcond = cs->irb.addNewBlockInFunction("cond1", func);
@@ -91,17 +91,17 @@ namespace string
 				{
 					fir::IRBlock* cond2 = cs->irb.addNewBlockInFunction("cond2", func);
 
-					fir::Value* str1 = cs->irb.Load(str1p);
-					fir::Value* str2 = cs->irb.Load(str2p);
+					fir::Value* str1 = cs->irb.ReadPtr(str1p);
+					fir::Value* str2 = cs->irb.ReadPtr(str2p);
 
 					// make sure ptr1 is not null
-					fir::Value* cnd = cs->irb.ICmpNEQ(cs->irb.Load(str1), fir::ConstantInt::getInt8(0));
+					fir::Value* cnd = cs->irb.ICmpNEQ(cs->irb.ReadPtr(str1), fir::ConstantInt::getInt8(0));
 					cs->irb.CondBranch(cnd, cond2, merge);
 
 					cs->irb.setCurrentBlock(cond2);
 					{
 						// check that they are equal
-						fir::Value* iseq = cs->irb.ICmpEQ(cs->irb.Load(str1), cs->irb.Load(str2));
+						fir::Value* iseq = cs->irb.ICmpEQ(cs->irb.ReadPtr(str1), cs->irb.ReadPtr(str2));
 						cs->irb.CondBranch(iseq, loopincr, merge);
 					}
 
@@ -112,16 +112,16 @@ namespace string
 						fir::Value* v1 = cs->irb.PointerAdd(str1, fir::ConstantInt::getInt64(1));
 						fir::Value* v2 = cs->irb.PointerAdd(str2, fir::ConstantInt::getInt64(1));
 
-						cs->irb.Store(v1, str1p);
-						cs->irb.Store(v2, str2p);
+						cs->irb.WritePtr(v1, str1p);
+						cs->irb.WritePtr(v2, str2p);
 
 						cs->irb.UnCondBranch(loopcond);
 					}
 				}
 
 				cs->irb.setCurrentBlock(merge);
-				fir::Value* ret = cs->irb.Subtract(cs->irb.Load(cs->irb.Load(str1p)),
-					cs->irb.Load(cs->irb.Load(str2p)));
+				fir::Value* ret = cs->irb.Subtract(cs->irb.ReadPtr(cs->irb.ReadPtr(str1p)),
+					cs->irb.ReadPtr(cs->irb.ReadPtr(str2p)));
 
 				ret = cs->irb.IntSizeCast(ret, func->getReturnType());
 
@@ -150,7 +150,7 @@ namespace string
 
 		cs->irb.setCurrentBlock(dorc);
 		{
-			auto oldrc = cs->irb.Load(rcp, "oldrc");
+			auto oldrc = cs->irb.ReadPtr(rcp, "oldrc");
 			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
 
 			cs->irb.SetSAARefCount(str, newrc);
@@ -281,7 +281,7 @@ namespace string
 			iceAssert(_ptr);
 
 			fir::Value* ptrp = cs->irb.StackAlloc(fir::Type::getInt8Ptr());
-			cs->irb.Store(_ptr, ptrp);
+			cs->irb.WritePtr(_ptr, ptrp);
 
 			/*
 
@@ -309,7 +309,7 @@ namespace string
 			auto c0 = fir::ConstantInt::getInt8(0);
 
 			fir::Value* lenp = cs->irb.StackAlloc(fir::Type::getInt64());
-			cs->irb.Store(i0, lenp);
+			cs->irb.WritePtr(i0, lenp);
 
 
 			fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
@@ -322,7 +322,7 @@ namespace string
 
 			cs->irb.setCurrentBlock(cond);
 			{
-				auto ch = cs->irb.Load(cs->irb.Load(ptrp));
+				auto ch = cs->irb.ReadPtr(cs->irb.ReadPtr(ptrp));
 				auto isnotzero = cs->irb.ICmpNEQ(ch, c0);
 
 				cs->irb.CondBranch(isnotzero, body, merge);
@@ -331,7 +331,7 @@ namespace string
 			cs->irb.setCurrentBlock(body);
 			{
 				// if statement
-				auto ch = cs->irb.Load(cs->irb.Load(ptrp));
+				auto ch = cs->irb.ReadPtr(cs->irb.ReadPtr(ptrp));
 
 				auto mask = cs->irb.BitwiseAND(ch, fir::ConstantInt::getInt8((int8_t) 0xC0));
 				auto isch = cs->irb.ICmpNEQ(mask, fir::ConstantInt::getInt8((int8_t) 0x80));
@@ -342,15 +342,15 @@ namespace string
 				cs->irb.CondBranch(isch, incr, skip);
 				cs->irb.setCurrentBlock(incr);
 				{
-					cs->irb.Store(cs->irb.Add(cs->irb.Load(lenp), i1), lenp);
+					cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(lenp), i1), lenp);
 
 					cs->irb.UnCondBranch(skip);
 				}
 
 				cs->irb.setCurrentBlock(skip);
 				{
-					auto newptr = cs->irb.PointerAdd(cs->irb.Load(ptrp), i1);
-					cs->irb.Store(newptr, ptrp);
+					auto newptr = cs->irb.PointerAdd(cs->irb.ReadPtr(ptrp), i1);
+					cs->irb.WritePtr(newptr, ptrp);
 
 					cs->irb.UnCondBranch(cond);
 				}
@@ -358,7 +358,7 @@ namespace string
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				auto len = cs->irb.Load(lenp);
+				auto len = cs->irb.ReadPtr(lenp);
 				cs->irb.Return(len);
 			}
 
