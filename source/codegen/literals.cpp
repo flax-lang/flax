@@ -66,6 +66,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto ret = cs->module->createGlobalVariable(Identifier("_FV_ARR_" + std::to_string(array->id), IdKind::Name), array->getType(),
 			array, true, fir::LinkageType::Internal);
 
+		warn(this, "ret->type = %s", ret->getType());
+
 		return CGResult(ret);
 	}
 	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
@@ -119,7 +121,6 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
 			_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
 
-		auto arrptr = cs->irb.AddressOf(array, true);
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
@@ -128,6 +129,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
+
+			auto arrptr = cs->irb.AddressOf(array, true);
 
 			std::vector<fir::Value*> vals;
 			for(auto v : this->values)
@@ -165,6 +168,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// return it
 		if(this->type->isDynamicArrayType())
 		{
+			auto arrptr = cs->irb.AddressOf(array, true);
+
 			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
 			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
@@ -176,6 +181,8 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(this->type->isArraySliceType())
 		{
+			auto arrptr = cs->irb.AddressOf(array, true);
+
 			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
 
 			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));

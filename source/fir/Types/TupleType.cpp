@@ -31,12 +31,12 @@ namespace fir
 
 	std::string TupleType::str()
 	{
-		return typeListToString(this->members);
+		return strprintf("(%s)", typeListToString(this->members));
 	}
 
 	std::string TupleType::encodedStr()
 	{
-		return typeListToString(this->members);
+		return strprintf("(%s)", typeListToString(this->members));
 	}
 
 	bool TupleType::isTypeEqual(Type* other)
