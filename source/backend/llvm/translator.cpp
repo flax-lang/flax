@@ -49,6 +49,26 @@ namespace backend
 	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
+
+	inline std::string llvmToString(llvm::Type* t)
+	{
+		std::string str;
+		llvm::raw_string_ostream rso(str);
+		t->print(rso);
+
+		return str;
+	}
+
+	inline std::string llvmToString(llvm::Value* t)
+	{
+		std::string str;
+		llvm::raw_string_ostream rso(str);
+		t->print(rso);
+
+		return str;
+	}
+
+
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
@@ -269,7 +289,6 @@ namespace backend
 	}
 
 
-
 	static llvm::Function* translateFunctionDecl(fir::Function* ffn, std::unordered_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
 	{
 		if(auto it = valueMap.find(ffn->id); it != valueMap.end())
@@ -365,12 +384,29 @@ namespace backend
 			{
 				auto c = constToLlvm(con, valueMap, mod);
 				if(c->getType() != arrt->getArrayElementType())
+				{
+					warn("llvm: expected type '%s' in const array (%d), found '%s'",
+						llvmToString(arrt->getArrayElementType()), ca->id, llvmToString(c));
 					c = llvm::ConstantExpr::getBitCast(c, arrt->getArrayElementType());
+				}
 
 				vals.push_back(c);
 			}
 
-			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
+			/*
+				SOME KIND OF SHADY SHIT IS GOING ON HERE
+
+				so when we create the constant array, everybody tells us that the type is a non-pointer.
+				*BUT* when we actually go to access it later on, we suddenly find out that it's a pointer.
+
+				so how the fuck do we proceed with this????
+			*/
+
+
+			auto ret = llvm::ConstantArray::get(arrt, vals);
+			info("llvm: const array (%d) (%d / %d) type = '%s'", ca->id, vals.size(), ca->getValues().size(), llvmToString(ret));
+
+			return cachedConstants[c] = ret;
 		}
 		else if(fir::ConstantTuple* ct = dcast(fir::ConstantTuple, c))
 		{
@@ -483,25 +519,6 @@ namespace backend
 		{
 			return cachedConstants[c] = llvm::Constant::getNullValue(typeToLlvm(c->getType(), mod));
 		}
-	}
-
-
-	inline std::string llvmToString(llvm::Type* t)
-	{
-		std::string str;
-		llvm::raw_string_ostream rso(str);
-		t->print(rso);
-
-		return str;
-	}
-
-	inline std::string llvmToString(llvm::Value* t)
-	{
-		std::string str;
-		llvm::raw_string_ostream rso(str);
-		t->getType()->print(rso);
-
-		return str;
 	}
 
 
