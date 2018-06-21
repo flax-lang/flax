@@ -102,9 +102,9 @@ namespace fir
 			case OpKind::Cast_IntSignedness:                instrname = "signcast"; break;
 			case OpKind::Integer_ZeroExt:                   instrname = "izeroext"; break;
 			case OpKind::Integer_Truncate:                  instrname = "itrunc"; break;
-			case OpKind::Value_WritePtr:                       instrname = "store"; break;
+			case OpKind::Value_WritePtr:                    instrname = "writemem"; break;
 			case OpKind::Logical_Not:                       instrname = "logicalNot"; break;
-			case OpKind::Value_ReadPtr:                        instrname = "load"; break;
+			case OpKind::Value_ReadPtr:                     instrname = "readmem"; break;
 			case OpKind::Value_StackAlloc:                  instrname = "stackAlloc"; break;
 			case OpKind::Value_CallFunction:                instrname = "call"; break;
 			case OpKind::Value_CallFunctionPointer:         instrname = "callfp"; break;
@@ -158,6 +158,11 @@ namespace fir
 			case OpKind::Enum_SetIndex:                     instrname = "set_enum.index"; break;
 			case OpKind::Enum_GetValue:                     instrname = "get_enum.value"; break;
 			case OpKind::Enum_SetValue:                     instrname = "set_enum.value"; break;
+
+			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
+			case OpKind::Value_Store:                       instrname = "store"; break;
+			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;
+			case OpKind::Value_CreateLVal:                  instrname = "make_lval"; break;
 
 			case OpKind::Unreachable:                       instrname = "<unreachable>"; break;
 			case OpKind::Invalid:                           instrname = "<unknown>"; break;
@@ -251,7 +256,8 @@ namespace fir
 			ret = name + (name.empty() ? "" : " ") + "(%" + std::to_string(this->realOutput->id) + ") :: " + this->realOutput->getType()->str() + " = " + instrname + " " + ops;
 		}
 
-		return strprintf("!%d ", this->id) + ret;
+		// return strprintf("!%d ", this->id) + ret;
+		return ret;
 	}
 }
 

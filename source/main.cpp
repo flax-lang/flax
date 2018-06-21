@@ -83,7 +83,7 @@ static void compile(std::string in, std::string out)
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
 			backend->performCompilation();
-			// backend->optimiseProgram();
+			backend->optimiseProgram();
 			backend->writeOutput();
 		}
 		else

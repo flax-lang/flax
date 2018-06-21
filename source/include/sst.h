@@ -70,7 +70,7 @@ namespace sst
 	};
 
 
-
+	struct ArgumentDefn;
 	struct Block : Stmt
 	{
 		Block(const Location& l) : Stmt(l) { this->readableName = "block"; }
@@ -80,11 +80,12 @@ namespace sst
 
 		Location closingBrace;
 
-		std::vector<std::string> scope;
-
 		bool isSingleExpr = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
+
+		std::function<void ()> preBodyCode;
+		std::function<void ()> postBodyCode;
 	};
 
 	struct IfStmt : Stmt, HasBlocks

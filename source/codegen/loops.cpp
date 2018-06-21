@@ -229,18 +229,24 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		// make the block
 		cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, merge, check));
 		{
-			// TODO: is this correct???
-			auto res = CGResult(cs->irb.Dereference(theptr));
-			cs->generateDecompositionBindings(this->mappings, res, !(array->getType()->isRangeType() || array->getType()->isStringType()));
+			// msvc: structured bindings cannot be captured
+			// what the FUCK???
+			auto _array = array;
+			this->body->preBodyCode = [cs, theptr, _array, iterptr, this]() {
 
-			if(this->indexVar)
-			{
-				auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
-				idx->rawValue = CGResult(cs->irb.ReadPtr(iterptr));
+				// TODO: is this correct???
+				auto res = CGResult(cs->irb.Dereference(theptr));
+				cs->generateDecompositionBindings(this->mappings, res, !(_array->getType()->isRangeType() || _array->getType()->isStringType()));
 
-				this->indexVar->init = idx;
-				this->indexVar->codegen(cs);
-			}
+				if(this->indexVar)
+				{
+					auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
+					idx->rawValue = CGResult(cs->irb.ReadPtr(iterptr));
+
+					this->indexVar->init = idx;
+					this->indexVar->codegen(cs);
+				}
+			};
 
 			this->body->codegen(cs);
 		}

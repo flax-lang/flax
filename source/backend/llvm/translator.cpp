@@ -1526,10 +1526,10 @@ namespace backend
 							for(size_t i = 1; i < fargs.size(); ++i)
 							{
 								args.push_back(decay(fargs[i], getValue(fargs[i])));
-								args.back()->dump();
+								// args.back()->dump();
 							}
 
-							a->dump();
+							// a->dump();
 							llvm::Value* ret = builder.CreateCall(a, args);
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -2251,7 +2251,7 @@ namespace backend
 						case fir::OpKind::Value_Dereference:
 						{
 							iceAssert(inst->operands.size() == 1);
-							llvm::Value* a = getUndecayedOperand(inst, 0);
+							llvm::Value* a = getOperand(inst, 0);
 
 							addValueToMap(a, inst->realOutput);
 							break;
@@ -2276,7 +2276,6 @@ namespace backend
 							iceAssert(ci);
 
 							// ptr->dump();
-							ptr->dump();
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
 								ptr, (unsigned int) ci->getUnsignedValue());
 
