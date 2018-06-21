@@ -100,7 +100,7 @@ namespace backend
 		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
 
 		if(this->compiledData.module->getEntryFunction())
-			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().str());
+			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().mangled());
 
 
 		this->linkedModule = std::shared_ptr<llvm::Module>(mainModule);

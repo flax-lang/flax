@@ -57,8 +57,10 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	cs->enterBreakableBody(cgn::ControlFlowPoint(this->body, 0, 0));
 	{
-		for(auto a : this->arguments)
-			a->codegen(cs);
+		this->body->preBodyCode = [cs, this]() {
+			for(auto arg : this->arguments)
+				arg->codegen(cs);
+		};
 
 		this->body->codegen(cs);
 	}

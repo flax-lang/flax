@@ -66,7 +66,7 @@ namespace sst
 			if(value->getType()->isAnyType())
 			{
 				// get the type out.
-				res = cs->irb.GetAnyTypeID(value);
+				res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value), cs->irb.BitwiseNOT(fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)));
 			}
 			else
 			{

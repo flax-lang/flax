@@ -254,6 +254,9 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->enterBlock(this);
 	defer(cs->leaveBlock());
 
+	if(this->preBodyCode)
+		this->preBodyCode();
+
 	bool broke = false;
 	for(auto stmt : this->statements)
 	{
@@ -264,6 +267,9 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			break;
 		}
 	}
+
+	if(this->postBodyCode)
+		this->postBodyCode();
 
 
 	if(!broke)
