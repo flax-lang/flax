@@ -86,9 +86,13 @@ std::string Identifier::str() const
 
 static std::string mangleScopeOnly(const Identifier& id)
 {
+	bool first = true;
 	std::string ret;
 	for(auto s : id.scope)
-		ret += std::to_string(s.length()) + s;
+	{
+		ret += (!first ? std::to_string(s.length()) : "") + s;
+		first = false;
+	}
 
 	return ret;
 }

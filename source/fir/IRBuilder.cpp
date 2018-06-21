@@ -2101,7 +2101,7 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
 			Value::Kind::lvalue);
 
-		return this->addInstruction(instr, "");
+		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
@@ -2110,7 +2110,7 @@ namespace fir
 		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
 			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
-		auto ret = this->addInstruction(instr, "");
+		auto ret = this->addInstruction(instr, vname);
 		this->Store(val, ret);
 
 		ret->makeConst();
@@ -2152,7 +2152,7 @@ namespace fir
 		// ok...
 		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock,
 			mut ? lval->getType()->getMutablePointerTo() : lval->getType()->getPointerTo(), { lval });
-		return this->addInstruction(instr, "");
+		return this->addInstruction(instr, vname);
 	}
 
 

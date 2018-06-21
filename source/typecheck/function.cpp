@@ -234,7 +234,6 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	auto ret = new sst::Block(this->loc);
 
-	ret->scope = fs->getCurrentScope();
 	ret->closingBrace = this->closingBrace;
 
 	if(this->isArrow && this->isFunctionBody)

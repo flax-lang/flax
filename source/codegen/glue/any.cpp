@@ -102,7 +102,7 @@ namespace any
 
 	fir::Function* getRefCountIncrementFunction(CodegenState* cs)
 	{
-		auto fname = "__decr_rc_" + fir::Type::getAny()->str();
+		auto fname = "__incr_rc_" + fir::Type::getAny()->str();
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
 		if(!retfn)
@@ -117,7 +117,7 @@ namespace any
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 			cs->irb.setCurrentBlock(entry);
 
-			_doRefCount(cs, func, true);
+			_doRefCount(cs, func, false);
 
 			cs->irb.setCurrentBlock(restore);
 			retfn = func;
@@ -233,7 +233,7 @@ namespace any
 
 	fir::Function* generateGetValueFromAnyFunction(CodegenState* cs, fir::Type* type)
 	{
-		auto fname = "__get_any_value_of_" + type->str();
+		auto fname = strprintf("__get_value_of_%s_from_any", type->str());
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
 		if(!retfn)
