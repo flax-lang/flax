@@ -9,12 +9,16 @@ import "math" as _
 
 import "stdio" as _
 
+fn recurse<T>(x: T, y: T) -> T
+{
+	if x == 0   => return y
+	else        => return y + recurse(x - 1, y)
+}
+
 @entry fn main()
 {
-	println("hello, %, %!", "world", 50)
-	let slc = [1, 2, 3, 4][:$-3]
-
-	println("slice length = %", slc.length)
+	let x = recurse(10, 5)
+	println("x = %", x)
 }
 
 

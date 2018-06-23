@@ -75,8 +75,8 @@ namespace sst
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
 		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);
 
-		void addDefinition(const std::string& name, Defn* def);
-		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def);
+		void addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
+		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
 	};
 
 	struct DefinitionTree

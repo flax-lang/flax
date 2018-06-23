@@ -182,6 +182,11 @@ namespace sst
 		iceAssert(thing);
 		iceAssert(!thing->generics.empty());
 
+		// try to see if we already have a generic version.
+		if(auto [ found, def ] = thing->checkForExistingDeclaration(this, mappings); thing && def)
+			return TCResult(def);
+
+
 		this->pushGenericContext();
 		defer(this->popGenericContext());
 
@@ -242,38 +247,9 @@ namespace sst
 			}
 		}
 
-
-
-
-		auto mapToString = [&mappings]() -> std::string {
-			std::string ret;
-			for(auto m : mappings)
-				ret += (m.first + ":" + m.second->encodedStr()) + ",";
-
-			// shouldn't be empty.
-			iceAssert(ret.size() > 0);
-			return ret.substr(0, ret.length() - 1);
-		};
-
-
-		// TODO: this is not re-entrant, clearly. should we have a cleaner way of doing this?
-		//* we mangle the name so that we can't inadvertantly 'find' the most-recently-instantiated generic type simply by giving the name without the
-		//* type parameters.
-		//? fear not, we won't be using name-mangling-based lookup (unlike the previous compiler version, ewwww)
-
-		auto oldname = thing->name;
-		thing->name = oldname + "<" + mapToString() + ">";
-
-		//* we **MUST** first call ::generateDeclaration if we're doing a generic thing.
-		//* with the mappings that we're using to instantiate it.
-		thing->generateDeclaration(this, 0, mappings);
-
-
-		// now it is 'safe' to call typecheck.
 		auto ret = dcast(Defn, thing->typecheck(this, 0, mappings).defn());
 		iceAssert(ret);
 
-		thing->name = oldname;
 		return TCResult(ret);
 	}
 

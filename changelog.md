@@ -1,6 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fix the recursive instantiation of generic functions.
+
+`(ff2a45a)`
 - no longer stack allocate for arguments
 - new lvalue/rvalue system in the IRBuilder, to make our lives slightly easier; we no longer need to pass a value/pointer pair,
 	and we handle the thing in the translator -- not very complicated.
