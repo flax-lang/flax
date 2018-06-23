@@ -119,6 +119,13 @@ namespace sst
 		void leaveFunctionBody();
 
 
+		std::vector<Expr*> subscriptArrayStack;
+		Expr* getCurrentSubscriptArray();
+		void enterSubscript(Expr* arr);
+		void leaveSubscript();
+		bool isInSubscript();
+
+
 		std::vector<TypeDefn*> structBodyStack;
 		TypeDefn* getCurrentStructBody();
 		bool isInStructBody();
@@ -126,14 +133,9 @@ namespace sst
 		void leaveStructBody();
 
 
-		// std::vector<TypeParamMap_t> genericTypeStack;
-		// std::vector<TypeParamMap_t> getGenericTypeStack();
-
 		std::vector<TypeParamMap_t> genericContextStack;
 		std::vector<TypeParamMap_t> getGenericContextStack();
 
-		// void pushGenericType();
-		// void popGenericType();
 
 		void pushGenericContext();
 		fir::Type* findGenericMapping(const std::string& name, bool allowFail);

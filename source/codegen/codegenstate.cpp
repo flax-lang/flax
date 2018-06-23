@@ -40,6 +40,26 @@ namespace cgn
 	}
 
 
+	void CodegenState::enterSubscriptWithLength(fir::Value* len)
+	{
+		iceAssert(len->getType()->isIntegerType());
+		this->subscriptArrayLengthStack.push_back(len);
+	}
+
+	fir::Value* CodegenState::getCurrentSubscriptArrayLength()
+	{
+		iceAssert(this->subscriptArrayLengthStack.size() > 0);
+		return this->subscriptArrayLengthStack.back();
+	}
+
+	void CodegenState::leaveSubscript()
+	{
+		iceAssert(this->subscriptArrayLengthStack.size() > 0);
+		this->subscriptArrayLengthStack.pop_back();
+	}
+
+
+
 
 
 	void CodegenState::enterFunction(fir::Function* fn)
@@ -280,6 +300,11 @@ namespace cgn
 		{
 			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::External);
+		}
+		else if(name == "exit")
+		{
+			return this->module->getOrCreateFunction(Identifier("exit", IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt32() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == "strlen")
 		{

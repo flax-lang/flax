@@ -40,85 +40,13 @@ namespace array
 {
 	fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isPerformingDecomposition)
 	{
-		// return saa_common::generateBoundsCheckFunction
-		fir::Function* fn = cs->module->getFunction(Identifier(isPerformingDecomposition
-			? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name));
-
-		if(!fn)
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(isPerformingDecomposition ? BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME : BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getCharSlice(false) },
-					fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			fir::IRBlock* failb = cs->irb.addNewBlockInFunction("fail", func);
-			fir::IRBlock* checkneg = cs->irb.addNewBlockInFunction("checkneg", func);
-			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
-
-			cs->irb.setCurrentBlock(entry);
-
-			fir::Value* max = func->getArguments()[0];
-			fir::Value* ind = func->getArguments()[1];
-
-			fir::Value* res = 0;
-
-			// if we're decomposing, it's length vs length, so compare strictly greater.
-			if(isPerformingDecomposition)
-				res = cs->irb.ICmpGT(ind, max);
-
-			else
-				res = cs->irb.ICmpGEQ(ind, max);
-
-			iceAssert(res);
-
-			cs->irb.CondBranch(res, failb, checkneg);
-			cs->irb.setCurrentBlock(failb);
-			{
-				if(isPerformingDecomposition)
-					printRuntimeError(cs, func->getArguments()[2], "Tried to decompose array with only '%ld' elements into '%ld' bindings\n", { max, ind });
-
-				else
-					printRuntimeError(cs, func->getArguments()[2], "Index '%ld' out of bounds for array of length %ld\n", { ind, max });
-			}
-
-			cs->irb.setCurrentBlock(checkneg);
-			{
-				fir::Value* res2 = cs->irb.ICmpLT(ind, fir::ConstantInt::getInt64(0));
-				cs->irb.CondBranch(res2, failb, merge);
-			}
-
-			cs->irb.setCurrentBlock(merge);
-			{
-				cs->irb.ReturnVoid();
-			}
-
-			fn = func;
-
-			cs->irb.setCurrentBlock(restore);
-		}
-
-		iceAssert(fn);
-		return fn;
+		return saa_common::generateBoundsCheckFunction(cs, /* isString: */false, isPerformingDecomposition);
 	}
-
-
-
 
 	fir::Function* getCloneFunction(CodegenState* cs, fir::Type* arrtype)
 	{
-		// if(arrtype->isDynamicArrayType())		return getDynamicArrayCloneFunction(cs, arrtype->toDynamicArrayType());
-		// else if(arrtype->isArraySliceType())	return getSliceCloneFunction(cs, arrtype->toArraySliceType());
-		// else									error("unsupported type '%s'", arrtype);
-
 		return saa_common::generateCloneFunction(cs, arrtype);
 	}
-
-
-
-
-
 
 	fir::Function* getReserveExtraFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{
@@ -129,9 +57,6 @@ namespace array
 	{
 		return saa_common::generateReserveAtLeastFunction(cs, arrtype);
 	}
-
-
-
 
 	fir::Function* getAppendFunction(CodegenState* cs, fir::DynamicArrayType* arrtype)
 	{

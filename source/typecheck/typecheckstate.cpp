@@ -12,10 +12,6 @@
 
 namespace sst
 {
-	// void TypecheckState::pushLoc(const Location& l)
-	// {
-	// 	this->locationStack.push_back(l);
-	// }
 
 	void TypecheckState::pushLoc(ast::Stmt* stmt)
 	{
@@ -102,6 +98,36 @@ namespace sst
 		iceAssert(this->bodyStack.back() == BODY_STRUCT);
 		this->bodyStack.pop_back();
 	}
+
+
+
+
+
+	void TypecheckState::enterSubscript(Expr* arr)
+	{
+		this->subscriptArrayStack.push_back(arr);
+	}
+
+	Expr* TypecheckState::getCurrentSubscriptArray()
+	{
+		iceAssert(this->subscriptArrayStack.size() > 0);
+		return this->subscriptArrayStack.back();
+	}
+
+	void TypecheckState::leaveSubscript()
+	{
+		iceAssert(this->subscriptArrayStack.size() > 0);
+		this->subscriptArrayStack.pop_back();
+	}
+
+	bool TypecheckState::isInSubscript()
+	{
+		return this->subscriptArrayStack.size() > 0;
+	}
+
+
+
+
 
 
 

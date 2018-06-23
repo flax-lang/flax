@@ -1293,8 +1293,6 @@ namespace fir
 
 		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
 
-		bool mut = structPtr->getType()->isMutablePointer();
-
 		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent, type->getElementN(memberIndex),
 			{ structPtr, ConstantInt::getUint64(memberIndex) }, Value::Kind::lvalue);
 
@@ -1335,8 +1333,6 @@ namespace fir
 		if(ptr->getType()->isStructType())
 		{
 			auto st = ptr->getType()->toStructType();
-
-			auto spt = ptr->getType();
 			auto memt = st->getElement(memberName);
 
 			iceAssert(st->hasElementWithName(memberName) && "no element with such name");
@@ -1351,8 +1347,6 @@ namespace fir
 			auto ct = ptr->getType()->toClassType();
 
 			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
-
-			auto cpt = ptr->getType();
 			auto memt = ct->getElement(memberName);
 
 			//! '+1' is for vtable.

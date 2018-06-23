@@ -55,7 +55,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			bits = 64;
 			flt = true;
 			raw = *reinterpret_cast<uint64_t*>(&d);
-			sgn = (raw < 0);
+			sgn = (d < 0);
 		}
 	}
 	catch(const std::exception& e)

@@ -160,8 +160,7 @@ namespace parser
 
 		bool isInFunctionBody()
 		{
-			iceAssert(this->bodyNesting.size() > 0);
-			return this->bodyNesting.back() == 1;
+			return this->bodyNesting.size() > 0 && this->bodyNesting.back() == 1;
 		}
 
 
@@ -179,8 +178,24 @@ namespace parser
 
 		bool isInStructBody()
 		{
-			// iceAssert();
 			return this->bodyNesting.size() > 0 && this->bodyNesting.back() == 2;
+		}
+
+
+		void enterSubscript()
+		{
+			this->bodyNesting.push_back(3);
+		}
+
+		void leaveSubscript()
+		{
+			iceAssert(this->bodyNesting.size() > 0 && this->bodyNesting.back() == 3);
+			this->bodyNesting.pop_back();
+		}
+
+		bool isInSubscript()
+		{
+			return this->bodyNesting.size() > 0 && this->bodyNesting.back() == 3;
 		}
 
 
@@ -201,6 +216,7 @@ namespace parser
 		private:
 			// 1 = inside function
 			// 2 = inside struct
+			// 3 = inside subscript
 			std::vector<int> bodyNesting;
 
 			size_t index = 0;
@@ -234,6 +250,8 @@ namespace parser
 	ast::ClassDefn* parseClass(State& st);
 	ast::StructDefn* parseStruct(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
+
+	ast::Expr* parseDollarExpr(State& st);
 
 	ast::InitFunctionDefn* parseInitFunction(State& st);
 

@@ -31,8 +31,14 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	fs->pushTree(fs->getAnonymousScopeName());
+	defer(fs->popTree());
+
 	auto array = this->expr->typecheck(fs).expr();
 	auto ty = array->type;
+
+	fs->enterSubscript(array);
+	defer(fs->leaveSubscript());
 
 	fir::Type* elm = 0;
 	if(ty->isDynamicArrayType() || ty->isArraySliceType() || ty->isArrayType())

@@ -23,8 +23,6 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType());
 
 
-	fir::Value* length = cs->irb.Subtract(endIndex, beginIndex);
-
 	// do a check
 	auto neg_begin = cs->irb.addNewBlockInFunction("neg_begin", cs->irb.getCurrentFunction());
 	auto neg_end = cs->irb.addNewBlockInFunction("neg_end", cs->irb.getCurrentFunction());
@@ -46,27 +44,31 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 	cs->irb.setCurrentBlock(check2);
 	{
-		fir::Value* neg = cs->irb.ICmpLT(length, fir::ConstantInt::getInt64(0));
+		fir::Value* neg = cs->irb.ICmpLT(endIndex, beginIndex);
 		cs->irb.CondBranch(neg, neg_len, merge);
 	}
 
 
 	cs->irb.setCurrentBlock(neg_begin);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(apos.toString()), "Start index of array slice was negative (got '%ld')\n", { beginIndex });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(apos.toString()),
+		"slice start index '%ld' is < 0\n", { beginIndex });
 
 	cs->irb.setCurrentBlock(neg_end);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()), "End index of array slice was negative (got '%ld')\n", { endIndex });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()),
+		"slice end index '%ld' is < 0\n", { endIndex });
 
 	cs->irb.setCurrentBlock(neg_len);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()), "Length of array slice was negative (got '%ld')\n", { length });
+	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()),
+		"slice end index '%ld' is < start index '%ld'\n", { endIndex, beginIndex });
 
 
 	cs->irb.setCurrentBlock(merge);
 
 	// bounds check.
 	{
-		// endindex is non-inclusive, so do the len vs len check
-		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
+		// endindex is non-inclusive -- if we're doing a decomposition check then it compares length instead
+		// of indices here.
+		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, /* isPerformingDecomposition: */ true);
 		iceAssert(checkf);
 
 		cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
@@ -112,11 +114,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ty = this->expr->type;
 	auto res = this->expr->codegen(cs);
 
-	// this->cgSubscripteePtr = res.pointer;
-	this->cgSubscriptee = res.value;
-
 	auto lhs = res.value;
-	// auto lhsptr = res.pointer;
 
 	iceAssert(ty == lhs->getType());
 
@@ -128,23 +126,30 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(ty->isPointerType())    length = fir::ConstantInt::getInt64(0);
 	else							error(this, "unsupported type '%s'", ty);
 
+	fir::Value* beginIdx = 0;
+	fir::Value* endIdx = 0;
+
 	iceAssert(length);
 	{
+		// add the dollar value.
+		cs->enterSubscriptWithLength(length);
+		defer(cs->leaveSubscript());
+
 		if(ty->isPointerType() && !this->end)
 			error(this, "Slicing operation on pointers requires an ending index");
 
-		if(this->begin)	this->cgBegin = this->begin->codegen(cs).value;
-		else			this->cgBegin = fir::ConstantInt::getInt64(0);
+		if(this->begin)	beginIdx = this->begin->codegen(cs).value;
+		else			beginIdx = fir::ConstantInt::getInt64(0);
 
-		if(this->end)	this->cgEnd = this->end->codegen(cs).value;
-		else			this->cgEnd = length;
+		if(this->end)	endIdx = this->end->codegen(cs).value;
+		else			endIdx = length;
 
-		this->cgBegin = cs->oneWayAutocast(CGResult(this->cgBegin), fir::Type::getInt64()).value;
-		this->cgEnd = cs->oneWayAutocast(CGResult(this->cgEnd), fir::Type::getInt64()).value;
+		beginIdx = cs->oneWayAutocast(CGResult(beginIdx), fir::Type::getInt64()).value;
+		endIdx = cs->oneWayAutocast(CGResult(endIdx), fir::Type::getInt64()).value;
 	}
 
-	this->cgBegin->setName("begin");
-	this->cgEnd->setName("end");
+	beginIdx->setName("begin");
+	endIdx->setName("end");
 
 	/*
 		as a reminder:
@@ -165,12 +170,12 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(ty->isPointerType())
 	{
 		return performSliceOperation(cs, this, false, ty->getPointerElementType(), lhs,
-			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else if(ty->isDynamicArrayType())
 	{
 		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetSAAData(lhs),
-			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else if(ty->isArrayType())
 	{
@@ -183,17 +188,17 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::Value* data = cs->irb.ConstGEP2(lhsptr, 0, 0);
 
 		return performSliceOperation(cs, this, true, ty->getArrayElementType(), data,
-			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else if(ty->isArraySliceType())
 	{
 		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetArraySliceData(lhs),
-			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else if(ty->isStringType())
 	{
 		return performSliceOperation(cs, this, true, fir::Type::getInt8(), cs->irb.GetSAAData(lhs),
-			length, this->cgBegin, this->cgEnd, this->begin, this->end);
+			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else
 	{

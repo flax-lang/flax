@@ -143,7 +143,6 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			// bool implicit = false;
 			if(this->isImplicitField)
 			{
 				iceAssert(cs->isInMethodBody());
@@ -151,8 +150,6 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else
 			{
-				// warn(this, "forcing codegen of this");
-				// warn(this->def, "here");
 				this->def->codegen(cs);
 
 				it = cs->valueMap.find(this->def);
@@ -167,18 +164,6 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 		}
 	}
-
-	// fir::Value* value = 0;
-	// if(!defn.pointer)
-	// {
-	// 	iceAssert(defn.value);
-	// 	value = defn.value;
-	// }
-	// else
-	// {
-	// 	iceAssert(defn.pointer);
-	// 	value = cs->irb.ReadPtr(defn.pointer);
-	// }
 
 	// make sure types match... should we bother?
 	if(value->getType() != this->type)
