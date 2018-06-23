@@ -16,7 +16,7 @@ addons:
         - ubuntu-toolchain-r-test
 
         packages:
-        - g++-7
+        - g++-8
         - llvm-6.0
         - llvm-6.0-dev
         - libllvm6.0
