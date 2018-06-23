@@ -322,14 +322,14 @@ namespace sst
 		return this->unresolvedGenericDefs[name];
 	}
 
-	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def)
+	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		this->definitions[sourceFile][name].push_back(def);
+		this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
 	}
 
-	void StateTree::addDefinition(const std::string& name, Defn* def)
+	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		this->definitions[this->topLevelFilename][name].push_back(def);
+		this->addDefinition(this->topLevelFilename, _name, def, gmaps);
 	}
 
 	// TODO: maybe cache this someday?
@@ -478,8 +478,7 @@ namespace sst
 
 				auto newgds = util::filterMap(gdefs,
 					[](ast::Parameterisable* d) -> bool {
-						// return dcast(sst::TypeDefn, d) != nullptr;
-						return true;
+						return dcast(ast::FuncDefn, d) == nullptr;
 					},
 					[](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());

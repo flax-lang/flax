@@ -33,14 +33,15 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(!success)    return TCResult::getParametric();
 	else if(ret)    return TCResult(ret);
 
+	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = new sst::EnumDefn(this->loc);
-	defn->id = Identifier(this->name, IdKind::Type);
+	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
-	fs->stree->addDefinition(this->name, defn);
+	fs->stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
