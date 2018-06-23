@@ -50,7 +50,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else
 			res = cs->getDefaultValue(this->type);
 
-		fir::Value* val = checkStore(res);
+		res = checkStore(res);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
 		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);

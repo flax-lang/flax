@@ -371,6 +371,11 @@ namespace backend
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
+		else if(fir::ConstantBitcast* cbc = dcast(fir::ConstantBitcast, c))
+		{
+			llvm::Type* t = typeToLlvm(cbc->getType(), mod);
+			return cachedConstants[c] = llvm::ConstantExpr::getBitCast(constToLlvm(cbc->getValue(), valueMap, mod), t);
+		}
 		else if(fir::ConstantArray* ca = dcast(fir::ConstantArray, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
@@ -385,28 +390,15 @@ namespace backend
 				auto c = constToLlvm(con, valueMap, mod);
 				if(c->getType() != arrt->getArrayElementType())
 				{
-					warn("llvm: expected type '%s' in const array (%d), found '%s'",
+					error("llvm: expected type '%s' in const array (%d), found '%s'",
 						llvmToString(arrt->getArrayElementType()), ca->id, llvmToString(c));
-					c = llvm::ConstantExpr::getBitCast(c, arrt->getArrayElementType());
+					// c = llvm::ConstantExpr::getBitCast(c, arrt->getArrayElementType());
 				}
 
 				vals.push_back(c);
 			}
 
-			/*
-				SOME KIND OF SHADY SHIT IS GOING ON HERE
-
-				so when we create the constant array, everybody tells us that the type is a non-pointer.
-				*BUT* when we actually go to access it later on, we suddenly find out that it's a pointer.
-
-				so how the fuck do we proceed with this????
-			*/
-
-
-			auto ret = llvm::ConstantArray::get(arrt, vals);
-			info("llvm: const array (%d) (%d / %d) type = '%s'", ca->id, vals.size(), ca->getValues().size(), llvmToString(ret));
-
-			return cachedConstants[c] = ret;
+			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
 		}
 		else if(fir::ConstantTuple* ct = dcast(fir::ConstantTuple, c))
 		{

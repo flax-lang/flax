@@ -212,6 +212,21 @@ namespace fir
 		ConstantValue* length = 0;
 	};
 
+	struct ConstantBitcast : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantBitcast* get(ConstantValue* v, Type* target);
+
+		ConstantValue* getValue() { return this->value; }
+
+		protected:
+		ConstantBitcast(ConstantValue* v, Type* target);
+
+		ConstantValue* value = 0;
+		Type* target = 0;
+	};
+
 
 	struct GlobalValue : ConstantValue
 	{
