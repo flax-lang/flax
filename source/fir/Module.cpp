@@ -60,14 +60,17 @@ namespace fir
 			auto methods = std::vector<fir::ConstantValue*>(cls->virtualMethodCount);
 
 			for(auto meth : cls->reverseVirtualMethodMap)
-				methods[meth.first] = meth.second, fmethods[meth.first] = meth.second;
+			{
+				methods[meth.first] = ConstantBitcast::get(meth.second, FunctionType::get({ }, Type::getVoid()));
+				fmethods[meth.first] = meth.second;
+			}
 
 			//! ACHTUNG !
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
 			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangled(), IdKind::Name),
-				table->getType(), table, false, LinkageType::External);
+				table->getType(), table, true, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
 		}

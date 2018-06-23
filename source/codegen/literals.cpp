@@ -62,13 +62,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 
 		// ok
-		auto array = fir::ConstantArray::get(this->type, vals);
-		auto ret = cs->module->createGlobalVariable(Identifier("_FV_ARR_" + std::to_string(array->id), IdKind::Name), array->getType(),
-			array, true, fir::LinkageType::Internal);
-
-		warn(this, "ret->type = %s", ret->getType());
-
-		return CGResult(ret);
+		return CGResult(fir::ConstantArray::get(this->type, vals));
 	}
 	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
 	{
