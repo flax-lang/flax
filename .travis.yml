@@ -27,11 +27,6 @@ before_script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
         brew install llvm@6;
         brew upgrade mpfr;
-        # cd $(brew --cellar)/llvm@5/*;
-        # cp $TRAVIS_BUILD_DIR/llvm-5.0.0-5.0.1-patch.diff ./;
-        # patch -p0 < llvm-5.0.0-5.0.1-patch.diff;
-        # ls -R bin;
-        # cd $TRAVIS_BUILD_DIR;
       fi
 
 script:
