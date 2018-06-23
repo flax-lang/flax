@@ -489,6 +489,18 @@ namespace parser
 		return new LitTuple(loc, values);
 	}
 
+	ast::Expr* parseDollarExpr(State& st)
+	{
+		if(st.isInSubscript())
+		{
+			return new SubscriptDollarOp(st.pop().loc);
+		}
+		else
+		{
+			unexpected(st.loc(), "'$' in non-subscript context");
+		}
+	}
+
 
 	static Expr* parseParenthesised(State& st)
 	{
@@ -748,6 +760,9 @@ namespace parser
 		}
 		else if(op.type == TT::LSquare)
 		{
+			st.enterSubscript();
+			defer(st.leaveSubscript());
+
 			// if we're a colon immediately, then it's a slice expr already.
 			// either [:x] or [:]
 			Expr* slcbegin = 0;
@@ -1041,7 +1056,8 @@ namespace parser
 
 
 
-
+				case TT::Dollar:
+					return parseDollarExpr(st);
 
 				case TT::LParen:
 					return parseParenthesised(st);

@@ -39,7 +39,7 @@ namespace string
 
 	fir::Function* getBoundsCheckFunction(CodegenState* cs, bool isDecomp)
 	{
-		return saa_common::generateBoundsCheckFunction(cs, fir::Type::getString(), isDecomp);
+		return saa_common::generateBoundsCheckFunction(cs, /* isString: */ true, isDecomp);
 	}
 
 	fir::Function* getCompareFunction(CodegenState* cs)

@@ -13,7 +13,13 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	fs->pushTree(fs->getAnonymousScopeName());
+	defer(fs->popTree());
+
 	auto ls = this->expr->typecheck(fs).expr();
+	fs->enterSubscript(ls);
+	defer(fs->leaveSubscript());
+
 	auto rs = this->inside->typecheck(fs).expr();
 
 	// check what's the type
@@ -43,7 +49,25 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 }
 
 
+TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
 
+	if(!fs->isInSubscript())
+		error(this, "invalid use of '$' in non-subscript context");
+
+	else if(auto arr = fs->getCurrentSubscriptArray();
+		arr->type->isPointerType() || !(arr->type->isArraySliceType() || arr->type->isArrayType() || arr->type->isStringType()
+			|| arr->type->isDynamicArrayType()))
+	{
+		SpanError(SimpleError::make(this->loc, "invalid use of '$' on subscriptee with %stype '%s'",
+			arr->type->isPointerType() ? "pointer " : "", arr->type))
+			.add(SpanError::Span(arr->loc, "here")).postAndQuit();
+	}
+
+	return TCResult(new sst::SubscriptDollarOp(this->loc, fir::Type::getInt64()));
+}
 
 
 

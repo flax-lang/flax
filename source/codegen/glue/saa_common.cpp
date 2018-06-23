@@ -762,11 +762,10 @@ namespace saa_common
 
 
 
-	fir::Function* generateBoundsCheckFunction(CodegenState* cs, fir::Type* saa, bool isDecomp)
+	fir::Function* generateBoundsCheckFunction(CodegenState* cs, bool isString, bool isDecomp)
 	{
-		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_") + saa->str();
+		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_");
 
-		iceAssert(isSAA(saa));
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
 		if(!retfn)
@@ -799,12 +798,12 @@ namespace saa_common
 				if(isDecomp)
 				{
 					printRuntimeError(cs, func->getArguments()[2], "Index '%ld' out of bounds for "
-						+ std::string(saa->isStringType() ? "string" : "array") + " of length %ld\n", { ind, max });
+						+ std::string(isString ? "string" : "array") + " of length %ld\n", { ind, max });
 				}
 				else
 				{
 					printRuntimeError(cs, func->getArguments()[2], "Binding of '%ld' "
-						+ std::string(saa->isStringType() ? "chars" : "elements") + " out of bounds for string of length %ld\n", { ind, max });
+						+ std::string(isString ? "chars" : "elements") + " out of bounds for string of length %ld\n", { ind, max });
 				}
 			}
 

@@ -393,80 +393,13 @@ namespace sst
 
 		for(const auto& gdef : gdefs)
 		{
-			iceAssert(gdef->name == name);
+			// iceAssert(gdef->name == name);
 
 			auto [ def, err ] = attemptToInstantiateGenericThing(this, gdef, gmaps, /* infer: */ infer, /* isFnCall: */ isFnCall,
 				/* args:  */ args, /* fillplaceholders: */ true);
 
 			if(def) pots.push_back(def);
 			else    failures.push_back({ gdef, err });
-
-
-			#if 0
- 			BareError err;
-			std::unordered_map<fir::Type*, fir::Type*> substitutions;
-			std::tie(gmaps, substitutions, err) = this->inferTypesForGenericEntity(gdef, args, gmaps, infer, isFnCall);
-
-			//* note: if we manage to instantite without error, that means that we have a complete solution.
-			auto d = this->instantiateGenericEntity(gdef, gmaps);
-
-			if(d.isDefn())
-			{
-				if(isFnCall)
-				{
-					if(auto missing = isSolutionComplete(gdef->generics, gmaps, /* allowPlaceholders: */ false); missing.size() > 0)
-					{
-						auto se = SpanError().set(complainAboutMissingSolutions(this, gdef, missing));
-						se.top.loc = gdef->loc;
-
-						size_t ctr = 0;
-						for(const auto& arg : args)
-						{
-							if(arg.value->type->containsPlaceholders())
-							{
-								auto loc = arg.loc;
-								if(auto fd = dcast(FunctionDefn, d.defn()))
-									loc = fd->params[ctr].loc;
-
-								se.add(SpanError::Span(loc, strprintf("Unresolved inference placeholder(s) in argument type; partially solved as '%s'",
-									arg.value->type->substitutePlaceholders(substitutions))));
-							}
-
-							ctr++;
-						}
-
-						failures.push_back(std::make_pair(gdef, err.append(se)));
-					}
-					else
-					{
-						pots.push_back(d.defn());
-						for(FnCallArgument& arg : args)
-						{
-							//! ACHTUNG !
-							//* here, we modify the input appropriately.
-							//* i don't see a better way to do it.
-
-							iceAssert(arg.orig);
-							arg.value = arg.orig->typecheck(this, arg.value->type->substitutePlaceholders(substitutions)).expr();
-						}
-					}
-				}
-				else
-				{
-					pots.push_back(d.defn());
-				}
-			}
-			else
-			{
-				{
-					iceAssert(d.isError());
-					if(err.hasErrors())
-						d.error() = err;
-
-					failures.push_back(std::make_pair(gdef, BareError().append(d.error())));
-				}
-			}
-			#endif
 		}
 
 		if(!pots.empty())

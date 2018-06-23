@@ -123,7 +123,7 @@ namespace cgn
 
 			fir::Function* generateAppropriateAppendFunction(CodegenState* cs, fir::Type* saa, fir::Type* appendee);
 
-			fir::Function* generateBoundsCheckFunction(CodegenState* cs, fir::Type* saa, bool isDecomp);
+			fir::Function* generateBoundsCheckFunction(CodegenState* cs, bool isstring, bool isDecomp);
 
 			fir::Function* generateReserveExtraFunction(CodegenState* cs, fir::Type* saa);
 			fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa);

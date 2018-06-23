@@ -594,7 +594,13 @@ namespace ast
 		Expr* expr = 0;
 	};
 
+	struct SubscriptDollarOp : Expr
+	{
+		SubscriptDollarOp(const Location& l) : Expr(l) { this->readableName = "dollar expression"; }
+		~SubscriptDollarOp() { }
 
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+	};
 
 
 

@@ -119,6 +119,11 @@ namespace cgn
 		void enterBlock(const BlockPoint& bp);
 		void leaveBlock();
 
+		std::vector<fir::Value*> subscriptArrayLengthStack;
+		fir::Value* getCurrentSubscriptArrayLength();
+		void enterSubscriptWithLength(fir::Value* len);
+		void leaveSubscript();
+
 
 		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);

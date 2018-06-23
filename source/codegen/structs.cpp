@@ -263,9 +263,6 @@ CGResult sst::TupleDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok, if we have a pointer, then return an lvalue
 	// if not, return an rvalue
-
-	fir::Value* retv = 0;
-	fir::Value* retp = 0;
 	if(res->islorclvalue())
 	{
 		return CGResult(cs->irb.StructGEP(res.value, this->index));
