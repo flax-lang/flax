@@ -45,6 +45,16 @@ namespace fir
 	}
 
 
+	ConstantBitcast* ConstantBitcast::get(ConstantValue* v, Type* t)
+	{
+		return new ConstantBitcast(v, t);
+	}
+
+	ConstantBitcast::ConstantBitcast(ConstantValue* v, Type* t) : ConstantValue(t), value(v)
+	{
+	}
+
+
 
 
 	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, uint64_t n)
