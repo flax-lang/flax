@@ -90,21 +90,7 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 	for(size_t i = 0; i < block->statements.size(); i++)
 	{
 		auto& s = block->statements[i];
-		if(auto hb = dcast(sst::HasBlocks, s))
-		{
-			const auto& blks = hb->getBlocks();
-			for(auto b : blks)
-			{
-				auto r = checkBlockPathsReturn(fs, b, retty, faulty);
-				if(!r) faulty->push_back(b);
-
-				ret &= r;
-			}
-		}
-
-
-		// check for returns
-		else if(auto retstmt = dcast(sst::ReturnStmt, s))
+		if(auto retstmt = dcast(sst::ReturnStmt, s))
 		{
 			// ok...
 			ret = true;
@@ -130,8 +116,6 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				}
 			}
 
-			// ok, pass
-
 			if(i != block->statements.size() - 1)
 			{
 				SimpleError::make(block->statements[i + 1], "Unreachable code after return statement")
@@ -140,6 +124,27 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 
 				doTheExit();
 			}
+		}
+		else if(i == block->statements.size() - 1)
+		{
+			bool exhausted = false;
+
+			// we can only be exhaustive if we have an else case.
+			if(auto ifstmt = dcast(sst::IfStmt, s); ifstmt && ifstmt->elseCase)
+			{
+				bool all = true;
+				for(const auto& c: ifstmt->cases)
+					all &= checkBlockPathsReturn(fs, c.body, retty, faulty);
+
+				exhausted = all & checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
+			}
+			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop && whileloop->isDoVariant)
+			{
+				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
+			}
+
+			ret = exhausted;
+			if(exhausted) block->elideMergeBlock = true;
 		}
 	}
 

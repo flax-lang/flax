@@ -270,7 +270,22 @@ std::string Identifier::mangledName() const
 
 
 
+namespace util
+{
+	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map)
+	{
+		if(map.empty())
+			return name;
 
+		std::string ret;
+		for(auto m : map)
+			ret += (m.first + ":" + m.second->encodedStr()) + ",";
+
+		// shouldn't be empty.
+		iceAssert(ret.size() > 0);
+		return strprintf("%s<%s>", name, ret.substr(0, ret.length() - 1));
+	}
+}
 
 
 namespace tinyformat

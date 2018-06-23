@@ -81,6 +81,7 @@ namespace sst
 		Location closingBrace;
 
 		bool isSingleExpr = false;
+		bool elideMergeBlock = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 

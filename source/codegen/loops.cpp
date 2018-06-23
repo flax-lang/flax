@@ -11,18 +11,27 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	defer(cs->popLoc());
 
 	auto loop = cs->irb.addNewBlockAfter("loop-" + this->loc.shortString(), cs->irb.getCurrentBlock());
-	auto merge = cs->irb.addNewBlockAfter("merge-" + this->loc.shortString(), cs->irb.getCurrentBlock());
+	fir::IRBlock* merge = 0;
+
+	if(!cs->getCurrentBlockPoint().block->elideMergeBlock)
+		merge = cs->irb.addNewBlockAfter("merge-" + this->loc.shortString(), cs->irb.getCurrentBlock());
+
+	else if(!this->isDoVariant)
+		error(this, "internal error: cannot elide merge block with non-do while loop");
+
 
 
 	auto getcond = [](cgn::CodegenState* cs, Expr* c) -> fir::Value* {
 
 		auto cv = cs->oneWayAutocast(c->codegen(cs, fir::Type::getBool()), fir::Type::getBool());
 		if(cv.value->getType() != fir::Type::getBool())
-			error(c, "Non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType());
+			error(c, "non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType());
 
 		// ok
 		return cs->irb.ICmpEQ(cv.value, fir::ConstantBool::get(true));
 	};
+
+
 
 	if(this->isDoVariant)
 	{
@@ -35,16 +44,25 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		}
 		cs->leaveBreakableBody();
 
-		// ok, check if we have a condition
-		if(this->cond)
+		// if merge == NULL, that means we're suppose to elide the merge block.
+		// so, don't insert any more instructions.
+		if(merge)
 		{
-			iceAssert(this->cond);
-			auto condv = getcond(cs, this->cond);
-			cs->irb.CondBranch(condv, loop, merge);
+			iceAssert(!cs->irb.getCurrentBlock()->isTerminated());
+			if(this->cond)
+			{
+				iceAssert(this->cond);
+				auto condv = getcond(cs, this->cond);
+				cs->irb.CondBranch(condv, loop, merge);
+			}
+			else
+			{
+				cs->irb.UnCondBranch(merge);
+			}
 		}
 		else
 		{
-			cs->irb.UnCondBranch(merge);
+			iceAssert(cs->irb.getCurrentBlock()->isTerminated());
 		}
 	}
 	else
@@ -55,6 +73,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		// ok
 		iceAssert(this->cond);
+		iceAssert(merge);
 		auto condv = getcond(cs, this->cond);
 		cs->irb.CondBranch(condv, loop, merge);
 

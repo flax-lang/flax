@@ -152,7 +152,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(conflicts)
 		error(this, "conflicting");
 
-	fs->stree->addDefinition(this->name, defn);
+	fs->stree->addDefinition(this->name, defn, gmaps);
 
 	// add to our versions.
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });

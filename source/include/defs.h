@@ -120,30 +120,6 @@ namespace util
 	#else
 		#error "No string_view, or unknown type"
 	#endif
-
-	inline std::string to_string(const string_view& sv)
-	{
-		return std::string(sv.data(), sv.length());
-	}
-
-	template <typename T>
-	bool match(const T& first)
-	{
-		return true;
-	}
-
-	template <typename T, typename U>
-	bool match(const T& first, const U& second)
-	{
-		return (first == second);
-	}
-
-	template <typename T, typename U, typename... Args>
-	bool match(const T& first, const U& second, const Args&... comps)
-	{
-		return (first == second) || match(first, comps...);
-	}
-
 }
 
 namespace fir
@@ -589,6 +565,32 @@ using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
 
 namespace util
 {
+	inline std::string to_string(const string_view& sv)
+	{
+		return std::string(sv.data(), sv.length());
+	}
+
+	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
+
+	template <typename T>
+	bool match(const T& first)
+	{
+		return true;
+	}
+
+	template <typename T, typename U>
+	bool match(const T& first, const U& second)
+	{
+		return (first == second);
+	}
+
+	template <typename T, typename U, typename... Args>
+	bool match(const T& first, const U& second, const Args&... comps)
+	{
+		return (first == second) || match(first, comps...);
+	}
+
+
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
 	{
