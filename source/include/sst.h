@@ -272,6 +272,13 @@ namespace sst
 	};
 
 
+	struct SubscriptDollarOp : Expr
+	{
+		SubscriptDollarOp(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "dollar expression"; }
+		~SubscriptDollarOp() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
 
 	struct SubscriptOp : Expr
 	{
@@ -282,13 +289,7 @@ namespace sst
 
 		Expr* expr = 0;
 		Expr* inside = 0;
-
-		// to assist safety checks, store the generated things
-		fir::Value* cgSubscripteePtr = 0;
-		fir::Value* cgSubscriptee = 0;
-		fir::Value* cgIndex = 0;
 	};
-
 
 	struct SliceOp : Expr
 	{
@@ -300,13 +301,11 @@ namespace sst
 		Expr* expr = 0;
 		Expr* begin = 0;
 		Expr* end = 0;
-
-		// to assist safety checks, store the generated things
-		fir::Value* cgSubscripteePtr = 0;
-		fir::Value* cgSubscriptee = 0;
-		fir::Value* cgBegin = 0;
-		fir::Value* cgEnd = 0;
 	};
+
+
+
+
 
 	struct FunctionCall : Expr
 	{
@@ -642,7 +641,6 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
-
 
 
 	struct DecompDefn : Stmt

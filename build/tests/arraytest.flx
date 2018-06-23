@@ -39,19 +39,23 @@ public fn doArrayTest()
 	dynamicArrays()
 }
 
-public fn foldl(first: int, arr: [int:], f: fn(int, int) -> int) -> int
+// public fn foldl(first: int, arr: [int:], f: fn(int, int) -> int) -> int
+// {
+// 	if arr.length == 0 { return first }
+// 	return 10
+// 	// return foldl(f(first, pop(&arr as mut)), arr[:arr.length], f)
+// }
+
+fn foldl<T>(arr: [T:], x: T, f: fn(T, T) -> T) -> T
 {
-	if arr.length == 0 { return first }
-	return 10
-	// return foldl(f(first, pop(&arr as mut)), arr[:arr.length], f)
+	if arr.length == 0 => return 0
+	return foldl(arr[1:], f(x, arr[0]), f)
 }
 
-fn pop<T>(s: &mut [T:]) -> T
+fn foldr<T>(arr: [T:], x: T, f: fn(T, T) -> T) -> T
 {
-	let ret = (*s)[(*s).length - 1]
-	*s = (*s)[0:(*s).length - 1]
-
-	return ret
+	if arr.length == 0 => return 0
+	return f(foldr(arr[:$-1], arr[0], f), x)
 }
 
 fn f(a: int, b: int) -> int
@@ -113,7 +117,7 @@ fn dynamicArrays()
 
 		let fib = setup(5)
 
-		let sum = foldl(1, fib, f)
+		let sum = foldl(fib, 1, f)
 		libc.printf("sum = %ld\n", sum)
 	}
 }

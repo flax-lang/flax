@@ -1,5 +1,12 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- no longer stack allocate for arguments
+- new lvalue/rvalue system in the IRBuilder, to make our lives slightly easier; we no longer need to pass a value/pointer pair,
+	and we handle the thing in the translator -- not very complicated.
+- add `$` as an alias for `.length` when in a subscript or slicing context, similar to how D does it.
+- we currently have a bug where we cannot recursively instantiate a generic function.
+
 `(fdc65d7)`
 - factor the any-making/getting stuff into functions for less IR mess.
 - fix a massive bug in `alloc` where we never called the user-code, or set the length.

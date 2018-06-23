@@ -51,10 +51,16 @@ namespace lexer
 	static bool shouldConsiderUnaryLiteral(string_view& stream, Location& pos)
 	{
 		// check the previous token
-		bool res = (prevType != TokenType::Invalid && prevID == pos.fileID && (prevType != TokenType::RParen && prevType != TokenType::RSquare
-			&& prevType != TokenType::Identifier && prevType != TokenType::Number && prevType != TokenType::StringLiteral));
+		bool should = (prevType != TokenType::Invalid && prevID == pos.fileID && (
+			prevType != TokenType::RParen &&
+			prevType != TokenType::RSquare &&
+			prevType != TokenType::Identifier &&
+			prevType != TokenType::Number &&
+			prevType != TokenType::Dollar &&
+			prevType != TokenType::StringLiteral
+		));
 
-		if(!res) return false;
+		if(!should) return false;
 
 		// check if the current char is a + or -
 		if(stream.length() == 0) return false;

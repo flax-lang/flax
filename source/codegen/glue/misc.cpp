@@ -22,7 +22,7 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 
 	#ifdef _WIN32
 	{
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s: " + message).c_str());
+		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
 		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
 		std::vector<fir::Value*> as = { fmtstr, posstr };
@@ -32,20 +32,18 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 	}
 	#else
 	{
-		fir::Value* tmpstr = cs->module->createGlobalString("r");
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s: " + message).c_str());
+		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
 		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
-		fir::Value* err = cs->irb.Call(cs->getOrDeclareLibCFunction(CRT_FDOPEN), fir::ConstantInt::getInt32(2), tmpstr);
-
-		std::vector<fir::Value*> as = { err, fmtstr, posstr };
+		std::vector<fir::Value*> as = { fmtstr, posstr };
 		as.insert(as.end(), args.begin(), args.end());
 
-		cs->irb.Call(cs->getOrDeclareLibCFunction("fprintf"), as);
+		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
 	}
 	#endif
 
 
+	// cs->irb.Call(cs->getOrDeclareLibCFunction("exit"), fir::ConstantInt::getInt32(1));
 	cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
 	cs->irb.Unreachable();
 

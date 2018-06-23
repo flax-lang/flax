@@ -63,6 +63,8 @@ static void compile(std::string in, std::string out)
 		compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
 		compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
 
+	fprintf(stderr, "%ld FIR values generated\n", fir::ConstantBool::get(false)->id);
+
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);

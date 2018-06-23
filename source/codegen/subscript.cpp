@@ -11,87 +11,44 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	// first gen the inside
-	fir::Value* index = this->inside->codegen(cs).value;
-	iceAssert(index->getType()->isIntegerType() || index->getType()->isConstantNumberType());
-	if(index->getType()->isConstantNumberType())
-	{
-		auto cv = dcast(fir::ConstantValue, index);
-		iceAssert(cv);
-
-		index = cs->unwrapConstantNumber(cv);
-	}
-
-	// of course these will have to be changed eventually
-	iceAssert(index);
-	iceAssert(index->getType()->isIntegerType());
-
 	// check what's the left
 	auto lr = this->expr->codegen(cs);
 	auto lt = lr.value->getType();
 
-	// assists checking for literal writes later on
-	// this->cgSubscripteePtr = lr.pointer;
+	fir::Function* boundscheckfn = cgn::glue::saa_common::generateBoundsCheckFunction(cs,
+		/* isString: */ lt->isStringType(), /* isDecomp: */false);;
 
-	this->cgSubscriptee = lr.value;
-	this->cgIndex = index;
+	fir::Value* datapointer = 0;
+	fir::Value* maxlength = 0;
 
-	fir::Value* data = 0;
-	if(lt->isDynamicArrayType() || lt->isArraySliceType() || lt->isArrayType())
+	if(lt->isStringType() || lt->isDynamicArrayType())
 	{
-		// ok, do the thing
-		auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, false);
-		iceAssert(checkf);
-
-		fir::Value* max = 0;
-		if(lt->isDynamicArrayType())	max = cs->irb.GetSAALength(lr.value);
-		else if(lt->isArraySliceType())	max = cs->irb.GetArraySliceLength(lr.value);
-		else if(lt->isArrayType())		max = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
-
-		auto ind = index;
-		auto locstr = fir::ConstantString::get(this->loc.toString());
-
-		// call it
-		cs->irb.Call(checkf, max, ind, locstr);
-
-		// ok.
-		if(lt->isArrayType())
-		{
-			// TODO: LVALUE HOLE
-			if(lr->islorclvalue())
-			{
-				return CGResult(cs->irb.Dereference(cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getInt64(0), ind)));
-			}
-			else
-			{
-				// return CGResult(cs->irb.ExtractValue(lr.value, { ind }));
-				error("NOT SUP");
-			}
-		}
-		else if(lt->isDynamicArrayType())
-		{
-			data = cs->irb.GetSAAData(lr.value);
-		}
-		else if(lt->isArraySliceType())
-		{
-			data = cs->irb.GetArraySliceData(lr.value);
-		}
+		datapointer = cs->irb.GetSAAData(lr.value);
+		maxlength = cs->irb.GetSAALength(lr.value);
 	}
-	else if(lt->isStringType())
+	else if(lt->isArraySliceType())
 	{
-		// bounds check
-		auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, false);
-		iceAssert(checkf);
-
-		auto locstr = fir::ConstantString::get(this->loc.toString());
-
-		// call it
-		cs->irb.Call(checkf, cs->irb.GetSAALength(lr.value), index, locstr);
-		data = cs->irb.GetSAAData(lr.value);
+		datapointer = cs->irb.GetArraySliceData(lr.value);
+		maxlength = cs->irb.GetArraySliceLength(lr.value);
+	}
+	else if(lt->isArrayType())
+	{
+		// TODO: LVALUE HOLE
+		if(lr->islorclvalue())
+		{
+			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getInt64(0),
+				fir::ConstantInt::getInt64(0));
+			maxlength = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
+		}
+		else
+		{
+			error("NOT SUP");
+		}
 	}
 	else if(lt->isPointerType())
 	{
-		data = lr.value;
+		datapointer = lr.value;
+		maxlength = 0;
 	}
 	else
 	{
@@ -99,14 +56,38 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 
-	// ok, do it
-	fir::Value* ptr = cs->irb.GetPointer(data, index);
-	// fir::Value* val = cs->irb.ReadPtr(ptr);
+	// first gen the inside
+	fir::Value* index = this->inside->codegen(cs).value;
+	{
+		if(index->getType()->isConstantNumberType())
+		{
+			auto cv = dcast(fir::ConstantValue, index);
+			iceAssert(cv);
 
+			index = cs->unwrapConstantNumber(cv);
+		}
+
+		// of course these will have to be changed eventually
+		iceAssert(index->getType()->isIntegerType());
+	}
+
+	if(maxlength)
+		cs->irb.Call(boundscheckfn, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+
+	// ok, do it
+	fir::Value* ptr = cs->irb.GetPointer(datapointer, index);
 	return CGResult(cs->irb.Dereference(ptr));
 }
 
 
+
+CGResult sst::SubscriptDollarOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	return CGResult(cs->getCurrentSubscriptArrayLength());
+}
 
 
 

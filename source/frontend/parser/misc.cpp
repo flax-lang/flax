@@ -103,17 +103,17 @@ namespace parser
 
 void expected(const Location& loc, std::string a, std::string b)
 {
-	error(loc, "Expected %s, found '%s' instead", a, b);
+	error(loc, "expected %s, found '%s' instead", a, b);
 }
 
 void expectedAfter(const Location& loc, std::string a, std::string b, std::string c)
 {
-	error(loc, "Expected %s after %s, found '%s' instead", a, b, c);
+	error(loc, "expected %s after %s, found '%s' instead", a, b, c);
 }
 
 void unexpected(const Location& loc, std::string a)
 {
-	error(loc, "Unexpected %s", a);
+	error(loc, "unexpected %s", a);
 }
 
 

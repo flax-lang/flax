@@ -11,8 +11,10 @@ import "stdio" as _
 
 @entry fn main()
 {
-	// println("hello, %, %!", "world", 50)
-	printf("HELLO, %d\n", 30)
+	println("hello, %, %!", "world", 50)
+	let slc = [1, 2, 3, 4][:$-3]
+
+	println("slice length = %", slc.length)
 }
 
 
@@ -65,23 +67,6 @@ import "stdio" as _
 	17. refcounted moving is broken -- not sure if design flaw or not. investigate.
 */
 
-/*
-	! THOUGHT-TRAIN-SAVING !
-
-	so, supertiny works but tester does not. I think i've narrowed down the issue here to the class access where the self
-	pointer is in itself a pointer???
-
-	eg. let foo = alloc SomeClass
-	foo.some_field = 30
-
-	so in this case 'foo' is an lvalue, but the type of the lvalue itself is already a pointer.
-	there might be something funny going on inside getAppropriateValuePointer,
-
-	but the real death-location is in the translator's GetStructMember. From what I can tell, the pointer
-	operand that we are passing it is actually a pointer-to-pointer-to-Node, which is why it fails miserably.
-
-	can't finish debugging this, fuck the saf.
-*/
 
 
 
