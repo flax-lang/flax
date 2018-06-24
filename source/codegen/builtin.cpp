@@ -73,16 +73,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto newarr = cs->irb.ExtractValue(tupl, { 0 });
 			auto retelm = cs->irb.ExtractValue(tupl, { 1 });
 
-			//* over here, we don't need to worry about ref-counting; lhs is an l-value, meaning that we stored a
-			//* refcounted *pointer*. Since the pointer doesn't change, only the value stored within, we don't
-			//* need any special-case handling here.
-
-			//* there are cases (ie. function arguments) where we are an lvalue, but we don't have a pointer.
-			//* in those cases, we just don't store anything.
-			// if(res.pointer)
-
 			cs->irb.Store(newarr, res.value);
-
 			return CGResult(retelm);
 		}
 		else if(this->name == BUILTIN_SAA_FN_APPEND)
