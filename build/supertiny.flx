@@ -7,18 +7,22 @@ export supertiny
 import "libc" as _
 import "math" as _
 
-import "stdio" as _
+// import "stdio" as _
 
-fn recurse<T>(x: T, y: T) -> T
-{
-	if x == 0   => return y
-	else        => return y + recurse(x - 1, y)
-}
 
 @entry fn main()
 {
-	let x = recurse(10, 5)
-	println("x = %", x)
+	var x = string("ONE")
+	if false
+	{
+		x = string("TWOO")
+	}
+	else
+	{
+		x = string("THREE")
+	}
+
+	printf("x.length = %d\n", x.length)
 }
 
 
@@ -70,6 +74,7 @@ fn recurse<T>(x: T, y: T) -> T
 	// 16. overloading based on signedness seems to fail.
 	17. refcounted moving is broken -- not sure if design flaw or not. investigate.
 */
+
 
 
 
