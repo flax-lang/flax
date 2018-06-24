@@ -9,20 +9,25 @@ import "math" as _
 
 // import "stdio" as _
 
-
 @entry fn main()
 {
-	var x = string("ONE")
-	if false
+	fn foo()
 	{
-		x = string("TWOO")
-	}
-	else
-	{
-		x = string("THREE")
+		var x = string("ONE")
+		if true
+		{
+			var y: any
+			y = x
+		}
+		else
+		{
+
+		}
+
+		printf("x.length = %d\n", x.length)
 	}
 
-	printf("x.length = %d\n", x.length)
+	foo()
 }
 
 
