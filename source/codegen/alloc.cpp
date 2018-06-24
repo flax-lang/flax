@@ -176,7 +176,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		arr = cs->irb.SetSAALength(arr, count);
 
 		callSetFunction(type, alloc, cs->irb.GetSAAData(arr), count);
-		// arr->setKind(fir::Value::Kind::clvalue);
+		arr->setKind(fir::Value::Kind::literal);
 
 		return arr;
 	}

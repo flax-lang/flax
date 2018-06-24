@@ -113,7 +113,7 @@ void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* a
 	this->valueMap[var] = CGResult(alloc);
 
 	if(val.value)
-		this->autoAssignRefCountedValue(alloc, val.value, true, !var->immutable);
+		this->autoAssignRefCountedValue(alloc, val.value, /* isInitial: */ true, /* performStore: */ !var->immutable);
 
 	if(this->isRefCountedType(var->type))
 		this->addRefCountedValue(alloc);

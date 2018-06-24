@@ -281,7 +281,7 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
 		{
-			cs->printIRDebugMessage("\n! BLOCKEND: at: " + this->loc.shortString() + "\n{", { });
+			cs->printIRDebugMessage("\n! BLOCKEND: at: " + this->closingBrace.shortString() + "\n{", { });
 			cs->pushIRDebugIndentation();
 		}
 		#endif

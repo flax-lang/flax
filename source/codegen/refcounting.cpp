@@ -128,11 +128,11 @@ namespace cgn
 
 		if(this->isRefCountedType(rhs->getType()))
 		{
-			// if(rhs->islorclvalue())
+			if(rhs->islorclvalue())
 				this->performRefCountingAssignment(lhs, rhs, isinit);
 
-			// else
-				// this->moveRefCountedValue(lhs, rhs, isinit);
+			else
+				this->moveRefCountedValue(lhs, rhs, isinit);
 		}
 
 		if(performstore)
