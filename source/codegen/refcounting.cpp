@@ -30,14 +30,15 @@ namespace cgn
 
 	void CodegenState::addRefCountedValue(fir::Value* val)
 	{
+		// warn(this->loc(), "add id %d", val->id);
 		_addRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value");
 	}
 
 	void CodegenState::removeRefCountedValue(fir::Value* val, bool ignore)
 	{
+		// warn(this->loc(), "remove id %d", val->id);
 		_removeRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value", ignore);
 	}
-
 
 	void CodegenState::addRefCountedPointer(fir::Value* val)
 	{
@@ -125,6 +126,7 @@ namespace cgn
 			}
 		}
 
+		warn(this->loc(), "hi (%d)", rhs->islorclvalue());
 
 		if(this->isRefCountedType(rhs->getType()))
 		{

@@ -51,7 +51,10 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
 
 			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getInt64(0));
-			// ret->setKind(fir::Value::Kind::clvalue);
+
+			iceAssert(cs->isRefCountedType(ret->getType()));
+			cs->addRefCountedValue(ret);
+
 			return CGResult(ret);
 		}
 		else if(this->name == BUILTIN_ARRAY_FN_POP)
