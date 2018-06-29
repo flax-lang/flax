@@ -9,25 +9,18 @@ import "math" as _
 
 // import "stdio" as _
 
+var glob: any
 @entry fn main()
 {
-	fn foo()
+	fn foo(x: any)
 	{
-		var x = string("ONE")
-		if true
+		if(x is int)
 		{
-			var y: any
-			y = x
+			glob = x
 		}
-		else
-		{
-
-		}
-
-		printf("x.length = %d\n", x.length)
 	}
 
-	foo()
+	foo(30)
 }
 
 

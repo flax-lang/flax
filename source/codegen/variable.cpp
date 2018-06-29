@@ -79,27 +79,9 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->init)
 	{
 		res = this->init->codegen(cs, this->type);
-		auto newres = cs->oneWayAutocast(res, this->type);
+		res = cs->oneWayAutocast(res, this->type);
 
-
-		{
-
-			/*
-				TODO:
-
-				problem: if init needs to be casted, then it's no longer an lvalue
-				so, later on when we autoAssign, we'll do the rvalue thing and try to
-				remove it from the stack, which isn't going to work (since the casted
-				rvalue was never in the stack to begin with)
-
-				so, we need to do something about this.
-
-				out of time again...
-			*/
-		}
-
-		iceAssert(newres.value && newres.value->getType() == this->type);
-		val = newres.value;
+		val = res.value;
 	}
 
 	if(!val) val = cs->getDefaultValue(this->type);
@@ -186,8 +168,8 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(value->getType() != this->type)
 		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
-	if(!value->islorclvalue())
-		error(this, "is not lvalue???");
+	// if(!value->islorclvalue())
+	// 	warn(this, "is not lvalue???");
 
 	return CGResult(value);
 }
