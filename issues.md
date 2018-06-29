@@ -198,7 +198,57 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 
 	So for now, we are documenting that `any` does not care about reference counting, and deal with it later.
 
+
+
+13. A similar issue with refcounting for casting, though i'm not entirely sure if this is a real issue or just something that i'm imagining.
+
+	So, when we assign something `x = y`, then it is necessary that the types of `x` and `y` are the same. Then, if the type in question is a
+	reference counted type, we do some `autoAssignRefCountedValue()`, that does separate things for lvalues and rvalues. If the right-hand side
+	is an lvalue, then we increment its reference count; else, we perform a 'move' of the rvalue by removing it from the reference-counting stack.
+
+	The problem comes when we need to cast `y` to the type of `x`. If we had to do a cast, that means that we transform the (potential) rhs-lvalue into
+	an rvalue. This means that, if the rhs was originally an lvalue, we would try to remove the output of the casting op from the refcounting stack,
+	which it doesn't exist in.
+
+	So, we will add the output of the casting op to the refcounting list, if the output type is reference counted. The issue comes with how we handle
+	the reference count of the *original* rhs.
+
+	The potential cases that I can think of where we might get some trouble involves `any`:
+
+	```rust
+	let x = string("hello")
+	let b: any = x
+	```
+
+	In this case, `x` is an lvalue that gets casted to an rvalue of type `any`. In the assignment, we remove the casted rvalue from the rc-stack,
+	(assuming we implement the fix above), then just do the store.
+
+	```rust
+	let x: any = string("world")
+	let y = x as string
+	```
+
+	In this case, it's a similar thing; if we apply the mentioned fix, I don't *see* any issues...
+
+	TODO: actually investigate this properly.
+
 -----
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

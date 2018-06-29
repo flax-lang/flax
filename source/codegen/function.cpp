@@ -132,8 +132,7 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto fn = cs->getCurrentFunction();
 
-	// get the arguments
-	auto arg = fn->getArgumentWithName(this->id.name);
+	auto arg = cs->irb.CreateConstLValue(fn->getArgumentWithName(this->id.name), this->id.name);
 	if(cs->isRefCountedType(arg->getType()))
 		cs->addRefCountedValue(arg);
 

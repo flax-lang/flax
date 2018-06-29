@@ -131,31 +131,33 @@ namespace cgn
 		auto fromType = from.value->getType();
 		if(fromType == target) return from;
 
+		auto result = CGResult();
+
 		if(fromType->isNullType() && target->isPointerType())
 		{
-			return CGResult(this->irb.PointerTypeCast(from.value, target));
+			result = CGResult(this->irb.PointerTypeCast(from.value, target));
 		}
 		else if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
 			&& target->getBitWidth() >= fromType->getBitWidth())
 		{
-			return CGResult(this->irb.IntSizeCast(from.value, target));
+			result = CGResult(this->irb.IntSizeCast(from.value, target));
 		}
 		else if(fromType->isPointerType() && target->isBoolType())
 		{
 			//* support implicit casting for null checks
-			return CGResult(this->irb.ICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
+			result = CGResult(this->irb.ICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
 		}
 		else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
 		{
-			return CGResult(this->irb.FExtend(from.value, target));
+			result = CGResult(this->irb.FExtend(from.value, target));
 		}
 		else if(fromType->isCharSliceType() && target == fir::Type::getInt8Ptr())
 		{
-			return CGResult(this->irb.GetArraySliceData(from.value));
+			result = CGResult(this->irb.GetArraySliceData(from.value));
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			return CGResult(this->irb.GetSAAData(from.value));
+			result = CGResult(this->irb.GetSAAData(from.value));
 		}
 		else if(fromType->isStringType() && target->isCharSliceType())
 		{
@@ -163,7 +165,7 @@ namespace cgn
 			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
 			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
 
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
@@ -172,32 +174,32 @@ namespace cgn
 			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
 			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
 
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType()->isClassType()
 			&& fromType->getPointerElementType()->toClassType()->isInParentHierarchy(target->getPointerElementType()))
 		{
 			auto ret = this->irb.PointerTypeCast(from.value, target);
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType() == target->getPointerElementType()
 			&& fromType->isMutablePointer() && target->isImmutablePointer())
 		{
 			auto ret = this->irb.PointerTypeCast(from.value, target);
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isArraySliceType() && target->isVariadicArrayType() && (fromType->getArrayElementType() == target->getArrayElementType()))
 		{
 			//* note: we can cheat, since at the llvm level there's no mutability distinction.
 			auto ret = this->irb.Bitcast(from.value, target);
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isArraySliceType() && target->isArraySliceType() && (fromType->getArrayElementType() == target->getArrayElementType())
 			&& fromType->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
 		{
 			//* note: same cheat here.
 			auto ret = this->irb.Bitcast(from.value, target);
-			return CGResult(ret);
+			result = CGResult(ret);
 		}
 		else if(fromType->isTupleType() && target->isTupleType() && fromType->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
@@ -206,15 +208,21 @@ namespace cgn
 
 			auto tuple = this->irb.CreateValue(target);
 
+			bool failed = false;
 			for(size_t i = 0; i < ttt->getElementCount(); i++)
 			{
 				auto res = this->oneWayAutocast(CGResult(this->irb.ExtractValue(from.value, { i })), ttt->getElementN(i));
-				if(res.value == 0) goto LABEL_failure;
+				if(res.value == 0)
+				{
+					failed = true;
+					break;
+				}
 
 				tuple = this->irb.InsertValue(tuple, { i }, res.value);
 			}
 
-			return CGResult(tuple);
+			if(!failed)
+				result = CGResult(tuple);
 		}
 		else if(target->isAnyType())
 		{
@@ -222,15 +230,25 @@ namespace cgn
 			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from.value->getType());
 			iceAssert(fn);
 
-			return CGResult(this->irb.Call(fn, from.value));
+			result = CGResult(this->irb.Call(fn, from.value));
 		}
 
-		// nope.
-		//! ACHTUNG !
-		//* ew, goto.
-		LABEL_failure:
-		error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
-		return CGResult(0);
+
+		if(!result.value)
+		{
+			// nope.
+			//! ACHTUNG !
+			//* ew, goto.
+			error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
+			return CGResult(0);
+		}
+		else
+		{
+			if(this->isRefCountedType(result.value->getType()))
+				this->addRefCountedValue(result.value);
+
+			return result;
+		}
 	}
 
 	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)

@@ -126,7 +126,7 @@ namespace cgn
 			}
 		}
 
-		warn(this->loc(), "hi (%d)", rhs->islorclvalue());
+		// warn(this->loc(), "hi (%d)", rhs->islorclvalue());
 
 		if(this->isRefCountedType(rhs->getType()))
 		{
