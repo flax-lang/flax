@@ -11,12 +11,12 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto start = cs->oneWayAutocast(this->start->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+	auto start = cs->oneWayAutocast(this->start->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
 	iceAssert(start);
 	if(!start->getType()->isIntegerType())
 		error(this->start, "Expected integer type in range expression (start), found '%s' instead", start->getType());
 
-	auto end = cs->oneWayAutocast(this->end->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+	auto end = cs->oneWayAutocast(this->end->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
 	iceAssert(end);
 	if(!end->getType()->isIntegerType())
 		error(this->end, "Expected integer type in range expression (end), found '%s' instead", end->getType());
@@ -29,7 +29,7 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// if start > end, the automatic step should be -1. else, it should be 1 as normal.
 	fir::Value* step = (this->step ?
-		cs->oneWayAutocast(this->step->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value :
+		cs->oneWayAutocast(this->step->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64()) :
 		cs->irb.Select(cs->irb.ICmpLEQ(start, end), fir::ConstantInt::getInt64(1), fir::ConstantInt::getInt64(-1))
 	);
 

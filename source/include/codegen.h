@@ -125,11 +125,12 @@ namespace cgn
 		void leaveSubscript();
 
 
-		CGResult performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs, std::pair<Location, CGResult> rhs, std::string op);
+		CGResult performBinaryOperation(const Location& loc, std::pair<Location, fir::Value*> lhs, std::pair<Location, fir::Value*> rhs,
+			std::string op);
 		CGResult performLogicalBinaryOperation(sst::BinaryOp* bo);
 
-		std::pair<CGResult, CGResult> autoCastValueTypes(const CGResult& lhs, const CGResult& rhs);
-		CGResult oneWayAutocast(const CGResult& from, fir::Type* target);
+		std::pair<fir::Value*, fir::Value*> autoCastValueTypes(fir::Value* lhs, fir::Value* rhs);
+		fir::Value* oneWayAutocast(fir::Value* from, fir::Type* target);
 
 		fir::Value* getDefaultValue(fir::Type* type);
 

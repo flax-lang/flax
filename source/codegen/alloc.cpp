@@ -139,7 +139,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 	if(counts.empty() || isRaw)
 	{
 		fir::Value* cnt = (counts.empty() ? fir::ConstantInt::getInt64(1)
-			: cs->oneWayAutocast(counts[0]->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value);
+			: cs->oneWayAutocast(counts[0]->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64()));
 
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
@@ -159,7 +159,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 	{
 		auto ecount = counts[0];
 
-		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
 		if(!count || !count->getType()->isIntegerType())
 			error(ecount, "Expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
 

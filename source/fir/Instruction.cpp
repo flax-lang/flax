@@ -159,6 +159,11 @@ namespace fir
 			case OpKind::Enum_GetValue:                     instrname = "get_enum.value"; break;
 			case OpKind::Enum_SetValue:                     instrname = "set_enum.value"; break;
 
+
+			case OpKind::Union_SetValue:                    instrname = "set_union.value"; break;
+			case OpKind::Union_GetValue:                    instrname = "get_union.value"; break;
+			case OpKind::Union_GetVariantID:                instrname = "get_union.id"; break;
+
 			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
 			case OpKind::Value_Store:                       instrname = "store"; break;
 			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;

@@ -185,7 +185,7 @@ namespace any
 			cs->irb.SetAnyRefCount(any, fir::ConstantInt::getInt64(1));
 
 			size_t tid = type->getID();
-			if(auto typesz = cs->module->getSizeOfType(type); typesz > BUILTIN_ANY_DATA_BYTECOUNT)
+			if(auto typesz = fir::getSizeOfType(type); typesz > BUILTIN_ANY_DATA_BYTECOUNT)
 			{
 				tid |= BUILTIN_ANY_FLAG_MASK;
 
@@ -269,7 +269,7 @@ namespace any
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				if(cs->module->getSizeOfType(type) > BUILTIN_ANY_DATA_BYTECOUNT)
+				if(fir::getSizeOfType(type) > BUILTIN_ANY_DATA_BYTECOUNT)
 				{
 					// same as above, but in reverse.
 					auto arrptr = cs->irb.StackAlloc(dataarrty);

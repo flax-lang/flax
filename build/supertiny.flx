@@ -5,12 +5,10 @@
 export supertiny
 
 import "libc" as _
-import "math" as _
-
-// import "stdio" as _
+import "stdio" as _
 
 var glob: any
-@entry fn main()
+fn test_refcounting_problem_thing()
 {
 	fn foo(x: any)
 	{
@@ -24,6 +22,34 @@ var glob: any
 }
 
 
+@entry fn main()
+{
+	union either
+	{
+		a: string
+		b: int
+	}
+
+	var x: either = either.b(30)
+
+
+	// struct outer
+	// {
+	// 	class inner
+	// 	{
+	// 		var x: int
+
+	// 		init(a: int, b: int)
+	// 		{
+	// 			x = a * b
+	// 		}
+	// 	}
+	// }
+
+	// let foo = outer.inner(a: 30, b: 40)
+	// println("foo.x = %", foo.x)
+}
+
 
 /*
 	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
@@ -36,7 +62,7 @@ var glob: any
 	// 3. variadic functions
 	// 3a. make variadic forwarding work properly
 	// 5. fix SAA types {
-	// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing. return `0`.
+	// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing.
 	// 	b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
 	// 	c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
 	// }
@@ -70,7 +96,7 @@ var glob: any
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
 	}
 	// 16. overloading based on signedness seems to fail.
-	17. refcounted moving is broken -- not sure if design flaw or not. investigate.
+	// 17. refcounted moving is broken -- not sure if design flaw or not. investigate.
 */
 
 

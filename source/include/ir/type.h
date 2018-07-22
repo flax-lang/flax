@@ -24,6 +24,7 @@ namespace fir
 	struct TupleType;
 	struct ClassType;
 	struct RangeType;
+	struct UnionType;
 	struct StructType;
 	struct StringType;
 	struct PointerType;
@@ -53,6 +54,7 @@ namespace fir
 		Tuple,
 		Class,
 		Range,
+		Union,
 		Struct,
 		String,
 		Pointer,
@@ -63,6 +65,10 @@ namespace fir
 		ConstantNumber,
 		PolyPlaceholder,
 	};
+
+	// in theory.
+	size_t getSizeOfType(Type* type);
+	size_t getAlignmentOfType(Type* type);
 
 	struct Type
 	{
@@ -102,6 +108,7 @@ namespace fir
 		StringType* toStringType();
 		RangeType* toRangeType();
 		ClassType* toClassType();
+		UnionType* toUnionType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		BoolType* toBoolType();
@@ -112,6 +119,7 @@ namespace fir
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
 
+		bool isUnionType();
 		bool isTupleType();
 		bool isClassType();
 		bool isStructType();
@@ -504,6 +512,39 @@ namespace fir
 	};
 
 
+	struct UnionType : Type
+	{
+		friend struct Type;
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
+
+		Identifier getTypeName();
+
+		size_t getVariantCount();
+		std::unordered_map<std::string, Type*> getVariants();
+
+		bool hasVariant(const std::string& name);
+		Type* getVariantType(const std::string& name);
+		Type* getVariantType(size_t id);
+		void setBody(const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
+
+		virtual ~UnionType() override { }
+		protected:
+
+		UnionType(const Identifier& id, const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
+
+		Identifier unionName;
+		std::unordered_map<std::string, Type*> variants;
+		std::unordered_map<std::string, size_t> indexMap;
+		std::unordered_map<size_t, std::string> revIndexMap;
+
+		public:
+		static UnionType* create(const Identifier& id, const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
+		static UnionType* createWithoutBody(const Identifier& id);
+	};
 
 
 	struct StructType : Type

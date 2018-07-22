@@ -12,7 +12,6 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	iceAssert(this->type && this->type->isStructType());
-	// cs->typeDefnMap[this->type] = this;
 
 	for(auto nt : this->nestedTypes)
 		nt->codegen(cs);

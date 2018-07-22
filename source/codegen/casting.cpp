@@ -126,80 +126,82 @@ namespace cgn
 
 	// TODO: maybe merge/refactor this and the two-way autocast into one function,
 	// there's a bunch of duplication here
-	CGResult CodegenState::oneWayAutocast(const CGResult& from, fir::Type* target)
+	fir::Value* CodegenState::oneWayAutocast(fir::Value* from, fir::Type* target)
 	{
-		auto fromType = from.value->getType();
+		if(!from) return 0;
+
+		auto fromType = from->getType();
 		if(fromType == target) return from;
 
-		auto result = CGResult();
+		fir::Value* result = 0;
 
 		if(fromType->isNullType() && target->isPointerType())
 		{
-			result = CGResult(this->irb.PointerTypeCast(from.value, target));
+			result = this->irb.PointerTypeCast(from, target);
 		}
 		else if(fromType->isIntegerType() && target->isIntegerType() && fromType->isSignedIntType() == target->isSignedIntType()
 			&& target->getBitWidth() >= fromType->getBitWidth())
 		{
-			result = CGResult(this->irb.IntSizeCast(from.value, target));
+			result = this->irb.IntSizeCast(from, target);
 		}
 		else if(fromType->isPointerType() && target->isBoolType())
 		{
 			//* support implicit casting for null checks
-			result = CGResult(this->irb.ICmpNEQ(from.value, fir::ConstantValue::getZeroValue(fromType)));
+			result = this->irb.ICmpNEQ(from, fir::ConstantValue::getZeroValue(fromType));
 		}
 		else if(fromType->isFloatingPointType() && target->isFloatingPointType() && target->getBitWidth() >= fromType->getBitWidth())
 		{
-			result = CGResult(this->irb.FExtend(from.value, target));
+			result = this->irb.FExtend(from, target);
 		}
 		else if(fromType->isCharSliceType() && target == fir::Type::getInt8Ptr())
 		{
-			result = CGResult(this->irb.GetArraySliceData(from.value));
+			result = this->irb.GetArraySliceData(from);
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			result = CGResult(this->irb.GetSAAData(from.value));
+			result = this->irb.GetSAAData(from);
 		}
 		else if(fromType->isStringType() && target->isCharSliceType())
 		{
 			auto ret = this->irb.CreateValue(target);
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from));
 
-			result = CGResult(ret);
+			result = ret;
 		}
 		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
 		{
 			// ok, then
 			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), target->toArraySliceType()->isMutable()));
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from.value));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from.value));
+			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from));
+			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from));
 
-			result = CGResult(ret);
+			result = ret;
 		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType()->isClassType()
 			&& fromType->getPointerElementType()->toClassType()->isInParentHierarchy(target->getPointerElementType()))
 		{
-			auto ret = this->irb.PointerTypeCast(from.value, target);
-			result = CGResult(ret);
+			auto ret = this->irb.PointerTypeCast(from, target);
+			result = ret;
 		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType() == target->getPointerElementType()
 			&& fromType->isMutablePointer() && target->isImmutablePointer())
 		{
-			auto ret = this->irb.PointerTypeCast(from.value, target);
-			result = CGResult(ret);
+			auto ret = this->irb.PointerTypeCast(from, target);
+			result = ret;
 		}
 		else if(fromType->isArraySliceType() && target->isVariadicArrayType() && (fromType->getArrayElementType() == target->getArrayElementType()))
 		{
 			//* note: we can cheat, since at the llvm level there's no mutability distinction.
-			auto ret = this->irb.Bitcast(from.value, target);
-			result = CGResult(ret);
+			auto ret = this->irb.Bitcast(from, target);
+			result = ret;
 		}
 		else if(fromType->isArraySliceType() && target->isArraySliceType() && (fromType->getArrayElementType() == target->getArrayElementType())
 			&& fromType->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
 		{
 			//* note: same cheat here.
-			auto ret = this->irb.Bitcast(from.value, target);
-			result = CGResult(ret);
+			auto ret = this->irb.Bitcast(from, target);
+			result = ret;
 		}
 		else if(fromType->isTupleType() && target->isTupleType() && fromType->toTupleType()->getElementCount() == target->toTupleType()->getElementCount())
 		{
@@ -211,50 +213,50 @@ namespace cgn
 			bool failed = false;
 			for(size_t i = 0; i < ttt->getElementCount(); i++)
 			{
-				auto res = this->oneWayAutocast(CGResult(this->irb.ExtractValue(from.value, { i })), ttt->getElementN(i));
-				if(res.value == 0)
+				auto res = this->oneWayAutocast(this->irb.ExtractValue(from, { i }), ttt->getElementN(i));
+				if(res == 0)
 				{
 					failed = true;
 					break;
 				}
 
-				tuple = this->irb.InsertValue(tuple, { i }, res.value);
+				tuple = this->irb.InsertValue(tuple, { i }, res);
 			}
 
 			if(!failed)
-				result = CGResult(tuple);
+				result = tuple;
 		}
 		else if(target->isAnyType())
 		{
 			// great.
-			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from.value->getType());
+			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from->getType());
 			iceAssert(fn);
 
-			result = CGResult(this->irb.Call(fn, from.value));
+			result = this->irb.Call(fn, from);
 		}
 
 
-		if(!result.value)
+		if(!result)
 		{
 			// nope.
 			//! ACHTUNG !
 			//* ew, goto.
 			error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
-			return CGResult(0);
+			return 0;
 		}
 		else
 		{
-			if(this->isRefCountedType(result.value->getType()))
-				this->addRefCountedValue(result.value);
+			if(this->isRefCountedType(result->getType()))
+				this->addRefCountedValue(result);
 
 			return result;
 		}
 	}
 
-	std::pair<CGResult, CGResult> CodegenState::autoCastValueTypes(const CGResult& lhs, const CGResult& rhs)
+	std::pair<fir::Value*, fir::Value*> CodegenState::autoCastValueTypes(fir::Value* lhs, fir::Value* rhs)
 	{
-		auto lt = lhs.value->getType();
-		auto rt = rhs.value->getType();
+		auto lt = lhs->getType();
+		auto rt = rhs->getType();
 		if(lt == rt)
 		{
 			return { lhs, rhs };
@@ -262,15 +264,15 @@ namespace cgn
 
 		// prefer to cast the void pointer to the other one, not the other way around.
 		if(lt->isNullType() && rt->isPointerType())
-			return std::make_pair(CGResult(this->irb.PointerTypeCast(lhs.value, rt)), CGResult(rhs.value));
+			return std::make_pair(this->irb.PointerTypeCast(lhs, rt), rhs);
 
 		else if(lt->isPointerType() && rt->isNullType())
-			return std::make_pair(CGResult(lhs.value), CGResult(this->irb.PointerTypeCast(rhs.value, lt)));
+			return std::make_pair(lhs, this->irb.PointerTypeCast(rhs, lt));
 
 
 		/* if(lt->isConstantNumberType() && !rt->isConstantNumberType())
 		{
-			auto cn = dcast(fir::ConstantNumber, lhs.value);
+			auto cn = dcast(fir::ConstantNumber, lhs);
 			iceAssert(cn);
 
 			auto res = _unwrapConstantNumber(this, cn, rt, true);
@@ -290,11 +292,11 @@ namespace cgn
 			if(lt->getBitWidth() > rt->getBitWidth())
 			{
 				// cast rt to lt
-				return { lhs, CGResult(this->irb.IntSizeCast(rhs.value, lt)) };
+				return { lhs, this->irb.IntSizeCast(rhs, lt) };
 			}
 			else if(lt->getBitWidth() < rt->getBitWidth())
 			{
-				return { CGResult(this->irb.IntSizeCast(lhs.value, rt)), rhs };
+				return { this->irb.IntSizeCast(lhs, rt), rhs };
 			}
 			else
 			{
@@ -309,11 +311,11 @@ namespace cgn
 			if(lt->getBitWidth() > rt->getBitWidth())
 			{
 				// cast rt to lt
-				return { lhs, CGResult(this->irb.FExtend(rhs.value, lt)) };
+				return { lhs, this->irb.FExtend(rhs, lt) };
 			}
 			else if(lt->getBitWidth() < rt->getBitWidth())
 			{
-				return { CGResult(this->irb.FExtend(lhs.value, rt)), rhs };
+				return { this->irb.FExtend(lhs, rt), rhs };
 			}
 			else
 			{
@@ -323,7 +325,7 @@ namespace cgn
 
 		// nope...
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", lt, rt);
-		return { CGResult(0), CGResult(0) };
+		return { 0, 0 };
 	}
 }
 

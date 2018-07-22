@@ -56,10 +56,6 @@ namespace fir
 
 		std::string print();
 
-		// in theory.
-		size_t getSizeOfType(Type* type);
-		size_t getAlignmentOfType(Type* type);
-
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
