@@ -23,12 +23,12 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 	auto getcond = [](cgn::CodegenState* cs, Expr* c) -> fir::Value* {
 
-		auto cv = cs->oneWayAutocast(c->codegen(cs, fir::Type::getBool()), fir::Type::getBool());
-		if(cv.value->getType() != fir::Type::getBool())
-			error(c, "non-boolean expression with type '%s' cannot be used as a conditional", cv.value->getType());
+		auto cv = cs->oneWayAutocast(c->codegen(cs, fir::Type::getBool()).value, fir::Type::getBool());
+		if(cv->getType() != fir::Type::getBool())
+			error(c, "non-boolean expression with type '%s' cannot be used as a conditional", cv->getType());
 
 		// ok
-		return cs->irb.ICmpEQ(cv.value, fir::ConstantBool::get(true));
+		return cs->irb.ICmpEQ(cv, fir::ConstantBool::get(true));
 	};
 
 

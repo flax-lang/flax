@@ -10,7 +10,7 @@ CGResult sst::SizeofOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto sz = fir::ConstantInt::getInt64(cs->module->getSizeOfType(this->typeToSize));
+	auto sz = fir::ConstantInt::getInt64(fir::getSizeOfType(this->typeToSize));
 	return CGResult(sz);
 }
 

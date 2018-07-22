@@ -2132,7 +2132,7 @@ namespace fir
 		if(!val->getType()->isPointerType())
 			error("cannot dereference non-pointer type '%s'", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_Dereference, false, this->currentBlock,
+		Instruction* instr = new Instruction(OpKind::Value_Dereference, true, this->currentBlock,
 			val->getType()->getPointerElementType(), { val }, val->getType()->isMutablePointer() ? Value::Kind::lvalue : Value::Kind::clvalue);
 
 		return this->addInstruction(instr, vname);
@@ -2146,6 +2146,43 @@ namespace fir
 		// ok...
 		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock,
 			mut ? lval->getType()->getMutablePointerTo() : lval->getType()->getPointerTo(), { lval });
+		return this->addInstruction(instr, vname);
+	}
+
+
+
+	Value* IRBuilder::SetUnionVariantData(Value* unn, size_t id, Value* data, const std::string& vname)
+	{
+		if(!unn->getType()->isUnionType())
+			error("'%s' is not a union type", unn->getType());
+
+		auto ut = unn->getType()->toUnionType();
+		if(data->getType() != ut->getVariantType(id))
+			error("cannot store data '%s' into union variant '%s'", data->getType(), ut->getVariantType(id));
+
+		Instruction* instr = new Instruction(OpKind::Union_SetValue, true, this->currentBlock, unn->getType(),
+			{ fir::ConstantInt::getInt64(id), data });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::GetUnionVariantData(Value* unn, size_t id, const std::string& vname)
+	{
+		if(!unn->getType()->isUnionType())
+			error("'%s' is not a union type", unn->getType());
+
+		auto ut = unn->getType()->toUnionType();
+
+		Instruction* instr = new Instruction(OpKind::Union_GetValue, true, this->currentBlock, ut->getVariantType(id),
+			{ unn, fir::ConstantInt::getInt64(id) });
+		return this->addInstruction(instr, vname);
+	}
+
+	Value* IRBuilder::GetUnionVariantID(Value* unn, const std::string& vname)
+	{
+		if(!unn->getType()->isUnionType())
+			error("'%s' is not a union type", unn->getType());
+
+		Instruction* instr = new Instruction(OpKind::Union_GetVariantID, true, this->currentBlock, fir::Type::getInt64(), { unn });
 		return this->addInstruction(instr, vname);
 	}
 

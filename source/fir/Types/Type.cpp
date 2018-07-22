@@ -5,6 +5,8 @@
 #include "errors.h"
 #include "ir/type.h"
 
+#include "gluecode.h"
+
 namespace pts
 {
 	std::string unwrapPointerType(const std::string&, int*);
@@ -17,6 +19,19 @@ namespace fir
 	{
 		return tc;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -357,6 +372,12 @@ namespace fir
 		return static_cast<EnumType*>(this);
 	}
 
+	UnionType* Type::toUnionType()
+	{
+		if(this->kind != TypeKind::Union) error("not union type");
+		return static_cast<UnionType*>(this);
+	}
+
 	AnyType* Type::toAnyType()
 	{
 		if(this->kind != TypeKind::Any) error("not any type");
@@ -488,6 +509,11 @@ namespace fir
 	bool Type::isEnumType()
 	{
 		return this->kind == TypeKind::Enum;
+	}
+
+	bool Type::isUnionType()
+	{
+		return this->kind == TypeKind::Union;
 	}
 
 	bool Type::isAnyType()
@@ -745,7 +771,109 @@ namespace fir
 	{
 		return AnyType::get();
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	static size_t getAggregateSize(const std::vector<Type*>& tys)
+	{
+		size_t ptr = 0;
+		size_t aln = 0;
+
+		for(auto ty : tys)
+		{
+			auto a = getAlignmentOfType(ty);
+			if(ptr % a > 0)
+				ptr += (a - (ptr % a));
+
+			ptr += getSizeOfType(ty);
+			aln = std::max(aln, a);
+		}
+
+		if(ptr % aln > 0)
+			ptr += (aln - (ptr % aln));
+
+		return ptr;
+	}
+
+	size_t getSizeOfType(Type* type)
+	{
+		auto ptrt = fir::Type::getInt8Ptr();
+		auto i64t = fir::Type::getInt64();
+
+		if(type->isVoidType())                                      return 0;
+		else if(type->isBoolType())                                 return 1;
+		else if(type->isPointerType() || type->isFunctionType())    return sizeof(void*);
+		else if(type->isPrimitiveType())                            return type->getBitWidth() / 8;
+		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, i64t });
+		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, i64t, i64t, ptrt });
+		else if(type->isRangeType())                                return getAggregateSize({ i64t, i64t, i64t });
+		else if(type->isArrayType())
+		{
+			return type->toArrayType()->getArraySize() * getSizeOfType(type->getArrayElementType());
+		}
+		else if(type->isEnumType())
+		{
+			return getAggregateSize({ i64t, type->toEnumType()->getCaseType() });
+		}
+		else if(type->isAnyType())
+		{
+			return getAggregateSize({ i64t, ptrt, fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT) });
+		}
+		else if(type->isClassType() || type->isStructType() || type->isTupleType())
+		{
+			std::vector<Type*> tys;
+
+			if(type->isClassType())
+			{
+				auto c = type->toClassType();
+				auto base = c;
+				while(base)
+				{
+					tys.insert(tys.begin(), base->getElements().begin(), base->getElements().end());
+					base = base->getBaseClass();
+				}
+
+				tys.insert(tys.begin(), fir::Type::getInt8Ptr());
+			}
+			else if(type->isStructType())
+			{
+				tys = type->toStructType()->getElements();
+			}
+			else
+			{
+				tys = type->toTupleType()->getElements();
+			}
+
+			return getAggregateSize(tys);
+		}
+		else
+		{
+			error("cannot get size of unsupported type '%s'", type);
+		}
+	}
+
+	size_t getAlignmentOfType(Type* type)
+	{
+		if(type->isArrayType())     return getAlignmentOfType(type->getArrayElementType());
+		else                        return getSizeOfType(type);
+	}
 }
+
+
 
 
 

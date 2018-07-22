@@ -737,6 +737,34 @@ namespace sst
 		fir::Type* memberType = 0;
 		std::unordered_map<std::string, EnumCaseDefn*> cases;
 	};
+
+
+
+
+
+	struct UnionDefn : TypeDefn
+	{
+		UnionDefn(const Location& l) : TypeDefn(l) { this->readableName = "union definition"; }
+		~UnionDefn() { }
+
+		virtual std::string getKind() override { return "union"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::unordered_map<std::string, Location> variants;
+	};
+
+
+	struct UnionVariantConstructor : Expr
+	{
+		UnionVariantConstructor(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "union constructor"; }
+		~UnionVariantConstructor() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		UnionDefn* parentUnion = 0;
+		std::vector<FnCallArgument> args;
+	};
+
 }
 
 

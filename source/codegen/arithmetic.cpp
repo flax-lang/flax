@@ -85,38 +85,10 @@ namespace sst
 		auto _lr = this->left->codegen(cs/*, inferred*/);
 		auto _rr = this->right->codegen(cs/*, inferred*/);
 
-		auto [ l, r ] = std::make_tuple(_lr, _rr);
+		auto [ l, r ] = std::make_tuple(_lr.value, _rr.value);
 		// auto [ lt, rt ] = std::make_tuple(l.value->getType(), r.value->getType());
 
 
-		#if 0
-		// circumvent the '1 + 2 + 3'-expression-has-no-type issue by just computing whatever
-		// since both sides are constants, all should work just fine
-		if(lt->isConstantNumberType() && rt->isConstantNumberType())
-		{
-			auto lcn = dcast(fir::ConstantNumber, l.value);
-			auto rcn = dcast(fir::ConstantNumber, r.value);
-
-			iceAssert(lcn && rcn);
-			auto lnum = lcn->getValue();
-			auto rnum = rcn->getValue();
-
-			{
-				if(!constable(this->op))
-				{
-					error(this, "Could not infer appropriate type for operator '%s' between literal numbers", this->op);
-				}
-
-				auto res = doConstantThings(lnum, rnum, this->op);
-				if(Operator::isComparison(op))
-					return CGResult(fir::ConstantBool::get((bool) res));
-
-				else
-					return CGResult(fir::ConstantNumber::get(res));
-			}
-		}
-		else
-		#endif
 		if(this->overloadedOpFunction)
 		{
 			// fantastic, just call this piece of shit.
@@ -124,8 +96,8 @@ namespace sst
 			iceAssert(func);
 			iceAssert(func->getArgumentCount() == 2);
 
-			fir::Value* lv = cs->oneWayAutocast(l, func->getArguments()[0]->getType()).value;
-			fir::Value* rv = cs->oneWayAutocast(r, func->getArguments()[0]->getType()).value;
+			fir::Value* lv = cs->oneWayAutocast(l, func->getArguments()[0]->getType());
+			fir::Value* rv = cs->oneWayAutocast(r, func->getArguments()[0]->getType());
 
 			if(lv->getType() != func->getArguments()[0]->getType())
 			{
@@ -158,9 +130,8 @@ namespace sst
 
 	CGResult UnaryOp::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	{
-		CGResult ex = this->expr->codegen(cs, inferred);
-		auto ty = ex.value->getType();
-		auto val = ex.value;
+		auto val = this->expr->codegen(cs, inferred).value;
+		auto ty = val->getType();
 
 
 		if(this->overloadedOpFunction)
@@ -170,7 +141,7 @@ namespace sst
 			iceAssert(func);
 			iceAssert(func->getArgumentCount() == 1);
 
-			val = cs->oneWayAutocast(ex, func->getArguments()[0]->getType()).value;
+			val = cs->oneWayAutocast(val, func->getArguments()[0]->getType());
 
 			if(val->getType() != func->getArguments()[0]->getType())
 			{
@@ -200,7 +171,7 @@ namespace sst
 		}
 		else if(this->op == Operator::UnaryPlus)
 		{
-			return ex;
+			return CGResult(val);
 		}
 		else if(this->op == Operator::UnaryMinus)
 		{
@@ -213,10 +184,6 @@ namespace sst
 			{
 				return CGResult(fir::ConstantFP::get(cf->getType(), -1 * cf->getValue()));
 			}
-			// else if(auto cn = dcast(fir::ConstantNumber, val))
-			// {
-			// 	return CGResult(fir::ConstantNumber::get(-1 * cn->getValue()));
-			// }
 			else
 			{
 				return CGResult(cs->irb.Negate(val));
@@ -229,13 +196,13 @@ namespace sst
 		}
 		else if(this->op == Operator::AddressOf)
 		{
-			if(!ex.value->islorclvalue())
+			if(!val->islorclvalue())
 				error(this, "Cannot take address of a non-lvalue");
 
-			else if(ex.value->getType()->isFunctionType())
+			else if(val->getType()->isFunctionType())
 				error(this, "Cannot take the address of a function; use it as a value type");
 
-			return CGResult(cs->irb.AddressOf(ex.value, false));
+			return CGResult(cs->irb.AddressOf(val, false));
 		}
 		else if(this->op == Operator::BitwiseNot)
 		{
@@ -258,8 +225,8 @@ namespace sst
 
 namespace cgn
 {
-	CGResult CodegenState::performBinaryOperation(const Location& loc, std::pair<Location, CGResult> lhs,
-		std::pair<Location, CGResult> rhs, std::string op)
+	CGResult CodegenState::performBinaryOperation(const Location& loc, std::pair<Location, fir::Value*> lhs,
+		std::pair<Location, fir::Value*> rhs, std::string op)
 	{
 		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
 
@@ -269,57 +236,57 @@ namespace cgn
 				.postAndQuit();
 		};
 
-
 		auto l = lhs.second;
 		auto r = rhs.second;
 
-		auto lt = l.value->getType();
-		auto rt = r.value->getType();
+		auto lt = l->getType();
+		auto rt = r->getType();
 
-		auto lv = l.value;
-		auto rv = r.value;
+		auto lv = l;
+		auto rv = r;
 
 		if(Operator::isComparison(op))
 		{
 			auto [ lr, rr ] = this->autoCastValueTypes(l, r);
-			iceAssert(lr.value && rr.value);
-			auto [ lt, rt ] = std::make_pair(lr.value->getType(), rr.value->getType());
+			iceAssert(lr && rr);
+
+			auto [ lt, rt ] = std::make_pair(lr->getType(), rr->getType());
 
 			// do comparison
 			if((lt->isIntegerType() && rt->isIntegerType()) || (lt->isPointerType() && rt->isPointerType()))
 			{
 				// we should cast these to be similar-ish.
 
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr.value, rr.value));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr.value, rr.value));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr, rr));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr, rr));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr, rr));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr, rr));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr, rr));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr, rr));
 
 				error("no");
 			}
 			else if((lt->isPrimitiveType() && rt->isConstantNumberType()) || (lt->isConstantNumberType() && rt->isPrimitiveType()))
 			{
-				if(lr.value->getType()->isFloatingPointType())
+				if(lr->getType()->isFloatingPointType())
 				{
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lr.value, rr.value));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lr.value, rr.value));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lr.value, rr.value));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr, rr));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lr, rr));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lr, rr));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lr, rr));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lr, rr));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lr, rr));
 
 					error("no");
 				}
 				else
 				{
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr.value, rr.value));
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr.value, rr.value));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr.value, rr.value));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr.value, rr.value));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr.value, rr.value));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr.value, rr.value));
+					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr, rr));
+					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr, rr));
+					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr, rr));
+					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr, rr));
+					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr, rr));
+					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr, rr));
 
 					error("no");
 				}
@@ -382,13 +349,13 @@ namespace cgn
 			{
 				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
 
-				return CGResult(this->irb.BinaryOp(op, lr.value, rr.value));
+				return CGResult(this->irb.BinaryOp(op, lr, rr));
 			}
 			else if((lt->isPointerType() && (rt->isIntegerType() || rt->isConstantNumberType()))
 				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
 			{
 				auto ofsv = (lt->isPointerType() ? rv : lv);
-				auto ofs = this->oneWayAutocast(CGResult(ofsv), fir::Type::getInt64()).value;
+				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getInt64());
 
 				iceAssert(ofs->getType()->isIntegerType());
 

@@ -144,8 +144,8 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->end)	endIdx = this->end->codegen(cs).value;
 		else			endIdx = length;
 
-		beginIdx = cs->oneWayAutocast(CGResult(beginIdx), fir::Type::getInt64()).value;
-		endIdx = cs->oneWayAutocast(CGResult(endIdx), fir::Type::getInt64()).value;
+		beginIdx = cs->oneWayAutocast(beginIdx, fir::Type::getInt64());
+		endIdx = cs->oneWayAutocast(endIdx, fir::Type::getInt64());
 	}
 
 	beginIdx->setName("begin");

@@ -575,7 +575,7 @@ namespace sst
 			{
 				// ok, then.
 				//* note: no need to specify 'travUp', because we already resolved the type here.
-				return this->resolveConstructorCall(typedf, ts, gmaps);
+				return this->resolveConstructorCall(name, typedf, ts, gmaps);
 			}
 			else
 			{
@@ -604,7 +604,8 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<Param>& arguments, const TypeParamMap_t& gmaps)
+	TCResult TypecheckState::resolveConstructorCall(const std::string& name, TypeDefn* typedf, const std::vector<Param>& arguments,
+		const TypeParamMap_t& gmaps)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
@@ -693,6 +694,37 @@ namespace sst
 
 			// in actual fact we just return the thing here. sigh.
 			return TCResult(str);
+		}
+		else if(auto unn = dcast(sst::UnionDefn, typedf))
+		{
+			//* we only added in 'name' to resolveConstructorCall's arguments to distinguish between the different variants.
+			//* everyone else ignores it.
+
+			auto unt = unn->type->toUnionType();
+
+			iceAssert(unn->variants.find(name) != unn->variants.end());
+			auto uvl = unn->variants[name];
+
+			// ok, then. check the type + arguments.
+			std::vector<Param> target;
+			if(unt->getVariantType(name)->isTupleType())
+			{
+				for(auto t : unt->getVariantType(name)->toTupleType()->getElements())
+					target.push_back(Param("", uvl, t));
+			}
+			else
+			{
+				target.push_back(Param("", uvl, unt->getVariantType(name)));
+			}
+
+			auto [ dist, errs ] = computeOverloadDistance(this, unn, target, arguments, false, 0);
+			if(errs.hasErrors() || dist == -1)
+			{
+				errs.set(SimpleError::make(this->loc(), "Mismatched types in construction of variant '%s' of union '%s'", name,
+					unn->id.name)).postAndQuit();
+			}
+
+			return TCResult(unn);
 		}
 		else
 		{
@@ -820,6 +852,15 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 		ret->target = strdf;
 		ret->arguments = ts;
+
+		return ret;
+	}
+	else if(auto unn = dcast(sst::UnionDefn, target))
+	{
+		auto ret = new sst::UnionVariantConstructor(this->loc, unn->type);
+
+		ret->parentUnion = unn;
+		ret->args = ts;
 
 		return ret;
 	}

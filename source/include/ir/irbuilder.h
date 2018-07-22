@@ -188,6 +188,11 @@ namespace fir
 
 
 
+		[[nodiscard]] Value* SetUnionVariantData(Value* unn, size_t id, Value* data, const std::string& vname = "");
+		[[nodiscard]] Value* GetUnionVariantData(Value* unn, size_t id, const std::string& vname = "");
+		[[nodiscard]] Value* GetUnionVariantID(Value* unn, const std::string& vname = "");
+
+
 
 		//* V2 api
 

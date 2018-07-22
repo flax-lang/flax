@@ -18,7 +18,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		fir::Value* nv = val;
 		if(nv->getType() != this->type)
-			nv = cs->oneWayAutocast(CGResult(nv), this->type).value;
+			nv = cs->oneWayAutocast(nv, this->type);
 
 		if(nv->getType() != this->type)
 		{
@@ -75,13 +75,13 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* val = 0;
 	fir::Value* alloc = 0;
 
-	CGResult res;
+	fir::Value* res = 0;
 	if(this->init)
 	{
-		res = this->init->codegen(cs, this->type);
+		res = this->init->codegen(cs, this->type).value;
 		res = cs->oneWayAutocast(res, this->type);
 
-		val = res.value;
+		val = res;
 	}
 
 	if(!val) val = cs->getDefaultValue(this->type);
@@ -101,7 +101,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(alloc);
 
-	cs->addVariableUsingStorage(this, alloc, res);
+	cs->addVariableUsingStorage(this, alloc, CGResult(res));
 
 	return CGResult(alloc);
 }

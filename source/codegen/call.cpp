@@ -81,7 +81,9 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			iceAssert(inf);
 
 			// cs syntax feels a little dirty.
-			val = (vr = cs->oneWayAutocast(vr, inf)).value;
+			val = cs->oneWayAutocast(vr.value, inf);
+			vr.value = val;
+
 
 			if(val->getType() != inf)
 			{
@@ -261,12 +263,12 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 	else if(!type->isStringType())
 	{
 		iceAssert(args.size() == 1);
-		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type), type);
+		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type).value, type);
 
-		if(type != ret.value->getType())
-			error(args[0], "Mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret.value->getType());
+		if(type != ret->getType())
+			error(args[0], "Mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
 
-		return ret;
+		return CGResult(ret);
 	}
 	else
 	{
@@ -295,7 +297,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			iceAssert(args[1]->type->isIntegerType());
 
 			auto ptr = args[0]->codegen(cs).value;
-			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getInt64()), fir::Type::getInt64()).value;
+			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
 
 			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
 			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
@@ -342,7 +344,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			inf = ft->getArgumentTypes().back()->getArrayElementType();
 
 		auto rarg = this->arguments[i]->codegen(cs, inf);
-		auto arg = cs->oneWayAutocast(rarg, inf).value;
+		auto arg = cs->oneWayAutocast(rarg.value, inf);
 
 		if(!arg || arg->getType() != inf)
 		{

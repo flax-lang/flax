@@ -138,6 +138,9 @@ namespace parser
 				case TT::Continue:
 					return parseContinue(st);
 
+				case TT::Union:
+					return parseUnion(st);
+
 				case TT::Struct:
 					return parseStruct(st);
 
@@ -1014,6 +1017,7 @@ namespace parser
 				case TT::Enum:
 				case TT::Class:
 				case TT::Using:
+				case TT::Union:
 				case TT::Static:
 				case TT::Struct:
 				case TT::Public:
