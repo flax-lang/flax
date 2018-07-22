@@ -157,6 +157,10 @@ namespace fir
 		Enum_GetValue,
 		Enum_SetValue,
 
+		Union_SetValue,
+		Union_GetValue,
+		Union_GetVariantID,
+
 		Branch_UnCond,
 		Branch_Cond,
 

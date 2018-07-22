@@ -60,6 +60,7 @@ namespace fir
 	struct Value;
 	struct Function;
 	struct ClassType;
+	struct UnionType;
 	struct ArraySliceType;
 	struct DynamicArrayType;
 }

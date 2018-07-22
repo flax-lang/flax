@@ -248,6 +248,7 @@ namespace parser
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
+	ast::UnionDefn* parseUnion(State& st);
 	ast::StructDefn* parseStruct(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
 

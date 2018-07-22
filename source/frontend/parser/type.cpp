@@ -78,7 +78,6 @@ namespace parser
 	}
 
 
-
 	ClassDefn* parseClass(State& st)
 	{
 		iceAssert(st.front() == TT::Class);
@@ -173,6 +172,101 @@ namespace parser
 		st.leaveStructBody();
 		return defn;
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+	UnionDefn* parseUnion(State& st)
+	{
+		iceAssert(st.front() == TT::Union);
+		st.eat();
+
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'union'", st.front().str());
+
+		UnionDefn* defn = new UnionDefn(st.loc());
+		defn->name = st.eat().str();
+
+		// check for generic function
+		if(st.front() == TT::LAngle)
+		{
+			st.eat();
+			// parse generic
+			if(st.front() == TT::RAngle)
+				error(st, "Empty type parameter lists are not allowed");
+
+			defn->generics = parseGenericTypeList(st);
+		}
+
+		// unions don't inherit stuff (for now????) so we don't check for it.
+
+		st.skipWS();
+		if(st.eat() != TT::LBrace)
+			expectedAfter(st.ploc(), "opening brace", "'union'", st.front().str());
+
+		size_t index = 0;
+		while(st.front() != TT::RBrace)
+		{
+			st.skipWS();
+
+			if(st.front() != TT::Identifier)
+				expected(st.loc(), "identifier inside union body", st.front().str());
+
+			auto loc = st.loc();
+			pts::Type* type = 0;
+			std::string name = st.eat().str();
+
+			if(auto it = defn->cases.find(name); it != defn->cases.end())
+			{
+				SimpleError::make(loc, "Duplicate variant '%s' in union definition", name)
+					.append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "Variant '%s' previously defined here:", name))
+					.postAndQuit();
+			}
+
+			if(st.front() == TT::Colon)
+			{
+				st.eat();
+				type = parseType(st);
+			}
+			else if(st.front() != TT::NewLine)
+			{
+				error(st.loc(), "Expected newline after union variant");
+			}
+
+			defn->cases[name] = { index, loc, type };
+
+			// do some things
+			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
+			{
+				st.pop();
+			}
+			else if(st.front() == TT::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				error(st.loc(), "Unexpected token '%s' inside union body", st.front().str());
+			}
+
+			index++;
+		}
+
+		iceAssert(st.front() == TT::RBrace);
+		st.eat();
+
+		return defn;
+	}
+
+
 
 
 	EnumDefn* parseEnum(State& st)

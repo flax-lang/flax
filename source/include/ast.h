@@ -423,6 +423,18 @@ namespace ast
 		pts::Type* memberType = 0;
 	};
 
+	struct UnionDefn : TypeDefn
+	{
+		UnionDefn(const Location& l) : TypeDefn(l) { this->readableName = "union definition"; }
+		~UnionDefn() { }
+
+		virtual std::string getKind() override { return "union"; }
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+
+		std::unordered_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
+	};
+
 	struct TypeExpr : Expr
 	{
 		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { this->readableName = "<TYPE EXPRESSION>"; }

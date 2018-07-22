@@ -31,6 +31,7 @@ namespace lexer
 		Enum,
 		ForeignFunc,
 		Struct,
+		Union,
 		Static,
 		True,
 		False,

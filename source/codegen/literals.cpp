@@ -129,18 +129,18 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			std::vector<fir::Value*> vals;
 			for(auto v : this->values)
 			{
-				auto vl = v->codegen(cs, elmty);
-				if(vl.value->getType() != elmty)
+				auto vl = v->codegen(cs, elmty).value;
+				if(vl->getType() != elmty)
 					vl = cs->oneWayAutocast(vl, elmty);
 
-				if(vl.value->getType() != elmty)
+				if(vl->getType() != elmty)
 				{
 					error(v, "Mismatched type for array literal; expected element type '%s', found '%s'",
-						elmty, vl.value->getType());
+						elmty, vl->getType());
 				}
 
 				// ok, it works
-				vals.push_back(vl.value);
+				vals.push_back(vl);
 			}
 
 			// ok -- basically unroll the loop, except there's no loop -- so we're just...
@@ -208,19 +208,19 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(size_t i = 0; i < this->values.size(); i++)
 	{
 		auto ty = this->type->toTupleType()->getElementN(i);
-		auto vr = this->values[i]->codegen(cs, ty);
+		auto vr = this->values[i]->codegen(cs, ty).value;
 
-		if(vr.value->getType() != ty)
+		if(vr->getType() != ty)
 			vr = cs->oneWayAutocast(vr, ty);
 
-		if(vr.value->getType() != ty)
+		if(vr->getType() != ty)
 		{
 			error(this->values[i], "Mismatched types in tuple element %zu; expected type '%s', found type '%s'",
-				i, ty, vr.value->getType());
+				i, ty, vr->getType());
 		}
 
-		allConst &= (bool) dcast(fir::ConstantValue, vr.value);
-		vals.push_back(vr.value);
+		allConst &= (bool) dcast(fir::ConstantValue, vr);
+		vals.push_back(vr);
 	}
 
 	if(allConst)

@@ -15,8 +15,8 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	auto lr = this->left->codegen(cs);
-	auto lt = lr.value->getType();
+	auto lr = this->left->codegen(cs).value;
+	auto lt = lr->getType();
 
 	if(!lr->islorclvalue())
 	{
@@ -33,8 +33,8 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	// okay, i guess
-	auto rr = this->right->codegen(cs, lt);
-	auto rt = rr.value->getType();
+	auto rr = this->right->codegen(cs, lt).value;
+	auto rt = rr->getType();
 
 	if(this->op != Operator::Assign)
 	{
@@ -56,9 +56,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, false));
+				auto res = cs->irb.Call(appendf, lr, cs->irb.CreateSliceFromSAA(rr, false));
 
-				cs->irb.Store(res, lr.value);
+				cs->irb.Store(res, lr);
 				return CGResult(0);
 			}
 			else if(lt->isDynamicArrayType() && lt->getArrayElementType() == rt)
@@ -70,9 +70,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr, rr);
 
-				cs->irb.Store(res, lr.value);
+				cs->irb.Store(res, lr);
 				return CGResult(0);
 			}
 			else if(lt->isStringType() && lt == rt)
@@ -84,9 +84,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::string::getAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, cs->irb.CreateSliceFromSAA(rr.value, true));
+				auto res = cs->irb.Call(appendf, lr, cs->irb.CreateSliceFromSAA(rr, true));
 
-				cs->irb.Store(res, lr.value);
+				cs->irb.Store(res, lr);
 				return CGResult(0);
 			}
 			else if(lt->isStringType() && rt->isCharType())
@@ -98,9 +98,9 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto appendf = cgn::glue::string::getCharAppendFunction(cs);
 
 				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr.value, rr.value);
+				auto res = cs->irb.Call(appendf, lr, rr);
 
-				cs->irb.Store(res, lr.value);
+				cs->irb.Store(res, lr);
 				return CGResult(0);
 			}
 		}
@@ -110,21 +110,21 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto res = cs->performBinaryOperation(this->loc, { this->left->loc, lr }, { this->right->loc, rr }, nonass);
 
 		// assign the res to the thing
-		rr = res;
+		rr = res.value;
 	}
 
 	rr = cs->oneWayAutocast(rr, lt);
 
-	if(rr.value == 0)
+	if(rr == 0)
 	{
-		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr.value->getType(), lt);
+		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr->getType(), lt);
 	}
 
 	// ok then
-	if(lt != rr.value->getType())
-		error(this, "What? left = %s, right = %s", lt, rr.value->getType());
+	if(lt != rr->getType())
+		error(this, "What? left = %s, right = %s", lt, rr->getType());
 
-	cs->autoAssignRefCountedValue(lr.value, rr.value, /* isInitial: */ false, /* performStore: */ true);
+	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false, /* performStore: */ true);
 	return CGResult(0);
 }
 
@@ -161,14 +161,14 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto lr = results[i];
 		auto val = cs->irb.ExtractValue(tuple, { i });
 
-		auto rr = cs->oneWayAutocast(CGResult(val), lr.value->getType());
-		if(!rr.value || rr.value->getType() != lr.value->getType())
+		auto rr = cs->oneWayAutocast(val, lr.value->getType());
+		if(!rr || rr->getType() != lr.value->getType())
 		{
 			error(this->right, "Mismatched types in assignment to tuple element %d; assigning type '%s' to '%s'",
 				val->getType(), lr.value->getType());
 		}
 
-		cs->autoAssignRefCountedValue(lr.value, rr.value, /* isInitial: */ false, /* performStore: */ true);
+		cs->autoAssignRefCountedValue(lr.value, rr, /* isInitial: */ false, /* performStore: */ true);
 	}
 
 	return CGResult(0);

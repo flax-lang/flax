@@ -578,6 +578,38 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 				return checkRhs(fs, dot, oldscope, newscope, infer);
 			}
+			else if(auto str = dcast(sst::StructDefn, def))
+			{
+				auto oldscope = fs->getCurrentScope();
+				auto newscope = str->id.scope;
+				newscope.push_back(str->id.name);
+
+				return checkRhs(fs, dot, oldscope, newscope, infer);
+			}
+			else if(auto unn = dcast(sst::UnionDefn, def))
+			{
+				if(auto fc = dcast(ast::FunctionCall, dot->right))
+				{
+					if(!unn->type->toUnionType()->hasVariant(fc->name))
+					{
+						SimpleError::make(dot->right, "Union '%s' has no variant '%s'", unn->id.name, fc->name)
+							.append(SimpleError::make(MsgType::Note, unn, "Union was defined here:"))
+							.postAndQuit();
+					}
+				}
+				else
+				{
+					error(dot->right, "Expected constructor call in reference to variant of union '%s'",
+						unn->id.name);
+				}
+
+				// dot-op on the union to access its variants; we need constructor stuff for it.
+				auto oldscope = fs->getCurrentScope();
+				auto newscope = unn->id.scope;
+				newscope.push_back(unn->id.name);
+
+				return checkRhs(fs, dot, oldscope, newscope, infer);
+			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
 				auto oldscope = fs->getCurrentScope();
@@ -588,20 +620,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
-					// for(auto [ n, c ] : enm->cases)
-					// {
-					// 	if(c->id.name == vr->name)
-					// 	{
-					// 		auto ret = new sst::EnumDotOp(vr->loc, enm->type);
-					// 		ret->caseName = vr->name;
-					// 		ret->enumeration = enm;
-
-					// 		return ret;
-					// 	}
-					// }
-
-					// error(vr, "Enumeration '%s' has no case named '%s'", enm->id.name, vr->name);
-
 					iceAssert(vr->def && enm->cases[vr->name] == vr->def);
 					return vr;
 				}
