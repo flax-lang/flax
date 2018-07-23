@@ -70,6 +70,14 @@ namespace fir
 		return this->variants.size();
 	}
 
+	size_t UnionType::getIdOfVariant(const std::string& name)
+	{
+		if(auto it = this->indexMap.find(name); it != this->indexMap.end())
+			return it->second;
+
+		else
+			error("no variant with name '%s'", name);
+	}
 
 	std::unordered_map<std::string, Type*> UnionType::getVariants()
 	{

@@ -65,6 +65,9 @@ static void compile(std::string in, std::string out)
 
 	fprintf(stderr, "%zu FIR values generated\n", fir::ConstantBool::get(false)->id);
 
+	if(frontend::getPrintFIR())
+		fprintf(stderr, "%s\n", module->print().c_str());
+
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);

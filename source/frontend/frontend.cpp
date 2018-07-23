@@ -188,6 +188,17 @@ namespace frontend
 	}
 
 
+	bool getPrintFIR()
+	{
+		return _printFIR;
+	}
+
+	bool getPrintLLVMIR()
+	{
+		return _printLLVMIR;
+	}
+
+
 	std::vector<std::string> getFrameworksToLink()
 	{
 		return frameworksToLink;

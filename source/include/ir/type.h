@@ -524,6 +524,7 @@ namespace fir
 		Identifier getTypeName();
 
 		size_t getVariantCount();
+		size_t getIdOfVariant(const std::string& name);
 		std::unordered_map<std::string, Type*> getVariants();
 
 		bool hasVariant(const std::string& name);
