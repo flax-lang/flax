@@ -110,7 +110,8 @@ namespace backend
 		this->setupTargetMachine();
 		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
 
-		// this->linkedModule->print(llvm::outs(), 0);
+		if(frontend::getPrintLLVMIR())
+			this->linkedModule->print(llvm::outs(), 0);
 
 		_printTiming(ts, "translation to llvm");
 	}

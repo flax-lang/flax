@@ -42,6 +42,9 @@ namespace frontend
 	backend::OptimisationLevel getOptLevel();
 	backend::BackendOption getBackendOption();
 
+	bool getPrintFIR();
+	bool getPrintLLVMIR();
+
 	bool getIsFreestanding();
 	bool getIsPositionIndependent();
 	std::vector<std::string> getFrameworksToLink();

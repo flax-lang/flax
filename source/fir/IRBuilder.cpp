@@ -2161,7 +2161,7 @@ namespace fir
 			error("cannot store data '%s' into union variant '%s'", data->getType(), ut->getVariantType(id));
 
 		Instruction* instr = new Instruction(OpKind::Union_SetValue, true, this->currentBlock, unn->getType(),
-			{ fir::ConstantInt::getInt64(id), data });
+			{ unn, fir::ConstantInt::getInt64(id), data });
 		return this->addInstruction(instr, vname);
 	}
 

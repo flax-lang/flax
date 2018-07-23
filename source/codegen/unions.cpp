@@ -21,9 +21,50 @@ CGResult sst::UnionVariantConstructor::_codegen(cgn::CodegenState* cs, fir::Type
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	auto ut = this->parentUnion->type->toUnionType();
+	iceAssert(ut);
 
+	auto vt = ut->getVariantType(this->variantId);
+	iceAssert(vt);
 
-	return CGResult(0);
+	auto uv = cs->irb.CreateValue(ut);
+
+	if(this->args.size() > 0)
+	{
+		fir::Value* data = 0;
+		if(this->args.size() == 1)
+		{
+			data = this->args[0].value->codegen(cs, vt).value;
+			data = cs->oneWayAutocast(data, vt);
+			iceAssert(data);
+		}
+		else
+		{
+			auto tupt = fir::TupleType::get(util::map(this->args, [](const FnCallArgument& fca) -> fir::Type* {
+				return fca.value->type;
+			}));
+
+			auto tup = cs->irb.CreateValue(tupt);
+
+			size_t i = 0;
+			for(const auto& arg : this->args)
+			{
+				auto v = arg.value->codegen(cs, tupt->getElementN(i)).value;
+				tup = cs->irb.InsertValue(tup, { i }, v);
+
+				i++;
+			}
+
+			tup = cs->oneWayAutocast(tup, vt);
+			iceAssert(tup);
+
+			data = tup;
+		}
+
+		uv = cs->irb.SetUnionVariantData(uv, this->variantId, data);
+	}
+
+	return CGResult(uv);
 }
 
 

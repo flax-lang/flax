@@ -859,6 +859,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	{
 		auto ret = new sst::UnionVariantConstructor(this->loc, unn->type);
 
+		ret->variantId = unn->type->toUnionType()->getIdOfVariant(this->name);
 		ret->parentUnion = unn;
 		ret->args = ts;
 

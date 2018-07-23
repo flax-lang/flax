@@ -761,6 +761,7 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		size_t variantId = 0;
 		UnionDefn* parentUnion = 0;
 		std::vector<FnCallArgument> args;
 	};

@@ -4,22 +4,22 @@
 
 export supertiny
 
-import "libc" as _
-import "stdio" as _
+// import "libc" as _
+// import "stdio" as _
 
-var glob: any
-fn test_refcounting_problem_thing()
-{
-	fn foo(x: any)
-	{
-		if(x is int)
-		{
-			glob = x
-		}
-	}
+// var glob: any
+// fn test_refcounting_problem_thing()
+// {
+// 	fn foo(x: any)
+// 	{
+// 		if(x is int)
+// 		{
+// 			glob = x
+// 		}
+// 	}
 
-	foo(30)
-}
+// 	foo(30)
+// }
 
 
 @entry fn main()
@@ -27,6 +27,7 @@ fn test_refcounting_problem_thing()
 	union either
 	{
 		a: string
+		c
 		b: int
 	}
 
