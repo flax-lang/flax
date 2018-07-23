@@ -59,8 +59,8 @@ namespace sst
 		}
 		else if(this->op == Operator::TypeIs)
 		{
-			auto target = this->right->codegen(cs).value->getType();
 			auto value = this->left->codegen(cs).value;
+			auto target = this->right->codegen(cs).value->getType();
 
 			fir::Value* res = 0;
 			if(value->getType()->isAnyType())
