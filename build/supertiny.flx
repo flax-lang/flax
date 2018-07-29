@@ -25,29 +25,15 @@ import "libc" as _
 @entry fn main()
 {
 	do {
-		struct Foo<A, B>
+		union option<T>
 		{
-			var a: A
-			var b: B
+			some: T
+			none
 		}
 
-		let f = Foo(a: 51, b: "HO")
-		printf("f.a = %d, f.b = %s\n", f.a, f.b)
-	}
+		let x = option<T: str>.some("300")
 
-	do {
-		union either
-		{
-			a: str
-			c
-			b: int
-		}
-
-		var x: either = either.a("HELLO, WORLD")
-		printf("x is a: %d\n", x is either.a)
-
-		var s = x as either.a
-		printf("x = %s\n", s)
+		printf("x = %s\n", x as option<T: int>.some)
 	}
 
 

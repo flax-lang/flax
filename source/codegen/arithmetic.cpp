@@ -48,7 +48,8 @@ namespace sst
 			{
 				if(auto parent = target->toUnionVariantType()->getParentUnion(); parent != vt)
 				{
-					error(this, "target variant '%s' is not defined in union '%s'", target, parent);
+					error(this, "unwrapping union of type '%s' to variant ('%s') of unrelated union '%s'",
+						vt, target->toUnionVariantType()->getName(), (fir::Type*) parent);
 				}
 				else
 				{

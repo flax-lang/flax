@@ -525,6 +525,13 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		{
 			fs->teleportToScope(news);
 			ret = dot->right->typecheck(fs).expr();
+
+			//* special-case this thing. if we don't do this, then 'ret' is just a normal VarRef,
+			//* which during codegen will try to trigger the codegne for the UnionVariantDefn,
+			//* which returns 0 (because there's really nothing to define at code-gen time)
+
+			if(ret->type->isUnionVariantType())
+				ret = new sst::TypeExpr(ret->loc, ret->type);
 		}
 		else
 		{
@@ -541,10 +548,23 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 
 
-
-	if(auto ident = dcast(sst::VarRef, left))
+	// if we get a type expression, then we want to dig up the definition from the type.
+	if(auto ident = dcast(sst::VarRef, left); ident || dcast(sst::TypeExpr, left))
 	{
-		auto def = ident->def;
+		sst::Defn* def = 0;
+		if(ident)
+		{
+			def = ident->def;
+		}
+		else
+		{
+			auto te = dcast(sst::TypeExpr, left);
+			iceAssert(te);
+
+			warn(dot->left, "%s", te->type);
+			def = fs->typeDefnMap[te->type];
+		}
+
 		iceAssert(def);
 
 		if(auto td = dcast(sst::TreeDefn, def))
@@ -588,19 +608,27 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))
 			{
+				std::string name;
 				if(auto fc = dcast(ast::FunctionCall, dot->right))
 				{
-					if(!unn->type->toUnionType()->hasVariant(fc->name))
-					{
-						SimpleError::make(dot->right, "Union '%s' has no variant '%s'", unn->id.name, fc->name)
-							.append(SimpleError::make(MsgType::Note, unn, "Union was defined here:"))
-							.postAndQuit();
-					}
+					name = fc->name;
+				}
+				else if(auto id = dcast(ast::Ident, dot->right))
+				{
+					name = id->name;
 				}
 				else
 				{
-					error(dot->right, "Expected constructor call in reference to variant of union '%s'",
+					error(dot->right, "unexpected right-hand expression on dot-operator on union '%s'",
 						unn->id.name);
+				}
+
+
+				if(!unn->type->toUnionType()->hasVariant(name))
+				{
+					SimpleError::make(dot->right, "Union '%s' has no variant '%s'", unn->id.name, name)
+						.append(SimpleError::make(MsgType::Note, unn, "Union was defined here:"))
+						.postAndQuit();
 				}
 
 				// dot-op on the union to access its variants; we need constructor stuff for it.
