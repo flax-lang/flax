@@ -42,6 +42,7 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 				if(given.size() < expected.size())
 					return false;
 
+				//* reverse iterators
 				return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
 			};
 

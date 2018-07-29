@@ -2157,8 +2157,8 @@ namespace fir
 			error("'%s' is not a union type", unn->getType());
 
 		auto ut = unn->getType()->toUnionType();
-		if(data->getType() != ut->getVariantType(id))
-			error("cannot store data '%s' into union variant '%s'", data->getType(), ut->getVariantType(id));
+		if(data->getType() != ut->getVariant(id)->getInteriorType())
+			error("cannot store data '%s' into union variant '%s'", data->getType(), ut->getVariant(id)->getInteriorType());
 
 		Instruction* instr = new Instruction(OpKind::Union_SetValue, true, this->currentBlock, unn->getType(),
 			{ unn, fir::ConstantInt::getInt64(id), data });
@@ -2172,7 +2172,7 @@ namespace fir
 
 		auto ut = unn->getType()->toUnionType();
 
-		Instruction* instr = new Instruction(OpKind::Union_GetValue, true, this->currentBlock, ut->getVariantType(id),
+		Instruction* instr = new Instruction(OpKind::Union_GetValue, true, this->currentBlock, ut->getVariant(id)->getInteriorType(),
 			{ unn, fir::ConstantInt::getInt64(id) });
 		return this->addInstruction(instr, vname);
 	}
@@ -2187,6 +2187,17 @@ namespace fir
 	}
 
 
+
+	Value* IRBuilder::SetUnionVariantID(Value* unn, size_t id, const std::string& vname)
+	{
+		if(!unn->getType()->isUnionType())
+			error("'%s' is not a union type", unn->getType());
+
+		Instruction* instr = new Instruction(OpKind::Union_SetVariantID, true, this->currentBlock, unn->getType(),
+			{ unn, fir::ConstantInt::getInt64(id) });
+
+		return this->addInstruction(instr, vname);
+	}
 
 
 

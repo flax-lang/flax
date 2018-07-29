@@ -160,6 +160,7 @@ namespace fir
 		Union_SetValue,
 		Union_GetValue,
 		Union_GetVariantID,
+		Union_SetVariantID,
 
 		Branch_UnCond,
 		Branch_Cond,

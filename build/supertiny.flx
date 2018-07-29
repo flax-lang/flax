@@ -4,7 +4,7 @@
 
 export supertiny
 
-// import "libc" as _
+import "libc" as _
 // import "stdio" as _
 
 // var glob: any
@@ -24,14 +24,32 @@ export supertiny
 
 @entry fn main()
 {
-	union either
-	{
-		a: string
-		c
-		b: int
+	do {
+		struct Foo<A, B>
+		{
+			var a: A
+			var b: B
+		}
+
+		let f = Foo(a: 51, b: "HO")
+		printf("f.a = %d, f.b = %s\n", f.a, f.b)
 	}
 
-	var x: either = either.b(30)
+	do {
+		union either
+		{
+			a: str
+			c
+			b: int
+		}
+
+		var x: either = either.a("HELLO, WORLD")
+		printf("x is a: %d\n", x is either.a)
+
+		var s = x as either.a
+		printf("x = %s\n", s)
+	}
+
 
 
 	// struct outer

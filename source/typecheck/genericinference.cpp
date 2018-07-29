@@ -285,6 +285,122 @@ static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const s
 
 
 
+static std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError>
+_internal_inferTypesForGenericEntity(sst::TypecheckState* fs, const ProblemSpace_t& problemSpace,
+	std::vector<UnsolvedType>& problem, const std::vector<Param_t>& input, const TypeParamMap_t& partial, fir::Type* infer)
+{
+	SolutionSet solution;
+	for(const auto& p : partial)
+		solution.addSolution(p.first, SolvedType(fs->loc(), p.second));
+
+	std::set<std::string> tosolve;
+	for(const auto& p : problemSpace)
+		tosolve.insert(p.first);
+
+
+	dbgprintln("SESSION: infer = %s", infer);
+	auto retError = solveArgumentList(problem, input, solution, tosolve, problemSpace);
+	dbgprintln("SOLUTIONS: %s\n", util::listToString(util::pairs(solution.solutions), [](auto p) -> auto {
+		return strprintf("%s = '%s'", p.first, p.second.soln);
+	}));
+
+	// convert the thing.
+	{
+		TypeParamMap_t ret;
+		for(const auto& soln : solution.solutions)
+		{
+			auto s = soln.second.soln;
+			if(s->isConstantNumberType())
+				s = fs->inferCorrectTypeForLiteral(s->toConstantNumberType());
+
+			ret[soln.first] = s;
+		}
+
+		return { ret, solution.substitutions, retError };
+	}
+}
+
+
+static std::tuple<std::vector<Param_t>, std::vector<UnsolvedType>, SimpleError>
+_internal_unwrapFunctionCall(sst::TypecheckState* fs, ast::Parameterisable* thing, const std::vector<ast::FuncDefn::Arg>& args,
+	pts::Type* retty, const std::vector<FnCallArgument>& _input, bool isFnCall, fir::Type* infer, const TypeParamMap_t& partial)
+{
+	std::vector<Param_t> input(_input.size());
+	std::vector<UnsolvedType> problem;
+
+	// strip out the name information, and do purely positional things.
+	std::unordered_map<std::string, size_t> nameToIndex;
+	{
+		for(size_t i = 0; i < args.size(); i++)
+		{
+			const auto& arg = args[i];
+			nameToIndex[arg.name] = i;
+
+			problem.push_back(UnsolvedType(arg.loc, arg.type));
+		}
+	}
+
+	fir::Type* fretty = 0;
+	if(isFnCall)
+	{
+		int counter = 0;
+		for(const auto& i : _input)
+		{
+			if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
+			{
+				return { { }, { }, SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
+					thing->name, i.name).append(SimpleError::make(MsgType::Note, thing, "Function was defined here:"))
+				};
+			}
+
+			input[i.name.empty() ? counter : nameToIndex[i.name]] = Param_t(i);
+			counter++;
+		}
+
+
+		// if infer != 0, then it should be the return type.
+		if(infer && !infer->isVoidType())
+			fretty = infer;
+	}
+	else
+	{
+		if(infer == 0)
+		{
+			return { { }, { }, SimpleError::make(MsgType::Note, fs->loc(),
+				"Unable to infer type for function '%s' without additional information", thing->name) };
+		}
+		else if(!infer->isFunctionType())
+		{
+			return { { }, { }, SimpleError::make(MsgType::Note, fs->loc(),
+				"Invalid inferred type '%s' for polymorphic entity '%s'", infer, thing->name) };
+		}
+		else
+		{
+			// now...
+			auto fty = infer->toFunctionType();
+			input.resize(fty->getArgumentTypes().size());
+
+			int ctr = 0;
+			for(auto arg : fty->getArgumentTypes())
+				input[ctr++] = arg;
+
+			fretty = fty->getReturnType();
+		}
+	}
+
+	if(retty && fretty && (retty->isNamedType() && retty->toNamedType()->name == VOID_TYPE_STRING) != fretty->isVoidType())
+	{
+		return { { }, { }, SimpleError::make(MsgType::Note, fs->loc(), "Mismatch between inferred types '%s' and '%s' in return type of function '%s'", retty->str(), fretty, thing->name) };
+	}
+
+	if(retty && fretty)
+	{
+		input.push_back(Param_t("", fs->loc(), fretty));
+		problem.push_back(UnsolvedType(thing->loc, retty));
+	}
+
+	return { input, problem, SimpleError() };
+}
 
 
 
@@ -292,99 +408,132 @@ static SimpleError solveArgumentList(std::vector<UnsolvedType>& problem, const s
 //* this thing only infers to the best of its abilities; it cannot be guaranteed to return a complete solution.
 //* please check for the completeness of said solution before using it.
 std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError>
-	sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall)
+sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall)
 {
-	SolutionSet solution;
-	for(const auto& p : partial)
-		solution.addSolution(p.first, SolvedType(this->loc(), p.second));
-
 	std::vector<Param_t> input(_input.size());
 	std::vector<UnsolvedType> problem;
 	auto problemSpace = _target->generics;
 
-	if(dcast(ast::FuncDefn, _target) || dcast(ast::InitFunctionDefn, _target))
+	if(auto td = dcast(ast::TypeDefn, _target))
 	{
-		// strip out the name information, and do purely positional things.
-		std::unordered_map<std::string, size_t> nameToIndex;
+		if(!isFnCall)
+			return { partial, { }, SimpleError::make(td, "Invalid use of type '%s' in non-constructor-call context", td->name) };
 
-		fir::Type* fretty = 0;
-		pts::Type* retty = 0;
-		if(dcast(ast::InitFunctionDefn, _target))           error("unsupported???");
-		else if(auto fd = dcast(ast::FuncDefn, _target))    retty = fd->returnType;
-
-
+		if(auto cld = dcast(ast::ClassDefn, td))
 		{
-			std::vector<ast::FuncDefn::Arg> _args;
-			if(auto ifd = dcast(ast::InitFunctionDefn, _target))   _args = ifd->args;
-			else if(auto fd = dcast(ast::FuncDefn, _target))       _args = fd->args;
-
-			for(size_t i = 0; i < _args.size(); i++)
+			std::vector<std::tuple<ast::InitFunctionDefn*, std::vector<Param_t>, std::vector<UnsolvedType>, SimpleError>> solns;
+			for(auto init : cld->initialisers)
 			{
-				const auto& arg = _args[i];
-				nameToIndex[arg.name] = i;
+				auto [ input, problem, errs ] = _internal_unwrapFunctionCall(this, init, init->args, 0, _input, true, infer, partial);
 
-				problem.push_back(UnsolvedType(arg.loc, arg.type));
+				if(!errs.hasErrors())
+					solns.push_back({ init, input, problem, errs });
 			}
-		}
 
-		if(isFnCall)
+			// TODO: FIXME: better error messages
+			if(solns.empty())
+				return { partial, { }, SimpleError::make(td, "No matching constructor to type '%s'", td->name) };
+
+			else if(solns.size() > 1)
+				return { partial, { }, SimpleError::make(td, "Ambiguous call to constructor of type '%s'", td->name) };
+
+			// ok, we're good??
+			// just return the solution, i guess.
+			auto [ init, input, problem, errs ] = solns[0];
+			return _internal_inferTypesForGenericEntity(this, problemSpace, problem, input, partial, infer);
+		}
+		else if(auto str = dcast(ast::StructDefn, td))
 		{
-			int counter = 0;
-			for(const auto& i : _input)
+			// this is a special case. we need to tailor the 'problem' to the 'input', instead of the other way around.
+			// first we need to check that whatever arguments we're passing do exist in the struct.
+
+			// TODO: the stuff below is pretty much a dupe of the stuff we do in typecheck/call.cpp for struct constructors.
+			// combine?
+
+			std::unordered_map<std::string, size_t> fieldNames;
 			{
-				if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
+				size_t i = 0;
+				for(auto f : str->fields)
+					fieldNames[f->name] = i++;
+			}
+
+			bool useNames = false;
+			bool firstName = true;
+
+			size_t ctr = 0;
+			std::unordered_map<std::string, size_t> seenNames;
+			for(auto arg : _input)
+			{
+				if((arg.name.empty() && useNames) || (!arg.name.empty() && !useNames && !firstName))
 				{
-					return { partial, { }, SimpleError::make(MsgType::Note, i.loc, "Function '%s' does not have a parameter named '%s'",
-						_target->name, i.name).append(SimpleError::make(MsgType::Note, _target, "Function was defined here:"))
+					return { partial, { },
+						SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor")
+					};
+				}
+				else if(firstName && !arg.name.empty())
+				{
+					useNames = true;
+					firstName = false;
+				}
+				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
+				{
+					return { partial, { },
+						SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->name)
+					};
+				}
+				else if(useNames && seenNames.find(arg.name) != seenNames.end())
+				{
+					return { partial, { },
+						SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+						arg.name, str->name)
 					};
 				}
 
-				input[i.name.empty() ? counter : nameToIndex[i.name]] = Param_t(i);
-				counter++;
+				seenNames[arg.name] = ctr++;
 			}
 
+			//* note: if we're doing positional args, allow only all or none.
+			if(!useNames && _input.size() != fieldNames.size() && _input.size() > 0)
+			{
+				return { partial, { },
+					SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead", str->name, fieldNames.size(), _input.size())
+						.append(BareError("All arguments are mandatory when using positional arguments", MsgType::Note))
+				};
+			}
 
-			// if infer != 0, then it should be the return type.
-			if(infer && !infer->isVoidType())
-				fretty = infer;
+			// preallocate for both problem and input.
+			input.resize(seenNames.size());
+			problem.resize(seenNames.size());
+
+			for(const auto& seen : seenNames)
+			{
+				auto idx = fieldNames[seen.first];
+
+				problem[idx] = (UnsolvedType(str->fields[idx]->loc, str->fields[idx]->type));
+				input[idx] = Param_t(_input[seen.second]);
+			}
+
+			return _internal_inferTypesForGenericEntity(this, problemSpace, problem, input, partial, infer);
 		}
 		else
 		{
-			if(infer == 0)
-			{
-				return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
-					"Unable to infer type for function '%s' without additional information", _target->name) };
-			}
-			else if(!infer->isFunctionType())
-			{
-				return { partial, { }, SimpleError::make(MsgType::Note, this->loc(),
-					"Invalid inferred type '%s' for polymorphic entity '%s'", infer, _target->name) };
-			}
-			else
-			{
-				// now...
-				auto fty = infer->toFunctionType();
-				input.resize(fty->getArgumentTypes().size());
-
-				int ctr = 0;
-				for(auto arg : fty->getArgumentTypes())
-					input[ctr++] = arg;
-
-				fretty = fty->getReturnType();
-			}
+			error(td, "no.");
 		}
+	}
+	if(dcast(ast::FuncDefn, _target) || dcast(ast::InitFunctionDefn, _target))
+	{
+		std::vector<ast::FuncDefn::Arg> args;
+		if(auto fd = dcast(ast::FuncDefn, _target))                 args = fd->args;
+		else if(auto ifd = dcast(ast::InitFunctionDefn, _target))   args = ifd->args;
 
+		pts::Type* retty = 0;
+		if(auto fd = dcast(ast::FuncDefn, _target)) retty = fd->returnType;
 
-		if(fretty && (retty->isNamedType() && retty->toNamedType()->name == VOID_TYPE_STRING) != fretty->isVoidType())
-		{
-			return { partial, { }, SimpleError::make(MsgType::Note, this->loc(), "Mismatch between inferred types '%s' and '%s' in return type of function '%s'", retty->str(), fretty, _target->name) };
-		}
+		SimpleError errs;
+		std::tie(input, problem, errs) = _internal_unwrapFunctionCall(this, _target, args, retty, _input, isFnCall, infer, partial);
 
-		if(fretty)
-		{
-			input.push_back(Param_t("", this->loc(), fretty));
-			problem.push_back(UnsolvedType(_target->loc, retty));
-		}
+		if(errs.hasErrors())
+			return { partial, { }, errs };
 	}
 	else
 	{
@@ -412,31 +561,7 @@ std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleErr
 		}
 	}
 
-
-	std::set<std::string> tosolve;
-	for(const auto& p : problemSpace)
-		tosolve.insert(p.first);
-
-	dbgprintln("SESSION: infer = %s", infer);
-	auto retError = solveArgumentList(problem, input, solution, tosolve, problemSpace);
-	dbgprintln("SOLUTIONS: %s\n", util::listToString(util::pairs(solution.solutions), [](auto p) -> auto {
-		return strprintf("%s = '%s'", p.first, p.second.soln);
-	}));
-
-	// convert the thing.
-	{
-		TypeParamMap_t ret;
-		for(const auto& soln : solution.solutions)
-		{
-			auto s = soln.second.soln;
-			if(s->isConstantNumberType())
-				s = this->inferCorrectTypeForLiteral(s->toConstantNumberType());
-
-			ret[soln.first] = s;
-		}
-
-		return { ret, solution.substitutions, retError };
-	}
+	return _internal_inferTypesForGenericEntity(this, _target->generics, problem, input, partial, infer);
 }
 
 
