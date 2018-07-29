@@ -1,6 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- tidy up some stuff, WIP for generic unions.
+
+`(e475e99)`
 - add tagged union types, including support for `is` and `as` to check and unwrap respectively
 - infer type parameters for a type from a constructor call
 

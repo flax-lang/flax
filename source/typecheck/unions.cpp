@@ -30,6 +30,8 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	fs->stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
+
+	fs->typeDefnMap[defn->type] = defn;
 	return TCResult(defn);
 }
 
@@ -45,6 +47,10 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	auto defn = dcast(sst::UnionDefn, tcr.defn());
 	iceAssert(defn);
+
+	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
+		return TCResult(defn);
+
 
 	fs->pushTree(defn->id.name);
 	defer(fs->popTree());
@@ -94,6 +100,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	for(const auto& [ uvd, id ] : vdefs)
 		uvd->type = unionTy->getVariant(id);
 
+
+	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
 }
 
