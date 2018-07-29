@@ -16,6 +16,14 @@ CGResult sst::UnionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
+CGResult sst::UnionVariantDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	return CGResult(0);
+}
+
 CGResult sst::UnionVariantConstructor::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -24,7 +32,7 @@ CGResult sst::UnionVariantConstructor::_codegen(cgn::CodegenState* cs, fir::Type
 	auto ut = this->parentUnion->type->toUnionType();
 	iceAssert(ut);
 
-	auto vt = ut->getVariantType(this->variantId);
+	auto vt = ut->getVariant(this->variantId)->getInteriorType();
 	iceAssert(vt);
 
 	auto uv = cs->irb.CreateValue(ut);
@@ -64,6 +72,7 @@ CGResult sst::UnionVariantConstructor::_codegen(cgn::CodegenState* cs, fir::Type
 		uv = cs->irb.SetUnionVariantData(uv, this->variantId, data);
 	}
 
+	uv = cs->irb.SetUnionVariantID(uv, this->variantId);
 	return CGResult(uv);
 }
 

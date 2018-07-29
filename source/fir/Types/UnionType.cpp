@@ -72,14 +72,14 @@ namespace fir
 
 	size_t UnionType::getIdOfVariant(const std::string& name)
 	{
-		if(auto it = this->indexMap.find(name); it != this->indexMap.end())
-			return it->second;
+		if(auto it = this->variants.find(name); it != this->variants.end())
+			return it->second->variantId;
 
 		else
 			error("no variant with name '%s'", name);
 	}
 
-	std::unordered_map<std::string, Type*> UnionType::getVariants()
+	std::unordered_map<std::string, UnionVariantType*> UnionType::getVariants()
 	{
 		return this->variants;
 	}
@@ -89,16 +89,16 @@ namespace fir
 		return this->variants.find(name) != this->variants.end();
 	}
 
-	Type* UnionType::getVariantType(size_t id)
+	UnionVariantType* UnionType::getVariant(size_t id)
 	{
-		if(auto it = this->revIndexMap.find(id); it != this->revIndexMap.end())
-			return this->getVariantType(it->second);
+		if(auto it = this->indexMap.find(id); it != this->indexMap.end())
+			return it->second;
 
 		else
 			error("no variant with id %d", id);
 	}
 
-	Type* UnionType::getVariantType(const std::string& name)
+	UnionVariantType* UnionType::getVariant(const std::string& name)
 	{
 		if(auto it = this->variants.find(name); it != this->variants.end())
 			return it->second;
@@ -113,10 +113,10 @@ namespace fir
 	{
 		for(const auto& [ n, p ] : members)
 		{
-			this->variants[n] = p.second;
-			this->indexMap[n] = p.first;
+			auto uvt = new UnionVariantType(this, p.first, n, p.second);
 
-			this->revIndexMap[p.first] = n;
+			this->variants[n] = uvt;
+			this->indexMap[p.first] = uvt;
 		}
 	}
 
@@ -139,6 +139,51 @@ namespace fir
 		// typeCache[this->structName] = new UnionType(this->structName, mems, this->isTypePacked);
 
 		// delete old;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+	std::string UnionVariantType::str()
+	{
+		return this->parent->str() + "." + this->name;
+	}
+
+	std::string UnionVariantType::encodedStr()
+	{
+		return this->parent->encodedStr() + "." + this->name;
+	}
+
+	bool UnionVariantType::isTypeEqual(Type* other)
+	{
+		if(auto uvt = dcast(UnionVariantType, other))
+			return uvt->parent == this->parent && uvt->name == this->name;
+
+		return false;
+	}
+
+	fir::Type* UnionVariantType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	{
+		if(this->containsPlaceholders())
+			error("not supported!");
+
+		return this;
+	}
+
+	UnionVariantType::UnionVariantType(UnionType* p, size_t id, const std::string& name, Type* actual) : Type(TypeKind::UnionVariant)
+	{
+		this->parent = p;
+		this->name = name;
+		this->variantId = id;
+		this->interiorType = actual;
 	}
 }
 

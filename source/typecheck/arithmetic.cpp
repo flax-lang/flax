@@ -83,6 +83,9 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	}
 	else if(op == Operator::TypeCast)
 	{
+		if(right->isUnionVariantType())
+			return right->toUnionVariantType()->getInteriorType();
+
 		return right;
 	}
 	else if(op == Operator::Plus)
@@ -257,8 +260,8 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	auto ret = new sst::BinaryOp(this->loc, rest);
 
-	ret->left = dynamic_cast<sst::Expr*>(l);
-	ret->right = dynamic_cast<sst::Expr*>(r);
+	ret->left = dcast(sst::Expr, l);
+	ret->right = dcast(sst::Expr, r);
 	ret->op = this->op;
 
 	ret->overloadedOpFunction = overloadFn;

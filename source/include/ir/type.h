@@ -32,6 +32,7 @@ namespace fir
 	struct PrimitiveType;
 	struct ArraySliceType;
 	struct DynamicArrayType;
+	struct UnionVariantType;
 	struct ConstantNumberType;
 	struct PolyPlaceholderType;
 
@@ -62,6 +63,7 @@ namespace fir
 		Primitive,
 		ArraySlice,
 		DynamicArray,
+		UnionVariant,
 		ConstantNumber,
 		PolyPlaceholder,
 	};
@@ -100,6 +102,7 @@ namespace fir
 		PolyPlaceholderType* toPolyPlaceholderType();
 		ConstantNumberType* toConstantNumberType();
 		DynamicArrayType* toDynamicArrayType();
+		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
 		FunctionType* toFunctionType();
@@ -124,6 +127,7 @@ namespace fir
 		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
+		bool isUnionVariantType();
 
 		bool isRangeType();
 
@@ -511,7 +515,7 @@ namespace fir
 		static TupleType* get(const std::vector<Type*>& members);
 	};
 
-
+	struct UnionVariantType;
 	struct UnionType : Type
 	{
 		friend struct Type;
@@ -525,11 +529,11 @@ namespace fir
 
 		size_t getVariantCount();
 		size_t getIdOfVariant(const std::string& name);
-		std::unordered_map<std::string, Type*> getVariants();
+		std::unordered_map<std::string, UnionVariantType*> getVariants();
 
 		bool hasVariant(const std::string& name);
-		Type* getVariantType(const std::string& name);
-		Type* getVariantType(size_t id);
+		UnionVariantType* getVariant(const std::string& name);
+		UnionVariantType* getVariant(size_t id);
 		void setBody(const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
 
 		virtual ~UnionType() override { }
@@ -538,13 +542,42 @@ namespace fir
 		UnionType(const Identifier& id, const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
 
 		Identifier unionName;
-		std::unordered_map<std::string, Type*> variants;
-		std::unordered_map<std::string, size_t> indexMap;
-		std::unordered_map<size_t, std::string> revIndexMap;
+		std::unordered_map<size_t, UnionVariantType*> indexMap;
+		std::unordered_map<std::string, UnionVariantType*> variants;
 
 		public:
 		static UnionType* create(const Identifier& id, const std::unordered_map<std::string, std::pair<size_t, Type*>>& variants);
 		static UnionType* createWithoutBody(const Identifier& id);
+	};
+
+
+	struct UnionVariantType : Type
+	{
+		friend struct Type;
+		friend struct UnionType;
+
+		// methods
+		std::string getName() { return this->name; }
+		size_t getVariantId() { return this->variantId; }
+		Type* getInteriorType() { return this->interiorType; }
+		UnionType* getParentUnion() { return this->parent; }
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst) override;
+
+		// protected constructor
+		virtual ~UnionVariantType() override { }
+
+		protected:
+		UnionVariantType(UnionType* parent, size_t id, const std::string& name, Type* actual);
+
+		// fields (protected)
+		UnionType* parent;
+		Type* interiorType;
+		std::string name;
+		size_t variantId;
 	};
 
 

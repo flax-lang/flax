@@ -49,10 +49,10 @@ class LinkedList<T>
 public fn doLinkedListTest()
 {
 	do {
-		var list = LinkedList<T: int>(data: 41)
+		var list = LinkedList(data: 41)
 		LinkedList<T: int>.hello()
 
-		var list2 = LinkedList<T: str>(data: "foo")
+		var list2 = LinkedList(data: "foo")
 		list2.insert("hello")
 		list2.insert("world")
 

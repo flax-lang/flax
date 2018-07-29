@@ -575,7 +575,7 @@ namespace sst
 			{
 				// ok, then.
 				//* note: no need to specify 'travUp', because we already resolved the type here.
-				return this->resolveConstructorCall(name, typedf, ts, gmaps);
+				return this->resolveConstructorCall(typedf, ts, gmaps);
 			}
 			else
 			{
@@ -604,7 +604,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveConstructorCall(const std::string& name, TypeDefn* typedf, const std::vector<Param>& arguments,
+	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<Param>& arguments,
 		const TypeParamMap_t& gmaps)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
@@ -695,10 +695,12 @@ namespace sst
 			// in actual fact we just return the thing here. sigh.
 			return TCResult(str);
 		}
-		else if(auto unn = dcast(sst::UnionDefn, typedf))
+		else if(auto uvd = dcast(sst::UnionVariantDefn, typedf))
 		{
-			//* we only added in 'name' to resolveConstructorCall's arguments to distinguish between the different variants.
-			//* everyone else ignores it.
+			auto name = uvd->id.name;
+
+			auto unn = uvd->parentUnion;
+			iceAssert(unn);
 
 			auto unt = unn->type->toUnionType();
 
@@ -707,14 +709,14 @@ namespace sst
 
 			// ok, then. check the type + arguments.
 			std::vector<Param> target;
-			if(unt->getVariantType(name)->isTupleType())
+			if(unt->getVariant(name)->getInteriorType()->isTupleType())
 			{
-				for(auto t : unt->getVariantType(name)->toTupleType()->getElements())
+				for(auto t : unt->getVariant(name)->getInteriorType()->toTupleType()->getElements())
 					target.push_back(Param("", uvl, t));
 			}
-			else
+			else if(!unt->getVariant(name)->getInteriorType()->isVoidType())
 			{
-				target.push_back(Param("", uvl, unt->getVariantType(name)));
+				target.push_back(Param("", uvl, unt->getVariant(name)->getInteriorType()));
 			}
 
 			auto [ dist, errs ] = computeOverloadDistance(this, unn, target, arguments, false, 0);
@@ -724,7 +726,7 @@ namespace sst
 					unn->id.name)).postAndQuit();
 			}
 
-			return TCResult(unn);
+			return TCResult(uvd);
 		}
 		else
 		{
@@ -855,11 +857,14 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 		return ret;
 	}
-	else if(auto unn = dcast(sst::UnionDefn, target))
+	else if(auto uvd = dcast(sst::UnionVariantDefn, target))
 	{
+		auto unn = uvd->parentUnion;
+		iceAssert(unn);
+
 		auto ret = new sst::UnionVariantConstructor(this->loc, unn->type);
 
-		ret->variantId = unn->type->toUnionType()->getIdOfVariant(this->name);
+		ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
 		ret->parentUnion = unn;
 		ret->args = ts;
 

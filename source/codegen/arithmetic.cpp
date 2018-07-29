@@ -44,13 +44,44 @@ namespace sst
 
 				return CGResult(cs->irb.Call(fn, value));
 			}
+			else if(vt->isUnionType() && target->isUnionVariantType())
+			{
+				if(auto parent = target->toUnionVariantType()->getParentUnion(); parent != vt)
+				{
+					error(this, "target variant '%s' is not defined in union '%s'", target, parent);
+				}
+				else
+				{
+					fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
+					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
+
+					auto targetId = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+					auto variantId = cs->irb.GetUnionVariantID(value);
+
+					auto valid = cs->irb.ICmpEQ(targetId, variantId);
+					cs->irb.CondBranch(valid, merge, invalid);
+
+					cs->irb.setCurrentBlock(invalid);
+					{
+						cgn::glue::printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
+							"invalid unwrap of value of union '%s' into variant '%s'", {
+								cs->module->createGlobalString(vt->str()),
+								cs->module->createGlobalString(target->toUnionVariantType()->getName())
+							}
+						);
+					}
+
+					cs->irb.setCurrentBlock(merge);
+					return CGResult(cs->irb.GetUnionVariantData(value, target->toUnionVariantType()->getVariantId()));
+				}
+			}
 			else
 			{
 				auto res = cs->irb.AppropriateCast(value, target);
 
 				if(!res)
 				{
-					error(this, "No appropriate cast from type '%s' to '%s'; use 'as!' to force a bitcast",
+					error(this, "No appropriate cast from type '%s' to '%s'",
 						vt, target);
 				}
 
@@ -62,18 +93,27 @@ namespace sst
 			auto value = this->left->codegen(cs).value;
 			auto target = this->right->codegen(cs).value->getType();
 
-			fir::Value* res = 0;
 			if(value->getType()->isAnyType())
 			{
 				// get the type out.
-				res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value), cs->irb.BitwiseNOT(fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)));
+				auto res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value),
+					cs->irb.BitwiseNOT(fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)));
+
+				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
+			}
+			else if(value->getType()->isUnionType() && target->isUnionVariantType())
+			{
+				// it's slightly more complicated.
+				auto vid1 = cs->irb.GetUnionVariantID(value);
+				auto vid2 = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+
+				return CGResult(cs->irb.ICmpEQ(vid1, vid2));
 			}
 			else
 			{
-				res = fir::ConstantInt::getUint64(value->getType()->getID());
+				auto res = fir::ConstantInt::getUint64(value->getType()->getID());
+				return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
 			}
-
-			return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
 		}
 
 
