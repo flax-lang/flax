@@ -292,8 +292,8 @@ namespace backend
 			size_t maxSz = 0;
 			for(auto v : ut->getVariants())
 			{
-				if(!v.second->isVoidType())
-					maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second, mod)));
+				if(!v.second->getInteriorType()->isVoidType())
+					maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second->getInteriorType(), mod)));
 			}
 
 			if(maxSz > 0)
@@ -2337,12 +2337,51 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::Union_SetVariantID:
+						{
+							iceAssert(inst->operands.size() == 2);
+							iceAssert(inst->operands[0]->getType()->isUnionType());
+
+							llvm::Value* uv = getOperand(inst, 0);
+							llvm::Value* ret = builder.CreateInsertValue(uv, getOperand(inst, 1), { 0 });
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
+						case fir::OpKind::Union_GetValue:
+						{
+							iceAssert(inst->operands.size() == 2);
+							iceAssert(inst->operands[0]->getType()->isUnionType());
+
+							auto ut = inst->operands[0]->getType()->toUnionType();
+							auto vid = dcast(fir::ConstantInt, inst->operands[1])->getSignedValue();
+
+							iceAssert(vid < ut->getVariantCount());
+							auto vt = ut->getVariant(vid)->getInteriorType();
+
+							auto lut = typeToLlvm(ut, module);
+							auto lvt = typeToLlvm(vt, module);
+
+							llvm::Value* unionVal = getOperand(inst, 0);
+							llvm::Value* arrp = builder.CreateAlloca(lut->getStructElementType(1));
+							builder.CreateStore(builder.CreateExtractValue(unionVal, { 1 }), arrp);
+
+							// cast to the appropriate type.
+							llvm::Value* ret = builder.CreatePointerCast(arrp, lvt->getPointerTo());
+							ret = builder.CreateLoad(ret);
+
+							addValueToMap(ret, inst->realOutput);
+							break;
+						}
+
+
 						case fir::OpKind::Union_SetValue:
 						{
 							iceAssert(inst->operands.size() == 3);
 							iceAssert(inst->operands[0]->getType()->isUnionType());
 
-							// auto ut = inst->operands[0]->getType()->toUnionType();
 							auto luv = getOperand(inst, 0);
 							auto lut = luv->getType();
 
@@ -2353,7 +2392,6 @@ namespace backend
 							// (to let us use GEP for everything), this will have to do.
 
 							llvm::Value* arrp = builder.CreateAlloca(lut->getStructElementType(1));
-							builder.CreateStore(builder.CreateExtractValue(luv, { 1 }), arrp);
 
 							// cast to the correct pointer type
 							auto valp = builder.CreateBitCast(arrp, val->getType()->getPointerTo());

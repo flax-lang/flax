@@ -753,6 +753,16 @@ namespace sst
 		std::unordered_map<std::string, Location> variants;
 	};
 
+	struct UnionVariantDefn : TypeDefn
+	{
+		UnionVariantDefn(const Location& l) : TypeDefn(l) { this->readableName = "union variant definition"; }
+		~UnionVariantDefn() { }
+
+		virtual std::string getKind() override { return "union variant"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		UnionDefn* parentUnion = 0;
+	};
 
 	struct UnionVariantConstructor : Expr
 	{

@@ -219,7 +219,7 @@ namespace sst
 		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
 			bool allowImplicitSelf);
 
-		TCResult resolveConstructorCall(const std::string& name, TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments,
+		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments,
 			const TypeParamMap_t& gmaps);
 	};
 

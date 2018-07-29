@@ -402,6 +402,11 @@ namespace fir
 		return static_cast<PolyPlaceholderType*>(this);
 	}
 
+	UnionVariantType* Type::toUnionVariantType()
+	{
+		if(this->kind != TypeKind::UnionVariant) error("not union variant type");
+		return static_cast<UnionVariantType*>(this);
+	}
 
 
 
@@ -549,6 +554,11 @@ namespace fir
 	bool Type::isPolyPlaceholderType()
 	{
 		return this->kind == TypeKind::PolyPlaceholder;
+	}
+
+	bool Type::isUnionVariantType()
+	{
+		return this->kind == TypeKind::UnionVariant;
 	}
 
 

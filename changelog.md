@@ -1,5 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- add tagged union types, including support for `is` and `as` to check and unwrap respectively
+- infer type parameters for a type from a constructor call
+
 `(c89c809)`
 - fix the recursive instantiation of generic functions.
 

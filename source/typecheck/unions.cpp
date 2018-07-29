@@ -53,6 +53,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	// size_t maxSize = 0;
 
 	std::unordered_map<std::string, std::pair<size_t, fir::Type*>> vars;
+	std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
 	for(auto variant : this->cases)
 	{
 		vars[variant.first] = { std::get<0>(variant.second), (std::get<2>(variant.second)
@@ -64,7 +65,15 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		// it's a little cheaty thing here; we add ourselves to the subtree under different names,
 		// so that dot-operator checking still comes back to us in the end.
 
-		fs->stree->addDefinition(variant.first, defn);
+		auto vdef = new sst::UnionVariantDefn(std::get<1>(variant.second));
+		vdef->parentUnion = defn;
+		// vdef->type = vars[variant.first].second;
+		vdef->id = Identifier(variant.first, IdKind::Name);
+		vdef->id.scope = fs->getCurrentScope();
+
+		vdefs.push_back({ vdef, std::get<0>(variant.second) });
+
+		fs->stree->addDefinition(variant.first, vdef);
 	}
 
 	// log2 of the number of cases, rounded up, gives us the minimum number of bits we need to represent the thing.
@@ -78,7 +87,13 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	// fir::Type* idTy = fir::PrimitiveType::getIntN(idSize * 8);
 
-	defn->type->toUnionType()->setBody(vars);
+	auto unionTy = defn->type->toUnionType();
+	unionTy->setBody(vars);
+
+	// in a bit of stupidity, we need to set the type of each definition properly.
+	for(const auto& [ uvd, id ] : vdefs)
+		uvd->type = unionTy->getVariant(id);
+
 	return TCResult(defn);
 }
 
