@@ -530,7 +530,9 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			//* which during codegen will try to trigger the codegne for the UnionVariantDefn,
 			//* which returns 0 (because there's really nothing to define at code-gen time)
 
-			if(ret->type->isUnionVariantType())
+			//? note: ret->type can be null if we're in the middle of a namespace dot-op,
+			//? and 'ret' is a ScopeExpr.
+			if(ret->type && ret->type->isUnionVariantType())
 				ret = new sst::TypeExpr(ret->loc, ret->type);
 		}
 		else
