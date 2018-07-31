@@ -289,6 +289,9 @@ namespace cgn
 		if(Operator::isComparison(op))
 		{
 			auto [ lr, rr ] = this->autoCastValueTypes(l, r);
+			if(!lr || !rr)
+				unsupportedError(lhs.first, lt, rhs.first, rt);
+
 			iceAssert(lr && rr);
 
 			auto [ lt, rt ] = std::make_pair(lr->getType(), rr->getType());

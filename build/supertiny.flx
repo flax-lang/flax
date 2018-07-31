@@ -5,7 +5,7 @@
 export supertiny
 
 import "libc" as _
-// import "stdio" as _
+import "stdio" as _
 
 // var glob: any
 // fn test_refcounting_problem_thing()
@@ -31,51 +31,46 @@ import "libc" as _
 			none
 		}
 
-		let x = option<T: str>.some("300")
+		let x = option<T: str>.some("123")
+		let y = option<T: int>.some(456)
 
-		printf("x = %s\n", x as option<T: int>.some)
+		printf("x = %s, y = %d\n", x as option<T: str>.some, y as option<T: int>.some)
+
+		if let z = 30; z > 50
+		{
+			println("z > 50")
+		}
+		else
+		{
+			println("z is %", z)
+		}
 	}
 
 
-
-	// struct outer
-	// {
-	// 	class inner
+	// do {
+	// 	struct outer
 	// 	{
-	// 		var x: int
-
-	// 		init(a: int, b: int)
+	// 		class inner
 	// 		{
-	// 			x = a * b
+	// 			var x: int
+
+	// 			init(a: int, b: int)
+	// 			{
+	// 				x = a * b
+	// 			}
 	// 		}
 	// 	}
-	// }
 
-	// let foo = outer.inner(a: 30, b: 40)
-	// println("foo.x = %", foo.x)
+	// 	let foo = outer.inner(a: 30, b: 40)
+	// 	println("foo.x = %", foo.x)
+	// }
 }
 
 
 /*
 	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
-	// 1. constructor syntax for builtin types
-	// 2. start work on the generic type solver? {
-	// 	a. placeholder types for references to generic functions in a function call.
-	//	b. make sure that instantiating a generic function by assinging it to a variable works.
-	// }
-	// 3. variadic functions
-	// 3a. make variadic forwarding work properly
-	// 5. fix SAA types {
-	// 	a. don't crash when we do `.rc` on a type without a refcount pointer; sure, there'll be a branch and shit, but better than crashing.
-	// 	b. check if we properly initialise a refcount with the memory pointer in all cases (when we allocate)
-	// 	c. as a corollary, check if we properly free the refcount pointer (ie. not leak memory) when we deallocate.
-	// }
-	// 6. clean up generic error output -- we have the content, just need to trim and arrange.
 	7. move long error messages on spans nearer to the left margin when there's only one span in the error.
-	// 8. return type inference for generics don't seem to work {
-	// 	a. no idea why. too sleepy.
-	// }
 	9. fix errors (in general?) {
 		a. the generic solver should basically return only a Span, ie. a location with text.
 		b. maybe find some way to 'link' two spans together with one message.
@@ -83,25 +78,38 @@ import "libc" as _
 			- do we duplicate the context?
 			- if not then???
 	}
-	// 10. memory corruption for 'set 3' of generic test???????
-	// 11. fix generic instantiation of generic types {
-	// 	a. we should not check for the entire generic context stack when matching generic versions (in generics.cpp:39)
-	// 	b. instead, generic types need to push their own stack *in addition* to the normal one that functions use.
-	// 	c. then we match against the generic type context stack.
-	// 	d. with the current method we fail to find existing generic instantiations when we're doing stuff in a generic function.
-	// }
 	12. allow generic solver to infer things from generic types passed in {
 		eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
 		foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
 	}
-	// 13. fix cross-module generic types -- see linkedlist.flx.
-	// 14. `i8.min` prints `128` instead of `-128` only on windows...
 	15. builtin way to get a character literal {
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
 	}
-	// 16. overloading based on signedness seems to fail.
 	// 17. refcounted moving is broken -- not sure if design flaw or not. investigate.
+	18. generic unions {
+		currently they work okay, but it's very troublesome to unwrap, construct or declare them, because you need to
+		explicitly state the type of the union.
+
+		given that we just managed to do the thing where we can infer generic types from constructor arguments, we should be
+		able to do a similar thing for this case.
+
+		the problem here is that we need to be able to turn `Option<T: int>.Some(...)` into `Option.Some(...)`, but when we
+		just access `Option` directly without type arguments, we will get yelled at by the typechecker.
+
+		the alternative to this problem is just to disallow inference when doing it like this. then, inference is only enabled
+		when we `use` the union:
+
+		```
+		using Option
+
+		let x = Some(30)
+		let y = None
+		```
+
+		on this hand, we will also need to somehow allow `using` a generic union without specifying its type... bah.
+	}
+	19. using for unions (see 18 for some issues re: generic types)
 */
 
 
