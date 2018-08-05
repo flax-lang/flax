@@ -257,14 +257,11 @@ namespace sst
 
 
 
-	// forward declare this
-	static sst::Defn* fillGenericTypeWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial);
-
 	static std::pair<Defn*, SimpleError> attemptToInstantiateGenericThing(TypecheckState* fs, ast::Parameterisable* thing,
 		const TypeParamMap_t& _gmaps, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args, bool fillplaceholders)
 	{
 		if(auto fd = dcast(ast::FuncDefn, thing); fd && !isFnCall && infer == 0 && fillplaceholders)
-			return { fillGenericTypeWithPlaceholders(fs, thing, _gmaps), SimpleError() };
+			return { fs->fillGenericTypeWithPlaceholders(thing, _gmaps), SimpleError() };
 
 		auto [ gmaps, substitutions, err ] = fs->inferTypesForGenericEntity(thing, args, _gmaps, infer, isFnCall);
 
@@ -306,8 +303,10 @@ namespace sst
 						//* here, we modify the input appropriately.
 						//* i don't see a better way to do it.
 
-						iceAssert(arg.orig);
-						arg.value = arg.orig->typecheck(fs, arg.value->type->substitutePlaceholders(substitutions)).expr();
+						if(arg.orig)
+						{
+							arg.value = arg.orig->typecheck(fs, arg.value->type->substitutePlaceholders(substitutions)).expr();
+						}
 					}
 
 					return { d.defn(), SimpleError() };
@@ -329,12 +328,10 @@ namespace sst
 
 
 
-
 	static int placeholderGroupID = 0;
-	static sst::Defn* fillGenericTypeWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
+	TypeParamMap_t TypecheckState::getPlaceholderSolutions(ast::Parameterisable* thing, const TypeParamMap_t& input)
 	{
-		// this will just call back into 'attemptToDisamiguateBlaBla' with filled in types for the partial solution.
-		TypeParamMap_t copy = partial;
+		TypeParamMap_t copy = input;
 
 		for(const auto& p : thing->generics)
 		{
@@ -343,9 +340,16 @@ namespace sst
 		}
 
 		placeholderGroupID++;
+		return copy;
+	}
+
+	sst::Defn* TypecheckState::fillGenericTypeWithPlaceholders(ast::Parameterisable* thing, const TypeParamMap_t& partial)
+	{
+		// this will just call back into 'attemptToDisamiguateBlaBla' with filled in types for the partial solution.
+		TypeParamMap_t copy = this->getPlaceholderSolutions(thing, partial);
 
 		std::vector<FnCallArgument> fake;
-		auto def = attemptToInstantiateGenericThing(fs, thing, copy, /* infer: */ 0, /* isFnCall: */ false,
+		auto def = attemptToInstantiateGenericThing(this, thing, copy, /* infer: */ 0, /* isFnCall: */ false,
 			/* args: */ fake, /* fillplaceholders: */ false).first;
 
 		iceAssert(def);

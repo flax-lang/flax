@@ -25,6 +25,7 @@ namespace cgn
 namespace ast
 {
 	struct FuncDefn;
+	struct TypeDefn;
 }
 
 namespace sst
@@ -48,6 +49,8 @@ namespace sst
 	{
 		TypeDefn(const Location& l) : Defn(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
+
+		ast::TypeDefn* original = 0;
 	};
 
 
@@ -625,6 +628,8 @@ namespace sst
 		bool isVirtual = false;
 		bool isOverride = false;
 		bool isMutating = false;
+
+		ast::FuncDefn* original = 0;
 	};
 
 	struct ForeignFuncDefn : FunctionDecl

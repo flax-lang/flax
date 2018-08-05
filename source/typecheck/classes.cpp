@@ -30,6 +30,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
+	defn->original = this;
 
 	auto cls = fir::ClassType::createWithoutBody(defn->id);
 	defn->type = cls;

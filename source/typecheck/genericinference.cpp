@@ -417,7 +417,12 @@ sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, s
 	if(auto td = dcast(ast::TypeDefn, _target))
 	{
 		if(!isFnCall)
-			return { partial, { }, SimpleError::make(td, "Invalid use of type '%s' in non-constructor-call context", td->name) };
+		{
+			// fill it with placeholders instead, i guess??
+
+			return { this->getPlaceholderSolutions(_target, partial), { }, SimpleError() };
+			// return { partial, { }, SimpleError::make(td, "Invalid use of type '%s' in non-constructor-call context", td->name) };
+		}
 
 		if(auto cld = dcast(ast::ClassDefn, td))
 		{
