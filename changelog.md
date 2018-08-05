@@ -1,7 +1,7 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
-- tidy up some stuff, WIP for generic unions.
+`(efc961e)`
+- generic unions, but they're quite verbose.
 
 `(e475e99)`
 - add tagged union types, including support for `is` and `as` to check and unwrap respectively

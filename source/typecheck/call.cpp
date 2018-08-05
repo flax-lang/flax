@@ -346,12 +346,11 @@ namespace sst
 	static TCResult _resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<std::pair<Defn*, std::vector<Param>>>& cands,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
-		if(cands.empty()) return TCResult(BareError("No candidates"));
+		if(cands.empty()) return TCResult(BareError("no candidates"));
 
 		using Param = FunctionDefn::Param;
 		iceAssert(cands.size() > 0);
 
-		// OverloadError errors;
 
 		int bestDist = INT_MAX;
 		std::map<Defn*, SpanError> fails;
@@ -369,7 +368,42 @@ namespace sst
 				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
 					args.insert(args.begin(), Param(def->parentTypeForMethod->getPointerTo()));
 
-				std::tie(dist, fails[fn]) = computeOverloadDistance(fs, cand, fn->params, args, fn->isVarArg, cand);
+				// check for placeholders -- means that we should attempt to infer the type of the parent if its a static method.
+				//* there are some assumptions we can make -- primarily that this will always be a static method of a type.
+				//? (a): namespaces cannot be generic.
+				//? (b): instance methods must have an associated 'self', and you can't have a variable of generic type
+				if(fn->type->containsPlaceholders())
+				{
+					if(auto fd = dcast(FunctionDefn, fn); !fd)
+					{
+						error("invalid non-definition of a function with placeholder types");
+					}
+					else
+					{
+						// ok, i guess.
+						iceAssert(fd);
+						iceAssert(fd->original);
+
+						auto infer_args = util::map(args, [](const Param& e) -> FnCallArgument {
+							return FnCallArgument(e.loc, e.name, new sst::TypeExpr(e.loc, e.type), 0);
+						});
+
+						// do an inference -- with the arguments that we have.
+						auto [ soln, subs, errs ] = fs->inferTypesForGenericEntity(fd->original, infer_args, { }, nullptr, true);
+						if(errs.hasErrors())
+						{
+							warn("NO");
+							return TCResult(errs);
+						}
+						else
+						{
+							warn("YES");
+							return fs->instantiateGenericEntity(fd->original, soln);
+						}
+					}
+				}
+
+				std::tie(dist, fails[fn]) = computeOverloadDistance(fs, fn, fn->params, args, fn->isVarArg, cand);
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{

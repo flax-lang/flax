@@ -97,6 +97,9 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
 	defn->type = fnType;
 
+	if(this->name != "init")
+		defn->original = this;
+
 	iceAssert(!infer || (infer->isStructType() || infer->isClassType()));
 	defn->parentTypeForMethod = infer;
 

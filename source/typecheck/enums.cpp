@@ -38,6 +38,7 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
+	defn->original = this;
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 

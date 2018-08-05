@@ -24,7 +24,7 @@ import "stdio" as _
 
 @entry fn main()
 {
-	do {
+	/* do {
 		union option<T>
 		{
 			some: T
@@ -44,6 +44,16 @@ import "stdio" as _
 		{
 			println("z is %", z)
 		}
+	} */
+
+	do {
+		class Foo<T>
+		{
+			init() { }
+			static fn bar(x: T) { printf("x = %d\n", x) }
+		}
+
+		Foo.bar(30)
 	}
 
 
@@ -68,6 +78,70 @@ import "stdio" as _
 
 
 /*
+	! NOTES FOR IMPLEMENTATION
+	{
+		so currently we have an issue where we need to re-typecheck a given function definition (from AST->SST again). the current
+		architecture that we have in place to infer generic types is inadequate to allow omitting type arguments for nested things, eg. in
+		unions and static functions of generic types.
+
+		the proposed architecture we are in the midst of implementing fills the LHS of function-call dotops with placeholder types if it is
+		a generic type and we do not have the solution. the next step is to substitute those placeholder types when we actually typecheck
+		the function call, using the types of its parameters as inputs to the generic solver.
+
+		one of the restrictions that we have is that we need to perform the inference for every candidate, because we can't be performing
+		overload resolution with placeholder types.
+
+		a couple of issues arise: {
+			1. dirty-ish hack where we don't actually have the sst::Expr of the argument to pass to the solver, so we put in a null-check that
+				feels really out-of-place
+
+			2. related issue, we previously re-architected all of the generic solver functions to take FnCallArguments instead of Params, because
+				of the thing where we wanted to re-typecheck function call arguments -- to enable passing generic functions to generic functions.
+				works well for that use case, but complicates this one, because we don't have the expressions.
+
+				right now we're just creating sst::TypeExprs, but that doesn't hide the fact that we don't actually have the information anywhere
+				(unless we pass more things around)
+
+				the reason we're sticking with Params for the overload resolver is that sometimes
+					(a) we're checking for duplicates, so naturally we only have the types and not expressions
+					(b) we need to insert fake arguments (for method calls) and we don't have an expression there as well
+
+				we can solve this problem with some careful refactoring, ie. pulling out the actual resolver code and making sure it
+				only takes types, then having different interfaces to the main code. however, i'd rather not do that unless
+				absolutely necessary, as we already have more than a glut of various functions that only serve to wrap other functions
+				after a light transformation of the input arguments
+
+			3. then, we have the actual solving issue -- because the static function that we're trying to call is not *itself* generic,
+				the solver will think that it has no generic parameters to solve. The problem is that the 'problemSpace' as we call it
+				is encoded in the placeholder types contained in the function type itself. Even worse, the static function might not even take
+				any arguments, in which case we have 0 information (but in such cases we can just error)
+
+				so this either calls for
+					(a) a re-architecting of the function call resolution system
+					(b) passing more information around, ie. the generic type that has the static function, so we can retrieve the problem space
+
+				the problem with (a) is that i have no idea what the target architecture will even be, so i have no idea what direction this should
+				even go in.
+
+				the problem with (b) is that this will just snowball into us passing more and more specific pieces of information for very specific
+				usecases that just end up making the code messy and unmaintainable.
+		}
+
+		the entire thing above hasn't even considered the other main scenario of this placeholder thing, which is constructing union types without
+		explicitly stating the generic types -- ie. option.some(T) instead of option<T>.some(T)
+
+		even if we fix the issues we face with static functions above, i'm not sure that those fixes will exactly transfer to the union problem, or
+		whether we'd have to write even more special case code for it.
+
+		the objective of the rewrite was to re-architect the compiler so that we would minimise the amount of special-case code that we originally
+		had to handle generics. it would defeat the purpose to put more of that crap in at this stage.
+
+		the ideal scenario is that through the inevitable refactoring that the above problems will lead to, we might be able to make the architecture
+		of the solver/placeholder system both (a) more robust and (b) more general.
+	}
+
+
+
 	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
 
 	7. move long error messages on spans nearer to the left margin when there's only one span in the error.
