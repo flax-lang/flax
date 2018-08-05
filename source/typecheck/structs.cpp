@@ -72,6 +72,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
+	defn->original = this;
 
 	auto str = fir::StructType::createWithoutBody(defn->id);
 	defn->type = str;

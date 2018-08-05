@@ -22,6 +22,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
+	defn->original = this;
 
 	defn->type = fir::UnionType::createWithoutBody(defn->id);
 

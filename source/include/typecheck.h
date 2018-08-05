@@ -185,10 +185,11 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
+		TypeParamMap_t getPlaceholderSolutions(ast::Parameterisable* thing, const TypeParamMap_t& input);
+		sst::Defn* fillGenericTypeWithPlaceholders(ast::Parameterisable* thing, const TypeParamMap_t& partial);
 
 		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError> inferTypesForGenericEntity(ast::Parameterisable* target,
 			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
-
 
 		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
 		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
