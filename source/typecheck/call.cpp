@@ -389,6 +389,8 @@ namespace sst
 						});
 
 						// do an inference -- with the arguments that we have.
+						//! here: fd->original has no 'problem', so the solution is empty.
+
 						auto [ soln, subs, errs ] = fs->inferTypesForGenericEntity(fd->original, infer_args, { }, nullptr, true);
 						if(errs.hasErrors())
 						{
