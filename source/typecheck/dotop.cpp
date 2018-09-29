@@ -563,7 +563,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			auto te = dcast(sst::TypeExpr, left);
 			iceAssert(te);
 
-			warn(dot->left, "%s", te->type);
+			//! what does this do?
+			warn(dot->left, "left type is %s", te->type);
 			def = fs->typeDefnMap[te->type];
 		}
 

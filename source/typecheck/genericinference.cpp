@@ -320,7 +320,7 @@ _internal_inferTypesForGenericEntity(sst::TypecheckState* fs, const ProblemSpace
 	}
 }
 
-
+// deconstructs a function call into problems
 static std::tuple<std::vector<Param_t>, std::vector<UnsolvedType>, SimpleError>
 _internal_unwrapFunctionCall(sst::TypecheckState* fs, ast::Parameterisable* thing, const std::vector<ast::FuncDefn::Arg>& args,
 	pts::Type* retty, const std::vector<FnCallArgument>& _input, bool isFnCall, fir::Type* infer, const TypeParamMap_t& partial)
