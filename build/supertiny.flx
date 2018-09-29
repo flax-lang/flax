@@ -78,7 +78,46 @@ import "stdio" as _
 
 
 /*
+	! slightly more updated notes
+	! caa 23/09
+	{
+		possible things:
+
+		1. change the generic type engine to operate on pairs of fir::Types, instead of pts::Types {
+			We'd basically need to pre-resolve the pts::Types before going into the inference thingy, which might be
+			a bit challenging, maybe.
+
+			the pre-entry to the engine could simply match the pts::Types against the 'problemset' of the generic function,
+			and create appropriate fir::PlaceholderTypes based on that information. Should be viable, but i'm not sure.
+
+			Everything else should work the same, and possibly be a bit cleaner since we don't need to be confused between pts and fir??
+		}
+
+		2. after that, change function call resolution to use the generic inference solver as well {
+			since this would operate on resolved functions, we can omit calling the 'pre-entry' mentioned above (for generic functions)
+			and just match fir::Types between the argument types and the parameter types.
+
+			then, we'd have to integrate the existing system of 'scores', and return that information as well from the solver.
+		}
+
+		3. finally, solve the original problem that we set out to solve {
+			the original problem is that we have PlaceholderTypes as parameter types for static functions, but the solver was unable to pick
+			up on that (and we don't really want it to)
+
+			after re-writing the interfaces, we can potentially omit the entire 'problemspace' thing. We already (i believe) have a method on
+			FIR types 'containsPlaceholders'. So we should be able to check for the presence of placeholders and use that to trigger the
+			recursive solver (for passing functions and such), rather than relying on a problemset.
+
+
+		}
+
+		4. pretty sure we never actually implemented the iterative solver -- we should probably do that.
+	}
+
+
+
 	! NOTES FOR IMPLEMENTATION
+	! from like 09/08
 	{
 		so currently we have an issue where we need to re-typecheck a given function definition (from AST->SST again). the current
 		architecture that we have in place to infer generic types is inadequate to allow omitting type arguments for nested things, eg. in
