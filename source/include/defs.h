@@ -601,6 +601,19 @@ namespace util
 		return ret;
 	}
 
+
+	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T, size_t)>::type>
+	std::vector<K> mapidx(const std::vector<T>& input, UnaryOp fn)
+	{
+		std::vector<K> ret;
+		for(size_t i = 0; i < input.size(); i++)
+			ret.push_back(fn(input[i], i));
+
+		return ret;
+	}
+
+
+
 	template <typename T, class UnaryOp, class Predicate, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> filterMap(const std::vector<T>& input, Predicate cond, UnaryOp fn)
 	{
