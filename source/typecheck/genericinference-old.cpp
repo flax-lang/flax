@@ -453,7 +453,7 @@ sst::TypecheckState::inferTypesForGenericEntity(ast::Parameterisable* _target, s
 			// first we need to check that whatever arguments we're passing do exist in the struct.
 
 			// TODO: the stuff below is pretty much a dupe of the stuff we do in typecheck/call.cpp for struct constructors.
-			// combine?
+			//! combine?
 
 			std::unordered_map<std::string, size_t> fieldNames;
 			{
