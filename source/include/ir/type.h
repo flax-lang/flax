@@ -41,6 +41,7 @@ namespace fir
 	struct Function;
 
 	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
+	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
 
 	enum class TypeKind
 	{

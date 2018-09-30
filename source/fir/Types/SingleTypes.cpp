@@ -2,6 +2,7 @@
 // Copyright (c) 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
+#include "errors.h"
 #include "ir/type.h"
 
 namespace fir
@@ -61,7 +62,6 @@ namespace fir
 
 
 
-	std::string ConstantNumberType::str()                       { return "number"; }
 	std::string ConstantNumberType::encodedStr()                { return "number"; }
 	bool ConstantNumberType::isSigned()                         { return this->_signed; }
 	bool ConstantNumberType::isFloating()                       { return this->_floating; }
@@ -69,7 +69,7 @@ namespace fir
 	bool ConstantNumberType::isTypeEqual(Type* other)           { return other && other->isConstantNumberType(); }
 	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, size_t bits)
 	{
-		return new ConstantNumberType(neg, flt, bits);
+		return TypeCache::get().getOrAddCachedType(new ConstantNumberType(neg, flt, bits));
 	}
 	ConstantNumberType::ConstantNumberType(bool neg, bool flt, size_t bits) : Type(TypeKind::ConstantNumber)
 	{
@@ -81,6 +81,12 @@ namespace fir
 	{
 		return this;
 	}
+	std::string ConstantNumberType::str()
+	{
+		return strprintf("number(sgn: %s, flt: %s, bits: %d)", _signed, _floating, _bits);
+	}
+
+
 
 
 	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b)
@@ -91,6 +97,41 @@ namespace fir
 
 		return ConstantNumberType::get(sgn, flt, bit);
 	}
+
+	Type* getBestFitTypeForConstant(ConstantNumberType* cnt)
+	{
+		if(cnt->isFloating())
+		{
+			if(cnt->getMinBits() > 64)
+				error("constant number type '%s' requires too many bits", (Type*) cnt);
+
+			return fir::Type::getFloat64();
+		}
+		else
+		{
+			if(cnt->getMinBits() <= 63)
+			{
+				return fir::Type::getInt64();
+			}
+			else if(cnt->isSigned())
+			{
+				error("constant number type '%s' requires too many bits", (Type*) cnt);
+			}
+			else
+			{
+				if(cnt->getMinBits() > 64)
+					error("constant number type '%s' requires too many bits", (Type*) cnt);
+
+				return fir::Type::getUint64();
+			}
+		}
+	}
+
+
+
+
+
+
 
 
 
