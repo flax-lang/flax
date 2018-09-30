@@ -85,8 +85,6 @@ namespace sst
 		std::unordered_map<fir::Type*, fir::Type*> substitutions;
 	};
 
-	using Param_t = sst::FunctionDecl::Param;
-	using Solution_t = std::unordered_map<std::string, LocatedType>;
 	using ProblemSpace_t = std::unordered_map<std::string, TypeConstraints_t>;
 
 	static int polySessionId = 0;
@@ -308,15 +306,21 @@ namespace sst
 
 
 
-	static std::vector<LocatedType> _internal_unwrapFunctionCall(TypecheckState* fs, ast::FuncDefn* fd, int polysession)
+	static std::vector<LocatedType> _internal_unwrapFunctionCall(TypecheckState* fs, ast::FuncDefn* fd, int polysession, bool includeReturn)
 	{
-		return util::mapidx(_internal_convertPtsTypeList(fs, fd->generics, util::map(fd->args,
+		auto ret = util::mapidx(_internal_convertPtsTypeList(fs, fd->generics, util::map(fd->args,
 			[](const ast::FuncDefn::Arg& a) -> pts::Type* {
 				return a.type;
 			}
 		), polysession), [fd](fir::Type* t, size_t idx) -> LocatedType {
 			return LocatedType(t, fd->args[idx].loc);
 		});
+
+		if(includeReturn)
+			return ret + LocatedType(_internal_convertPtsType(fs, fd->generics, fd->returnType, polysession), fd->loc);
+
+		else
+			return ret;
 	}
 
 
@@ -359,18 +363,44 @@ namespace sst
 	TypecheckState::inferTypesForGenericEntity2(ast::Parameterisable* _target, std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial,
 		fir::Type* infer, bool isFnCall)
 	{
+		SolutionSet_t soln;
+		for(const auto& p : partial)
+			soln.addSolution(p.first, LocatedType(p.second));
+
+
 		if(auto td = dcast(sst::TypeDefn, _target))
 		{
 			error("type not supported");
 		}
 		else if(auto fd = dcast(ast::FuncDefn, _target))
 		{
-			auto target = _internal_unwrapFunctionCall(this, fd, polySessionId++);
-			auto [ given, err ] = _internal_unwrapArgumentList(this, fd, _input);
-			if(err.hasErrors()) return { SolutionSet_t(), err };
+			std::vector<LocatedType> given;
+			std::vector<LocatedType> target;
 
-			SolutionSet_t soln;
-			for(const auto& p : partial) soln.addSolution(p.first, LocatedType(p.second));
+			target = _internal_unwrapFunctionCall(this, fd, polySessionId++, /* includeReturn: */ !isFnCall || infer);
+
+			if(isFnCall)
+			{
+				auto [ gvn, err] = _internal_unwrapArgumentList(this, fd, _input);
+				if(err.hasErrors()) return { soln, err };
+
+				given = gvn;
+			}
+			else
+			{
+				if(infer == 0)
+					return { soln, SimpleError::make(this->loc(), "unable to infer type for reference to '%s'", fd->name) };
+
+				else if(!infer->isFunctionType())
+					return { soln, SimpleError::make(this->loc(), "invalid type '%s' inferred for '%s'", infer, fd->name) };
+
+				// ok, we should have it.
+				iceAssert(infer->isFunctionType());
+				given = util::mapidx(infer->toFunctionType()->getArgumentTypes(), [fd](fir::Type* t, size_t i) -> LocatedType {
+					return LocatedType(t, fd->args[i].loc);
+				}) + LocatedType(infer->toFunctionType()->getReturnType(), fd->loc);
+			}
+
 
 			auto errs = _internal_solveTypeList(this, &soln, target, given);
 			for(auto& pair : soln.solutions)
@@ -383,7 +413,7 @@ namespace sst
 		}
 		else
 		{
-			return std::make_pair(SolutionSet_t(),
+			return std::make_pair(soln,
 				SimpleError(_target->loc, strprintf("Unable to infer type for unsupported entity '%s'", _target->getKind()))
 			);
 		}
