@@ -90,6 +90,7 @@ namespace sst
 		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
 
+	struct SolutionSet_t;
 
 	struct TypecheckState
 	{
@@ -185,6 +186,14 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
+
+
+		// all the generic stuff.
+		std::pair<SolutionSet_t, SimpleError> inferTypesForGenericEntity2(ast::Parameterisable* target, std::vector<FnCallArgument>& input,
+			const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
+
+
+		// old generic interface
 		TypeParamMap_t getPlaceholderSolutions(ast::Parameterisable* thing, const TypeParamMap_t& input);
 		sst::Defn* fillGenericTypeWithPlaceholders(ast::Parameterisable* thing, const TypeParamMap_t& partial);
 
@@ -196,6 +205,12 @@ namespace sst
 
 		TCResult attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
 			const TypeParamMap_t& mappings, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args);
+
+
+
+
+
+
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
 		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);

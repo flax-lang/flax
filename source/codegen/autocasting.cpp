@@ -259,6 +259,16 @@ namespace cgn
 		auto rt = rhs->getType();
 		if(lt == rt)
 		{
+			// if(lt->isConstantNumberType())
+			// {
+			// 	// well. do the sensible default, i guess.
+			// 	iceAssert(rt->isConstantNumberType());
+
+			// 	auto cnt = fir::unifyConstantTypes(lt->toConstantNumberType(), rt->toConstantNumberType());
+			// 	if(cnt->isFloating())
+			// 		return { this->irb.AppropriateCast(lhs, cnt), this->irb.AppropriateCast(rhs, cnt) };
+			// }
+
 			return { lhs, rhs };
 		}
 

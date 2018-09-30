@@ -5,6 +5,8 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ### FEATURES TO IMPLEMENT
 
+1. Number literals still suck
+
 
 3. Optional arguments.
 
