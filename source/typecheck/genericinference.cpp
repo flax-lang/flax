@@ -133,6 +133,9 @@ namespace sst
 			auto [ tt, ttrfs ] = decomposeIntoTrfs(tgt, 0);
 			auto [ gt, gtrfs ] = decomposeIntoTrfs(gvn, ttrfs.size());
 
+			// substitute if possible.
+			gt = soln->substitute(gt);
+
 			bool ttpoly = tt->isPolyPlaceholderType();
 			bool gtpoly = gt->isPolyPlaceholderType();
 
@@ -161,10 +164,12 @@ namespace sst
 					else if(ltt.type->isPolyPlaceholderType() && !gtpoly)
 					{
 						soln->addSubstitution(ltt.type, gt);
+						debuglogln("substitute '%s' -> '%s'", ltt.type, gt);
 					}
 					else if(!ltt.type->isPolyPlaceholderType() && gtpoly)
 					{
 						soln->addSubstitution(gt, ltt.type);
+						debuglogln("substitute '%s' -> '%s'", gt, ltt.type);
 					}
 					else if(ltt.type->isPolyPlaceholderType() && gtpoly)
 					{
@@ -179,7 +184,35 @@ namespace sst
 			}
 			else if(tt->isFunctionType() || tt->isTupleType())
 			{
+				// make sure they're the same 'kind' of type first.
+				if(tt->isFunctionType() != gt->isFunctionType() || tt->isTupleType() != gt->isTupleType())
+					return SimpleError::make(given.loc, "no valid conversion from given type '%s' to target type '%s'", gt, tt);
 
+				std::vector<LocatedType> problem;
+				std::vector<LocatedType> input;
+				if(gt->isFunctionType())
+				{
+					input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> LocatedType {
+						return LocatedType(t, given.loc);
+					}) + LocatedType(gt->toFunctionType()->getReturnType(), given.loc);
+
+					problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> LocatedType {
+						return LocatedType(t, target.loc);
+					}) + LocatedType(tt->toFunctionType()->getReturnType(), target.loc);
+				}
+				else
+				{
+					iceAssert(gt->isTupleType());
+					input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> LocatedType {
+						return LocatedType(t, given.loc);
+					});
+
+					problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> LocatedType {
+						return LocatedType(t, target.loc);
+					});
+				}
+
+				return _internal_solveTypeList(fs, soln, problem, input);
 			}
 			else
 			{
@@ -194,6 +227,9 @@ namespace sst
 		const std::vector<LocatedType>& given)
 	{
 		// for now just do this.
+		if(target.size() != given.size())
+			return SimpleError::make(fs->loc(), "mismatched argument count");
+
 		for(size_t i = 0; i < std::min(target.size(), given.size()); i++)
 		{
 			auto err = _internal_solveSingleType(fs, soln, target[i], given[i]);
@@ -252,9 +288,6 @@ namespace sst
 		}
 
 		return applyTrfs(fty, trfs);
-
-		// auto ret = applyTrfs(fty, trfs);
-		// warn("transformed '%s' -> '%s'", input->str(), ret);
 	}
 
 	static std::vector<fir::Type*> _internal_convertPtsTypeList(TypecheckState* fs, const ProblemSpace_t& problems, const std::vector<pts::Type*>& input,
