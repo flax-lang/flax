@@ -311,7 +311,7 @@ _internal_inferTypesForGenericEntity(sst::TypecheckState* fs, const ProblemSpace
 		{
 			auto s = soln.second.soln;
 			if(s->isConstantNumberType())
-				s = fs->inferCorrectTypeForLiteral(s->toConstantNumberType());
+				s = fir::getBestFitTypeForConstant(s->toConstantNumberType());
 
 			ret[soln.first] = s;
 		}
