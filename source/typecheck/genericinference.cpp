@@ -103,18 +103,14 @@ namespace sst
 
 
 
+	static SimpleError _internal_solveTypeList(TypecheckState* fs, SolutionSet_t* soln, const std::vector<LocatedType>& target,
+		const std::vector<LocatedType>& given);
 
 	static SimpleError _internal_solveSingleType(TypecheckState* fs, SolutionSet_t* soln, const LocatedType& target, const LocatedType& given)
 	{
 		auto tgt = target.type;
 		auto gvn = given.type;
 
-
-		//* handle the cases in order of increasing difficulty
-		//? 1. both tgt and gvn are normal types -- just do a cost function
-		//? 2. tgt is poly, gvn is normal -- check for conflict and solve tgt with gvn
-		//? 3. tgt is normal, gvn is poly -- match gvn against tgt and instantiate gvn?
-		//? 4. tgt is poly, gvn is poly -- ?????
 
 		// if we're just looking at normal types, then just add the cost.
 		if(!tgt->containsPlaceholders() && !gvn->containsPlaceholders())
@@ -180,6 +176,10 @@ namespace sst
 					soln->addSolution(ptt->getName(), LocatedType(gt, given.loc));
 					debuglogln("solved %s = '%s'", ptt->getName(), gt);
 				}
+			}
+			else if(tt->isFunctionType() || tt->isTupleType())
+			{
+
 			}
 			else
 			{
@@ -288,11 +288,36 @@ namespace sst
 
 
 
-	static std::vector<LocatedType> _internal_unwrapArgumentList(TypecheckState* fs, const std::vector<FnCallArgument>& args)
+	static std::pair<std::vector<LocatedType>, SimpleError> _internal_unwrapArgumentList(TypecheckState* fs, ast::FuncDefn* fd,
+		const std::vector<FnCallArgument>& args)
 	{
-		return util::map(args, [](const FnCallArgument& fca) -> LocatedType {
-			return LocatedType(fca.value->type, fca.loc);
-		});
+		std::vector<LocatedType> ret(args.size());
+
+		// strip out the name information, and do purely positional things.
+		std::unordered_map<std::string, size_t> nameToIndex;
+		{
+			for(size_t i = 0; i < fd->args.size(); i++)
+			{
+				const auto& arg = fd->args[i];
+				nameToIndex[arg.name] = i;
+			}
+
+			int counter = 0;
+			for(const auto& i : args)
+			{
+				if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
+				{
+					return { { }, SimpleError::make(MsgType::Note, i.loc, "function '%s' does not have a parameter named '%s'",
+						fd->name, i.name).append(SimpleError::make(MsgType::Note, fd, "Function was defined here:"))
+					};
+				}
+
+				ret[i.name.empty() ? counter : nameToIndex[i.name]] = LocatedType(i.value->type, i.loc);
+				counter++;
+			}
+		}
+
+		return { ret, SimpleError() };
 	}
 
 
@@ -308,7 +333,8 @@ namespace sst
 		else if(auto fd = dcast(ast::FuncDefn, _target))
 		{
 			auto target = _internal_unwrapFunctionCall(this, fd, polySessionId++);
-			auto given = _internal_unwrapArgumentList(this, _input);
+			auto [ given, err ] = _internal_unwrapArgumentList(this, fd, _input);
+			if(err.hasErrors()) return { SolutionSet_t(), err };
 
 			SolutionSet_t soln;
 			for(const auto& p : partial) soln.addSolution(p.first, LocatedType(p.second));
