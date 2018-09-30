@@ -264,8 +264,7 @@ namespace sst
 			return { fs->fillGenericTypeWithPlaceholders(thing, _gmaps), SimpleError() };
 
 		auto [ gmaps, substitutions, err ] = fs->inferTypesForGenericEntity(thing, args, _gmaps, infer, isFnCall);
-		if(err.hasErrors())
-			return { 0, err };
+		// intentionally do not check the error here. we will just try to instantiate the thing regardless.
 
 		//* note: if we manage to instantite without error, that means that we have a complete solution.
 		auto d = fs->instantiateGenericEntity(thing, gmaps);
