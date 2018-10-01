@@ -12,7 +12,7 @@
 //? in theory this should work like it used to, probably.
 // TODO: investigate??
 
-sst::Stmt* TCResult::stmt()
+sst::Stmt* TCResult::stmt() const
 {
 	if(this->_kind == RK::Error)
 		this->_pe->postAndQuit();
@@ -26,7 +26,7 @@ sst::Stmt* TCResult::stmt()
 	}
 }
 
-sst::Expr* TCResult::expr()
+sst::Expr* TCResult::expr() const
 {
 	if(this->_kind == RK::Error)
 		this->_pe->postAndQuit();
@@ -37,7 +37,7 @@ sst::Expr* TCResult::expr()
 	return this->_ex;
 }
 
-sst::Defn* TCResult::defn()
+sst::Defn* TCResult::defn() const
 {
 	if(this->_kind == RK::Error)
 		this->_pe->postAndQuit();

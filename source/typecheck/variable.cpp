@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+#include "polymorph.h"
 
 #include "ir/type.h"
 
@@ -39,10 +40,10 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer == 0)
 			{
-				auto errs = SimpleError::make(this, "Ambiguous reference to '%s'", this->name);
+				auto errs = SimpleError::make(this, "ambiguous reference to '%s'", this->name);
 
 				for(auto v : vs)
-					errs.append(SimpleError(v->loc, "Potential target here:", MsgType::Note));
+					errs.append(SimpleError(v->loc, "potential target here:", MsgType::Note));
 
 				return TCResult(errs);
 			}
@@ -56,9 +57,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return returnResult(v);
 			}
 
-			auto errs = SimpleError::make(this, "No definition of '%s' matching type '%s'", this->name, infer);
+			auto errs = SimpleError::make(this, "no definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
-				errs.append(SimpleError::make(MsgType::Note, v, "Potential target here, with type '%s':", v->type ? v->type->str() : "?"));
+				errs.append(SimpleError::make(MsgType::Note, v, "potential target here, with type '%s':", v->type ? v->type->str() : "?"));
 
 			return TCResult(errs);
 		}
@@ -78,7 +79,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
 				{
 					return TCResult(
-						SimpleError::make(this, "Field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+						SimpleError::make(this, "field '%s' is an instance member of type '%s', and cannot be accessed statically.",
 							this->name, fld->parentType->id.name)
 						.append(SimpleError::make(MsgType::Note, def, "Field '%s' was defined here:", def->id.name))
 					);
@@ -91,17 +92,23 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			std::vector<FnCallArgument> fake;
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-			auto res = fs->attemptToDisambiguateGenericReference(this->name, gdefs, gmaps, infer, false, fake);
-
-			// note: we ignore the 'new' solution since we have no use for it (since we can't have any nested stuff for var refs)
-			if(res.isDefn())
+			auto pots = sst::poly::findPolymorphReferences(fs, this->name, gdefs, gmaps, infer, false, &fake);
+			if(pots.size() > 1)
 			{
-				return returnResult(res.defn());
+				auto err = SimpleError::make(this->loc, "ambiguous reference to '%s', potential candidates:", this->name);
+				for(const auto& p : pots)
+					err.append(SimpleError(p.first.defn()->loc, ""));
+
+				return TCResult(err);
 			}
 			else
 			{
-				iceAssert(res.isError());
-				res.error().postAndQuit();
+				iceAssert(pots.size() == 1);
+				if(pots[0].first.isDefn())
+					return returnResult(pots[0].first.defn());
+
+				else
+					return pots[0].first;
 			}
 		}
 
@@ -113,7 +120,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "Reference to unknown entity '%s'", this->name);
+	error(this, "reference to unknown entity '%s'", this->name);
 }
 
 
@@ -152,7 +159,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		defn->type = fs->convertParserTypeToFIR(this->type);
 
 	else if(!this->initialiser)
-		error(this, "Initialiser is required for type inference");
+		error(this, "initialiser is required for type inference");
 
 
 	//* for variables, as long as the name matches, we conflict.
@@ -163,7 +170,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		defn->init = this->initialiser->typecheck(fs, defn->type).expr();
 		if(defn->init->type->isVoidType())
-			error(defn->init, "Value has void type");
+			error(defn->init, "value has void type");
 
 		if(defn->type == 0)
 		{
@@ -175,7 +182,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(fs->getCastDistance(defn->init->type, defn->type) < 0)
 		{
-			SpanError(SimpleError::make(this, "Cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
+			SpanError(SimpleError::make(this, "cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
 				.add(SpanError::Span(defn->init->loc, strprintf("type '%s'", defn->init->type)))
 				.postAndQuit();
 		}

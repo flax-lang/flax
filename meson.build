@@ -93,7 +93,6 @@ source_files = files([
 	'source/typecheck/unions.cpp',
 	'source/typecheck/structs.cpp',
 	'source/typecheck/classes.cpp',
-	'source/typecheck/generics.cpp',
 	'source/typecheck/function.cpp',
 	'source/typecheck/variable.cpp',
 	'source/typecheck/literals.cpp',
@@ -104,7 +103,12 @@ source_files = files([
 	'source/typecheck/destructure.cpp',
 	'source/typecheck/controlflow.cpp',
 	'source/typecheck/typecheckstate.cpp',
-	'source/typecheck/genericinference.cpp',
+
+	'source/typecheck/polymorph/misc.cpp',
+	'source/typecheck/polymorph/driver.cpp',
+	'source/typecheck/polymorph/solver.cpp',
+	'source/typecheck/polymorph/transforms.cpp',
+	'source/typecheck/polymorph/instantiator.cpp',
 
 	'source/codegen/misc.cpp',
 	'source/codegen/call.cpp',
