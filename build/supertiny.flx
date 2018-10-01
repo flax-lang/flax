@@ -25,7 +25,7 @@ import "stdio" as _
 @entry fn main()
 {
 	// some normal FP stuff
-	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
+	/* fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
 	{
 		var ret: [U]
 		for it in arr => ret.append(fun(it))
@@ -33,6 +33,62 @@ import "stdio" as _
 		return ret
 	}
 
+	do {
+		printf("set 1:")
+
+		fn twice<K>(a: K) -> K => a * 2
+
+		let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+	do {
+		printf("set 2:")
+
+		fn twice(a: str) -> string => string(a) + string(a)
+
+		let new = map([ "a", "b", "c", "d", "e" ], twice)
+		for it in new => printf(" %s", it)
+
+		printf("\n")
+	}
+
+	do {
+		printf("set 3:")
+
+		fn square<T, U>(a: T) -> U => (a * a)
+
+		let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
+		for it in new { printf(" %.2f", it) }
+
+		printf("\n")
+	}
+
+	do {
+		fn gincr<A>(x: A) -> A => x + 1
+		fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
+
+		fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+		{
+			var i = 0
+			var ret: [F]
+			while i < arr.length
+			{
+				ret.append(fa(arr[i], f))
+				i += 1
+			}
+
+			return ret
+		}
+
+		printf("set 4:")
+		let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
+		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
 	do {
 		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
 		{
@@ -54,7 +110,7 @@ import "stdio" as _
 		for it in new { printf(" %d", it) }
 
 		printf("\n")
-	}
+	} */
 
 
 	/* do {
@@ -81,13 +137,13 @@ import "stdio" as _
 
 	/*
 	do {
-		// class Foo<T>
-		// {
-		// 	init() { }
-		// 	static fn bar(x: T) { printf("x = %d\n", x) }
-		// }
+		class Foo<T>
+		{
+			init() { }
+			static fn bar(x: T) { printf("x = %d\n", x) }
+		}
 
-		// Foo.bar(30)
+		Foo.bar(30)
 	}
 	*/
 
@@ -118,15 +174,15 @@ import "stdio" as _
 	{
 		possible things:
 
-		1. change the generic type engine to operate on pairs of fir::Types, instead of pts::Types {
-			We'd basically need to pre-resolve the pts::Types before going into the inference thingy, which might be
-			a bit challenging, maybe.
+		// 1. change the generic type engine to operate on pairs of fir::Types, instead of pts::Types {
+		// 	We'd basically need to pre-resolve the pts::Types before going into the inference thingy, which might be
+		// 	a bit challenging, maybe.
 
-			the pre-entry to the engine could simply match the pts::Types against the 'problemset' of the generic function,
-			and create appropriate fir::PlaceholderTypes based on that information. Should be viable, but i'm not sure.
+		// 	the pre-entry to the engine could simply match the pts::Types against the 'problemset' of the generic function,
+		// 	and create appropriate fir::PlaceholderTypes based on that information. Should be viable, but i'm not sure.
 
-			Everything else should work the same, and possibly be a bit cleaner since we don't need to be confused between pts and fir??
-		}
+		// 	Everything else should work the same, and possibly be a bit cleaner since we don't need to be confused between pts and fir??
+		// }
 
 		2. after that, change function call resolution to use the generic inference solver as well {
 			since this would operate on resolved functions, we can omit calling the 'pre-entry' mentioned above (for generic functions)

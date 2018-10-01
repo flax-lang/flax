@@ -34,6 +34,7 @@ struct DecompMapping
 
 struct FnCallArgument
 {
+	FnCallArgument() { }
 	FnCallArgument(const Location& l, const std::string& n, sst::Expr* v, ast::Expr* o) : loc(l), name(n), value(v), orig(o) { }
 
 	Location loc;

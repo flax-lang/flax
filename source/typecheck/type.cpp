@@ -7,6 +7,7 @@
 #include "errors.h"
 #include "ir/type.h"
 #include "typecheck.h"
+#include "polymorph.h"
 
 namespace sst
 {
@@ -142,7 +143,7 @@ namespace sst
 
 							// types generally cannot be overloaded, so it doesn't make sense for it to be SFINAE-ed.
 							// unwrapping it will post the error if any.
-							auto td = this->instantiateGenericEntity(atd, mapping).defn();
+							auto td = poly::fullyInstantiatePolymorph(this, atd, mapping).defn();
 
 							this->stree = restore;
 							return td->type;
