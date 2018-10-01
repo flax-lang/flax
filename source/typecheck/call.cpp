@@ -394,16 +394,6 @@ namespace sst
 						error("stop");
 
 						// auto [ soln, errs ] = poly::inferTypesForPolymorph(fs, fd->original, infer_args, { }, nullptr, true);
-						// if(errs.hasErrors())
-						// {
-						// 	error("NO");
-						// 	// return TCResult(errs);
-						// }
-						// else
-						// {
-						// 	error("YES");
-						// 	// return fs->instantiateGenericEntity(fd->original, soln.solutions);
-						// }
 					}
 				}
 
@@ -648,6 +638,65 @@ namespace sst
 
 
 
+	std::pair<std::unordered_map<std::string, size_t>, SimpleError> TypecheckState::verifyStructConstructorArguments(const std::string& name,
+		const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& arguments)
+	{
+		// ok, structs get named arguments, and no un-named arguments.
+		// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
+
+		//* note that structs don't have inline member initialisers, so there's no trouble with this approach (in the codegeneration)
+		//* of inserting missing arguments as just '0' or whatever their default value is
+
+		//* in the case of classes, they will have inline initialisers, so the constructor calling must handle such things.
+		//* but then class constructors are handled like regular functions, so it should be fine.
+
+		bool useNames = false;
+		bool firstName = true;
+
+		size_t ctr = 0;
+		std::unordered_map<std::string, size_t> seenNames;
+		for(auto arg : arguments)
+		{
+			if(arg.name.empty() && useNames)
+			{
+				return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+			}
+			else if(firstName && !arg.name.empty())
+			{
+				useNames = true;
+				firstName = false;
+			}
+			else if(!arg.name.empty() && !useNames && !firstName)
+			{
+				return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+			}
+			else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
+			{
+				return { { }, SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, name) };
+			}
+			else if(useNames && seenNames.find(arg.name) != seenNames.end())
+			{
+				return { { }, SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+					arg.name, name) };
+			}
+
+			seenNames[arg.name] = ctr;
+			ctr += 1;
+		}
+
+		//* note: if we're doing positional args, allow only all or none.
+		if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
+		{
+			return { { },
+				SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead", name, fieldNames.size(), arguments.size())
+					.append(BareError("All arguments are mandatory when using positional arguments", MsgType::Note))
+			};
+		}
+
+		return { seenNames, SimpleError() };
+	}
+
+
 	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<Param>& arguments,
 		const TypeParamMap_t& gmaps)
 	{
@@ -682,59 +731,13 @@ namespace sst
 		}
 		else if(auto str = dcast(StructDefn, typedf))
 		{
-			// ok, structs get named arguments, and no un-named arguments.
-			// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
-
-			//* note that structs don't have inline member initialisers, so there's no trouble with this approach (in the codegeneration)
-			//* of inserting missing arguments as just '0' or whatever their default value is
-
-			//* in the case of classes, they will have inline initialisers, so the constructor calling must handle such things.
-			//* but then class constructors are handled like regular functions, so it should be fine.
-
 			std::set<std::string> fieldNames;
 			for(auto f : str->fields)
 				fieldNames.insert(f->id.name);
 
-			bool useNames = false;
-			bool firstName = true;
-
-			std::set<std::string> seenNames;
-			for(auto arg : arguments)
-			{
-				if(arg.name.empty() && useNames)
-				{
-					return TCResult(SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
-				}
-				else if(firstName && !arg.name.empty())
-				{
-					useNames = true;
-					firstName = false;
-				}
-				else if(!arg.name.empty() && !useNames && !firstName)
-				{
-					return TCResult(SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor"));
-				}
-				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
-				{
-					return TCResult(SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->id.name));
-				}
-				else if(useNames && seenNames.find(arg.name) != seenNames.end())
-				{
-					return TCResult(SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
-						arg.name, str->id.name));
-				}
-
-				seenNames.insert(arg.name);
-			}
-
-			//* note: if we're doing positional args, allow only all or none.
-			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
-			{
-				return TCResult(
-					SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead", str->id.name, fieldNames.size(), arguments.size())
-						.append(BareError("All arguments are mandatory when using positional arguments", MsgType::Note))
-				);
-			}
+			auto err = this->verifyStructConstructorArguments(str->id.name, fieldNames, arguments);
+			if(err.second.hasErrors())
+				return TCResult(err.second);
 
 			// in actual fact we just return the thing here. sigh.
 			return TCResult(str);
