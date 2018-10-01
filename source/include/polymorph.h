@@ -53,7 +53,8 @@ namespace sst
 		};
 
 		SimpleError solveSingleType(TypecheckState* fs, Solution_t* soln, const LocatedType& target, const LocatedType& given);
-		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given);
+		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given,
+			const Solution_t& partial);
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
 

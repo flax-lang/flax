@@ -23,9 +23,6 @@ namespace sst
 
 		namespace misc
 		{
-			using ProblemSpace_t = std::unordered_map<std::string, TypeConstraints_t>;
-
-
 			fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 			{
 				if(a->isConstantNumberType() && b->isConstantNumberType())
@@ -92,38 +89,30 @@ namespace sst
 
 
 
-
-
-			std::vector<LocatedType> unwrapFunctionCall(TypecheckState* fs, ast::FuncDefn* fd, int polysession, bool includeReturn)
+			std::vector<LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems,
+				const std::vector<ast::FuncDefn::Arg>& args, int polysession)
 			{
-				auto ret = util::mapidx(convertPtsTypeList(fs, fd->generics, util::map(fd->args,
+				return util::mapidx(convertPtsTypeList(fs, problems, util::map(args,
 					[](const ast::FuncDefn::Arg& a) -> pts::Type* {
 						return a.type;
 					}
-				), polysession), [fd](fir::Type* t, size_t idx) -> LocatedType {
-					return LocatedType(t, fd->args[idx].loc);
+				), polysession), [args](fir::Type* t, size_t idx) -> LocatedType {
+					return LocatedType(t, args[idx].loc);
 				});
-
-				if(includeReturn)
-					return ret + LocatedType(convertPtsType(fs, fd->generics, fd->returnType, polysession), fd->loc);
-
-				else
-					return ret;
 			}
 
 
-
-			std::pair<std::vector<LocatedType>, SimpleError> unwrapArgumentList(TypecheckState* fs, ast::FuncDefn* fd,
-				const std::vector<FnCallArgument>& args)
+			std::pair<std::vector<LocatedType>, SimpleError> unwrapArgumentList(TypecheckState* fs, ast::Parameterisable* thing,
+				const std::vector<ast::FuncDefn::Arg>& params, const std::vector<FnCallArgument>& args)
 			{
 				std::vector<LocatedType> ret(args.size());
 
 				// strip out the name information, and do purely positional things.
 				std::unordered_map<std::string, size_t> nameToIndex;
 				{
-					for(size_t i = 0; i < fd->args.size(); i++)
+					for(size_t i = 0; i < params.size(); i++)
 					{
-						const auto& arg = fd->args[i];
+						const auto& arg = params[i];
 						nameToIndex[arg.name] = i;
 					}
 
@@ -133,7 +122,7 @@ namespace sst
 						if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
 						{
 							return { { }, SimpleError::make(MsgType::Note, i.loc, "function '%s' does not have a parameter named '%s'",
-								fd->name, i.name).append(SimpleError::make(MsgType::Note, fd, "Function was defined here:"))
+								thing->name, i.name).append(SimpleError::make(MsgType::Note, thing, "Function was defined here:"))
 							};
 						}
 

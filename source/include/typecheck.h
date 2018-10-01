@@ -8,6 +8,7 @@
 
 #include "precompile.h"
 
+#include <set>
 #include <unordered_set>
 
 namespace parser
@@ -190,7 +191,8 @@ namespace sst
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
 
-
+		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
+			const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& params);
 
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
