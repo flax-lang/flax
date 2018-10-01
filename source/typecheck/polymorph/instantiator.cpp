@@ -38,7 +38,7 @@ namespace poly
 	}
 
 
-	static std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
+	std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
 	{
 		TypeParamMap_t copy = partial;
 
@@ -61,7 +61,7 @@ namespace poly
 
 
 		// intentionally do not check the error here. we will just try to instantiate the thing regardless.
-		auto [ soln, err ] = inferTypesForPolymorph(fs, thing, *args, _gmaps, infer, isFnCall);
+		auto [ soln, err ] = inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, infer, isFnCall);
 		auto d = fullyInstantiatePolymorph(fs, thing, soln.solutions);
 
 		if(d.isDefn())

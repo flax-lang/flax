@@ -68,8 +68,15 @@ namespace sst
 							}
 							else if(ltt.type != gt)
 							{
-								return SimpleError::make(given.loc, "Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
-									ptt->getName(), ltt.type, gvn);
+								if(int d = fs->getCastDistance(gt, ltt.type); d >= 0)
+								{
+									soln->distance += d;
+								}
+								else
+								{
+									return SimpleError::make(given.loc, "Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
+										ptt->getName(), ltt.type, gvn);
+								}
 							}
 						}
 						else if(ltt.type->isPolyPlaceholderType() && !gtpoly)
@@ -151,9 +158,10 @@ namespace sst
 		}
 
 
-		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given)
+		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given,
+			const Solution_t& partial)
 		{
-			Solution_t prevSoln;
+			Solution_t prevSoln = partial;
 			while(true)
 			{
 				auto soln = prevSoln;
@@ -162,6 +170,13 @@ namespace sst
 
 				if(soln == prevSoln)    break;
 				else                    prevSoln = soln;
+			}
+
+
+			for(auto& pair : prevSoln.solutions)
+			{
+				if(pair.second->isConstantNumberType())
+					pair.second = fir::getBestFitTypeForConstant(pair.second->toConstantNumberType());
 			}
 
 			return { prevSoln, SimpleError() };
