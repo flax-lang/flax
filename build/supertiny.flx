@@ -34,16 +34,27 @@ import "stdio" as _
 	}
 
 	do {
-		printf("set 1:")
+		fn map2<T, K, R>(arr: [(T, K):], f: fn(T, K) -> R) -> [R]
+		{
+			var i = 0
+			var ret: [R]
+			while i < arr.length
+			{
+				ret.append(f(arr[i].0, arr[i].1))
+				i += 1
+			}
 
-		fn twice<K>(a: K) -> K => a * 2
+			return ret
+		}
 
-		let new = map(fun: twice, arr: [ 1, 2, 3, 4, 5 ])
+		fn add2<A, B>(x: A, y: B) -> A => x + y
+
+		printf("set 5:")
+		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
 		for it in new { printf(" %d", it) }
 
 		printf("\n")
 	}
-
 
 
 	/* do {
