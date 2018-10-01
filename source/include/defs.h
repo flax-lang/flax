@@ -476,22 +476,22 @@ struct TCResult
 
 
 
-	ErrorMsg& error()    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
+	ErrorMsg& error() const    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
 
 
-	sst::Expr* expr();
-	sst::Defn* defn();
+	sst::Expr* expr() const;
+	sst::Defn* defn() const;
 
 	//* stmt() is the most general case -- definitions and expressions are both statements.
 	// note: we need the definition of sst::Stmt and sst::Expr to do safe dynamic casting, so it's in identifier.cpp.
-	sst::Stmt* stmt();
+	sst::Stmt* stmt() const;
 
-	bool isError()      { return this->_kind == RK::Error; }
-	bool isStmt()       { return this->_kind == RK::Statement; }
-	bool isExpr()       { return this->_kind == RK::Expression; }
-	bool isDefn()       { return this->_kind == RK::Definition; }
-	bool isParametric() { return this->_kind == RK::Parametric; }
-	bool isDummy()      { return this->_kind == RK::Dummy; }
+	bool isError() const        { return this->_kind == RK::Error; }
+	bool isStmt() const         { return this->_kind == RK::Statement; }
+	bool isExpr() const         { return this->_kind == RK::Expression; }
+	bool isDefn() const         { return this->_kind == RK::Definition; }
+	bool isParametric() const   { return this->_kind == RK::Parametric; }
+	bool isDummy() const        { return this->_kind == RK::Dummy; }
 
 	static TCResult getParametric() { return TCResult(RK::Parametric); }
 	static TCResult getDummy()      { return TCResult(RK::Dummy); }
@@ -703,6 +703,34 @@ namespace util
 		}
 
 		return "[ " + ret + " ]";
+	}
+
+	template <typename T>
+	std::string listToEnglish(const std::vector<T>& list, bool quote = true)
+	{
+		auto printitem = [quote](const T& i) -> std::string {
+			return strprintf("%s%s%s", quote ? "'" : "", i, quote ? "'" : "");
+		};
+
+		std::string mstr;
+		if(list.size() == 1)
+		{
+			mstr = printitem(list[0]);
+		}
+		else if(list.size() == 2)
+		{
+			mstr = strprintf("%s and %s", printitem(list[0]), printitem(list[1]));
+		}
+		else
+		{
+			for(size_t i = 0; i < list.size() - 1; i++)
+				mstr += strprintf("%s, ", printitem(list[i]));
+
+			// oxford comma is important.
+			mstr += strprintf("and %s", printitem(list.back()));
+		}
+
+		return mstr;
 	}
 
 	template <typename K, typename V>

@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+#include "polymorph.h"
 
 #include "ir/type.h"
 
@@ -390,18 +391,19 @@ namespace sst
 
 						// do an inference -- with the arguments that we have.
 						//! here: fd->original has no 'problem', so the solution is empty.
+						error("stop");
 
-						auto [ soln, subs, errs ] = fs->inferTypesForGenericEntity(fd->original, infer_args, { }, nullptr, true);
-						if(errs.hasErrors())
-						{
-							warn("NO");
-							return TCResult(errs);
-						}
-						else
-						{
-							warn("YES");
-							return fs->instantiateGenericEntity(fd->original, soln);
-						}
+						// auto [ soln, errs ] = poly::inferTypesForPolymorph(fs, fd->original, infer_args, { }, nullptr, true);
+						// if(errs.hasErrors())
+						// {
+						// 	error("NO");
+						// 	// return TCResult(errs);
+						// }
+						// else
+						// {
+						// 	error("YES");
+						// 	// return fs->instantiateGenericEntity(fd->original, soln.solutions);
+						// }
 					}
 				}
 
@@ -543,7 +545,7 @@ namespace sst
 		bool didGeneric = false;
 
 		SimpleError errs;
-		std::vector<std::pair<Defn*, std::vector<FnCallArgument>>> fns;
+		std::vector<std::tuple<Defn*, std::vector<FnCallArgument>, poly::Solution_t>> fns;
 		while(tree)
 		{
 			// unify the handling of generic and non-generic stuff.
@@ -552,24 +554,30 @@ namespace sst
 			{
 				auto defs = tree->getDefinitionsWithName(name);
 				for(auto d : defs)
-					fns.push_back({ d, arguments });
+					fns.push_back({ d, arguments, poly::Solution_t() });
 			}
 
 			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
 				didGeneric = true;
 				auto argcopy = arguments;
-				auto res = this->attemptToDisambiguateGenericReference(name, gdefs, gmaps, inferredRetType, true, argcopy);
 
-				if(!res.isDefn())
+				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, inferredRetType, true, &argcopy);
+				for(const auto& pot : pots)
 				{
-					iceAssert(res.isError());
-					errs.append(res.error());
-				}
-				else
-				{
-					auto def = res.defn();
-					fns.push_back({ def, argcopy });
+					if(!pot.first.isDefn())
+					{
+						iceAssert(pot.first.isError());
+						errs.append(pot.first.error());
+					}
+					else
+					{
+						auto def = pot.first.defn();
+						if(def->type->containsPlaceholders())
+							error("wtf??? '%s'", def->type);
+
+						fns.push_back({ def, argcopy, pot.second });
+					}
 				}
 			}
 
@@ -592,7 +600,7 @@ namespace sst
 
 
 		std::vector<std::pair<sst::Defn*, std::vector<Param>>> cands;
-		for(const auto& [ def, args ] : fns)
+		for(const auto& [ def, args, soln ] : fns)
 		{
 			auto ts = util::map(args, [](auto p) -> auto { return Param(p); });
 			if(auto fn = dcast(FunctionDecl, def))
@@ -626,10 +634,10 @@ namespace sst
 		if(res.isDefn())
 		{
 			auto ret = res.defn();
-			auto it = std::find_if(fns.begin(), fns.end(), [&ret](const auto& p) -> bool { return p.first == ret; });
+			auto it = std::find_if(fns.begin(), fns.end(), [&ret](const auto& p) -> bool { return std::get<0>(p) == ret; });
 			iceAssert(it != fns.end());
 
-			arguments = it->second;
+			arguments = std::get<1>(*it);
 			return res;
 		}
 		else

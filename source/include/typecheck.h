@@ -41,6 +41,11 @@ namespace fir
 
 namespace sst
 {
+	namespace poly
+	{
+		struct Solution_t;
+	}
+
 	struct StateTree
 	{
 		StateTree(const std::string& nm, const std::string& filename, StateTree* p) : name(nm), topLevelFilename(filename), parent(p) { }
@@ -89,8 +94,6 @@ namespace sst
 
 		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
-
-	struct SolutionSet_t;
 
 	struct TypecheckState
 	{
@@ -185,28 +188,6 @@ namespace sst
 
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
-
-
-
-		// all the generic stuff.
-		std::pair<SolutionSet_t, SimpleError> inferTypesForGenericEntity2(ast::Parameterisable* target, std::vector<FnCallArgument>& input,
-			const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
-
-
-		// old generic interface
-		TypeParamMap_t getPlaceholderSolutions(ast::Parameterisable* thing, const TypeParamMap_t& input);
-		sst::Defn* fillGenericTypeWithPlaceholders(ast::Parameterisable* thing, const TypeParamMap_t& partial);
-
-		std::tuple<TypeParamMap_t, std::unordered_map<fir::Type*, fir::Type*>, SimpleError> inferTypesForGenericEntity(ast::Parameterisable* target,
-			std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* infer, bool isFnCall);
-
-		//* gets an generic thing in the AST form and returns a concrete SST node from it, given the mappings.
-		TCResult instantiateGenericEntity(ast::Parameterisable* type, const TypeParamMap_t& mappings);
-
-		TCResult attemptToDisambiguateGenericReference(const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
-			const TypeParamMap_t& mappings, fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>& args);
-
-
 
 
 
