@@ -53,6 +53,12 @@ namespace sst
 
 		void addSubstitution(fir::Type* x, fir::Type* y)
 		{
+			if(auto it = this->substitutions.find(x); it != this->substitutions.end())
+			{
+				if(it->second != y) error("conflicting substitutions for '%s': '%s' and '%s'", x, y, it->second);
+				debuglogln("substitution: '%s' -> '%s'", x, y);
+			}
+
 			this->substitutions[x] = y;
 		}
 
@@ -77,6 +83,27 @@ namespace sst
 
 			else
 				return x;
+		}
+
+
+		void resubstituteIntoSolutions()
+		{
+			// iterate through everything
+			for(auto& [ n, t ] : this->solutions)
+				t = this->substitute(t);
+		}
+
+
+		bool operator == (const SolutionSet_t& other) const
+		{
+			return other.distance == this->distance
+				&& other.solutions == this->solutions
+				&& other.substitutions == this->substitutions;
+		}
+
+		bool operator != (const SolutionSet_t& other) const
+		{
+			return !(other == *this);
 		}
 
 		// incorporate distance so we can use this shit for our function resolution.
@@ -122,17 +149,21 @@ namespace sst
 			else
 			{
 				soln->distance = -1;
-				return SimpleError(given.loc, strprintf("No valid cast from given type '%s' to target type '%s'", gvn, tgt));
+				return SimpleError::make(given.loc, "No valid cast from given type '%s' to target type '%s'", gvn, tgt);
 			}
 		}
 		else
 		{
 			// limit decomposition of the given types by the number of transforms on the target type.
-			auto [ tt, ttrfs ] = decomposeIntoTrfs(tgt, 0);
+			auto [ tt, ttrfs ] = decomposeIntoTrfs(tgt, -1);
 			auto [ gt, gtrfs ] = decomposeIntoTrfs(gvn, ttrfs.size());
 
 			// substitute if possible.
-			gt = soln->substitute(gt);
+			if(auto _gt = soln->substitute(gt); _gt != gt)
+			{
+				debuglogln("substituted '%s' -> '%s'", gt, _gt);
+				gt = _gt;
+			}
 
 			bool ttpoly = tt->isPolyPlaceholderType();
 			bool gtpoly = gt->isPolyPlaceholderType();
@@ -155,19 +186,17 @@ namespace sst
 						}
 						else if(ltt.type != gt)
 						{
-							return SimpleError(given.loc, strprintf("Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
-								ptt->getName(), ltt.type, gt));
+							return SimpleError::make(given.loc, "Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
+								ptt->getName(), ltt.type, gvn);
 						}
 					}
 					else if(ltt.type->isPolyPlaceholderType() && !gtpoly)
 					{
 						soln->addSubstitution(ltt.type, gt);
-						debuglogln("substitute '%s' -> '%s'", ltt.type, gt);
 					}
 					else if(!ltt.type->isPolyPlaceholderType() && gtpoly)
 					{
 						soln->addSubstitution(gt, ltt.type);
-						debuglogln("substitute '%s' -> '%s'", gt, ltt.type);
 					}
 					else if(ltt.type->isPolyPlaceholderType() && gtpoly)
 					{
@@ -233,13 +262,31 @@ namespace sst
 			auto err = _internal_solveSingleType(fs, soln, target[i], given[i]);
 			if(err.hasErrors())
 				return err;
+
+			// possibly increase solution completion by re-substituting with new information
+			soln->resubstituteIntoSolutions();
 		}
 
 		return SimpleError();
 	}
 
 
+	static std::pair<SolutionSet_t, SimpleError> _internal_iterativelySolveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target,
+		const std::vector<LocatedType>& given)
+	{
+		SolutionSet_t prevSoln;
+		while(true)
+		{
+			auto soln = prevSoln;
+			auto errs = _internal_solveTypeList(fs, &soln, target, given);
+			if(errs.hasErrors()) return { soln, errs };
 
+			if(soln == prevSoln)    break;
+			else                    prevSoln = soln;
+		}
+
+		return { prevSoln, SimpleError() };
+	}
 
 
 
@@ -385,6 +432,8 @@ namespace sst
 				if(err.hasErrors()) return { soln, err };
 
 				given = gvn;
+				if(infer)
+					given.push_back(LocatedType(infer));
 			}
 			else
 			{
@@ -402,7 +451,7 @@ namespace sst
 			}
 
 
-			auto errs = _internal_solveTypeList(this, &soln, target, given);
+			auto [ soln, errs ] = _internal_iterativelySolveTypeList(this, target, given);
 			for(auto& pair : soln.solutions)
 			{
 				if(pair.second->isConstantNumberType())
@@ -465,7 +514,7 @@ namespace sst
 	{
 		std::vector<Trf> ret;
 
-		for(size_t i = 0; max == 0 || i < max; i++)
+		for(size_t i = 0; i < max; i++)
 		{
 			if(t->isDynamicArrayType())
 			{
