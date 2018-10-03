@@ -58,7 +58,7 @@ namespace poly
 		{
 			if(!isFnCall)
 			{
-				if(auto missing = getMissingSolutions(problems, soln.solutions, false); missing.size() > 0)
+				if(auto missing = getMissingSolutions(problems, soln.solutions, true); missing.size() > 0)
 				{
 					auto ret = solvePolymorphWithPlaceholders(fs, thing, partial);
 					return { ret.second, SimpleError() };
