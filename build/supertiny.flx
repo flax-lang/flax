@@ -24,62 +24,47 @@ import "stdio" as _
 
 @entry fn main()
 {
-	// do {
-	// 	union option<T>
-	// 	{
-	// 		some: T
-	// 		none
-	// 	}
-
-	// 	let x = option<T: str>.some("123")
-	// 	let y = option<T: int>.some(456)
-
-	// 	printf("x = %s, y = %d\n", x as option<T: str>.some, y as option<T: int>.some)
-
-	// 	if let z = 30; z > 50
-	// 	{
-	// 		println("z > 50")
-	// 	}
-	// 	else
-	// 	{
-	// 		println("z is %", z)
-	// 	}
-	// }
-
-
 	do {
-		class Foo<T>
+		fn prints<T, U>(m: T, a: [U:...])
 		{
-			init() { }
-			static fn bar(x: T) { printf("x = %d\n", x) }
+			println("m = %", m)
+			for x in a => println("x = %", m * x)
 		}
 
-		Foo.bar(30)
+		let xs = [ 1, 2, 3, 4, 5 ]
+		prints(3, ...xs)
 	}
 
 
-
 	// do {
-	// 	struct outer
+	// 	class Foo<T>
 	// 	{
-	// 		class inner
-	// 		{
-	// 			var x: int
-
-	// 			init(a: int, b: int)
-	// 			{
-	// 				x = a * b
-	// 			}
-	// 		}
+	// 		init() { }
+	// 		static fn bar(x: T) { printf("x = %d\n", x) }
 	// 	}
 
-	// 	let foo = outer.inner(a: 30, b: 40)
-	// 	println("foo.x = %", foo.x)
+	// 	Foo.bar(30)
 	// }
 }
 
 
 /*
+	! more things.
+	! caa 03/10
+	{
+		1. clean up all the nested types -- sst's Decl::Param, FnCallArgument, ast's Defn::Arg, all that shit.
+		2. splatting tuples into a generic function *will not work*
+	}
+
+
+
+
+
+
+
+
+
+
 	! slightly more updated notes
 	! caa 23/09
 	{

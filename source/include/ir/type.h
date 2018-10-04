@@ -43,6 +43,8 @@ namespace fir
 	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
 	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
 
+	int getCastDistance(Type* from, Type* to);
+
 	enum class TypeKind
 	{
 		Invalid,
@@ -191,7 +193,6 @@ namespace fir
 
 		static PrimitiveType* getFloat32();
 		static PrimitiveType* getFloat64();
-		static PrimitiveType* getFloat80();
 		static PrimitiveType* getFloat128();
 
 		static PointerType* getInt8Ptr();
@@ -443,7 +444,6 @@ namespace fir
 
 		static PrimitiveType* getFloat32();
 		static PrimitiveType* getFloat64();
-		static PrimitiveType* getFloat80();
 		static PrimitiveType* getFloat128();
 	};
 
@@ -937,10 +937,6 @@ namespace fir
 
 
 
-
-
-
-
 	struct AnyType : Type
 	{
 		friend struct Type;
@@ -959,6 +955,33 @@ namespace fir
 		public:
 		static AnyType* get();
 	};
+
+
+
+
+
+
+
+
+	struct LocatedType
+	{
+		LocatedType() { }
+		LocatedType(fir::Type* t) : type(t) { }
+		LocatedType(fir::Type* t, const Location& l) : type(t), loc(l) { }
+
+		operator fir::Type* () const { return this->type; }
+		fir::Type* operator -> () const { return this->type; }
+
+		fir::Type* type = 0;
+		Location loc;
+	};
+
+
+
+
+
+
+
 
 	struct HashTypeByStr
 	{

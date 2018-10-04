@@ -1,5 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- major revamp of the generic solver -- the algorithm is mostly unchanged, but the interface and stuff is reworked.
+- finally implemented the iterative solver
+- variadic generics work
+
 `(efc961e)`
 - generic unions, but they're quite verbose.
 

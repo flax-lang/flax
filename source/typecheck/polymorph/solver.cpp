@@ -17,7 +17,7 @@ namespace sst
 {
 	namespace poly
 	{
-		SimpleError solveSingleType(TypecheckState* fs, Solution_t* soln, const LocatedType& target, const LocatedType& given)
+		SimpleError solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
 		{
 			auto tgt = target.type;
 			auto gvn = given.type;
@@ -25,7 +25,7 @@ namespace sst
 			// if we're just looking at normal types, then just add the cost.
 			if(!tgt->containsPlaceholders() && !gvn->containsPlaceholders())
 			{
-				int dist = fs->getCastDistance(gvn, tgt);
+				int dist = fir::getCastDistance(gvn, tgt);
 				if(dist >= 0)
 				{
 					soln->distance += dist;
@@ -55,46 +55,47 @@ namespace sst
 				{
 					// see if there's a match.
 					auto ptt = tt->toPolyPlaceholderType();
-					if(auto ltt = soln->getSolution(ptt->getName()); ltt.type != 0)
+					if(auto ltt = soln->getSolution(ptt->getName()); ltt != 0)
 					{
 						// check for conflict.
-						if(!ltt.type->isPolyPlaceholderType() && !gtpoly)
+						if(!ltt->isPolyPlaceholderType() && !gtpoly)
 						{
-							if(ltt.type->isConstantNumberType() || gt->isConstantNumberType())
+							if(ltt->isConstantNumberType() || gt->isConstantNumberType())
 							{
-								gt = misc::mergeNumberTypes(ltt.type, gt);
-								if(gt != ltt.type)
-									soln->addSolution(ptt->getName(), LocatedType(gt, given.loc));
+								gt = misc::mergeNumberTypes(ltt, gt);
+								if(gt != ltt)
+									soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
 							}
-							else if(ltt.type != gt)
+							else if(ltt != gt)
 							{
-								if(int d = fs->getCastDistance(gt, ltt.type); d >= 0)
+								if(int d = fir::getCastDistance(gt, ltt); d >= 0)
 								{
 									soln->distance += d;
 								}
 								else
 								{
 									return SimpleError::make(given.loc, "Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
-										ptt->getName(), ltt.type, gvn);
+										ptt->getName(), ltt->str(), gvn);
 								}
 							}
 						}
-						else if(ltt.type->isPolyPlaceholderType() && !gtpoly)
+						else if(ltt->isPolyPlaceholderType() && !gtpoly)
 						{
-							soln->addSubstitution(ltt.type, gt);
+							soln->addSubstitution(ltt, gt);
 						}
-						else if(!ltt.type->isPolyPlaceholderType() && gtpoly)
+						else if(!ltt->isPolyPlaceholderType() && gtpoly)
 						{
-							soln->addSubstitution(gt, ltt.type);
+							soln->addSubstitution(gt, ltt);
 						}
-						else if(ltt.type->isPolyPlaceholderType() && gtpoly)
+						else if(ltt->isPolyPlaceholderType() && gtpoly)
 						{
-							error("what???? '%s' and '%s' are both poly??", ltt.type, gt);
+							error("what???? '%s' and '%s' are both poly??", ltt->str(), gt);
 						}
 					}
 					else
 					{
-						soln->addSolution(ptt->getName(), LocatedType(gt, given.loc));
+						// debuglogln("solved %s = %s", ptt->getName(), gt);
+						soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
 					}
 				}
 				else if(tt->isFunctionType() || tt->isTupleType())
@@ -103,31 +104,32 @@ namespace sst
 					if(tt->isFunctionType() != gt->isFunctionType() || tt->isTupleType() != gt->isTupleType())
 						return SimpleError::make(given.loc, "no valid conversion from given type '%s' to target type '%s'", gt, tt);
 
-					std::vector<LocatedType> problem;
-					std::vector<LocatedType> input;
+					std::vector<fir::LocatedType> problem;
+					std::vector<fir::LocatedType> input;
 					if(gt->isFunctionType())
 					{
-						input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> LocatedType {
-							return LocatedType(t, given.loc);
-						}) + LocatedType(gt->toFunctionType()->getReturnType(), given.loc);
+						input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> fir::LocatedType {
+							return fir::LocatedType(t, given.loc);
+						}) + fir::LocatedType(gt->toFunctionType()->getReturnType(), given.loc);
 
-						problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> LocatedType {
-							return LocatedType(t, target.loc);
-						}) + LocatedType(tt->toFunctionType()->getReturnType(), target.loc);
+						problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> fir::LocatedType {
+							return fir::LocatedType(t, target.loc);
+						}) + fir::LocatedType(tt->toFunctionType()->getReturnType(), target.loc);
 					}
 					else
 					{
 						iceAssert(gt->isTupleType());
-						input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> LocatedType {
-							return LocatedType(t, given.loc);
+						input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> fir::LocatedType {
+							return fir::LocatedType(t, given.loc);
 						});
 
-						problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> LocatedType {
-							return LocatedType(t, target.loc);
+						problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> fir::LocatedType {
+							return fir::LocatedType(t, target.loc);
 						});
 					}
 
-					return solveSingleTypeList(fs, soln, problem, input);
+					// for recursive solving, we're never a function call.
+					return solveSingleTypeList(soln, problem, input, /* isFnCall: */ false);
 				}
 				else
 				{
@@ -138,15 +140,19 @@ namespace sst
 			return SimpleError();
 		}
 
-		SimpleError solveSingleTypeList(TypecheckState* fs, Solution_t* soln, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given)
+		SimpleError solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+			bool isFnCall)
 		{
 			// for now just do this.
 			if(target.size() != given.size())
-				return SimpleError::make(fs->loc(), "mismatched argument count");
+			{
+				if(!isFnCall || !(target.size() > 0 && target.back()->isVariadicArrayType() && given.size() >= target.size() - 1))
+					return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d were provided", target.size(), given.size());
+			}
 
 			for(size_t i = 0; i < std::min(target.size(), given.size()); i++)
 			{
-				auto err = solveSingleType(fs, soln, target[i], given[i]);
+				auto err = solveSingleType(soln, target[i], given[i]);
 				if(err.hasErrors())
 					return err;
 
@@ -158,14 +164,14 @@ namespace sst
 		}
 
 
-		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given,
-			const Solution_t& partial)
+		std::pair<Solution_t, SimpleError> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+			const Solution_t& partial, bool isFnCall)
 		{
 			Solution_t prevSoln = partial;
 			while(true)
 			{
 				auto soln = prevSoln;
-				auto errs = solveSingleTypeList(fs, &soln, target, given);
+				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
 				if(errs.hasErrors()) return { soln, errs };
 
 				if(soln == prevSoln)    break;

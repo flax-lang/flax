@@ -13,6 +13,8 @@
 #include "polymorph.h"
 #include "polymorph_internal.h"
 
+#include "resolver.h"
+
 #include <set>
 
 namespace sst {
@@ -51,7 +53,7 @@ namespace poly
 	{
 		Solution_t soln;
 		for(const auto& p : partial)
-			soln.addSolution(p.first, LocatedType(p.second));
+			soln.addSolution(p.first, fir::LocatedType(p.second));
 
 
 		if(auto td = dcast(ast::TypeDefn, thing))
@@ -91,18 +93,18 @@ namespace poly
 					return { soln, err };
 
 				int session = getNextSessionId();
-				std::vector<LocatedType> given(seen.size());
-				std::vector<LocatedType> target(seen.size());
+				std::vector<fir::LocatedType> given(seen.size());
+				std::vector<fir::LocatedType> target(seen.size());
 
 				for(const auto& s : seen)
 				{
 					auto idx = fieldNames[s.first];
 
-					target[idx] = LocatedType(misc::convertPtsType(fs, str->generics, str->fields[idx]->type, session), str->fields[idx]->loc);
-					given[idx] = LocatedType(_input[s.second].value->type, _input[s.second].loc);
+					target[idx] = fir::LocatedType(misc::convertPtsType(fs, str->generics, str->fields[idx]->type, session), str->fields[idx]->loc);
+					given[idx] = fir::LocatedType(_input[s.second].value->type, _input[s.second].loc);
 				}
 
-				return solveTypeList(fs, target, given, soln);
+				return solveTypeList(target, given, soln, isFnCall);
 			}
 			else if(auto cls = dcast(ast::ClassDefn, thing))
 			{
@@ -131,8 +133,8 @@ namespace poly
 		}
 		else if(bool isinit = dcast(ast::InitFunctionDefn, thing); isinit || dcast(ast::FuncDefn, thing))
 		{
-			std::vector<LocatedType> given;
-			std::vector<LocatedType> target;
+			std::vector<fir::LocatedType> given;
+			std::vector<fir::LocatedType> target;
 
 			pts::Type* retty = 0;
 			std::vector<ast::FuncDefn::Arg> args;
@@ -155,17 +157,18 @@ namespace poly
 			if(!isinit && (!isFnCall || infer))
 			{
 				// add the return type to the fray
-				target.push_back(LocatedType(misc::convertPtsType(fs, thing->generics, retty, session), thing->loc));
+				target.push_back(fir::LocatedType(misc::convertPtsType(fs, thing->generics, retty, session), thing->loc));
 			}
 
 			if(isFnCall)
 			{
-				auto [ gvn, err ] = misc::unwrapArgumentList(fs, thing, args, _input);
+				SimpleError err;
+				auto gvn = resolver::canonicaliseCallArguments(thing->loc, args, _input, &err);
 				if(err.hasErrors()) return { soln, err };
 
 				given = gvn;
 				if(infer)
-					given.push_back(LocatedType(infer));
+					given.push_back(fir::LocatedType(infer));
 			}
 			else
 			{
@@ -177,12 +180,12 @@ namespace poly
 
 				// ok, we should have it.
 				iceAssert(infer->isFunctionType());
-				given = util::mapidx(infer->toFunctionType()->getArgumentTypes(), [&args](fir::Type* t, size_t i) -> LocatedType {
-					return LocatedType(t, args[i].loc);
-				}) + LocatedType(infer->toFunctionType()->getReturnType(), thing->loc);
+				given = util::mapidx(infer->toFunctionType()->getArgumentTypes(), [&args](fir::Type* t, size_t i) -> fir::LocatedType {
+					return fir::LocatedType(t, args[i].loc);
+				}) + fir::LocatedType(infer->toFunctionType()->getReturnType(), thing->loc);
 			}
 
-			return solveTypeList(fs, target, given, soln);
+			return solveTypeList(target, given, soln, isFnCall);
 		}
 		else
 		{
@@ -212,122 +215,6 @@ namespace poly
 
 
 
-
-
-#if 0
-{
-		if(!isFnCall)
-		{
-			// fill it with placeholders instead, i guess??
-
-			return { this->getPlaceholderSolutions(_target, partial), { }, SimpleError() };
-			// return { partial, { }, SimpleError::make(td, "Invalid use of type '%s' in non-constructor-call context", td->name) };
-		}
-
-		if(auto cld = dcast(ast::ClassDefn, td))
-		{
-			std::vector<std::tuple<ast::InitFunctionDefn*, std::vector<Param_t>, std::vector<UnsolvedType>, SimpleError>> solns;
-			for(auto init : cld->initialisers)
-			{
-				auto [ input, problem, errs ] = _internal_unwrapFunctionCall(this, init, init->args, 0, _input, true, infer, partial);
-
-				if(!errs.hasErrors())
-					solns.push_back({ init, input, problem, errs });
-			}
-
-			// TODO: FIXME: better error messages
-			if(solns.empty())
-				return { partial, { }, SimpleError::make(td, "No matching constructor to type '%s'", td->name) };
-
-			else if(solns.size() > 1)
-				return { partial, { }, SimpleError::make(td, "Ambiguous call to constructor of type '%s'", td->name) };
-
-			// ok, we're good??
-			// just return the solution, i guess.
-			auto [ init, input, problem, errs ] = solns[0];
-			return _internal_inferTypesForGenericEntity(this, problemSpace, problem, input, partial, infer);
-		}
-		else if(auto str = dcast(ast::StructDefn, td))
-		{
-			// this is a special case. we need to tailor the 'problem' to the 'input', instead of the other way around.
-			// first we need to check that whatever arguments we're passing do exist in the struct.
-
-			// TODO: the stuff below is pretty much a dupe of the stuff we do in typecheck/call.cpp for struct constructors.
-			//! combine?
-
-			std::unordered_map<std::string, size_t> fieldNames;
-			{
-				size_t i = 0;
-				for(auto f : str->fields)
-					fieldNames[f->name] = i++;
-			}
-
-			bool useNames = false;
-			bool firstName = true;
-
-			size_t ctr = 0;
-			std::unordered_map<std::string, size_t> seenNames;
-			for(auto arg : _input)
-			{
-				if((arg.name.empty() && useNames) || (!arg.name.empty() && !useNames && !firstName))
-				{
-					return { partial, { },
-						SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor")
-					};
-				}
-				else if(firstName && !arg.name.empty())
-				{
-					useNames = true;
-					firstName = false;
-				}
-				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
-				{
-					return { partial, { },
-						SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, str->name)
-					};
-				}
-				else if(useNames && seenNames.find(arg.name) != seenNames.end())
-				{
-					return { partial, { },
-						SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
-						arg.name, str->name)
-					};
-				}
-
-				seenNames[arg.name] = ctr++;
-			}
-
-			//* note: if we're doing positional args, allow only all or none.
-			if(!useNames && _input.size() != fieldNames.size() && _input.size() > 0)
-			{
-				return { partial, { },
-					SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead", str->name, fieldNames.size(), _input.size())
-						.append(BareError("All arguments are mandatory when using positional arguments", MsgType::Note))
-				};
-			}
-
-			// preallocate for both problem and input.
-			input.resize(seenNames.size());
-			problem.resize(seenNames.size());
-
-			for(const auto& seen : seenNames)
-			{
-				auto idx = fieldNames[seen.first];
-
-				problem[idx] = (UnsolvedType(str->fields[idx]->loc, str->fields[idx]->type));
-				input[idx] = Param_t(_input[seen.second]);
-			}
-
-			return _internal_inferTypesForGenericEntity(this, problemSpace, problem, input, partial, infer);
-		}
-		else
-		{
-			error(td, "no.");
-		}
-	}
-
-
-#endif
 
 
 

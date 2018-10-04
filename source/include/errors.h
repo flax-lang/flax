@@ -55,7 +55,6 @@ inline void debuglogln(const char* s, Ts... ts)
 
 #define FLOAT32_TYPE_STRING				"f32"
 #define FLOAT64_TYPE_STRING				"f64"
-#define FLOAT80_TYPE_STRING				"f80"
 #define FLOAT128_TYPE_STRING			"f128"
 
 #define STRING_TYPE_STRING				"string"

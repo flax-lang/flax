@@ -133,11 +133,6 @@ namespace fir
 		return PrimitiveType::getFloatWithBitWidth(64);
 	}
 
-	PrimitiveType* PrimitiveType::getFloat80()
-	{
-		return PrimitiveType::getFloatWithBitWidth(80);
-	}
-
 	PrimitiveType* PrimitiveType::getFloat128()
 	{
 		return PrimitiveType::getFloatWithBitWidth(128);

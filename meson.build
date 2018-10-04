@@ -78,7 +78,6 @@ source_files = files([
 	'source/backend/llvm/translator.cpp',
 
 	'source/typecheck/type.cpp',
-	'source/typecheck/call.cpp',
 	'source/typecheck/misc.cpp',
 	'source/typecheck/using.cpp',
 	'source/typecheck/slice.cpp',
@@ -109,6 +108,9 @@ source_files = files([
 	'source/typecheck/polymorph/solver.cpp',
 	'source/typecheck/polymorph/transforms.cpp',
 	'source/typecheck/polymorph/instantiator.cpp',
+
+	'source/typecheck/resolver/misc.cpp',
+	'source/typecheck/resolver/driver.cpp',
 
 	'source/codegen/misc.cpp',
 	'source/codegen/call.cpp',
@@ -169,26 +171,26 @@ source_files = files([
 	'source/fir/Types/Type.cpp'
 ])
 
-utf8rewind_dep = declare_dependency(include_directories: include_directories('source/external/utf8rewind/include'),
+utf8rewind_dep = declare_dependency(include_directories: include_directories('external/utf8rewind/include'),
 	sources: [
-				'source/external/utf8rewind/source/utf8rewind.c',
-				'source/external/utf8rewind/source/unicodedatabase.c',
+				'external/utf8rewind/source/utf8rewind.c',
+				'external/utf8rewind/source/unicodedatabase.c',
 
-				'source/external/utf8rewind/source/internal/seeking.c',
-				'source/external/utf8rewind/source/internal/database.c',
-				'source/external/utf8rewind/source/internal/streaming.c',
-				'source/external/utf8rewind/source/internal/codepoint.c',
-				'source/external/utf8rewind/source/internal/composition.c',
-				'source/external/utf8rewind/source/internal/casemapping.c',
-				'source/external/utf8rewind/source/internal/decomposition.c'
+				'external/utf8rewind/source/internal/seeking.c',
+				'external/utf8rewind/source/internal/database.c',
+				'external/utf8rewind/source/internal/streaming.c',
+				'external/utf8rewind/source/internal/codepoint.c',
+				'external/utf8rewind/source/internal/composition.c',
+				'external/utf8rewind/source/internal/casemapping.c',
+				'external/utf8rewind/source/internal/decomposition.c'
 			]
 )
 
 
-tinyproclib_dep = declare_dependency(include_directories: include_directories('source/external/tinyprocesslib'),
+tinyproclib_dep = declare_dependency(include_directories: include_directories('external/tinyprocesslib'),
 	sources: [
-				'source/external/tinyprocesslib/process.cpp',
-				'source/external/tinyprocesslib/process_os.cpp'
+				'external/tinyprocesslib/process.cpp',
+				'external/tinyprocesslib/process_os.cpp'
 			]
 )
 
@@ -249,11 +251,11 @@ llvm_dep = declare_dependency(version: '6.0.0', include_directories: include_dir
 )
 
 
-include_dirs = include_directories([ 'source/include', mpir_hdr_dir, mpfr_hdr_dir, llvm_hdr_dir ])
+include_dirs = include_directories([ 'source/include', 'external', mpir_hdr_dir, mpfr_hdr_dir, llvm_hdr_dir ])
 
 executable('flaxc', source_files,
 	include_directories: include_dirs,
-	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep ]
+	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep, mpfr_dep, mpir_dep ]
 )
 
 	# cpp_pch: [ 'source/include/precompile.h', 'source/include/precompile.cpp' ]

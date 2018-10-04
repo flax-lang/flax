@@ -57,14 +57,14 @@ namespace fir
 
 
 
-	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, uint64_t n)
+	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, const mpfr::mpreal& n)
 	{
 		return new ConstantNumber(cnt, n);
 	}
 
-	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, uint64_t n) : ConstantValue(cnt)
+	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n) : ConstantValue(cnt)
 	{
-		this->bits = n;
+		this->number = n;
 	}
 
 
@@ -175,12 +175,6 @@ namespace fir
 		return new ConstantFP(type, val);
 	}
 
-	ConstantFP* ConstantFP::get(Type* type, long double val)
-	{
-		iceAssert(type->isFloatingPointType() && "not floating point type");
-		return new ConstantFP(type, val);
-	}
-
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
 		this->value = (long double) val;
@@ -191,12 +185,7 @@ namespace fir
 		this->value = (long double) val;
 	}
 
-	ConstantFP::ConstantFP(Type* type, long double val) : fir::ConstantValue(type)
-	{
-		this->value = val;
-	}
-
-	long double ConstantFP::getValue()
+	double ConstantFP::getValue()
 	{
 		return this->value;
 	}
@@ -209,11 +198,6 @@ namespace fir
 	ConstantFP* ConstantFP::getFloat64(double value)
 	{
 		return ConstantFP::get(Type::getFloat64(), value);
-	}
-
-	ConstantFP* ConstantFP::getFloat80(long double value)
-	{
-		return ConstantFP::get(Type::getFloat80(), value);
 	}
 
 
@@ -397,40 +381,6 @@ namespace fir
 	ConstantArraySlice::ConstantArraySlice(ArraySliceType* t) : ConstantValue(t)
 	{
 	}
-
-
-
-
-
-
-
-	// bool checkLiteralFitsIntoType(fir::PrimitiveType* target, mpfr::mpreal num)
-	// {
-	// 	using mpr = mpfr::mpreal;
-	// 	if(mpfr::isint(num) && target->isFloatingPointType())
-	// 	{
-	// 		if(target == fir::Type::getFloat32())		return (num >= -mpr(FLT_MAX) && num <= mpr(FLT_MAX));
-	// 		else if(target == fir::Type::getFloat64())	return (num >= -mpr(DBL_MAX) && num <= mpr(DBL_MAX));
-	// 		else if(target == fir::Type::getFloat80())	return (num >= -mpr(LDBL_MAX) && num <= mpr(LDBL_MAX));
-	// 		else										error("Unsupported type '%s' for literal number", target);
-	// 	}
-	// 	else
-	// 	{
-	// 		if(target == fir::Type::getFloat32())		return (mpfr::abs(num) >= mpr(FLT_MIN) && mpfr::abs(num) <= mpr(FLT_MAX));
-	// 		else if(target == fir::Type::getFloat64())	return (mpfr::abs(num) >= mpr(DBL_MIN) && mpfr::abs(num) <= mpr(DBL_MAX));
-	// 		else if(target == fir::Type::getFloat80())	return (mpfr::abs(num) >= mpr(LDBL_MIN) && mpfr::abs(num) <= mpr(LDBL_MAX));
-
-	// 		else if(target == fir::Type::getInt8())		return (num >= mpr(INT8_MIN) && num <= mpr(INT8_MAX));
-	// 		else if(target == fir::Type::getInt16())	return (num >= mpr(INT16_MIN) && num <= mpr(INT16_MAX));
-	// 		else if(target == fir::Type::getInt32())	return (num >= mpr(INT32_MIN) && num <= mpr(INT32_MAX));
-	// 		else if(target == fir::Type::getInt64())	return (num >= mpr(INT64_MIN) && num <= mpr(INT64_MAX));
-	// 		else if(target == fir::Type::getUint8())	return (num <= mpr(UINT8_MAX));
-	// 		else if(target == fir::Type::getUint16())	return (num <= mpr(UINT16_MAX));
-	// 		else if(target == fir::Type::getUint32())	return (num <= mpr(UINT32_MAX));
-	// 		else if(target == fir::Type::getUint64())	return (num <= mpr(UINT64_MAX));
-	// 		else										error("Unsupported type '%s' for literal number", target);
-	// 	}
-	// }
 }
 
 
