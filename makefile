@@ -21,8 +21,8 @@ CXX				?= "clang++"
 LLVM_CONFIG		?= "llvm-config"
 
 
-CXXSRC			:= $(shell find source -iname "*.cpp")
-CSRC			:= $(shell find source -iname "*.c")
+CXXSRC			:= $(shell find source external -iname "*.cpp")
+CSRC			:= $(shell find source external -iname "*.c")
 
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
 COBJ			:= $(CSRC:.c=.c.o)
@@ -119,7 +119,7 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 %.cpp.o: %.cpp
 	@$(eval DONEFILES += "CPP")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -Iexternal -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
 
 
 %.c.o: %.c
