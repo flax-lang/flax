@@ -4,78 +4,206 @@
 
 #include "sst.h"
 #include "resolver.h"
+#include "typecheck.h"
 
 #include "ir/type.h"
 
-namespace sst {
-namespace resolver
+namespace sst
 {
-	static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target, const std::unordered_map<std::string, size_t>& nameToIndex,
-		const std::vector<FunctionDecl::Param>& args, SimpleError* err)
+	using Param = FunctionDecl::Param;
+
+	namespace resolver
 	{
-		std::vector<fir::LocatedType> ret(args.size());
-
-		// strip out the name information, and do purely positional things.
+		namespace misc
 		{
-			int counter = 0;
-			for(const auto& i : args)
+			static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target,
+				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<Param>& args, SimpleError* err)
 			{
-				if(!i.name.empty())
+				std::vector<fir::LocatedType> ret(args.size());
+
+				// strip out the name information, and do purely positional things.
 				{
-					if(nameToIndex.find(i.name) == nameToIndex.end())
+					int counter = 0;
+					for(const auto& i : args)
 					{
-						iceAssert(err);
-						*err = SimpleError::make(MsgType::Note, i.loc, "function does not have a parameter named '%s'",
-							i.name).append(SimpleError::make(MsgType::Note, target, "function was defined here:"));
+						if(!i.name.empty())
+						{
+							if(nameToIndex.find(i.name) == nameToIndex.end())
+							{
+								iceAssert(err);
+								*err = SimpleError::make(MsgType::Note, i.loc, "function does not have a parameter named '%s'",
+									i.name).append(SimpleError::make(MsgType::Note, target, "function was defined here:"));
 
-						return { };
-					}
-					else if(ret[nameToIndex.find(i.name)->second].type != 0)
-					{
-						iceAssert(err);
-						*err = SimpleError::make(MsgType::Note, i.loc, "argument '%s' was already provided", i.name).append(
-							SimpleError::make(MsgType::Note, ret[nameToIndex.find(i.name)->second].loc, "here:"));
+								return { };
+							}
+							else if(ret[nameToIndex.find(i.name)->second].type != 0)
+							{
+								iceAssert(err);
+								*err = SimpleError::make(MsgType::Note, i.loc, "argument '%s' was already provided", i.name).append(
+									SimpleError::make(MsgType::Note, ret[nameToIndex.find(i.name)->second].loc, "here:"));
 
-						return { };
+								return { };
+							}
+						}
+
+						ret[i.name.empty() ? counter : nameToIndex.find(i.name)->second] = fir::LocatedType(i.type, i.loc);
+						counter++;
 					}
 				}
 
-				ret[i.name.empty() ? counter : nameToIndex.find(i.name)->second] = fir::LocatedType(i.type, i.loc);
-				counter++;
+				return ret;
+			}
+
+
+
+			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<Param>& params,
+				const std::vector<Param>& args, SimpleError* err)
+			{
+				std::unordered_map<std::string, size_t> nameToIndex;
+				for(size_t i = 0; i < params.size(); i++)
+				{
+					const auto& arg = params[i];
+					nameToIndex[arg.name] = i;
+				}
+
+				return _canonicaliseCallArguments(target, nameToIndex, args, err);
+			}
+
+			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
+				const std::vector<Param>& args, SimpleError* err)
+			{
+				std::unordered_map<std::string, size_t> nameToIndex;
+				for(size_t i = 0; i < params.size(); i++)
+				{
+					const auto& arg = params[i];
+					nameToIndex[arg.name] = i;
+				}
+
+				return _canonicaliseCallArguments(target, nameToIndex, args, err);
+			}
+
+
+
+			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args)
+			{
+				return util::map(args, [fs](const auto& a) -> FnCallArgument {
+					return FnCallArgument(a.second->loc, a.first, a.second->typecheck(fs).expr(), a.second);
+				});
 			}
 		}
 
-		return ret;
-	}
 
 
 
-	std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FunctionDecl::Param>& params,
-		const std::vector<FunctionDecl::Param>& args, SimpleError* err)
-	{
-		std::unordered_map<std::string, size_t> nameToIndex;
-		for(size_t i = 0; i < params.size(); i++)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
+			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<Param>& arguments)
 		{
-			const auto& arg = params[i];
-			nameToIndex[arg.name] = i;
+			// ok, structs get named arguments, and no un-named arguments.
+			// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
+
+			//* note that structs don't have inline member initialisers, so there's no trouble with this approach (in the codegeneration)
+			//* of inserting missing arguments as just '0' or whatever their default value is
+
+			//* in the case of classes, they will have inline initialisers, so the constructor calling must handle such things.
+			//* but then class constructors are handled like regular functions, so it should be fine.
+
+			bool useNames = false;
+			bool firstName = true;
+
+			size_t ctr = 0;
+			std::unordered_map<std::string, size_t> seenNames;
+			for(auto arg : arguments)
+			{
+				if(arg.name.empty() && useNames)
+				{
+					return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+				}
+				else if(firstName && !arg.name.empty())
+				{
+					useNames = true;
+					firstName = false;
+				}
+				else if(!arg.name.empty() && !useNames && !firstName)
+				{
+					return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+				}
+				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
+				{
+					return { { }, SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, name) };
+				}
+				else if(useNames && seenNames.find(arg.name) != seenNames.end())
+				{
+					return { { }, SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+						arg.name, name) };
+				}
+
+				seenNames[arg.name] = ctr;
+				ctr += 1;
+			}
+
+			//* note: if we're doing positional args, allow only all or none.
+			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
+			{
+				return { { }, SimpleError::make(callLoc,
+					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
+					name, fieldNames.size(), arguments.size()).append(
+						BareError("All arguments are mandatory when using positional arguments", MsgType::Note)
+					)
+				};
+			}
+
+			return { seenNames, SimpleError() };
 		}
 
-		return _canonicaliseCallArguments(target, nameToIndex, args, err);
 	}
 
-	std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-		const std::vector<FunctionDecl::Param>& args, SimpleError* err)
+
+
+
+
+
+	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
-		std::unordered_map<std::string, size_t> nameToIndex;
-		for(size_t i = 0; i < params.size(); i++)
-		{
-			const auto& arg = params[i];
-			nameToIndex[arg.name] = i;
-		}
+		OverloadError errs;
+		using Param = FunctionDefn::Param;
 
-		return _canonicaliseCallArguments(target, nameToIndex, args, err);
+		return resolver::computeOverloadDistance(Location(), util::map(a, [](fir::Type* t) -> Param {
+			return Param(t);
+		}), util::map(b, [](fir::Type* t) -> Param {
+			return Param(t);
+		}), false).first;
 	}
-}
+
+	int TypecheckState::getOverloadDistance(const std::vector<Param>& a, const std::vector<Param>& b)
+	{
+		return this->getOverloadDistance(util::map(a, [](Param p) { return p.type; }), util::map(b, [](Param p) { return p.type; }));
+	}
+
+
+	bool TypecheckState::isDuplicateOverload(const std::vector<Param>& a, const std::vector<Param>& b)
+	{
+		return this->getOverloadDistance(a, b) == 0;
+	}
+
+	bool TypecheckState::isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
+	{
+		return this->getOverloadDistance(a, b) == 0;
+	}
+
 }
 
 

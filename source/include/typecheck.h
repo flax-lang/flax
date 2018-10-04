@@ -201,8 +201,6 @@ namespace sst
 		//* kind of like the above, but subtly different in that we create a *new scope* named _name_ in the scope _toParent_
 		void importScopeContentsIntoNewScope(const std::vector<std::string>& from, const std::vector<std::string>& toParent, const std::string& name);
 
-		std::vector<FnCallArgument> typecheckCallArguments(const std::vector<std::pair<std::string, ast::Expr*>>& args);
-
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);

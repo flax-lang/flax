@@ -1,0 +1,160 @@
+// call.cpp
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+#include "ast.h"
+#include "sst.h"
+#include "errors.h"
+#include "typecheck.h"
+
+#include "resolver.h"
+
+#include "ir/type.h"
+
+
+sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, _arguments))
+	{
+		auto ret = new sst::ExprCall(this->loc, ty);
+		ret->callee = new sst::TypeExpr(this->loc, ty);
+		ret->arguments = util::map(_arguments, [](auto e) -> sst::Expr* { return e.value; });
+
+		return ret;
+	}
+
+
+	// resolve the function call here
+	std::vector<FnCallArgument> ts = _arguments;
+
+	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
+	auto res = fs->resolveFunctionCall(this->name, ts, gmaps, this->traverseUpwards, infer);
+
+	auto target = res.defn();
+	iceAssert(target);
+
+	if(auto strdf = dcast(sst::StructDefn, target))
+	{
+		auto ret = new sst::StructConstructorCall(this->loc, strdf->type);
+
+		ret->target = strdf;
+		ret->arguments = ts;
+
+		return ret;
+	}
+	else if(auto uvd = dcast(sst::UnionVariantDefn, target))
+	{
+		auto unn = uvd->parentUnion;
+		iceAssert(unn);
+
+		auto ret = new sst::UnionVariantConstructor(this->loc, unn->type);
+
+		ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
+		ret->parentUnion = unn;
+		ret->args = ts;
+
+		return ret;
+	}
+	else
+	{
+		iceAssert(target->type->isFunctionType());
+
+		//* note: we check for this->name != "init" because when we explicitly call an init function, we don't want the extra stuff that
+		//* comes with that -- we'll just treat it as a normal function call.
+		if(auto fnd = dcast(sst::FunctionDefn, target); this->name != "init" && fnd && fnd->id.name == "init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
+		{
+			// ok, great... I guess?
+			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);
+
+			ret->target = fnd;
+			ret->arguments = ts;
+			ret->classty = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
+
+			iceAssert(ret->target);
+
+			return ret;
+		}
+
+
+
+		auto call = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
+		call->name = this->name;
+		call->target = target;
+		call->arguments = ts;
+
+		if(auto fd = dcast(sst::FunctionDefn, target); fd && fd->parentTypeForMethod)
+		{
+			// check if it's a method call
+			// if so, indicate it. here, we set 'isImplicitMethodCall' to true, as an assumption.
+			// in DotOp's typecheck, *after* calling this typecheck(), we set it back to false
+
+			// so, if it was really an implicit call, it remains set
+			// if it was a dot-op call, it gets set back to false by the dotop checking.
+
+			call->isImplicitMethodCall = true;
+		}
+
+		return call;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& arguments, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	using Param = sst::FunctionDecl::Param;
+
+	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
+
+	auto target = this->callee->typecheck(fs).expr();
+	iceAssert(target);
+
+	if(!target->type->isFunctionType())
+		error(this->callee, "Expression with non-function-type '%s' cannot be called");
+
+	auto ft = target->type->toFunctionType();
+	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
+		return Param(t);
+	}), ts, false);
+
+	if(errs.hasErrors() || dist == -1)
+		errs.set(SimpleError(this->loc, "Mismatched types in call to function pointer")).postAndQuit();
+
+	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
+	ret->callee = target;
+	ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
+
+	return ret;
+}
+
+
+TCResult ast::ExprCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	return TCResult(this->typecheckWithArguments(fs, sst::resolver::misc::typecheckCallArguments(fs, this->args), infer));
+}
+
+TCResult ast::FunctionCall::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	return TCResult(this->typecheckWithArguments(fs, sst::resolver::misc::typecheckCallArguments(fs, this->args), infer));
+}
+
+
