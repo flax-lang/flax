@@ -5,7 +5,10 @@
 #include "ast.h"
 #include "pts.h"
 #include "errors.h"
+
 #include "ir/type.h"
+#include "resolver.h"
+
 #include "typecheck.h"
 
 // defined in typecheck/structs.cpp
@@ -361,7 +364,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
 		iceAssert(call->classty);
 
-		auto baseargs = fs->typecheckCallArguments(this->superArgs);
+		auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
 
 		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
 			[](FnCallArgument a) -> auto { return sst::FunctionDecl::Param(a);
