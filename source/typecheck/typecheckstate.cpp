@@ -405,7 +405,7 @@ namespace sst
 		{
 			if(auto defs = _tree->getDefinitionsWithName(defn->id.name); defs.size() > 0)
 			{
-				if(!didWarnAboutShadow)
+				if(false && !didWarnAboutShadow)
 				{
 					didWarnAboutShadow = true;
 					warn(defn, "Definition of %s '%s' shadows one or more previous definitions", defn->getKind(), defn->id.name);

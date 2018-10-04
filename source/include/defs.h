@@ -31,7 +31,7 @@
 	#define STRING_VIEW_TYPE 1
 #else
 	// #error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
-	#include "../external/stx/string_view.hpp"
+	#include "stx/string_view.hpp"
 	#define STRING_VIEW_TYPE 2
 #endif
 
@@ -50,7 +50,7 @@ namespace tinyformat
 }
 
 #define TINYFORMAT_ERROR(x)
-#include "../external/tinyformat/tinyformat.h"
+#include "tinyformat/tinyformat.h"
 
 
 

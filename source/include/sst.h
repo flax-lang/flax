@@ -7,6 +7,8 @@
 #include "sst_expr.h"
 #include "stcommon.h"
 
+#include "mpreal/mpreal.h"
+
 namespace fir
 {
 	struct Type;
@@ -462,10 +464,7 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		union {
-			uint64_t intgr;
-			double flt;
-		};
+		mpfr::mpreal num;
 	};
 
 	struct LiteralString : Expr

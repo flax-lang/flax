@@ -17,27 +17,22 @@ namespace ast
 	struct Parameterisable;
 }
 
+namespace fir
+{
+	struct LocatedType;
+}
+
 namespace sst
 {
 	struct TypecheckState;
-
-	struct LocatedType
-	{
-		LocatedType() { }
-		LocatedType(fir::Type* t) : type(t) { }
-		LocatedType(fir::Type* t, const Location& l) : type(t), loc(l) { }
-
-		fir::Type* type = 0;
-		Location loc;
-	};
 
 	namespace poly
 	{
 		struct Solution_t
 		{
 			bool hasSolution(const std::string& n);
-			LocatedType getSolution(const std::string& n);
-			void addSolution(const std::string& x, const LocatedType& y);
+			fir::LocatedType getSolution(const std::string& n);
+			void addSolution(const std::string& x, const fir::LocatedType& y);
 
 			fir::Type* substitute(fir::Type* x);
 			void resubstituteIntoSolutions();
@@ -52,9 +47,9 @@ namespace sst
 			std::unordered_map<fir::Type*, fir::Type*> substitutions;
 		};
 
-		SimpleError solveSingleType(TypecheckState* fs, Solution_t* soln, const LocatedType& target, const LocatedType& given);
-		std::pair<Solution_t, SimpleError> solveTypeList(TypecheckState* fs, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given,
-			const Solution_t& partial);
+		SimpleError solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
+		std::pair<Solution_t, SimpleError> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+			const Solution_t& partial, bool isFnCall);
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
 

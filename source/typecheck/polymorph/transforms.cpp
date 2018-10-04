@@ -25,7 +25,9 @@ namespace poly
 			}
 			else if(t->isArraySliceType())
 			{
-				ret.push_back(Trf(TrfType::Slice, t->toArraySliceType()->isMutable()));
+				if(t->isVariadicArrayType())    ret.push_back(Trf(TrfType::VariadicArray));
+				else                            ret.push_back(Trf(TrfType::Slice, t->toArraySliceType()->isMutable()));
+
 				t = t->getArrayElementType();
 			}
 			else if(t->isArrayType())
@@ -73,6 +75,11 @@ namespace poly
 				ret.push_back(Trf(TrfType::Pointer));
 				t = t->toPointerType()->base;
 			}
+			else if(t->isVariadicArrayType())
+			{
+				ret.push_back(Trf(TrfType::VariadicArray));
+				t = t->toVariadicArrayType()->base;
+			}
 			else
 			{
 				break;
@@ -83,7 +90,7 @@ namespace poly
 	}
 
 
-	void Solution_t::addSolution(const std::string& x, const LocatedType& y)
+	void Solution_t::addSolution(const std::string& x, const fir::LocatedType& y)
 	{
 		this->solutions[x] = y.type;
 	}
@@ -104,13 +111,13 @@ namespace poly
 		return this->solutions.find(n) != this->solutions.end();
 	}
 
-	LocatedType Solution_t::getSolution(const std::string& n)
+	fir::LocatedType Solution_t::getSolution(const std::string& n)
 	{
 		if(auto it = this->solutions.find(n); it != this->solutions.end())
 			return it->second;
 
 		else
-			return LocatedType(0);
+			return fir::LocatedType(0);
 	}
 
 	fir::Type* Solution_t::substitute(fir::Type* x)
@@ -160,6 +167,9 @@ namespace poly
 					break;
 				case TrfType::DynamicArray:
 					base = fir::DynamicArrayType::get(base);
+					break;
+				case TrfType::VariadicArray:
+					base = fir::ArraySliceType::getVariadic(base);
 					break;
 				default:
 					error("unsupported transformation '%d'", (int) t.type);

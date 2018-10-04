@@ -10,6 +10,7 @@
 #include <limits.h>
 
 #include "value.h"
+#include "mpreal/mpreal.h"
 
 namespace fir
 {
@@ -35,14 +36,26 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantNumber* get(ConstantNumberType* cnt, uint64_t n);
+		static ConstantNumber* get(ConstantNumberType* cnt, const mpfr::mpreal& n);
 
-		template <typename T>
-		T getValue() { return *reinterpret_cast<T*>(&this->bits); }
+		template <typename T> T getValue();
+
+		template <> int8_t getValue<int8_t>()       { return (int8_t)  this->number.toLLong(); }
+		template <> int16_t getValue<int16_t>()     { return (int16_t) this->number.toLLong(); }
+		template <> int32_t getValue<int32_t>()     { return (int32_t) this->number.toLLong(); }
+		template <> int64_t getValue<int64_t>()     { return (int64_t) this->number.toLLong(); }
+		template <> uint8_t getValue<uint8_t>()     { return (uint8_t)  this->number.toULLong(); }
+		template <> uint16_t getValue<uint16_t>()   { return (uint16_t) this->number.toULLong(); }
+		template <> uint32_t getValue<uint32_t>()   { return (uint32_t) this->number.toULLong(); }
+		template <> uint64_t getValue<uint64_t>()   { return (uint64_t) this->number.toULLong(); }
+
+		template <> float getValue<float>()         { return this->number.toFloat(); }
+		template <> double getValue<double>()       { return this->number.toDouble(); }
 
 		protected:
-		ConstantNumber(ConstantNumberType* cnt, uint64_t n);
-		uint64_t bits = 0;
+		ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n);
+
+		mpfr::mpreal number;
 	};
 
 	struct ConstantBool : ConstantValue
@@ -91,20 +104,17 @@ namespace fir
 
 		static ConstantFP* get(Type* intType, float val);
 		static ConstantFP* get(Type* intType, double val);
-		static ConstantFP* get(Type* intType, long double val);
 
 		static ConstantFP* getFloat32(float value);
 		static ConstantFP* getFloat64(double value);
-		static ConstantFP* getFloat80(long double value);
 
-		long double getValue();
+		double getValue();
 
 		protected:
 		ConstantFP(Type* type, float val);
 		ConstantFP(Type* type, double val);
-		ConstantFP(Type* type, long double val);
 
-		long double value;
+		double value;
 	};
 
 	struct ConstantArray : ConstantValue

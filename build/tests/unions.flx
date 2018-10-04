@@ -1,0 +1,25 @@
+// unions.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export test_unions
+import "libc" as _
+
+union option<T>
+{
+	some: T
+	none
+}
+
+public fn doUnionsTest()
+{
+	do {
+
+		let x = option<T: str>.some("123")
+		let y = option<T: int>.some(456)
+
+		printf("x = %s, y = %d\n", x as option<T: str>.some, y as option<T: int>.some)
+	}
+}
+
+

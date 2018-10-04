@@ -20,6 +20,8 @@ import "tests/generics"
 import "tests/linkedlist"
 import "tests/forloops"
 import "tests/arraytest"
+import "tests/functions"
+import "tests/unions"
 
 fn runTests()
 {
@@ -39,6 +41,7 @@ fn runTests()
 	let decomposeTitle  = " *** DECOMPOSITION REGRESSION TEST ***  \n"
 	let forLoopTitle    = "    *** FOR LOOP REGRESSION TEST ***    \n"
 	let linkedListTitle = "        *** LINKED LIST TEST ***        \n"
+	let unionsTitle     = "           *** UNIONS TEST ***          \n"
 	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine        = "----------------------------------------\n"
 	let endTitle        = "============ TESTS COMPLETE ============\n"
@@ -104,7 +107,7 @@ fn runTests()
 
 	// first-class-functions
 	libc.printf("%s%s", functionsTitle, thinLine)
-	// doFunctionTest()
+	test_functions.doFunctionTest()
 	libc.printf("\n\n\n")
 
 
@@ -138,12 +141,16 @@ fn runTests()
 	libc.printf("\n\n\n")
 
 
-
 	// linked-list (generics)
 	libc.printf("%s%s", linkedListTitle, thinLine)
 	test_linkedlist.doLinkedListTest()
 	libc.printf("\n\n\n")
 
+
+	// unions (generics)
+	libc.printf("%s%s", unionsTitle, thinLine)
+	test_unions.doUnionsTest()
+	libc.printf("\n\n\n")
 
 
 	// misc tests

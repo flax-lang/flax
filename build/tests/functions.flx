@@ -3,8 +3,8 @@
 // Licensed under the Apache License Version 2.0.
 
 
-// import Foundation
-import "libc"
+export test_functions
+import "libc" as _
 
 fn foo(a: int) { printf("foo: %d\n", a) }
 fn bar(a: int) { printf("bar: %d\n", a) }
@@ -12,6 +12,7 @@ fn qux() { ("qux\n") }
 
 class SomeClass
 {
+	init() { }
 	fn foo(a: int) { printf("foo in class: %p // %d\n", self, a) }
 	static fn bar(a: int) { printf("static bar in class: %d\n", a) }
 }
@@ -22,6 +23,8 @@ namespace SomeNS
 
 	class NestedClass
 	{
+		init() { }
+
 		fn foo(a: int) { printf("foo in nested class: %p // %d\n", self, a) }
 		static fn bar(a: int) { printf("static bar in nested class: %d\n", a) }
 
@@ -34,19 +37,13 @@ namespace SomeNS
 
 
 
-// fn gen<T>(a: T) -> T
-// {
-// 	// if(typeof(a) == typeof(int))
-// 	// {
-// 	// 	printf("int: %d\n", a)
-// 	// }
-// 	// else if(typeof(a) == typeof(f64))
-// 	// {
-// 	// 	printf("float: %lf\n", a)
-// 	// }
+fn gen<T>(a: T) -> T
+{
+	if(typeid(a) == typeid(int))        => printf("int: %d\n", a)
+	else if(typeid(a) == typeid(f64))   => printf("float: %lf\n", a)
 
-// 	return a + 1
-// }
+	return a + 1
+}
 
 fn et(a: int)
 {
@@ -62,7 +59,10 @@ fn et1(a: int) -> int
 
 class SomeStruct
 {
-	var f: (&SomeStruct, int) -> int
+	init() { }
+
+
+	var f: fn(&SomeStruct, int) -> int
 	fn fun(a: string) -> int
 	{
 		printf("method: %s\n", a)
@@ -89,13 +89,13 @@ public fn doFunctionTest()
 	g(20)
 
 	printf("each test:")
-	// let arr: int* = alloc[4] int as int*
-	// arr[0] = 11
-	// arr[1] = 22
-	// arr[2] = 33
-	// arr[3] = 44
+	let arr: &mut int = (alloc int[4])[:].ptr as mut
+	arr[0] = 11
+	arr[1] = 22
+	arr[2] = 33
+	arr[3] = 44
 
-	// each(arr, 4, et)
+	each(arr, 4, et)
 
 
 
@@ -174,7 +174,7 @@ public fn doFunctionTest()
 
 
 
-fn each(arr: &int, length: int, f: (int) -> void)
+fn each(arr: &int, length: int, f: fn(int) -> void)
 {
 	var i = 0
 
