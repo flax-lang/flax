@@ -606,6 +606,7 @@ namespace parser
 
 	std::vector<std::pair<std::string, Expr*>> parseCallArgumentList(State& st)
 	{
+		std::unordered_set<std::string> seenNames;
 		std::vector<std::pair<std::string, Expr*>> ret;
 
 		bool named = false;
@@ -617,6 +618,10 @@ namespace parser
 			if(auto id = dynamic_cast<ast::Ident*>(ex); id && st.front() == TT::Colon)
 			{
 				argname = id->name;
+				if(seenNames.find(argname) != seenNames.end())
+					error(id->loc, "argument '%s' was already provided", argname);
+
+				seenNames.insert(argname);
 
 				// eat the colon, get the actual argument.
 				st.eat();
@@ -626,7 +631,7 @@ namespace parser
 			}
 			else if(named)
 			{
-				error(st, "Positional arguments cannot appear after named arguments in a function call");
+				error(st, "positional arguments cannot appear after named arguments in a function call");
 			}
 
 			ret.push_back({ argname, ex });

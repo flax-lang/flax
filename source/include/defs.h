@@ -673,6 +673,18 @@ namespace util
 		return -1;
 	}
 
+	template <typename T>
+	std::vector<T> take(const std::vector<T>& v, size_t num)
+	{
+		iceAssert(num <= v.size());
+		return std::vector<T>(v.begin(), v.begin() + num);
+	}
+
+
+
+
+
+
 
 	inline std::string serialiseScope(const std::vector<std::string>& scope)
 	{

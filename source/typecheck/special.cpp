@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "ir/type.h"
+
 TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	auto ret = new sst::TypeExpr(this->loc, fs->convertParserTypeToFIR(this->type));
@@ -25,8 +27,21 @@ TCResult ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	// error(this, "Unable to typecheck splat op, this shouldn't happen!");
-	return this->expr->typecheck(fs, infer);
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto inside = this->expr->typecheck(fs, infer).expr();
+
+	if(!inside->type->isArraySliceType() && !inside->type->isArrayType() && !inside->type->isDynamicArrayType() && !inside->type->isTupleType())
+		return TCResult(SimpleError::make(this, "invalid use of splat operator on type '%s'", inside->type));
+
+	if(inside->type->isTupleType())
+		return TCResult(SimpleError::make(this, "splat operator on tuple not allowed in this context"));
+
+	auto ret = new sst::SplatExpr(this->loc, fir::ArraySliceType::getVariadic(inside->type->getArrayElementType()));
+	ret->inside = inside;
+
+	return TCResult(ret);
 }
 
 TCResult ast::Parameterisable::typecheck(sst::TypecheckState* fs, fir::Type* infer)

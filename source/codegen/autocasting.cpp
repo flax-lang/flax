@@ -32,9 +32,6 @@ namespace cgn
 				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
 					return fir::ConstantInt::getInt64(cn->getInt64());
 
-				// else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
-				// 	return fir::Type::getInt128();
-
 				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
 					return fir::ConstantInt::getUint64(cn->getUint64());
 

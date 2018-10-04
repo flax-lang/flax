@@ -78,7 +78,6 @@ source_files = files([
 	'source/backend/llvm/translator.cpp',
 
 	'source/typecheck/type.cpp',
-	'source/typecheck/misc.cpp',
 	'source/typecheck/using.cpp',
 	'source/typecheck/slice.cpp',
 	'source/typecheck/defer.cpp',
@@ -90,6 +89,7 @@ source_files = files([
 	'source/typecheck/ranges.cpp',
 	'source/typecheck/sizeof.cpp',
 	'source/typecheck/unions.cpp',
+	'source/typecheck/special.cpp',
 	'source/typecheck/structs.cpp',
 	'source/typecheck/classes.cpp',
 	'source/typecheck/function.cpp',
