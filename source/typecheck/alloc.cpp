@@ -3,11 +3,12 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "pts.h"
 #include "errors.h"
 #include "typecheck.h"
-#include "pts.h"
 
 #include "ir/type.h"
+#include "resolver.h"
 
 TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -47,7 +48,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		using Param = sst::FunctionDecl::Param;
 
-		auto arguments = fs->typecheckCallArguments(this->args);
+		auto arguments = sst::resolver::misc::typecheckCallArguments(fs, this->args);
 		auto constructor = fs->resolveConstructorCall(cdf, util::map(arguments, [](FnCallArgument a) -> Param {
 			return Param(a);
 		}), { });
@@ -59,7 +60,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		if(this->args.size() > 1) error(this, "Expected 1 argument in alloc expression for non-struct type '%s' (for value-copy-initialisation), but found %d arguments instead", this->args.size());
 
-		auto args = fs->typecheckCallArguments(this->args);
+		auto args = sst::resolver::misc::typecheckCallArguments(fs, this->args);
 		if(args[0].value->type != elm)
 			error(this, "Expected argument of type '%s' for value-copy-initialisation in alloc expression, but found '%s' instead", elm, args[0].value->type);
 

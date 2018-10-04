@@ -77,6 +77,7 @@ source_files = files([
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
+	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',
 	'source/typecheck/using.cpp',
 	'source/typecheck/slice.cpp',
@@ -111,6 +112,7 @@ source_files = files([
 
 	'source/typecheck/resolver/misc.cpp',
 	'source/typecheck/resolver/driver.cpp',
+	'source/typecheck/resolver/resolver.cpp',
 
 	'source/codegen/misc.cpp',
 	'source/codegen/call.cpp',
