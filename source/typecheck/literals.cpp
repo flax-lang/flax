@@ -13,52 +13,6 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// try
-	// {
-	// 	if(std::find(this->num.begin(), this->num.end(), '.') == this->num.end())
-	// 	{
-	// 		// all integers.
-	// 		if(infer && infer->isPrimitiveType() && !infer->toPrimitiveType()->isSigned())
-	// 		{
-	// 			auto got = std::stoull(this->num, nullptr, 0);
-	// 			sgn = false;
-
-	// 			if(got <= UINT8_MAX)        bits = 8;
-	// 			else if(got <= UINT16_MAX)  bits = 16;
-	// 			else if(got <= UINT32_MAX)  bits = 32;
-	// 			else if(got <= UINT64_MAX)  bits = 64;
-	// 			else                        error("???");
-
-	// 			raw = (uint64_t) got;
-	// 		}
-	// 		else
-	// 		{
-	// 			auto got = std::stoll(this->num, nullptr, 0);
-	// 			sgn = (got < 0);
-
-	// 			if(got <= INT8_MAX && got >= INT8_MIN)          bits = 7;
-	// 			else if(got <= INT16_MAX && got >= INT16_MIN)   bits = 15;
-	// 			else if(got <= INT32_MAX && got >= INT32_MIN)   bits = 31;
-	// 			else if(got <= INT64_MAX && got >= INT64_MIN)   bits = 63;
-	// 			else                                            error("???");
-
-	// 			raw = (uint64_t) got;
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		auto d = std::stod(this->num, nullptr);
-	// 		bits = 64;
-	// 		flt = true;
-	// 		raw = *reinterpret_cast<uint64_t*>(&d);
-	// 		sgn = (d < 0);
-	// 	}
-	// }
-	// catch(const std::exception& e)
-	// {
-	// 	error("cannot do this thing");
-	// }
-
 	// set base = 0 to autodetect.
 	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), /* base: */ 0);
 	bool sgn = mpfr::signbit(number);
