@@ -18,184 +18,12 @@ namespace sst
 {
 	using Param = FunctionDecl::Param;
 
-	//* we take Param for both because we want to be able to call without having an Expr*
-	//* so we stick with the types.
-	static std::pair<int, SpanError> _computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
-		const std::vector<FunctionDecl::Param>& args, bool cvararg, Defn* candidate)
-	{
-		using Span = SpanError::Span;
-
-		if(target.empty() && args.empty())
-			return { 0, SpanError() };
-
-		bool fvararg = (target.size() > 0 && target.back().type->isVariadicArrayType());
-		bool anyvararg = cvararg || fvararg;
-
-		if((!anyvararg && target.size() != args.size()) || (anyvararg && args.size() < (fvararg ? target.size() - 1 : target.size())))
-		{
-			return { -1, SpanError().add(Span(fnLoc->loc, strprintf("Mismatched number of arguments; expected %d, got %d instead",
-				target.size(), args.size())))
-			};
-		}
-
-		// find the first named argument -- get the index of the first named argument.
-		auto idx = util::indexOf(args, [](Param p) -> bool { return p.name != ""; });
-
-		std::vector<Param> positional;
-		std::vector<Param> named;
-
-		std::unordered_map<std::string, size_t> nameToIndex;
-		for(size_t i = 0; i < target.size(); i++)
-			nameToIndex[target[i].name] = i;
-
-		if(idx == 0)
-		{
-			// all named
-			named = args;
-		}
-		else if(idx == (size_t) -1)
-		{
-			// all positional
-			positional = args;
-		}
-		else
-		{
-			positional = std::vector<Param>(args.begin(), args.begin() + idx - 1);
-			named = std::vector<Param>(args.begin() + idx, args.end());
-		}
-
-
-		//* note: sanity checking
-		{
-			// make sure there are no positional arguments in 'named'
-			std::set<std::string> names;
-			for(auto k : named)
-			{
-				if(k.name == "")
-				{
-					// errs->add(fnLoc, { k.loc, strprintf("Positional arguments cannot appear after named arguments in a function call") });
-					error(k.loc, "how did this happen?? Positional arguments cannot appear after named arguments in a function call");
-					return { -1, SpanError() };
-				}
-				else if(candidate && dcast(sst::FunctionDefn, candidate) && dcast(sst::FunctionDefn, candidate)->parentTypeForMethod && k.name == "self")
-				{
-					// errs->add(fnLoc, { k.loc, strprintf("Self pointer cannot be specified in a method call") });
-					error(k.loc, "how did this happen?? Self pointer cannot be specified in a method call");
-					return { -1, SpanError() };
-				}
-				else if(names.find(k.name) != names.end())
-				{
-					// errs->add(fnLoc, { k.loc, strprintf("Duplicate named argument '%s'", k.name) });
-					error(k.loc, "how did this happen?? Duplicate named argument '%s'", k.name);
-					return { -1, SpanError() };
-				}
-				else if(nameToIndex.find(k.name) == nameToIndex.end())
-				{
-					// errs->add(fnLoc, { k.loc, strprintf("Function does not have a parameter named '%s'", k.name) });
-					error(k.loc, "how did this happen?? Function does not have a parameter named '%s'", k.name);
-					return { -1, SpanError() };
-				}
-
-				names.insert(k.name);
-			}
-		}
-
-
-		int distance = 0;
-
-		// handle the positional arguments
-		SpanError spanerr;
-
-		for(size_t i = 0; i < std::min((fvararg ? target.size() - 1 : target.size()), positional.size()); i++)
-		{
-			auto d = fir::getCastDistance(args[i].type, target[i].type);
-			if(d == -1)
-			{
-				spanerr.add(Span(target[i].loc, strprintf("Mismatched argument type in argument %zu: no valid cast from given type '%s' to expected type '%s'", i, args[i].type, target[i].type)));
-			}
-			else
-			{
-				distance += d;
-			}
-		}
-
-		// check the named ones.
-		for(auto narg : named)
-		{
-			auto ind = nameToIndex[narg.name];
-			if(!positional.empty() && ind <= positional.size())
-			{
-				spanerr.add(Span(target[ind].loc, strprintf("Duplicate argument '%s', was already specified as a positional argument", narg.name)));
-			}
-
-			int d = fir::getCastDistance(narg.type, target[ind].type);
-			if(d == -1)
-			{
-				spanerr.add(Span(target[ind].loc, strprintf("Mismatched argument type in named argument '%s': no valid cast from given type '%s' to expected type '%s'", narg.name, narg.type, target[ind].type)));
-			}
-
-			distance += d;
-		}
-
-
-
-		// means we're a flax-variadic function
-		// thus we need to actually check the types.
-		if(fvararg)
-		{
-			auto elmTy = target.back().type->getArrayElementType();
-
-			// check if we only have 1 last arg
-			if(target.size() == args.size())
-			{
-				auto lasty = args.back().type;
-				if(lasty->isArraySliceType() && args.back().wasSplat)
-				{
-					if(lasty->getArrayElementType() != elmTy)
-					{
-						spanerr.add(Span(target.back().loc, strprintf("Mismatched type in parameter pack forwarding: expected element type of '%s', but found '%s' instead", elmTy, lasty->getArrayElementType())));
-					}
-					else
-					{
-						distance += 3;
-					}
-				}
-				else
-				{
-					//! EW GOTO
-					goto do_normal;
-				}
-			}
-			else
-			{
-				do_normal:
-				for(size_t i = target.size() - 1; i < args.size(); i++)
-				{
-					auto ty = args[i].type;
-					auto dist = fir::getCastDistance(ty, elmTy);
-					if(dist == -1)
-					{
-						spanerr.add(Span(target.back().loc, strprintf("Mismatched type in variadic argument: no valid cast from given type '%s' to expected type '%s' (ie. element type of variadic parameter list)", ty, elmTy)));
-					}
-
-					distance += dist;
-				}
-			}
-		}
-
-
-		if(spanerr.hasErrors()) return { -1, spanerr };
-		else                    return { distance, SpanError() };
-	}
-
-
-
-	static std::pair<int, SpanError> computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
-		const std::vector<FunctionDecl::Param>& _args, bool cvararg, Defn* candidate)
+	static std::pair<int, SpanError> computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<Param>& target,
+		const std::vector<Param>& _args, bool cvararg, Defn* candidate)
 	{
 		SimpleError warnings;
 
-		std::vector<FunctionDecl::Param> input;
+		std::vector<Param> input;
 		if(cvararg)
 		{
 			input = util::take(_args, target.size());
@@ -219,7 +47,7 @@ namespace sst
 		auto arguments = resolver::canonicaliseCallArguments(fnLoc->loc, target, input, &err);
 
 
-		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FunctionDecl::Param& p) -> fir::LocatedType {
+		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const Param& p) -> fir::LocatedType {
 			return fir::LocatedType(p.type, p.loc);
 		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
@@ -244,13 +72,13 @@ namespace sst
 			util::map(b, [](fir::Type* t) -> Param { return Param(t); }), false, 0).first;
 	}
 
-	int TypecheckState::getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b)
+	int TypecheckState::getOverloadDistance(const std::vector<Param>& a, const std::vector<Param>& b)
 	{
 		return this->getOverloadDistance(util::map(a, [](Param p) { return p.type; }), util::map(b, [](Param p) { return p.type; }));
 	}
 
 
-	bool TypecheckState::isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b)
+	bool TypecheckState::isDuplicateOverload(const std::vector<Param>& a, const std::vector<Param>& b)
 	{
 		return this->getOverloadDistance(a, b) == 0;
 	}
@@ -559,7 +387,7 @@ namespace sst
 
 
 	std::pair<std::unordered_map<std::string, size_t>, SimpleError> TypecheckState::verifyStructConstructorArguments(const std::string& name,
-		const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& arguments)
+		const std::set<std::string>& fieldNames, const std::vector<Param>& arguments)
 	{
 		// ok, structs get named arguments, and no un-named arguments.
 		// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
@@ -894,7 +722,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	using Param = sst::FunctionDecl::Param;
+	using Param = sst::Param;
 
 	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
 

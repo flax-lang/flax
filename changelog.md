@@ -1,9 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(9de42cb)`
 - major revamp of the generic solver -- the algorithm is mostly unchanged, but the interface and stuff is reworked.
 - finally implemented the iterative solver
 - variadic generics work
+- took out tuple splatting for now.
 
 `(efc961e)`
 - generic unions, but they're quite verbose.

@@ -94,7 +94,7 @@ namespace sst
 					}
 					else
 					{
-						debuglogln("solved %s = %s", ptt->getName(), gt);
+						// debuglogln("solved %s = %s", ptt->getName(), gt);
 						soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
 					}
 				}
