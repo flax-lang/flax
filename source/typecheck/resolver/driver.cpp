@@ -6,7 +6,9 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+
 #include "polymorph.h"
+#include "resolver.h"
 
 #include "ir/type.h"
 
@@ -18,7 +20,7 @@ namespace sst
 
 	//* we take Param for both because we want to be able to call without having an Expr*
 	//* so we stick with the types.
-	static std::pair<int, SpanError> computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
+	static std::pair<int, SpanError> _computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
 		const std::vector<FunctionDecl::Param>& args, bool cvararg, Defn* candidate)
 	{
 		using Span = SpanError::Span;
@@ -181,11 +183,54 @@ namespace sst
 			}
 		}
 
-		// info(fs->loc(), "for this boi:");
-		// warn(candidate, "distance %d", distance);
+
 		if(spanerr.hasErrors()) return { -1, spanerr };
 		else                    return { distance, SpanError() };
 	}
+
+
+
+	static std::pair<int, SpanError> computeOverloadDistance(TypecheckState* fs, Locatable* fnLoc, const std::vector<FunctionDecl::Param>& target,
+		const std::vector<FunctionDecl::Param>& _args, bool cvararg, Defn* candidate)
+	{
+		SimpleError warnings;
+
+		std::vector<FunctionDecl::Param> input;
+		if(cvararg)
+		{
+			input = util::take(_args, target.size());
+
+			// check we're not trying anything funny.
+			for(auto it = _args.begin() + input.size(); it != _args.end(); it++)
+			{
+				if(!it->type->isPrimitiveType() && !it->type->isPointerType())
+				{
+					warnings.append(SimpleError::make(MsgType::Warning, it->loc,
+						"passing non-primitive type '%s' to c-style variadic function is ill-advised", it->type));
+				}
+			}
+		}
+		else
+		{
+			input = _args;
+		}
+
+		SimpleError err;
+		auto arguments = resolver::canonicaliseCallArguments(fnLoc->loc, target, input, &err);
+
+
+		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FunctionDecl::Param& p) -> fir::LocatedType {
+			return fir::LocatedType(p.type, p.loc);
+		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
+
+
+		if(err1.hasErrors())    return { -1, SpanError().append(err1) };
+		else                    return { soln.distance, SpanError() };
+	}
+
+
+
+
 
 
 
@@ -879,6 +924,7 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 
 	for(auto arg : args)
 	{
+		#if 0
 		if(auto splat = dcast(ast::SplatOp, arg.second))
 		{
 			//* note: theoretically, this should be the only place in the compiler where we deal with splats explitily
@@ -916,6 +962,8 @@ std::vector<FnCallArgument> sst::TypecheckState::typecheckCallArguments(const st
 			}
 		}
 		else
+		#endif
+
 		{
 			ret.push_back(FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(this).expr(), arg.second));
 		}

@@ -17,10 +17,10 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 	iceAssert(endIndex);
 
 	if(!beginIndex->getType()->isIntegerType())
-		error(bexpr, "Expected integer type for array slice; got '%s'", beginIndex->getType());
+		error(bexpr, "expected integer type for array slice; got '%s'", beginIndex->getType());
 
 	if(!endIndex->getType()->isIntegerType())
-		error(eexpr, "Expected integer type for array slice; got '%s'", endIndex->getType());
+		error(eexpr, "expected integer type for array slice; got '%s'", endIndex->getType());
 
 
 	// do a check
@@ -136,7 +136,7 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		defer(cs->leaveSubscript());
 
 		if(ty->isPointerType() && !this->end)
-			error(this, "Slicing operation on pointers requires an ending index");
+			error(this, "slicing operation on pointers requires an ending index");
 
 		if(this->begin)	beginIdx = this->begin->codegen(cs).value;
 		else			beginIdx = fir::ConstantInt::getInt64(0);
@@ -202,8 +202,89 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		error(this, "Cannot slice unsupported type '%s'", ty);
+		error(this, "cannot slice unsupported type '%s'", ty);
 	}
 }
+
+
+
+
+
+
+
+CGResult sst::SplatExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	// right. what we want to do is to see the kind of shit that we have.
+	auto ty = this->inside->type;
+
+	if(ty->isArraySliceType())
+	{
+		if(ty->isVariadicArrayType())
+		{
+			auto ret = this->inside->codegen(cs, infer);
+			iceAssert(ret->getType()->isVariadicArrayType());
+
+			return ret;
+		}
+		else
+		{
+			auto ret = this->inside->codegen(cs, infer);
+			iceAssert(ret->getType()->isArraySliceType());
+
+			return CGResult(cs->irb.Bitcast(ret.value, fir::ArraySliceType::getVariadic(ret->getType()->getArrayElementType())));
+		}
+	}
+	else if(ty->isDynamicArrayType() || ty->isArrayType())
+	{
+		// just do a slice on it.
+		auto target = fir::ArraySliceType::getVariadic(ty->getArrayElementType());
+		auto slice = new sst::SliceOp(this->loc, target);
+
+		slice->expr = this->inside;
+		slice->begin = 0;
+		slice->end = 0;
+
+		auto ret = slice->codegen(cs, infer);
+		return CGResult(cs->irb.Bitcast(ret.value, target));
+	}
+	else
+	{
+		error(this, "unexpected type '%s' in splat expression", ty);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

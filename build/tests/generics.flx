@@ -6,7 +6,6 @@ export test_generics
 
 import "libc" as _
 
-
 public fn doGenericsTest()
 {
 	// some normal FP stuff
@@ -94,6 +93,19 @@ public fn doGenericsTest()
 		printf("set 5:")
 		let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
 		for it in new { printf(" %d", it) }
+
+		printf("\n")
+	}
+
+	do {
+		fn prints<T, U>(m: T, a: [U: ...])
+		{
+			for x in a => printf(" %.2", m * x)
+		}
+
+		printf("set 6:")
+		let xs = [ 1, 2, 3, 4, 5 ]
+		prints(3, ...xs)
 
 		printf("\n")
 	}

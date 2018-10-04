@@ -66,7 +66,13 @@ namespace fir
 	bool ConstantNumberType::isSigned()                         { return this->_signed; }
 	bool ConstantNumberType::isFloating()                       { return this->_floating; }
 	size_t ConstantNumberType::getMinBits()                     { return this->_bits; }
-	bool ConstantNumberType::isTypeEqual(Type* other)           { return other && other->isConstantNumberType(); }
+	bool ConstantNumberType::isTypeEqual(Type* other)
+	{
+		return other && other->isConstantNumberType()
+			&& other->toConstantNumberType()->_bits == this->_bits
+			&& other->toConstantNumberType()->_signed == this->_signed
+			&& other->toConstantNumberType()->_floating == this->_floating;
+	}
 	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, size_t bits)
 	{
 		return TypeCache::get().getOrAddCachedType(new ConstantNumberType(neg, flt, bits));
@@ -83,7 +89,8 @@ namespace fir
 	}
 	std::string ConstantNumberType::str()
 	{
-		return strprintf("number(sgn: %s, flt: %s, bits: %d)", _signed, _floating, _bits);
+		// return strprintf("number(sgn: %s, flt: %s, bits: %d)", _signed, _floating, _bits);
+		return strprintf("number");
 	}
 
 

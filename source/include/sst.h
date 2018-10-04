@@ -532,7 +532,15 @@ namespace sst
 		bool halfOpen = false;
 	};
 
+	struct SplatExpr : Expr
+	{
+		SplatExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "splat expression"; }
+		~SplatExpr() { }
 
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* infer = 0) override;
+
+		Expr* inside = 0;
+	};
 
 
 
