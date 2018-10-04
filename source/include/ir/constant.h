@@ -38,19 +38,17 @@ namespace fir
 
 		static ConstantNumber* get(ConstantNumberType* cnt, const mpfr::mpreal& n);
 
-		template <typename T> T getValue();
+		int8_t getInt8()        { return (int8_t)  this->number.toLLong(); }
+		int16_t getInt16()      { return (int16_t) this->number.toLLong(); }
+		int32_t getInt32()      { return (int32_t) this->number.toLLong(); }
+		int64_t getInt64()      { return (int64_t) this->number.toLLong(); }
+		uint8_t getUint8()      { return (uint8_t)  this->number.toULLong(); }
+		uint16_t getUint16()    { return (uint16_t) this->number.toULLong(); }
+		uint32_t getUint32()    { return (uint32_t) this->number.toULLong(); }
+		uint64_t getUint64()    { return (uint64_t) this->number.toULLong(); }
 
-		template <> int8_t getValue<int8_t>()       { return (int8_t)  this->number.toLLong(); }
-		template <> int16_t getValue<int16_t>()     { return (int16_t) this->number.toLLong(); }
-		template <> int32_t getValue<int32_t>()     { return (int32_t) this->number.toLLong(); }
-		template <> int64_t getValue<int64_t>()     { return (int64_t) this->number.toLLong(); }
-		template <> uint8_t getValue<uint8_t>()     { return (uint8_t)  this->number.toULLong(); }
-		template <> uint16_t getValue<uint16_t>()   { return (uint16_t) this->number.toULLong(); }
-		template <> uint32_t getValue<uint32_t>()   { return (uint32_t) this->number.toULLong(); }
-		template <> uint64_t getValue<uint64_t>()   { return (uint64_t) this->number.toULLong(); }
-
-		template <> float getValue<float>()         { return this->number.toFloat(); }
-		template <> double getValue<double>()       { return this->number.toDouble(); }
+		float getFloat()        { return this->number.toFloat(); }
+		double getDouble()      { return this->number.toDouble(); }
 
 		protected:
 		ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n);
