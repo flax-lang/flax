@@ -22,7 +22,7 @@ namespace cgn
 		if(ty->isFloating())
 		{
 			if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
-				return fir::ConstantFP::getFloat64(cn->getValue<double>());
+				return fir::ConstantFP::getFloat64(cn->getDouble());
 
 			else
 				error("float overflow");
@@ -30,13 +30,13 @@ namespace cgn
 		else
 		{
 				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-					return fir::ConstantInt::getInt64(cn->getValue<int64_t>());
+					return fir::ConstantInt::getInt64(cn->getInt64());
 
 				// else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
 				// 	return fir::Type::getInt128();
 
 				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
-					return fir::ConstantInt::getUint64(cn->getValue<uint64_t>());
+					return fir::ConstantInt::getUint64(cn->getUint64());
 
 				else
 					error("int overflow");
@@ -79,31 +79,31 @@ namespace cgn
 			// then subtract (num - 1)
 
 			if(target == fir::Type::getUint8())
-				return fir::ConstantInt::get(target, num->getValue<uint8_t>());
+				return fir::ConstantInt::get(target, num->getUint8());
 
 			else if(target == fir::Type::getUint16())
-				return fir::ConstantInt::get(target, num->getValue<uint16_t>());
+				return fir::ConstantInt::get(target, num->getUint16());
 
 			else if(target == fir::Type::getUint32())
-				return fir::ConstantInt::get(target, num->getValue<uint32_t>());
+				return fir::ConstantInt::get(target, num->getUint32());
 
 			else if(target == fir::Type::getUint64())
-				return fir::ConstantInt::get(target, num->getValue<uint64_t>());
+				return fir::ConstantInt::get(target, num->getUint64());
 
 			else
 				error("what %s", target);
 		}
 
-		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num->getValue<float>());
-		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num->getValue<double>());
-		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, num->getValue<int8_t>());
-		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, num->getValue<int16_t>());
-		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, num->getValue<int32_t>());
-		else if(target == fir::Type::getInt64())	return fir::ConstantInt::get(target, num->getValue<int64_t>());
-		else if(target == fir::Type::getUint8())	return fir::ConstantInt::get(target, num->getValue<uint8_t>());
-		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getValue<uint16_t>());
-		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getValue<uint32_t>());
-		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getValue<uint64_t>());
+		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num->getFloat());
+		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num->getDouble());
+		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, num->getInt8());
+		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, num->getInt16());
+		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, num->getInt32());
+		else if(target == fir::Type::getInt64())	return fir::ConstantInt::get(target, num->getInt64());
+		else if(target == fir::Type::getUint8())	return fir::ConstantInt::get(target, num->getUint8());
+		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getUint16());
+		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getUint32());
+		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getUint64());
 		else										error("unsupported type '%s'", target);
 	}
 
