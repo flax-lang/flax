@@ -44,7 +44,7 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// 		warn(this, "nofit");
 	// }
 
-	if(!skipCheck && lt != rt && fs->getCastDistance(rt, lt) < 0)
+	if(!skipCheck && lt != rt && fir::getCastDistance(rt, lt) < 0)
 	{
 		SpanError().set(SimpleError::make(this, "Cannot assign value of type '%s' to expected type '%s'", rt, lt))
 			.add(SpanError::Span(this->left->loc, strprintf("type '%s'", lt)))

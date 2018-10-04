@@ -6,29 +6,30 @@
 #include "errors.h"
 #include "typecheck.h"
 
-TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	auto ret = new sst::TypeExpr(this->loc, fs->convertParserTypeToFIR(this->type));
 	return TCResult(ret);
 }
 
-TCResult ast::MutabilityTypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::MutabilityTypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	error(this, "Unable to typecheck mutability cast, this shouldn't happen!");
 }
 
-TCResult ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	// nothing to check??
 	unexpected(this->loc, "import statement");
 }
 
-TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	error(this, "Unable to typecheck splat op, this shouldn't happen!");
+	// error(this, "Unable to typecheck splat op, this shouldn't happen!");
+	return this->expr->typecheck(fs, infer);
 }
 
-TCResult ast::Parameterisable::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+TCResult ast::Parameterisable::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	return this->typecheck(fs, inferred, { });
+	return this->typecheck(fs, infer, { });
 }

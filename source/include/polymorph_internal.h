@@ -11,9 +11,13 @@ namespace pts
 	struct Type;
 }
 
-namespace sst
+namespace fir
 {
 	struct LocatedType;
+}
+
+namespace sst
+{
 	struct TypecheckState;
 
 	namespace poly
@@ -27,7 +31,8 @@ namespace sst
 			Slice,
 			Pointer,
 			FixedArray,
-			DynamicArray
+			DynamicArray,
+			VariadicArray,
 		};
 
 		struct Trf
@@ -48,7 +53,8 @@ namespace sst
 		std::pair<fir::Type*, std::vector<Trf>> decomposeIntoTransforms(fir::Type* t, size_t max);
 		std::pair<pts::Type*, std::vector<Trf>> decomposeIntoTransforms(pts::Type* t);
 
-		SimpleError solveSingleTypeList(TypecheckState* fs, Solution_t* soln, const std::vector<LocatedType>& target, const std::vector<LocatedType>& given);
+		SimpleError solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& given, bool isFnCall);
 
 		namespace misc
 		{
@@ -59,11 +65,8 @@ namespace sst
 			fir::Type* convertPtsType(TypecheckState* fs, const ProblemSpace_t& problems,
 				pts::Type* input, int polysession);
 
-			std::vector<LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems, const std::vector<ast::FuncDefn::Arg>& args,
-				int polysession);
-
-			std::pair<std::vector<LocatedType>, SimpleError> unwrapArgumentList(TypecheckState* fs, ast::Parameterisable* thing,
-				const std::vector<ast::FuncDefn::Arg>& params, const std::vector<FnCallArgument>& args);
+			std::vector<fir::LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems,
+				const std::vector<ast::FuncDefn::Arg>& args, int polysession);
 		}
 
 

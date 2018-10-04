@@ -5,7 +5,7 @@
 #include "lexer.h"
 #include "errors.h"
 
-#include "../external/utf8rewind/include/utf8rewind/utf8rewind.h"
+#include "utf8rewind/include/utf8rewind/utf8rewind.h"
 
 using string_view = util::string_view;
 

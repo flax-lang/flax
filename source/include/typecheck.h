@@ -205,8 +205,6 @@ namespace sst
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
-		int getCastDistance(fir::Type* from, fir::Type* to);
-
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		int getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 

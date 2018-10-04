@@ -16,7 +16,6 @@ namespace cgn
 		auto cn = dcast(fir::ConstantNumber, cv);
 		iceAssert(cn);
 
-		// auto num = cn->getValue();
 		auto ty = cv->getType()->toConstantNumberType();
 		iceAssert(ty);
 
@@ -24,9 +23,6 @@ namespace cgn
 		{
 			if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
 				return fir::ConstantFP::getFloat64(cn->getValue<double>());
-
-			else if(ty->getMinBits() <= fir::Type::getFloat80()->getBitWidth())
-				return fir::ConstantFP::getFloat80(cn->getValue<long double>());
 
 			else
 				error("float overflow");
@@ -71,6 +67,7 @@ namespace cgn
 
 		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
 		{
+			// TODO: actually do what we say.
 			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type",
 				target);
 		}
@@ -99,7 +96,6 @@ namespace cgn
 
 		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num->getValue<float>());
 		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num->getValue<double>());
-		else if(target == fir::Type::getFloat80())	return fir::ConstantFP::getFloat80(num->getValue<long double>());
 		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, num->getValue<int8_t>());
 		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, num->getValue<int16_t>());
 		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, num->getValue<int32_t>());
@@ -115,7 +111,8 @@ namespace cgn
 
 	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target)
 	{
-		return _unwrapConstantNumber(this, cv, target, false);
+		if(target)  return _unwrapConstantNumber(this, cv, target, false);
+		else        return this->unwrapConstantNumber(cv);
 	}
 
 

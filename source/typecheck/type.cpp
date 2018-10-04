@@ -20,9 +20,6 @@ namespace sst
 				if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
 					return fir::Type::getFloat64();
 
-				else if(ty->getMinBits() <= fir::Type::getFloat80()->getBitWidth())
-					return fir::Type::getFloat80();
-
 				else if(ty->getMinBits() <= fir::Type::getFloat128()->getBitWidth())
 					return fir::Type::getFloat128();
 
@@ -43,30 +40,6 @@ namespace sst
 				else
 					error("int overflow");
 			}
-
-			# if 0
-				// ok, check if it fits anywhere
-				if(num <= mpfr::mpreal(INT64_MAX) && num >= mpfr::mpreal(INT64_MIN))
-					return fir::Type::getInt64();
-
-				else if(num >= 0 && num <= mpfr::mpreal(UINT64_MAX))
-					return fir::Type::getUint64();
-
-				else
-					error(this->loc(), "Numberic literal does not fit into largest supported (64-bit) type");
-			}
-			else
-			{
-				if(num >= mpfr::mpreal(DBL_MIN) && num <= mpfr::mpreal(DBL_MAX))
-					return fir::Type::getFloat64();
-
-				else if(num >= mpfr::mpreal(LDBL_MIN) && num <= mpfr::mpreal(LDBL_MAX))
-					return fir::Type::getFloat80();
-
-				else
-					error(this->loc(), "Numberic literal does not fit into largest supported type ('%s')", fir::Type::getFloat80());
-			}
-			#endif
 		}
 	}
 

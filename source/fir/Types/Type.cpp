@@ -20,8 +20,130 @@ namespace fir
 		return tc;
 	}
 
+	int getCastDistance(Type* from, Type* to)
+	{
+		if(from == to) return 0;
 
+		if(from->isConstantNumberType() && to->isPrimitiveType())
+		{
+			auto cty = from->toConstantNumberType();
+			if(!cty->isFloating() && to->isIntegerType())
+				return 0;
 
+			else if(!cty->isFloating() && to->isFloatingPointType())
+				return 1;
+
+			else if(cty->isFloating())      // not isint means isfloat, so if we're doing float -> float the cost is 0
+				return 0;
+
+			else                            // if we reach here, we're trying to do float -> int, which is a no-go.
+				return -1;
+		}
+		else if(from->isIntegerType() && to->isIntegerType())
+		{
+			if(from->isSignedIntType() == to->isSignedIntType())
+			{
+				auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
+				switch(bitdiff)
+				{
+					case 0:		return 0;	// same
+					case 8:		return 1;	// i16 - i8
+					case 16:	return 1;	// i32 - i16
+					case 32:	return 1;	// i64 - i32
+
+					case 24:	return 2;	// i32 - i8
+					case 48:	return 2;	// i64 - i16
+
+					case 56:	return 3;	// i64 - i8
+					default:	iceAssert(0);
+				}
+			}
+			else
+			{
+				// only allow casting unsigned things to signed things... maybe??
+				// TODO: investigate whether we want such loose casting.
+
+				//? for now, no.
+				return -1;
+			}
+		}
+		else if(from->isDynamicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
+		{
+			return 2;
+		}
+		else if(from->isDynamicArrayType() && from->getArrayElementType()->isVoidType() && (to->isDynamicArrayType() || to->isArraySliceType() || to->isArrayType()))
+		{
+			return 2;
+		}
+		else if(from->isFloatingPointType() && to->isFloatingPointType())
+		{
+			return 1;
+		}
+		else if(from->isStringType() && to == fir::Type::getInt8Ptr())
+		{
+			return 5;
+		}
+		else if(from->isStringType() && to->isCharSliceType())
+		{
+			return 3;
+		}
+		else if(from->isCharSliceType() && to == fir::Type::getInt8Ptr())
+		{
+			return 3;
+		}
+		else if(from->isMutablePointer() && to->isImmutablePointer() && from->getPointerElementType() == to->getPointerElementType())
+		{
+			// cast from a mutable pointer type to an immutable one can be implicit.
+			return 1;
+		}
+		else if(from->isVariadicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
+		{
+			// allow implicit casting from variadic slices to their normal counterparts.
+			return 4;
+		}
+		else if(from->isArraySliceType() && to->isArraySliceType() && (from->getArrayElementType() == to->getArrayElementType())
+			&& from->toArraySliceType()->isMutable() && !to->toArraySliceType()->isMutable() && !from->isVariadicArrayType() && !to->isVariadicArrayType())
+		{
+			// same with slices -- cast from mutable slice to immut slice can be implicit.
+			return 1;
+		}
+		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
+		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
+			&& from->getPointerElementType()->toClassType()->isInParentHierarchy(to->getPointerElementType()))
+		{
+			// cast from a derived class pointer to a base class pointer
+			return 2;
+		}
+		else if(from->isNullType() && to->isPointerType())
+		{
+			return 1;
+		}
+		else if(from->isTupleType() && to->isTupleType() && from->toTupleType()->getElementCount() == to->toTupleType()->getElementCount())
+		{
+			int sum = 0;
+
+			auto ftt = from->toTupleType();
+			auto ttt = to->toTupleType();
+
+			for(size_t i = 0; i < ttt->getElementCount(); i++)
+			{
+				if(int k = fir::getCastDistance(ftt->getElementN(i), ttt->getElementN(i)); k < 0)
+					return -1;
+
+				else
+					sum += k;
+			}
+
+			return sum;
+		}
+		else if(to->isAnyType())
+		{
+			// lol. completely arbitrary.
+			return 15;
+		}
+
+		return -1;
+	}
 
 
 
@@ -172,7 +294,6 @@ namespace fir
 
 		else if(copy == FLOAT32_TYPE_STRING)            real = Type::getFloat32();
 		else if(copy == FLOAT64_TYPE_STRING)            real = Type::getFloat64();
-		else if(copy == FLOAT80_TYPE_STRING)            real = Type::getFloat80();
 		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128();
 
 		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
@@ -642,11 +763,6 @@ namespace fir
 	PrimitiveType* Type::getFloat64()
 	{
 		return PrimitiveType::getFloat64();
-	}
-
-	PrimitiveType* Type::getFloat80()
-	{
-		return PrimitiveType::getFloat80();
 	}
 
 	PrimitiveType* Type::getFloat128()

@@ -180,7 +180,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			defn->type = t;
 		}
-		else if(fs->getCastDistance(defn->init->type, defn->type) < 0)
+		else if(fir::getCastDistance(defn->init->type, defn->type) < 0)
 		{
 			SpanError(SimpleError::make(this, "cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
 				.add(SpanError::Span(defn->init->loc, strprintf("type '%s'", defn->init->type)))

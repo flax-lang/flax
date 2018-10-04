@@ -70,6 +70,10 @@ namespace sst
 					fty = fir::FunctionType::get(convertPtsTypeList(fs, problems, ty->toFunctionType()->argTypes, polysession),
 						convertPtsType(fs, problems, ty->toFunctionType()->returnType, polysession));
 				}
+				else if(ty->isVariadicArrayType())
+				{
+
+				}
 				else
 				{
 					error("unsupported pts type '%s'", ty->str());
@@ -89,49 +93,16 @@ namespace sst
 
 
 
-			std::vector<LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems,
+			std::vector<fir::LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems,
 				const std::vector<ast::FuncDefn::Arg>& args, int polysession)
 			{
 				return util::mapidx(convertPtsTypeList(fs, problems, util::map(args,
 					[](const ast::FuncDefn::Arg& a) -> pts::Type* {
 						return a.type;
 					}
-				), polysession), [args](fir::Type* t, size_t idx) -> LocatedType {
-					return LocatedType(t, args[idx].loc);
+				), polysession), [args](fir::Type* t, size_t idx) -> fir::LocatedType {
+					return fir::LocatedType(t, args[idx].loc);
 				});
-			}
-
-
-			std::pair<std::vector<LocatedType>, SimpleError> unwrapArgumentList(TypecheckState* fs, ast::Parameterisable* thing,
-				const std::vector<ast::FuncDefn::Arg>& params, const std::vector<FnCallArgument>& args)
-			{
-				std::vector<LocatedType> ret(args.size());
-
-				// strip out the name information, and do purely positional things.
-				std::unordered_map<std::string, size_t> nameToIndex;
-				{
-					for(size_t i = 0; i < params.size(); i++)
-					{
-						const auto& arg = params[i];
-						nameToIndex[arg.name] = i;
-					}
-
-					int counter = 0;
-					for(const auto& i : args)
-					{
-						if(!i.name.empty() && nameToIndex.find(i.name) == nameToIndex.end())
-						{
-							return { { }, SimpleError::make(MsgType::Note, i.loc, "function '%s' does not have a parameter named '%s'",
-								thing->name, i.name).append(SimpleError::make(MsgType::Note, thing, "Function was defined here:"))
-							};
-						}
-
-						ret[i.name.empty() ? counter : nameToIndex[i.name]] = LocatedType(i.value->type, i.loc);
-						counter++;
-					}
-				}
-
-				return { ret, SimpleError() };
 			}
 		}
 	}
@@ -154,7 +125,7 @@ namespace sst
 	{
 		iceAssert(this->genericContextStack.size() > 0);
 		if(auto it = this->genericContextStack.back().find(name); it != this->genericContextStack.back().end())
-			error(this->loc(), "Mapping for type parameter '%s' already exists in current context (is currently '%s')", name, it->second);
+			error(this->loc(), "mapping for type parameter '%s' already exists in current context (is currently '%s')", name, it->second);
 
 		this->genericContextStack.back()[name] = ty;
 	}
@@ -163,7 +134,7 @@ namespace sst
 	{
 		iceAssert(this->genericContextStack.size() > 0);
 		if(auto it = this->genericContextStack.back().find(name); it == this->genericContextStack.back().end())
-			error(this->loc(), "No mapping for type parameter '%s' exists in current context, cannot remove", name);
+			error(this->loc(), "no mapping for type parameter '%s' exists in current context, cannot remove", name);
 
 		else
 			this->genericContextStack.back().erase(it);
@@ -184,7 +155,7 @@ namespace sst
 				return iit->second;
 
 		if(allowFail)   return 0;
-		else            error(this->loc(), "No mapping for type parameter '%s'", name);
+		else            error(this->loc(), "no mapping for type parameter '%s'", name);
 	}
 
 

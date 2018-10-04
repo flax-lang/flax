@@ -798,11 +798,6 @@ namespace fir
 				if(sgn)	ret = ConstantFP::getFloat64((double) ci->getSignedValue());
 				else	ret = ConstantFP::getFloat64((double) ci->getUnsignedValue());
 			}
-			else if(targetType == fir::Type::getFloat80())
-			{
-				if(sgn)	ret = ConstantFP::getFloat80((long double) ci->getSignedValue());
-				else	ret = ConstantFP::getFloat80((long double) ci->getUnsignedValue());
-			}
 			else
 			{
 				error("Unknown floating point type '%s'", targetType);

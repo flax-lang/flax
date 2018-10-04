@@ -10,30 +10,21 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	// if(infer && !infer->isIntegerType() && !infer->isFloatingPointType())
-	// 	error(this, "Non-numerical type '%s' inferred for literal number", infer);
 
 	if(this->type->isConstantNumberType())
 	{
-		if(infer && infer->isPrimitiveType())
-		{
-			if(this->type->toConstantNumberType()->isFloating() && !infer->isFloatingPointType())
-				error(this, "Non floating-point type ('%s') inferred for floating-point literal", infer);
+		if(infer && !infer->isPrimitiveType())
+			infer = 0;
 
-			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr), infer));
-		}
-		else
-		{
-			return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->intgr)));
-		}
+		return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->num), infer));
 	}
 	else
 	{
 		if(this->type->isFloatingPointType())
-			return CGResult(fir::ConstantFP::get(this->type, this->flt));
+			return CGResult(fir::ConstantFP::get(this->type, this->num.toDouble()));
 
 		else
-			return CGResult(fir::ConstantInt::get(this->type, this->intgr));
+			return CGResult(fir::ConstantInt::get(this->type, this->num.toLLong()));
 	}
 }
 

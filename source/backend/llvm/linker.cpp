@@ -57,7 +57,7 @@
 #include "frontend.h"
 #include "backends/llvm.h"
 
-#include "../../external/tinyprocesslib/process.h"
+#include "tinyprocesslib/process.h"
 
 
 static llvm::LLVMContext globalContext;
