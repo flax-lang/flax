@@ -34,7 +34,7 @@ namespace sst
 				else
 				{
 					soln->distance = -1;
-					return SimpleError::make(given.loc, "No valid cast from given type '%s' to target type '%s'", gvn, tgt);
+					return SimpleError::make(given.loc, "no valid cast from given type '%s' to target type '%s'", gvn, tgt);
 				}
 			}
 			else
@@ -74,7 +74,7 @@ namespace sst
 								}
 								else
 								{
-									return SimpleError::make(given.loc, "Conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
+									return SimpleError::make(given.loc, "conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
 										ptt->getName(), ltt->str(), gvn);
 								}
 							}
@@ -94,7 +94,7 @@ namespace sst
 					}
 					else
 					{
-						// debuglogln("solved %s = %s", ptt->getName(), gt);
+						debuglogln("solved %s = %s", ptt->getName(), gt);
 						soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
 					}
 				}
@@ -140,17 +140,21 @@ namespace sst
 			return SimpleError();
 		}
 
+
+
+
 		SimpleError solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
 			bool isFnCall)
 		{
-			// for now just do this.
-			if(target.size() != given.size())
-			{
-				if(!isFnCall || !(target.size() > 0 && target.back()->isVariadicArrayType() && given.size() >= target.size() - 1))
-					return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d were provided", target.size(), given.size());
-			}
+			bool fvararg = (isFnCall && target.size() > 0 && target.back()->isVariadicArrayType());
 
-			for(size_t i = 0; i < std::min(target.size(), given.size()); i++)
+			// for now just do this.
+			if(target.size() != given.size() && !fvararg)
+				return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d were provided", target.size(), given.size());
+
+			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0), given.size());
+
+			for(size_t i = 0; i < last_arg; i++)
 			{
 				auto err = solveSingleType(soln, target[i], given[i]);
 				if(err.hasErrors())
@@ -160,8 +164,49 @@ namespace sst
 				soln->resubstituteIntoSolutions();
 			}
 
+			// solve the variadic part.
+			if(fvararg)
+			{
+				// check for forwarding first.
+				if(given.size() == target.size() && given.back()->isVariadicArrayType())
+				{
+					auto copy = *soln;
+
+					// ok, if we fulfil all the conditions to forward, then we forward.
+					auto err = solveSingleType(&copy, target.back(), given.back());
+					if(!err.hasErrors())
+					{
+						iceAssert(copy.distance >= 0);
+						*soln = copy;
+
+						// ok, things should be solved, and we will forward.
+						return SimpleError();
+					}
+				}
+
+				//* note: the reason we put this outside an 'else' is so that, in the event we're unable to solve
+				//* for the forwarding case for whatever reason, we will treat it as an argument-passing case.
+
+				// get the supposed type of the thing.
+				auto varty = target.back()->toArraySliceType()->getArrayElementType();
+				auto ltvarty = fir::LocatedType(varty, target.back().loc);
+
+				for(size_t i = last_arg; i < given.size(); i++)
+				{
+					auto err = solveSingleType(soln, ltvarty, given[i]);
+					if(err.hasErrors())
+						return err.append(SimpleError::make(MsgType::Note, target.back().loc, "in argument of variadic parameter"));
+				}
+
+				// ok, everything should be good??
+				return SimpleError();
+			}
+
 			return SimpleError();
 		}
+
+
+
 
 
 		std::pair<Solution_t, SimpleError> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
@@ -170,7 +215,10 @@ namespace sst
 			Solution_t prevSoln = partial;
 			while(true)
 			{
-				auto soln = prevSoln;
+				//* note!! we reset the distance here, because we will always loop through every argument.
+				//* if we didn't reset the distance, it would just keep increasing to infinity (and overflow)
+				auto soln = prevSoln; soln.distance = 0;
+
 				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
 				if(errs.hasErrors()) return { soln, errs };
 

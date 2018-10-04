@@ -59,10 +59,25 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// 	error("cannot do this thing");
 	// }
 
-	auto number = mpfr::mpreal(this->num);
-	size_t bits = mpfr_min_prec(number.mpfr_ptr());
+	// set base = 0 to autodetect.
+	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), /* base: */ 0);
 	bool sgn = mpfr::signbit(number);
 	bool flt = !mpfr::isint(number);
+
+	//* this is the stupidest thing.
+
+	// mpfr's 'get_min_prec' returns the number of bits required to store the significand (eg. for 1.413x10^-2, it is 1.413).
+	// so you'd think that, for example, given '1024', it would return '10', given that 2^10 == 1024.
+	// no, it returns '1', because you only need one bit -- the 10th bit -- to get the value 1024.
+	// which is fucking stupid.
+
+	// so what we do here is we change the last digit of the number to be '9'. this effectively forces the first
+	// bit of the entire number to be set (we don't use '1' because we don't want to make the number smaller
+	// -- eg. 1024 would become 1021, which would only need 9 bits to store -- versus 1029)
+
+	// in this way we force mpfr to return the real number of bits required to store the entire thing properly.
+
+	size_t bits = mpfr_min_prec(mpfr::mpreal(this->num.substr(0, this->num.size() - 1) + "9").mpfr_ptr());
 
 	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
 	ret->num = mpfr::mpreal(this->num);

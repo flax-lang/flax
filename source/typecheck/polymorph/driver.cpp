@@ -163,7 +163,10 @@ namespace poly
 			if(isFnCall)
 			{
 				SimpleError err;
-				auto gvn = resolver::canonicaliseCallArguments(thing->loc, args, _input, &err);
+				auto gvn = resolver::canonicaliseCallArguments(thing->loc, args, util::map(_input, [](const FnCallArgument& fca) -> FunctionDecl::Param {
+					return FunctionDecl::Param(fca);
+				}), &err);
+
 				if(err.hasErrors()) return { soln, err };
 
 				given = gvn;

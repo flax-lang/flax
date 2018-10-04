@@ -109,7 +109,7 @@ do {
 
 - Install [meson](https://mesonbuild.com/)
 - Edit `meson.build` variables to tell it where to find the libraries -- notably, these are needed: [`libmpir`](http://mpir.org), [`libmpfr`](http://mpfr.org), and most importantly, [`libllvm`](http://llvm.org). Follow the build instructions for each library, preferably generating both Debug and Release *static* libraries.
-- Run `meson build\meson-dbg` (where ever you want, really), followed my `ninja -C build\meson-dbg`.
+- Run `meson build\meson-dbg` (where ever you want, really), followed by `ninja -C build\meson-dbg`.
 - `flaxc.exe` will be in `build\meson-dbg`.
 - Build and profit, hopefully.
 
