@@ -62,7 +62,8 @@ namespace poly
 
 
 	std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& _gmaps,
-		fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args, bool fillplaceholders)
+		fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args, bool fillplaceholders,
+		fir::Type* problem_infer)
 	{
 		if(!isFnCall && type_infer == 0 && fillplaceholders)
 			return internal::solvePolymorphWithPlaceholders(fs, thing, _gmaps);
@@ -70,7 +71,7 @@ namespace poly
 		// used below.
 		std::unordered_map<std::string, size_t> origParamOrder;
 		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
-			&origParamOrder);
+			problem_infer, &origParamOrder);
 
 		if(err.hasErrors())
 			return { TCResult(err), soln };

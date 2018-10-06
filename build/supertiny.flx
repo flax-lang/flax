@@ -24,35 +24,14 @@ import "libc" as _
 
 @entry fn main()
 {
-
-	// do {
-	// 	class Foo<T>
-	// 	{
-	// 		init() { }
-	// 		static fn bar(x: T) { printf("x = %d\n", x) }
-	// 	}
-
-	// 	Foo.bar(30)
-	// }
-
-	// some normal FP stuff
-	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
-	{
-		var ret: [U]
-		for it in arr => ret.append(fun(it))
-
-		return ret
-	}
-
 	do {
-		printf("set 3:")
+		class Foo<T>
+		{
+			init() { }
+			static fn bar(x: T) { printf("x = %d\n", x) }
+		}
 
-		fn square<T, U>(a: T) -> U => (a * a)
-
-		let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
-		for it in new { printf(" %.2f", it) }
-
-		printf("\n")
+		Foo.bar(30)
 	}
 }
 

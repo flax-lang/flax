@@ -82,7 +82,10 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->stree->addDefinition(defnname, defn, gmaps);
+		//? see comment in typecheck/functions.cpp about this.
+		if(!defn->type->containsPlaceholders()) fs->stree->addDefinition(this->name, defn, gmaps);
+		// else                                    fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+
 		fs->typeDefnMap[str] = defn;
 	}
 
