@@ -9,20 +9,19 @@
 
 #include "errors.h"
 #include "polymorph.h"
-#include "polymorph_internal.h"
 
 namespace sst
 {
 	namespace poly
 	{
-		static int polySessionId = 0;
-		int getNextSessionId()
+		namespace internal
 		{
-			return polySessionId++;
-		}
+			static int polySessionId = 0;
+			int getNextSessionId()
+			{
+				return polySessionId++;
+			}
 
-		namespace misc
-		{
 			fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 			{
 				if(a->isConstantNumberType() && b->isConstantNumberType())
@@ -70,10 +69,6 @@ namespace sst
 					fty = fir::FunctionType::get(convertPtsTypeList(fs, problems, ty->toFunctionType()->argTypes, polysession),
 						convertPtsType(fs, problems, ty->toFunctionType()->returnType, polysession));
 				}
-				else if(ty->isVariadicArrayType())
-				{
-
-				}
 				else
 				{
 					error("unsupported pts type '%s'", ty->str());
@@ -93,7 +88,7 @@ namespace sst
 
 
 
-			std::vector<fir::LocatedType> unwrapFunctionCall(TypecheckState* fs, const ProblemSpace_t& problems,
+			std::vector<fir::LocatedType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
 				const std::vector<ast::FuncDefn::Arg>& args, int polysession)
 			{
 				return util::mapidx(convertPtsTypeList(fs, problems, util::map(args,

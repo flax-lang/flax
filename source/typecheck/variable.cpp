@@ -92,7 +92,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			std::vector<FnCallArgument> fake;
 			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-			auto pots = sst::poly::findPolymorphReferences(fs, this->name, gdefs, gmaps, infer, false, &fake);
+			auto pots = sst::poly::findPolymorphReferences(fs, this->name, gdefs, gmaps, /* return_infer: */ 0, /* type_infer: */ infer,
+				false, &fake);
+
 			if(pots.size() > 1)
 			{
 				auto err = SimpleError::make(this->loc, "ambiguous reference to '%s', potential candidates:", this->name);

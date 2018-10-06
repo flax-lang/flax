@@ -100,7 +100,7 @@ public fn doGenericsTest()
 	do {
 		fn prints<T, U>(m: T, a: [U: ...])
 		{
-			for x in a => printf(" %.2", m * x)
+			for x in a => printf(" %.2d", m * x)
 		}
 
 		printf("set 6:")
