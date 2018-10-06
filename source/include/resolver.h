@@ -24,7 +24,7 @@ namespace sst
 		std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
 			const std::vector<FunctionDecl::Param>& _args, bool cvararg);
 
-		TCResult resolveFunctionCallFromCandidates(const Location& callLoc, const std::vector<std::pair<Defn*,
+		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<std::pair<Defn*,
 			std::vector<FunctionDecl::Param>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf);
 
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
@@ -39,6 +39,28 @@ namespace sst
 				const std::vector<FunctionDecl::Param>& args, SimpleError* err);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
+
+
+			template <typename T>
+			std::unordered_map<std::string, size_t> getNameIndexMap(const std::vector<T>& params)
+			{
+				std::unordered_map<std::string, size_t> ret;
+				for(size_t i = 0; i < params.size(); i++)
+				{
+					const auto& arg = params[i];
+					ret[arg.name] = i;
+				}
+
+				return ret;
+			}
 		}
 	}
 }
+
+
+
+
+
+
+
+

@@ -22,7 +22,7 @@ namespace sst
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<Param>> { return { c, args }; });
-		return resolver::resolveFunctionCallFromCandidates(this->loc(), cds, gmaps, allowImplicitSelf);
+		return resolver::resolveFunctionCallFromCandidates(this, this->loc(), cds, gmaps, allowImplicitSelf);
 	}
 
 	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp,
@@ -59,7 +59,9 @@ namespace sst
 				didGeneric = true;
 				auto argcopy = arguments;
 
-				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, inferredRetType, true, &argcopy);
+				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, /* return_infer: */ inferredRetType,
+					/* type_infer: */ 0, /* isFnCall: */ true, &argcopy);
+
 				for(const auto& pot : pots)
 				{
 					if(!pot.first.isDefn())
@@ -127,7 +129,7 @@ namespace sst
 			}
 		}
 
-		auto res = resolver::resolveFunctionCallFromCandidates(this->loc(), cands, gmaps, travUp);
+		auto res = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cands, gmaps, travUp);
 		if(res.isDefn())
 		{
 			auto ret = res.defn();

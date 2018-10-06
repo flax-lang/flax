@@ -391,7 +391,7 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> doCheck,
+	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback,
 		StateTree* tree)
 	{
 		if(tree == 0)
@@ -441,8 +441,7 @@ namespace sst
 
 		for(auto otherdef : defs)
 		{
-			bool conflicts = doCheck(this, otherdef);
-			if(conflicts)
+			if(conflictCheckCallback(this, otherdef))
 			{
 				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
