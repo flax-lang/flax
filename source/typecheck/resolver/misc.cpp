@@ -59,27 +59,13 @@ namespace sst
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<Param>& params,
 				const std::vector<Param>& args, SimpleError* err)
 			{
-				std::unordered_map<std::string, size_t> nameToIndex;
-				for(size_t i = 0; i < params.size(); i++)
-				{
-					const auto& arg = params[i];
-					nameToIndex[arg.name] = i;
-				}
-
-				return _canonicaliseCallArguments(target, nameToIndex, args, err);
+				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
 				const std::vector<Param>& args, SimpleError* err)
 			{
-				std::unordered_map<std::string, size_t> nameToIndex;
-				for(size_t i = 0; i < params.size(); i++)
-				{
-					const auto& arg = params[i];
-					nameToIndex[arg.name] = i;
-				}
-
-				return _canonicaliseCallArguments(target, nameToIndex, args, err);
+				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
 
 

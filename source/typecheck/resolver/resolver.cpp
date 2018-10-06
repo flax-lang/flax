@@ -10,7 +10,6 @@
 #include "resolver.h"
 #include "polymorph.h"
 
-
 namespace sst {
 namespace resolver
 {
@@ -57,7 +56,7 @@ namespace resolver
 
 
 
-	TCResult resolveFunctionCallFromCandidates(const Location& callLoc, const std::vector<std::pair<Defn*, std::vector<Param>>>& cands,
+	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<std::pair<Defn*, std::vector<Param>>>& cands,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		if(cands.empty()) return TCResult(BareError("no candidates"));
@@ -103,14 +102,27 @@ namespace resolver
 						});
 
 						// do an inference -- with the arguments that we have.
-						//! here: fd->original has no 'problem', so the solution is empty.
-						error("stop");
+						//!!!! not done !!!!
+						error("!!");
+						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ 0,
+							/* type_infer: */ fn->type, /* isFnCall: */ true, &infer_args, false);
 
-						// auto [ soln, errs ] = poly::inferTypesForPolymorph(fs, fd->original, infer_args, { }, nullptr, true);
+						if(!res.isDefn())
+						{
+							iceAssert(soln.distance == -1);
+							fails[fn] = SpanError().append(res.error());
+							dist = -1;
+						}
+						else
+						{
+							std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, SpanError());
+						}
 					}
 				}
-
-				std::tie(dist, fails[fn]) = computeOverloadDistance(fn->loc, fn->params, args, fn->isVarArg);
+				else
+				{
+					std::tie(dist, fails[fn]) = computeOverloadDistance(fn->loc, fn->params, args, fn->isVarArg);
+				}
 			}
 			else if(auto vr = dcast(VarDefn, cand))
 			{

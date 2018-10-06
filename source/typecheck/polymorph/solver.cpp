@@ -10,7 +10,6 @@
 #include "typecheck.h"
 
 #include "polymorph.h"
-#include "polymorph_internal.h"
 
 
 namespace sst
@@ -40,8 +39,8 @@ namespace sst
 			else
 			{
 				// limit decomposition of the given types by the number of transforms on the target type.
-				auto [ tt, ttrfs ] = decomposeIntoTransforms(tgt, -1);
-				auto [ gt, gtrfs ] = decomposeIntoTransforms(gvn, ttrfs.size());
+				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, -1);
+				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
 				// substitute if possible.
 				if(auto _gt = soln->substitute(gt); _gt != gt)
@@ -62,7 +61,7 @@ namespace sst
 						{
 							if(ltt->isConstantNumberType() || gt->isConstantNumberType())
 							{
-								gt = misc::mergeNumberTypes(ltt, gt);
+								gt = internal::mergeNumberTypes(ltt, gt);
 								if(gt != ltt)
 									soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
 							}

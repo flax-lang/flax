@@ -8,69 +8,80 @@
 
 #include "typecheck.h"
 #include "polymorph.h"
-#include "polymorph_internal.h"
+#include "resolver.h"
 
 namespace sst {
 namespace poly
 {
-	std::vector<std::string> getMissingSolutions(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
-		bool allowPlaceholders)
+	namespace internal
 	{
-		std::vector<std::string> missing;
-		for(const auto& [ name, constr ] : needed)
+		static SimpleError complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing, const std::vector<std::string>& missing)
 		{
-			(void) constr;
-
-			if(auto it = solution.find(name); it == solution.end())
-				missing.push_back(name);
-
-			else if(!allowPlaceholders && it->second->containsPlaceholders())
-				missing.push_back(name);
+			auto mstr = util::listToEnglish(missing);
+			return SimpleError::make(l, "Type %s %s could not be inferred", util::plural("parameter", missing.size()), mstr);
 		}
 
-		return missing;
-	}
-
-	static SimpleError complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing, const std::vector<std::string>& missing)
-	{
-		auto mstr = util::listToEnglish(missing);
-		return SimpleError::make(l, "Type %s %s could not be inferred", util::plural("parameter", missing.size()), mstr);
-	}
-
-
-	std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
-	{
-		TypeParamMap_t copy = partial;
-
-		int session = getNextSessionId();
-		for(const auto& p : thing->generics)
+		std::vector<std::string> getMissingSolutions(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
+			bool allowPlaceholders)
 		{
-			if(copy.find(p.first) == copy.end())
-				copy[p.first] = fir::PolyPlaceholderType::get(p.first, session);
+			std::vector<std::string> missing;
+			for(const auto& [ name, constr ] : needed)
+			{
+				(void) constr;
+
+				if(auto it = solution.find(name); it == solution.end())
+					missing.push_back(name);
+
+				else if(!allowPlaceholders && it->second->containsPlaceholders())
+					missing.push_back(name);
+			}
+
+			return missing;
 		}
 
-		return attemptToInstantiatePolymorph(fs, thing, copy, /* infer: */ 0, /* isFnCall: */ false, /* args: */ { }, /* fillplaceholders: */ false);
+
+		std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
+		{
+			TypeParamMap_t copy = partial;
+
+			int session = getNextSessionId();
+			for(const auto& p : thing->generics)
+			{
+				if(copy.find(p.first) == copy.end())
+					copy[p.first] = fir::PolyPlaceholderType::get(p.first, session);
+			}
+
+			return attemptToInstantiatePolymorph(fs, thing, copy, /* return_infer: */ 0, /* type_infer: */ 0,
+				/* isFnCall: */ false, /* args: */ { }, /* fillplaceholders: */ false);
+		}
 	}
+
+
+
+
 
 
 	std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& _gmaps,
-		fir::Type* infer, bool isFnCall, std::vector<FnCallArgument>* args, bool fillplaceholders)
+		fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args, bool fillplaceholders)
 	{
-		if(!isFnCall && infer == 0 && fillplaceholders)
-			return solvePolymorphWithPlaceholders(fs, thing, _gmaps);
+		if(!isFnCall && type_infer == 0 && fillplaceholders)
+			return internal::solvePolymorphWithPlaceholders(fs, thing, _gmaps);
 
+		// used below.
+		std::unordered_map<std::string, size_t> origParamOrder;
+		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
+			&origParamOrder);
 
-		// intentionally do not check the error here. we will just try to instantiate the thing regardless.
-		auto [ soln, err ] = inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, infer, isFnCall);
-		auto d = fullyInstantiatePolymorph(fs, thing, soln.solutions);
+		if(err.hasErrors())
+			return { TCResult(err), soln };
 
-		if(d.isDefn())
+		if(auto d = fullyInstantiatePolymorph(fs, thing, soln.solutions); d.isDefn())
 		{
 			if(isFnCall)
 			{
-				if(auto missing = getMissingSolutions(thing->generics, soln.solutions, /* allowPlaceholders: */ false); missing.size() > 0)
+				if(auto missing = internal::getMissingSolutions(thing->generics, soln.solutions, /* allowPlaceholders: */ false); missing.size() > 0)
 				{
-					auto se = SpanError().set(complainAboutMissingSolutions(fs->loc(), thing, missing));
+					auto se = SpanError().set(internal::complainAboutMissingSolutions(fs->loc(), thing, missing));
 					se.top.loc = thing->loc;
 
 					return std::make_pair(
@@ -85,15 +96,33 @@ namespace poly
 				}
 				else
 				{
-					for(FnCallArgument& arg : *args)
+					size_t counter = 0;
+					for(auto& arg : *args)
 					{
-						//! ACHTUNG !
-						//* here, we modify the input appropriately. i don't see a better way to do it.
-
-						if(arg.orig)
+						if(arg.value->type->containsPlaceholders() && arg.orig)
 						{
-							arg.value = arg.orig->typecheck(fs, arg.value->type->substitutePlaceholders(soln.substitutions)).expr();
+							//! ACHTUNG !
+							/*
+								* note *
+								the implication here is that by calling 'inferTypesForPolymorph', which itself calls 'solveTypeList',
+								we will have weeded out all of the function candidates that don't match (ie. overload distance == -1)
+
+								therefore, we can operate under the assumption that the _parameter_ type of the function will be fully
+								substituted and not have any placeholders, and that it will be a valid infer target for the _argument_.
+
+								using the newly-gained arg_infer information, we can re-typecheck the argument with concrete types.
+
+								- zhiayang
+								- 06/10/18/2318
+							*/
+
+							auto arg_infer = d.defn()->type->toFunctionType()->getArgumentN(arg.name.empty() ? counter : origParamOrder[arg.name]);
+
+							auto tc = arg.orig->typecheck(fs, arg_infer);
+							arg.value = tc.expr();
 						}
+
+						counter += 1;
 					}
 				}
 			}
@@ -115,7 +144,7 @@ namespace poly
 	TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings)
 	{
 		iceAssert(thing);
-		iceAssert(!thing->generics.empty());
+		// iceAssert(!thing->generics.empty());
 
 		// try to see if we already have a generic version.
 		if(auto [ found, def ] = thing->checkForExistingDeclaration(fs, mappings); thing && def)
@@ -159,26 +188,26 @@ namespace poly
 
 		// check if we provided all the required mappings.
 		{
-			// TODO: make an elegant early-out for this situation?
-			if(auto missing = getMissingSolutions(thing->generics, mappings, /* allowPlaceholders: */ true); missing.size() > 0)
-			{
-				return TCResult(complainAboutMissingSolutions(fs->loc(), thing, missing)
-					.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
-				);
-			}
+			// // TODO: make an elegant early-out for this situation?
+			// if(auto missing = internal::getMissingSolutions(thing->generics, mappings, /* allowPlaceholders: */ true); missing.size() > 0)
+			// {
+			// 	return TCResult(internal::complainAboutMissingSolutions(fs->loc(), thing, missing)
+			// 		.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
+			// 	);
+			// }
 
-			// TODO: pretty lame, but look for things that don't exist.
-			for(const auto& [ name, ty ] : mappings)
-			{
-				(void) ty;
-				if(thing->generics.find(name) == thing->generics.end())
-				{
-					return TCResult(
-						SimpleError::make(fs->loc(), "Parametric entity '%s' does not have an argument '%s'", thing->name, name)
-						.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
-					);
-				}
-			}
+			// // TODO: pretty lame, but look for things that don't exist.
+			// for(const auto& [ name, ty ] : mappings)
+			// {
+			// 	(void) ty;
+			// 	if(thing->generics.find(name) == thing->generics.end())
+			// 	{
+			// 		return TCResult(
+			// 			SimpleError::make(fs->loc(), "Parametric entity '%s' does not have an argument '%s'", thing->name, name)
+			// 			.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
+			// 		);
+			// 	}
+			// }
 		}
 
 		auto ret = dcast(Defn, thing->typecheck(fs, 0, mappings).defn());
