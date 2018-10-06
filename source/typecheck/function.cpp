@@ -155,7 +155,20 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(conflicts)
 		error(this, "conflicting");
 
-	fs->stree->addDefinition(this->name, defn, gmaps);
+	if(!defn->type->containsPlaceholders())
+	{
+		fs->stree->addDefinition(this->name, defn, gmaps);
+	}
+	else
+	{
+		// sometimes we might not have added ourselves previously, because 'checkForExistingDefinitions' relies on
+		// this->generics being non-empty. but we know better once we generate the defn -- if we have placeholders,
+		// then we're definitely still unresolved.
+		// - zhiayang
+		// - 07/10/18/0026
+
+		// fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+	}
 
 	// add to our versions.
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });

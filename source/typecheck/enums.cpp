@@ -42,7 +42,11 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
-	fs->stree->addDefinition(defnname, defn, gmaps);
+	//? see comment in typecheck/functions.cpp about this.
+	//* note -- for enums specifically we just check whether the generics are empty.
+	//* we don't have a way of getting the true fir::Type without typechecking the enum members.
+	if(this->generics.empty()) fs->stree->addDefinition(defnname, defn, gmaps);
+	// else                                    fs->stree->unresolvedGenericDefs[defnname].push_back(this);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);

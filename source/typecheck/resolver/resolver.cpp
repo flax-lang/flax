@@ -103,9 +103,10 @@ namespace resolver
 
 						// do an inference -- with the arguments that we have.
 						//!!!! not done !!!!
-						error("!!");
-						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ 0,
-							/* type_infer: */ fn->type, /* isFnCall: */ true, &infer_args, false);
+						// error("!!");
+						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ nullptr,
+							/* type_infer: */ nullptr, /* isFnCall: */ true, &infer_args, /* fillPlacholders: */ false,
+							/* problem_infer: */ fn->type);
 
 						if(!res.isDefn())
 						{
