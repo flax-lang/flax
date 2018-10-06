@@ -73,7 +73,7 @@ namespace sst
 
 		std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing,
 			const TypeParamMap_t& _gmaps, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args,
-			bool fillplaceholders);
+			bool fillplaceholders, fir::Type* problem_infer = 0);
 
 
 		namespace internal
@@ -128,7 +128,7 @@ namespace sst
 
 			std::pair<Solution_t, SimpleError> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
 				const ProblemSpace_t& problems, const std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial,
-				fir::Type* return_infer, fir::Type*, bool isFnCall, std::unordered_map<std::string, size_t>* origParamOrder);
+				fir::Type* return_infer, fir::Type*, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder);
 		}
 	}
 }
