@@ -441,7 +441,7 @@ namespace sst
 
 		for(auto otherdef : defs)
 		{
-			if(/* !otherdef->type->containsPlaceholders() &&  */conflictCheckCallback(this, otherdef))
+			if(!otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
 			{
 				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 

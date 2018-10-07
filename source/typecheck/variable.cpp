@@ -86,6 +86,23 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 
+			if(infer && def->type->containsPlaceholders())
+			{
+				auto fd = dcast(sst::FunctionDefn, def);
+				iceAssert(fd);
+
+				std::vector<FnCallArgument> infer_args;
+				auto [ res, soln ] = sst::poly::attemptToInstantiatePolymorph(fs, fd->original, { }, /* return_infer: */ nullptr,
+					/* type_infer: */ infer, /* isFnCall: */ false, &infer_args, /* fillPlacholders: */ false,
+					/* problem_infer: */ def->type);
+
+				if(res.isError())
+					return TCResult(res);
+
+				else
+					return returnResult(res.defn(), implicit);
+			}
+
 			return returnResult(def, implicit);
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)

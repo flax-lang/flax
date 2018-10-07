@@ -18,15 +18,18 @@ namespace sst
 {
 	using Param = FunctionDecl::Param;
 
-	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, const std::vector<Param>& args,
+	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
-		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<Param>> { return { c, args }; });
-		return resolver::resolveFunctionCallFromCandidates(this, this->loc(), cds, gmaps, allowImplicitSelf);
+		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
+		auto [ ret, new_args ] = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cds, gmaps, allowImplicitSelf, nullptr);
+
+		*args = new_args;
+		return ret;
 	}
 
-	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps, bool travUp,
-		fir::Type* inferredRetType)
+	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps, bool travUp,
+		fir::Type* return_infer)
 	{
 		StateTree* tree = this->stree;
 
@@ -51,15 +54,15 @@ namespace sst
 			{
 				auto defs = tree->getDefinitionsWithName(name);
 				for(auto d : defs)
-					fns.push_back({ d, arguments, poly::Solution_t() });
+					fns.push_back({ d, *arguments, poly::Solution_t() });
 			}
 
 			if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(name); gdefs.size() > 0)
 			{
 				didGeneric = true;
-				auto argcopy = arguments;
+				auto argcopy = *arguments;
 
-				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, /* return_infer: */ inferredRetType,
+				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, /* return_infer: */ return_infer,
 					/* type_infer: */ 0, /* isFnCall: */ true, &argcopy);
 
 				for(const auto& pot : pots)
@@ -98,10 +101,11 @@ namespace sst
 		}
 
 
-		std::vector<std::pair<sst::Defn*, std::vector<Param>>> cands;
+		std::vector<std::pair<sst::Defn*, std::vector<FnCallArgument>>> cands;
 		for(const auto& [ def, args, soln ] : fns)
 		{
-			auto ts = util::map(args, [](auto p) -> auto { return Param(p); });
+			auto ts = args; // copy it.
+
 			if(auto fn = dcast(FunctionDecl, def))
 			{
 				cands.push_back({ fn, ts });
@@ -129,14 +133,12 @@ namespace sst
 			}
 		}
 
-		auto res = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cands, gmaps, travUp);
+		auto [ res, new_args ] = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cands, gmaps, travUp, return_infer);
 		if(res.isDefn())
 		{
 			auto ret = res.defn();
-			auto it = std::find_if(fns.begin(), fns.end(), [&ret](const auto& p) -> bool { return std::get<0>(p) == ret; });
-			iceAssert(it != fns.end());
+			*arguments = new_args;
 
-			arguments = std::get<1>(*it);
 			return res;
 		}
 		else
@@ -148,7 +150,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<Param>& arguments,
+	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FnCallArgument>& arguments,
 		const TypeParamMap_t& gmaps)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
@@ -165,10 +167,17 @@ namespace sst
 				}
 			}
 
-
+			auto copy = arguments;
 			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
-			}), arguments, gmaps, true);
+			}), &copy, gmaps, true);
+
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
+
+			// if(copy != arguments)
+			// 	error("args changed for constructor call -- fixme!!!");
 
 			if(cand.isError())
 			{
@@ -186,7 +195,10 @@ namespace sst
 			for(auto f : str->fields)
 				fieldNames.insert(f->id.name);
 
-			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, arguments);
+			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, util::map(arguments, [](auto fca) -> auto {
+				return Param(fca);
+			}));
+
 			if(err.second.hasErrors())
 				return TCResult(err.second);
 
@@ -217,7 +229,10 @@ namespace sst
 				target.push_back(Param("", uvl, unt->getVariant(name)->getInteriorType()));
 			}
 
-			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, arguments, false);
+			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(arguments, [](auto fca) -> auto {
+				return Param(fca);
+			}), false);
+
 			if(errs.hasErrors() || dist == -1)
 			{
 				errs.set(SimpleError::make(this->loc(), "Mismatched types in construction of variant '%s' of union '%s'", name,

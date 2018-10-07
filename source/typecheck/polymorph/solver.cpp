@@ -46,9 +46,6 @@ namespace sst
 				if(auto _gt = soln->substitute(gt); _gt != gt)
 					gt = _gt;
 
-				bool ttpoly = tt->isPolyPlaceholderType();
-				bool gtpoly = gt->isPolyPlaceholderType();
-
 				// check what kind of monster we're dealing with.
 				if(tt->isPolyPlaceholderType())
 				{
@@ -57,7 +54,7 @@ namespace sst
 					if(auto ltt = soln->getSolution(ptt->getName()); ltt != 0)
 					{
 						// check for conflict.
-						if(!ltt->isPolyPlaceholderType() && !gtpoly)
+						if(!ltt->isPolyPlaceholderType() && !gt->isPolyPlaceholderType())
 						{
 							if(ltt->isConstantNumberType() || gt->isConstantNumberType())
 							{
@@ -78,17 +75,17 @@ namespace sst
 								}
 							}
 						}
-						else if(ltt->isPolyPlaceholderType() && !gtpoly)
+						else if(ltt->isPolyPlaceholderType() && !gt->isPolyPlaceholderType())
 						{
 							soln->addSubstitution(ltt, gt);
 						}
-						else if(!ltt->isPolyPlaceholderType() && gtpoly)
+						else if(!ltt->isPolyPlaceholderType() && gt->isPolyPlaceholderType())
 						{
 							soln->addSubstitution(gt, ltt);
 						}
-						else if(ltt->isPolyPlaceholderType() && gtpoly)
+						else if(ltt->isPolyPlaceholderType() && gt->isPolyPlaceholderType())
 						{
-							error("what???? '%s' and '%s' are both poly??", ltt->str(), gt);
+							warn("what???? '%s' and '%s' are both poly??", ltt->str(), gt);
 						}
 					}
 					else
