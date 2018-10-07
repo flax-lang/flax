@@ -79,6 +79,16 @@ namespace fir
 			return (typeCache[name] = new EnumType(name, caseType));
 	}
 
+	EnumType* EnumType::getEmpty()
+	{
+		static EnumType* empty = 0;
+
+		if(!empty)
+			empty = get(Identifier("", IdKind::Name), Type::getVoid());
+
+		return empty;
+	}
+
 	fir::Type* EnumType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())

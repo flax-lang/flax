@@ -22,6 +22,8 @@ import "libc" as _
 // }
 
 
+import "tests/linkedlist"
+
 @entry fn main()
 {
 	// do {
@@ -35,6 +37,7 @@ import "libc" as _
 	// }
 
 
+	test_linkedlist.doLinkedListTest()
 
 
 
@@ -46,15 +49,14 @@ import "libc" as _
 
 
 
+	// // some normal FP stuff
+	// fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
+	// {
+	// 	var ret: [U]
+	// 	for it in arr => ret.append(fun(it))
 
-	// some normal FP stuff
-	fn map<T, U>(arr: [T:], fun: fn(T) -> U) -> [U]
-	{
-		var ret: [U]
-		for it in arr => ret.append(fun(it))
-
-		return ret
-	}
+	// 	return ret
+	// }
 
 	// do {
 	// 	printf("set 1:")
@@ -78,16 +80,16 @@ import "libc" as _
 	// 	printf("\n")
 	// }
 
-	do {
-		printf("set 3:")
+	// do {
+	// 	printf("set 3:")
 
-		fn square<A, B>(a: A) -> B => (a * a)
+	// 	fn square<A, B>(a: A) -> B => (a * a)
 
-		let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
-		for it in new { printf(" %.2f", it) }
+	// 	let new: [f64] = map([ 7.3, 8.7, 9.1, 10.4, 11.6 ], square)
+	// 	for it in new { printf(" %.2f", it) }
 
-		printf("\n")
-	}
+	// 	printf("\n")
+	// }
 
 	// do {
 	// 	fn gincr<A>(x: A) -> A => x + 1
