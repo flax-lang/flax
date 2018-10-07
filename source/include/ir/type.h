@@ -742,6 +742,7 @@ namespace fir
 		// static funcs
 		public:
 		static EnumType* get(const Identifier& name, Type* caseType);
+		static EnumType* getEmpty();
 	};
 
 

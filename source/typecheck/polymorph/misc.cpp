@@ -205,7 +205,12 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 
 			for(const auto& gv : this->genericVersions)
 			{
-				if(!gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
+				//* note!! Defn::type can be null for enums -- we need to find a way to prevent this!!
+				// TODO: prevent this!!
+				// TODO: prevent this!!
+				// TODO: prevent this!!
+				// TODO: prevent this!!
+				if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
 					return { true, gv.first };
 			}
 

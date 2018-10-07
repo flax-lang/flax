@@ -24,8 +24,8 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return TCResult::getParametric();
-	else if(ret)    return TCResult(ret);
+	/* if(!success)    return TCResult::getParametric();
+	else  */if(ret)    return TCResult(ret);
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 

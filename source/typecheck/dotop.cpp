@@ -307,6 +307,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				// TODO: investigate for methods!!
 				// TODO: investigate for methods!!
 				// if(meths) ts->insert(ts->begin(), Param(str->type->getMutablePointerTo()));
+				if(meths)
+				{
+					ts->insert(ts->begin(), FnCallArgument(fc->loc, "self", new sst::TypeExpr(fc->loc, str->type->getMutablePointerTo()), nullptr));
+				}
 
 				return fs->resolveFunctionCallFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
