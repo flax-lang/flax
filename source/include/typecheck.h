@@ -209,12 +209,12 @@ namespace sst
 		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
 
-		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps,
+		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
 			bool traverseUp, fir::Type* inferredRetType);
-		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, const std::vector<FunctionDecl::Param>& arguments, const TypeParamMap_t& gmaps,
+		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
 			bool allowImplicitSelf);
 
-		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FunctionDecl::Param>& arguments,
+		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FnCallArgument>& arguments,
 			const TypeParamMap_t& gmaps);
 	};
 

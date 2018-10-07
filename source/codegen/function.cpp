@@ -12,6 +12,9 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	if(this->type->containsPlaceholders())
+		return CGResult(0);
+
 	std::vector<fir::Type*> ptypes;
 	for(auto p : this->params)
 		ptypes.push_back(p.type);

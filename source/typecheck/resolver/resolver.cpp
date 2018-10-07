@@ -56,30 +56,43 @@ namespace resolver
 
 
 
-	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<std::pair<Defn*, std::vector<Param>>>& cands,
-		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
+	std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
+		const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& _cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
+		fir::Type* return_infer)
 	{
-		if(cands.empty()) return TCResult(BareError("no candidates"));
-
-		using Param = FunctionDefn::Param;
-		iceAssert(cands.size() > 0);
-
+		if(_cands.empty())
+			return { TCResult(BareError("no candidates")), { } };
 
 		int bestDist = INT_MAX;
 		std::map<Defn*, SpanError> fails;
-		std::vector<std::pair<Defn*, int>> finals;
+		std::vector<std::tuple<Defn*, std::vector<FnCallArgument>, int>> finals;
 
-		for(const auto& [ cand, arguments ] : cands)
+		auto cands = _cands;
+
+		for(const auto& [ _cand, _args ] : cands)
 		{
 			int dist = -1;
+			Defn* curcandidate = _cand;
+			std::vector<FnCallArgument> replacementArgs = _args;
 
-			if(auto fn = dcast(FunctionDecl, cand))
+			if(auto fn = dcast(FunctionDecl, curcandidate))
 			{
 				// make a copy, i guess.
-				auto args = arguments;
 
-				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
-					args.insert(args.begin(), Param(def->parentTypeForMethod->getPointerTo()));
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+				// TODO: investigate for methods!!!!!!
+
+				// auto args = replacementArgs;
+				// if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
+				// 	args.insert(args.begin(), FnCallArgument(def->loc, "self", def->parentTypeForMethod->getPointerTo()));
+
+
 
 				// check for placeholders -- means that we should attempt to infer the type of the parent if its a static method.
 				//* there are some assumptions we can make -- primarily that this will always be a static method of a type.
@@ -97,65 +110,65 @@ namespace resolver
 						iceAssert(fd);
 						iceAssert(fd->original);
 
-						auto infer_args = util::map(args, [](const Param& e) -> FnCallArgument {
-							return FnCallArgument(e.loc, e.name, new sst::TypeExpr(e.loc, e.type), 0);
-						});
-
 						// do an inference -- with the arguments that we have.
-						//!!!! not done !!!!
-						// error("!!");
-						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ nullptr,
-							/* type_infer: */ nullptr, /* isFnCall: */ true, &infer_args, /* fillPlacholders: */ false,
+						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ return_infer,
+							/* type_infer: */ nullptr, /* isFnCall: */ true, &replacementArgs, /* fillPlacholders: */ false,
 							/* problem_infer: */ fn->type);
 
 						if(!res.isDefn())
 						{
-							iceAssert(soln.distance == -1);
 							fails[fn] = SpanError().append(res.error());
 							dist = -1;
 						}
 						else
 						{
+							curcandidate = res.defn();
 							std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, SpanError());
 						}
 					}
 				}
 				else
 				{
-					std::tie(dist, fails[fn]) = computeOverloadDistance(fn->loc, fn->params, args, fn->isVarArg);
+					std::tie(dist, fails[fn]) = computeOverloadDistance(fn->loc, fn->params, util::map(replacementArgs, [](auto p) -> auto {
+						return Param(p);
+					}), fn->isVarArg);
 				}
 			}
-			else if(auto vr = dcast(VarDefn, cand))
+			else if(auto vr = dcast(VarDefn, curcandidate))
 			{
 				iceAssert(vr->type->isFunctionType());
 				auto ft = vr->type->toFunctionType();
 
 				// check if have any names
-				for(auto p : arguments)
+				for(auto p : replacementArgs)
 				{
 					if(p.name != "")
 					{
-						return TCResult(SimpleError(p.loc, "Function values cannot be called with named arguments")
+						return { TCResult(SimpleError(p.loc, "Function values cannot be called with named arguments")
 							.append(SimpleError(vr->loc, strprintf("'%s' was defined here:", vr->id.name)))
-						);
+						), { } };
 					}
 				}
 
 				auto prms = ft->getArgumentTypes();
-				std::tie(dist, fails[vr]) = computeOverloadDistance(cand->loc, util::map(prms, [](fir::Type* t) -> auto {
+				std::tie(dist, fails[vr]) = computeOverloadDistance(curcandidate->loc, util::map(prms, [](fir::Type* t) -> auto {
 					return Param(t);
-				}), arguments, false);
+				}), util::map(replacementArgs, [](auto p) -> auto {
+					return Param(p);
+				}), false);
 			}
 
 			if(dist == -1)
 				continue;
 
 			else if(dist < bestDist)
-				finals.clear(), finals.push_back({ cand, dist }), bestDist = dist;
+				finals.clear(), finals.push_back({ curcandidate, replacementArgs, dist }), bestDist = dist;
 
 			else if(dist == bestDist)
-				finals.push_back({ cand, dist });
+				finals.push_back({ curcandidate, replacementArgs, dist });
 		}
+
+
 
 		if(finals.empty())
 		{
@@ -170,7 +183,7 @@ namespace resolver
 			for(auto f : fails)
 				errs.addCand(f.first, f.second);
 
-			return TCResult(errs);
+			return { TCResult(errs), { } };
 		}
 		else if(finals.size() > 1)
 		{
@@ -179,10 +192,11 @@ namespace resolver
 			bool virt = true;
 			fir::ClassType* self = 0;
 
-			Defn* ret = finals[0].first;
+			Defn* ret = std::get<0>(finals[0]);
+
 			for(auto def : finals)
 			{
-				if(auto fd = dcast(sst::FunctionDefn, def.first); fd && fd->isVirtual)
+				if(auto fd = dcast(sst::FunctionDefn, std::get<0>(def)); fd && fd->isVirtual)
 				{
 					iceAssert(fd->parentTypeForMethod);
 					iceAssert(fd->parentTypeForMethod->isClassType());
@@ -215,7 +229,7 @@ namespace resolver
 
 			if(virt)
 			{
-				return TCResult(ret);
+				return { TCResult(ret), std::get<1>(finals[0]) };
 			}
 			else
 			{
@@ -223,14 +237,17 @@ namespace resolver
 					cands[0].first->id.name, finals.size()));
 
 				for(auto f : finals)
-					err.append(SimpleError(f.first->loc, strprintf("Possible target (overload distance %d):", f.second), MsgType::Note));
+				{
+					err.append(SimpleError(std::get<0>(f)->loc, strprintf("Possible target (overload distance %d):", std::get<2>(f)),
+						MsgType::Note));
+				}
 
-				return TCResult(err);
+				return { TCResult(err), { } };
 			}
 		}
 		else
 		{
-			return TCResult(finals[0].first);
+			return { TCResult(std::get<0>(finals[0])), std::get<1>(finals[0]) };
 		}
 	}
 

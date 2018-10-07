@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "polymorph.h"
+
 #include "ir/type.h"
 
 TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
@@ -67,8 +69,8 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	if(!success)    return TCResult::getParametric();
-	else if(ret)    return TCResult(ret);
+	/* if(!success)    return TCResult::getParametric();
+	else  */if(ret)    return TCResult(ret);
 
 
 	using Param = sst::FunctionDefn::Param;
@@ -84,14 +86,18 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		ptys.push_back(p.type);
 	}
 
+	int polyses = sst::poly::internal::getNextSessionId();
 	for(auto t : this->args)
 	{
-		auto p = Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type));
+		// auto p = Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type));
+		auto p = Param(t.name, t.loc, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
 
-	fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
+	// fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
+
+	fir::Type* retty = sst::poly::internal::convertPtsType(fs, this->generics, this->returnType, polyses);
 	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
 
 	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
@@ -155,11 +161,11 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(conflicts)
 		error(this, "conflicting");
 
-	if(!defn->type->containsPlaceholders())
+	// if(!defn->type->containsPlaceholders())
 	{
 		fs->stree->addDefinition(this->name, defn, gmaps);
 	}
-	else
+	// else
 	{
 		// sometimes we might not have added ourselves previously, because 'checkForExistingDefinitions' relies on
 		// this->generics being non-empty. but we know better once we generate the defn -- if we have placeholders,

@@ -49,9 +49,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		using Param = sst::FunctionDecl::Param;
 
 		auto arguments = sst::resolver::misc::typecheckCallArguments(fs, this->args);
-		auto constructor = fs->resolveConstructorCall(cdf, util::map(arguments, [](FnCallArgument a) -> Param {
-			return Param(a);
-		}), { });
+		auto constructor = fs->resolveConstructorCall(cdf,  arguments, { });
 
 		ret->constructor = constructor.defn();
 		ret->arguments = arguments;

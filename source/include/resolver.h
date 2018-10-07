@@ -24,8 +24,9 @@ namespace sst
 		std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
 			const std::vector<FunctionDecl::Param>& _args, bool cvararg);
 
-		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<std::pair<Defn*,
-			std::vector<FunctionDecl::Param>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf);
+		std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
+			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
+			fir::Type* return_infer);
 
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& arguments);

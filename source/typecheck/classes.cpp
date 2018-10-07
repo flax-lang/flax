@@ -60,10 +60,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		//? see comment in typecheck/functions.cpp about this.
-		if(!defn->type->containsPlaceholders()) fs->stree->addDefinition(this->name, defn, gmaps);
-		// else                                    fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-
+		fs->stree->addDefinition(this->name, defn, gmaps);
 		fs->typeDefnMap[cls] = defn;
 	}
 
@@ -369,9 +366,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 		auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
 
-		auto constr = fs->resolveConstructorCall(call->classty, util::map(baseargs,
-			[](FnCallArgument a) -> auto { return sst::FunctionDecl::Param(a);
-		}), { });
+		auto constr = fs->resolveConstructorCall(call->classty, baseargs, { });
 
 		call->arguments = baseargs;
 		call->target = dcast(sst::FunctionDefn, constr.defn());

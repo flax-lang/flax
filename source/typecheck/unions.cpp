@@ -28,9 +28,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
-	//? see comment in typecheck/functions.cpp about this.
-	if(!defn->type->containsPlaceholders()) fs->stree->addDefinition(defnname, defn, gmaps);
-	// else                                    fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+	fs->stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 
