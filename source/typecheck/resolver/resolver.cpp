@@ -88,9 +88,10 @@ namespace resolver
 				// TODO: investigate for methods!!!!!!
 				// TODO: investigate for methods!!!!!!
 
-				// auto args = replacementArgs;
-				// if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
-				// 	args.insert(args.begin(), FnCallArgument(def->loc, "self", def->parentTypeForMethod->getPointerTo()));
+				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
+				{
+					replacementArgs.insert(replacementArgs.begin(), FnCallArgument(def->loc, "self", new sst::TypeExpr(def->loc, def->parentTypeForMethod->getPointerTo()), nullptr));
+				}
 
 
 
