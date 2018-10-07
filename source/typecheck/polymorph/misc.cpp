@@ -54,11 +54,11 @@ namespace sst
 
 				if(ty->isNamedType())
 				{
-					if(problems.find(ty->toNamedType()->name) != problems.end())
+					fty = fs->convertParserTypeToFIR(ty, true);
+					if(!fty && problems.find(ty->toNamedType()->name) != problems.end())
 						fty = fir::PolyPlaceholderType::get(ty->toNamedType()->name, polysession);
 
-					else
-						fty = fs->convertParserTypeToFIR(ty, false);
+					if(!fty) error("failed to find type '%s'", input->str());
 				}
 				else if(ty->isTupleType())
 				{
@@ -171,7 +171,7 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 	if(this->generics.size() > 0 && gmaps.empty())
 	{
 		if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
-			fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+			; // fs->stree->unresolvedGenericDefs[this->name].push_back(this);
 
 		return { false, 0 };
 	}
@@ -205,7 +205,7 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 
 			for(const auto& gv : this->genericVersions)
 			{
-				if(doRootsMatch(gv.second, fs->getGenericContextStack()))
+				if(!gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
 					return { true, gv.first };
 			}
 

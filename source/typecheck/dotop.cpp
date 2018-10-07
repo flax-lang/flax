@@ -292,14 +292,21 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
-			std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param(e); });
+			// std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param(e); });
 
-			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<Param> ts, bool meths) -> sst::Defn* {
+			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
 
 				//! note: here we always presume it's mutable, since:
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
-				if(meths) ts.insert(ts.begin(), Param(str->type->getMutablePointerTo()));
+
+				// TODO: investigate for methods!!
+				// TODO: investigate for methods!!
+				// TODO: investigate for methods!!
+				// TODO: investigate for methods!!
+				// TODO: investigate for methods!!
+				// TODO: investigate for methods!!
+				// if(meths) ts->insert(ts->begin(), Param(str->type->getMutablePointerTo()));
 
 				return fs->resolveFunctionCallFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
@@ -344,7 +351,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			if(mcands.empty() && vcands.empty())
 				error(fc, "No method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
 
-			sst::Defn* resolved = search(mcands, ts, true);
+			sst::Defn* resolved = search(mcands, &arguments, true);
 
 
 			sst::Expr* finalCall = 0;
@@ -360,7 +367,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			}
 			else
 			{
-				resolved = search(vcands, ts, false);
+				resolved = search(vcands, &arguments, false);
 
 				// else
 				iceAssert(resolved);

@@ -148,7 +148,7 @@ namespace poly
 		// iceAssert(!thing->generics.empty());
 
 		// try to see if we already have a generic version.
-		if(auto [ found, def ] = thing->checkForExistingDeclaration(fs, mappings); thing && def)
+		if(auto [ found, def ] = thing->checkForExistingDeclaration(fs, mappings); found && def)
 			return TCResult(def);
 
 
