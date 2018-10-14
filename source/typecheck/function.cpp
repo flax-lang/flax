@@ -10,58 +10,6 @@
 
 #include "ir/type.h"
 
-TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
-{
-	fs->pushLoc(this);
-	defer(fs->popLoc());
-
-	auto tcr = this->generateDeclaration(fs, infer, gmaps);
-	if(tcr.isParametric())  return tcr;
-	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
-
-	auto defn = dcast(sst::FunctionDefn, tcr.defn());
-	iceAssert(defn);
-
-	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
-		return TCResult(defn);
-
-	// if we have placeholders, don't bother generating anything.
-	if(!defn->type->containsPlaceholders())
-	{
-		fs->enterFunctionBody(defn);
-		fs->pushTree(defn->id.mangledName());
-		{
-			// add the arguments to the tree
-
-			for(auto arg : defn->params)
-			{
-				auto vd = new sst::ArgumentDefn(arg.loc);
-				vd->id = Identifier(arg.name, IdKind::Name);
-				vd->id.scope = fs->getCurrentScope();
-
-				vd->type = arg.type;
-
-				fs->stree->addDefinition(arg.name, vd);
-
-				defn->arguments.push_back(vd);
-			}
-
-			this->body->isFunctionBody = true;
-			defn->body = dcast(sst::Block, this->body->typecheck(fs, defn->returnType).stmt());
-			defn->body->isSingleExpr = this->body->isArrow;
-
-			iceAssert(defn->body);
-		}
-		fs->popTree();
-		fs->leaveFunctionBody();
-
-		// ok, do the check.
-		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
-	}
-
-	this->finishedTypechecking.insert(defn);
-	return TCResult(defn);
-}
 
 TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
@@ -69,22 +17,12 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defer(fs->popLoc());
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	/* if(!success)    return TCResult::getParametric();
-	else  */if(ret)    return TCResult(ret);
-
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 	using Param = sst::FunctionDefn::Param;
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
-
-	if(infer)
-	{
-		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-		auto p = Param("self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
-
-		ps.push_back(p);
-		ptys.push_back(p.type);
-	}
 
 	int polyses = sst::poly::internal::getNextSessionId();
 	for(auto t : this->args)
@@ -94,8 +32,6 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
-
-	// fir::Type* retty = fs->convertParserTypeToFIR(this->returnType);
 
 	fir::Type* retty = sst::poly::internal::convertPtsType(fs, this->generics, this->returnType, polyses);
 	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
@@ -161,26 +97,66 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(conflicts)
 		error(this, "conflicting");
 
-	// if(!defn->type->containsPlaceholders())
-	{
+	if(!defn->type->containsPlaceholders())
 		fs->stree->addDefinition(this->name, defn, gmaps);
-	}
-	// else
-	{
-		// sometimes we might not have added ourselves previously, because 'checkForExistingDefinitions' relies on
-		// this->generics being non-empty. but we know better once we generate the defn -- if we have placeholders,
-		// then we're definitely still unresolved.
-		// - zhiayang
-		// - 07/10/18/0026
-
-		// fs->stree->unresolvedGenericDefs[this->name].push_back(this);
-	}
 
 	// add to our versions.
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
 }
 
+TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto tcr = this->generateDeclaration(fs, infer, gmaps);
+	if(tcr.isParametric())  return tcr;
+	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
+
+	auto defn = dcast(sst::FunctionDefn, tcr.defn());
+	iceAssert(defn);
+
+	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
+		return TCResult(defn);
+
+	// if we have placeholders, don't bother generating anything.
+	if(!defn->type->containsPlaceholders())
+	{
+		fs->enterFunctionBody(defn);
+		fs->pushTree(defn->id.mangledName());
+		{
+			// add the arguments to the tree
+
+			for(auto arg : defn->params)
+			{
+				auto vd = new sst::ArgumentDefn(arg.loc);
+				vd->id = Identifier(arg.name, IdKind::Name);
+				vd->id.scope = fs->getCurrentScope();
+
+				vd->type = arg.type;
+
+				fs->stree->addDefinition(arg.name, vd);
+
+				defn->arguments.push_back(vd);
+			}
+
+			this->body->isFunctionBody = true;
+			defn->body = dcast(sst::Block, this->body->typecheck(fs, defn->returnType).stmt());
+			defn->body->isSingleExpr = this->body->isArrow;
+
+			iceAssert(defn->body);
+		}
+		fs->popTree();
+		fs->leaveFunctionBody();
+
+		// ok, do the check.
+		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
+	}
+
+	this->finishedTypechecking.insert(defn);
+	return TCResult(defn);
+}
 
 
 TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inferred)

@@ -385,6 +385,14 @@ namespace sst
 		bool isImplicitField = false;
 	};
 
+	struct SelfVarRef : Expr
+	{
+		SelfVarRef(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "self"; }
+		~SelfVarRef() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
+
 	struct ScopeExpr : Expr
 	{
 		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<SCOPE EXPRESSION>"; }

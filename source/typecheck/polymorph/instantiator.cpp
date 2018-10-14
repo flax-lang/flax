@@ -15,10 +15,15 @@ namespace poly
 {
 	namespace internal
 	{
-		static SimpleError complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing, const std::vector<std::string>& missing)
+		static SimpleError complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing,
+			const std::vector<fir::PolyPlaceholderType*>& missing)
 		{
-			auto mstr = util::listToEnglish(missing);
-			return SimpleError::make(l, "Type %s %s could not be inferred", util::plural("parameter", missing.size()), mstr);
+			auto strs = util::map(missing, [](fir::PolyPlaceholderType* p) -> std::string {
+				return p->str().substr(1);
+			});
+
+			auto mstr = util::listToEnglish(strs);
+			return SimpleError::make(l, "Type %s %s could not be inferred", util::plural("parameter", strs.size()), mstr);
 		}
 
 		std::vector<std::string> getMissingSolutions(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
@@ -80,7 +85,8 @@ namespace poly
 		{
 			if(isFnCall)
 			{
-				if(auto missing = internal::getMissingSolutions(thing->generics, soln.solutions, /* allowPlaceholders: */ false); missing.size() > 0)
+				// if(auto missing = internal::getMissingSolutions(thing->generics, soln.solutions, /* allowPlaceholders: */ false); missing.size() > 0)
+				if(auto missing = d.defn()->type->getContainedPlaceholders(); missing.size() > 0)
 				{
 					auto se = SpanError().set(internal::complainAboutMissingSolutions(fs->loc(), thing, missing));
 					se.top.loc = thing->loc;
@@ -186,32 +192,17 @@ namespace poly
 			fs->addGenericMapping(map.first, map.second);
 		}
 
-
-		// check if we provided all the required mappings.
+		fir::Type* self_infer = 0;
+		if(thing->parentType)
 		{
-			// // TODO: make an elegant early-out for this situation?
-			// if(auto missing = internal::getMissingSolutions(thing->generics, mappings, /* allowPlaceholders: */ true); missing.size() > 0)
-			// {
-			// 	return TCResult(internal::complainAboutMissingSolutions(fs->loc(), thing, missing)
-			// 		.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
-			// 	);
-			// }
+			// instantiate that as well, I guess.
+			auto res = fullyInstantiatePolymorph(fs, thing->parentType, mappings);
+			if(res.isError()) return TCResult(res);
 
-			// // TODO: pretty lame, but look for things that don't exist.
-			// for(const auto& [ name, ty ] : mappings)
-			// {
-			// 	(void) ty;
-			// 	if(thing->generics.find(name) == thing->generics.end())
-			// 	{
-			// 		return TCResult(
-			// 			SimpleError::make(fs->loc(), "Parametric entity '%s' does not have an argument '%s'", thing->name, name)
-			// 			.append(SimpleError::make(MsgType::Note, thing, "'%s' was defined here:", thing->name))
-			// 		);
-			// 	}
-			// }
+			self_infer = res.defn()->type;
 		}
 
-		auto ret = dcast(Defn, thing->typecheck(fs, 0, mappings).defn());
+		auto ret = dcast(Defn, thing->typecheck(fs, self_infer, mappings).defn());
 		iceAssert(ret);
 
 		return TCResult(ret);

@@ -16,6 +16,9 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		return CGResult(0);
 
 	std::vector<fir::Type*> ptypes;
+	if(this->parentTypeForMethod)
+		ptypes.push_back(this->isMutating ? this->parentTypeForMethod->getMutablePointerTo() : this->parentTypeForMethod->getPointerTo());
+
 	for(auto p : this->params)
 		ptypes.push_back(p.type);
 
@@ -29,8 +32,14 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		this->visibility == VisibilityLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
 	// manually set the names, I guess
-	for(size_t i = 0; i < this->params.size(); i++)
-		fn->getArguments()[i]->setName(this->params[i].name);
+	{
+		size_t x = 0;
+		if(this->parentTypeForMethod)
+			fn->getArguments()[0]->setName("self"), x = 1;
+
+		for(size_t i = 0; i < this->params.size(); i++)
+			fn->getArguments()[i + x]->setName(this->params[i].name);
+	}
 
 
 

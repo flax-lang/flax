@@ -146,7 +146,10 @@ namespace sst
 
 			// for now just do this.
 			if(target.size() != given.size() && !fvararg)
-				return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d were provided", target.size(), given.size());
+			{
+				return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d %s provided", target.size(), given.size(),
+					given.size() == 1 ? "was" : "were");
+			}
 
 			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0), given.size());
 

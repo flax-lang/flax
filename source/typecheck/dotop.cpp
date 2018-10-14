@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "gluecode.h"
+#include "polymorph.h"
 
 #include "ir/type.h"
 
@@ -300,18 +301,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 
-				// TODO: investigate for methods!!
-				// TODO: investigate for methods!!
-				// TODO: investigate for methods!!
-				// TODO: investigate for methods!!
-				// TODO: investigate for methods!!
-				// TODO: investigate for methods!!
-				// if(meths) ts->insert(ts->begin(), Param(str->type->getMutablePointerTo()));
-				if(meths)
-				{
-					ts->insert(ts->begin(), FnCallArgument(fc->loc, "self", new sst::TypeExpr(fc->loc, str->type->getMutablePointerTo()), nullptr));
-				}
-
 				return fs->resolveFunctionCallFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
 
@@ -602,21 +591,21 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				return expr;
 			}
 		}
-		else if(dcast(sst::TypeDefn, def))
+		else if(auto typdef = dcast(sst::TypeDefn, def))
 		{
-			if(auto cls = dcast(sst::ClassDefn, def))
+			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
 			{
 				auto oldscope = fs->getCurrentScope();
-				auto newscope = cls->id.scope;
-				newscope.push_back(cls->id.name);
+				auto newscope = typdef->id.scope;
+				newscope.push_back(typdef->id.name);
 
-				return checkRhs(fs, dot, oldscope, newscope, infer);
-			}
-			else if(auto str = dcast(sst::StructDefn, def))
-			{
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = str->id.scope;
-				newscope.push_back(str->id.name);
+				fs->pushGenericContext();
+				defer(fs->popGenericContext());
+				{
+					int pses = sst::poly::internal::getNextSessionId();
+					for(auto g : typdef->original->generics)
+						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
+				}
 
 				return checkRhs(fs, dot, oldscope, newscope, infer);
 			}

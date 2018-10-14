@@ -163,6 +163,7 @@ namespace fir
 		bool isPolyPlaceholderType();
 
 		bool containsPlaceholders();
+		std::vector<fir::PolyPlaceholderType*> getContainedPlaceholders();
 
 		size_t getBitWidth();
 
