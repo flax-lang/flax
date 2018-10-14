@@ -22,10 +22,17 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	// make all our methods be methods
+	for(auto m : this->methods)
+		m->parentType = this;
+
+	for(auto m : this->initialisers)
+		m->parentType = this;
+
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
-	/* if(!success)    return TCResult::getParametric();
-	else  */if(ret)    return TCResult(ret);
+	if(!success)    return TCResult::getParametric();
+	else if(ret)    return TCResult(ret);
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
@@ -164,8 +171,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
-			// info(decl, "inside '%s' -- %s", defn->id.str(), decl->type);
-
 			defn->methods.push_back(decl);
 
 
@@ -183,13 +188,8 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 						// note: we're passing by copy here intentionally so we can erase the first one.
 						auto compareMethods = [&fs](std::vector<sst::FunctionDecl::Param> a, std::vector<sst::FunctionDecl::Param> b) -> bool {
-							iceAssert(a.size() > 0 && b.size() > 0);
-							a.erase(a.begin());
-							b.erase(b.begin());
-
 							return fs->isDuplicateOverload(a, b);
 						};
-
 
 						if(bf->id.name == meth->id.name && compareMethods(bf->params, meth->params))
 						{
@@ -399,6 +399,7 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn->name = "init";
 	this->actualDefn->args = this->args;
 	this->actualDefn->body = this->body;
+	this->actualDefn->parentType = this->parentType;
 	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
 
 	//* note: constructors will always mutate, definitely.

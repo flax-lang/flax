@@ -348,24 +348,28 @@ namespace fir
 	}
 
 
-	static bool _containsPlaceholders(fir::Type* ty, std::unordered_set<fir::Type*>& seen)
+	static bool _containsPlaceholders(fir::Type* ty, std::unordered_set<fir::Type*>& seen, std::vector<PolyPlaceholderType*>* found)
 	{
 		if(seen.find(ty) != seen.end())
 			return false;
 
 		seen.insert(ty);
 
-		if(ty->isPolyPlaceholderType())     return true;
-		else if(ty->isPointerType())        return _containsPlaceholders(ty->getPointerElementType(), seen);
-		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen);
-		else if(ty->isArraySliceType())     return _containsPlaceholders(ty->getArrayElementType(), seen);
-		else if(ty->isDynamicArrayType())   return _containsPlaceholders(ty->getArrayElementType(), seen);
-		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen);
+		if(ty->isPolyPlaceholderType())
+		{
+			if(found) found->push_back(ty->toPolyPlaceholderType());
+			return true;
+		}
+		else if(ty->isPointerType())        return _containsPlaceholders(ty->getPointerElementType(), seen, found);
+		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen, found);
+		else if(ty->isArraySliceType())     return _containsPlaceholders(ty->getArrayElementType(), seen, found);
+		else if(ty->isDynamicArrayType())   return _containsPlaceholders(ty->getArrayElementType(), seen, found);
+		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isTupleType())
 		{
 			bool res = false;
 			for(auto t : ty->toTupleType()->getElements())
-				res |= _containsPlaceholders(t, seen);
+				res |= _containsPlaceholders(t, seen, found);
 
 			return res;
 		}
@@ -373,7 +377,7 @@ namespace fir
 		{
 			bool res = false;
 			for(auto t : ty->toClassType()->getElements())
-				res |= _containsPlaceholders(t, seen);
+				res |= _containsPlaceholders(t, seen, found);
 
 			return res;
 		}
@@ -381,7 +385,7 @@ namespace fir
 		{
 			bool res = false;
 			for(auto t : ty->toStructType()->getElements())
-				res |= _containsPlaceholders(t, seen);
+				res |= _containsPlaceholders(t, seen, found);
 
 			return res;
 		}
@@ -389,7 +393,7 @@ namespace fir
 		{
 			bool res = ty->toFunctionType()->getReturnType()->containsPlaceholders();
 			for(auto t : ty->toFunctionType()->getArgumentTypes())
-				res |= _containsPlaceholders(t, seen);
+				res |= _containsPlaceholders(t, seen, found);
 
 			return res;
 		}
@@ -404,10 +408,17 @@ namespace fir
 	bool Type::containsPlaceholders()
 	{
 		std::unordered_set<fir::Type*> seen;
-		return _containsPlaceholders(this, seen);
+		return _containsPlaceholders(this, seen, nullptr);
 	}
 
+	std::vector<PolyPlaceholderType*> Type::getContainedPlaceholders()
+	{
+		std::unordered_set<fir::Type*> seen;
+		std::vector<PolyPlaceholderType*> found;
 
+		_containsPlaceholders(this, seen, &found);
+		return found;
+	}
 
 
 

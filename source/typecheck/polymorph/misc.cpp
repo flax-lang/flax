@@ -55,7 +55,7 @@ namespace sst
 				if(ty->isNamedType())
 				{
 					fty = fs->convertParserTypeToFIR(ty, true);
-					if(!fty && problems.find(ty->toNamedType()->name) != problems.end())
+					if(!fty && (problems.find(ty->toNamedType()->name) != problems.end()) /* || fs->findGenericMapping(ty->toNamedType()->name, true) != 0 */)
 						fty = fir::PolyPlaceholderType::get(ty->toNamedType()->name, polysession);
 
 					if(!fty) error("failed to find type '%s'", input->str());
@@ -168,52 +168,53 @@ namespace sst
 //* helper method that abstracts away the common error-checking
 std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(sst::TypecheckState* fs, const TypeParamMap_t& gmaps)
 {
-	if(this->generics.size() > 0 && gmaps.empty())
+	//! ACHTUNG !
+	//* IMPORTANT *
+	/*
+		? the reason we match the *ENTIRE* generic context stack when checking for an existing definition is because of nesting.
+		* if we only checked the current map, then for methods of generic types and/or nested, non-generic types inside generic types,
+		* we'd match an existing definition even though all the generic types are probably completely different.
+
+		* so, pretty much the only way to make sure we're absolutely certain it's the same context is to compare the entire type stack.
+
+		? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
+		? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
+		? the generic types match in the stack.
+
+		* note: bug fix: what we should really be checking for is that the stored generic map is a strict child (ie. the last N elements match
+		* our stored state, while the preceding ones don't matter). (this is why we use reverse iterators for std::equal)
+	*/
+
 	{
-		if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
-			; // fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+		auto doRootsMatch = [](const std::vector<TypeParamMap_t>& expected, const std::vector<TypeParamMap_t>& given) -> bool {
+			if(given.size() < expected.size())
+				return false;
 
-		return { false, 0 };
-	}
-	else
-	{
-		//! ACHTUNG !
-		//* IMPORTANT *
-		/*
-			? the reason we match the *ENTIRE* generic context stack when checking for an existing definition is because of nesting.
-			* if we only checked the current map, then for methods of generic types and/or nested, non-generic types inside generic types,
-			* we'd match an existing definition even though all the generic types are probably completely different.
+			//* reverse iterators
+			return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
+		};
 
-			* so, pretty much the only way to make sure we're absolutely certain it's the same context is to compare the entire type stack.
-
-			? given that a given definition cannot 'move' to another scope, there cannot be circumstances where we can (by chance or otherwise)
-			? be typechecking the current definition in another, completely different context, and somehow mistake it for our own -- even if all
-			? the generic types match in the stack.
-
-			* note: bug fix: what we should really be checking for is that the stored generic map is a strict child (ie. the last N elements match
-			* our stored state, while the preceding ones don't matter). (this is why we use reverse iterators for std::equal)
-		*/
-
+		for(const auto& gv : this->genericVersions)
 		{
-			auto doRootsMatch = [](const std::vector<TypeParamMap_t>& expected, const std::vector<TypeParamMap_t>& given) -> bool {
-				if(given.size() < expected.size())
-					return false;
+			//* note!! Defn::type can be null for enums -- we need to find a way to prevent this!!
+			// TODO: prevent this!!
+			// TODO: prevent this!!
+			// TODO: prevent this!!
+			// TODO: prevent this!!
+			if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
+				return { true, gv.first };
+		}
 
-				//* reverse iterators
-				return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
-			};
 
-			for(const auto& gv : this->genericVersions)
-			{
-				//* note!! Defn::type can be null for enums -- we need to find a way to prevent this!!
-				// TODO: prevent this!!
-				// TODO: prevent this!!
-				// TODO: prevent this!!
-				// TODO: prevent this!!
-				if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
-					return { true, gv.first };
-			}
+		if(this->generics.size() > 0 && gmaps.empty())
+		{
+			if(const auto& tys = fs->stree->unresolvedGenericDefs[this->name]; std::find(tys.begin(), tys.end(), this) == tys.end())
+				fs->stree->unresolvedGenericDefs[this->name].push_back(this);
 
+			return { false, 0 };
+		}
+		else
+		{
 			//? note: if we call with an empty map, then this is just a non-generic type/function/thing. Even for such things,
 			//? the genericVersions list will have 1 entry which is just the type itself.
 			return { true, 0 };
