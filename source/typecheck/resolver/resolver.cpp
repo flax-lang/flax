@@ -77,24 +77,6 @@ namespace resolver
 
 			if(auto fn = dcast(FunctionDecl, curcandidate))
 			{
-				// make a copy, i guess.
-
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-				// TODO: investigate for methods!!!!!!
-
-				if(auto def = dcast(FunctionDefn, fn); def && def->parentTypeForMethod != 0 && allowImplicitSelf)
-				{
-					replacementArgs.insert(replacementArgs.begin(), FnCallArgument(def->loc, "self", new sst::TypeExpr(def->loc, def->parentTypeForMethod->getPointerTo()), nullptr));
-				}
-
-
-
 				// check for placeholders -- means that we should attempt to infer the type of the parent if its a static method.
 				//* there are some assumptions we can make -- primarily that this will always be a static method of a type.
 				//? (a): namespaces cannot be generic.

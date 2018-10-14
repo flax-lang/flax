@@ -55,6 +55,7 @@ namespace ast
 		Stmt* actual = 0;
 	};
 
+	struct TypeDefn;
 	struct Parameterisable : Stmt
 	{
 		Parameterisable(const Location& l) : Stmt(l) { this->readableName = "<Parameterisable>"; }
@@ -80,6 +81,9 @@ namespace ast
 
 		// kind of a hack.
 		std::unordered_set<sst::Defn*> finishedTypechecking;
+
+		// another hack-y thing
+		TypeDefn* parentType = 0;
 	};
 
 

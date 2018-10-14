@@ -30,6 +30,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(infer && infer->containsPlaceholders())
 		infer = 0;
 
+	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
+		return TCResult(new sst::SelfVarRef(this->loc, fs->getCurrentFunction()->parentTypeForMethod));
+
 	// hm.
 	sst::StateTree* tree = fs->stree;
 	while(tree)
@@ -163,6 +166,12 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		defn = new sst::VarDefn(this->loc);
 	}
+
+	// check for people being stupid.
+	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
+		return TCResult(SimpleError::make(this, "invalid redefinition of 'self' inside method body"));
+
+
 
 	iceAssert(defn);
 	defn->id = Identifier(this->name, IdKind::Name);

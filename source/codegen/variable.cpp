@@ -11,9 +11,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	// ok.
-	// add a new thing to the thing
-
 	auto checkStore = [this, cs](fir::Value* val) -> fir::Value* {
 
 		fir::Value* nv = val;
@@ -168,11 +165,25 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(value->getType() != this->type)
 		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
-	// if(!value->islorclvalue())
-	// 	warn(this, "is not lvalue???");
-
 	return CGResult(value);
 }
+
+
+
+
+
+CGResult sst::SelfVarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	iceAssert(cs->isInMethodBody());
+	return CGResult(cs->getMethodSelf());
+}
+
+
+
+
 
 
 

@@ -63,6 +63,10 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	// make all our methods be methods
+	for(auto m : this->methods)
+		m->parentType = this;
+
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
 	if(!success)    return TCResult::getParametric();
 	else if(ret)    return TCResult(ret);
