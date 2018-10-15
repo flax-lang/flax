@@ -16,8 +16,8 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		return CGResult(0);
 
 	std::vector<fir::Type*> ptypes;
-	if(this->parentTypeForMethod)
-		ptypes.push_back(this->isMutating ? this->parentTypeForMethod->getMutablePointerTo() : this->parentTypeForMethod->getPointerTo());
+	// if(this->parentTypeForMethod)
+	// 	ptypes.push_back(this->isMutating ? this->parentTypeForMethod->getMutablePointerTo() : this->parentTypeForMethod->getPointerTo());
 
 	for(auto p : this->params)
 		ptypes.push_back(p.type);
@@ -33,14 +33,9 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// manually set the names, I guess
 	{
-		size_t x = 0;
-		if(this->parentTypeForMethod)
-			fn->getArguments()[0]->setName("self"), x = 1;
-
 		for(size_t i = 0; i < this->params.size(); i++)
-			fn->getArguments()[i + x]->setName(this->params[i].name);
+			fn->getArguments()[i]->setName(this->params[i].name);
 	}
-
 
 
 	// special case for functions, to enable recursive calling:
