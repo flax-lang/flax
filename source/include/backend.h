@@ -57,6 +57,7 @@ namespace backend
 	{
 		Invalid,
 
+		None,
 		LLVM,
 		Assembly_x64,
 	};

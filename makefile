@@ -103,6 +103,10 @@ gltest: build
 build: $(OUTPUT) copylibs
 	# built
 
+build/%.flx: build
+	@$(OUTPUT) $(FLXFLAGS) -run -backend none $@
+
+
 
 copylibs: $(FLXSRC)
 	@mkdir -p $(FLXLIBLOCATION)/flaxlibs

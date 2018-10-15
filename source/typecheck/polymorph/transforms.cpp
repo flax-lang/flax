@@ -28,12 +28,12 @@ namespace poly
 		this->substitutions[x] = y;
 	}
 
-	bool Solution_t::hasSolution(const std::string& n)
+	bool Solution_t::hasSolution(const std::string& n) const
 	{
 		return this->solutions.find(n) != this->solutions.end();
 	}
 
-	fir::LocatedType Solution_t::getSolution(const std::string& n)
+	fir::LocatedType Solution_t::getSolution(const std::string& n) const
 	{
 		if(auto it = this->solutions.find(n); it != this->solutions.end())
 			return it->second;
@@ -42,7 +42,7 @@ namespace poly
 			return fir::LocatedType(0);
 	}
 
-	fir::Type* Solution_t::substitute(fir::Type* x)
+	fir::Type* Solution_t::substitute(fir::Type* x) const
 	{
 		if(auto it = this->substitutions.find(x); it != this->substitutions.end())
 			return it->second;

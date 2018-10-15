@@ -37,11 +37,11 @@ namespace sst
 			Solution_t() { }
 			explicit Solution_t(const std::unordered_map<std::string, fir::Type*>& p) : solutions(p) { }
 
-			bool hasSolution(const std::string& n);
-			fir::LocatedType getSolution(const std::string& n);
+			bool hasSolution(const std::string& n) const ;
+			fir::LocatedType getSolution(const std::string& n) const;
 			void addSolution(const std::string& x, const fir::LocatedType& y);
 
-			fir::Type* substitute(fir::Type* x);
+			fir::Type* substitute(fir::Type* x) const;
 			void resubstituteIntoSolutions();
 			void addSubstitution(fir::Type* x, fir::Type* y);
 

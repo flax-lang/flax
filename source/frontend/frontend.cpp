@@ -402,6 +402,10 @@ namespace frontend
 						{
 							frontend::_backendCodegen = BackendOption::Assembly_x64;
 						}
+						else if(str == "none")
+						{
+							frontend::_backendCodegen = BackendOption::None;
+						}
 						else
 						{
 							_error_and_exit("Error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str);

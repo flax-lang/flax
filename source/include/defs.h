@@ -82,6 +82,15 @@ std::vector<T> operator + (const T& elm, const std::vector<T>& vec)
 	return copy;
 }
 
+template <typename T>
+std::vector<T> operator + (const std::vector<T>& a, const std::vector<T>& b)
+{
+	auto ret = a;
+
+	ret.insert(ret.begin(), b.begin(), b.end());
+	return ret;
+}
+
 
 
 

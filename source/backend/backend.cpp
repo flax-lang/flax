@@ -17,6 +17,9 @@ namespace backend
 			case BackendOption::Assembly_x64:
 				return new x64Backend(cd, in, out);
 
+			case BackendOption::None:
+				return nullptr;
+
 			case BackendOption::Invalid:
 			default:
 				_error_and_exit("Invalid backend");
