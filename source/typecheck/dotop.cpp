@@ -615,7 +615,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 					for(auto g : typdef->original->generics)
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}
-
 				return checkRhs(fs, dot, oldscope, newscope, infer);
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))

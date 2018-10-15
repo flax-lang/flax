@@ -21,54 +21,22 @@ import "libc" as _
 // 	foo(30)
 // }
 
-
-import "tests/functions"
-
 @entry fn main()
 {
-	// do {
-	// 	class Foo<T>
-	// 	{
-	// 		init() { }
-	// 		static fn bar(x: T) { printf("x = %d\n", x) }
-	// 	}
+	do {
+		class Foo<T>
+		{
+			init() { }
+			static fn bar(x: T) { printf("x = %d\n", x) }
+		}
 
-	// 	Foo.bar(30)
-	// }
-
-
-	test_functions.doFunctionTest()
+		Foo.bar(30)
+	}
 }
 
 
 
 /*
-	! more more
-	! caa 14/10
-	{
-		1. the core of the problem now is still the issue that methods don't have "problems"; when we convert from a PTS type, we need
-			to know if it's a generic type or not, and we can't tell that from the method signature alone -- we kinda need the definition
-			of the parent to know...
-
-		2. we appear to have solved issue (1) -- by having the declaration generator of classes and structs set some "parentType" thing on its
-			methods, that we can use to check the problems and hence push the generic placeholders in dot-ops. Feels quite hacky.
-
-		3. current issue: too many self arguments for calling methods. we might just ignore checking the self type (because the actual dot-op would
-			already settle that) in typechecking, and just insert it once -- during codegen.
-	}
-
-	! even more
-	! caa 07/10
-	{
-		1. if we ditch the current effort entirely, look into having the ASTs add themselves into the unresolved generic defns
-			list if they have placeholders in their type.
-	}
-
-
-
-
-
-
 	! more things.
 	! caa 03/10
 	{
@@ -78,7 +46,7 @@ import "tests/functions"
 			and they're slightly cheaper when we don't use them because it's just a pointer.
 		4. pass the overall location to the polymorph solver.
 		// 5. check for variadic forwarding -- enforce the splat.
-		6. print out the solutions we found for inference on error.
+		// 6. print out the solutions we found for inference on error.
 		7. clean up FunctionDefn vs FunctionDecl
 		8. check if the solution is complete before we blindly try to re-solve everything.
 	}
@@ -89,42 +57,6 @@ import "tests/functions"
 
 
 
-
-
-
-	! slightly more updated notes
-	! caa 23/09
-	{
-		possible things:
-
-		// 1. change the generic type engine to operate on pairs of fir::Types, instead of pts::Types {
-		// 	We'd basically need to pre-resolve the pts::Types before going into the inference thingy, which might be
-		// 	a bit challenging, maybe.
-
-		// 	the pre-entry to the engine could simply match the pts::Types against the 'problemset' of the generic function,
-		// 	and create appropriate fir::PlaceholderTypes based on that information. Should be viable, but i'm not sure.
-
-		// 	Everything else should work the same, and possibly be a bit cleaner since we don't need to be confused between pts and fir??
-		// }
-
-		// 2. after that, change function call resolution to use the generic inference solver as well {
-		// 	since this would operate on resolved functions, we can omit calling the 'pre-entry' mentioned above (for generic functions)
-		// 	and just match fir::Types between the argument types and the parameter types.
-
-		// 	then, we'd have to integrate the existing system of 'scores', and return that information as well from the solver.
-		// }
-
-		3. finally, solve the original problem that we set out to solve {
-			the original problem is that we have PlaceholderTypes as parameter types for static functions, but the solver was unable to pick
-			up on that (and we don't really want it to)
-
-			after re-writing the interfaces, we can potentially omit the entire 'problemspace' thing. We already (i believe) have a method on
-			FIR types 'containsPlaceholders'. So we should be able to check for the presence of placeholders and use that to trigger the
-			recursive solver (for passing functions and such), rather than relying on a problemset.
-		}
-
-		// 4. pretty sure we never actually implemented the iterative solver -- we should probably do that.
-	}
 
 
 
