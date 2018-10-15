@@ -109,6 +109,10 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(!defn->type->containsPlaceholders())
 		fs->stree->addDefinition(this->name, defn, gmaps);
 
+	else if(fs->stree->unresolvedGenericDefs[this->name].empty())
+		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+
+
 	// add to our versions.
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
