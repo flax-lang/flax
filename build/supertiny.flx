@@ -22,7 +22,7 @@ import "libc" as _
 // }
 
 
-import "tests/arraytest"
+import "tests/functions"
 
 @entry fn main()
 {
@@ -37,7 +37,7 @@ import "tests/arraytest"
 	// }
 
 
-	test_arrays.doArrayTest()
+	test_functions.doFunctionTest()
 }
 
 

@@ -89,7 +89,7 @@ public fn doFunctionTest()
 	g(20)
 
 	printf("each test:")
-	let arr: &mut int = (alloc int[4])[:].ptr as mut
+	let arr = (alloc int[4])[:].ptr
 	arr[0] = 11
 	arr[1] = 22
 	arr[2] = 33
