@@ -26,7 +26,6 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 		return ret;
 	}
 
-
 	// resolve the function call here
 	std::vector<FnCallArgument> ts = _arguments;
 

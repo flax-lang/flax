@@ -10,14 +10,8 @@ std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::
 {
 	std::unordered_map<std::string, size_t> idxmap;
 
-	{
-		size_t x = 0;
-		if(fd->parentTypeForMethod)
-			idxmap["self"] = 0, x = 1;
-
-		for(size_t i = 0; i < fd->params.size(); i++)
-			idxmap[fd->params[i].name] = i + x;
-	}
+	for(size_t i = 0; i < fd->params.size(); i++)
+		idxmap[fd->params[i].name] = i;
 
 	return idxmap;
 }
@@ -163,7 +157,6 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		CGResult defn;
 		CGResult r = cs->valueMap[this->target];
-		// auto r = cs->findValueInTree(this->name);
 
 		if(r.value)
 		{

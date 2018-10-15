@@ -57,10 +57,9 @@ namespace backend
 {
 	using EntryPoint_t = int (*)(int, const char**);
 
-
 	struct LLVMJit
 	{
-		using ModuleHandle_t = llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT;
+		typedef llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT ModuleHandle_t;
 
 		LLVMJit(llvm::TargetMachine* tm);
 		llvm::TargetMachine* getTargetMachine();
