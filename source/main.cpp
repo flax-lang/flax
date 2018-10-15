@@ -59,7 +59,7 @@ static void compile(std::string in, std::string out)
 	auto codegen_ms = t.stop();
 
 	auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
-	fprintf(stderr, "compile took %.1f (lexer: %.1f parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
+	fprintf(stderr, "compile took %.1f (lexer: %.1f, parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
 		compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
 		compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
 
@@ -71,6 +71,7 @@ static void compile(std::string in, std::string out)
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
+		if(backend == 0) return;
 
 		int capsneeded = 0;
 		{
