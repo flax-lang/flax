@@ -24,10 +24,20 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	std::vector<Param> ps;
 	std::vector<fir::Type*> ptys;
 
+
+	if(infer)
+	{
+		//! SELF HANDLING
+		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
+		auto p = Param("self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
+
+		ps.push_back(p);
+		ptys.push_back(p.type);
+	}
+
 	int polyses = sst::poly::internal::getNextSessionId();
 	for(auto t : this->args)
 	{
-		// auto p = Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type));
 		auto p = Param(t.name, t.loc, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
 		ps.push_back(p);
 		ptys.push_back(p.type);
@@ -84,7 +94,6 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		{
 			// make sure we didn't fuck up somewhere
 			iceAssert(decl->id.name == defn->id.name);
-
 			return fs->isDuplicateOverload(defn->params, decl->params);
 		}
 		else

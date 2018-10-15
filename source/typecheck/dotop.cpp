@@ -293,9 +293,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
-			// std::vector<Param> ts = util::map(arguments, [](FnCallArgument e) -> auto { return Param(e); });
+			//! SELF HANDLING
+			arguments.insert(arguments.begin(), FnCallArgument(fc->loc, "self", new sst::TypeExpr(fc->loc,
+				str->type->getMutablePointerTo()), nullptr));
 
-			auto search = [fs, fc, str](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
+			auto search = [fs, fc](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
 
 				//! note: here we always presume it's mutable, since:
 				//* 1. we right now cannot overload based on the mutating aspect of the method
@@ -356,6 +358,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				c->target = resolved;
 				c->isImplicitMethodCall = false;
 
+				//! SELF HANDLING
+				c->arguments.erase(c->arguments.begin(), c->arguments.begin() + 1);
 				finalCall = c;
 			}
 			else
@@ -374,8 +378,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 				c->callee = tmp;
 
+				//! SELF HANDLING
+				c->arguments.erase(c->arguments.begin(), c->arguments.begin() + 1);
+
 				finalCall = c;
 			}
+
+
 
 			auto ret = new sst::MethodDotOp(fc->loc, resolved->type->toFunctionType()->getReturnType());
 			ret->lhs = lhs;

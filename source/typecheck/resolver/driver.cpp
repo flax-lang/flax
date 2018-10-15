@@ -136,7 +136,6 @@ namespace sst
 		auto [ res, new_args ] = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cands, gmaps, travUp, return_infer);
 		if(res.isDefn())
 		{
-			auto ret = res.defn();
 			*arguments = new_args;
 
 			return res;
@@ -168,6 +167,10 @@ namespace sst
 			}
 
 			auto copy = arguments;
+
+			//! SELF HANDLING
+			copy.push_back(FnCallArgument(cls->loc, "self", new TypeExpr(cls->loc, cls->type->getMutablePointerTo()), nullptr));
+
 			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
 			}), &copy, gmaps, true);
