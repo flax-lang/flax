@@ -212,6 +212,21 @@ namespace sst
 			const Solution_t& partial, bool isFnCall)
 		{
 			Solution_t prevSoln = partial;
+
+			std::vector<fir::PolyPlaceholderType*> tosolve;
+			for(auto t : target)
+				tosolve = tosolve + t->getContainedPlaceholders();
+
+			auto checkFinished = [&tosolve](const Solution_t& soln) -> bool {
+				for(auto t : tosolve)
+				{
+					if(!soln.hasSolution(t->getName()))
+						return false;
+				}
+
+				return true;
+			};
+
 			while(true)
 			{
 				//* note!! we reset the distance here, because we will always loop through every argument.
@@ -221,8 +236,9 @@ namespace sst
 				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
 				if(errs.hasErrors()) return { soln, errs };
 
-				if(soln == prevSoln)    break;
-				else                    prevSoln = soln;
+				if(soln == prevSoln)            { break; }
+				else if(checkFinished(soln))    { prevSoln = soln; break; }
+				else                            { prevSoln = soln; }
 			}
 
 
