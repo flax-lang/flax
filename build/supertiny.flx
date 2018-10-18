@@ -37,18 +37,60 @@ import "libc" as _
 
 
 /*
+	! more more things
+	! caa 18/10
+	{
+		1. redesign FastVector: {
+			a. instead of using realloc(), allocate in chunks and use a list. indexing should still be O(1) with some math.
+			b. we're using it for the express purpose of token storage, so I don't think we'll even bother putting in the ability to erase items
+			c. in a way this already acts like a memory pool for tokens, so we're good on that front.
+			d. probably tune the chunk size with a template parameter.
+		}
+
+		2. generic memory pool: {
+			a. for AST and SST nodes
+			b. for fir::Values
+
+			basically we just expand upon the LinkedVector concept, except each 'chunk' needs a little more bookkeeping and a little more
+			logic. instead of using bitmaps or something like that, let's be crazy and unsafe:
+
+			each chunk is an arbitrary size (but probably minimally 4KB and probably by default equals to the page-size of the machine). the
+			main container keeps a list of chunks simply as a list of pointers to the memory of the chunk. the size would be fixed per
+			container (ie each chunk has the same size for a given container).
+
+
+			struct MemoryPool<T>
+			{
+				struct PoolChunk
+				{
+					T* pointer;
+					T* next_free;
+					size_t size;
+				}
+
+				std::vector<PoolChunk> chunks;
+				size_t emptiest_chunk;
+				size_t fullest_chunk;
+			}
+
+			on allocation: {
+			}
+		}
+	}
+
+
 	! more things.
 	! caa 03/10
 	{
-		1. clean up all the nested types -- sst's Decl::Param, FnCallArgument, ast's Defn::Arg, all that shit.
+		// 1. clean up all the nested types -- sst's Decl::Param, FnCallArgument, ast's Defn::Arg, all that shit.
 		2. splatting tuples into a generic function *will not work*
 		3. fix errors. should probably go back to using virtual inheritance for them. fuck performance cos we shouldn't be erroring so often,
 			and they're slightly cheaper when we don't use them because it's just a pointer.
 		4. pass the overall location to the polymorph solver.
 		// 5. check for variadic forwarding -- enforce the splat.
 		// 6. print out the solutions we found for inference on error.
-		7. clean up FunctionDefn vs FunctionDecl
-		8. check if the solution is complete before we blindly try to re-solve everything.
+		// 7. clean up FunctionDefn vs FunctionDecl
+		// 8. check if the solution is complete before we blindly try to re-solve everything.
 	}
 
 

@@ -30,7 +30,7 @@ namespace frontend
 
 	static std::unordered_map<std::string, FileInnards> fileList;
 
-	static FileInnards& readFileIfNecessary(std::string fullPath)
+	static FileInnards& readFileIfNecessary(const std::string& fullPath)
 	{
 		// break early if we can
 		{
@@ -159,12 +159,12 @@ namespace frontend
 	}
 
 
-	lexer::TokenList& getFileTokens(std::string fullPath)
+	lexer::TokenList& getFileTokens(const std::string& fullPath)
 	{
 		return readFileIfNecessary(fullPath).tokens;
 	}
 
-	std::string getFileContents(std::string fullPath)
+	std::string getFileContents(const std::string& fullPath)
 	{
 		return util::to_string(readFileIfNecessary(fullPath).fileContents);
 	}
@@ -207,7 +207,7 @@ namespace frontend
 
 
 
-	std::string getPathFromFile(std::string path)
+	std::string getPathFromFile(const std::string& path)
 	{
 		std::string ret;
 
@@ -218,7 +218,7 @@ namespace frontend
 		return ret;
 	}
 
-	std::string getFilenameFromPath(std::string path)
+	std::string getFilenameFromPath(const std::string& path)
 	{
 		std::string ret;
 
@@ -230,7 +230,7 @@ namespace frontend
 	}
 
 
-	std::string getFullPathOfFile(std::string partial)
+	std::string getFullPathOfFile(const std::string& partial)
 	{
 		std::string full = platform::getFullPath(partial);
 		if(full.empty())
@@ -239,7 +239,7 @@ namespace frontend
 		return full;
 	}
 
-	std::string removeExtensionFromFilename(std::string name)
+	std::string removeExtensionFromFilename(const std::string& name)
 	{
 		auto i = name.find_last_of(".");
 		return name.substr(0, i);

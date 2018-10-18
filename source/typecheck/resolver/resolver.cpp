@@ -13,38 +13,36 @@
 namespace sst {
 namespace resolver
 {
-	using Param = FunctionDecl::Param;
-
-	std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<Param>& target, const std::vector<Param>& _args,
-		bool cvararg)
+	std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
+		const std::vector<fir::LocatedType>& _args, bool cvararg)
 	{
 		SimpleError warnings;
 
-		std::vector<Param> input;
-		if(cvararg)
-		{
-			input = util::take(_args, target.size());
+		std::vector<fir::LocatedType> input;
+		if(cvararg) input = util::take(_args, target.size());
+		else        input = _args;
 
-			// check we're not trying anything funny.
-			for(auto it = _args.begin() + input.size(); it != _args.end(); it++)
-			{
-				if(!it->type->isPrimitiveType() && !it->type->isPointerType())
-				{
-					warnings.append(SimpleError::make(MsgType::Warning, it->loc,
-						"passing non-primitive type '%s' to c-style variadic function is ill-advised", it->type));
-				}
-			}
-		}
-		else
-		{
-			input = _args;
-		}
+		auto [ soln, err ] = poly::solveTypeList(target, input, poly::Solution_t(), /* isFnCall: */ true);
+
+		if(err.hasErrors())    return { -1, SpanError().append(err) };
+		else                    return { soln.distance, SpanError() };
+	}
+
+
+
+	std::pair<int, SpanError> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
+		const std::vector<FnCallArgument>& _args, bool cvararg)
+	{
+		SimpleError warnings;
+
+		std::vector<FnCallArgument> input;
+		if(cvararg) input = util::take(_args, target.size());
+		else        input = _args;
 
 		SimpleError err;
 		auto arguments = resolver::misc::canonicaliseCallArguments(fnLoc, target, input, &err);
 
-
-		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const Param& p) -> fir::LocatedType {
+		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FnParam& p) -> fir::LocatedType {
 			return fir::LocatedType(p.type, p.loc);
 		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
@@ -112,9 +110,7 @@ namespace resolver
 				}
 				else
 				{
-					std::tie(dist, fails[fn]) = computeOverloadDistance(fn->loc, fn->params, util::map(replacementArgs, [](auto p) -> auto {
-						return Param(p);
-					}), fn->isVarArg);
+					std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
 				}
 			}
 			else if(auto vr = dcast(VarDefn, curcandidate))
@@ -134,10 +130,10 @@ namespace resolver
 				}
 
 				auto prms = ft->getArgumentTypes();
-				std::tie(dist, fails[vr]) = computeOverloadDistance(curcandidate->loc, util::map(prms, [](fir::Type* t) -> auto {
-					return Param(t);
-				}), util::map(replacementArgs, [](auto p) -> auto {
-					return Param(p);
+				std::tie(dist, fails[vr]) = computeOverloadDistance(curcandidate->loc, util::map(prms, [](fir::Type* t) -> fir::LocatedType {
+					return fir::LocatedType(t, Location());
+				}), util::map(replacementArgs, [](const FnCallArgument& p) -> fir::LocatedType {
+					return fir::LocatedType(p.value->type, Location());
 				}), false);
 			}
 
@@ -155,10 +151,8 @@ namespace resolver
 
 		if(finals.empty())
 		{
-			// TODO: make this error message better, because right now we assume the arguments are all the same.
-
 			iceAssert(cands.size() == fails.size());
-			std::vector<fir::Type*> tmp = util::map(cands[0].second, [](Param p) -> auto { return p.type; });
+			std::vector<fir::Type*> tmp = util::map(cands[0].second, [](const FnCallArgument& p) -> auto { return p.value->type; });
 
 			auto errs = OverloadError(SimpleError(callLoc, strprintf("No overload in call to '%s(%s)' amongst %zu %s",
 				cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()))));

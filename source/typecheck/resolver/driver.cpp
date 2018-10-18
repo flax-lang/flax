@@ -16,8 +16,6 @@
 
 namespace sst
 {
-	using Param = FunctionDecl::Param;
-
 	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
@@ -169,7 +167,7 @@ namespace sst
 			auto copy = arguments;
 
 			//! SELF HANDLING
-			copy.push_back(FnCallArgument(cls->loc, "self", new TypeExpr(cls->loc, cls->type->getMutablePointerTo()), nullptr));
+			copy.push_back(FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo()));
 
 			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
@@ -198,9 +196,7 @@ namespace sst
 			for(auto f : str->fields)
 				fieldNames.insert(f->id.name);
 
-			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, util::map(arguments, [](auto fca) -> auto {
-				return Param(fca);
-			}));
+			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, arguments);
 
 			if(err.second.hasErrors())
 				return TCResult(err.second);
@@ -221,19 +217,19 @@ namespace sst
 			auto uvl = unn->variants[name];
 
 			// ok, then. check the type + arguments.
-			std::vector<Param> target;
+			std::vector<fir::LocatedType> target;
 			if(unt->getVariant(name)->getInteriorType()->isTupleType())
 			{
 				for(auto t : unt->getVariant(name)->getInteriorType()->toTupleType()->getElements())
-					target.push_back(Param("", uvl, t));
+					target.push_back(fir::LocatedType(t, uvl));
 			}
 			else if(!unt->getVariant(name)->getInteriorType()->isVoidType())
 			{
-				target.push_back(Param("", uvl, unt->getVariant(name)->getInteriorType()));
+				target.push_back(fir::LocatedType(unt->getVariant(name)->getInteriorType(), uvl));
 			}
 
-			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(arguments, [](auto fca) -> auto {
-				return Param(fca);
+			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(arguments, [](const FnCallArgument& fca) -> auto {
+				return fir::LocatedType(fca.value->type, fca.loc);
 			}), false);
 
 			if(errs.hasErrors() || dist == -1)

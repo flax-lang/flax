@@ -20,7 +20,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, _arguments))
 	{
 		auto ret = new sst::ExprCall(this->loc, ty);
-		ret->callee = new sst::TypeExpr(this->loc, ty);
+		ret->callee = sst::TypeExpr::make(this->loc, ty);
 		ret->arguments = util::map(_arguments, [](auto e) -> sst::Expr* { return e.value; });
 
 		return ret;
@@ -114,9 +114,6 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	using Param = sst::FunctionDecl::Param;
-
-	std::vector<Param> ts = util::map(arguments, [](auto e) -> Param { return Param(e); });
 
 	auto target = this->callee->typecheck(fs).expr();
 	iceAssert(target);
@@ -126,8 +123,10 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	auto ft = target->type->toFunctionType();
 	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
-		return Param(t);
-	}), ts, false);
+		return fir::LocatedType(t, Location());
+	}), util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
+		return fir::LocatedType(fca.value->type, fca.loc);
+	}), false);
 
 	if(errs.hasErrors() || dist == -1)
 		errs.set(SimpleError(this->loc, "Mismatched types in call to function pointer")).postAndQuit();

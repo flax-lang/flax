@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import os
 import subprocess
 import generate_test
 
@@ -18,7 +19,12 @@ plots = open("build/plots.txt", "wt")
 
 for i in counts:
 	generate_test.gen_test(i)
-	output = subprocess.run([ "build/sysroot/usr/local/bin/flaxc", "-sysroot", "build/sysroot", "-run", "-backend", "none", "build/massive.flx" ],
+	if os.name == "nt":
+		flaxc_path = "build/meson-reldbg/flaxc.exe"
+	else:
+		flaxc_path = "build/sysroot/usr/local/bin/flaxc"
+
+	output = subprocess.run([ flaxc_path, "-sysroot", "build/sysroot", "-run", "-backend", "none", "build/massive.flx" ],
 		capture_output = True, text = True).stderr
 
 	# rex = re.findall(r"compile took (\d+\.\d+) \(lexer: (\d+\.\d+), parser: (\d+\.\d+), typecheck: (\d+\.\d+), codegen (\d+\.\d+)\) ms(.+)",

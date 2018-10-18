@@ -20,16 +20,14 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(!success)    return TCResult::getParametric();
 	else if(ret)    return TCResult(ret);
 
-	using Param = sst::FunctionDefn::Param;
-	std::vector<Param> ps;
+	std::vector<FnParam> ps;
 	std::vector<fir::Type*> ptys;
-
 
 	if(infer)
 	{
 		//! SELF HANDLING
 		iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-		auto p = Param("self", this->loc, (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
+		auto p = FnParam(this->loc, "self", (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
 
 		ps.push_back(p);
 		ptys.push_back(p.type);
@@ -38,7 +36,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	int polyses = sst::poly::internal::getNextSessionId();
 	for(auto t : this->args)
 	{
-		auto p = Param(t.name, t.loc, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
+		auto p = FnParam(t.loc, t.name, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
@@ -180,12 +178,11 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	using Param = sst::FunctionDecl::Param;
 	auto defn = new sst::ForeignFuncDefn(this->loc);
-	std::vector<Param> ps;
+	std::vector<FnParam> ps;
 
 	for(auto t : this->args)
-		ps.push_back(Param(t.name, t.loc, fs->convertParserTypeToFIR(t.type)));
+		ps.push_back(FnParam(t.loc, t.name, fs->convertParserTypeToFIR(t.type)));
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
@@ -197,10 +194,10 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	defn->isVarArg = this->isVarArg;
 
 	if(this->isVarArg)
-		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
 
 	else
-		defn->type = fir::FunctionType::get(util::map(ps, [](Param p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::get(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
 
 
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
@@ -212,8 +209,8 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 			// check the typelists, then
 			bool ret = fir::Type::areTypeListsEqual(
-				util::map(defn->params, [](Param p) -> fir::Type* { return p.type; }),
-				util::map(decl->params, [](Param p) -> fir::Type* { return p.type; })
+				util::map(defn->params, [](FnParam p) -> fir::Type* { return p.type; }),
+				util::map(decl->params, [](FnParam p) -> fir::Type* { return p.type; })
 			);
 
 			return ret;

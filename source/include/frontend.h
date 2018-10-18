@@ -79,19 +79,19 @@ namespace frontend
 
 
 
-	std::string getPathFromFile(std::string path);
-	std::string getFilenameFromPath(std::string path);
-	std::string getFullPathOfFile(std::string partial);
-	std::string removeExtensionFromFilename(std::string name);
+	std::string getPathFromFile(const std::string& path);
+	std::string getFilenameFromPath(const std::string& path);
+	std::string getFullPathOfFile(const std::string& partial);
+	std::string removeExtensionFromFilename(const std::string& name);
 
-	std::string getFileContents(std::string fullPath);
+	std::string getFileContents(const std::string& fullPath);
 	const std::string& getFilenameFromID(size_t fileID);
 	size_t getFileIDFromFilename(const std::string& name);
-	lexer::TokenList& getFileTokens(std::string fullPath);
+	lexer::TokenList& getFileTokens(const std::string& fullPath);
 	const util::FastVector<util::string_view>& getFileLines(size_t id);
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename);
 
-	std::string resolveImport(std::string imp, const Location& loc, std::string fullPath);
+	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath);
 
 	struct ImportThing
 	{
@@ -130,13 +130,13 @@ namespace frontend
 
 		std::stack<DepNode*> stack;
 
-		std::vector<Dep*> getDependenciesOf(std::string name);
-		void addModuleDependency(std::string from, std::string to, ImportThing ithing);
+		std::vector<Dep*> getDependenciesOf(const std::string& name);
+		void addModuleDependency(const std::string& from, const std::string& to, const ImportThing& ithing);
 		std::vector<std::vector<DepNode*>> findCyclicDependencies();
 	};
 
-	std::vector<std::string> checkForCycles(std::string topmod, frontend::DependencyGraph* graph);
-	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, std::string full,
+	std::vector<std::string> checkForCycles(const std::string& topmod, frontend::DependencyGraph* graph);
+	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
 		std::unordered_map<std::string, bool>& visited);
 }
 

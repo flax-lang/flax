@@ -222,15 +222,15 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			if(l->type->isMutablePointer() == mte->mut)
 				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
 
-			if(mte->mut)    r = new sst::TypeExpr(mte->loc, l->type->getMutablePointerVersion());
-			else            r = new sst::TypeExpr(mte->loc, l->type->getImmutablePointerVersion());
+			if(mte->mut)    r = sst::TypeExpr::make(mte->loc, l->type->getMutablePointerVersion());
+			else            r = sst::TypeExpr::make(mte->loc, l->type->getImmutablePointerVersion());
 		}
 		else if(l->type->isArraySliceType())
 		{
 			if(l->type->toArraySliceType()->isMutable() == mte->mut)
 				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
 
-			r = new sst::TypeExpr(mte->loc, fir::ArraySliceType::get(l->type->getArrayElementType(), mte->mut));
+			r = sst::TypeExpr::make(mte->loc, fir::ArraySliceType::get(l->type->getArrayElementType(), mte->mut));
 		}
 		else
 		{

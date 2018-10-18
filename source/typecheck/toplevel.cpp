@@ -80,9 +80,8 @@ namespace sst
 								}
 								else if(auto f = dynamic_cast<FunctionDecl*>(ot))
 								{
-									using Param = sst::FunctionDecl::Param;
-									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](Param p) -> fir::Type* { return p.type; }),
-										util::map(f->params, [](Param p) -> fir::Type* { return p.type; })))
+									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](auto p) -> fir::Type* { return p.type; }),
+										util::map(f->params, [](auto p) -> fir::Type* { return p.type; })))
 									{
 										SimpleError::make(fn, "Duplicate definition of function '%s' with identical signature", fn->id.name)
 											.append(SimpleError::make(MsgType::Note, f, "Conflicting definition was here: (%p vs %p)", f, fn))
