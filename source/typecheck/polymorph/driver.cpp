@@ -77,11 +77,7 @@ namespace poly
 					}
 				}
 
-				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset,
-					util::map(input, [](const FnCallArgument& fca) -> FunctionDecl::Param {
-						return FunctionDecl::Param(fca);
-					}
-				));
+				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset, input);
 
 				if(err.hasErrors())
 					return { soln, err };
@@ -192,10 +188,7 @@ namespace poly
 			if(isFnCall)
 			{
 				SimpleError err;
-				auto gvn = resolver::misc::canonicaliseCallArguments(thing->loc, args,
-					util::map(input, [](const FnCallArgument& fca) -> FunctionDecl::Param {
-						return FunctionDecl::Param(fca);
-					}), &err);
+				auto gvn = resolver::misc::canonicaliseCallArguments(thing->loc, args, input, &err);
 
 				if(err.hasErrors()) return { soln, err };
 

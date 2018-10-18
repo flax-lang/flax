@@ -92,3 +92,4 @@ flax.creator.user
 flax.files
 flax.includes
 .vs/
+build/__pycache__

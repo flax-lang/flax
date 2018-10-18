@@ -10,7 +10,7 @@
 
 TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	auto ret = new sst::TypeExpr(this->loc, fs->convertParserTypeToFIR(this->type));
+	auto ret = sst::TypeExpr::make(this->loc, fs->convertParserTypeToFIR(this->type));
 	return TCResult(ret);
 }
 
@@ -48,3 +48,35 @@ TCResult ast::Parameterisable::typecheck(sst::TypecheckState* fs, fir::Type* inf
 {
 	return this->typecheck(fs, infer, { });
 }
+
+
+static std::unordered_map<fir::Type*, sst::TypeExpr*> cache;
+sst::TypeExpr* sst::TypeExpr::make(const Location& l, fir::Type* t)
+{
+	if(auto it = cache.find(t); it != cache.end())
+		return it->second;
+
+	return (cache[t] = new sst::TypeExpr(l, t));
+}
+
+FnCallArgument FnCallArgument::make(const Location& l, const std::string& n, fir::Type* t)
+{
+	auto te = sst::TypeExpr::make(l, t);
+	return FnCallArgument(l, n, te, nullptr);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -485,8 +485,7 @@ struct TCResult
 
 
 
-	ErrorMsg& error() const    { if(this->_kind != RK::Error)      { _error_and_exit("not error\n"); } return *this->_pe; }
-
+	ErrorMsg& error() const    { if(this->_kind != RK::Error || !this->_pe) { _error_and_exit("not error\n"); } return *this->_pe; }
 
 	sst::Expr* expr() const;
 	sst::Defn* defn() const;

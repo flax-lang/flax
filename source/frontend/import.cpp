@@ -9,7 +9,7 @@
 
 namespace frontend
 {
-	std::string resolveImport(std::string imp, const Location& loc, std::string fullPath)
+	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath)
 	{
 		std::string ext = ".flx";
 		if(imp.find(".flx") == imp.size() - 4)

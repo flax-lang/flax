@@ -10,14 +10,12 @@
 
 namespace sst
 {
-	using Param = FunctionDecl::Param;
-
 	namespace resolver
 	{
 		namespace misc
 		{
 			static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target,
-				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<Param>& args, SimpleError* err)
+				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, SimpleError* err)
 			{
 				std::vector<fir::LocatedType> ret(args.size());
 
@@ -46,7 +44,7 @@ namespace sst
 							}
 						}
 
-						ret[i.name.empty() ? counter : nameToIndex.find(i.name)->second] = fir::LocatedType(i.type, i.loc);
+						ret[i.name.empty() ? counter : nameToIndex.find(i.name)->second] = fir::LocatedType(i.value->type, i.loc);
 						counter++;
 					}
 				}
@@ -56,14 +54,14 @@ namespace sst
 
 
 
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<Param>& params,
-				const std::vector<Param>& args, SimpleError* err)
+			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
+				const std::vector<FnCallArgument>& args, SimpleError* err)
 			{
 				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<Param>& args, SimpleError* err)
+				const std::vector<FnCallArgument>& args, SimpleError* err)
 			{
 				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
@@ -96,7 +94,7 @@ namespace sst
 
 
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
-			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<Param>& arguments)
+			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments)
 		{
 			// ok, structs get named arguments, and no un-named arguments.
 			// we just loop through each argument, ensure that (1) every arg has a name; (2) every name exists in the struct
@@ -165,29 +163,18 @@ namespace sst
 	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
 		OverloadError errs;
-		using Param = FunctionDefn::Param;
 
-		return resolver::computeOverloadDistance(Location(), util::map(a, [](fir::Type* t) -> Param {
-			return Param(t);
-		}), util::map(b, [](fir::Type* t) -> Param {
-			return Param(t);
+		return resolver::computeOverloadDistance(Location(), util::map(a, [](fir::Type* t) -> fir::LocatedType {
+			return fir::LocatedType(t, Location());
+		}), util::map(b, [](fir::Type* t) -> fir::LocatedType {
+			return fir::LocatedType(t, Location());
 		}), false).first;
 	}
 
-	int TypecheckState::getOverloadDistance(const std::vector<Param>& a, const std::vector<Param>& b)
+	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
 	{
-		return this->getOverloadDistance(util::map(a, [](Param p) { return p.type; }), util::map(b, [](Param p) { return p.type; }));
-	}
-
-
-	bool TypecheckState::isDuplicateOverload(const std::vector<Param>& a, const std::vector<Param>& b)
-	{
-		return this->getOverloadDistance(a, b) == 0;
-	}
-
-	bool TypecheckState::isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
-	{
-		return this->getOverloadDistance(a, b) == 0;
+		return this->getOverloadDistance(util::map(a, [](auto p) -> auto { return p.type; }),
+			util::map(b, [](auto p) -> auto { return p.type; })) == 0;
 	}
 
 }
