@@ -192,7 +192,7 @@ namespace sst
 
 
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
-			const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& params);
+			const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& params);
 
 
 		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
@@ -204,10 +204,7 @@ namespace sst
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
-		int getOverloadDistance(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
-
-		bool isDuplicateOverload(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
-		bool isDuplicateOverload(const std::vector<FunctionDecl::Param>& a, const std::vector<FunctionDecl::Param>& b);
+		bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
 
 		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
 			bool traverseUp, fir::Type* inferredRetType);

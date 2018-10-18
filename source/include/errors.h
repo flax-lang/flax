@@ -82,7 +82,7 @@ namespace sst { struct Expr; }
 namespace frontend
 {
 	const std::string& getFilenameFromID(size_t fileID);
-	std::string getFilenameFromPath(std::string path);
+	std::string getFilenameFromPath(const std::string& path);
 }
 
 

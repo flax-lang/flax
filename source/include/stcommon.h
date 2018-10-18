@@ -41,7 +41,37 @@ struct FnCallArgument
 	std::string name;
 	sst::Expr* value = 0;
 
-	bool wasSplat = false;
-
 	ast::Expr* orig = 0;
+
+	static FnCallArgument make(const Location& l, const std::string& n, fir::Type* t);
 };
+
+struct FnParam
+{
+	FnParam() { }
+	FnParam(const Location& l, const std::string& n, fir::Type* t) : loc(l), name(n), type(t) { }
+
+	Location loc;
+	std::string name;
+	fir::Type* type;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

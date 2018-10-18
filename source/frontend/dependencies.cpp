@@ -10,7 +10,7 @@ namespace frontend
 {
 	static void stronglyConnect(DependencyGraph* graph, int& index, std::vector<std::vector<DepNode*>>& connected, DepNode* node);
 
-	void DependencyGraph::addModuleDependency(std::string from, std::string to, ImportThing ithing)
+	void DependencyGraph::addModuleDependency(const std::string& from, const std::string& to, const ImportThing& ithing)
 	{
 		// find existing node
 		DepNode* src = 0;
@@ -76,7 +76,7 @@ namespace frontend
 		return ret;
 	}
 
-	std::vector<Dep*> DependencyGraph::getDependenciesOf(std::string name)
+	std::vector<Dep*> DependencyGraph::getDependenciesOf(const std::string& name)
 	{
 		DepNode* node = 0;
 		for(auto n : this->nodes)
@@ -154,7 +154,7 @@ namespace frontend
 
 
 
-	std::vector<std::string> checkForCycles(std::string topmod, frontend::DependencyGraph* graph)
+	std::vector<std::string> checkForCycles(const std::string& topmod, frontend::DependencyGraph* graph)
 	{
 		auto groups = graph->findCyclicDependencies();
 		for(auto grp : groups)
@@ -212,7 +212,7 @@ namespace frontend
 		return fulls;
 	}
 
-	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, std::string full,
+	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
 		std::unordered_map<std::string, bool>& visited)
 	{
 		auto tokens = frontend::getFileTokens(full);

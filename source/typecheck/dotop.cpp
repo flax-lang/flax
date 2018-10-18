@@ -288,14 +288,12 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
 			// check methods first
-			using Param = sst::FunctionDefn::Param;
 			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
 			//! SELF HANDLING
-			arguments.insert(arguments.begin(), FnCallArgument(fc->loc, "self", new sst::TypeExpr(fc->loc,
-				str->type->getMutablePointerTo()), nullptr));
+			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "self", str->type->getMutablePointerTo()));
 
 			auto search = [fs, fc](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
 
@@ -542,7 +540,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			//? note: ret->type can be null if we're in the middle of a namespace dot-op,
 			//? and 'ret' is a ScopeExpr.
 			if(ret->type && ret->type->isUnionVariantType())
-				ret = new sst::TypeExpr(ret->loc, ret->type);
+				ret = sst::TypeExpr::make(ret->loc, ret->type);
 		}
 		else
 		{

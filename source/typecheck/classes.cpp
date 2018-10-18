@@ -187,7 +187,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 						// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
 
 						// note: we're passing by copy here intentionally so we can erase the first one.
-						auto compareMethods = [&fs](std::vector<sst::FunctionDecl::Param> a, std::vector<sst::FunctionDecl::Param> b) -> bool {
+						auto compareMethods = [&fs](std::vector<FnParam> a, std::vector<FnParam> b) -> bool {
 							return fs->isDuplicateOverload(a, b);
 						};
 

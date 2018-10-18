@@ -21,23 +21,27 @@ namespace sst
 
 	namespace resolver
 	{
-		std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<FunctionDecl::Param>& target,
-			const std::vector<FunctionDecl::Param>& _args, bool cvararg);
+		std::pair<int, SpanError> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
+			const std::vector<FnCallArgument>& _args, bool cvararg);
+
+		std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& _args, bool cvararg);
+
 
 		std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
 			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
 			fir::Type* return_infer);
 
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
-			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FunctionDecl::Param>& arguments);
+			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		namespace misc
 		{
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FunctionDecl::Param>& params,
-				const std::vector<FunctionDecl::Param>& args, SimpleError* err);
+			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
+				const std::vector<FnCallArgument>& args, SimpleError* err);
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<FunctionDecl::Param>& args, SimpleError* err);
+				const std::vector<FnCallArgument>& args, SimpleError* err);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
 
