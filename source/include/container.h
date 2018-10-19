@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include <vector>
+#include <utility>
 
 namespace util
 {
@@ -109,6 +110,73 @@ namespace util
 		size_t length;
 		std::vector<T*> chunks;
 	};
+
+
+
+	template <typename T>
+	struct MemoryPool
+	{
+		MemoryPool() { }
+		~MemoryPool() { }
+
+		MemoryPool(const MemoryPool& other)
+		{
+			this->storage = other.storage;
+		}
+
+		MemoryPool& operator = (const MemoryPool& other)
+		{
+			auto copy = other;
+			std::swap(copy, *this);
+			return *this;
+		}
+
+		MemoryPool(MemoryPool&& other)
+		{
+			this->storage = std::move(other.storage);
+		}
+
+		MemoryPool& operator = (MemoryPool&& other)
+		{
+			if(this != &other) this->storage = std::move(other.storage);
+			return *this;
+		}
+
+		template <typename... Args>
+		T* operator () (Args&&... args)
+		{
+			return this->construct(std::forward<Args>(args)...);
+		}
+
+		template <typename... Args>
+		T* construct(Args&&... args)
+		{
+			return new (this->storage.getNextSlotAndIncrement()) T(std::forward<Args>(args)...);
+		}
+
+
+		private:
+		FastInsertVector<T, 512> storage;
+	};
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

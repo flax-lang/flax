@@ -15,16 +15,6 @@
 #include "errors.h"
 #include "frontend.h"
 
-static struct timer
-{
-	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
-	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
-	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
-
-	double* out = 0;
-	std::chrono::time_point<std::chrono::high_resolution_clock> start;
-};
-
 namespace frontend
 {
 	struct FileInnards
@@ -50,10 +40,8 @@ namespace frontend
 		}
 
 
-		double file_read_ms = 0;
 		util::string_view fileContents;
 		{
-			timer t(&file_read_ms);
 			fileContents = platform::readEntireFile(fullPath);
 		}
 
@@ -63,10 +51,7 @@ namespace frontend
 		bool crlf = false;
 		util::FastInsertVector<util::string_view> rawlines;
 
-		double line_read_ms = 0;
 		{
-			timer t(&line_read_ms);
-
 			util::string_view view = fileContents;
 
 			bool first = true;
@@ -121,13 +106,8 @@ namespace frontend
 			innards.isLexing = true;
 		}
 
-		// auto p = prof::Profile("lex");
-
-		double token_read_ms = 0;
 		lexer::TokenList& ts = innards.tokens;
 		{
-			timer t(&token_read_ms);
-
 			size_t curLine = 0;
 			size_t curOffset = 0;
 
@@ -152,13 +132,8 @@ namespace frontend
 			ts[ts.size() - 1].loc.len = 0;
 		}
 
-		// p.finish();
-
 		innards.didLex = true;
 		innards.isLexing = false;
-
-		debuglogln("read: %.2f, lines: %.2f, tokens: %.2f", file_read_ms, line_read_ms, token_read_ms);
-
 		return innards;
 	}
 
