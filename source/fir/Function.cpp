@@ -18,7 +18,6 @@ namespace fir
 
 	Argument::~Argument()
 	{
-		delete this->realValue;
 	}
 
 	Value* Argument::getActualValue()
@@ -116,73 +115,8 @@ namespace fir
 
 
 
-
-	#if 0
-	static void _recursivelyRemoveInstruction(Instruction* instr)
-	{
-		if(instr->hasSideEffects())
-			return;
-
-		for(auto v : instr->operands)
-		{
-			// if we are the only user, basically
-			if(v->getUsers().size() == 1 && v->getUsers()[0] == instr && v->getSource())
-			{
-				Instruction* src = v->getSource();
-				_recursivelyRemoveInstruction(src);
-			}
-		}
-
-		// ok
-		auto& list = instr->parentBlock->getInstructions();
-
-		auto it = std::find(list.begin(), list.end(), instr);
-		iceAssert(it != list.end());
-		list.erase(it);
-	}
-
-
-	static void recursivelyRemoveInstruction(Instruction* instr)
-	{
-		for(auto v : instr->operands)
-		{
-			// if we are the only user, basically
-			if(v->getUsers().size() == 1 && v->getUsers()[0] == instr && v->getSource())
-			{
-				Instruction* src = v->getSource();
-				_recursivelyRemoveInstruction(src);
-			}
-		}
-
-		delete instr;
-	}
-	#endif
-
-
-
 	void Function::cullUnusedValues()
 	{
-		#if 0
-		for(auto b : this->blocks)
-		{
-			auto& instrs = b->getInstructions();
-			size_t i = 0;
-			for(auto it = instrs.begin(); it != instrs.end(); i++)
-			{
-				if((*it)->realOutput->getUsers().empty() && !(*it)->hasSideEffects())
-				{
-					Instruction* instr = *it;
-					it = instrs.erase(it);
-
-					recursivelyRemoveInstruction(instr);
-				}
-				else
-				{
-					it++;
-				}
-			}
-		}
-		#endif
 	}
 
 

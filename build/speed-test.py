@@ -12,7 +12,7 @@ tab = PrettyTable([ "reps", "firs", "total", "lexer", "parser", "typecheck", "co
 tab.set_style(prettytable.PLAIN_COLUMNS)
 
 
-counts = range(32, 65536, 32)
+counts = range(32, 1025, 32)
 # counts = range(32, 64, 32)
 
 plots = open("build/plots.txt", "wt")
@@ -20,7 +20,7 @@ plots = open("build/plots.txt", "wt")
 for i in counts:
 	generate_test.gen_test(i)
 	if os.name == "nt":
-		flaxc_path = "build/meson-reldbg/flaxc.exe"
+		flaxc_path = "build/meson-rel/flaxc.exe"
 	else:
 		flaxc_path = "build/sysroot/usr/local/bin/flaxc"
 

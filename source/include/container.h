@@ -10,24 +10,29 @@
 #include <vector>
 #include <utility>
 
+#include "allocator.h"
+
 namespace util
 {
 	// only allows for insertions.
 	// hopefully faster than FastVector.
-	template <typename T, size_t ChunkSize = 512>
+	template <typename ValueType>
 	struct FastInsertVector
 	{
-		FastInsertVector()
+		FastInsertVector(size_t cs = 256)
 		{
 			this->length = 0;
+			this->ChunkSize = cs;
 		}
 
 		FastInsertVector(const FastInsertVector& other)
 		{
+			this->ChunkSize = other.ChunkSize;
+
 			for(auto c : other.chunks)
 			{
-				auto nc = (T*) malloc(sizeof(T) * ChunkSize);
-				memmove(nc, c, sizeof(T) * ChunkSize);
+				auto nc = (ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize);
+				memmove(nc, c, sizeof(ValueType) * ChunkSize);
 				this->chunks.push_back(nc);
 			}
 
@@ -45,6 +50,7 @@ namespace util
 		{
 			// move.
 			this->chunks = std::move(other.chunks);
+			this->ChunkSize = other.ChunkSize;
 			this->length = other.length;
 
 			other.length = 0;
@@ -55,10 +61,11 @@ namespace util
 			if(this != &other)
 			{
 				for(auto p : this->chunks)
-					free(p);
+					mem::deallocate_memory(p, sizeof(ValueType) * ChunkSize);
 
 				// move.
 				this->chunks = std::move(other.chunks);
+				this->ChunkSize = other.ChunkSize;
 				this->length = other.length;
 
 				other.length = 0;
@@ -69,21 +76,20 @@ namespace util
 
 		~FastInsertVector()
 		{
-			for(auto p : this->chunks)
-				free(p);
+			this->clear();
 		}
 
 
-		T& operator [] (size_t index) const
+		ValueType& operator [] (size_t index) const
 		{
 			size_t cind = index / ChunkSize;
 			size_t offs = index % ChunkSize;
 
 			iceAssert(cind < this->chunks.size());
-			return *((T*) (this->chunks[cind] + offs));
+			return *((ValueType*) (this->chunks[cind] + offs));
 		}
 
-		T* getNextSlotAndIncrement()
+		ValueType* getNextSlotAndIncrement()
 		{
 			size_t addr = this->length;
 			if(addr >= (ChunkSize * this->chunks.size()))
@@ -100,24 +106,45 @@ namespace util
 			return this->length;
 		}
 
+		void clear()
+		{
+			size_t i = 0;
+			for(auto c : this->chunks)
+			{
+				for(size_t k = 0; k < ChunkSize && i < this->length; k++, i++)
+					(c + k)->~ValueType();
+
+				mem::deallocate_memory(c, sizeof(ValueType) * ChunkSize);
+			}
+
+			this->length = 0;
+			this->chunks.clear();
+		}
+
 		private:
 		void makeNewChunk()
 		{
-			this->chunks.push_back((T*) malloc(sizeof(T) * ChunkSize));
+			this->chunks.push_back((ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize));
 		}
 
 		// possibly use a faster implementation?? since we're just storing pointers idk if there's a point.
 		size_t length;
-		std::vector<T*> chunks;
+		std::vector<ValueType*> chunks;
+
+		size_t ChunkSize;
 	};
 
-
-
-	template <typename T>
-	struct MemoryPool
+	struct MemoryPool_base
 	{
-		MemoryPool() { }
-		~MemoryPool() { }
+		virtual void clear() = 0;
+		virtual ~MemoryPool_base() { }
+	};
+
+	template <typename ValueType>
+	struct MemoryPool : MemoryPool_base
+	{
+		MemoryPool(size_t chunkSize) : storage(chunkSize) { }
+		~MemoryPool() { this->storage.clear(); }
 
 		MemoryPool(const MemoryPool& other)
 		{
@@ -143,20 +170,24 @@ namespace util
 		}
 
 		template <typename... Args>
-		T* operator () (Args&&... args)
+		ValueType* operator () (Args&&... args)
 		{
 			return this->construct(std::forward<Args>(args)...);
 		}
 
 		template <typename... Args>
-		T* construct(Args&&... args)
+		ValueType* construct(Args&&... args)
 		{
-			return new (this->storage.getNextSlotAndIncrement()) T(std::forward<Args>(args)...);
+			return new (this->storage.getNextSlotAndIncrement()) ValueType(std::forward<Args>(args)...);
 		}
 
+		virtual void clear() override
+		{
+			this->storage.clear();
+		}
 
 		private:
-		FastInsertVector<T, 512> storage;
+		FastInsertVector<ValueType> storage;
 	};
 }
 

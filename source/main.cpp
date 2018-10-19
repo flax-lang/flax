@@ -9,6 +9,9 @@
 
 #include "ir/module.h"
 
+#include "mpool.h"
+#include "allocator.h"
+
 struct timer
 {
 	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
@@ -29,6 +32,7 @@ static void compile(std::string in, std::string out)
 	double parser_ms = 0;
 	double typecheck_ms = 0;
 
+	timer total(nullptr);
 
 	frontend::CollectorState state;
 	sst::DefinitionTree* dtree = 0;
@@ -36,17 +40,28 @@ static void compile(std::string in, std::string out)
 		{
 			timer t(&lexer_ms);
 			frontend::collectFiles(in, &state);
+			debuglogln("lexed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+			// mem::resetStats();
 		}
 
 		{
 			timer t(&parser_ms);
 			frontend::parseFiles(&state);
+			debuglogln("parsed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+			// mem::resetStats();
 		}
 
 		{
 			timer t(&typecheck_ms);
 
 			dtree = frontend::typecheckFiles(&state);
+			debuglogln("typechecked (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+
+			// mem::resetStats();
+
 			iceAssert(dtree);
 		}
 	}
@@ -55,6 +70,9 @@ static void compile(std::string in, std::string out)
 
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	auto cd = backend::CompiledData { module };
+
+	debuglogln("codegened (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+		mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 	auto codegen_ms = t.stop();
 
@@ -67,6 +85,11 @@ static void compile(std::string in, std::string out)
 
 	if(frontend::getPrintFIR())
 		fprintf(stderr, "%s\n", module->print().c_str());
+
+	// delete all the memory we've allocated.
+	util::clearAllPools();
+	debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+		mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 	{
 		using namespace backend;

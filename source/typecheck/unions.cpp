@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
@@ -18,7 +19,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	else if(ret)    return TCResult(ret);
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
-	auto defn = new sst::UnionDefn(this->loc);
+	auto defn = util::pool<sst::UnionDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
@@ -72,7 +73,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		// it's a little cheaty thing here; we add ourselves to the subtree under different names,
 		// so that dot-operator checking still comes back to us in the end.
 
-		auto vdef = new sst::UnionVariantDefn(std::get<1>(variant.second));
+		auto vdef = util::pool<sst::UnionVariantDefn>(std::get<1>(variant.second));
 		vdef->parentUnion = defn;
 		// vdef->type = vars[variant.first].second;
 		vdef->id = Identifier(variant.first, IdKind::Name);

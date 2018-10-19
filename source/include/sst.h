@@ -59,10 +59,10 @@ namespace sst
 	struct TypeExpr : Expr
 	{
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-		static TypeExpr* make(const Location& l, fir::Type* t);
 
 		//* allows us to intern this, so we don't leak memory.
-		protected:
+		static TypeExpr* make(const Location& l, fir::Type* t);
+
 		TypeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<TYPE EXPRESSION>"; }
 		~TypeExpr() { }
 	};

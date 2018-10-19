@@ -7,7 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
-
+#include "mpool.h"
 
 
 static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const Location& loc, int kind, std::string op,
@@ -258,7 +258,7 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			.postAndQuit();
 	}
 
-	auto ret = new sst::BinaryOp(this->loc, rest);
+	auto ret = util::pool<sst::BinaryOp>(this->loc, rest);
 
 	ret->left = dcast(sst::Expr, l);
 	ret->right = dcast(sst::Expr, r);
@@ -281,7 +281,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		auto oper = getOverloadedOperator(fs, this->loc, this->isPostfix ? 2 : 1, this->op, { t });
 		if(oper)
 		{
-			auto ret = new sst::UnaryOp(this->loc, oper->returnType);
+			auto ret = util::pool<sst::UnaryOp>(this->loc, oper->returnType);
 			ret->op = this->op;
 			ret->expr = v;
 
@@ -350,7 +350,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	}
 
 
-	auto ret = new sst::UnaryOp(this->loc, out);
+	auto ret = util::pool<sst::UnaryOp>(this->loc, out);
 	ret->op = this->op;
 	ret->expr = v;
 

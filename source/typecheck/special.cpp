@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -38,7 +39,7 @@ TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(inside->type->isTupleType())
 		return TCResult(SimpleError::make(this, "splat operator on tuple not allowed in this context"));
 
-	auto ret = new sst::SplatExpr(this->loc, fir::ArraySliceType::getVariadic(inside->type->getArrayElementType()));
+	auto ret = util::pool<sst::SplatExpr>(this->loc, fir::ArraySliceType::getVariadic(inside->type->getArrayElementType()));
 	ret->inside = inside;
 
 	return TCResult(ret);
@@ -56,7 +57,7 @@ sst::TypeExpr* sst::TypeExpr::make(const Location& l, fir::Type* t)
 	if(auto it = cache.find(t); it != cache.end())
 		return it->second;
 
-	return (cache[t] = new sst::TypeExpr(l, t));
+	return (cache[t] = util::pool<sst::TypeExpr>(l, t));
 }
 
 FnCallArgument FnCallArgument::make(const Location& l, const std::string& n, fir::Type* t)

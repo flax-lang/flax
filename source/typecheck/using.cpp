@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -129,7 +130,7 @@ namespace sst
 		}
 
 		// add a thing in the current scope
-		auto treedef = new sst::TreeDefn(this->loc());
+		auto treedef = util::pool<sst::TreeDefn>(this->loc());
 		treedef->tree = this->getTreeOfScope(sfrom);
 
 		parent->addDefinition(name, treedef);

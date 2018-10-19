@@ -11,6 +11,8 @@
 #include "ir/irbuilder.h"
 #include "ir/instruction.h"
 
+#include "mpool.h"
+
 #define DO_IN_SITU_CONSTANT_FOLDING		0
 
 
@@ -65,7 +67,6 @@ namespace fir
 	Function* IRBuilder::getCurrentFunction()
 	{
 		return this->currentFunction;
-		// return this->currentBlock->getParentFunction();
 	}
 
 	IRBlock* IRBuilder::getCurrentBlock()
@@ -73,6 +74,12 @@ namespace fir
 		return this->currentBlock;
 	}
 
+	static util::MemoryPool<Instruction> instr_pool(65536);
+	static Instruction* make_instr(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, const std::vector<Value*>& vals,
+		Value::Kind k = Value::Kind::rvalue)
+	{
+		return instr_pool.construct(kind, sideEffects, parent, out, vals, k);
+	}
 
 	Value* IRBuilder::addInstruction(Instruction* instr, const std::string& vname)
 	{
@@ -292,7 +299,7 @@ namespace fir
 			return 0;
 		}
 
-		return new Instruction(op, false, parent, out, { vlhs, vrhs });
+		return make_instr(op, false, parent, out, { vlhs, vrhs });
 	}
 
 	Value* IRBuilder::BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname)
@@ -338,7 +345,7 @@ namespace fir
 		iceAssert(a->getType()->toPrimitiveType() && "cannot negate non-primitive type");
 		iceAssert((a->getType()->isFloatingPointType() || a->getType()->toPrimitiveType()->isSigned()) && "cannot negate unsigned type");
 
-		Instruction* instr = new Instruction(a->getType()->isFloatingPointType() ? OpKind::Floating_Neg : OpKind::Signed_Neg,
+		Instruction* instr = make_instr(a->getType()->isFloatingPointType() ? OpKind::Floating_Neg : OpKind::Signed_Neg,
 			false, this->currentBlock, a->getType(), { a });
 
 		return this->addInstruction(instr, vname);
@@ -355,7 +362,7 @@ namespace fir
 		else ok = OpKind::Floating_Add;
 
 
-		Instruction* instr = new Instruction(ok, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(ok, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -369,7 +376,7 @@ namespace fir
 		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Sub;
 		else ok = OpKind::Floating_Sub;
 
-		Instruction* instr = new Instruction(ok, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(ok, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -383,7 +390,7 @@ namespace fir
 		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Mul;
 		else ok = OpKind::Floating_Mul;
 
-		Instruction* instr = new Instruction(ok, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(ok, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -398,7 +405,7 @@ namespace fir
 		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Div;
 		else ok = OpKind::Floating_Div;
 
-		Instruction* instr = new Instruction(ok, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(ok, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -412,14 +419,14 @@ namespace fir
 		else if(a->getType()->isIntegerType()) ok = OpKind::Unsigned_Mod;
 		else ok = OpKind::Floating_Mod;
 
-		Instruction* instr = new Instruction(ok, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(ok, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::FTruncate(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Floating_Truncate, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -428,7 +435,7 @@ namespace fir
 	Value* IRBuilder::FExtend(Value* v, Type* targetType, const std::string& vname)
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
-		Instruction* instr = new Instruction(OpKind::Floating_Extend, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Floating_Extend, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -447,7 +454,7 @@ namespace fir
 			error("creating icmp eq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_Equal, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -461,7 +468,7 @@ namespace fir
 			error("creating icmp neq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_NotEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -475,7 +482,7 @@ namespace fir
 			error("creating icmp gt instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_Greater, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -489,7 +496,7 @@ namespace fir
 			error("creating icmp lt instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_Less, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -503,7 +510,7 @@ namespace fir
 			error("creating icmp geq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_GreaterEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -517,7 +524,7 @@ namespace fir
 			error("creating icmp leq instruction with non-equal types");
 		}
 
-		Instruction* instr = new Instruction(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::ICompare_LessEqual, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -530,7 +537,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::Type::getBool(),
+		Instruction* instr = make_instr(OpKind::FCompare_Equal_ORD, false, this->currentBlock, fir::Type::getBool(),
 			{ a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -539,7 +546,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp eq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Equal_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Equal_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -548,7 +555,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_ord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_ORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_NotEqual_ORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -557,7 +564,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp neq_uord instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_NotEqual_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_NotEqual_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -566,7 +573,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Greater_ORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Greater_ORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -575,7 +582,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp gt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Greater_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Greater_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -584,7 +591,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Less_ORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Less_ORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -593,7 +600,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp lt instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Less_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Less_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -602,7 +609,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_ORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_GreaterEqual_ORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -611,7 +618,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp geq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_GreaterEqual_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_GreaterEqual_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -620,7 +627,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_ORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_LessEqual_ORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -629,7 +636,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_LessEqual_UNORD, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_LessEqual_UNORD, false, this->currentBlock,
 			fir::Type::getBool(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -640,7 +647,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating icmp multi instruction with non-equal types");
 		// iceAssert(a->getType()->isIntegerType() && "creating icmp multi instruction with non-integer type");
-		Instruction* instr = new Instruction(OpKind::ICompare_Multi, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::ICompare_Multi, false, this->currentBlock,
 			fir::Type::getInt64(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -649,7 +656,7 @@ namespace fir
 	{
 		iceAssert(a->getType() == b->getType() && "creating cmp leq instruction with non-equal types");
 		iceAssert(a->getType()->isFloatingPointType() && "creating fcmp instruction with non floating-point types");
-		Instruction* instr = new Instruction(OpKind::FCompare_Multi, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::FCompare_Multi, false, this->currentBlock,
 			fir::Type::getInt64(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
@@ -666,54 +673,54 @@ namespace fir
 	Value* IRBuilder::BitwiseXOR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise xor instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Xor, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_Xor, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseLogicalSHR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise lshl instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Logical_Shr, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_Logical_Shr, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseArithmeticSHR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise ashl instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Arithmetic_Shr, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_Arithmetic_Shr, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseSHL(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise shr instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Shl, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_Shl, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseAND(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise and instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_And, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_And, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseOR(Value* a, Value* b, const std::string& vname)
 	{
 		iceAssert(a->getType() == b->getType() && "creating bitwise or instruction with non-equal types");
-		Instruction* instr = new Instruction(OpKind::Bitwise_Or, false, this->currentBlock, a->getType(), { a, b });
+		Instruction* instr = make_instr(OpKind::Bitwise_Or, false, this->currentBlock, a->getType(), { a, b });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::BitwiseNOT(Value* a, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Bitwise_Not, false, this->currentBlock, a->getType(), { a });
+		Instruction* instr = make_instr(OpKind::Bitwise_Not, false, this->currentBlock, a->getType(), { a });
 		return this->addInstruction(instr, vname);
 	}
 
 	Value* IRBuilder::Bitcast(Value* v, Type* targetType, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Cast_Bitcast, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_Bitcast, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
@@ -729,7 +736,7 @@ namespace fir
 			return ConstantInt::get(targetType, ci->getSignedValue());
 		}
 
-		Instruction* instr = new Instruction(OpKind::Cast_IntSize, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_IntSize, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -750,7 +757,7 @@ namespace fir
 				return ConstantInt::get(targetType, ci->getUnsignedValue());
 		}
 
-		Instruction* instr = new Instruction(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_IntSignedness, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -772,7 +779,7 @@ namespace fir
 			return ConstantInt::get(targetType, (size_t) cfp->getValue());
 		}
 
-		Instruction* instr = new Instruction(OpKind::Cast_FloatToInt, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_FloatToInt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -806,7 +813,7 @@ namespace fir
 			return ret;
 		}
 
-		Instruction* instr = new Instruction(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_IntToFloat, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -817,7 +824,7 @@ namespace fir
 		iceAssert((v->getType()->isPointerType() || v->getType()->isNullType()) && "value is not pointer type");
 		iceAssert((targetType->isPointerType() || targetType->isNullType()) && "target is not pointer type");
 
-		Instruction* instr = new Instruction(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_PointerType, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 
 		return this->addInstruction(instr, vname);
@@ -828,7 +835,7 @@ namespace fir
 		iceAssert(v->getType()->isPointerType() && "value is not pointer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
-		Instruction* instr = new Instruction(OpKind::Cast_PointerToInt, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_PointerToInt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
@@ -838,7 +845,7 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isPointerType() && "target is not pointer type");
 
-		Instruction* instr = new Instruction(OpKind::Cast_IntToPointer, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Cast_IntToPointer, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
@@ -849,7 +856,7 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
-		Instruction* instr = new Instruction(OpKind::Integer_Truncate, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Integer_Truncate, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
@@ -859,7 +866,7 @@ namespace fir
 		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
-		Instruction* instr = new Instruction(OpKind::Integer_ZeroExt, false, this->currentBlock, targetType,
+		Instruction* instr = make_instr(OpKind::Integer_ZeroExt, false, this->currentBlock, targetType,
 			{ v, ConstantValue::getZeroValue(targetType) });
 		return this->addInstruction(instr, vname);
 	}
@@ -1093,7 +1100,7 @@ namespace fir
 
 		out.insert(out.begin(), fn);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunction, true, this->currentBlock, fn->getType()->getReturnType(), out);
+		Instruction* instr = make_instr(OpKind::Value_CallFunction, true, this->currentBlock, fn->getType()->getReturnType(), out);
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1111,7 +1118,7 @@ namespace fir
 		//* note: we're using our operator overload here for T + VEC<T>
 		auto out = fn + args;
 
-		Instruction* instr = new Instruction(OpKind::Value_CallFunctionPointer, true, this->currentBlock, ft->getReturnType(), out);
+		Instruction* instr = make_instr(OpKind::Value_CallFunctionPointer, true, this->currentBlock, ft->getReturnType(), out);
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1124,7 +1131,7 @@ namespace fir
 		auto self = ty->getPointerElementType()->toClassType();
 		iceAssert(self && self == cls);
 
-		Instruction* instr = new Instruction(OpKind::Value_CallVirtualMethod, true, this->currentBlock, ft->getReturnType(),
+		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, this->currentBlock, ft->getReturnType(),
 			(Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getInt64(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
 
 		return this->addInstruction(instr, vname);
@@ -1151,34 +1158,33 @@ namespace fir
 
 	Value* IRBuilder::Return(Value* v)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { v });
+		Instruction* instr = make_instr(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { v });
 		return this->addInstruction(instr, "");
 	}
 
 	Value* IRBuilder::ReturnVoid()
 	{
-		Instruction* instr = new Instruction(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { });
+		Instruction* instr = make_instr(OpKind::Value_Return, true, this->currentBlock, Type::getVoid(), { });
 		return this->addInstruction(instr, "");
 	}
 
 
 	Value* IRBuilder::LogicalNot(Value* v, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Logical_Not, false, this->currentBlock, Type::getBool(), { v });
+		Instruction* instr = make_instr(OpKind::Logical_Not, false, this->currentBlock, Type::getBool(), { v });
 		return this->addInstruction(instr, vname);
 	}
 
 
 	PHINode* IRBuilder::CreatePHINode(Type* type, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
+		Instruction* instr = make_instr(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
 		// we need to 'lift' the allocation up to make it the first in the block
 		// this is an llvm requirement.
 
-		delete instr->realOutput;
-
+		// MEMORY LEAK
 		instr->realOutput = new PHINode(type);
 		fir::Value* ret = instr->realOutput;
 
@@ -1191,7 +1197,7 @@ namespace fir
 
 	Value* IRBuilder::StackAlloc(Type* type, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
+		Instruction* instr = make_instr(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
 		// we need to 'lift' the allocation up to the entry block of the function
@@ -1246,14 +1252,14 @@ namespace fir
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
 	{
-		Instruction* instr = new Instruction(OpKind::Branch_Cond, true, this->currentBlock, Type::getVoid(),
+		Instruction* instr = make_instr(OpKind::Branch_Cond, true, this->currentBlock, Type::getVoid(),
 			{ condition, trueB, falseB });
 		this->addInstruction(instr, "");
 	}
 
 	void IRBuilder::UnCondBranch(IRBlock* target)
 	{
-		Instruction* instr = new Instruction(OpKind::Branch_UnCond, true, this->currentBlock, Type::getVoid(),
+		Instruction* instr = make_instr(OpKind::Branch_UnCond, true, this->currentBlock, Type::getVoid(),
 			{ target });
 		this->addInstruction(instr, "");
 	}
@@ -1261,24 +1267,6 @@ namespace fir
 
 
 
-	// gep stuff
-
-
-	// structs and tuples have the same member names.
-	// template <typename T>
-	// static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* ptr, Value* ptrIndex, size_t memberIndex)
-	// {
-	// 	iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
-
-	// 	Instruction* instr = new Instruction(OpKind::Value_GetPointerToStructMember, false, parent,
-	// 		type->getElementN(memberIndex)->getPointerTo(), { ptr, ptrIndex, ConstantInt::getUint64(memberIndex) });
-
-	// 	// disallow storing to members of immut structs
-	// 	if(ptr->isImmutable())
-	// 		instr->realOutput->makeImmutable();
-
-	// 	return instr;
-	// }
 
 	template <typename T>
 	static Instruction* doGEPOnCompoundType(IRBlock* parent, T* type, Value* structPtr, size_t memberIndex)
@@ -1288,7 +1276,7 @@ namespace fir
 
 		iceAssert(type->getElementCount() > memberIndex && "struct does not have so many members");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, parent, type->getElementN(memberIndex),
+		Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, parent, type->getElementN(memberIndex),
 			{ structPtr, ConstantInt::getUint64(memberIndex) }, Value::Kind::lvalue);
 
 		return instr;
@@ -1332,7 +1320,7 @@ namespace fir
 
 			iceAssert(st->hasElementWithName(memberName) && "no element with such name");
 
-			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
+			Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, this->currentBlock,
 				memt, { ptr, ConstantInt::getUint64(st->getElementIndex(memberName)) }, Value::Kind::lvalue);
 
 			return this->addInstruction(instr, memberName);
@@ -1345,7 +1333,7 @@ namespace fir
 			auto memt = ct->getElement(memberName);
 
 			//! '+1' is for vtable.
-			Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
+			Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, this->currentBlock,
 				memt, { ptr, ConstantInt::getUint64(ct->getElementIndex(memberName) + 1) }, Value::Kind::lvalue);
 
 			return this->addInstruction(instr, memberName);
@@ -1367,7 +1355,7 @@ namespace fir
 		if(!ty->isClassType()) error("'%s' is not a class type", ty);
 		if(table->getType() != fir::Type::getInt8Ptr()) error("expected i8* for vtable, got '%s'", table->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_GetStructMember, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, this->currentBlock,
 			fir::Type::getInt8Ptr(), { ptr, ConstantInt::getUint64(0) }, Value::Kind::lvalue);
 
 		auto gep = this->addInstruction(instr, vname);
@@ -1409,7 +1397,7 @@ namespace fir
 		if(ptr->getType()->isMutablePointer())
 			retType = retType->getMutablePointerVersion();
 
-		Instruction* instr = new Instruction(OpKind::Value_GetGEP2, false, this->currentBlock, retType, { ptr, ptrIndex, elmIndex });
+		Instruction* instr = make_instr(OpKind::Value_GetGEP2, false, this->currentBlock, retType, { ptr, ptrIndex, elmIndex });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1426,7 +1414,7 @@ namespace fir
 		if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
 			error("use the other function for struct types");
 
-		Instruction* instr = new Instruction(OpKind::Value_GetPointer, false, this->currentBlock, ptr->getType(), { ptr, ptrIndex });
+		Instruction* instr = make_instr(OpKind::Value_GetPointer, false, this->currentBlock, ptr->getType(), { ptr, ptrIndex });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1440,7 +1428,7 @@ namespace fir
 		if(one->getType() != two->getType())
 			error("Non-identical types for operands (got '%s' and '%s')", one->getType(), two->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_Select, false, this->currentBlock, one->getType(), { cond, one, two });
+		Instruction* instr = make_instr(OpKind::Value_Select, false, this->currentBlock, one->getType(), { cond, one, two });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1448,7 +1436,7 @@ namespace fir
 
 	Value* IRBuilder::Sizeof(Type* t, const std::string& vname)
 	{
-		Instruction* instr = new Instruction(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
+		Instruction* instr = make_instr(OpKind::Misc_Sizeof, false, this->currentBlock, Type::getInt64(),
 			{ ConstantValue::getZeroValue(t) });
 
 		return this->addInstruction(instr, vname);
@@ -1476,7 +1464,7 @@ namespace fir
 		if(!num->getType()->isIntegerType())
 			error("num is not an integer type (got '%s')", num->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
+		Instruction* instr = make_instr(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1488,7 +1476,7 @@ namespace fir
 		if(!num->getType()->isIntegerType())
 			error("num is not an integer type (got '%s')", num->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
+		Instruction* instr = make_instr(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1522,7 +1510,7 @@ namespace fir
 			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 		// note: no sideeffects, since we return a new aggregate
-		Instruction* instr = new Instruction(OpKind::Value_InsertValue, false, this->currentBlock, t, args);
+		Instruction* instr = make_instr(OpKind::Value_InsertValue, false, this->currentBlock, t, args);
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1549,7 +1537,7 @@ namespace fir
 
 
 		// note: no sideeffects, since we return a new aggregate
-		Instruction* instr = new Instruction(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
+		Instruction* instr = make_instr(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
 		return this->addInstruction(instr, vname);
 	}
 
@@ -1599,7 +1587,7 @@ namespace fir
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::SAA_GetData, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_GetData, false, this->currentBlock,
 			getSAAElmType(arr->getType())->getMutablePointerTo(), { arr });
 
 		return this->addInstruction(instr, vname);
@@ -1617,7 +1605,7 @@ namespace fir
 				t->getMutablePointerTo(), val->getType());
 		}
 
-		Instruction* instr = new Instruction(OpKind::SAA_SetData, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_SetData, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1630,7 +1618,7 @@ namespace fir
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::SAA_GetLength, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
@@ -1644,7 +1632,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::SAA_SetLength, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_SetLength, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1657,7 +1645,7 @@ namespace fir
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::SAA_GetCapacity, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_GetCapacity, false, this->currentBlock,
 			fir::Type::getInt64(), { arr });
 
 		return this->addInstruction(instr, vname);
@@ -1671,7 +1659,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::SAA_SetCapacity, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_SetCapacity, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1684,7 +1672,7 @@ namespace fir
 		if(!isSAAType(arr->getType()))
 			error("thing is not an SAA type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::SAA_GetRefCountPtr, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_GetRefCountPtr, false, this->currentBlock,
 			fir::Type::getInt64Ptr(), { arr });
 
 		return this->addInstruction(instr, vname);
@@ -1698,7 +1686,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64()->getPointerTo())
 			error("val is not an int64 pointer");
 
-		Instruction* instr = new Instruction(OpKind::SAA_SetRefCountPtr, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::SAA_SetRefCountPtr, true, this->currentBlock,
 			arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
@@ -1748,7 +1736,7 @@ namespace fir
 		auto st = slc->getType()->toArraySliceType();
 		auto et = st->getElementType();
 
-		Instruction* instr = new Instruction(OpKind::ArraySlice_GetData, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::ArraySlice_GetData, false, this->currentBlock,
 			st->isMutable() ? et->getMutablePointerTo() : et->getPointerTo(), { slc });
 
 		return this->addInstruction(instr, vname);
@@ -1769,7 +1757,7 @@ namespace fir
 				error("val is not a pointer to elm type (need '%s', have '%s')", pt, val->getType());
 		}
 
-		Instruction* instr = new Instruction(OpKind::ArraySlice_SetData, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::ArraySlice_SetData, true, this->currentBlock,
 			slc->getType(), { slc, val });
 
 		return this->addInstruction(instr, vname);
@@ -1781,7 +1769,7 @@ namespace fir
 		if(!slc->getType()->isArraySliceType())
 			error("slc is not an array slice type (got '%s')", slc->getType());
 
-		Instruction* instr = new Instruction(OpKind::ArraySlice_GetLength, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::ArraySlice_GetLength, false, this->currentBlock,
 			fir::Type::getInt64(), { slc });
 
 		return this->addInstruction(instr, vname);
@@ -1795,7 +1783,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64())
 			error("val is not an int64");
 
-		Instruction* instr = new Instruction(OpKind::ArraySlice_SetLength, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::ArraySlice_SetLength, true, this->currentBlock,
 			slc->getType(), { slc, val });
 
 		return this->addInstruction(instr, vname);
@@ -1813,7 +1801,7 @@ namespace fir
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getUint64(), { any });
+		Instruction* instr = make_instr(OpKind::Any_GetTypeID, false, this->currentBlock, fir::Type::getUint64(), { any });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1826,7 +1814,7 @@ namespace fir
 		else if(val->getType() != fir::Type::getUint64())
 			error("val is not a uint64");
 
-		Instruction* instr = new Instruction(OpKind::Any_SetTypeID, true, this->currentBlock, fir::Type::getAny(), { any, val });
+		Instruction* instr = make_instr(OpKind::Any_SetTypeID, true, this->currentBlock, fir::Type::getAny(), { any, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1837,7 +1825,7 @@ namespace fir
 		if(!any->getType()->isAnyType())
 			error("not any type (got '%s')", any->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_GetData, false, this->currentBlock, fir::ArrayType::get(fir::Type::getInt8(),
+		Instruction* instr = make_instr(OpKind::Any_GetData, false, this->currentBlock, fir::ArrayType::get(fir::Type::getInt8(),
 			BUILTIN_ANY_DATA_BYTECOUNT), { any });
 
 		return this->addInstruction(instr, vname);
@@ -1851,7 +1839,7 @@ namespace fir
 		else if(val->getType() != fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT))
 			error("val is not array type (got '%s')", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getAny(), { any, val });
+		Instruction* instr = make_instr(OpKind::Any_SetData, true, this->currentBlock, fir::Type::getAny(), { any, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1862,7 +1850,7 @@ namespace fir
 		if(!arr->getType()->isAnyType())
 			error("arr is not an any type (got '%s')", arr->getType());
 
-		Instruction* instr = new Instruction(OpKind::Any_GetRefCountPtr, false, this->currentBlock, fir::Type::getInt64Ptr(), { arr });
+		Instruction* instr = make_instr(OpKind::Any_GetRefCountPtr, false, this->currentBlock, fir::Type::getInt64Ptr(), { arr });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1875,7 +1863,7 @@ namespace fir
 		if(val->getType() != fir::Type::getInt64()->getPointerTo())
 			error("val is not an int64 pointer");
 
-		Instruction* instr = new Instruction(OpKind::Any_SetRefCountPtr, true, this->currentBlock, arr->getType(), { arr, val });
+		Instruction* instr = make_instr(OpKind::Any_SetRefCountPtr, true, this->currentBlock, arr->getType(), { arr, val });
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1915,7 +1903,7 @@ namespace fir
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_GetLower, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_GetLower, false, this->currentBlock,
 			fir::Type::getInt64(), { range });
 
 		return this->addInstruction(instr, vname);
@@ -1929,7 +1917,7 @@ namespace fir
 		if(!val->getType()->isIntegerType())
 			error("val is not an integer type (got '%s')", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_SetLower, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_SetLower, true, this->currentBlock,
 			fir::Type::getRange(), { range, val });
 
 		return this->addInstruction(instr, vname);
@@ -1940,7 +1928,7 @@ namespace fir
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_GetUpper, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_GetUpper, false, this->currentBlock,
 			fir::Type::getInt64(), { range });
 
 		return this->addInstruction(instr, vname);
@@ -1954,7 +1942,7 @@ namespace fir
 		if(!val->getType()->isIntegerType())
 			error("val is not an integer type (got '%s')", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_SetUpper, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_SetUpper, true, this->currentBlock,
 			fir::Type::getRange(), { range, val });
 
 		return this->addInstruction(instr, vname);
@@ -1965,7 +1953,7 @@ namespace fir
 		if(!range->getType()->isRangeType())
 			error("range is not a range type (have '%s')", range->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_GetStep, false, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_GetStep, false, this->currentBlock,
 			fir::Type::getInt64(), { range });
 
 		return this->addInstruction(instr, vname);
@@ -1979,7 +1967,7 @@ namespace fir
 		if(!val->getType()->isIntegerType())
 			error("val is not an integer type (got '%s')", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Range_SetStep, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Range_SetStep, true, this->currentBlock,
 			fir::Type::getRange(), { range, val });
 
 		return this->addInstruction(instr, vname);
@@ -1993,7 +1981,7 @@ namespace fir
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
 
-		Instruction* instr = new Instruction(OpKind::Enum_GetIndex, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Enum_GetIndex, true, this->currentBlock,
 			fir::Type::getInt64(), { ecs });
 
 		return this->addInstruction(instr, vname);
@@ -2007,7 +1995,7 @@ namespace fir
 		if(!idx->getType()->isIntegerType())
 			error("index is not an integer type (got '%s')", idx->getType());
 
-		Instruction* instr = new Instruction(OpKind::Enum_SetIndex, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Enum_SetIndex, true, this->currentBlock,
 			ecs->getType(), { ecs, idx });
 
 		return this->addInstruction(instr, vname);
@@ -2018,7 +2006,7 @@ namespace fir
 		if(!ecs->getType()->isEnumType())
 			error("enum is not an enum type (got '%s')", ecs->getType());
 
-		Instruction* instr = new Instruction(OpKind::Enum_GetValue, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Enum_GetValue, true, this->currentBlock,
 			ecs->getType()->toEnumType()->getCaseType(), { ecs });
 
 		return this->addInstruction(instr, vname);
@@ -2035,7 +2023,7 @@ namespace fir
 				ecs->getType()->toEnumType()->getCaseType(), val->getType());
 		}
 
-		Instruction* instr = new Instruction(OpKind::Enum_SetValue, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Enum_SetValue, true, this->currentBlock,
 			ecs->getType(), { ecs, val });
 
 		return this->addInstruction(instr, vname);
@@ -2052,7 +2040,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("ptr is not pointer type (got '%s')", ptr->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_ReadPtr, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
+		Instruction* instr = make_instr(OpKind::Value_ReadPtr, false, this->currentBlock, ptr->getType()->getPointerElementType(), { ptr });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -2079,7 +2067,7 @@ namespace fir
 		}
 
 
-		Instruction* instr = new Instruction(OpKind::Value_WritePtr, true, this->currentBlock, Type::getVoid(), { v, ptr });
+		Instruction* instr = make_instr(OpKind::Value_WritePtr, true, this->currentBlock, Type::getVoid(), { v, ptr });
 		this->addInstruction(instr, "");
 	}
 
@@ -2087,7 +2075,7 @@ namespace fir
 	Value* IRBuilder::CreateLValue(Type* type, const std::string& vname)
 	{
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
+		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
 			Value::Kind::lvalue);
 
 		return this->addInstruction(instr, vname);
@@ -2096,7 +2084,7 @@ namespace fir
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
 	{
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
+		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
 			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
 		auto ret = this->addInstruction(instr, vname);
@@ -2118,7 +2106,7 @@ namespace fir
 			error("cannot store value of type '%s' to lvalue of type '%s'", val->getType(), lval->getType());
 
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { val, lval });
+		Instruction* instr = make_instr(OpKind::Value_Store, true, this->currentBlock, Type::getVoid(), { val, lval });
 		this->addInstruction(instr, "");
 	}
 
@@ -2127,7 +2115,7 @@ namespace fir
 		if(!val->getType()->isPointerType())
 			error("cannot dereference non-pointer type '%s'", val->getType());
 
-		Instruction* instr = new Instruction(OpKind::Value_Dereference, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Value_Dereference, true, this->currentBlock,
 			val->getType()->getPointerElementType(), { val }, val->getType()->isMutablePointer() ? Value::Kind::lvalue : Value::Kind::clvalue);
 
 		return this->addInstruction(instr, vname);
@@ -2139,7 +2127,7 @@ namespace fir
 			error("cannot take the address of a non-lvalue");
 
 		// ok...
-		Instruction* instr = new Instruction(OpKind::Value_AddressOf, true, this->currentBlock,
+		Instruction* instr = make_instr(OpKind::Value_AddressOf, true, this->currentBlock,
 			mut ? lval->getType()->getMutablePointerTo() : lval->getType()->getPointerTo(), { lval });
 		return this->addInstruction(instr, vname);
 	}
@@ -2155,7 +2143,7 @@ namespace fir
 		if(data->getType() != ut->getVariant(id)->getInteriorType())
 			error("cannot store data '%s' into union variant '%s'", data->getType(), ut->getVariant(id)->getInteriorType());
 
-		Instruction* instr = new Instruction(OpKind::Union_SetValue, true, this->currentBlock, unn->getType(),
+		Instruction* instr = make_instr(OpKind::Union_SetValue, true, this->currentBlock, unn->getType(),
 			{ unn, fir::ConstantInt::getInt64(id), data });
 		return this->addInstruction(instr, vname);
 	}
@@ -2167,7 +2155,7 @@ namespace fir
 
 		auto ut = unn->getType()->toUnionType();
 
-		Instruction* instr = new Instruction(OpKind::Union_GetValue, true, this->currentBlock, ut->getVariant(id)->getInteriorType(),
+		Instruction* instr = make_instr(OpKind::Union_GetValue, true, this->currentBlock, ut->getVariant(id)->getInteriorType(),
 			{ unn, fir::ConstantInt::getInt64(id) });
 		return this->addInstruction(instr, vname);
 	}
@@ -2177,7 +2165,7 @@ namespace fir
 		if(!unn->getType()->isUnionType())
 			error("'%s' is not a union type", unn->getType());
 
-		Instruction* instr = new Instruction(OpKind::Union_GetVariantID, true, this->currentBlock, fir::Type::getInt64(), { unn });
+		Instruction* instr = make_instr(OpKind::Union_GetVariantID, true, this->currentBlock, fir::Type::getInt64(), { unn });
 		return this->addInstruction(instr, vname);
 	}
 
@@ -2188,7 +2176,7 @@ namespace fir
 		if(!unn->getType()->isUnionType())
 			error("'%s' is not a union type", unn->getType());
 
-		Instruction* instr = new Instruction(OpKind::Union_SetVariantID, true, this->currentBlock, unn->getType(),
+		Instruction* instr = make_instr(OpKind::Union_SetVariantID, true, this->currentBlock, unn->getType(),
 			{ unn, fir::ConstantInt::getInt64(id) });
 
 		return this->addInstruction(instr, vname);
@@ -2224,7 +2212,7 @@ namespace fir
 
 	void IRBuilder::Unreachable()
 	{
-		this->addInstruction(new Instruction(OpKind::Unreachable, true, this->currentBlock, fir::Type::getVoid(), { }), "");
+		this->addInstruction(make_instr(OpKind::Unreachable, true, this->currentBlock, fir::Type::getVoid(), { }), "");
 	}
 
 	IRBlock* IRBuilder::addNewBlockInFunction(std::string name, Function* func)

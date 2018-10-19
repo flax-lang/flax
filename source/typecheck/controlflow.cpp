@@ -8,13 +8,15 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
 	using Case = sst::IfStmt::Case;
-	auto ret = new sst::IfStmt(this->loc);
+	auto ret = util::pool<sst::IfStmt>(this->loc);
 
 	auto n = fs->getAnonymousScopeName();
 
@@ -45,7 +47,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	auto ret = new sst::ReturnStmt(this->loc);
+	auto ret = util::pool<sst::ReturnStmt>(this->loc);
 
 	if(fs->isInDeferBlock())
 		error(this, "Cannot 'return' while inside a deferred block");

@@ -8,12 +8,14 @@
 #include "ir/type.h"
 #include "typecheck.h"
 
+#include "mpool.h"
+
 TCResult ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::SizeofOp(this->loc, fir::Type::getInt64());
+	auto ret = util::pool<sst::SizeofOp>(this->loc, fir::Type::getInt64());
 
 	// see what we have.
 	fir::Type* out = 0;
@@ -41,7 +43,7 @@ TCResult ast::TypeidOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::TypeidOp(this->loc, fir::Type::getUint64());
+	auto ret = util::pool<sst::TypeidOp>(this->loc, fir::Type::getUint64());
 
 	// see what we have.
 	fir::Type* out = 0;

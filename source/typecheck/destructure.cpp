@@ -8,6 +8,8 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* rhs, bool immut, bool allowref);
 static void checkTuple(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* rhs, bool immut)
 {
@@ -41,7 +43,7 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 
 		if(!bind->restName.empty())
 		{
-			auto fake = new sst::VarDefn(bind->loc);
+			auto fake = util::pool<sst::VarDefn>(bind->loc);
 
 			fake->id = Identifier(bind->restName, IdKind::Name);
 			fake->immutable = immut;
@@ -62,7 +64,7 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 
 		if(!bind->restName.empty())
 		{
-			auto fake = new sst::VarDefn(bind->loc);
+			auto fake = util::pool<sst::VarDefn>(bind->loc);
 
 			fake->id = Identifier(bind->restName, IdKind::Name);
 			fake->immutable = immut;
@@ -88,7 +90,7 @@ static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping* bind, fir
 	{
 		if(bind->name != "_")
 		{
-			auto fake = new sst::VarDefn(bind->loc);
+			auto fake = util::pool<sst::VarDefn>(bind->loc);
 
 			fake->id = Identifier(bind->name, IdKind::Name);
 			fake->immutable = immut;
@@ -132,7 +134,7 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	defer(fs->popLoc());
 
 
-	auto ret = new sst::DecompDefn(this->loc);
+	auto ret = util::pool<sst::DecompDefn>(this->loc);
 
 	ret->immutable = this->immut;
 	if(auto splat = dcast(ast::SplatOp, this->initialiser))
@@ -162,7 +164,7 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 		}
 
 		// ok, at this point we should be fine.
-		this->initialiser = new ast::LitTuple(splat->loc, std::vector<ast::Expr*>(this->bindings.inner.size(), splat->expr));
+		this->initialiser = util::pool<ast::LitTuple>(splat->loc, std::vector<ast::Expr*>(this->bindings.inner.size(), splat->expr));
 	}
 
 	ret->init = this->initialiser->typecheck(fs).expr();
