@@ -6,6 +6,8 @@
 #include "platform.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 #include <sstream>
 
 using namespace ast;
@@ -19,7 +21,7 @@ namespace parser
 		iceAssert(st.front() == TT::Number);
 		auto t = st.eat();
 
-		return new LitNumber(st.ploc(), t.str());
+		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
 	LitString* parseString(State& st, bool israw)
@@ -54,7 +56,7 @@ namespace parser
 			}
 		}
 
-		return new LitString(st.ploc(), ss.str(), israw);
+		return util::pool<LitString>(st.ploc(), ss.str(), israw);
 	}
 
 	LitArray* parseArray(State& st, bool israw)
@@ -102,7 +104,7 @@ namespace parser
 
 		auto end = st.eat();
 
-		auto ret = new LitArray(front.loc, values);
+		auto ret = util::pool<LitArray>(front.loc, values);
 		ret->explicitType = explType;               // don't matter if null.
 		ret->raw = israw;
 

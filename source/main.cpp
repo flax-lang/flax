@@ -9,7 +9,7 @@
 
 #include "ir/module.h"
 
-static struct timer
+struct timer
 {
 	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
 	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }

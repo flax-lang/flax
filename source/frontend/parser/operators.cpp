@@ -7,6 +7,9 @@
 #include "parser.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
+
 using namespace ast;
 using namespace lexer;
 
@@ -18,10 +21,10 @@ namespace parser
 
 	OperatorOverloadDefn* parseOperatorOverload(State& st)
 	{
-		using Kind = ast::OperatorOverloadDefn::Kind;
+		using Kind = OperatorOverloadDefn::Kind;
 
 		iceAssert(st.front() == TT::Operator);
-		auto ret = new ast::OperatorOverloadDefn(st.eat().loc);
+		auto ret = util::pool<OperatorOverloadDefn>(st.eat().loc);
 
 		if(st.front().str() == "prefix")
 			ret->kind = Kind::Prefix;

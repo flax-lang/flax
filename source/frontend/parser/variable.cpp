@@ -5,6 +5,8 @@
 #include "pts.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 #include <set>
 
 using namespace ast;
@@ -92,7 +94,7 @@ namespace parser
 		using TT = lexer::TokenType;
 		iceAssert(st.front() == TT::LSquare || st.front() == TT::LParen);
 
-		auto decomp = new DecompVarDefn(st.loc());
+		auto decomp = util::pool<DecompVarDefn>(st.loc());
 		decomp->bindings = recursivelyParseDecomp(st);
 
 		// we need to ensure there're no duplicate names.
@@ -194,7 +196,7 @@ namespace parser
 			error(st, "Expected initial value for immutable variable '%s'", name);
 		}
 
-		auto ret = new VarDefn(loc);
+		auto ret = util::pool<VarDefn>(loc);
 		ret->initialiser = value;
 		ret->immut = isImmut;
 		ret->type = type;

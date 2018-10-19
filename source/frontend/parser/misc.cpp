@@ -5,6 +5,8 @@
 #include "frontend.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 using namespace ast;
 using namespace lexer;
 
@@ -20,7 +22,7 @@ namespace parser
 			expectedAfter(st, "string literal", "'import' for module specifier", st.frontAfterWS().str());
 
 		{
-			auto ret = new ImportStmt(st.loc(), st.frontAfterWS().str());
+			auto ret = util::pool<ImportStmt>(st.loc(), st.frontAfterWS().str());
 			ret->resolvedModule = frontend::resolveImport(ret->path, ret->loc, st.currentFilePath);
 
 			st.eat();
@@ -46,7 +48,7 @@ namespace parser
 		iceAssert(st.front() == TT::Using);
 		st.eat();
 
-		auto ret = new ast::UsingStmt(st.ploc());
+		auto ret = util::pool<UsingStmt>(st.ploc());
 
 		//* so the deal is, we can't use 'parseExpr' here to parse the thing we want to 'use', because "X as Y" parses
 		//* as a cast instead.
@@ -75,16 +77,16 @@ namespace parser
 		// ok, convert the names into a series of dot-op + identifier nesting nonsenses.
 		if(names.size() == 1)
 		{
-			ret->expr = new ast::Ident(names[0].second, names[0].first);
+			ret->expr = util::pool<Ident>(names[0].second, names[0].first);
 		}
 		else
 		{
-			auto a = new ast::Ident(names[0].second, names[0].first);
-			auto b = new ast::Ident(names[1].second, names[1].first);
+			auto a = util::pool<Ident>(names[0].second, names[0].first);
+			auto b = util::pool<Ident>(names[1].second, names[1].first);
 
-			auto left = new ast::DotOperator(names[0].second, a, b);
+			auto left = util::pool<DotOperator>(names[0].second, a, b);
 			for(size_t i = 2; i < names.size(); i++)
-				left = new ast::DotOperator(names[i].second, left, new ast::Ident(names[i].second, names[i].first));
+				left = util::pool<DotOperator>(names[i].second, left, util::pool<Ident>(names[i].second, names[i].first));
 
 			ret->expr = left;
 		}
