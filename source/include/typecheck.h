@@ -4,7 +4,6 @@
 
 #pragma once
 #include "sst.h"
-#include "frontend.h"
 
 #include "precompile.h"
 
@@ -19,6 +18,7 @@ namespace parser
 namespace frontend
 {
 	struct CollectorState;
+	struct ImportThing;
 }
 
 namespace pts

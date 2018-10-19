@@ -4,6 +4,7 @@
 
 #pragma once
 #include "defs.h"
+#include "container.h"
 
 namespace lexer
 {
@@ -149,9 +150,10 @@ namespace lexer
 		os << (int) tt;
 	}
 
-	using TokenList = util::FastVector<Token>;
+	// using TokenList = util::FastVector<Token>;
+	using TokenList = util::FastInsertVector<Token>;
 
-	lexer::TokenType getNextToken(const util::FastVector<util::string_view>& lines, size_t* line, size_t* offset,
+	lexer::TokenType getNextToken(const util::FastInsertVector<util::string_view>& lines, size_t* line, size_t* offset,
 		const util::string_view& whole, Location& pos, Token* out, bool crlf);
 }
 

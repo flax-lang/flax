@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "errors.h"
 #include "parser.h"
+#include "frontend.h"
 #include "typecheck.h"
 
 #include "ir/type.h"

@@ -15,13 +15,23 @@
 #include "errors.h"
 #include "frontend.h"
 
+static struct timer
+{
+	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
+	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+
+	double* out = 0;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+};
+
 namespace frontend
 {
 	struct FileInnards
 	{
 		lexer::TokenList tokens;
 		util::string_view fileContents;
-		util::FastVector<util::string_view> lines;
+		util::FastInsertVector<util::string_view> lines;
 		std::vector<size_t> importIndices;
 
 		bool didLex = false;
@@ -40,15 +50,23 @@ namespace frontend
 		}
 
 
-		util::string_view fileContents = platform::readEntireFile(fullPath);
+		double file_read_ms = 0;
+		util::string_view fileContents;
+		{
+			timer t(&file_read_ms);
+			fileContents = platform::readEntireFile(fullPath);
+		}
 
 
 
 		// split into lines
 		bool crlf = false;
-		util::FastVector<util::string_view> rawlines;
+		util::FastInsertVector<util::string_view> rawlines;
+
+		double line_read_ms = 0;
 		{
-			// auto p = prof::Profile("lines");
+			timer t(&line_read_ms);
+
 			util::string_view view = fileContents;
 
 			bool first = true;
@@ -70,7 +88,7 @@ namespace frontend
 
 				if(ln != util::string_view::npos)
 				{
-					new (rawlines.getEmptySlotPtrAndAppend()) util::string_view(view.data(), ln + (crlf ? 2 : 1));
+					new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), ln + (crlf ? 2 : 1));
 					view.remove_prefix(ln + (crlf ? 2 : 1));
 				}
 				else
@@ -81,9 +99,9 @@ namespace frontend
 
 			// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
 			if(!view.empty())
-				new (rawlines.getEmptySlotPtrAndAppend()) util::string_view(view.data(), view.length());
-
-			// p.finish();
+			{
+				new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), view.length());
+			}
 		}
 
 
@@ -105,9 +123,10 @@ namespace frontend
 
 		// auto p = prof::Profile("lex");
 
-
+		double token_read_ms = 0;
 		lexer::TokenList& ts = innards.tokens;
 		{
+			timer t(&token_read_ms);
 
 			size_t curLine = 0;
 			size_t curOffset = 0;
@@ -116,7 +135,7 @@ namespace frontend
 			size_t i = 0;
 
 			do {
-				auto type = lexer::getNextToken(innards.lines, &curLine, &curOffset, innards.fileContents, pos, ts.getEmptySlotPtrAndAppend(), crlf);
+				auto type = lexer::getNextToken(innards.lines, &curLine, &curOffset, innards.fileContents, pos, ts.getNextSlotAndIncrement(), crlf);
 
 				flag = (type != lexer::TokenType::EndOfFile);
 
@@ -131,8 +150,6 @@ namespace frontend
 			} while(flag);
 
 			ts[ts.size() - 1].loc.len = 0;
-
-			// fprintf(stderr, "Processed %zu tokens (%zu lines)\n", i, curLine);
 		}
 
 		// p.finish();
@@ -140,22 +157,9 @@ namespace frontend
 		innards.didLex = true;
 		innards.isLexing = false;
 
+		debuglogln("read: %.2f, lines: %.2f, tokens: %.2f", file_read_ms, line_read_ms, token_read_ms);
+
 		return innards;
-
-		/*
-			file reading stats:
-
-			~175ms reading with c++
-			~20ms with read() -- split lines ~70ms
-			~4ms with mmap() -- split lines ~87ms
-
-
-			lexing stats:
-			raw lexing takes up ~20ms
-			adding to the vector takes ~65ms
-
-			=> resizing ends up taking up 45ms of time
-		*/
 	}
 
 
@@ -193,7 +197,7 @@ namespace frontend
 		}
 	}
 
-	const util::FastVector<util::string_view>& getFileLines(size_t id)
+	const util::FastInsertVector<util::string_view>& getFileLines(size_t id)
 	{
 		std::string fp = getFilenameFromID(id);
 		return readFileIfNecessary(fp).lines;
