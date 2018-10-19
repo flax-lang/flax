@@ -8,6 +8,8 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 {
 	if(ty->isStringType() || ty->isDynamicArrayType())
@@ -70,7 +72,7 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	bool ismut = sst::getMutabilityOfSliceOfType(ty);
 
-	auto ret = new sst::SliceOp(this->loc, fir::ArraySliceType::get(elm, ismut));
+	auto ret = util::pool<sst::SliceOp>(this->loc, fir::ArraySliceType::get(elm, ismut));
 	ret->expr = array;
 	ret->begin = begin;
 	ret->end = end;

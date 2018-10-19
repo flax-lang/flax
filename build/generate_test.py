@@ -224,6 +224,17 @@ def gen_test(reps):
 
 
 
+if __name__ == '__main__':
+    globals()[sys.argv[1]](int(sys.argv[2]))
+
+
+
+
+
+
+
+
+
 
 
 

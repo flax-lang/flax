@@ -9,6 +9,7 @@
 #include "typecheck.h"
 
 #include <set>
+#include "mpool.h"
 
 static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing)
 {
@@ -72,7 +73,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	else if(ret)    return TCResult(ret);
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
-	auto defn = new sst::StructDefn(this->loc);
+	auto defn = util::pool<sst::StructDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;

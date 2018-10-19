@@ -47,6 +47,8 @@ endif
 source_files = files([
 	'source/main.cpp',
 
+	'source/misc/mpool.cpp',
+	'source/misc/allocator.cpp',
 	'source/misc/identifier.cpp',
 	'source/misc/destructors.cpp',
 

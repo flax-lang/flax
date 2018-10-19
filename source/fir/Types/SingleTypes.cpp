@@ -148,15 +148,27 @@ namespace fir
 	std::string PolyPlaceholderType::getName()      { return this->name; }
 	int PolyPlaceholderType::getGroup()             { return this->group; }
 
+	static std::vector<std::unordered_map<std::string, PolyPlaceholderType*>> cache;
 	PolyPlaceholderType* PolyPlaceholderType::get(const std::string& n, int group)
 	{
-		return TypeCache::get().getOrAddCachedType(new PolyPlaceholderType(n, group));
+		while(group >= cache.size())
+			cache.push_back({ });
+
+		if(auto it = cache[group].find(n); it != cache[group].end())
+			return it->second;
+
+		return cache[group][n] = new PolyPlaceholderType(n, group);
 	}
 
 	bool PolyPlaceholderType::isTypeEqual(Type* other)
 	{
-		return other && other->isPolyPlaceholderType() && other->toPolyPlaceholderType()->name == this->name
-			&& other->toPolyPlaceholderType()->group == this->group;
+		// return other && other->isPolyPlaceholderType() && other->toPolyPlaceholderType()->name == this->name
+		// 	&& other->toPolyPlaceholderType()->group == this->group;
+
+		//! ACHTUNG !
+		// performance optimisation: since all polys go through ::get, and we already guarantee interning
+		// from that function, we should be able to just compare pointers.
+		return (other == this);
 	}
 
 	PolyPlaceholderType::PolyPlaceholderType(const std::string& n, int g) : Type(TypeKind::PolyPlaceholder)

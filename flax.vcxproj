@@ -18,7 +18,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9FD6A820-341E-44AB-BA7F-A38E05B8E4F1}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -52,7 +52,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Projects\flax\source\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
@@ -62,12 +62,14 @@
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
+    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
+    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <!-- <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -196,8 +198,8 @@ rem exit 0</Command>
       <CompileAs>CompileAsCpp</CompileAs>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <MinimalRebuild>false</MinimalRebuild>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <MinimalRebuild>true</MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -226,6 +228,17 @@ rem exit 0</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="external\tinyprocesslib\process.cpp" />
+    <ClCompile Include="external\tinyprocesslib\process_os.cpp" />
+    <ClCompile Include="external\utf8rewind\source\internal\casemapping.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\codepoint.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\composition.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\database.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\decomposition.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\seeking.c" />
+    <ClCompile Include="external\utf8rewind\source\internal\streaming.c" />
+    <ClCompile Include="external\utf8rewind\source\unicodedatabase.c" />
+    <ClCompile Include="external\utf8rewind\source\utf8rewind.c" />
     <ClCompile Include="source\**\*.cpp" Exclude="source\unity.cpp">
       <Link>source\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </ClCompile>
@@ -234,6 +247,20 @@ rem exit 0</Command>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="external\mpreal\mpreal.h" />
+    <ClInclude Include="external\stx\string_view.hpp" />
+    <ClInclude Include="external\tinyformat\tinyformat.h" />
+    <ClInclude Include="external\tinyprocesslib\process.h" />
+    <ClInclude Include="external\utf8rewind\include\utf8rewind\utf8rewind.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\base.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\casemapping.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\codepoint.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\composition.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\database.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\decomposition.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\seeking.h" />
+    <ClInclude Include="external\utf8rewind\source\internal\streaming.h" />
+    <ClInclude Include="external\utf8rewind\source\unicodedatabase.h" />
     <ClInclude Include="source\include\*.h">
       <Link>source\include\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </ClInclude>
@@ -250,6 +277,8 @@ rem exit 0</Command>
   <ItemGroup>
     <None Include="build\supertiny.flx" />
     <None Include="build\tester.flx" />
+    <None Include="external\tinyprocesslib\process_unix.inc" />
+    <None Include="external\tinyprocesslib\process_win.inc" />
     <None Include="source\external\tinyprocesslib\process_unix.inc" />
     <None Include="source\external\tinyprocesslib\process_win.inc" />
   </ItemGroup>

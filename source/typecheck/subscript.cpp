@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -41,7 +42,7 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else							error(this->expr, "Cannot subscript type '%s'", lt);
 
 	iceAssert(res);
-	auto ret = new sst::SubscriptOp(this->loc, res);
+	auto ret = util::pool<sst::SubscriptOp>(this->loc, res);
 	ret->expr = ls;
 	ret->inside = rs;
 
@@ -66,7 +67,7 @@ TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* i
 			.add(SpanError::Span(arr->loc, "here")).postAndQuit();
 	}
 
-	return TCResult(new sst::SubscriptDollarOp(this->loc, fir::Type::getInt64()));
+	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getInt64()));
 }
 
 

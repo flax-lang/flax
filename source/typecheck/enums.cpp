@@ -8,6 +8,8 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 /*
 	ok, here's some documentation of how enumerations work
 	they're basically strong enums, unlike C enums.
@@ -34,7 +36,7 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	else if(ret)    return TCResult(ret);
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
-	auto defn = new sst::EnumDefn(this->loc);
+	auto defn = util::pool<sst::EnumDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
@@ -83,7 +85,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 				error(cs.value, "Mismatched type in enum case value; expected type '%s', but found type '%s'", defn->memberType, val->type);
 		}
 
-		auto ecd = new sst::EnumCaseDefn(cs.loc);
+		auto ecd = util::pool<sst::EnumCaseDefn>(cs.loc);
 		ecd->id = Identifier(cs.name, IdKind::Name);
 		ecd->id.scope = fs->getCurrentScope();
 		ecd->type = ety;

@@ -37,41 +37,6 @@ import "libc" as _
 
 
 /*
-	! more more things
-	! caa 18/10
-	{
-		2. generic memory pool: {
-			a. for AST and SST nodes
-			b. for fir::Values
-
-			basically we just expand upon the LinkedVector concept, except each 'chunk' needs a little more bookkeeping and a little more
-			logic. instead of using bitmaps or something like that, let's be crazy and unsafe:
-
-			each chunk is an arbitrary size (but probably minimally 4KB and probably by default equals to the page-size of the machine). the
-			main container keeps a list of chunks simply as a list of pointers to the memory of the chunk. the size would be fixed per
-			container (ie each chunk has the same size for a given container).
-
-
-			struct MemoryPool<T>
-			{
-				struct PoolChunk
-				{
-					T* pointer;
-					T* next_free;
-					size_t size;
-				}
-
-				std::vector<PoolChunk> chunks;
-				size_t emptiest_chunk;
-				size_t fullest_chunk;
-			}
-
-			on allocation: {
-			}
-		}
-	}
-
-
 	! more things.
 	! caa 03/10
 	{

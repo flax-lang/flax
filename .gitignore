@@ -93,3 +93,4 @@ flax.files
 flax.includes
 .vs/
 build/__pycache__
+*.vspx
