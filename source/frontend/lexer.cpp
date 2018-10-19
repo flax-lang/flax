@@ -135,7 +135,7 @@ namespace lexer
 
 
 
-	TokenType getNextToken(const util::FastVector<string_view>& lines, size_t* line, size_t* offset, const string_view& whole,
+	TokenType getNextToken(const util::FastInsertVector<string_view>& lines, size_t* line, size_t* offset, const string_view& whole,
 		Location& pos, Token* out, bool crlf)
 	{
 		bool flag = true;
@@ -337,7 +337,7 @@ namespace lexer
 				if(k + 1 == stream.size() || stream[k] == '\n')
 				{
 					if(*line + 1 == lines.size())
-						error(opening, "Expected closing */ (reached EOF), for block comment started here:");
+						error(opening, "expected closing */ (reached EOF), for block comment started here:");
 
 					// else, get the next line.
 					// also note: if we're in this loop, we're inside a block comment.
@@ -554,13 +554,15 @@ namespace lexer
 
 			read = didRead;
 		}
-		else if(!stream.empty() && (stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0))
+		else if(!stream.empty() && (stream[0] == '_'  || isalpha(stream[0])) /* utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0) */)
 		{
 			// get as many letters as possible first
-			size_t identLength = utf8iscategory(stream.data(), stream.size(),
-				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
+			// size_t identLength = utf8iscategory(stream.data(), stream.size(),
+			// 	UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
 
-			// bool isExclamation = (stream.size() - identLength > 0) && stream.substr(identLength).front() == '!';
+			size_t identLength = 1;
+			while(isalnum(stream[identLength]) || stream[identLength] == '_')
+				identLength += 1;
 
 			read = identLength;
 			tok.text = stream.substr(0, identLength);

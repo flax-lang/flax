@@ -111,6 +111,7 @@ namespace platform
 		if(contents == 0)
 		{
 			// read normally
+			//! MEMORY LEAK
 			contents = new char[fileLength + 1];
 			size_t didRead = platform::readFile(fd, contents, fileLength);
 			if(didRead != fileLength)

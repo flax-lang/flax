@@ -40,13 +40,6 @@ import "libc" as _
 	! more more things
 	! caa 18/10
 	{
-		1. redesign FastVector: {
-			a. instead of using realloc(), allocate in chunks and use a list. indexing should still be O(1) with some math.
-			b. we're using it for the express purpose of token storage, so I don't think we'll even bother putting in the ability to erase items
-			c. in a way this already acts like a memory pool for tokens, so we're good on that front.
-			d. probably tune the chunk size with a template parameter.
-		}
-
 		2. generic memory pool: {
 			a. for AST and SST nodes
 			b. for fir::Values

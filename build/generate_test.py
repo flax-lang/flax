@@ -192,7 +192,7 @@ def gen_test(reps):
 			let new = map2([ (2, 2), (4, 4), (6, 6), (8, 8), (10, 10) ], add2)
 			for it in new { printf(" %d", it) }
 
-			printf("\\n")
+			printf("\\nset (?) done\\n\\n")
 		}
 	}
 	"""
