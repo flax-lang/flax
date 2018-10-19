@@ -760,6 +760,7 @@ namespace util
 		return ret;
 	}
 
+	#if 0
 	template <typename T>
 	class FastVector
 	{
@@ -788,12 +789,8 @@ namespace util
 
 		FastVector& operator = (const FastVector& other)
 		{
-			this->array = (T*) malloc(other.capacity * sizeof(T));
-			memmove(this->array, other.array, other.length * sizeof(T));
-
-			this->capacity = other.capacity;
-			this->length = other.length;
-
+			auto copy = other;
+			std::swap(copy, *this);
 			return *this;
 		}
 
@@ -872,6 +869,7 @@ namespace util
 		size_t capacity;
 		size_t length;
 	};
+	#endif
 }
 
 
