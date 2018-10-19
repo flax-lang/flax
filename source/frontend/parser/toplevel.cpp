@@ -9,6 +9,8 @@
 
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 using namespace lexer;
 using namespace ast;
 
@@ -72,7 +74,7 @@ namespace parser
 	TopLevelBlock* parseTopLevel(State& st, std::string name)
 	{
 		using TT = lexer::TokenType;
-		TopLevelBlock* root = new TopLevelBlock(st.loc(), name);
+		TopLevelBlock* root = util::pool<TopLevelBlock>(st.loc(), name);
 
 		// if it's not empty, then it's an actual user-defined namespace
 		bool hadLBrace = false;

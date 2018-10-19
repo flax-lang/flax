@@ -554,15 +554,11 @@ namespace lexer
 
 			read = didRead;
 		}
-		else if(!stream.empty() && (stream[0] == '_'  || isalpha(stream[0])) /* utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0) */)
+		else if(!stream.empty() && (stream[0] == '_'  || utf8iscategory(stream.data(), stream.size(), UTF8_CATEGORY_LETTER) > 0))
 		{
 			// get as many letters as possible first
-			// size_t identLength = utf8iscategory(stream.data(), stream.size(),
-			// 	UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
-
-			size_t identLength = 1;
-			while(isalnum(stream[identLength]) || stream[identLength] == '_')
-				identLength += 1;
+			size_t identLength = utf8iscategory(stream.data(), stream.size(),
+				UTF8_CATEGORY_LETTER | UTF8_CATEGORY_PUNCTUATION_CONNECTOR | UTF8_CATEGORY_NUMBER);
 
 			read = identLength;
 			tok.text = stream.substr(0, identLength);

@@ -5,6 +5,8 @@
 #include "pts.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 using namespace ast;
 using namespace lexer;
 
@@ -19,7 +21,7 @@ namespace parser
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'struct'", st.front().str());
 
-		StructDefn* defn = new StructDefn(st.loc());
+		StructDefn* defn = util::pool<StructDefn>(st.loc());
 		defn->name = st.eat().str();
 
 		// check for generic function
@@ -86,7 +88,7 @@ namespace parser
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'struct'", st.front().str());
 
-		ClassDefn* defn = new ClassDefn(st.loc());
+		ClassDefn* defn = util::pool<ClassDefn>(st.loc());
 		defn->name = st.eat().str();
 
 		// check for generic function
@@ -192,7 +194,7 @@ namespace parser
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'union'", st.front().str());
 
-		UnionDefn* defn = new UnionDefn(st.loc());
+		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		defn->name = st.eat().str();
 
 		// check for generic function
@@ -345,7 +347,7 @@ namespace parser
 		iceAssert(st.front() == TT::RBrace);
 		st.eat();
 
-		auto ret = new EnumDefn(idloc);
+		auto ret = util::pool<EnumDefn>(idloc);
 		ret->name = name;
 		ret->cases = cases;
 		ret->memberType = memberType;
@@ -367,7 +369,7 @@ namespace parser
 
 		auto stmt = parseStmt(st);
 		if(dcast(FuncDefn, stmt) || dcast(VarDefn, stmt))
-			return new StaticDecl(stmt);
+			return util::pool<StaticDecl>(stmt);
 
 		else
 			error(stmt, "'static' can only be used on function and field definitions inside class bodies");
@@ -388,7 +390,7 @@ namespace parser
 			bool mut = st.front() == TT::Mutable;
 			if(mut) st.pop();
 
-			return new pts::PointerType(parseType(st), mut);
+			return util::pool<pts::PointerType>(parseType(st), mut);
 		}
 		else if(st.front() == TT::LogicalAnd)
 		{
@@ -400,7 +402,7 @@ namespace parser
 
 			//* note: above handles cases like & (&mut T)
 			//* so, the outer pointer is never mutable, but the inner one might be.
-			return new pts::PointerType(new pts::PointerType(parseType(st), mut), false);
+			return util::pool<pts::PointerType>(util::pool<pts::PointerType>(parseType(st), mut), false);
 		}
 		else if(st.front() == TT::LSquare)
 		{
@@ -422,7 +424,7 @@ namespace parser
 				if(st.front() == TT::RSquare)
 				{
 					st.pop();
-					return new pts::ArraySliceType(elm, mut);
+					return util::pool<pts::ArraySliceType>(elm, mut);
 				}
 				else if(st.front() == TT::Ellipsis)
 				{
@@ -430,7 +432,7 @@ namespace parser
 					if(st.pop() != TT::RSquare)
 						expectedAfter(st, "']'", "... in variadic array type", st.front().str());
 
-					return new pts::VariadicArrayType(elm);
+					return util::pool<pts::VariadicArrayType>(elm);
 				}
 				else if(st.front() != TT::Number)
 				{
@@ -448,7 +450,7 @@ namespace parser
 
 					//! ACHTUNG !
 					// TODO: support mutable arrays??
-					return new pts::FixedArrayType(elm, sz);
+					return util::pool<pts::FixedArrayType>(elm, sz);
 				}
 			}
 			else if(st.front() == TT::RSquare)
@@ -457,7 +459,7 @@ namespace parser
 				if(mut) error(st.loc(), "Dynamic arrays are always mutable, specifying 'mut' is unnecessary");
 
 				st.pop();
-				return new pts::DynamicArrayType(elm);
+				return util::pool<pts::DynamicArrayType>(elm);
 			}
 			else
 			{
@@ -576,7 +578,7 @@ namespace parser
 
 				st.eat();
 				// eat the arrow, parse the type
-				return new pts::FunctionType(types, parseType(st));
+				return util::pool<pts::FunctionType>(types, parseType(st));
 			}
 			else
 			{
@@ -590,7 +592,7 @@ namespace parser
 				else if(types.size() == 1)
 					return types[0];
 
-				return new pts::TupleType(types);
+				return util::pool<pts::TupleType>(types);
 			}
 		}
 		else

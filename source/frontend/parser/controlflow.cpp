@@ -5,6 +5,8 @@
 #include "ast.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 namespace parser
 {
 	using TT = lexer::TokenType;
@@ -110,7 +112,7 @@ namespace parser
 			}
 		}
 
-		auto ret = new ast::IfStmt(tok_if.loc);
+		auto ret = util::pool<ast::IfStmt>(tok_if.loc);
 		ret->cases = cases;
 		ret->elseCase = elseCase;
 
@@ -121,7 +123,7 @@ namespace parser
 	{
 		iceAssert(st.front() == TT::Return);
 
-		auto ret = new ast::ReturnStmt(st.loc());
+		auto ret = util::pool<ast::ReturnStmt>(st.loc());
 		st.eat();
 
 		// check what's the next thing. problem: return has an *optional* value
@@ -151,7 +153,7 @@ namespace parser
 		if(!util::match(st.front(), TT::Identifier, TT::LParen))
 			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
-		auto ret = new ast::ForeachLoop(st.ploc());
+		auto ret = util::pool<ast::ForeachLoop>(st.ploc());
 
 		if(st.front() == TT::LParen)
 		{
@@ -240,7 +242,7 @@ namespace parser
 			}
 		}
 
-		auto ret = new ast::WhileLoop(loc);
+		auto ret = util::pool<ast::WhileLoop>(loc);
 		ret->isDoVariant = isdo;
 		ret->body = body;
 		ret->cond = cond;
@@ -252,13 +254,13 @@ namespace parser
 	ast::Stmt* parseBreak(State& st)
 	{
 		iceAssert(st.front() == TT::Break);
-		return new ast::BreakStmt(st.eat().loc);
+		return util::pool<ast::BreakStmt>(st.eat().loc);
 	}
 
 	ast::Stmt* parseContinue(State& st)
 	{
 		iceAssert(st.front() == TT::Continue);
-		return new ast::ContinueStmt(st.eat().loc);
+		return util::pool<ast::ContinueStmt>(st.eat().loc);
 	}
 }
 

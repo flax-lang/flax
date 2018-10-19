@@ -6,6 +6,8 @@
 #include "parser.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 using namespace ast;
 using namespace lexer;
 
@@ -15,7 +17,7 @@ namespace parser
 {
 	using TT = lexer::TokenType;
 
-	ast::Stmt* parseStmtWithAccessSpec(State& st)
+	Stmt* parseStmtWithAccessSpec(State& st)
 	{
 		iceAssert(st.front() == TT::Public || st.front() == TT::Private || st.front() == TT::Internal);
 		auto vis = VisibilityLevel::Invalid;
@@ -47,14 +49,14 @@ namespace parser
 		return stmt;
 	}
 
-	ast::Stmt* parseStmt(State& st)
+	Stmt* parseStmt(State& st)
 	{
 		if(!st.hasTokens())
 			unexpected(st, "end of file");
 
 		st.skipWS();
 
-		std::function<ast::Stmt* (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers](bool mut, bool virt, bool ovrd) -> ast::Stmt* {
+		std::function<Stmt* (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers](bool mut, bool virt, bool ovrd) -> Stmt* {
 			if(st.front() == TT::Mutable)
 			{
 				if(mut) error(st.loc(), "Duplicate 'mut' modifier");
@@ -382,23 +384,23 @@ namespace parser
 					if(st.front() == TT::Mutable)
 					{
 						st.pop();
-						rhs = new MutabilityTypeExpr(loc, true);
+						rhs = util::pool<MutabilityTypeExpr>(loc, true);
 					}
 					else
 					{
 						st.pop();
 						st.pop();
-						rhs = new MutabilityTypeExpr(loc, false);
+						rhs = util::pool<MutabilityTypeExpr>(loc, false);
 					}
 				}
 				else
 				{
-					rhs = new TypeExpr(loc, parseType(st));
+					rhs = util::pool<TypeExpr>(loc, parseType(st));
 				}
 			}
 			else if(op == Operator::TypeIs)
 			{
-				rhs = new TypeExpr(loc, parseType(st));
+				rhs = util::pool<TypeExpr>(loc, parseType(st));
 			}
 			else
 			{
@@ -418,7 +420,7 @@ namespace parser
 				loc.col = lhs->loc.col;
 				loc.len = rhs->loc.col - lhs->loc.col + 1; //! is this correct??? or this?    + rhs->loc.len;
 
-				lhs = new DotOperator(loc, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = util::pool<DotOperator>(loc, dynamic_cast<Expr*>(lhs), rhs);
 			}
 			else if(op == "..." || op == "..<")
 			{
@@ -437,7 +439,7 @@ namespace parser
 				}
 
 				// ok
-				auto ret = new RangeExpr(loc);
+				auto ret = util::pool<RangeExpr>(loc);
 				ret->start = start;
 				ret->end = end;
 				ret->halfOpen = (op == "..<");
@@ -447,7 +449,7 @@ namespace parser
 			}
 			else if(Operator::isAssignment(op))
 			{
-				auto newlhs = new AssignOp(loc);
+				auto newlhs = util::pool<AssignOp>(loc);
 
 				newlhs->left = dynamic_cast<Expr*>(lhs);
 				newlhs->right = rhs;
@@ -457,7 +459,7 @@ namespace parser
 			}
 			else
 			{
-				lhs = new BinaryOp(loc, op, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = util::pool<BinaryOp>(loc, op, dynamic_cast<Expr*>(lhs), rhs);
 			}
 		}
 	}
@@ -489,14 +491,14 @@ namespace parser
 		Location loc = lhs->loc;
 		loc.col -= 1;
 		loc.len = (st.front().loc.col - loc.col + 1);
-		return new LitTuple(loc, values);
+		return util::pool<LitTuple>(loc, values);
 	}
 
-	ast::Expr* parseDollarExpr(State& st)
+	Expr* parseDollarExpr(State& st)
 	{
 		if(st.isInSubscript())
 		{
-			return new SubscriptDollarOp(st.pop().loc);
+			return util::pool<SubscriptDollarOp>(st.pop().loc);
 		}
 		else
 		{
@@ -578,7 +580,7 @@ namespace parser
 
 			Expr* e = parseUnary(st);
 
-			auto ret = new SplatOp(tk.loc);
+			auto ret = util::pool<SplatOp>(tk.loc);
 			ret->expr = e;
 
 			return ret;
@@ -590,7 +592,7 @@ namespace parser
 			Expr* un = parseUnary(st);
 			Expr* thing = parseRhs(st, un, prec);
 
-			auto ret = new UnaryOp(tk.loc);
+			auto ret = util::pool<UnaryOp>(tk.loc);
 
 			ret->expr = thing;
 			ret->op = op;
@@ -615,7 +617,7 @@ namespace parser
 			std::string argname;
 
 			auto ex = parseExpr(st);
-			if(auto id = dynamic_cast<ast::Ident*>(ex); id && st.front() == TT::Colon)
+			if(auto id = dynamic_cast<Ident*>(ex); id && st.front() == TT::Colon)
 			{
 				argname = id->name;
 				if(seenNames.find(argname) != seenNames.end())
@@ -652,7 +654,7 @@ namespace parser
 
 	static FunctionCall* parseFunctionCall(State& st, std::string name)
 	{
-		auto ret = new FunctionCall(st.lookahead(-2).loc, name);
+		auto ret = util::pool<FunctionCall>(st.lookahead(-2).loc, name);
 
 		st.skipWS();
 		ret->args = parseCallArgumentList(st);
@@ -671,7 +673,7 @@ namespace parser
 			return ret;
 		}
 
-		auto ret = new ast::ExprCall(op.loc);
+		auto ret = util::pool<ExprCall>(op.loc);
 		iceAssert(op == TT::LParen);
 
 		ret->args = parseCallArgumentList(st);
@@ -686,7 +688,7 @@ namespace parser
 		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
 		std::string name = st.pop().str();
 
-		auto ident = new Ident(st.ploc(), name);
+		auto ident = util::pool<Ident>(st.ploc(), name);
 
 		//! ACHTUNG !
 		//* here begins the shitshow of generic angle-bracket parsing.
@@ -788,7 +790,7 @@ namespace parser
 					st.eat();
 
 					// just return here.
-					auto ret = new SliceOp(op.loc);
+					auto ret = util::pool<SliceOp>(op.loc);
 					ret->expr = lhs;
 					ret->start = 0;
 					ret->end = 0;
@@ -805,7 +807,7 @@ namespace parser
 				auto end = st.eat().loc;
 				iceAssert(inside);
 
-				auto ret = new SubscriptOp(op.loc);
+				auto ret = util::pool<SubscriptOp>(op.loc);
 				ret->expr = lhs;
 				ret->inside = inside;
 
@@ -823,7 +825,7 @@ namespace parser
 				slcbegin = 0;
 				slcend = inside;
 
-				auto ret = new SliceOp(op.loc);
+				auto ret = util::pool<SliceOp>(op.loc);
 				ret->expr = lhs;
 				ret->start = slcbegin;
 				ret->end = slcend;
@@ -845,7 +847,7 @@ namespace parser
 
 				st.eat();
 
-				auto ret = new SliceOp(op.loc);
+				auto ret = util::pool<SliceOp>(op.loc);
 				ret->expr = lhs;
 				ret->start = slcbegin;
 				ret->end = slcend;
@@ -861,7 +863,7 @@ namespace parser
 		{
 			// yay...?
 			//* note: custom postfix ops are handled internally in the AST as normal unary ops.
-			auto ret = new UnaryOp(op.loc);
+			auto ret = util::pool<UnaryOp>(op.loc);
 
 			ret->expr = lhs;
 			ret->op = op.str();
@@ -882,7 +884,7 @@ namespace parser
 		iceAssert(st.front() == TT::Alloc);
 		auto loc = st.eat().loc;
 
-		auto ret = new ast::AllocOp(loc);
+		auto ret = util::pool<AllocOp>(loc);
 
 		if(st.front() == TT::Mutable)
 			ret->isMutable = true, st.pop();
@@ -932,21 +934,21 @@ namespace parser
 		return ret;
 	}
 
-	ast::DeallocOp* parseDealloc(State& st)
+	DeallocOp* parseDealloc(State& st)
 	{
 		iceAssert(st.front() == TT::Dealloc);
 		auto loc = st.eat().loc;
 
-		auto ret = new ast::DeallocOp(loc);
+		auto ret = util::pool<DeallocOp>(loc);
 		ret->expr = parseExpr(st);
 
 		return ret;
 	}
 
-	ast::DeferredStmt* parseDefer(State& st)
+	DeferredStmt* parseDefer(State& st)
 	{
 		iceAssert(st.front() == TT::Defer);
-		auto ret = new ast::DeferredStmt(st.eat().loc);
+		auto ret = util::pool<DeferredStmt>(st.eat().loc);
 
 		if(st.front() == TT::LBrace)
 			ret->actual = parseBracedBlock(st);
@@ -957,7 +959,7 @@ namespace parser
 		return ret;
 	}
 
-	ast::SizeofOp* parseSizeof(State& st)
+	SizeofOp* parseSizeof(State& st)
 	{
 		Token tok = st.eat();
 		iceAssert(tok == TT::Sizeof);
@@ -965,7 +967,7 @@ namespace parser
 		if(st.eat() != TT::LParen)
 			expectedAfter(st.ploc(), "'('", "sizeof", st.prev().str());
 
-		auto ret = new ast::SizeofOp(tok.loc);
+		auto ret = util::pool<SizeofOp>(tok.loc);
 		ret->expr = parseExpr(st);
 
 		if(st.eat() != TT::RParen)
@@ -975,7 +977,7 @@ namespace parser
 	}
 
 
-	ast::TypeidOp* parseTypeid(State& st)
+	TypeidOp* parseTypeid(State& st)
 	{
 		Token tok = st.eat();
 		iceAssert(tok == TT::Typeid);
@@ -983,7 +985,7 @@ namespace parser
 		if(st.eat() != TT::LParen)
 			expectedAfter(st.ploc(), "'('", "typeid", st.prev().str());
 
-		auto ret = new ast::TypeidOp(tok.loc);
+		auto ret = util::pool<TypeidOp>(tok.loc);
 		ret->expr = parseExpr(st);
 
 		if(st.eat() != TT::RParen)
@@ -1113,16 +1115,16 @@ namespace parser
 				// no point creating separate functions for these
 				case TT::True:
 					st.pop();
-					return new LitBool(tok.loc, true);
+					return util::pool<LitBool>(tok.loc, true);
 
 				case TT::False:
 					st.pop();
-					return new LitBool(tok.loc, false);
+					return util::pool<LitBool>(tok.loc, false);
 
 				// nor for this
 				case TT::Null:
 					st.pop();
-					return new LitNull(tok.loc);
+					return util::pool<LitNull>(tok.loc);
 
 
 				case TT::LBrace:

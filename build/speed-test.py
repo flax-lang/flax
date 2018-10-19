@@ -41,8 +41,8 @@ for i in counts:
 	t_codegen       = m.group(5)
 	n_fvals         = m.group(6)
 
-	tab.add_row([ i, t_compile, n_fvals, t_lexer, t_parser, t_typecheck, t_codegen ])
-	print(i, t_compile, n_fvals, t_lexer, t_parser, t_typecheck, t_codegen)
+	tab.add_row([ i, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen ])
+	print(i, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen)
 
 
 plots.write(str(tab))

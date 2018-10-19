@@ -6,6 +6,8 @@
 #include "pts.h"
 #include "parser_internal.h"
 
+#include "mpool.h"
+
 using namespace ast;
 using namespace lexer;
 
@@ -100,7 +102,7 @@ namespace parser
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'fn'", st.front().str());
 
-		FuncDefn* defn = new FuncDefn(st.loc());
+		FuncDefn* defn = util::pool<FuncDefn>(st.loc());
 		defn->name = st.eat().str();
 
 		Location loc;
@@ -139,7 +141,7 @@ namespace parser
 
 
 
-	ast::ForeignFuncDefn* parseForeignFunction(State& st)
+	ForeignFuncDefn* parseForeignFunction(State& st)
 	{
 		iceAssert(st.front() == TT::ForeignFunc);
 		st.pop();
@@ -147,7 +149,7 @@ namespace parser
 		if(st.front() != TT::Func)
 			expectedAfter(st, "'fn'", "'ffi'", st.front().str());
 
-		auto ffn = new ForeignFuncDefn(st.loc());
+		auto ffn = util::pool<ForeignFuncDefn>(st.loc());
 
 		// copy the things over
 		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
@@ -163,12 +165,11 @@ namespace parser
 		ffn->visibility = defn->visibility;
 		ffn->returnType = defn->returnType;
 
-		delete defn;
 		return ffn;
 	}
 
 
-	ast::InitFunctionDefn* parseInitFunction(State& st)
+	InitFunctionDefn* parseInitFunction(State& st)
 	{
 		Token tok = st.pop();
 		iceAssert(tok.str() == "init");
@@ -184,7 +185,7 @@ namespace parser
 			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
 
 		// ok loh
-		ast::InitFunctionDefn* ret = new ast::InitFunctionDefn(tok.loc);
+		InitFunctionDefn* ret = util::pool<InitFunctionDefn>(tok.loc);
 		ret->args = args;
 
 		// check for super-class args.
@@ -292,7 +293,7 @@ namespace parser
 
 		if(st.front() == TT::LBrace)
 		{
-			Block* ret = new Block(st.eat().loc);
+			Block* ret = util::pool<Block>(st.eat().loc);
 
 			st.skipWS();
 			while(st.front() != TT::RBrace)
@@ -326,7 +327,7 @@ namespace parser
 		}
 		else if(st.front() == TT::FatRightArrow)
 		{
-			Block* ret = new Block(st.eat().loc);
+			Block* ret = util::pool<Block>(st.eat().loc);
 			ret->statements.push_back(parseStmt(st));
 			ret->closingBrace = st.loc();
 			ret->isArrow = true;
