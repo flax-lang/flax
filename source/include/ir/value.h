@@ -11,6 +11,12 @@
 #include "errors.h"
 #include "type.h"
 
+namespace util
+{
+	template <typename T> struct MemoryPool;
+	template <typename T> struct FastInsertVector;
+}
+
 namespace fir
 {
 	enum class LinkageType
@@ -34,6 +40,9 @@ namespace fir
 		friend struct IRBuilder;
 		friend struct Instruction;
 		friend struct ConstantValue;
+
+		friend struct util::MemoryPool<Value>;
+		friend struct util::FastInsertVector<Value>;
 
 		//? might be renamed when we need more value categories.
 		enum class Kind

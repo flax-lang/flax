@@ -9,10 +9,10 @@ class LinkedList<T>
 {
 	struct Node
 	{
-		var data: T
-
 		var prev: &Node
 		var next: &Node
+
+		var data: T
 	}
 
 	var head: &Node

@@ -9,6 +9,7 @@
 #include "polymorph.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 
 TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
@@ -44,7 +45,9 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	fir::Type* retty = sst::poly::internal::convertPtsType(fs, this->generics, this->returnType, polyses);
 	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
 
-	auto defn = (infer && infer->isClassType() && this->name == "init" ? new sst::ClassInitialiserDefn(this->loc) :  new sst::FunctionDefn(this->loc));
+	auto defn = (infer && infer->isClassType() && this->name == "init" ? util::pool<sst::ClassInitialiserDefn>(this->loc)
+		: util::pool<sst::FunctionDefn>(this->loc));
+
 	defn->type = fnType;
 
 	if(this->name != "init")
@@ -141,7 +144,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 			for(auto arg : defn->params)
 			{
-				auto vd = new sst::ArgumentDefn(arg.loc);
+				auto vd = util::pool<sst::ArgumentDefn>(arg.loc);
 				vd->id = Identifier(arg.name, IdKind::Name);
 				vd->id.scope = fs->getCurrentScope();
 
@@ -178,7 +181,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto defn = new sst::ForeignFuncDefn(this->loc);
+	auto defn = util::pool<sst::ForeignFuncDefn>(this->loc);
 	std::vector<FnParam> ps;
 
 	for(auto t : this->args)
@@ -240,7 +243,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::Block(this->loc);
+	auto ret = util::pool<sst::Block>(this->loc);
 
 	ret->closingBrace = this->closingBrace;
 
@@ -256,7 +259,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			if(inferred && ex->type != inferred)
 				error(ex, "Invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
 
-			auto rst = new sst::ReturnStmt(s->loc);
+			auto rst = util::pool<sst::ReturnStmt>(s->loc);
 			rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
 			rst->value = ex;
 

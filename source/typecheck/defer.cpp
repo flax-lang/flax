@@ -6,6 +6,8 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "mpool.h"
+
 
 TCResult ast::DeferredStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {

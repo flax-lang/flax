@@ -9,12 +9,14 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::ForeachLoop(this->loc);
+	auto ret = util::pool<sst::ForeachLoop>(this->loc);
 	auto n = fs->getAnonymousScopeName();
 
 	fs->pushTree(n);
@@ -41,7 +43,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 
 	if(!this->indexVar.empty())
 	{
-		auto fake = new ast::VarDefn(this->loc);
+		auto fake = util::pool<ast::VarDefn>(this->loc);
 		fake->name = this->indexVar;
 		fake->type = pts::NamedType::create(INT64_TYPE_STRING);
 
@@ -90,7 +92,7 @@ TCResult ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	sst::WhileLoop* ret = new sst::WhileLoop(this->loc);
+	sst::WhileLoop* ret = util::pool<sst::WhileLoop>(this->loc);
 	ret->isDoVariant = this->isDoVariant;
 
 	auto n = fs->getAnonymousScopeName();
@@ -140,7 +142,7 @@ TCResult ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else if(fs->isInDeferBlock())
 		error(this, "Cannot 'break' while inside a deferred block");
 
-	return TCResult(new sst::BreakStmt(this->loc));
+	return TCResult(util::pool<sst::BreakStmt>(this->loc));
 }
 
 TCResult ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
@@ -154,7 +156,7 @@ TCResult ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else if(fs->isInDeferBlock())
 		error(this, "Cannot 'continue' while inside a deferred block");
 
-	return TCResult(new sst::ContinueStmt(this->loc));
+	return TCResult(util::pool<sst::ContinueStmt>(this->loc));
 }
 
 

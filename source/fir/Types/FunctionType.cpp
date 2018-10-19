@@ -108,14 +108,14 @@ namespace fir
 			return false;
 
 		auto of = other->toFunctionType();
-		auto ret = (this->isFnCStyleVarArg == of->isFnCStyleVarArg) && (this->functionRetType->isTypeEqual(of->functionRetType))
+		auto ret = (this->isFnCStyleVarArg == of->isFnCStyleVarArg) && (this->functionRetType == of->functionRetType)
 			&& (this->functionParams.size() == of->functionParams.size());
 
 		if(ret)
 		{
 			for(size_t i = 0; i < this->functionParams.size(); i++)
 			{
-				if(!this->functionParams[i]->isTypeEqual(of->functionParams[i]))
+				if(this->functionParams[i] != of->functionParams[i])
 					return false;
 			}
 

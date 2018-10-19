@@ -11,6 +11,8 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* dotop, fir::Type* infer)
 {
 	auto lhs = dotop->left->typecheck(fs).expr();
@@ -32,7 +34,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		if(n >= tup->getElementCount())
 			error(dotop->right, "Tuple only has %zu elements, cannot access wanted element %zu", tup->getElementCount(), n);
 
-		auto ret = new sst::TupleDotOp(dotop->loc, tup->getElementN(n));
+		auto ret = util::pool<sst::TupleDotOp>(dotop->loc, tup->getElementN(n));
 		ret->lhs = lhs;
 		ret->index = n;
 
@@ -63,7 +65,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = vr->name;
 
@@ -101,7 +103,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->args = args;
 				tmp->name = fc->name;
@@ -136,7 +138,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = vr->name;
 
@@ -182,7 +184,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->args = args;
 				tmp->name = fc->name;
@@ -212,7 +214,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = vr->name;
 
@@ -233,7 +235,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = vr->name;
 
@@ -258,7 +260,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(res)
 			{
-				auto tmp = new sst::BuiltinDotOp(dotop->right->loc, res);
+				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
 				tmp->lhs = lhs;
 				tmp->name = vr->name;
 
@@ -350,7 +352,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			sst::Expr* finalCall = 0;
 			if(resolved)
 			{
-				auto c = new sst::FunctionCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
+				auto c = util::pool<sst::FunctionCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = arguments;
 				c->name = fc->name;
 				c->target = resolved;
@@ -367,10 +369,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				// else
 				iceAssert(resolved);
 
-				auto c = new sst::ExprCall(fc->loc, resolved->type->toFunctionType()->getReturnType());
+				auto c = util::pool<sst::ExprCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = util::map(arguments, [](FnCallArgument e) -> sst::Expr* { return e.value; });
 
-				auto tmp = new sst::FieldDotOp(fc->loc, resolved->type);
+				auto tmp = util::pool<sst::FieldDotOp>(fc->loc, resolved->type);
 				tmp->lhs = lhs;
 				tmp->rhsIdent = fc->name;
 
@@ -384,7 +386,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 
-			auto ret = new sst::MethodDotOp(fc->loc, resolved->type->toFunctionType()->getReturnType());
+			auto ret = util::pool<sst::MethodDotOp>(fc->loc, resolved->type->toFunctionType()->getReturnType());
 			ret->lhs = lhs;
 			ret->call = finalCall;
 
@@ -403,7 +405,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					{
 						if(f->id.name == name)
 						{
-							auto ret = new sst::FieldDotOp(dotop->loc, f->type);
+							auto ret = util::pool<sst::FieldDotOp>(dotop->loc, f->type);
 							ret->lhs = lhs;
 							ret->rhsIdent = name;
 
@@ -473,7 +475,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 						name, infer);
 				}
 
-				auto ret = new sst::FieldDotOp(dotop->loc, retty);
+				auto ret = util::pool<sst::FieldDotOp>(dotop->loc, retty);
 				ret->lhs = lhs;
 				ret->rhsIdent = name;
 				ret->isMethodRef = true;
@@ -588,7 +590,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 			{
 				newscope.push_back(vr->name);
-				auto ret = new sst::ScopeExpr(dot->loc, fir::Type::getVoid());
+				auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
 				ret->scope = newscope;
 
 				return ret;
@@ -685,7 +687,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 		{
 			newscope.push_back(vr->name);
-			auto ret = new sst::ScopeExpr(dot->loc, fir::Type::getVoid());
+			auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
 			ret->scope = newscope;
 
 			return ret;

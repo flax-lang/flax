@@ -8,12 +8,14 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
+
 TCResult ast::RangeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::RangeExpr(this->loc, fir::RangeType::get());
+	auto ret = util::pool<sst::RangeExpr>(this->loc, fir::RangeType::get());
 	ret->halfOpen = this->halfOpen;
 
 	ret->start = this->start->typecheck(fs, fir::Type::getInt64()).expr();

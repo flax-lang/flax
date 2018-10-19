@@ -11,6 +11,8 @@
 
 #include "typecheck.h"
 
+#include "mpool.h"
+
 // defined in typecheck/structs.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc);
 
@@ -36,7 +38,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
-	auto defn = new sst::ClassDefn(this->loc);
+	auto defn = util::pool<sst::ClassDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = fs->getCurrentScope();
 	defn->visibility = this->visibility;
@@ -359,7 +361,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 	else if(cls->getBaseClass() && this->didCallSuper)
 	{
 		auto base = cls->getBaseClass();
-		auto call = new sst::BaseClassConstructorCall(this->loc, base);
+		auto call = util::pool<sst::BaseClassConstructorCall>(this->loc, base);
 
 		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
 		iceAssert(call->classty);
@@ -394,7 +396,7 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 
 	iceAssert(infer);
 
-	this->actualDefn = new ast::FuncDefn(this->loc);
+	this->actualDefn = util::pool<ast::FuncDefn>(this->loc);
 
 	this->actualDefn->name = "init";
 	this->actualDefn->args = this->args;

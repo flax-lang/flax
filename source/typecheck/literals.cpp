@@ -8,6 +8,8 @@
 #include "ir/type.h"
 #include "ir/constant.h"
 
+#include "mpool.h"
+
 TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
@@ -33,7 +35,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	size_t bits = mpfr_min_prec(mpfr::mpreal(this->num.substr(0, this->num.size() - 1) + "9").mpfr_ptr());
 
-	auto ret = new sst::LiteralNumber(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
+	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
 	ret->num = mpfr::mpreal(this->num);
 
 	return TCResult(ret);
@@ -44,7 +46,7 @@ TCResult ast::LitNull::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::LiteralNull(this->loc, fir::Type::getNull());
+	auto ret = util::pool<sst::LiteralNull>(this->loc, fir::Type::getNull());
 	return TCResult(ret);
 }
 
@@ -53,7 +55,7 @@ TCResult ast::LitBool::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = new sst::LiteralBool(this->loc, fir::Type::getBool());
+	auto ret = util::pool<sst::LiteralBool>(this->loc, fir::Type::getBool());
 	ret->value = this->value;
 
 	return TCResult(ret);
@@ -97,7 +99,7 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// warn(this, "%s", fir::TupleType::get(fts));
-	auto ret = new sst::LiteralTuple(this->loc, fir::TupleType::get(fts));
+	auto ret = util::pool<sst::LiteralTuple>(this->loc, fir::TupleType::get(fts));
 	ret->values = vals;
 
 	return TCResult(ret);
@@ -119,7 +121,7 @@ TCResult ast::LitString::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		ty = fir::Type::getCharSlice(false);
 	}
 
-	auto ret = new sst::LiteralString(this->loc, ty);
+	auto ret = util::pool<sst::LiteralString>(this->loc, ty);
 	ret->isCString = this->isCString;
 	ret->str = this->str;
 
@@ -230,7 +232,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 	}
 
-	auto ret = new sst::LiteralArray(this->loc, type);
+	auto ret = util::pool<sst::LiteralArray>(this->loc, type);
 	ret->values = vals;
 
 	return TCResult(ret);

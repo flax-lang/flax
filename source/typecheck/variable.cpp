@@ -9,6 +9,7 @@
 #include "polymorph.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -19,7 +20,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
 
 	auto returnResult = [this](sst::Defn* def, bool implicit = false) -> TCResult {
-		auto ret = new sst::VarRef(this->loc, def->type);
+		auto ret = util::pool<sst::VarRef>(this->loc, def->type);
 		ret->name = this->name;
 		ret->def = def;
 		ret->isImplicitField = implicit;
@@ -31,7 +32,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		infer = 0;
 
 	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
-		return TCResult(new sst::SelfVarRef(this->loc, fs->getCurrentFunction()->parentTypeForMethod));
+		return TCResult(util::pool<sst::SelfVarRef>(this->loc, fs->getCurrentFunction()->parentTypeForMethod));
 
 	// hm.
 	sst::StateTree* tree = fs->stree;
@@ -157,14 +158,14 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	sst::VarDefn* defn = 0;
 	if(fs->isInStructBody() && !fs->isInFunctionBody())
 	{
-		auto fld = new sst::StructFieldDefn(this->loc);
+		auto fld = util::pool<sst::StructFieldDefn>(this->loc);
 		fld->parentType = fs->getCurrentStructBody();
 
 		defn = fld;
 	}
 	else
 	{
-		defn = new sst::VarDefn(this->loc);
+		defn = util::pool<sst::VarDefn>(this->loc);
 	}
 
 	// check for people being stupid.

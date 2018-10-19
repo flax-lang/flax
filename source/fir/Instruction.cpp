@@ -7,16 +7,23 @@
 #include "ir/constant.h"
 #include "ir/instruction.h"
 
+#include "mpool.h"
+
 namespace fir
 {
+	static util::MemoryPool<Value> value_pool(2048);
 
-	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, std::vector<Value*> vals, Value::Kind k) : Value(out)
+
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, const std::vector<Value*>& vals)
+		: Instruction(kind, sideeff, parent, out, vals, Value::Kind::rvalue) { }
+
+	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, const std::vector<Value*>& vals, Value::Kind k) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 		this->sideEffects = sideeff;
 		this->parentBlock = parent;
-		this->realOutput = new Value(out, k);
+		this->realOutput = value_pool.construct(out, k);
 	}
 
 	Value* Instruction::getResult()

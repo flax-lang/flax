@@ -8,10 +8,15 @@
 
 namespace util
 {
+	void addPool(MemoryPool_base* pool);
+	void clearAllPools();
+
+
 	template <typename T, typename... Args>
 	T* pool(Args&&... args)
 	{
-		static MemoryPool<T> _pool;
+		static MemoryPool<T> _pool(512);
+		addPool(&_pool);
 		return _pool.construct(std::forward<Args>(args)...);
 	}
 }

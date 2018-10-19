@@ -9,6 +9,8 @@
 #include "ir/type.h"
 #include "ir/constant.h"
 
+#include "mpool.h"
+
 TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	// check the left side
@@ -34,15 +36,6 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		skipCheck = true;
 	}
 
-	// if(rt->isConstantNumberType() && lt->isPrimitiveType())
-	// {
-	// 	auto num = rt->toConstantNumberType()->getValue();
-	// 	if(fir::checkLiteralFitsIntoType(lt->toPrimitiveType(), num))
-	// 		skipCheck = true;
-
-	// 	else
-	// 		warn(this, "nofit");
-	// }
 
 	if(!skipCheck && lt != rt && fir::getCastDistance(rt, lt) < 0)
 	{
@@ -55,7 +48,7 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	//* note: check for the special case of assigning to a tuple literal, to allow the (a, b) = (b, a) swapping idiom
 	if(auto tuple = dcast(sst::LiteralTuple, l))
 	{
-		auto ret = new sst::TupleAssignOp(this->loc);
+		auto ret = util::pool<sst::TupleAssignOp>(this->loc);
 		for(auto v : tuple->values)
 			ret->lefts.push_back(v);
 
@@ -65,7 +58,7 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 	else
 	{
-		auto ret = new sst::AssignOp(this->loc);
+		auto ret = util::pool<sst::AssignOp>(this->loc);
 		ret->op = this->op;
 		ret->left = l;
 		ret->right = r;

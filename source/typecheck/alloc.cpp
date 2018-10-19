@@ -10,6 +10,8 @@
 #include "ir/type.h"
 #include "resolver.h"
 
+#include "mpool.h"
+
 TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
@@ -37,7 +39,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* resType = (this->isRaw || counts.empty() ?
 		(this->isMutable ? elm->getMutablePointerTo() : elm->getPointerTo()) : fir::DynamicArrayType::get(elm));
 
-	auto ret = new sst::AllocOp(this->loc, resType);
+	auto ret = util::pool<sst::AllocOp>(this->loc, resType);
 
 
 	// ok, check if we're a struct.
@@ -69,11 +71,11 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		iceAssert(!this->isRaw && this->counts.size() > 0);
 
 		// ok, make a fake vardefn and insert it first.
-		auto fake = new ast::VarDefn(this->initBody->loc);
+		auto fake = util::pool<ast::VarDefn>(this->initBody->loc);
 		fake->type = this->allocTy;
 		fake->name = "it";
 
-		auto fake2 = new ast::VarDefn(this->initBody->loc);
+		auto fake2 = util::pool<ast::VarDefn>(this->initBody->loc);
 		fake2->type = pts::NamedType::create(INT64_TYPE_STRING);
 		fake2->name = "i";
 
@@ -110,7 +112,7 @@ TCResult ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else if(!ex->type->isPointerType())
 		error(ex, "Expected pointer or dynamic array type to deallocate; found '%s' instead", ex->type);
 
-	auto ret = new sst::DeallocOp(this->loc);
+	auto ret = util::pool<sst::DeallocOp>(this->loc);
 	ret->expr = ex;
 
 	return TCResult(ret);

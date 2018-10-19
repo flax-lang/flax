@@ -11,6 +11,7 @@
 
 #include "ir/type.h"
 
+#include "mpool.h"
 
 sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments, fir::Type* infer)
 {
@@ -19,7 +20,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 	if(auto ty = fs->checkIsBuiltinConstructorCall(this->name, _arguments))
 	{
-		auto ret = new sst::ExprCall(this->loc, ty);
+		auto ret = util::pool<sst::ExprCall>(this->loc, ty);
 		ret->callee = sst::TypeExpr::make(this->loc, ty);
 		ret->arguments = util::map(_arguments, [](auto e) -> sst::Expr* { return e.value; });
 
@@ -37,7 +38,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 	if(auto strdf = dcast(sst::StructDefn, target))
 	{
-		auto ret = new sst::StructConstructorCall(this->loc, strdf->type);
+		auto ret = util::pool<sst::StructConstructorCall>(this->loc, strdf->type);
 
 		ret->target = strdf;
 		ret->arguments = ts;
@@ -49,7 +50,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 		auto unn = uvd->parentUnion;
 		iceAssert(unn);
 
-		auto ret = new sst::UnionVariantConstructor(this->loc, unn->type);
+		auto ret = util::pool<sst::UnionVariantConstructor>(this->loc, unn->type);
 
 		ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
 		ret->parentUnion = unn;
@@ -66,7 +67,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 		if(auto fnd = dcast(sst::FunctionDefn, target); this->name != "init" && fnd && fnd->id.name == "init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
 		{
 			// ok, great... I guess?
-			auto ret = new sst::ClassConstructorCall(this->loc, fnd->parentTypeForMethod);
+			auto ret = util::pool<sst::ClassConstructorCall>(this->loc, fnd->parentTypeForMethod);
 
 			ret->target = fnd;
 			ret->arguments = ts;
@@ -79,7 +80,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 
 
-		auto call = new sst::FunctionCall(this->loc, target->type->toFunctionType()->getReturnType());
+		auto call = util::pool<sst::FunctionCall>(this->loc, target->type->toFunctionType()->getReturnType());
 		call->name = this->name;
 		call->target = target;
 		call->arguments = ts;
@@ -131,7 +132,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	if(errs.hasErrors() || dist == -1)
 		errs.set(SimpleError(this->loc, "Mismatched types in call to function pointer")).postAndQuit();
 
-	auto ret = new sst::ExprCall(this->loc, target->type->toFunctionType()->getReturnType());
+	auto ret = util::pool<sst::ExprCall>(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;
 	ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
 

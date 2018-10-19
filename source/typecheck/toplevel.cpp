@@ -10,6 +10,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 using namespace ast;
 
@@ -184,7 +185,7 @@ namespace sst
 					newinspt = new sst::StateTree(ias, ithing.name, insertPoint);
 					insertPoint->subtrees[ias] = newinspt;
 
-					auto treedef = new sst::TreeDefn(cs->dtrees[ithing.name]->topLevel->loc);
+					auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
 					treedef->id = Identifier(ias, IdKind::Name);
 					treedef->tree = newinspt;
 
@@ -233,7 +234,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 
 TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
-	auto ret = new sst::NamespaceDefn(this->loc);
+	auto ret = util::pool<sst::NamespaceDefn>(this->loc);
 
 	if(this->name != "")
 		fs->pushTree(this->name);
@@ -269,7 +270,7 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 	if(tree->parent)
 	{
-		auto td = new sst::TreeDefn(this->loc);
+		auto td = util::pool<sst::TreeDefn>(this->loc);
 		td->tree = tree;
 		td->id = Identifier(this->name, IdKind::Name);
 		td->id.scope = tree->parent->getScope();
