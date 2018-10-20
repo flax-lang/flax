@@ -62,9 +62,9 @@ TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* i
 		arr->type->isPointerType() || !(arr->type->isArraySliceType() || arr->type->isArrayType() || arr->type->isStringType()
 			|| arr->type->isDynamicArrayType()))
 	{
-		SpanError(SimpleError::make(this->loc, "invalid use of '$' on subscriptee with %stype '%s'",
+		SpanError::make(SimpleError::make(this->loc, "invalid use of '$' on subscriptee with %stype '%s'",
 			arr->type->isPointerType() ? "pointer " : "", arr->type))
-			.add(SpanError::Span(arr->loc, "here")).postAndQuit();
+			->add(util::ESpan(arr->loc, "here"))->postAndQuit();
 	}
 
 	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getInt64()));

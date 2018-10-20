@@ -141,9 +141,9 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	{
 		if(this->bindings.array)
 		{
-			SpanError(SimpleError::make(this, "Value splats can only be assigned to tuple decompositions"))
-				.add(SpanError::Span(this->initialiser->loc, ""))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(this->loc, "Value splats can only be assigned to tuple decompositions"))
+				->add(util::ESpan(this->initialiser->loc, ""))
+				->postAndQuit();
 		}
 
 		bool isnest = false;
@@ -158,9 +158,9 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		if(isnest)
 		{
-			SpanError(SimpleError::make(this, "Cannot assign value splats to nested tuple decomposition"))
-				.add(SpanError::Span(this->initialiser->loc, ""))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(this->loc, "Cannot assign value splats to nested tuple decomposition"))
+				->add(util::ESpan(this->initialiser->loc, ""))
+				->postAndQuit();
 		}
 
 		// ok, at this point we should be fine.

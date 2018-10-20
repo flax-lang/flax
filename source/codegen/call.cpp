@@ -87,16 +87,16 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 			if(val->getType() != inf)
 			{
-				auto errs = SpanError(SimpleError::make(arg.loc,
+				auto errs = SpanError::make(SimpleError::make(arg.loc,
 					"Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, val->getType()));
 
 				if(ft->isVariadicFunc() && i >= numArgs - 1)
 				{
-					errs.add(SpanError::Span(arg.loc, strprintf("Argument's type '%s' cannot be cast to the expected variadic element type '%s'",
+					errs->add(util::ESpan(arg.loc, strprintf("Argument's type '%s' cannot be cast to the expected variadic element type '%s'",
 						val->getType(), inf)));
 				}
 
-				errs.postAndQuit();
+				errs->postAndQuit();
 			}
 		}
 		else if(ft->isCStyleVarArg())

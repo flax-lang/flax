@@ -21,9 +21,9 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(this->init);
 
-			SpanError(SimpleError::make(this, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
-				.add(SpanError::Span(this->init->loc, strprintf("type '%s'", nv->getType())))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(this->loc, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
+				->add(util::ESpan(this->init->loc, strprintf("type '%s'", nv->getType())))
+				->postAndQuit();
 		}
 
 		return nv;
@@ -151,9 +151,9 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					SimpleError::make(this, "Failed to codegen variable definition for '%s'", this->name)
-						.append(SimpleError::make(MsgType::Note, this->def, "Offending definition is here:"))
-						.postAndQuit();
+					SimpleError::make(this->loc, "Failed to codegen variable definition for '%s'", this->name)
+						->append(SimpleError::make(MsgType::Note, this->def->loc, "Offending definition is here:"))
+						->postAndQuit();
 				}
 
 				value = it->second.value;
