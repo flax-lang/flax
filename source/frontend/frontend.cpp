@@ -281,7 +281,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected framework name after '-framework' option\n");
+						_error_and_exit("error: expected framework name after '-framework' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_FRAMEWORK_SEARCH_PATH))
@@ -294,7 +294,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected path after '-F' option\n");
+						_error_and_exit("error: expected path after '-F' option\n");
 					}
 				}
 				else if(strstr(argv[i], ARG_LINK_LIBRARY) == argv[i])
@@ -309,7 +309,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected library name after '-l' option\n");
+						_error_and_exit("error: expected library name after '-l' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_LINK_LIBRARY))
@@ -324,7 +324,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected library name after '-l' option\n");
+						_error_and_exit("error: expected library name after '-l' option\n");
 					}
 				}
 				else if(strstr(argv[i], ARG_LIBRARY_SEARCH_PATH) == argv[i])
@@ -338,7 +338,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected path after '-L' option\n");
+						_error_and_exit("error: expected path after '-L' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_LIBRARY_SEARCH_PATH))
@@ -353,7 +353,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected path after '-L' option\n");
+						_error_and_exit("error: expected path after '-L' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_SYSROOT))
@@ -366,7 +366,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected directory name after '-sysroot' option\n");
+						_error_and_exit("error: expected directory name after '-sysroot' option\n");
 					}
 				}
 				if(!strcmp(argv[i], ARG_TARGET))
@@ -379,7 +379,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected target string after '-target' option\n");
+						_error_and_exit("error: expected target string after '-target' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_FREESTANDING))
@@ -408,14 +408,14 @@ namespace frontend
 						}
 						else
 						{
-							_error_and_exit("Error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str);
+							_error_and_exit("error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str);
 						}
 
 						continue;
 					}
 					else
 					{
-						_error_and_exit("Error: Expected backend name after '-backend' option\n");
+						_error_and_exit("error: expected backend name after '-backend' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_OUTPUT_FILE))
@@ -428,7 +428,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Expected filename name after '-o' option\n");
+						_error_and_exit("error: expected filename name after '-o' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_POSINDEPENDENT))
@@ -447,14 +447,14 @@ namespace frontend
 						std::string mm = parseQuotedString(argv, i);
 						if(mm != "kernel" && mm != "small" && mm != "medium" && mm != "large")
 						{
-							_error_and_exit("Error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'.\n");
+							_error_and_exit("error: valid options for '-mcmodel' are 'small', 'medium', 'large' and 'kernel'.\n");
 						}
 
 						frontend::_mcModel = mm;
 					}
 					else
 					{
-						_error_and_exit("Error: Expected mcmodel name after '-mcmodel' option\n");
+						_error_and_exit("error: expected mcmodel name after '-mcmodel' option\n");
 					}
 				}
 				else if(!strcmp(argv[i], WARNINGS_AS_ERRORS))
@@ -481,7 +481,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Cannot use '-c' option simultaneously with either '-emit-llvm' or '-jit'\n");
+						_error_and_exit("error: cannot use '-c' option simultaneously with either '-emit-llvm' or '-jit'\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_SHOW_CLANG_OUTPUT))
@@ -496,7 +496,7 @@ namespace frontend
 					}
 					else
 					{
-						_error_and_exit("Error: Cannot use '-jit'/'-run' option simultaneously with either '-emit-llvm' or '-c'\n");
+						_error_and_exit("error: cannot use '-jit'/'-run' option simultaneously with either '-emit-llvm' or '-c'\n");
 					}
 				}
 				else if(!strcmp(argv[i], ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS))
@@ -508,11 +508,11 @@ namespace frontend
 					// make sure we have at least 3 chars
 					if(strlen(argv[i]) < 3)
 					{
-						_error_and_exit("Error: '-O' is not a valid option on its own\n");
+						_error_and_exit("error: '-O' is not a valid option on its own\n");
 					}
 					else if(strlen(argv[i]) > 3)
 					{
-						_error_and_exit("Error: '%s' is not a valid option\n", argv[i]);
+						_error_and_exit("error: '%s' is not a valid option\n", argv[i]);
 					}
 
 					if(argv[i][2] == 'x')
@@ -530,7 +530,7 @@ namespace frontend
 							case '3':	frontend::_optLevel = OptimisationLevel::Aggressive;	break;
 
 							default:
-								_error_and_exit("Error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);
+								_error_and_exit("error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);
 						}
 					}
 				}
@@ -557,7 +557,7 @@ namespace frontend
 				}
 				else if(argv[i][0] == '-')
 				{
-					_error_and_exit("Error: Unrecognised option '%s'\n", argv[i]);
+					_error_and_exit("error: unrecognised option '%s'\n", argv[i]);
 				}
 				else
 				{
@@ -568,24 +568,24 @@ namespace frontend
 		}
 		else
 		{
-			_error_and_exit("Expected at least one argument\n");
+			_error_and_exit("expected at least one argument\n");
 		}
 
 		if(filenames.empty())
 		{
-			_error_and_exit("Error: no input files\n");
+			_error_and_exit("error: no input files\n");
 		}
 
 		if(filenames.size() > 1)
 		{
-			_error_and_exit("Only one input file is supported at the moment\n");
+			_error_and_exit("only one input file is supported at the moment\n");
 		}
 
 
 		// sanity check
 		// what are you even trying to do m8
 		if(frontend::_outputMode == ProgOutputMode::RunJit && frontend::_isFreestanding)
-			_error_and_exit("Cannot JIT program in freestanding mode");
+			_error_and_exit("cannot JIT program in freestanding mode");
 
 		return { filenames[0], outname };
 	}

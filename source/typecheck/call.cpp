@@ -120,7 +120,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	iceAssert(target);
 
 	if(!target->type->isFunctionType())
-		error(this->callee, "Expression with non-function-type '%s' cannot be called");
+		error(this->callee, "expression with non-function-type '%s' cannot be called");
 
 	auto ft = target->type->toFunctionType();
 	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
@@ -131,7 +131,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	if(errs != nullptr || dist == -1)
 	{
-		auto x = SimpleError::make(this->loc, "Mismatched types in call to function pointer");
+		auto x = SimpleError::make(this->loc, "mismatched types in call to function pointer");
 		if(errs)    errs->prepend(x);
 		else        errs = x;
 

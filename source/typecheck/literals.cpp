@@ -72,12 +72,12 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(infer)
 	{
 		if(!infer->isTupleType())
-			error(this, "Assigning tuple to inferred non-tuple type '%s'", infer);
+			error(this, "assigning tuple to inferred non-tuple type '%s'", infer);
 
 		auto tt = infer->toTupleType();
 		if(tt->getElementCount() != this->values.size())
 		{
-			error(this, "Mismatched types in inferred type: have literal with %zu elements, inferred type has %zu", this->values.size(),
+			error(this, "mismatched types in inferred type: have literal with %zu elements, inferred type has %zu", this->values.size(),
 				tt->getElementCount());
 		}
 	}
@@ -155,11 +155,11 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			else if(infer->isArrayType())
 			{
 				if(infer->toArrayType()->getArraySize() != 0)
-					error(this, "Array type with non-zero length %zu was inferred for empty array literal", infer->toArrayType()->getArraySize());
+					error(this, "array type with non-zero length %zu was inferred for empty array literal", infer->toArrayType()->getArraySize());
 			}
 			else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
 			{
-				error(this, "Invalid type '%s' inferred for array literal", infer);
+				error(this, "invalid type '%s' inferred for array literal", infer);
 			}
 		}
 
@@ -172,7 +172,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		if(!elmty && infer)
 		{
 			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
-				error(this, "Invalid type '%s' inferred for array literal", infer);
+				error(this, "invalid type '%s' inferred for array literal", infer);
 
 			elmty = infer->getArrayElementType();
 		}
@@ -191,7 +191,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			}
 			else if(elmty != e->type)
 			{
-				error(v, "Mismatched type for expression in array literal; expected '%s'%s, found '%s'",
+				error(v, "mismatched type for expression in array literal; expected '%s'%s, found '%s'",
 					elmty, (this->explicitType ? "" : " as inferred from previous elements"), e->type);
 			}
 
@@ -199,10 +199,10 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			if(e->type->isVoidType())
 			{
 				// be helpful
-				auto err = SimpleError::make(v->loc, "Expected value in array literal, found 'void' value instead");
+				auto err = SimpleError::make(v->loc, "expected value in array literal, found 'void' value instead");
 
 				if(auto fc = dcast(sst::FunctionCall, e); fc && fc->target)
-					err->append(SimpleError::make(MsgType::Note, fc->target->loc, "Function was defined here:"));
+					err->append(SimpleError::make(MsgType::Note, fc->target->loc, "function was defined here:"));
 
 				err->postAndQuit();
 			}
@@ -228,7 +228,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else
 		{
-			error(this, "Invalid type '%s' inferred for array literal", infer);
+			error(this, "invalid type '%s' inferred for array literal", infer);
 		}
 	}
 

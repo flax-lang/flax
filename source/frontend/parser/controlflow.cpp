@@ -180,7 +180,7 @@ namespace parser
 				expectedAfter(st.loc(), "identifier for index binding", "',' in for loop", st.front().str());
 
 			else if(st.front().str() == "_")
-				error("Redundant use of '_' in binding for index variable in for loop; omit the binding entirely to ignore the index variable");
+				error("redundant use of '_' in binding for index variable in for loop; omit the binding entirely to ignore the index variable");
 
 			ret->indexVar = st.eat().str();
 		}

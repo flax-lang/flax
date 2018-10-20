@@ -76,8 +76,8 @@ namespace sst
 							{
 								if(auto v = dynamic_cast<VarDefn*>(ot))
 								{
-									SimpleError::make(fn->loc, "Conflicting definition for function '%s'; was previously defined as a variable")
-										->append(SimpleError::make(MsgType::Note, v->loc, "Conflicting definition was here:"))
+									SimpleError::make(fn->loc, "conflicting definition for function '%s'; was previously defined as a variable")
+										->append(SimpleError::make(MsgType::Note, v->loc, "conflicting definition was here:"))
 										->postAndQuit();
 								}
 								else if(auto f = dynamic_cast<FunctionDecl*>(ot))
@@ -85,8 +85,8 @@ namespace sst
 									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](auto p) -> fir::Type* { return p.type; }),
 										util::map(f->params, [](auto p) -> fir::Type* { return p.type; })))
 									{
-										SimpleError::make(fn->loc, "Duplicate definition of function '%s' with identical signature", fn->id.name)
-											->append(SimpleError::make(MsgType::Note, f->loc, "Conflicting definition was here: (%p vs %p)", f, fn))
+										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
+											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)", f, fn))
 											->postAndQuit();
 									}
 								}
@@ -97,10 +97,10 @@ namespace sst
 							}
 							else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
 							{
-								auto err = SimpleError::make(vr->loc, "Duplicate definition for variable '%s'");
+								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'");
 
 								for(auto ot : others)
-									err->append(SimpleError::make(MsgType::Note, ot->loc, "Previously defined here:"));
+									err->append(SimpleError::make(MsgType::Note, ot->loc, "previously defined here:"));
 
 								err->postAndQuit();
 							}
@@ -108,8 +108,8 @@ namespace sst
 							{
 								// probably a class or something
 
-								SimpleError::make(def->loc, "Duplicate definition of '%s'", def->id.name)
-									->append(SimpleError::make(MsgType::Note, ot->loc, "Conflicting definition was here:"))
+								SimpleError::make(def->loc, "duplicate definition of '%s'", def->id.name)
+									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
 									->postAndQuit();
 							}
 						}

@@ -44,10 +44,10 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 		{
 			if(cands.size() > 1)
 			{
-				auto err = SimpleError::make(loc, "Ambiguous use of overloaded operator '%s'", op);
+				auto err = SimpleError::make(loc, "ambiguous use of overloaded operator '%s'", op);
 
 				for(auto c : cands)
-					err->append(SimpleError::make(MsgType::Note, c->loc, "Potential overload candidate here:"));
+					err->append(SimpleError::make(MsgType::Note, c->loc, "potential overload candidate here:"));
 
 				err->postAndQuit();
 			}
@@ -220,7 +220,7 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		if(l->type->isPointerType())
 		{
 			if(l->type->isMutablePointer() == mte->mut)
-				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
+				warn(this, "redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
 
 			if(mte->mut)    r = sst::TypeExpr::make(mte->loc, l->type->getMutablePointerVersion());
 			else            r = sst::TypeExpr::make(mte->loc, l->type->getImmutablePointerVersion());
@@ -228,13 +228,13 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		else if(l->type->isArraySliceType())
 		{
 			if(l->type->toArraySliceType()->isMutable() == mte->mut)
-				warn(this, "Redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
+				warn(this, "redundant cast: type '%s' is already %smutable", l->type, mte->mut ? "" : "im");
 
 			r = sst::TypeExpr::make(mte->loc, fir::ArraySliceType::get(l->type->getArrayElementType(), mte->mut));
 		}
 		else
 		{
-			error(this, "Invalid cast: type '%s' does not distinguish between mutable and immutable variants", l->type);
+			error(this, "invalid cast: type '%s' does not distinguish between mutable and immutable variants", l->type);
 		}
 	}
 	else
@@ -252,7 +252,7 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op, &overloadFn);
 	if(!rest)
 	{
-		SpanError::make(SimpleError::make(this->loc, "Unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt))
+		SpanError::make(SimpleError::make(this->loc, "unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt))
 			->add(util::ESpan(this->left->loc, strprintf("type '%s'", lt)))
 			->add(util::ESpan(this->right->loc, strprintf("type '%s'", rt)))
 			->postAndQuit();
@@ -296,7 +296,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	{
 		// check if we're convertible to bool
 		if(!t->isBoolType())
-			error(this, "Invalid use of logical-not-operator '!' on non-boolean type '%s'", t);
+			error(this, "invalid use of logical-not-operator '!' on non-boolean type '%s'", t);
 
 		out = fir::Type::getBool();
 	}
@@ -309,44 +309,44 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		}
 		else if(!t->isIntegerType() && !t->isFloatingPointType())
 		{
-			error(this, "Invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
+			error(this, "invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
 		}
 		else if(op == "-" && t->isIntegerType() && !t->isSignedIntType())
 		{
-			error(this, "Invalid use of unary negation operator '-' on unsigned integer type '%s'", t);
+			error(this, "invalid use of unary negation operator '-' on unsigned integer type '%s'", t);
 		}
 		out = t;
 	}
 	else if(this->op == Operator::BitwiseNot)
 	{
 		if(t->isConstantNumberType())
-			error(this, "Bitwise operations are not supported on literal numbers");
+			error(this, "bitwise operations are not supported on literal numbers");
 
 		else if(!t->isIntegerType())
-			error(this, "Invalid use of bitwise not operator '~' on non-integer type '%s'", t);
+			error(this, "invalid use of bitwise not operator '~' on non-integer type '%s'", t);
 
 		else if(t->isSignedIntType())
-			error(this, "Invalid use of bitwise not operator '~' on signed integer type '%s'", t);
+			error(this, "invalid use of bitwise not operator '~' on signed integer type '%s'", t);
 
 		out = t;
 	}
 	else if(this->op == Operator::PointerDeref)
 	{
 		if(!t->isPointerType())
-			error(this, "Invalid use of derefernce operator '*' on non-pointer type '%s'", t);
+			error(this, "invalid use of derefernce operator '*' on non-pointer type '%s'", t);
 
 		out = t->getPointerElementType();
 	}
 	else if(this->op == Operator::AddressOf)
 	{
 		if(t->isFunctionType())
-			error(this, "Cannot take the address of a function; use it as a value type");
+			error(this, "cannot take the address of a function; use it as a value type");
 
 		out = t->getPointerTo();
 	}
 	else
 	{
-		error(this, "Unsupported unary operator '%s' on type '%s'", this->op, v->type);
+		error(this, "unsupported unary operator '%s' on type '%s'", this->op, v->type);
 	}
 
 

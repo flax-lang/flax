@@ -17,7 +17,7 @@ TCResult ast::TypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 TCResult ast::MutabilityTypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
-	error(this, "Unable to typecheck mutability cast, this shouldn't happen!");
+	error(this, "unable to typecheck mutability cast, this shouldn't happen!");
 }
 
 TCResult ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)

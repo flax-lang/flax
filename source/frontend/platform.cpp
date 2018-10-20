@@ -43,13 +43,13 @@ namespace platform
 
 			HANDLE hd = CreateFile((LPCSTR) path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
-				_error_and_exit("Failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
 
 			// ok, presumably it exists. so, get the size
 			LARGE_INTEGER sz;
 			bool success = GetFileSizeEx(hd, &sz);
 			if(!success)
-				_error_and_exit("Failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
 
 			CloseHandle(hd);
 
@@ -59,7 +59,7 @@ namespace platform
 
 			struct stat st;
 			if(stat(path.c_str(), &st) != 0)
-				_error_and_exit("Failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
+				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
 
 			return st.st_size;
 
@@ -74,7 +74,7 @@ namespace platform
 		auto fd = openFile(path.c_str(), O_RDONLY, 0);
 		if(fd == platform::InvalidFileHandle)
 		{
-			perror("There was an error getting opening the file");
+			perror("there was an error getting opening the file");
 			exit(-1);
 		}
 
@@ -101,7 +101,7 @@ namespace platform
 				contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
 				if(contents == MAP_FAILED)
 				{
-					perror("There was an error reading the file");
+					perror("there was an error reading the file");
 					exit(-1);
 				}
 			}
@@ -116,8 +116,8 @@ namespace platform
 			size_t didRead = platform::readFile(fd, contents, fileLength);
 			if(didRead != fileLength)
 			{
-				perror("There was an error reading the file");
-				_error_and_exit("Expected %d bytes, but read only %d\n", fileLength, didRead);
+				perror("there was an error reading the file");
+				_error_and_exit("expected %d bytes, but read only %d\n", fileLength, didRead);
 				exit(-1);
 			}
 		}
@@ -166,7 +166,7 @@ namespace platform
 			DWORD didRead = 0;
 			bool success = ReadFile(fd, buf, (platform::DWORD) count, &didRead, 0);
 			if(!success)
-				_error_and_exit("Failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
+				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
 
 			return (size_t) didRead;
 		#else
@@ -180,7 +180,7 @@ namespace platform
 			DWORD didWrite = 0;
 			bool success = WriteFile(fd, buf, (platform::DWORD) count, &didWrite, 0);
 			if(!success)
-				_error_and_exit("Failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
+				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
 
 			return (size_t) didWrite;
 		#else

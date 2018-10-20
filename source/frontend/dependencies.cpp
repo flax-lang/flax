@@ -172,8 +172,8 @@ namespace frontend
 					modlist += "    " + fn + "\n";
 				}
 
-				info("Cyclic import dependencies between these modules:\n%s", modlist.c_str());
-				info("Offending import statements:");
+				info("cyclic import dependencies between these modules:\n%s", modlist.c_str());
+				info("offending import statements:");
 
 				for(auto m : grp)
 				{
@@ -187,7 +187,7 @@ namespace frontend
 					}
 				}
 
-				error("Cyclic dependencies found, cannot continue");
+				error("cyclic dependencies found, cannot continue");
 			}
 		}
 

@@ -59,7 +59,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
 	if(tcr.isParametric())  return tcr;
-	else if(tcr.isError())  error(this, "Failed to generate declaration for enum '%s'", this->name);
+	else if(tcr.isError())  error(this, "failed to generate declaration for enum '%s'", this->name);
 
 	auto defn = dcast(sst::EnumDefn, tcr.defn());
 	iceAssert(defn);
@@ -82,7 +82,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			val = cs.value->typecheck(fs, defn->memberType).expr();
 
 			if(val->type != defn->memberType)
-				error(cs.value, "Mismatched type in enum case value; expected type '%s', but found type '%s'", defn->memberType, val->type);
+				error(cs.value, "mismatched type in enum case value; expected type '%s', but found type '%s'", defn->memberType, val->type);
 		}
 
 		auto ecd = util::pool<sst::EnumCaseDefn>(cs.loc);

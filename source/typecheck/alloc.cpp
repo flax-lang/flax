@@ -21,19 +21,19 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	iceAssert(elm);
 
 	if(this->isRaw && this->counts.size() > 1)
-		error(this, "Only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
+		error(this, "only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
 
 	std::vector<sst::Expr*> counts = util::map(this->counts, [fs](ast::Expr* e) -> auto {
 		auto c = e->typecheck(fs, fir::Type::getInt64()).expr();
 		if(!c->type->isIntegerType())
-			error(c, "Expected integer type ('i64') for alloc count, found '%s' instead", c->type);
+			error(c, "expected integer type ('i64') for alloc count, found '%s' instead", c->type);
 
 		return c;
 	});
 
 	// check for initialiser.
 	if(!elm->isClassType() && !elm->isStructType() && this->args.size() > 0)
-		error(this, "Cannot provide arguments to non-struct type '%s'", elm);
+		error(this, "cannot provide arguments to non-struct type '%s'", elm);
 
 
 	fir::Type* resType = (this->isRaw || counts.empty() ?
@@ -56,11 +56,11 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 	else if(!this->args.empty())
 	{
-		if(this->args.size() > 1) error(this, "Expected 1 argument in alloc expression for non-struct type '%s' (for value-copy-initialisation), but found %d arguments instead", this->args.size());
+		if(this->args.size() > 1) error(this, "expected 1 argument in alloc expression for non-struct type '%s' (for value-copy-initialisation), but found %d arguments instead", this->args.size());
 
 		auto args = sst::resolver::misc::typecheckCallArguments(fs, this->args);
 		if(args[0].value->type != elm)
-			error(this, "Expected argument of type '%s' for value-copy-initialisation in alloc expression, but found '%s' instead", elm, args[0].value->type);
+			error(this, "expected argument of type '%s' for value-copy-initialisation in alloc expression, but found '%s' instead", elm, args[0].value->type);
 
 		// ok loh
 		ret->arguments = args;
@@ -107,10 +107,10 @@ TCResult ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto ex = this->expr->typecheck(fs).expr();
 	if(ex->type->isDynamicArrayType())
-		error(ex, "Dynamic arrays are reference-counted, and cannot be manually freed");
+		error(ex, "dynamic arrays are reference-counted, and cannot be manually freed");
 
 	else if(!ex->type->isPointerType())
-		error(ex, "Expected pointer or dynamic array type to deallocate; found '%s' instead", ex->type);
+		error(ex, "expected pointer or dynamic array type to deallocate; found '%s' instead", ex->type);
 
 	auto ret = util::pool<sst::DeallocOp>(this->loc);
 	ret->expr = ex;

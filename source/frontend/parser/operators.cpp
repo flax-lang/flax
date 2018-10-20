@@ -209,7 +209,7 @@ namespace parser
 
 		if(tokens[idx] != TT::NewLine && tokens[idx] != TT::Semicolon && tokens[idx] != TT::Comment)
 		{
-			error(tokens[idx].loc, "Expected newline or semicolon to terminate operator declaration, found '%s'", tokens[idx].str());
+			error(tokens[idx].loc, "expected newline or semicolon to terminate operator declaration, found '%s'", tokens[idx].str());
 		}
 
 		if(_kind)	*_kind = kind;

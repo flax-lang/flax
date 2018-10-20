@@ -15,12 +15,12 @@ static void checkTuple(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 {
 	iceAssert(!bind->array);
 	if(!rhs->isTupleType())
-		error(bind->loc, "Expected tuple type in destructuring declaration; found type '%s' instead", rhs);
+		error(bind->loc, "expected tuple type in destructuring declaration; found type '%s' instead", rhs);
 
 	auto tty = rhs->toTupleType();
 	if(bind->inner.size() != tty->getElementCount())
 	{
-		error(bind->loc, "Too %s bindings in destructuring declaration; expected %d, found %d instead",
+		error(bind->loc, "too %s bindings in destructuring declaration; expected %d, found %d instead",
 			(bind->inner.size() < tty->getElementCount() ? "few" : "many"), tty->getElementCount(), bind->inner.size());
 	}
 
@@ -33,7 +33,7 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 	iceAssert(bind->array);
 
 	if(!rhs->isArrayType() && !rhs->isDynamicArrayType() && !rhs->isArraySliceType() && !rhs->isStringType())
-		error(bind->loc, "Expected array type in destructuring declaration; found type '%s' instead", rhs);
+		error(bind->loc, "expected array type in destructuring declaration; found type '%s' instead", rhs);
 
 	if(rhs->isStringType())
 	{
@@ -96,7 +96,7 @@ static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping* bind, fir
 			fake->immutable = immut;
 
 			if(bind->ref && !allowref)
-				error(bind->loc, "Cannot bind to value of type '%s' by reference", rhs);
+				error(bind->loc, "cannot bind to value of type '%s' by reference", rhs);
 
 			else if(bind->ref)
 				fake->type = rhs->getPointerTo();
@@ -141,7 +141,7 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	{
 		if(this->bindings.array)
 		{
-			SpanError::make(SimpleError::make(this->loc, "Value splats can only be assigned to tuple decompositions"))
+			SpanError::make(SimpleError::make(this->loc, "value splats can only be assigned to tuple decompositions"))
 				->add(util::ESpan(this->initialiser->loc, ""))
 				->postAndQuit();
 		}
@@ -158,7 +158,7 @@ TCResult ast::DecompVarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		if(isnest)
 		{
-			SpanError::make(SimpleError::make(this->loc, "Cannot assign value splats to nested tuple decomposition"))
+			SpanError::make(SimpleError::make(this->loc, "cannot assign value splats to nested tuple decomposition"))
 				->add(util::ESpan(this->initialiser->loc, ""))
 				->postAndQuit();
 		}
