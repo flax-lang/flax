@@ -40,16 +40,16 @@ static void compile(std::string in, std::string out)
 		{
 			timer t(&lexer_ms);
 			frontend::collectFiles(in, &state);
-			debuglogln("lexed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+			// debuglogln("lexed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 			// mem::resetStats();
 		}
 
 		{
 			timer t(&parser_ms);
 			frontend::parseFiles(&state);
-			debuglogln("parsed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+			// debuglogln("parsed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 			// mem::resetStats();
 		}
 
@@ -57,8 +57,8 @@ static void compile(std::string in, std::string out)
 			timer t(&typecheck_ms);
 
 			dtree = frontend::typecheckFiles(&state);
-			debuglogln("typechecked (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-				mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+			// debuglogln("typechecked (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 			// mem::resetStats();
 
@@ -71,8 +71,8 @@ static void compile(std::string in, std::string out)
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	auto cd = backend::CompiledData { module };
 
-	debuglogln("codegened (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-		mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+	// debuglogln("codegened (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 	auto codegen_ms = t.stop();
 
@@ -88,8 +88,8 @@ static void compile(std::string in, std::string out)
 
 	// delete all the memory we've allocated.
 	util::clearAllPools();
-	debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-		mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+	// debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
+	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 	{
 		using namespace backend;

@@ -28,7 +28,7 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto rt = rs->type;
 
 	if((rt->isConstantNumberType() && rt->toConstantNumberType()->isFloating()) && !rt->isIntegerType())
-		error(this->inside, "Subscript index must be an integer type, found '%s'", rt);
+		error(this->inside, "subscript index must be an integer type, found '%s'", rt);
 
 
 	fir::Type* res = 0;
@@ -39,7 +39,7 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else if(lt->isPointerType())	res = lt->getPointerElementType();
 	else if(lt->isArrayType())		res = lt->toArrayType()->getElementType();
 	else if(lt->isStringType())		res = fir::Type::getInt8();
-	else							error(this->expr, "Cannot subscript type '%s'", lt);
+	else							error(this->expr, "cannot subscript type '%s'", lt);
 
 	iceAssert(res);
 	auto ret = util::pool<sst::SubscriptOp>(this->loc, res);

@@ -44,7 +44,7 @@ namespace parser
 			defn->visibility = vis;
 
 		else
-			error(st, "Access specifier cannot be applied to this statement");
+			error(st, "access specifier cannot be applied to this statement");
 
 		return stmt;
 	}
@@ -59,14 +59,14 @@ namespace parser
 		std::function<Stmt* (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers](bool mut, bool virt, bool ovrd) -> Stmt* {
 			if(st.front() == TT::Mutable)
 			{
-				if(mut) error(st.loc(), "Duplicate 'mut' modifier");
+				if(mut) error(st.loc(), "duplicate 'mut' modifier");
 
 				st.eat();
 				return checkMethodModifiers(true, virt, ovrd);
 			}
 			else if(st.front() == TT::Virtual)
 			{
-				if(virt) error(st.loc(), "Duplicate 'virtual' modifier");
+				if(virt) error(st.loc(), "duplicate 'virtual' modifier");
 				if(ovrd) error(st.loc(), "'override' implies 'virtual', just use 'override'");
 
 				st.eat();
@@ -76,7 +76,7 @@ namespace parser
 			}
 			else if(st.front() == TT::Override)
 			{
-				if(ovrd) error(st.loc(), "Duplicate 'override' modifier");
+				if(ovrd) error(st.loc(), "duplicate 'override' modifier");
 				if(virt) error(st.loc(), "'override' implies 'virtual', just use 'override'");
 
 				st.eat();
@@ -121,7 +121,7 @@ namespace parser
 					return parseIfStmt(st);
 
 				case TT::Else:
-					error(st, "Cannot have 'else' without preceeding 'if'");
+					error(st, "cannot have 'else' without preceeding 'if'");
 
 				case TT::Return:
 					return parseReturn(st);
@@ -178,16 +178,16 @@ namespace parser
 					error(st, "notsup");
 
 				case TT::Namespace:
-					error(st, "Namespaces can only be defined at the top-level scope");
+					error(st, "namespaces can only be defined at the top-level scope");
 
 				case TT::Import:
-					error(st, "All imports must happen at the top-level scope");
+					error(st, "all imports must happen at the top-level scope");
 
 				case TT::Attr_Operator:
-					error(st, "All operator declarations must happen at the top-level scope");
+					error(st, "all operator declarations must happen at the top-level scope");
 
 				case TT::Export:
-					error(st, "Export declaration must be the first non-comment line in the file");
+					error(st, "export declaration must be the first non-comment line in the file");
 
 				default:
 					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
@@ -372,7 +372,7 @@ namespace parser
 			auto loc = st.loc();
 			auto op = parseOperatorTokens(st);
 			if(op.empty())
-				error(loc, "Invalid operator '%s'", st.prev().str());
+				error(loc, "invalid operator '%s'", st.prev().str());
 
 
 
@@ -513,7 +513,7 @@ namespace parser
 		iceAssert(opening.type == TT::LParen);
 
 		if(st.front() == TT::RParen)
-			error(st.loc(), "Empty tuples are not supported");
+			error(st.loc(), "empty tuples are not supported");
 
 		Expr* within = parseExpr(st);
 
@@ -707,7 +707,7 @@ namespace parser
 
 				//* foo<> is an error regardless of whether we're doing expression parsing or call parsing.
 				if(st.front() == TT::RAngle)
-					error(st.loc(), "At least one type argument is required between angle brackets <>");
+					error(st.loc(), "at least one type argument is required between angle brackets <>");
 
 				// step 2A: start parsing.
 				while(st.front() != TT::RAngle)
@@ -728,7 +728,7 @@ namespace parser
 					//? I think beyond this point we pretty much can't fail since we have the colon.
 					//? so, we shouldn't need to handle the case where we fail to parse a type here.
 					if(mappings.find(id) != mappings.end())
-						error(st.loc(), "Type parameter '%s' already exists in the type parameter list for entity '%s'", id, name);
+						error(st.loc(), "type parameter '%s' already exists in the type parameter list for entity '%s'", id, name);
 
 					auto ty = parseType(st);
 					mappings[id] = ty;
@@ -898,7 +898,7 @@ namespace parser
 			ret->args = parseCallArgumentList(st);
 
 			if(ret->args.empty())
-				info(st.loc(), "Empty argument list in alloc expression () can be omitted");
+				info(st.loc(), "empty argument list in alloc expression () can be omitted");
 		}
 
 
@@ -919,12 +919,12 @@ namespace parser
 				expectedAfter(st.ploc(), "']'", "'alloc(...)'", st.prev().str());
 
 			if(ret->counts.empty())
-				error(st.ploc(), "Dimension list in 'alloc' cannot be empty");
+				error(st.ploc(), "dimension list in 'alloc' cannot be empty");
 		}
 
 		if(st.front() == TT::LBrace)
 		{
-			if(raw) error(st.loc(), "Initialisation body cannot be used with raw array allocations");
+			if(raw) error(st.loc(), "initialisation body cannot be used with raw array allocations");
 
 			// ok, get it
 			ret->initBody = parseBracedBlock(st);
@@ -1037,31 +1037,31 @@ namespace parser
 				case TT::Namespace:
 				case TT::TypeAlias:
 				case TT::ForeignFunc:
-					error(st, "Declarations are not expressions (%s)", tok.str());
+					error(st, "declarations are not expressions (%s)", tok.str());
 
 				case TT::Dealloc:
-					error(st, "Deallocation statements are not expressions");
+					error(st, "deallocation statements are not expressions");
 
 				case TT::Defer:
-					error(st, "Defer statements are not expressions");
+					error(st, "defer statements are not expressions");
 
 				case TT::Return:
-					error(st, "Return statements are not expressions");
+					error(st, "return statements are not expressions");
 
 				case TT::Break:
-					error(st, "Break statements are not expressions");
+					error(st, "break statements are not expressions");
 
 				case TT::Continue:
-					error(st, "Continue statements are not expressions");
+					error(st, "continue statements are not expressions");
 
 				case TT::If:
-					error(st, "If statements are not expressions");
+					error(st, "if statements are not expressions");
 
 				case TT::Do:
 				case TT::While:
 				case TT::Loop:
 				case TT::For:
-					error(st, "Loops are not expressions");
+					error(st, "loops are not expressions");
 
 
 
@@ -1101,7 +1101,7 @@ namespace parser
 						return parseAlloc(st, true);
 
 					else
-						expectedAfter(st, "string literal or ", "@raw", st.front().str());
+						expectedAfter(st, "one of string-literal, array, or alloc", "@raw", st.front().str());
 
 				case TT::StringLiteral:
 					return parseString(st, false);
@@ -1134,7 +1134,7 @@ namespace parser
 					unexpected(st, "block; to create a nested scope, use 'do { ... }'");
 
 				default:
-					error(tok.loc, "Unexpected token '%s' (id = %d)", tok.str(), tok.type);
+					error(tok.loc, "unexpected token '%s' (id = %d)", tok.str(), tok.type);
 			}
 		}
 

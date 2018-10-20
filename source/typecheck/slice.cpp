@@ -25,7 +25,7 @@ bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 		return ty->isMutablePointer();
 
 	else
-		error("Type '%s' does not have mutable variants", ty);
+		error("type '%s' does not have mutable variants", ty);
 }
 
 TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
@@ -53,16 +53,16 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		elm = ty->getPointerElementType();
 
 	else
-		error(array, "Invalid type '%s' for slice operation", ty);
+		error(array, "invalid type '%s' for slice operation", ty);
 
 	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getInt64()).expr() : 0;
 	auto end = this->end ? this->end->typecheck(fs, fir::Type::getInt64()).expr() : 0;
 
 	if(begin && !begin->type->isIntegerType())
-		error(begin, "Expected integer type for start index of slice; found '%s'", begin->type);
+		error(begin, "expected integer type for start index of slice; found '%s'", begin->type);
 
 	if(end && !end->type->isIntegerType())
-		error(end, "Expected integer type for end index of slice; found '%s'", end->type);
+		error(end, "expected integer type for end index of slice; found '%s'", end->type);
 
 	//* how it goes:
 	// 1. strings and dynamic arrays are always sliced mutably.

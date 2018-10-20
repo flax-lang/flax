@@ -73,10 +73,10 @@ TCResult ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type
 	defer(fs->popLoc());
 
 	if(this->kind == Kind::Invalid)
-		error(this, "Invalid operator kind; must be one of 'infix', 'postfix', or 'prefix'");
+		error(this, "invalid operator kind; must be one of 'infix', 'postfix', or 'prefix'");
 
 	if(fs->isInStructBody())
-		error(this, "Operator overloads cannot be methods of a type.");
+		error(this, "operator overloads cannot be methods of a type.");
 
 	this->generateDeclaration(fs, infer, { });
 
@@ -110,15 +110,15 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	{
 		if(ft->getArgumentTypes().size() != 2)
 		{
-			error(this, "Operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
+			error(this, "operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
 				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
 		else if(!Operator::isAssignment(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
 			 && isBuiltinOperator(this->symbol))
 		{
-			SimpleError::make(this->loc, "Binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
+			SimpleError::make(this->loc, "binary operator overload (for operator '%s') cannot take two builtin types as arguments (have '%s' and '%s')",
 				this->symbol, ft->getArgumentN(0), ft->getArgumentN(1))
-				->append(BareError::make(MsgType::Note, "At least one of the parameters must be a user-defined type"))
+				->append(BareError::make(MsgType::Note, "at least one of the parameters must be a user-defined type"))
 				->postAndQuit();
 		}
 	}
@@ -126,12 +126,12 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	{
 		if(ft->getArgumentTypes().size() != 1)
 		{
-			error(this, "Operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
+			error(this, "operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
 				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)) && isBuiltinOperator(this->symbol))
 		{
-			error(defn->arguments[0], "Unary operator '%s' cannot be overloaded for the builtin type '%s'",
+			error(defn->arguments[0], "unary operator '%s' cannot be overloaded for the builtin type '%s'",
 				this->symbol, ft->getArgumentN(0));
 		}
 	}
@@ -141,17 +141,17 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	{
 		if(!ft->getReturnType()->isVoidType())
 		{
-			error(this, "Operator overload for assignment operators (have '%s') must return void, but a return type of '%s' was found",
+			error(this, "operator overload for assignment operators (have '%s') must return void, but a return type of '%s' was found",
 				this->symbol, ft->getReturnType());
 		}
 		else if(!ft->getArgumentN(0)->isPointerType())
 		{
-			error(defn->arguments[0], "Operator overload for assignment operator '%s' must take a pointer to the type as the first parameter, found '%s'",
+			error(defn->arguments[0], "operator overload for assignment operator '%s' must take a pointer to the type as the first parameter, found '%s'",
 				this->symbol, ft->getArgumentN(0));
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)->getPointerElementType()))
 		{
-			error(defn->arguments[0], "Assignment operator '%s' cannot be overloaded for the builtin type '%s'",
+			error(defn->arguments[0], "assignment operator '%s' cannot be overloaded for the builtin type '%s'",
 				this->symbol, ft->getArgumentN(0));
 		}
 	}
@@ -164,8 +164,8 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	{
 		if(fs->isDuplicateOverload(it->params, defn->params))
 		{
-			SimpleError::make(this->loc, "Duplicate operator overload for '%s' taking identical arguments", this->symbol)
-				->append(SimpleError::make(MsgType::Note, it->loc, "Previous definition was here:"))
+			SimpleError::make(this->loc, "duplicate operator overload for '%s' taking identical arguments", this->symbol)
+				->append(SimpleError::make(MsgType::Note, it->loc, "previous definition was here:"))
 				->postAndQuit();
 		}
 	}

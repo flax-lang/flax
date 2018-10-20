@@ -436,7 +436,7 @@ void OverloadError::post()
 
 [[noreturn]] void doTheExit(bool trace)
 {
-	fprintf(stderr, "There were errors, compilation cannot continue\n");
+	fprintf(stderr, "there were errors, compilation cannot continue\n");
 
 	#ifdef NDEBUG
 		exit(1);

@@ -19,7 +19,7 @@ namespace frontend
 		std::string fullname = curpath + "/" + imp + ext;
 
 		if(fullname == fullPath)
-			error(loc, "Cannot import module from within itself");
+			error(loc, "cannot import module from within itself");
 
 		auto fname = platform::getFullPath(fullname);
 
@@ -38,7 +38,7 @@ namespace frontend
 			}
 			else
 			{
-				SimpleError::make(loc, "No module or library at the path '%s' could be found", imp)
+				SimpleError::make(loc, "no module or library at the path '%s' could be found", imp)
 					->append(BareError::make(MsgType::Note, "'%s' does not exist", fullname))
 					->append(BareError::make(MsgType::Note, "'%s' does not exist", builtinlib))
 					->postAndQuit();
@@ -103,7 +103,7 @@ namespace parser
 
 				if(tokens[i] != TT::NewLine && tokens[i] != TT::Semicolon && tokens[i] != TT::Comment)
 				{
-					error(tokens[i].loc, "Expected newline or semicolon to terminate import statement, found '%s'", tokens[i].str());
+					error(tokens[i].loc, "expected newline or semicolon to terminate import statement, found '%s'", tokens[i].str());
 				}
 
 				frontend::ImportThing it { name, impAs, impLoc };

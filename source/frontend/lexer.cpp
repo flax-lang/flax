@@ -367,7 +367,7 @@ namespace lexer
 
 
 			if(currentNest != 0)
-				error(opening, "Expected closing */ (reached EOF), for block comment started here:");
+				error(opening, "expected closing */ (reached EOF), for block comment started here:");
 
 			pos = curpos;
 
@@ -501,7 +501,7 @@ namespace lexer
 			if(tmp.size() > 0 && (tmp[0] == 'e' || tmp[0] == 'E'))
 			{
 				if(base != 10)
-					error("Exponential form is supported with neither hexadecimal nor binary literals");
+					error("exponential form is supported with neither hexadecimal nor binary literals");
 
 				// find that shit
 				auto next = std::find_if_not(tmp.begin() + 1, tmp.end(), isdigit);
@@ -518,10 +518,10 @@ namespace lexer
 			if(!post.empty() && post[0] == '.')
 			{
 				if(base != 10)
-					error("Invalid floating point literal; only valid in base 10");
+					error("invalid floating point literal; only valid in base 10");
 
 				else if(hadExp)
-					error("Invalid floating point literal; decimal point cannot occur after the exponent ('e' or 'E').");
+					error("invalid floating point literal; decimal point cannot occur after the exponent ('e' or 'E').");
 
 				// if the previous token was a '.' as well, then we're doing some tuple access
 				// eg. x.0.1 (we would be at '0', having a period both ahead and behind us)
@@ -640,7 +640,7 @@ namespace lexer
 
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
-					error(pos, "Expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead,
+					error(pos, "expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead,
 						stream[i], util::to_string(stream), *offset);
 				}
 			}
@@ -707,7 +707,7 @@ namespace lexer
 					case '$':   tok.type = TokenType::Dollar;       break;
 
 					default:
-						error(tok.loc, "Unknown token '%c'", stream[0]);
+						error(tok.loc, "unknown token '%c'", stream[0]);
 				}
 
 				tok.text = stream.substr(0, 1);
@@ -723,7 +723,7 @@ namespace lexer
 			}
 			else
 			{
-				error(tok.loc, "Unknown token '%s'", util::to_string(stream.substr(0, 10)));
+				error(tok.loc, "unknown token '%s'", util::to_string(stream.substr(0, 10)));
 			}
 		}
 

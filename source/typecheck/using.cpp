@@ -17,7 +17,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// check what kind of expression we have.
 	auto user = this->expr->typecheck(fs).expr();
 	if(!dcast(sst::ScopeExpr, user) && !dcast(sst::VarRef, user))
-		error(this->expr, "Unsupported expression on left-side of 'using' declaration");
+		error(this->expr, "unsupported expression on left-side of 'using' declaration");
 
 
 	// check for enumerations -- we need to handle those a little specially.
@@ -120,11 +120,11 @@ namespace sst
 
 		if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
 		{
-			auto err = SimpleError::make(this->loc(), "Cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
+			auto err = SimpleError::make(this->loc(), "cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
 				util::serialiseScope(sfrom), util::serialiseScope(stoParent), name);
 
 			for(const auto& d : defs)
-				err->append(SimpleError::make(MsgType::Note, d->loc, "Conflicting definition here:"));
+				err->append(SimpleError::make(MsgType::Note, d->loc, "conflicting definition here:"));
 
 			err->postAndQuit();
 		}

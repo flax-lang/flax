@@ -94,7 +94,7 @@ namespace frontend
 		FileInnards& innards = fileList[fullPath];
 		if(innards.isLexing)
 		{
-			warn("Attempting to lex file while file is already being lexed, stop it");
+			warn("attempting to lex file while file is already being lexed, stop it");
 			return innards;
 		}
 
@@ -123,7 +123,7 @@ namespace frontend
 					innards.importIndices.push_back(i);
 
 				else if(type == lexer::TokenType::Invalid)
-					error(pos, "Invalid token");
+					error(pos, "invalid token");
 
 				i++;
 
@@ -213,7 +213,7 @@ namespace frontend
 	{
 		std::string full = platform::getFullPath(partial);
 		if(full.empty())
-			error("Nonexistent file %s", partial.c_str());
+			error("nonexistent file %s", partial.c_str());
 
 		return full;
 	}

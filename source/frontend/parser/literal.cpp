@@ -72,7 +72,7 @@ namespace parser
 			explType = parseType(st);
 
 			if(st.pop() != TT::Colon)
-				error(st.ploc(), "Expected ':' after explicit type in array literal");
+				expectedAfter(st.ploc(), ":", "explicit type in array literal", st.prev().str());
 		}
 
 		std::vector<Expr*> values;
@@ -84,7 +84,7 @@ namespace parser
 				st.pop();
 
 				if(st.frontAfterWS() == TT::RSquare)
-					error(tok.loc, "Trailing commas are not allowed");
+					error(tok.loc, "trailing commas are not allowed");
 
 				continue;
 			}

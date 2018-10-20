@@ -36,7 +36,7 @@ namespace parser
 
 			if(st.front() == TT::LParen || st.front() == TT::LSquare)
 			{
-				if(inside.ref) error(st, "Cannot bind by reference in nested decomposition; modify the binding type for each identifier");
+				if(inside.ref) error(st, "cannot bind by reference in nested decomposition; modify the binding type for each identifier");
 
 				outer.inner.push_back(recursivelyParseDecomp(st));
 			}
@@ -44,7 +44,7 @@ namespace parser
 			{
 				if(!outer.array)    error(st, "'...' cannot be used in a tuple destructure");
 				else if(didRest)    error(st, "'...' must be the last binding in an array destructure");
-				else if(inside.ref) error(st, "Invalid use of '&' before '...' binding");
+				else if(inside.ref) error(st, "invalid use of '&' before '...' binding");
 
 				st.pop();
 				if(st.front() == TT::Ampersand)
@@ -54,7 +54,7 @@ namespace parser
 					outer.restName = st.front().str(), st.pop();
 
 				if(outer.restName == "_" && outer.restRef)
-					error(st.ploc(), "Invalid combination of '_' and '&'");
+					error(st.ploc(), "invalid combination of '_' and '&'");
 
 				didRest = true;
 			}
@@ -62,7 +62,7 @@ namespace parser
 			{
 				inside.name = st.pop().str();
 				if(inside.name == "_" && inside.ref)
-					error(st.loc(), "Invalid combination of '_' and '&'");
+					error(st.loc(), "invalid combination of '_' and '&'");
 
 				outer.inner.push_back(inside);
 			}
@@ -106,8 +106,8 @@ namespace parser
 			{
 				if(seen.find(dm.name) != seen.end())
 				{
-					SimpleError::make(dm.loc, "Duplicate binding '%s' in destructuring declaration", dm.name)
-						->append(SimpleError::make(MsgType::Note, seen[dm.name], "Previous binding was here:"))
+					SimpleError::make(dm.loc, "duplicate binding '%s' in destructuring declaration", dm.name)
+						->append(SimpleError::make(MsgType::Note, seen[dm.name], "previous binding was here:"))
 						->postAndQuit();
 				}
 				else
@@ -183,7 +183,7 @@ namespace parser
 		}
 		else if(st.front() != TT::Equal && type == pts::InferredType::get())
 		{
-			error(st, "Expected initial value for type inference on variable '%s'", name);
+			error(st, "expected initial value for type inference on variable '%s'", name);
 		}
 
 		if(st.front() == TT::Equal)
@@ -193,7 +193,7 @@ namespace parser
 		}
 		else if(isImmut)
 		{
-			error(st, "Expected initial value for immutable variable '%s'", name);
+			error(st, "expected initial value for immutable variable '%s'", name);
 		}
 
 		auto ret = util::pool<VarDefn>(loc);
