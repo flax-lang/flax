@@ -70,12 +70,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		defn->variants[variant.first] = std::get<1>(variant.second);
 
-		// it's a little cheaty thing here; we add ourselves to the subtree under different names,
-		// so that dot-operator checking still comes back to us in the end.
-
 		auto vdef = util::pool<sst::UnionVariantDefn>(std::get<1>(variant.second));
 		vdef->parentUnion = defn;
-		// vdef->type = vars[variant.first].second;
 		vdef->id = Identifier(variant.first, IdKind::Name);
 		vdef->id.scope = fs->getCurrentScope();
 

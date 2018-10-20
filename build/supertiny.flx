@@ -5,7 +5,7 @@
 export supertiny
 
 import "libc" as _
-import "stdio" as _
+// import "stdio" as _
 
 // var glob: any
 // fn test_refcounting_problem_thing()
@@ -21,6 +21,13 @@ import "stdio" as _
 // 	foo(30)
 // }
 
+	namespace xxx {
+	struct Foo<T>
+	{
+		var aaa: T
+		var bbb: T
+	}
+	}
 @entry fn main()
 {
 	// do {
@@ -33,14 +40,18 @@ import "stdio" as _
 	// 	Foo.bar(30)
 	// }
 
-	union Foo<T>
-	{
-		some: T
-		none
-	}
+	// union Foo<T>
+	// {
+	// 	some: T
+	// 	none
+	// }
 
-	let s = Foo<T: int>.some(301)
-	println("s = %", s as Foo<T: int>.some)
+	// let s = Foo.some(301)
+	// println("s = %", s as Foo<T: int>.some)
+
+
+	let f = xxx.Foo(30, 40)
+	printf("f.aaa = %d, f.bbb = %d\n", f.aaa, f.bbb)
 }
 
 
