@@ -129,8 +129,14 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 		return fir::LocatedType(fca.value->type, fca.loc);
 	}), false);
 
-	if(errs.hasErrors() || dist == -1)
-		errs.set(SimpleError(this->loc, "Mismatched types in call to function pointer")).postAndQuit();
+	if(errs != nullptr || dist == -1)
+	{
+		auto x = SimpleError::make(this->loc, "Mismatched types in call to function pointer");
+		if(errs)    errs->prepend(x);
+		else        errs = x;
+
+		errs->postAndQuit();
+	}
 
 	auto ret = util::pool<sst::ExprCall>(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;

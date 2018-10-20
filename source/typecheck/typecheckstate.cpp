@@ -419,15 +419,15 @@ namespace sst
 		}
 
 		auto makeTheError = [](Locatable* a, const std::string& n, const std::string& ak,
-			const std::vector<std::pair<Locatable*, std::string>>& conflicts) -> SimpleError {
+			const std::vector<std::pair<Locatable*, std::string>>& conflicts) -> SimpleError* {
 
-			auto err = SimpleError::make(a, "Duplicate definition of '%s'", n);
+			auto err = SimpleError::make(a->loc, "Duplicate definition of '%s'", n);
 
 			bool first = true;
 
 			for(const auto& [ l, kind ] : conflicts)
 			{
-				err.append(SimpleError::make(MsgType::Note, l, "%shere%s:", first ? strprintf("Conflicting %s ",
+				err->append(SimpleError::make(MsgType::Note, l->loc, "%shere%s:", first ? strprintf("Conflicting %s ",
 					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;
@@ -453,11 +453,11 @@ namespace sst
 					if(fir::Type::areTypeListsEqual(util::map(a->params, [](auto p) -> fir::Type* { return p.type; }),
 						util::map(b->params, [](auto p) -> fir::Type* { return p.type; })))
 					{
-						errs.append(BareError("Functions cannot be overloaded based on argument names alone", MsgType::Note));
+						errs->append(BareError::make(MsgType::Note, "Functions cannot be overloaded based on argument names alone"));
 					}
 				}
 
-				errs.postAndQuit();
+				errs->postAndQuit();
 			}
 		}
 
@@ -485,7 +485,7 @@ namespace sst
 				);
 
 				if(newgds.size() > 0)
-					makeTheError(fn, fn->id.name, fn->getKind(), newgds).postAndQuit();
+					makeTheError(fn, fn->id.name, fn->getKind(), newgds)->postAndQuit();
 			}
 			else
 			{
@@ -494,7 +494,7 @@ namespace sst
 					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());
 					})
-				).postAndQuit();
+				)->postAndQuit();
 			}
 		}
 

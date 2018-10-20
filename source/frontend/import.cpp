@@ -39,9 +39,9 @@ namespace frontend
 			else
 			{
 				SimpleError::make(loc, "No module or library at the path '%s' could be found", imp)
-					.append(BareError::make(MsgType::Note, "'%s' does not exist", fullname))
-					.append(BareError::make(MsgType::Note, "'%s' does not exist", builtinlib))
-					.postAndQuit();
+					->append(BareError::make(MsgType::Note, "'%s' does not exist", fullname))
+					->append(BareError::make(MsgType::Note, "'%s' does not exist", builtinlib))
+					->postAndQuit();
 			}
 		}
 	}

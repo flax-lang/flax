@@ -47,9 +47,9 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 				auto err = SimpleError::make(loc, "Ambiguous use of overloaded operator '%s'", op);
 
 				for(auto c : cands)
-					err.append(SimpleError::make(MsgType::Note, c, "Potential overload candidate here:"));
+					err->append(SimpleError::make(MsgType::Note, c->loc, "Potential overload candidate here:"));
 
-				err.postAndQuit();
+				err->postAndQuit();
 			}
 			else
 			{
@@ -252,10 +252,10 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fir::Type* rest = fs->getBinaryOpResultType(lt, rt, this->op, &overloadFn);
 	if(!rest)
 	{
-		SpanError().set(SimpleError::make(this, "Unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt))
-			.add(SpanError::Span(this->left->loc, strprintf("type '%s'", lt)))
-			.add(SpanError::Span(this->right->loc, strprintf("type '%s'", rt)))
-			.postAndQuit();
+		SpanError::make(SimpleError::make(this->loc, "Unsupported operator '%s' between types '%s' and '%s'", this->op, lt, rt))
+			->add(util::ESpan(this->left->loc, strprintf("type '%s'", lt)))
+			->add(util::ESpan(this->right->loc, strprintf("type '%s'", rt)))
+			->postAndQuit();
 	}
 
 	auto ret = util::pool<sst::BinaryOp>(this->loc, rest);

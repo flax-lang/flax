@@ -10,6 +10,7 @@ from prettytable import PrettyTable
 
 tab = PrettyTable([ "reps", "firs", "total", "lexer", "parser", "typecheck", "codegen" ])
 tab.set_style(prettytable.PLAIN_COLUMNS)
+tab.align = "l"
 
 
 counts = range(32, 1025, 32)
@@ -41,8 +42,15 @@ for i in counts:
 	t_codegen       = m.group(5)
 	n_fvals         = m.group(6)
 
-	tab.add_row([ i, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen ])
-	print(i, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen)
+	n_lines = 0
+	with open("build/massive.flx", "r") as f:
+		for k, l in enumerate(f):
+			pass
+		n_lines = k + 1
+		f.close()
+
+	tab.add_row([ n_lines, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen ])
+	print(n_lines, n_fvals, t_compile, t_lexer, t_parser, t_typecheck, t_codegen)
 
 
 plots.write(str(tab))

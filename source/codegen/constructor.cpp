@@ -73,8 +73,8 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 	{
 		SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
 			(fir::Type*) cls, constrfn->getArgumentCount(), arguments.size())
-			.append(SimpleError::make(MsgType::Note, constr, "Constructor was defined here:"))
-			.postAndQuit();
+			->append(SimpleError::make(MsgType::Note, constr->loc, "Constructor was defined here:"))
+			->postAndQuit();
 	}
 
 	std::vector<fir::Value*> vargs = this->codegenAndArrangeFunctionCallArguments(constr, constrfn->getType(), arguments);

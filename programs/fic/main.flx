@@ -3,7 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 
-
+// this is supposed to be an irc client, in case i forget.
 @entry fn main()
 {
 }

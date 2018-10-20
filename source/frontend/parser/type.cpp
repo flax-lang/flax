@@ -229,8 +229,8 @@ namespace parser
 			if(auto it = defn->cases.find(name); it != defn->cases.end())
 			{
 				SimpleError::make(loc, "Duplicate variant '%s' in union definition", name)
-					.append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "Variant '%s' previously defined here:", name))
-					.postAndQuit();
+					->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "Variant '%s' previously defined here:", name))
+					->postAndQuit();
 			}
 
 			if(st.front() == TT::Colon)

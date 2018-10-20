@@ -13,42 +13,39 @@
 namespace sst {
 namespace resolver
 {
-	std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
+	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
 		const std::vector<fir::LocatedType>& _args, bool cvararg)
 	{
-		SimpleError warnings;
-
 		std::vector<fir::LocatedType> input;
 		if(cvararg) input = util::take(_args, target.size());
 		else        input = _args;
 
 		auto [ soln, err ] = poly::solveTypeList(target, input, poly::Solution_t(), /* isFnCall: */ true);
 
-		if(err.hasErrors())    return { -1, SpanError().append(err) };
-		else                    return { soln.distance, SpanError() };
+		if(err != nullptr)  return { -1, err };
+		else                return { soln.distance, nullptr };
 	}
 
 
 
-	std::pair<int, SpanError> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
+	std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
 		const std::vector<FnCallArgument>& _args, bool cvararg)
 	{
-		SimpleError warnings;
-
 		std::vector<FnCallArgument> input;
 		if(cvararg) input = util::take(_args, target.size());
 		else        input = _args;
 
-		SimpleError err;
+		ErrorMsg* err = 0;
 		auto arguments = resolver::misc::canonicaliseCallArguments(fnLoc, target, input, &err);
+		if(err != nullptr) return { -1, err };
 
 		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FnParam& p) -> fir::LocatedType {
 			return fir::LocatedType(p.type, p.loc);
 		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
 
-		if(err1.hasErrors())    return { -1, SpanError().append(err1) };
-		else                    return { soln.distance, SpanError() };
+		if(err1 != nullptr) return { -1, err1 };
+		else                return { soln.distance, nullptr };
 	}
 
 
@@ -59,10 +56,10 @@ namespace resolver
 		fir::Type* return_infer)
 	{
 		if(_cands.empty())
-			return { TCResult(BareError("no candidates")), { } };
+			return { TCResult(BareError::make("no candidates")), { } };
 
 		int bestDist = INT_MAX;
-		std::map<Defn*, SpanError> fails;
+		std::map<Defn*, ErrorMsg*> fails;
 		std::vector<std::tuple<Defn*, std::vector<FnCallArgument>, int>> finals;
 
 		auto cands = _cands;
@@ -98,13 +95,13 @@ namespace resolver
 
 						if(!res.isDefn())
 						{
-							fails[fn] = SpanError().append(res.error());
+							fails[fn] = res.error();
 							dist = -1;
 						}
 						else
 						{
 							curcandidate = res.defn();
-							std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, SpanError());
+							std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, nullptr);
 						}
 					}
 				}
@@ -123,8 +120,8 @@ namespace resolver
 				{
 					if(p.name != "")
 					{
-						return { TCResult(SimpleError(p.loc, "Function values cannot be called with named arguments")
-							.append(SimpleError(vr->loc, strprintf("'%s' was defined here:", vr->id.name)))
+						return { TCResult(SimpleError::make(p.loc, "function values cannot be called with named arguments")->append(
+							SimpleError::make(vr->loc, "'%s' was defined here:", vr->id.name))
 						), { } };
 					}
 				}
@@ -154,11 +151,11 @@ namespace resolver
 			iceAssert(cands.size() == fails.size());
 			std::vector<fir::Type*> tmp = util::map(cands[0].second, [](const FnCallArgument& p) -> auto { return p.value->type; });
 
-			auto errs = OverloadError(SimpleError(callLoc, strprintf("No overload in call to '%s(%s)' amongst %zu %s",
-				cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size()))));
+			auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s(%s)' amongst %zu %s",
+				cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
 
 			for(auto f : fails)
-				errs.addCand(f.first, f.second);
+				errs->addCand(f.first, f.second);
 
 			return { TCResult(errs), { } };
 		}
@@ -210,13 +207,12 @@ namespace resolver
 			}
 			else
 			{
-				auto err = SimpleError(callLoc, strprintf("Ambiguous call to function '%s', have %zu candidates:",
-					cands[0].first->id.name, finals.size()));
+				auto err = SimpleError::make(callLoc, "ambiguous call to function '%s', have %zu candidates:",
+					cands[0].first->id.name, finals.size());
 
 				for(auto f : finals)
 				{
-					err.append(SimpleError(std::get<0>(f)->loc, strprintf("Possible target (overload distance %d):", std::get<2>(f)),
-						MsgType::Note));
+					err->append(SimpleError::make(MsgType::Note, std::get<0>(f)->loc, "possible target (overload distance %d):", std::get<2>(f)));
 				}
 
 				return { TCResult(err), { } };

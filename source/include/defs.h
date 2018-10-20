@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utils.h"
 #include "precompile.h"
 
 
@@ -63,34 +64,6 @@ template <typename... Ts>
 	tinyformat::format(std::cerr, s, ts...);
 	doTheExit();
 }
-
-template <typename T>
-std::vector<T> operator + (const std::vector<T>& vec, const T& elm)
-{
-	auto copy = vec;
-
-	copy.push_back(elm);
-	return copy;
-}
-
-template <typename T>
-std::vector<T> operator + (const T& elm, const std::vector<T>& vec)
-{
-	auto copy = vec;
-
-	copy.insert(copy.begin(), elm);
-	return copy;
-}
-
-template <typename T>
-std::vector<T> operator + (const std::vector<T>& a, const std::vector<T>& b)
-{
-	auto ret = a;
-
-	ret.insert(ret.begin(), b.begin(), b.end());
-	return ret;
-}
-
 
 
 
@@ -228,6 +201,13 @@ struct Locatable
 	std::string readableName;
 };
 
+
+struct BareError;
+struct SpanError;
+struct SimpleError;
+struct OverloadError;
+
+
 //? in order of complexity, i guess?
 enum class ErrKind
 {
@@ -245,20 +225,37 @@ enum class MsgType
 	Error
 };
 
+namespace util
+{
+	template <typename T> struct MemoryPool;
+	template <typename T> struct FastInsertVector;
+
+	struct ESpan
+	{
+		ESpan() { }
+		ESpan(const Location& l, const std::string& m) : loc(l), msg(m) { }
+
+		Location loc;
+		std::string msg;
+		std::string colour;
+	};
+
+	BareError* make_BareError(const std::string& m, MsgType t = MsgType::Error);
+	SpanError* make_SpanError(SimpleError* se, const std::vector<ESpan>& s = { }, MsgType t = MsgType::Error);
+	SimpleError* make_SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error);
+	OverloadError* make_OverloadError(SimpleError* se, MsgType t = MsgType::Error);
+}
+
+
+
+
 struct ErrorMsg
 {
-
 	virtual ~ErrorMsg() { }
 
 	virtual void post() = 0;
-	virtual bool hasErrors() const = 0;
-	virtual ErrorMsg* clone() const = 0;
-
-	virtual ErrorMsg& append(const ErrorMsg& e)
-	{
-		this->subs.push_back(e.clone());
-		return *this;
-	}
+	virtual ErrorMsg* append(ErrorMsg* e) { this->subs.push_back(e); return this; }
+	virtual ErrorMsg* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
 
 	[[noreturn]] void postAndQuit()
 	{
@@ -272,76 +269,51 @@ struct ErrorMsg
 
 	protected:
 	ErrorMsg(ErrKind k, MsgType t) : kind(k), type(t) { }
+
+	friend struct util::MemoryPool<ErrorMsg>;
+	friend struct util::FastInsertVector<ErrorMsg>;
 };
 
 struct BareError : ErrorMsg
 {
-	BareError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t) { }
-	BareError(const std::string& m, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t), msg(m) { }
+	template <typename... Ts>
+	static BareError* make(const char* fmt, Ts... ts) { return util::make_BareError(strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	BareError& set(const char* fmt, Ts... ts)
-	{
-		this->msg = strprintf(fmt, ts...);
-		return *this;
-	}
+	static BareError* make(MsgType t, const char* fmt, Ts... ts) { return util::make_BareError(strprintf(fmt, ts...), t); }
 
-	BareError& set(const std::string& m)
-	{
-		this->msg = m;
-		return *this;
-	}
 
-	template <typename... Ts> static BareError make(const char* fmt, Ts... ts) { return BareError().set(fmt, ts...); }
-	template <typename... Ts> static BareError make(MsgType t, const char* fmt, Ts... ts) { return BareError(t).set(fmt, ts...); }
+
+
 
 	virtual void post() override;
-	virtual bool hasErrors() const override;
-	virtual BareError* clone() const override;
-	virtual BareError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
+	virtual BareError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
+	virtual BareError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
 
 	std::string msg;
+
+	protected:
+	BareError() : ErrorMsg(ErrKind::Bare, MsgType::Error) { }
+	BareError(const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), msg(m) { }
+
+	friend struct util::MemoryPool<BareError>;
+	friend struct util::FastInsertVector<BareError>;
 };
 
 struct SimpleError : ErrorMsg
 {
-	SimpleError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Simple, t) { }
-	SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Bare, t), loc(l), msg(m) { }
+	template <typename... Ts>
+	static SimpleError* make(const Location& l, const char* fmt, Ts... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	SimpleError& set(Locatable* l, const char* fmt, Ts... ts)
-	{
-		return this->set(l ? l->loc : Location(), fmt, ts...);
-	}
+	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
 
-	template <typename... Ts>
-	SimpleError& set(const Location& l, const char* fmt, Ts... ts)
-	{
-		this->loc = l;
-		this->msg = strprintf(fmt, ts...);
-		return *this;
-	}
 
-	template <typename... Ts>
-	static SimpleError make(const Location& l, const char* fmt, Ts... ts) { return SimpleError().set(l, fmt, ts...); }
-	template <typename... Ts>
-	static SimpleError make(Locatable* l, const char* fmt, Ts... ts)      { return SimpleError().set(l, fmt, ts...); }
-	template <typename... Ts>
-	static SimpleError make(MsgType t, const Location& l, const char* fmt, Ts... ts) { return SimpleError(t).set(l, fmt, ts...); }
-	template <typename... Ts>
-	static SimpleError make(MsgType t, Locatable* l, const char* fmt, Ts... ts)      { return SimpleError(t).set(l, fmt, ts...); }
 
-	SimpleError& set(const Location& l, const std::string& m)
-	{
-		this->loc = l;
-		this->msg = m;
-		return *this;
-	}
 
 	virtual void post() override;
-	virtual bool hasErrors() const override;
-	virtual SimpleError* clone() const override;
-	virtual SimpleError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
+	virtual SimpleError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
+	virtual SimpleError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
 
 	Location loc;
 	std::string msg;
@@ -349,60 +321,67 @@ struct SimpleError : ErrorMsg
 	// just a hacky thing to print some words (eg. '(call site)') before the context.
 	bool printContext = true;
 	std::string wordsBeforeContext;
+
+	protected:
+	SimpleError() : ErrorMsg(ErrKind::Simple, MsgType::Error) { }
+	SimpleError(const Location& l, const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), loc(l), msg(m) { }
+
+	friend struct util::MemoryPool<SimpleError>;
+	friend struct util::FastInsertVector<SimpleError>;
 };
 
 struct SpanError : ErrorMsg
 {
-	struct Span
-	{
-		Span() { }
-		Span(const Location& l, const std::string& m) : loc(l), msg(m) { }
+	SpanError* add(const util::ESpan& s);
 
-		Location loc;
-		std::string msg;
-		std::string colour;
-	};
+	static SpanError* make(SimpleError* se = 0, const std::vector<util::ESpan>& s = { }) { return util::make_SpanError(se, s, MsgType::Error); }
+	static SpanError* make(MsgType t, SimpleError* se = 0, const std::vector<util::ESpan>& s = { }) { return util::make_SpanError(se, s, t); }
 
-	SpanError(MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t) { }
-	SpanError(const SimpleError& se, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t), top(se) { }
-	SpanError(const SimpleError& se, const std::vector<Span>& s, MsgType t = MsgType::Error) : ErrorMsg(ErrKind::Span, t), top(se), spans(s) { }
-
-	SpanError& add(const Span& s);
-	SpanError& set(const SimpleError& se) { this->top = se; return *this; }
 
 	virtual void post() override;
-	virtual bool hasErrors() const override;
-	virtual SpanError* clone() const override;
-	virtual SpanError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
+	virtual SpanError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
+	virtual SpanError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
 
-	SimpleError top;
-	std::vector<Span> spans;
+	SimpleError* top = 0;
+	std::vector<util::ESpan> spans;
 
 	// again, another internal flag; this one controls whether or not to underline the original location.
 	bool highlightActual = true;
+
+	protected:
+	SpanError() : SpanError(0, { }, MsgType::Error) { }
+	SpanError(SimpleError* se, const std::vector<util::ESpan>& s, MsgType t) : ErrorMsg(ErrKind::Span, t), top(se), spans(s) { }
+
+
+	friend struct util::MemoryPool<SpanError>;
+	friend struct util::FastInsertVector<SpanError>;
 };
 
 
 
 struct OverloadError : ErrorMsg
 {
-	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
-	OverloadError(const SimpleError& se) : ErrorMsg(ErrKind::Overload, MsgType::Error) { this->set(se); }
-
 	void clear();
+
+	static OverloadError* make(SimpleError* se = 0) { return util::make_OverloadError(se, MsgType::Error); }
+	static OverloadError* make(MsgType t, SimpleError* se = 0) { return util::make_OverloadError(se, t); }
+
 	virtual void post() override;
-	virtual bool hasErrors() const override;
-	virtual OverloadError* clone() const override;
-	virtual OverloadError& append(const ErrorMsg& e) override { this->subs.push_back(e.clone()); return *this; }
+	virtual OverloadError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
+	virtual OverloadError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
 
-	OverloadError& set(const SimpleError& se) { this->top = se; return *this; }
-	OverloadError& addCand(Locatable* d, const ErrorMsg& e);
+	OverloadError& addCand(Locatable* d, ErrorMsg* e);
 
-	// void incorporate(const OverloadError& e);
-	// void incorporate(const ErrorMsg& e);
 
-	SimpleError top;
+	SimpleError* top = 0;
 	std::unordered_map<Locatable*, ErrorMsg*> cands;
+
+	protected:
+	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
+	OverloadError(SimpleError* se, MsgType t) : ErrorMsg(ErrKind::Overload, t), top(se) { }
+
+	friend struct util::MemoryPool<OverloadError>;
+	friend struct util::FastInsertVector<OverloadError>;
 };
 
 
@@ -441,13 +420,13 @@ struct TCResult
 	explicit TCResult(sst::Expr* e) : _kind(RK::Expression)     { _ex = e; }
 	explicit TCResult(sst::Defn* d) : _kind(RK::Definition)     { _df = d; }
 
-	explicit TCResult(const ErrorMsg& pe) : _kind(RK::Error) { _pe = pe.clone(); }
+	explicit TCResult(ErrorMsg* pe) : _kind(RK::Error) { _pe = pe; }
 
 	TCResult(const TCResult& r)
 	{
 		this->_kind = r._kind;
 
-		if(this->isError())     this->_pe = r._pe->clone();
+		if(this->isError())     this->_pe = r._pe;
 		else if(this->isStmt()) this->_st = r._st;
 		else if(this->isExpr()) this->_ex = r._ex;
 		else if(this->isDefn()) this->_df = r._df;
@@ -474,7 +453,7 @@ struct TCResult
 	{
 		if(&r != this)
 		{
-			if(this->isError())     { delete this->_pe; this->_pe = r._pe; r._pe = 0; }
+			if(this->isError())     { this->_pe = r._pe; r._pe = 0; }
 			else if(this->isStmt()) { this->_st = r._st; r._st = 0; }
 			else if(this->isExpr()) { this->_ex = r._ex; r._ex = 0; }
 			else if(this->isDefn()) { this->_df = r._df; r._df = 0; }
@@ -485,7 +464,7 @@ struct TCResult
 
 
 
-	ErrorMsg& error() const    { if(this->_kind != RK::Error || !this->_pe) { _error_and_exit("not error\n"); } return *this->_pe; }
+	ErrorMsg* error() const    { if(this->_kind != RK::Error || !this->_pe) { _error_and_exit("not error\n"); } return this->_pe; }
 
 	sst::Expr* expr() const;
 	sst::Defn* defn() const;
@@ -504,6 +483,13 @@ struct TCResult
 	static TCResult getParametric() { return TCResult(RK::Parametric); }
 	static TCResult getDummy()      { return TCResult(RK::Dummy); }
 };
+
+
+
+
+
+
+
 
 struct CGResult
 {
@@ -570,7 +556,6 @@ struct TypeConstraints_t
 using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
 
 
-
 namespace util
 {
 	inline std::string to_string(const string_view& sv)
@@ -579,151 +564,6 @@ namespace util
 	}
 
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
-
-	template <typename T>
-	bool match(const T& first)
-	{
-		return true;
-	}
-
-	template <typename T, typename U>
-	bool match(const T& first, const U& second)
-	{
-		return (first == second);
-	}
-
-	template <typename T, typename U, typename... Args>
-	bool match(const T& first, const U& second, const Args&... comps)
-	{
-		return (first == second) || match(first, comps...);
-	}
-
-
-	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
-	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
-	{
-		std::vector<K> ret;
-		for(auto i : input)
-			ret.push_back(fn(i));
-
-		return ret;
-	}
-
-
-	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T, size_t)>::type>
-	std::vector<K> mapidx(const std::vector<T>& input, UnaryOp fn)
-	{
-		std::vector<K> ret;
-		for(size_t i = 0; i < input.size(); i++)
-			ret.push_back(fn(input[i], i));
-
-		return ret;
-	}
-
-
-
-	template <typename T, class UnaryOp, class Predicate, typename K = typename std::result_of<UnaryOp(T)>::type>
-	std::vector<K> filterMap(const std::vector<T>& input, Predicate cond, UnaryOp fn)
-	{
-		std::vector<K> ret;
-		for(auto i : input)
-		{
-			if(cond(i))
-				ret.push_back(fn(i));
-		}
-
-		return ret;
-	}
-
-	template <typename T, class UnaryOp, class Predicate, typename K = typename std::result_of<UnaryOp(T)>::type>
-	std::vector<K> mapFilter(const std::vector<T>& input, UnaryOp fn, Predicate cond)
-	{
-		std::vector<K> ret;
-		for(auto i : input)
-		{
-			auto k = fn(i);
-			if(cond(k)) ret.push_back(k);
-		}
-
-		return ret;
-	}
-
-	template <typename T, class Predicate>
-	std::vector<T> filter(const std::vector<T>& input, Predicate cond)
-	{
-		std::vector<T> ret;
-		for(const auto& i : input)
-			if(cond(i))
-				ret.push_back(i);
-
-		return ret;
-	}
-
-	template <typename T, class Predicate>
-	std::vector<T> filterUntil(const std::vector<T>& input, Predicate cond)
-	{
-		std::vector<T> ret;
-		for(const auto& i : input)
-		{
-			if(cond(i)) ret.push_back(i);
-			else        break;
-		}
-
-		return ret;
-	}
-
-	template <typename T, class Predicate>
-	size_t indexOf(const std::vector<T>& input, Predicate cond)
-	{
-		for(size_t i = 0; i < input.size(); i++)
-			if(cond(input[i])) return i;
-
-		return -1;
-	}
-
-	template <typename T>
-	std::vector<T> take(const std::vector<T>& v, size_t num)
-	{
-		iceAssert(num <= v.size());
-		return std::vector<T>(v.begin(), v.begin() + num);
-	}
-
-
-
-
-
-
-
-	inline std::string serialiseScope(const std::vector<std::string>& scope)
-	{
-		std::string ret;
-		for(const std::string& s : scope)
-			ret += s + ".";
-
-		if(!ret.empty() && ret.back() == '.')
-			ret.pop_back();
-
-		return ret;
-	}
-
-	inline std::string plural(const std::string& thing, size_t count)
-	{
-		return thing + (count == 1 ? "" : "s");
-	}
-
-	template <typename T, class UnaryOp>
-	std::string listToString(const std::vector<T>& list, UnaryOp fn)
-	{
-		std::string ret;
-		for(size_t i = 0; i < list.size(); i++)
-		{
-			ret += fn(list[i]);
-			if(i != list.size() - 1)
-				ret += ", ";
-		}
-
-		return "[ " + ret + " ]";
-	}
 
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)
@@ -753,15 +593,7 @@ namespace util
 		return mstr;
 	}
 
-	template <typename K, typename V>
-	std::vector<std::pair<K, V>> pairs(const std::unordered_map<K, V>& map)
-	{
-		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
-		return ret;
-	}
 }
-
-
 
 
 

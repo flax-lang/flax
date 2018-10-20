@@ -89,9 +89,9 @@ namespace sst
 						{
 							auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope", name);
 							for(auto d : gdefs)
-								err.append(SimpleError::make(MsgType::Note, d, "Possible reference:"));
+								err->append(SimpleError::make(MsgType::Note, d->loc, "Possible reference:"));
 
-							err.postAndQuit();
+							err->postAndQuit();
 						}
 
 
@@ -126,9 +126,9 @@ namespace sst
 					{
 						auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
 						for(auto d : defs)
-							err.append(SimpleError::make(MsgType::Note, d, "Possible reference:"));
+							err->append(SimpleError::make(MsgType::Note, d->loc, "Possible reference:"));
 
-						err.postAndQuit();
+						err->postAndQuit();
 					}
 
 
@@ -141,8 +141,8 @@ namespace sst
 
 							//* example of something 'wrong'
 							SimpleError::make(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name)
-								.append(SimpleError::make(MsgType::Note, d, "'%s' was defined here:", d->id.name))
-								.postAndQuit();
+								->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name))
+								->postAndQuit();
 						}
 
 						return tyd->type;

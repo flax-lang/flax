@@ -55,11 +55,12 @@ namespace sst
 		};
 
 
-		SimpleError solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
-		std::pair<Solution_t, SimpleError> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+		ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
+
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
 			const Solution_t& partial, bool isFnCall);
 
-		SimpleError solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target,
+		ErrorMsg* solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target,
 			const std::vector<fir::LocatedType>& given, bool isFnCall);
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
@@ -126,7 +127,7 @@ namespace sst
 				bool allowPlaceholders);
 
 
-			std::pair<Solution_t, SimpleError> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
+			std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
 				const ProblemSpace_t& problems, const std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial,
 				fir::Type* return_infer, fir::Type*, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder);
 		}

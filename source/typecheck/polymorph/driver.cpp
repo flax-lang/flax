@@ -46,7 +46,7 @@ namespace poly
 
 	namespace internal
 	{
-		static std::pair<Solution_t, SimpleError> inferPolymorphicType(TypecheckState* fs, ast::TypeDefn* td, const ProblemSpace_t& problems,
+		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicType(TypecheckState* fs, ast::TypeDefn* td, const ProblemSpace_t& problems,
 			const std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
 			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
 		{
@@ -57,11 +57,11 @@ namespace poly
 				if(auto missing = getMissingSolutions(problems, soln.solutions, true); missing.size() > 0)
 				{
 					auto ret = solvePolymorphWithPlaceholders(fs, td, partial);
-					return { ret.second, SimpleError() };
+					return { ret.second, nullptr };
 				}
 				else
 				{
-					return { soln, SimpleError() };
+					return { soln, nullptr };
 				}
 			}
 			else if(auto str = dcast(ast::StructDefn, td))
@@ -78,9 +78,8 @@ namespace poly
 				}
 
 				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset, input);
+				if(err) return { soln, err };
 
-				if(err.hasErrors())
-					return { soln, err };
 
 				int session = getNextSessionId();
 				std::vector<fir::LocatedType> given(seen.size());
@@ -101,7 +100,7 @@ namespace poly
 			{
 				std::unordered_map<std::string, size_t> paramOrder;
 
-				std::vector<std::pair<Solution_t, SimpleError>> rets;
+				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
 				for(auto init : cls->initialisers)
 				{
 					rets.push_back(inferTypesForPolymorph(fs, init, cls->generics, input, partial, return_infer, type_infer, isFnCall,
@@ -109,14 +108,14 @@ namespace poly
 				}
 
 				// check the distance of all the solutions... i guess?
-				std::pair<Solution_t, SimpleError> best;
+				std::pair<Solution_t, ErrorMsg*> best;
 				best.first = soln;
 				best.first.distance = INT_MAX;
 				best.second = SimpleError::make(fs->loc(), "ambiguous reference to constructor of class '%s'", cls->name);
 
 				for(const auto& r : rets)
 				{
-					if(r.first.distance < best.first.distance && !r.second.hasErrors())
+					if(r.first.distance < best.first.distance && r.second == nullptr)
 						best = r;
 				}
 
@@ -132,7 +131,7 @@ namespace poly
 
 
 
-		static std::pair<Solution_t, SimpleError> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing,
+		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing,
 			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer,
 			std::unordered_map<std::string, size_t>* origParamOrder)
@@ -187,10 +186,10 @@ namespace poly
 
 			if(isFnCall)
 			{
-				SimpleError err;
-				auto gvn = resolver::misc::canonicaliseCallArguments(thing->loc, args, input, &err);
+				ErrorMsg* err = 0;
 
-				if(err.hasErrors()) return { soln, err };
+				auto gvn = resolver::misc::canonicaliseCallArguments(thing->loc, args, input, &err);
+				if(err) return { soln, err };
 
 				given = gvn;
 				if(return_infer)
@@ -201,7 +200,7 @@ namespace poly
 			else
 			{
 				if(type_infer == 0)
-					return { soln, SimpleError() };
+					return { soln, nullptr };
 
 				else if(!type_infer->isFunctionType())
 					return { soln, SimpleError::make(fs->loc(), "invalid type '%s' inferred for '%s'", type_infer, thing->name) };
@@ -221,7 +220,7 @@ namespace poly
 
 
 
-		std::pair<Solution_t, SimpleError> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
+		std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
 			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
 			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
@@ -237,7 +236,7 @@ namespace poly
 			else
 			{
 				return std::make_pair(Solution_t(partial),
-					SimpleError(thing->loc, strprintf("Unable to infer type for unsupported entity '%s'", thing->getKind()))
+					SimpleError::make(thing->loc, "unable to infer type for unsupported entity '%s'", thing->getKind())
 				);
 			}
 		}

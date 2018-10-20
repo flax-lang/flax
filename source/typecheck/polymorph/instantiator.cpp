@@ -15,7 +15,7 @@ namespace poly
 {
 	namespace internal
 	{
-		static SimpleError complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing,
+		static SimpleError* complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing,
 			const std::vector<fir::PolyPlaceholderType*>& missing)
 		{
 			auto strs = util::map(missing, [](fir::PolyPlaceholderType* p) -> std::string {
@@ -23,7 +23,7 @@ namespace poly
 			});
 
 			auto mstr = util::listToEnglish(strs);
-			return SimpleError::make(l, "Type %s %s could not be inferred", util::plural("parameter", strs.size()), mstr);
+			return SimpleError::make(l, "type %s %s could not be inferred", util::plural("parameter", strs.size()), mstr);
 		}
 
 		std::vector<std::string> getMissingSolutions(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
@@ -78,8 +78,7 @@ namespace poly
 		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
 			problem_infer, &origParamOrder);
 
-		if(err.hasErrors())
-			return { TCResult(err), soln };
+		if(err) return { TCResult(err), soln };
 
 		if(auto d = fullyInstantiatePolymorph(fs, thing, soln.solutions); d.isDefn())
 		{
@@ -88,11 +87,10 @@ namespace poly
 				// if(auto missing = internal::getMissingSolutions(thing->generics, soln.solutions, /* allowPlaceholders: */ false); missing.size() > 0)
 				if(auto missing = d.defn()->type->getContainedPlaceholders(); missing.size() > 0)
 				{
-					auto se = SpanError().set(internal::complainAboutMissingSolutions(fs->loc(), thing, missing));
-					se.top.loc = thing->loc;
+					auto se = SpanError::make(internal::complainAboutMissingSolutions(thing->loc, thing, missing));
 
 					return std::make_pair(
-						TCResult(err.append(se).append(SimpleError::make(fs->loc(), "partial solution: %s",
+						TCResult(err->append(se)->append(SimpleError::make(fs->loc(), "partial solution: %s",
 							util::listToString(util::map(util::pairs(soln.solutions), [](const std::pair<std::string, fir::Type*>& p) -> std::string {
 								return strprintf("%s = %s", p.first, p.second);
 							}), [](const std::string& s) -> std::string {
@@ -138,7 +136,7 @@ namespace poly
 		}
 		else
 		{
-			return std::make_pair(TCResult(err.append(d.error())), soln);
+			return std::make_pair(TCResult(err->append(d.error())), soln);
 		}
 	}
 
@@ -178,10 +176,11 @@ namespace poly
 			if(thing->generics.find(map.first) != thing->generics.end() && ptrs < thing->generics[map.first].pointerDegree)
 			{
 				return TCResult(
-					SimpleError::make(fs->loc(), "Cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
-						map.second, map.first, thing->name)
-					.append(SimpleError::make(MsgType::Note, thing, "replacement type has pointer degree %d, which is less than the required %d",
-						ptrs, thing->generics[map.first].pointerDegree))
+					SimpleError::make(fs->loc(), "cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
+						map.second, map.first, thing->name)->append(
+							SimpleError::make(MsgType::Note, thing->loc,
+								"replacement type has pointer degree %d, which is less than the required %d", ptrs, thing->generics[map.first].pointerDegree)
+							)
 				);
 			}
 

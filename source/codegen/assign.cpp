@@ -20,15 +20,15 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(!lr->islorclvalue())
 	{
-		SpanError(SimpleError::make(this, "Cannot assign to non-lvalue (most likely a temporary) expression"))
-			.add(SpanError::Span(this->left->loc, "here"))
-			.postAndQuit();
+		SpanError::make(SimpleError::make(this->loc, "Cannot assign to non-lvalue (most likely a temporary) expression"))
+			->add(util::ESpan(this->left->loc, "here"))
+			->postAndQuit();
 	}
 	else if(lr->isclvalue())
 	{
-		SpanError(SimpleError::make(this, "Cannot assign to immutable expression"))
-			.add(SpanError::Span(this->left->loc, "here"))
-			.postAndQuit();
+		SpanError::make(SimpleError::make(this->loc, "Cannot assign to immutable expression"))
+			->add(util::ESpan(this->left->loc, "here"))
+			->postAndQuit();
 	}
 
 
