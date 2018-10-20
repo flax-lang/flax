@@ -24,14 +24,14 @@ TCResult ast::DeferredStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(dcast(sst::Defn, stmt))
 			{
-				SimpleError::make(stmt->loc, "Definitions cannot be deferred")
-					->append(SimpleError::make(MsgType::Note, loc, "In deferred block here:"))
+				SimpleError::make(stmt->loc, "definitions cannot be deferred")
+					->append(SimpleError::make(MsgType::Note, loc, "in deferred block here:"))
 					->postAndQuit();
 			}
 			else if(dcast(sst::BreakStmt, stmt) || dcast(sst::ContinueStmt, stmt) || dcast(sst::ReturnStmt, stmt))
 			{
-				SimpleError::make(stmt->loc, "Control flow cannot be deferred")
-					->append(SimpleError::make(MsgType::Note, loc, "In deferred block here:"))
+				SimpleError::make(stmt->loc, "control flow cannot be deferred")
+					->append(SimpleError::make(MsgType::Note, loc, "in deferred block here:"))
 					->postAndQuit();
 			}
 			else if(auto hb = dcast(sst::HasBlocks, stmt))

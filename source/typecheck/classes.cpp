@@ -51,12 +51,12 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	{
 		auto base = fs->convertParserTypeToFIR(this->bases[0]);
 		if(!base->isClassType())
-			error(this, "Class '%s' can only inherit from a class, which '%s' is not", this->name, base);
+			error(this, "class '%s' can only inherit from a class, which '%s' is not", this->name, base);
 
 		cls->setBaseClass(base->toClassType());
 
 		if(this->bases.size() > 1)
-			error(this, "Cannot inherit from more than one class");
+			error(this, "cannot inherit from more than one class");
 
 		auto basedef = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
 		iceAssert(basedef);
@@ -91,7 +91,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
 	if(tcr.isParametric())  return tcr;
-	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
+	else if(!tcr.isDefn())  error(this, "failed to generate declaration for function '%s'", this->name);
 
 	auto defn = dcast(sst::ClassDefn, tcr.defn());
 	iceAssert(defn);
@@ -105,7 +105,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	fs->pushTree(defn->id.name);
 
 	if(this->initialisers.empty())
-		error(this, "Class must have at least one initialiser");
+		error(this, "class must have at least one initialiser");
 
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
@@ -117,7 +117,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	{
 		auto tcr = t->typecheck(fs);
 		if(tcr.isParametric())  continue;
-		if(tcr.isError())       error(t, "Failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
+		if(tcr.isError())       error(t, "failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
 
 		auto st = dcast(sst::TypeDefn, tcr.defn());
 		iceAssert(st);
@@ -146,10 +146,10 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 					{
 						if(bf->id.name == fld->id.name)
 						{
-							SimpleError::make(fld->loc, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'",
+							SimpleError::make(fld->loc, "redefinition of field '%s' (with type '%s'), that exists in the base class '%s'",
 								fld->id.name, fld->type, cls->id)
 								->append(SimpleError::make(MsgType::Note, bf->loc, "'%s' was previously defined in the base class here:", fld->id.name))
-								->append(SimpleError::make(MsgType::Note, cls->loc, "Base class '%s' was defined here:", cls->id))
+								->append(SimpleError::make(MsgType::Note, cls->loc, "base class '%s' was defined here:", cls->id))
 								->postAndQuit();
 						}
 					}
@@ -164,11 +164,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		for(auto m : this->methods)
 		{
 			if(m->name == "init")
-				error(m, "Cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
+				error(m, "cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
 
 			auto res = m->generateDeclaration(fs, cls, { });
 			if(res.isParametric())
-				error(m, "Methods of a type cannot be polymorphic (for now???)");
+				error(m, "methods of a type cannot be polymorphic (for now???)");
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
@@ -202,7 +202,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 							// nice comprehensive error messages, I hope.
 							if(!meth->isOverride)
 							{
-								auto err = SimpleError::make(meth->loc, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
+								auto err = SimpleError::make(meth->loc, "redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
 									meth->id.name, meth->type, cls->id);
 
 								if(bf->isVirtual)
@@ -223,10 +223,10 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 							}
 							else if(!bf->isVirtual)
 							{
-								SimpleError::make(meth->loc, "Cannot override non-virtual method '%s'", bf->id.name)
+								SimpleError::make(meth->loc, "cannot override non-virtual method '%s'", bf->id.name)
 									->append(SimpleError::make(MsgType::Note, bf->loc,
 										"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)
-									)->append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name))
+									)->append(BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name))
 									->postAndQuit();
 							}
 						}
@@ -299,7 +299,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			// infer is 0 because this is a static thing
 			auto res = m->generateDeclaration(fs, 0, { });
 			if(res.isParametric())
-				error(m, "Functions of a type cannot be polymorphic (for now???)");
+				error(m, "functions of a type cannot be polymorphic (for now???)");
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
@@ -352,12 +352,12 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 	if(cls->getBaseClass() && !this->didCallSuper)
 	{
-		error(this, "Initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
+		error(this, "initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
 			cls->getBaseClass()->getTypeName().name);
 	}
 	else if(!cls->getBaseClass() && this->didCallSuper)
 	{
-		error(this, "Cannot call base class initialiser for class '%s' when it does not inherit from a base class",
+		error(this, "cannot call base class initialiser for class '%s' when it does not inherit from a base class",
 			cls->getTypeName().name);
 	}
 	else if(cls->getBaseClass() && this->didCallSuper)

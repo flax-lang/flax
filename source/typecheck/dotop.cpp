@@ -23,16 +23,16 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	{
 		ast::LitNumber* ln = dcast(ast::LitNumber, dotop->right);
 		if(!ln)
-			error(dotop->right, "Right-hand side of dot-operator on tuple type ('%s') must be a number literal", type);
+			error(dotop->right, "right-hand side of dot-operator on tuple type ('%s') must be a number literal", type);
 
 		if(ln->num.find(".") != std::string::npos || ln->num.find("-") != std::string::npos)
-			error(dotop->right, "Tuple indices must be non-negative integer numerical literals");
+			error(dotop->right, "tuple indices must be non-negative integer numerical literals");
 
 		size_t n = std::stoul(ln->num);
 		auto tup = type->toTupleType();
 
 		if(n >= tup->getElementCount())
-			error(dotop->right, "Tuple only has %zu elements, cannot access wanted element %zu", tup->getElementCount(), n);
+			error(dotop->right, "tuple only has %zu elements, cannot access element %zu", tup->getElementCount(), n);
 
 		auto ret = util::pool<sst::TupleDotOp>(dotop->loc, tup->getElementN(n));
 		ret->lhs = lhs;
@@ -81,21 +81,21 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			{
 				res = type;
 				if(fc->args.size() != 0)
-					error(fc, "Builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
+					error(fc, "builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
 			else if(fc->name == BUILTIN_SAA_FN_APPEND)
 			{
 				res = fir::Type::getVoid();
 				if(fc->args.size() != 1)
-					error(fc, "Builtin string method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
+					error(fc, "builtin string method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
 
 				else if(!fc->args[0].first.empty())
-					error(fc, "Argument to builtin method 'append' cannot be named");
+					error(fc, "argument to builtin method 'append' cannot be named");
 
 				args.push_back(fc->args[0].second->typecheck(fs).expr());
 				if(!args[0]->type->isCharType() && !args[0]->type->isStringType() && !args[0]->type->isCharSliceType())
 				{
-					error(fc, "Invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
+					error(fc, "invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
 						args[0]->type, fir::Type::getInt8(), (fir::Type*) fir::Type::getCharSlice(false), (fir::Type*) fir::Type::getString());
 				}
 			}
@@ -155,7 +155,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			{
 				res = type;
 				if(fc->args.size() != 0)
-					error(fc, "Builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
+					error(fc, "builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
 			else if(fc->name == BUILTIN_SAA_FN_APPEND)
 			{
@@ -165,17 +165,17 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				res = fir::DynamicArrayType::get(type->getArrayElementType());
 
 				if(fc->args.size() != 1)
-					error(fc, "Builtin array method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
+					error(fc, "builtin array method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
 
 				else if(!fc->args[0].first.empty())
-					error(fc, "Argument to builtin method 'append' cannot be named");
+					error(fc, "argument to builtin method 'append' cannot be named");
 
 				args.push_back(fc->args[0].second->typecheck(fs).expr());
 				if(args[0]->type != type->getArrayElementType()     //? vv logic below looks a little sketch.
 					&& ((args[0]->type->isArraySliceType() && args[0]->type->getArrayElementType() != type->getArrayElementType()))
 					&& args[0]->type != type)
 				{
-					error(fc, "Invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
+					error(fc, "invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
 						args[0]->type, type, type->getArrayElementType(), (fir::Type*) fir::ArraySliceType::get(type->getArrayElementType(), false));
 				}
 			}
@@ -276,7 +276,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	if(!type->isStructType() && !type->isClassType())
 	{
-		error(dotop->right, "Unsupported right-side expression for dot operator on type '%s'", type);
+		error(dotop->right, "unsupported right-side expression for dot operator on type '%s'", type);
 	}
 
 
@@ -344,7 +344,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 			if(mcands.empty() && vcands.empty())
-				error(fc, "No method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
+				error(fc, "no method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
 
 			sst::Defn* resolved = search(mcands, &arguments, true);
 
@@ -430,7 +430,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(meths.empty())
 			{
-				error(dotop->right, "No such instance field or method named '%s' in struct '%s'", name, str->id.name);
+				error(dotop->right, "no such instance field or method named '%s' in struct '%s'", name, str->id.name);
 			}
 			else
 			{
@@ -446,9 +446,9 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					// ok, we need to.
 					if(infer == 0)
 					{
-						auto err = SimpleError::make(dotop->right->loc, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
+						auto err = SimpleError::make(dotop->right->loc, "ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
 						for(auto m : meths)
-							err->append(SimpleError::make(MsgType::Note, m->loc, "Potential target here:"));
+							err->append(SimpleError::make(MsgType::Note, m->loc, "potential target here:"));
 
 						err->postAndQuit();
 					}
@@ -456,7 +456,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					// else...
 					if(!infer->isFunctionType())
 					{
-						error(dotop->right, "Non-function type '%s' inferred for reference to method '%s' of struct '%s'",
+						error(dotop->right, "non-function type '%s' inferred for reference to method '%s' of struct '%s'",
 							infer, name, str->id.name);
 					}
 
@@ -471,7 +471,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					}
 
 					// hm, okay
-					error(dotop->right, "No matching method named '%s' with signature '%s' to match inferred type",
+					error(dotop->right, "no matching method named '%s' with signature '%s' to match inferred type",
 						name, infer);
 				}
 
@@ -485,12 +485,12 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		}
 		else
 		{
-			error(dotop->right, "Unsupported right-side expression for dot-operator on struct/class '%s'", str->id.name);
+			error(dotop->right, "unsupported right-side expression for dot-operator on struct/class '%s'", str->id.name);
 		}
 	}
 	else
 	{
-		error(lhs, "Unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
+		error(lhs, "unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
 }
 
@@ -546,7 +546,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		}
 		else
 		{
-			error(dot->right, "Unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
+			error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
 				util::serialiseScope(news));
 		}
 
@@ -572,8 +572,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			auto te = dcast(sst::TypeExpr, left);
 			iceAssert(te);
 
-			//! what does this do?
-			warn(dot->left, "left type is %s", te->type);
 			def = fs->typeDefnMap[te->type];
 		}
 
@@ -637,7 +635,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 				if(!unn->type->toUnionType()->hasVariant(name))
 				{
-					SimpleError::make(dot->right->loc, "Union '%s' has no variant '%s'", unn->id.name, name)
+					SimpleError::make(dot->right->loc, "union '%s' has no variant '%s'", unn->id.name, name)
 						->append(SimpleError::make(MsgType::Note, unn->loc, "Union was defined here:"))
 						->postAndQuit();
 				}
@@ -664,12 +662,12 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				}
 				else
 				{
-					error(rhs, "Unsupported right-hand expression on enum '%s'", enm->id.name);
+					error(rhs, "unsupported right-hand expression on enum '%s'", enm->id.name);
 				}
 			}
 			else
 			{
-				error(dot, "Static access is not supported on type '%s'", def->type);
+				error(dot, "static access is not supported on type '%s'", def->type);
 			}
 		}
 		else

@@ -5,7 +5,7 @@
 export supertiny
 
 import "libc" as _
-// import "stdio" as _
+import "stdio" as _
 
 // var glob: any
 // fn test_refcounting_problem_thing()
@@ -23,15 +23,24 @@ import "libc" as _
 
 @entry fn main()
 {
-	do {
-		class Foo<T>
-		{
-			init() { }
-			static fn bar(x: T) { printf("x = %d\n", x) }
-		}
+	// do {
+	// 	class Foo<T>
+	// 	{
+	// 		init() { }
+	// 		static fn bar(x: T) { printf("x = %d\n", x) }
+	// 	}
 
-		Foo.bar(30)
+	// 	Foo.bar(30)
+	// }
+
+	union Foo<T>
+	{
+		some: T
+		none
 	}
+
+	let s = Foo<T: int>.some(301)
+	println("s = %", s as Foo<T: int>.some)
 }
 
 
@@ -42,8 +51,8 @@ import "libc" as _
 	{
 		// 1. clean up all the nested types -- sst's Decl::Param, FnCallArgument, ast's Defn::Arg, all that shit.
 		2. splatting tuples into a generic function *will not work*
-		3. fix errors. should probably go back to using virtual inheritance for them. fuck performance cos we shouldn't be erroring so often,
-			and they're slightly cheaper when we don't use them because it's just a pointer.
+		// 3. fix errors. should probably go back to using virtual inheritance for them. fuck performance cos we shouldn't be erroring so often,
+		// 	and they're slightly cheaper when we don't use them because it's just a pointer.
 		4. pass the overall location to the polymorph solver.
 		// 5. check for variadic forwarding -- enforce the splat.
 		// 6. print out the solutions we found for inference on error.

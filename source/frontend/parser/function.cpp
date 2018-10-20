@@ -27,7 +27,7 @@ namespace parser
 			st.eat();
 			// parse generic
 			if(st.front() == TT::RAngle)
-				error(st, "Empty type parameter lists are not allowed");
+				error(st, "empty type parameter lists are not allowed");
 
 			generics = parseGenericTypeList(st);
 		}
@@ -41,7 +41,7 @@ namespace parser
 		while(st.front() != TT::RParen)
 		{
 			if(isvar)
-				error(st, "Variadic arguments must be the last in the function parameter list");
+				error(st, "variadic arguments must be the last in the function parameter list");
 
 			if(st.front() == TT::Ellipsis)
 			{
@@ -156,7 +156,7 @@ namespace parser
 		(void) varloc;
 
 		if(!defn->generics.empty())
-			error(ffn->loc, "Foreign functions cannot be generic");
+			error(ffn->loc, "foreign functions cannot be generic");
 
 		ffn->loc = defn->loc;
 		ffn->isVarArg = isvar;
@@ -176,10 +176,10 @@ namespace parser
 
 		auto [ args, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
 		if(generics.size() > 0)
-			error(st.ploc(), "Class initialiser functions cannot be generic");
+			error(st.ploc(), "class initialiser functions cannot be generic");
 
 		else if(retty != 0)
-			error(st.ploc(), "Class initialisers cannot have a return type");
+			error(st.ploc(), "class initialisers cannot have a return type");
 
 		else if(isvar)
 			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
@@ -236,7 +236,7 @@ namespace parser
 				{
 					st.eat();
 					if(st.front().type != TT::Identifier)
-						error(st, "Expected identifier after beginning of type constraint list");
+						error(st, "expected identifier after beginning of type constraint list");
 
 					while(st.front().type == TT::Identifier)
 					{
@@ -248,13 +248,13 @@ namespace parser
 						}
 						else if(st.front().type != TT::Comma && st.front().type != TT::RAngle)
 						{
-							error(st, "Expected ',' or '>' to end type parameter list (1)");
+							error(st, "expected ',' or '>' to end type parameter list (1)");
 						}
 					}
 				}
 				else if(st.front().type != TT::Comma && st.front().type != TT::RAngle)
 				{
-					error(st, "Expected ',' or '>' to end type parameter list (2)");
+					error(st, "expected ',' or '>' to end type parameter list (2)");
 				}
 
 				ret[gt] = constrs;
@@ -265,7 +265,7 @@ namespace parser
 			}
 			else if(st.front().type != TT::RAngle)
 			{
-				error(st, "Expected '>' to end type parameter list");
+				error(st, "expected '>' to end type parameter list");
 			}
 		}
 

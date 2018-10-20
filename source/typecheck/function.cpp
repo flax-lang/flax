@@ -77,16 +77,16 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	if(defn->isVirtual && !defn->parentTypeForMethod)
 	{
-		error(defn, "Only methods can be marked 'virtual' or 'override' at this point in time");
+		error(defn, "only methods can be marked 'virtual' or 'override' at this point in time");
 	}
 	else if(defn->isVirtual && defn->parentTypeForMethod && !defn->parentTypeForMethod->isClassType())
 	{
-		error(defn, "Only methods of a class (which '%s' is not) can be marked 'virtual' or 'override'",
+		error(defn, "only methods of a class (which '%s' is not) can be marked 'virtual' or 'override'",
 			defn->parentTypeForMethod->str());
 	}
 	else if(defn->isMutating && !defn->parentTypeForMethod)
 	{
-		error(defn, "Only methods of a type can be marked as mutating with 'mut'");
+		error(defn, "only methods of a type can be marked as mutating with 'mut'");
 	}
 
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
@@ -126,7 +126,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
 	if(tcr.isParametric())  return tcr;
-	else if(!tcr.isDefn())  error(this, "Failed to generate declaration for function '%s'", this->name);
+	else if(!tcr.isDefn())  error(this, "failed to generate declaration for function '%s'", this->name);
 
 	auto defn = dcast(sst::FunctionDefn, tcr.defn());
 	iceAssert(defn);
@@ -257,7 +257,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		{
 			auto ex = e->typecheck(fs, inferred).expr();
 			if(inferred && ex->type != inferred)
-				error(ex, "Invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
+				error(ex, "invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
 
 			auto rst = util::pool<sst::ReturnStmt>(s->loc);
 			rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
@@ -267,7 +267,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		}
 		else
 		{
-			error(s, "Invalid use of statement in single-expression function body");
+			error(s, "invalid use of statement in single-expression function body");
 		}
 	}
 	else

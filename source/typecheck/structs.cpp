@@ -17,13 +17,13 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 
 	if(field == strty)
 	{
-		SimpleError::make(floc, "Composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
+		SimpleError::make(floc, "composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
 			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
 	else if(seeing.find(field) != seeing.end())
 	{
-		SimpleError::make(floc, "Recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
+		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
 			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
@@ -130,7 +130,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	{
 		auto tcr = t->typecheck(fs);
 		if(tcr.isParametric())  continue;
-		if(tcr.isError())       error(t, "Failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
+		if(tcr.isError())       error(t, "failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
 
 		auto st = dcast(sst::TypeDefn, tcr.defn());
 		iceAssert(st);
@@ -149,7 +149,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs).defn());
 			iceAssert(v);
 
-			if(v->init) error(v, "Struct fields cannot have inline initialisers");
+			if(v->init) error(v, "struct fields cannot have inline initialisers");
 
 			defn->fields.push_back(v);
 			tys.push_back({ v->id.name, v->type });
@@ -162,7 +162,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		{
 			auto res = m->generateDeclaration(fs, str, { });
 			if(res.isParametric())
-				error(m, "Methods of a type cannot be polymorphic (for now???)");
+				error(m, "methods of a type cannot be polymorphic (for now???)");
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
@@ -192,7 +192,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			// infer is 0 because this is a static thing
 			auto res = m->generateDeclaration(fs, str, { });
 			if(res.isParametric())
-				error(m, "Static methods of a type cannot be polymorphic (for now???)");
+				error(m, "static methods of a type cannot be polymorphic (for now???)");
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);

@@ -45,7 +45,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	auto tcr = this->generateDeclaration(fs, infer, gmaps);
 	if(tcr.isParametric())  return tcr;
-	else if(tcr.isError())  error(this, "Failed to generate declaration for union '%s'", this->name);
+	else if(tcr.isError())  error(this, "failed to generate declaration for union '%s'", this->name);
 
 	auto defn = dcast(sst::UnionDefn, tcr.defn());
 	iceAssert(defn);

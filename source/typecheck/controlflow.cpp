@@ -29,7 +29,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto cs = Case(c.cond->typecheck(fs).expr(), dynamic_cast<sst::Block*>(c.body->typecheck(fs).stmt()), inits);
 
 		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
-			error(cs.cond, "Non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
+			error(cs.cond, "non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
 
 		ret->cases.push_back(cs);
 
@@ -50,7 +50,7 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto ret = util::pool<sst::ReturnStmt>(this->loc);
 
 	if(fs->isInDeferBlock())
-		error(this, "Cannot 'return' while inside a deferred block");
+		error(this, "cannot 'return' while inside a deferred block");
 
 
 	// ok, get the current function
@@ -63,9 +63,9 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(ret->value->type != retty)
 		{
-			SpanError::make(SimpleError::make(this->loc, "Mismatched type in return statement; function returns '%s', value has type '%s'",
+			SpanError::make(SimpleError::make(this->loc, "mismatched type in return statement; function returns '%s', value has type '%s'",
 				retty, ret->value->type))->add(util::ESpan(this->value->loc, strprintf("type '%s'", ret->value->type)))
-				->append(SimpleError::make(MsgType::Note, fn->loc, "Function definition is here:"))
+				->append(SimpleError::make(MsgType::Note, fn->loc, "function definition is here:"))
 				->postAndQuit();
 		}
 
@@ -73,7 +73,7 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 	else if(!retty->isVoidType())
 	{
-		error(this, "Expected value after 'return'; function return type is '%s'", retty);
+		error(this, "expected value after 'return'; function return type is '%s'", retty);
 	}
 
 	ret->expectedType = retty;
@@ -103,25 +103,25 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 			{
 				if(retstmt->expectedType->isVoidType())
 				{
-					error(retstmt, "Expected value after 'return'; function return type is '%s'", retty);
+					error(retstmt, "expected value after 'return'; function return type is '%s'", retty);
 				}
 				else
 				{
 					std::string msg;
-					if(block->isSingleExpr) msg = "Invalid single-expression with type '%s' in function returning '%s'";
-					else                    msg = "Mismatched type in return statement; function returns '%s', value has type '%s'";
+					if(block->isSingleExpr) msg = "invalid single-expression with type '%s' in function returning '%s'";
+					else                    msg = "mismatched type in return statement; function returns '%s', value has type '%s'";
 
 					SpanError::make(SimpleError::make(retstmt->loc, msg.c_str(), retty, retstmt->expectedType))
 						->add(util::ESpan(retstmt->value->loc, strprintf("type '%s'", retstmt->expectedType)))
-						->append(SimpleError::make(MsgType::Note, fs->getCurrentFunction()->loc, "Function definition is here:"))
+						->append(SimpleError::make(MsgType::Note, fs->getCurrentFunction()->loc, "function definition is here:"))
 						->postAndQuit();
 				}
 			}
 
 			if(i != block->statements.size() - 1)
 			{
-				SimpleError::make(block->statements[i + 1]->loc, "Unreachable code after return statement")
-					->append(SimpleError::make(MsgType::Note, retstmt->loc, "Return statement was here:"))
+				SimpleError::make(block->statements[i + 1]->loc, "unreachable code after return statement")
+					->append(SimpleError::make(MsgType::Note, retstmt->loc, "return statement was here:"))
 					->postAndQuit();;
 
 				doTheExit();
@@ -162,10 +162,10 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 	if(!expected->isVoidType() && !ret)
 	{
-		auto err = SimpleError::make(fn->loc, "Not all paths return a value; expected value of type '%s'", expected);
+		auto err = SimpleError::make(fn->loc, "not all paths return a value; expected value of type '%s'", expected);
 
 		for(auto b : faults)
-			err->append(SimpleError::make(MsgType::Note, b->closingBrace, "Potentially missing return statement here:"));
+			err->append(SimpleError::make(MsgType::Note, b->closingBrace, "potentially missing return statement here:"));
 
 		err->postAndQuit();
 	}

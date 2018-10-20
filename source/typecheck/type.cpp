@@ -83,13 +83,13 @@ namespace sst
 						if(gdefs.empty())
 						{
 							if(allowFail)   return 0;
-							else            error(this->loc(), "No type named '%s' in scope '%s'", name, tree->name);
+							else            error(this->loc(), "no type named '%s' in scope '%s'", name, tree->name);
 						}
 						else if(gdefs.size() > 1)
 						{
-							auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope", name);
+							auto err = SimpleError::make(this->loc(), "ambiguous reference to entity '%s' in scope", name);
 							for(auto d : gdefs)
-								err->append(SimpleError::make(MsgType::Note, d->loc, "Possible reference:"));
+								err->append(SimpleError::make(MsgType::Note, d->loc, "possible reference:"));
 
 							err->postAndQuit();
 						}
@@ -106,10 +106,10 @@ namespace sst
 							iceAssert(gdef);
 
 							auto atd = dcast(ast::TypeDefn, gdef);
-							if(!atd) error(this->loc(), "Entity '%s' is not a type", name);
+							if(!atd) error(this->loc(), "entity '%s' is not a type", name);
 
 							if(pt->toNamedType()->genericMapping.empty())
-								error(this->loc(), "Parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
+								error(this->loc(), "parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
 							TypeParamMap_t mapping = this->convertParserTypeArgsToFIR(pt->toNamedType()->genericMapping, allowFail);
@@ -124,9 +124,9 @@ namespace sst
 					}
 					else if(defs.size() > 1)
 					{
-						auto err = SimpleError::make(this->loc(), "Ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
+						auto err = SimpleError::make(this->loc(), "ambiguous reference to entity '%s' in scope '%s'", name, tree->name);
 						for(auto d : defs)
-							err->append(SimpleError::make(MsgType::Note, d->loc, "Possible reference:"));
+							err->append(SimpleError::make(MsgType::Note, d->loc, "possible reference:"));
 
 						err->postAndQuit();
 					}
@@ -140,7 +140,7 @@ namespace sst
 							if(allowFail) return 0;
 
 							//* example of something 'wrong'
-							SimpleError::make(this->loc(), "Definition of '%s' cannot be used as a type", d->id.name)
+							SimpleError::make(this->loc(), "definition of '%s' cannot be used as a type", d->id.name)
 								->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name))
 								->postAndQuit();
 						}
@@ -169,7 +169,7 @@ namespace sst
 							if(c == '.')
 							{
 								if(tmp.empty())
-									error(this->loc(), "Expected identifier between consecutive periods ('.') in nested type specifier");
+									error(this->loc(), "expected identifier between consecutive periods ('.') in nested type specifier");
 
 								scopes.push_back(tmp);
 								tmp.clear();
@@ -181,7 +181,7 @@ namespace sst
 						}
 
 						if(tmp.empty())
-							error(this->loc(), "Expected identifier after final '.' in nested type specifier");
+							error(this->loc(), "expected identifier after final '.' in nested type specifier");
 
 						// don't push back.
 						actual = tmp;
@@ -191,7 +191,7 @@ namespace sst
 					if(!begin)
 					{
 						if(allowFail)   return 0;
-						else            error(this->loc(), "No such scope '%s'", scopes.front());
+						else            error(this->loc(), "no such scope '%s'", scopes.front());
 					}
 
 					std::string prev = scopes.front();
@@ -203,7 +203,7 @@ namespace sst
 						if(it == begin->subtrees.end())
 						{
 							if(allowFail)   return 0;
-							else            error(this->loc(), "No such entity '%s' in scope '%s'", scopes.front(), prev);
+							else            error(this->loc(), "no such entity '%s' in scope '%s'", scopes.front(), prev);
 						}
 
 						prev = scopes.front();
@@ -259,7 +259,7 @@ namespace sst
 		}
 		else
 		{
-			error(this->loc(), "Invalid pts::Type found");
+			error(this->loc(), "invalid pts::Type found");
 		}
 	}
 }

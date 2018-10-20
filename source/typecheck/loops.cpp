@@ -36,7 +36,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 		elmty = fir::Type::getInt8();
 
 	else
-		error(this->array, "Invalid type '%s' in foreach loop", ret->array->type);
+		error(this->array, "invalid type '%s' in foreach loop", ret->array->type);
 
 	iceAssert(elmty);
 	bool allowref = !(ret->array->type->isStringType() || ret->array->type->isRangeType());
@@ -111,7 +111,7 @@ TCResult ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	{
 		ret->cond = this->cond->typecheck(fs, fir::Type::getBool()).expr();
 		if(ret->cond->type != fir::Type::getBool() && !ret->cond->type->isPointerType())
-			error(this->cond, "Non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
+			error(this->cond, "non-boolean expression with type '%s' cannot be used as a conditional", ret->cond->type);
 	}
 
 	return TCResult(ret);
@@ -137,10 +137,10 @@ TCResult ast::BreakStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	if(!fs->isInBreakableBody())
-		error(this, "Cannot 'break' while not inside a loop");
+		error(this, "cannot 'break' while not inside a loop");
 
 	else if(fs->isInDeferBlock())
-		error(this, "Cannot 'break' while inside a deferred block");
+		error(this, "cannot 'break' while inside a deferred block");
 
 	return TCResult(util::pool<sst::BreakStmt>(this->loc));
 }
@@ -151,10 +151,10 @@ TCResult ast::ContinueStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	if(!fs->isInBreakableBody())
-		error(this, "Cannot 'continue' while not inside a loop");
+		error(this, "cannot 'continue' while not inside a loop");
 
 	else if(fs->isInDeferBlock())
-		error(this, "Cannot 'continue' while inside a deferred block");
+		error(this, "cannot 'continue' while inside a deferred block");
 
 	return TCResult(util::pool<sst::ContinueStmt>(this->loc));
 }

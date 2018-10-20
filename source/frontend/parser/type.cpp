@@ -30,7 +30,7 @@ namespace parser
 			st.eat();
 			// parse generic
 			if(st.front() == TT::RAngle)
-				error(st, "Empty type parameter lists are not allowed");
+				error(st, "empty type parameter lists are not allowed");
 
 			defn->generics = parseGenericTypeList(st);
 		}
@@ -47,10 +47,10 @@ namespace parser
 			if(auto v = dcast(VarDefn, s))
 			{
 				if(v->type == pts::InferredType::get())
-					error(v, "Struct fields must have types explicitly specified");
+					error(v, "struct fields must have types explicitly specified");
 
 				else if(v->initialiser)
-					error(v->initialiser, "Struct fields cannot have inline initialisers");
+					error(v->initialiser, "struct fields cannot have inline initialisers");
 
 				defn->fields.push_back(v);
 			}
@@ -64,16 +64,16 @@ namespace parser
 			}
 			else if(dcast(InitFunctionDefn, s))
 			{
-				error(s, "Structs cannot have user-defined initialisers");
+				error(s, "structs cannot have user-defined initialisers");
 			}
 			else
 			{
-				error(s, "Unsupported expression or statement in struct body");
+				error(s, "unsupported expression or statement in struct body");
 			}
 		}
 
 		for(auto s : blk->deferredStatements)
-			error(s, "Unsupported expression or statement in struct body");
+			error(s, "unsupported expression or statement in struct body");
 
 		st.leaveStructBody();
 		return defn;
@@ -97,7 +97,7 @@ namespace parser
 			st.eat();
 			// parse generic
 			if(st.front() == TT::RAngle)
-				error(st, "Empty type parameter lists are not allowed");
+				error(st, "empty type parameter lists are not allowed");
 
 			defn->generics = parseGenericTypeList(st);
 		}
@@ -135,7 +135,7 @@ namespace parser
 			if(auto v = dcast(VarDefn, s))
 			{
 				if(v->type == pts::InferredType::get())
-					error(v, "Class fields must have types explicitly specified");
+					error(v, "class fields must have types explicitly specified");
 
 				defn->fields.push_back(v);
 			}
@@ -156,7 +156,7 @@ namespace parser
 					defn->staticFields.push_back(vr);
 
 				else
-					error(st, "Unsupported static statement in class body");
+					error(st, "unsupported static statement in class body");
 			}
 			else if(auto init = dcast(InitFunctionDefn, s))
 			{
@@ -164,12 +164,12 @@ namespace parser
 			}
 			else
 			{
-				error(s, "Unsupported expression or statement in class body");
+				error(s, "unsupported expression or statement in class body");
 			}
 		}
 
 		for(auto s : blk->deferredStatements)
-			error(s, "Unsupported expression or statement in class body");
+			error(s, "unsupported expression or statement in class body");
 
 		st.leaveStructBody();
 		return defn;
@@ -203,7 +203,7 @@ namespace parser
 			st.eat();
 			// parse generic
 			if(st.front() == TT::RAngle)
-				error(st, "Empty type parameter lists are not allowed");
+				error(st, "empty type parameter lists are not allowed");
 
 			defn->generics = parseGenericTypeList(st);
 		}
@@ -228,8 +228,8 @@ namespace parser
 
 			if(auto it = defn->cases.find(name); it != defn->cases.end())
 			{
-				SimpleError::make(loc, "Duplicate variant '%s' in union definition", name)
-					->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "Variant '%s' previously defined here:", name))
+				SimpleError::make(loc, "duplicate variant '%s' in union definition", name)
+					->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "variant '%s' previously defined here:", name))
 					->postAndQuit();
 			}
 
@@ -240,7 +240,7 @@ namespace parser
 			}
 			else if(st.front() != TT::NewLine)
 			{
-				error(st.loc(), "Expected newline after union variant");
+				error(st.loc(), "expected newline after union variant");
 			}
 
 			defn->cases[name] = { index, loc, type };
@@ -256,7 +256,7 @@ namespace parser
 			}
 			else
 			{
-				error(st.loc(), "Unexpected token '%s' inside union body", st.front().str());
+				error(st.loc(), "unexpected token '%s' inside union body", st.front().str());
 			}
 
 			index++;
@@ -312,7 +312,7 @@ namespace parser
 			if(st.frontAfterWS() == TT::Equal)
 			{
 				if(memberType == 0)
-					error(st.loc(), "Enumeration member type must be specified when assigning explicit values to cases");
+					error(st.loc(), "enumeration member type must be specified when assigning explicit values to cases");
 
 				// ok, parse a value
 				st.eat();
@@ -323,7 +323,7 @@ namespace parser
 			else if(hadValue)
 			{
 				// todo: remove this restriction maybe
-				error(st.loc(), "Enumeration cases must either all have no values, or all have values; a mix is not allowed.");
+				error(st.loc(), "enumeration cases must either all have no values, or all have values; a mix is not allowed.");
 			}
 
 			// ok.
@@ -340,7 +340,7 @@ namespace parser
 			}
 			else
 			{
-				error(st.loc(), "Unexpected token '%s' inside enum body", st.front().str());
+				error(st.loc(), "unexpected token '%s' inside enum body", st.front().str());
 			}
 		}
 
@@ -456,7 +456,7 @@ namespace parser
 			else if(st.front() == TT::RSquare)
 			{
 				// dynamic array.
-				if(mut) error(st.loc(), "Dynamic arrays are always mutable, specifying 'mut' is unnecessary");
+				if(mut) error(st.loc(), "dynamic arrays are always mutable, specifying 'mut' is unnecessary");
 
 				st.pop();
 				return util::pool<pts::DynamicArrayType>(elm);
@@ -479,7 +479,7 @@ namespace parser
 				else if(st.front() == TT::Identifier)
 				{
 					if(s.back() != '.')
-						error(st, "Unexpected identifer '%s' in type", st.front().str());
+						error(st, "unexpected identifer '%s' in type", st.front().str());
 
 					else
 						s += st.eat().str();
@@ -506,7 +506,7 @@ namespace parser
 							expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
 
 						if(gmaps.find(ty) != gmaps.end())
-							error(st, "Duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
+							error(st, "duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
 
 						gmaps[ty] = parseType(st);
 
@@ -526,7 +526,7 @@ namespace parser
 					}
 					else if(st.front() == TT::RAngle)
 					{
-						error(st, "Need at least one type mapping in parametric type instantiation");
+						error(st, "need at least one type mapping in parametric type instantiation");
 					}
 					else
 					{
@@ -559,7 +559,7 @@ namespace parser
 				auto ty = parseType(st);
 
 				if(st.front() != TT::Comma && st.front() != TT::RParen)
-					error(st, "Unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str());
+					error(st, "unexpected token '%s' in type specifier, expected either ',' or ')'", st.front().str());
 
 				else if(st.front() == TT::Comma)
 					st.eat();
@@ -587,7 +587,7 @@ namespace parser
 				// whereas (i64, i64) -> i64[] would parse as a function returning an array of i64s.
 
 				if(types.size() == 0)
-					error(st, "Empty tuples '()' are not supported");
+					error(st, "empty tuples '()' are not supported");
 
 				else if(types.size() == 1)
 					return types[0];
@@ -597,7 +597,7 @@ namespace parser
 		}
 		else
 		{
-			error(st, "Unexpected token '%s' while parsing type", st.front().str());
+			error(st, "unexpected token '%s' while parsing type", st.front().str());
 		}
 	}
 }

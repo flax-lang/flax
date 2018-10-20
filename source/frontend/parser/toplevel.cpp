@@ -46,8 +46,7 @@ namespace parser
 
 				if(tokens[i].type != TT::NewLine && tokens[i].type != TT::Semicolon && tokens[i].type != TT::Comment)
 				{
-					error(tokens[i].loc, "Expected newline or semicolon to terminate export statement, found '%s'",
-						tokens[i].str());
+					expected(tokens[i].loc, "newline or semicolon to terminate export statement", tokens[i].str());
 				}
 
 				// i++ handled by loop
@@ -106,14 +105,14 @@ namespace parser
 			{
 				case TT::Import:
 					if(name != "" || !importsStillValid)
-						error(st, "Import statements are not allowed here");
+						error(st, "import statements are not allowed here");
 
 					root->statements.push_back(parseImport(st));
 					break;
 
 				case TT::Attr_Operator:
 					if(name != "" || !operatorsStillValid)
-						error(st, "Custom operator declarations are not allowed here");
+						error(st, "custom operator declarations are not allowed here");
 
 					// just skip it.
 					st.setIndex(parseOperatorDecl(st.getTokenList(), st.getIndex(), 0, 0));
@@ -142,10 +141,10 @@ namespace parser
 					st.pop();
 					auto stmt = parseStmt(st);
 					if(!dynamic_cast<FuncDefn*>(stmt) && !dynamic_cast<VarDefn*>(stmt))
-						error(st, "'@nomangle' can only be applied on function and variable declarations");
+						error(st, "attribute '@nomangle' can only be applied on function and variable declarations");
 
 					else if(dynamic_cast<ForeignFuncDefn*>(stmt))
-						warn(st, "Attribute '@nomangle' is redundant on 'ffi' functions");
+						warn(st, "attribute '@nomangle' is redundant on 'ffi' functions");
 
 					else if(auto fd = dynamic_cast<FuncDefn*>(stmt))
 						fd->noMangle = true;
@@ -217,7 +216,7 @@ namespace parser
 					{
 						if(!isFirst || name != "")
 						{
-							error(st, "Export declaration not allowed here (%s / %d)", name, isFirst);
+							error(st, "export declaration not allowed here (%s / %d)", name, isFirst);
 						}
 						else
 						{

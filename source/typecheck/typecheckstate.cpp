@@ -46,7 +46,7 @@ namespace sst
 	void TypecheckState::leaveFunctionBody()
 	{
 		if(this->currentFunctionStack.empty())
-			error(this->loc(), "Not inside function");
+			error(this->loc(), "not inside function");
 
 		this->currentFunctionStack.pop_back();
 
@@ -57,7 +57,7 @@ namespace sst
 	FunctionDefn* TypecheckState::getCurrentFunction()
 	{
 		if(this->currentFunctionStack.empty())
-			error(this->loc(), "Not inside function");
+			error(this->loc(), "not inside function");
 
 		return this->currentFunctionStack.back();
 	}
@@ -72,7 +72,7 @@ namespace sst
 	TypeDefn* TypecheckState::getCurrentStructBody()
 	{
 		if(this->structBodyStack.empty())
-			error(this->loc(), "Not inside struct body");
+			error(this->loc(), "not inside struct body");
 
 		return this->structBodyStack.back();
 	}
@@ -91,7 +91,7 @@ namespace sst
 	void TypecheckState::leaveStructBody()
 	{
 		if(this->structBodyStack.empty())
-			error(this->loc(), "Not inside struct body");
+			error(this->loc(), "not inside struct body");
 
 		this->structBodyStack.pop_back();
 
@@ -266,7 +266,7 @@ namespace sst
 		{
 			auto s = scope[0];
 			if(tree->subtrees[s] == 0)
-				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 
 			return tree->subtrees[s];
 		}
@@ -278,7 +278,7 @@ namespace sst
 			auto s = scope[i];
 
 			if(tree->subtrees[s] == 0)
-				error(this->loc(), "No such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 
 			tree = tree->subtrees[s];
 		}
@@ -408,10 +408,10 @@ namespace sst
 				if(false && !didWarnAboutShadow)
 				{
 					didWarnAboutShadow = true;
-					warn(defn, "Definition of %s '%s' shadows one or more previous definitions", defn->getKind(), defn->id.name);
+					warn(defn, "definition of %s '%s' shadows one or more previous definitions", defn->getKind(), defn->id.name);
 
 					for(auto d : defs)
-						info(d, "Previously defined here:");
+						info(d, "previously defined here:");
 				}
 			}
 
@@ -421,13 +421,13 @@ namespace sst
 		auto makeTheError = [](Locatable* a, const std::string& n, const std::string& ak,
 			const std::vector<std::pair<Locatable*, std::string>>& conflicts) -> SimpleError* {
 
-			auto err = SimpleError::make(a->loc, "Duplicate definition of '%s'", n);
+			auto err = SimpleError::make(a->loc, "duplicate definition of '%s'", n);
 
 			bool first = true;
 
 			for(const auto& [ l, kind ] : conflicts)
 			{
-				err->append(SimpleError::make(MsgType::Note, l->loc, "%shere%s:", first ? strprintf("Conflicting %s ",
+				err->append(SimpleError::make(MsgType::Note, l->loc, "%shere%s:", first ? strprintf("conflicting %s ",
 					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;
@@ -453,7 +453,7 @@ namespace sst
 					if(fir::Type::areTypeListsEqual(util::map(a->params, [](auto p) -> fir::Type* { return p.type; }),
 						util::map(b->params, [](auto p) -> fir::Type* { return p.type; })))
 					{
-						errs->append(BareError::make(MsgType::Note, "Functions cannot be overloaded based on argument names alone"));
+						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded based on argument names alone"));
 					}
 				}
 
