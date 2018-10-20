@@ -63,10 +63,10 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(ret->value->type != retty)
 		{
-			SpanError(SimpleError::make(this, "Mismatched type in return statement; function returns '%s', value has type '%s'", retty, ret->value->type))
-				.add(SpanError::Span(this->value->loc, strprintf("type '%s'", ret->value->type)))
-				.append(SimpleError(fn->loc, "Function definition is here:", MsgType::Note))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(this->loc, "Mismatched type in return statement; function returns '%s', value has type '%s'",
+				retty, ret->value->type))->add(util::ESpan(this->value->loc, strprintf("type '%s'", ret->value->type)))
+				->append(SimpleError::make(MsgType::Note, fn->loc, "Function definition is here:"))
+				->postAndQuit();
 		}
 
 		// ok
@@ -111,18 +111,18 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 					if(block->isSingleExpr) msg = "Invalid single-expression with type '%s' in function returning '%s'";
 					else                    msg = "Mismatched type in return statement; function returns '%s', value has type '%s'";
 
-					SpanError(SimpleError::make(retstmt, msg.c_str(), retty, retstmt->expectedType))
-						.add(SpanError::Span(retstmt->value->loc, strprintf("type '%s'", retstmt->expectedType)))
-						.append(SimpleError(fs->getCurrentFunction()->loc, "Function definition is here:", MsgType::Note))
-						.postAndQuit();
+					SpanError::make(SimpleError::make(retstmt->loc, msg.c_str(), retty, retstmt->expectedType))
+						->add(util::ESpan(retstmt->value->loc, strprintf("type '%s'", retstmt->expectedType)))
+						->append(SimpleError::make(MsgType::Note, fs->getCurrentFunction()->loc, "Function definition is here:"))
+						->postAndQuit();
 				}
 			}
 
 			if(i != block->statements.size() - 1)
 			{
-				SimpleError::make(block->statements[i + 1], "Unreachable code after return statement")
-					.append(SimpleError::make(MsgType::Note, retstmt, "Return statement was here:"))
-					.postAndQuit();;
+				SimpleError::make(block->statements[i + 1]->loc, "Unreachable code after return statement")
+					->append(SimpleError::make(MsgType::Note, retstmt->loc, "Return statement was here:"))
+					->postAndQuit();;
 
 				doTheExit();
 			}
@@ -162,12 +162,12 @@ bool sst::TypecheckState::checkAllPathsReturn(FunctionDefn* fn)
 
 	if(!expected->isVoidType() && !ret)
 	{
-		auto err = SimpleError::make(fn, "Not all paths return a value; expected value of type '%s'", expected);
+		auto err = SimpleError::make(fn->loc, "Not all paths return a value; expected value of type '%s'", expected);
 
 		for(auto b : faults)
-			err.append(SimpleError::make(MsgType::Note, b->closingBrace, "Potentially missing return statement here:"));
+			err->append(SimpleError::make(MsgType::Note, b->closingBrace, "Potentially missing return statement here:"));
 
-		err.postAndQuit();
+		err->postAndQuit();
 	}
 
 	return ret;

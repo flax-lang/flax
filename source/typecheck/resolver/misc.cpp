@@ -15,7 +15,7 @@ namespace sst
 		namespace misc
 		{
 			static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target,
-				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, SimpleError* err)
+				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, ErrorMsg** err)
 			{
 				std::vector<fir::LocatedType> ret(args.size());
 
@@ -29,16 +29,18 @@ namespace sst
 							if(nameToIndex.find(i.name) == nameToIndex.end())
 							{
 								iceAssert(err);
-								*err = SimpleError::make(MsgType::Note, i.loc, "function does not have a parameter named '%s'",
-									i.name).append(SimpleError::make(MsgType::Note, target, "function was defined here:"));
+								*err = SimpleError::make(MsgType::Note, i.loc, "function does not have a parameter named '%s'", i.name)->append(
+									SimpleError::make(MsgType::Note, target, "function was defined here:")
+								);
 
 								return { };
 							}
 							else if(ret[nameToIndex.find(i.name)->second].type != 0)
 							{
 								iceAssert(err);
-								*err = SimpleError::make(MsgType::Note, i.loc, "argument '%s' was already provided", i.name).append(
-									SimpleError::make(MsgType::Note, ret[nameToIndex.find(i.name)->second].loc, "here:"));
+								*err = SimpleError::make(MsgType::Note, i.loc, "argument '%s' was already provided", i.name)->append(
+									SimpleError::make(MsgType::Note, ret[nameToIndex.find(i.name)->second].loc, "here:")
+								);
 
 								return { };
 							}
@@ -55,13 +57,13 @@ namespace sst
 
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
-				const std::vector<FnCallArgument>& args, SimpleError* err)
+				const std::vector<FnCallArgument>& args, ErrorMsg** err)
 			{
 				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<FnCallArgument>& args, SimpleError* err)
+				const std::vector<FnCallArgument>& args, ErrorMsg** err)
 			{
 				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
 			}
@@ -93,7 +95,7 @@ namespace sst
 
 
 
-		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
+		std::pair<std::unordered_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments)
 		{
 			// ok, structs get named arguments, and no un-named arguments.
@@ -114,7 +116,7 @@ namespace sst
 			{
 				if(arg.name.empty() && useNames)
 				{
-					return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+					return { { }, SimpleError::make(arg.loc, "named arguments cannot be mixed with positional arguments in a struct constructor") };
 				}
 				else if(firstName && !arg.name.empty())
 				{
@@ -123,15 +125,15 @@ namespace sst
 				}
 				else if(!arg.name.empty() && !useNames && !firstName)
 				{
-					return { { }, SimpleError::make(arg.loc, "Named arguments cannot be mixed with positional arguments in a struct constructor") };
+					return { { }, SimpleError::make(arg.loc, "named arguments cannot be mixed with positional arguments in a struct constructor") };
 				}
 				else if(useNames && fieldNames.find(arg.name) == fieldNames.end())
 				{
-					return { { }, SimpleError::make(arg.loc, "Field '%s' does not exist in struct '%s'", arg.name, name) };
+					return { { }, SimpleError::make(arg.loc, "field '%s' does not exist in struct '%s'", arg.name, name) };
 				}
 				else if(useNames && seenNames.find(arg.name) != seenNames.end())
 				{
-					return { { }, SimpleError::make(arg.loc, "Duplicate argument for field '%s' in constructor call to struct '%s'",
+					return { { }, SimpleError::make(arg.loc, "duplicate argument for field '%s' in constructor call to struct '%s'",
 						arg.name, name) };
 				}
 
@@ -143,14 +145,14 @@ namespace sst
 			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
 			{
 				return { { }, SimpleError::make(callLoc,
-					"Mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
-					name, fieldNames.size(), arguments.size()).append(
-						BareError("All arguments are mandatory when using positional arguments", MsgType::Note)
+					"mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
+					name, fieldNames.size(), arguments.size())->append(
+						BareError::make(MsgType::Note, "all arguments are mandatory when using positional arguments")
 					)
 				};
 			}
 
-			return { seenNames, SimpleError() };
+			return { seenNames, nullptr };
 		}
 
 	}
@@ -162,8 +164,6 @@ namespace sst
 
 	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
-		OverloadError errs;
-
 		return resolver::computeOverloadDistance(Location(), util::map(a, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
 		}), util::map(b, [](fir::Type* t) -> fir::LocatedType {

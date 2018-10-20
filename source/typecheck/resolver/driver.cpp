@@ -42,7 +42,7 @@ namespace sst
 		bool didVar = false;
 		bool didGeneric = false;
 
-		SimpleError errs;
+		auto errs = SimpleError::make(Location(), "");
 		std::vector<std::tuple<Defn*, std::vector<FnCallArgument>, poly::Solution_t>> fns;
 		while(tree)
 		{
@@ -68,7 +68,7 @@ namespace sst
 					if(!pot.first.isDefn())
 					{
 						iceAssert(pot.first.isError());
-						errs.append(pot.first.error());
+						errs->append(pot.first.error());
 					}
 					else
 					{
@@ -92,7 +92,7 @@ namespace sst
 		{
 			if(!didGeneric)
 			{
-				errs.set(this->loc(), strprintf("No such function named '%s'", name));
+				errs = SimpleError::make(this->loc(), "no such function named '%s'", name);
 			}
 
 			return TCResult(errs);
@@ -125,8 +125,8 @@ namespace sst
 			else
 			{
 				return TCResult(
-					SimpleError(this->loc(), strprintf("'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type)).append(SimpleError(def->loc, "Previously defined here:"))
+					SimpleError::make(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+						name, def->type)->append(SimpleError::make(def->loc, "Previously defined here:"))
 				);
 			}
 		}
@@ -140,7 +140,7 @@ namespace sst
 		}
 		else
 		{
-			return TCResult(errs.append(res.error()));
+			return TCResult(errs->append(res.error()));
 		}
 	}
 
@@ -160,7 +160,7 @@ namespace sst
 			{
 				if(arg.name.empty())
 				{
-					return TCResult(SimpleError::make(arg.loc, "Arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
+					return TCResult(SimpleError::make(arg.loc, "arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
 				}
 			}
 
@@ -182,10 +182,8 @@ namespace sst
 
 			if(cand.isError())
 			{
-				auto err = dynamic_cast<OverloadError&>(cand.error());
-				err.set(SimpleError(this->loc(), strprintf("Failed to find matching initialiser for class '%s':", cls->id.name)));
-
-				return TCResult(err);
+				cand.error()->prepend(SimpleError::make(this->loc(), "failed to find matching initialiser for class '%s':", cls->id.name));
+				return TCResult(cand.error());
 			}
 
 			return TCResult(cand);
@@ -198,7 +196,7 @@ namespace sst
 
 			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, arguments);
 
-			if(err.second.hasErrors())
+			if(err.second != nullptr)
 				return TCResult(err.second);
 
 			// in actual fact we just return the thing here. sigh.
@@ -232,10 +230,13 @@ namespace sst
 				return fir::LocatedType(fca.value->type, fca.loc);
 			}), false);
 
-			if(errs.hasErrors() || dist == -1)
+			if(errs != nullptr || dist == -1)
 			{
-				errs.set(SimpleError::make(this->loc(), "Mismatched types in construction of variant '%s' of union '%s'", name,
-					unn->id.name)).postAndQuit();
+				auto x = SimpleError::make(this->loc(), "mismatched types in construction of variant '%s' of union '%s'", name, unn->id.name);
+				if(errs)    errs->prepend(x);
+				else        errs = x;
+
+				return TCResult(errs);
 			}
 
 			return TCResult(uvd);
@@ -243,8 +244,8 @@ namespace sst
 		else
 		{
 			return TCResult(
-				SimpleError::make(this->loc(), "Unsupported constructor call on type '%s'", typedf->id.name)
-			    .append(SimpleError(typedf->loc, "Type was defined here:"))
+				SimpleError::make(this->loc(), "unsupported constructor call on type '%s'", typedf->id.name)
+			    ->append(SimpleError::make(typedf->loc, "type was defined here:"))
 			);
 		}
 	}
@@ -256,7 +257,7 @@ namespace sst
 			for(const auto& a : arguments)
 			{
 				if(!a.name.empty())
-					error(a.loc, "Builtin type initialisers do not accept named arguments");
+					error(a.loc, "builtin type initialisers do not accept named arguments");
 			}
 
 			// all builtin types can be zero-initialised.
@@ -272,7 +273,7 @@ namespace sst
 				}
 				else
 				{
-					error(arguments[0].loc, "Type mismatch in initialiser call to builtin type '%s', found type '%s' instead", type,
+					error(arguments[0].loc, "type mismatch in initialiser call to builtin type '%s', found type '%s' instead", type,
 						arguments[0].value->type);
 				}
 			}
@@ -285,7 +286,7 @@ namespace sst
 					{
 						if(!arguments[0].value->type->isCharSliceType())
 						{
-							error(arguments[0].loc, "Single argument to string initialiser must be a slice of char, aka '%s', found '%s' instead",
+							error(arguments[0].loc, "single argument to string initialiser must be a slice of char, aka '%s', found '%s' instead",
 								fir::Type::getCharSlice(false), arguments[0].value->type);
 						}
 
@@ -295,12 +296,12 @@ namespace sst
 					{
 						if(auto t1 = arguments[0].value->type; (t1 != fir::Type::getInt8Ptr() && t1 != fir::Type::getMutInt8Ptr()))
 						{
-							error(arguments[0].loc, "First argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
+							error(arguments[0].loc, "first argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
 								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
 						}
 						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getInt64()) < 0)
 						{
-							error(arguments[0].loc, "Second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
+							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
 								(fir::Type*) fir::Type::getInt64(), t2);
 						}
 						else
@@ -310,13 +311,13 @@ namespace sst
 					}
 					else
 					{
-						error(arguments[2].loc, "String initialiser only takes 1 (from slice) or 2 (from pointer+length) arguments, found '%ld' instead",
+						error(arguments[2].loc, "string initialiser only takes 1 (from slice) or 2 (from pointer+length) arguments, found '%ld' instead",
 							arguments.size());
 					}
 				}
 				else
 				{
-					error(arguments[1].loc, "Builtin type '%s' cannot be initialised with more than 1 value", type);
+					error(arguments[1].loc, "builtin type '%s' cannot be initialised with more than 1 value", type);
 				}
 			}
 		}

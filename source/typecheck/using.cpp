@@ -124,9 +124,9 @@ namespace sst
 				util::serialiseScope(sfrom), util::serialiseScope(stoParent), name);
 
 			for(const auto& d : defs)
-				err.append(SimpleError::make(MsgType::Note, d, "Conflicting definition here:"));
+				err->append(SimpleError::make(MsgType::Note, d->loc, "Conflicting definition here:"));
 
-			err.postAndQuit();
+			err->postAndQuit();
 		}
 
 		// add a thing in the current scope

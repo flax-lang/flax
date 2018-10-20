@@ -446,11 +446,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					// ok, we need to.
 					if(infer == 0)
 					{
-						auto err = SimpleError::make(dotop->right, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
+						auto err = SimpleError::make(dotop->right->loc, "Ambiguous reference to method '%s' in struct '%s'", name, str->id.name);
 						for(auto m : meths)
-							err.append(SimpleError::make(MsgType::Note, m, "Potential target here:"));
+							err->append(SimpleError::make(MsgType::Note, m->loc, "Potential target here:"));
 
-						err.postAndQuit();
+						err->postAndQuit();
 					}
 
 					// else...
@@ -637,9 +637,9 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 				if(!unn->type->toUnionType()->hasVariant(name))
 				{
-					SimpleError::make(dot->right, "Union '%s' has no variant '%s'", unn->id.name, name)
-						.append(SimpleError::make(MsgType::Note, unn, "Union was defined here:"))
-						.postAndQuit();
+					SimpleError::make(dot->right->loc, "Union '%s' has no variant '%s'", unn->id.name, name)
+						->append(SimpleError::make(MsgType::Note, unn->loc, "Union was defined here:"))
+						->postAndQuit();
 				}
 
 				// dot-op on the union to access its variants; we need constructor stuff for it.

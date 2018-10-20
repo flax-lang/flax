@@ -142,17 +142,19 @@ namespace sst
 
 			if(lv->getType() != func->getArguments()[0]->getType())
 			{
-				SpanError(SimpleError::make(this->left, "Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), lv->getType()))
-					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
-					.postAndQuit();
+				SpanError::make(SimpleError::make(this->left->loc,
+					"Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[0]->getType(), lv->getType())
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				->postAndQuit();
 			}
 			else if(rv->getType() != func->getArguments()[1]->getType())
 			{
-				SpanError(SimpleError::make(this->left, "Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[1]->getType(), rv->getType()))
-					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
-					.postAndQuit();
+				SpanError::make(SimpleError::make(this->right->loc,
+					"Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					this->op, func->getArguments()[1]->getType(), rv->getType())
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				->postAndQuit();
 			}
 
 			// ok, call that guy.
@@ -186,10 +188,10 @@ namespace sst
 
 			if(val->getType() != func->getArguments()[0]->getType())
 			{
-				SpanError(SimpleError::make(this->expr, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
+				SpanError::make(SimpleError::make(this->expr->loc, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
 					this->op, func->getArguments()[0]->getType(), val->getType()))
-					.append(SimpleError::make(MsgType::Note, this->overloadedOpFunction, "Operator was overloaded here:"))
-					.postAndQuit();
+					->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+					->postAndQuit();
 			}
 
 			// ok, call that guy.
@@ -271,10 +273,10 @@ namespace cgn
 	{
 		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
 
-			SpanError().set(SimpleError::make(loc, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b))
-				.add(SpanError::Span(al, strprintf("type '%s'", a)))
-				.add(SpanError::Span(bl, strprintf("type '%s'", b)))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(loc, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b))
+				->add(util::ESpan(al, strprintf("type '%s'", a)))
+				->add(util::ESpan(bl, strprintf("type '%s'", b)))
+				->postAndQuit();
 		};
 
 		auto l = lhs.second;

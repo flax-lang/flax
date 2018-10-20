@@ -34,10 +34,10 @@ TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto inside = this->expr->typecheck(fs, infer).expr();
 
 	if(!inside->type->isArraySliceType() && !inside->type->isArrayType() && !inside->type->isDynamicArrayType() && !inside->type->isTupleType())
-		return TCResult(SimpleError::make(this, "invalid use of splat operator on type '%s'", inside->type));
+		return TCResult(SimpleError::make(this->loc, "invalid use of splat operator on type '%s'", inside->type));
 
 	if(inside->type->isTupleType())
-		return TCResult(SimpleError::make(this, "splat operator on tuple not allowed in this context"));
+		return TCResult(SimpleError::make(this->loc, "splat operator on tuple not allowed in this context"));
 
 	auto ret = util::pool<sst::SplatExpr>(this->loc, fir::ArraySliceType::getVariadic(inside->type->getArrayElementType()));
 	ret->inside = inside;

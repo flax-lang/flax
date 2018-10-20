@@ -229,7 +229,8 @@ namespace cgn
 			if(ifn == 0)
 			{
 				SimpleError::make(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
-					cls->getTypeName()).append(SimpleError::make(MsgType::Note, clsdef, "Class '%s' was defined here:", clsdef->id.name)).postAndQuit();
+					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "Class '%s' was defined here:", clsdef->id.name))
+					->postAndQuit();
 			}
 
 			// ok, we call it.

@@ -21,10 +21,10 @@ namespace sst
 
 	namespace resolver
 	{
-		std::pair<int, SpanError> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
+		std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
 			const std::vector<FnCallArgument>& _args, bool cvararg);
 
-		std::pair<int, SpanError> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
+		std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
 			const std::vector<fir::LocatedType>& _args, bool cvararg);
 
 
@@ -32,16 +32,16 @@ namespace sst
 			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
 			fir::Type* return_infer);
 
-		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const Location& callLoc,
+		std::pair<std::unordered_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		namespace misc
 		{
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
-				const std::vector<FnCallArgument>& args, SimpleError* err);
+				const std::vector<FnCallArgument>& args, ErrorMsg** err);
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<FnCallArgument>& args, SimpleError* err);
+				const std::vector<FnCallArgument>& args, ErrorMsg** err);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
 

@@ -16,7 +16,7 @@ namespace sst
 {
 	namespace poly
 	{
-		SimpleError solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
+		ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
 		{
 			auto tgt = target.type;
 			auto gvn = given.type;
@@ -28,7 +28,7 @@ namespace sst
 				if(dist >= 0)
 				{
 					soln->distance += dist;
-					return SimpleError();
+					return nullptr;
 				}
 				else
 				{
@@ -133,13 +133,13 @@ namespace sst
 				}
 			}
 
-			return SimpleError();
+			return nullptr;
 		}
 
 
 
 
-		SimpleError solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+		ErrorMsg* solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
 			bool isFnCall)
 		{
 			bool fvararg = (isFnCall && target.size() > 0 && target.back()->isVariadicArrayType());
@@ -156,8 +156,7 @@ namespace sst
 			for(size_t i = 0; i < last_arg; i++)
 			{
 				auto err = solveSingleType(soln, target[i], given[i]);
-				if(err.hasErrors())
-					return err;
+				if(err != nullptr) return err;
 
 				// possibly increase solution completion by re-substituting with new information
 				soln->resubstituteIntoSolutions();
@@ -173,13 +172,13 @@ namespace sst
 
 					// ok, if we fulfil all the conditions to forward, then we forward.
 					auto err = solveSingleType(&copy, target.back(), given.back());
-					if(!err.hasErrors())
+					if(err == nullptr)
 					{
 						iceAssert(copy.distance >= 0);
 						*soln = copy;
 
 						// ok, things should be solved, and we will forward.
-						return SimpleError();
+						return nullptr;
 					}
 				}
 
@@ -193,22 +192,21 @@ namespace sst
 				for(size_t i = last_arg; i < given.size(); i++)
 				{
 					auto err = solveSingleType(soln, ltvarty, given[i]);
-					if(err.hasErrors())
-						return err.append(SimpleError::make(MsgType::Note, target.back().loc, "in argument of variadic parameter"));
+					if(err) return err->append(SimpleError::make(MsgType::Note, target.back().loc, "in argument of variadic parameter"));
 				}
 
 				// ok, everything should be good??
-				return SimpleError();
+				return nullptr;
 			}
 
-			return SimpleError();
+			return nullptr;
 		}
 
 
 
 
 
-		std::pair<Solution_t, SimpleError> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
 			const Solution_t& partial, bool isFnCall)
 		{
 			Solution_t prevSoln = partial;
@@ -234,7 +232,7 @@ namespace sst
 				auto soln = prevSoln; soln.distance = 0;
 
 				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
-				if(errs.hasErrors()) return { soln, errs };
+				if(errs) return { soln, errs };
 
 				if(soln == prevSoln)            { break; }
 				else if(checkFinished(soln))    { prevSoln = soln; break; }
@@ -248,7 +246,7 @@ namespace sst
 					pair.second = fir::getBestFitTypeForConstant(pair.second->toConstantNumberType());
 			}
 
-			return { prevSoln, SimpleError() };
+			return { prevSoln, nullptr };
 		}
 	}
 }

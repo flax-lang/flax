@@ -9,6 +9,8 @@
 #include "sst.h"
 #include "frontend.h"
 
+#include "mpool.h"
+
 #define LEFT_PADDING TAB_WIDTH
 
 
@@ -88,7 +90,7 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 // #define UNDERLINE_CHARACTER " ̅"
 #define UNDERLINE_CHARACTER "^"
 
-std::string getSpannedContext(const Location& loc, const std::vector<SpanError::Span>& spans, size_t* adjust, size_t* num_width, size_t* margin,
+std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan>& spans, size_t* adjust, size_t* num_width, size_t* margin,
 	bool underline, bool bottompad, std::string underlineColour)
 {
 	std::string ret;
@@ -139,7 +141,7 @@ std::string getSingleContext(const Location& loc, bool underline = true, bool bo
 	size_t a = 0;
 	size_t b = 0;
 	size_t c = 0;
-	return getSpannedContext(loc, { SpanError::Span(loc, "") }, &a, &b, &c, underline, bottompad, COLOUR_RED_BOLD);
+	return getSpannedContext(loc, { util::ESpan(loc, "") }, &a, &b, &c, underline, bottompad, COLOUR_RED_BOLD);
 }
 
 
@@ -229,17 +231,6 @@ void BareError::post()
 		other->post();
 }
 
-bool BareError::hasErrors() const
-{
-	return this->msg.size() > 0 || this->subs.size() > 0;
-}
-
-BareError* BareError::clone() const
-{
-	return new BareError(*this);
-}
-
-
 
 void SimpleError::post()
 {
@@ -254,40 +245,44 @@ void SimpleError::post()
 		other->post();
 }
 
-bool SimpleError::hasErrors() const
+
+namespace util
 {
-	return this->msg.size() > 0 || this->subs.size() > 0;
+	static bool operator == (const util::ESpan& a, const util::ESpan& b) { return a.loc == b.loc && a.msg == b.msg; }
+
+
+	BareError* make_BareError(const std::string& m, MsgType t)
+	{
+		return util::pool<BareError>(m, t);
+	}
+
+	SpanError* make_SpanError(SimpleError* se, const std::vector<ESpan>& s, MsgType t)
+	{
+		return util::pool<SpanError>(se, s, t);
+	}
+
+	SimpleError* make_SimpleError(const Location& l, const std::string& m, MsgType t)
+	{
+		return util::pool<SimpleError>(l, m, t);
+	}
+
+	OverloadError* make_OverloadError(SimpleError* se, MsgType t)
+	{
+		return util::pool<OverloadError>(se, t);
+	}
 }
 
-SimpleError* SimpleError::clone() const
-{
-	return new SimpleError(*this);
-}
 
-
-
-SpanError& SpanError::add(const Span& s)
+SpanError* SpanError::add(const util::ESpan& s)
 {
 	this->spans.push_back(s);
-	return *this;
+	return this;
 }
-
-bool SpanError::hasErrors() const
-{
-	return (this->top.hasErrors() || this->spans.size() > 0) || this->subs.size() > 0;
-}
-
-SpanError* SpanError::clone() const
-{
-	return new SpanError(*this);
-}
-
-static bool operator == (const SpanError::Span& a, const SpanError::Span& b) { return a.loc == b.loc && a.msg == b.msg; }
 
 void SpanError::post()
 {
-	this->top.printContext = false;
-	this->top.post();
+	this->top->printContext = false;
+	this->top->post();
 
 	{
 		size_t adjust = 0;
@@ -296,7 +291,7 @@ void SpanError::post()
 
 		if(this->highlightActual)
 		{
-			auto sp = Span(this->top.loc, "");
+			auto sp = util::ESpan(this->top->loc, "");
 			sp.colour = COLOUR_RED_BOLD;
 
 			this->spans.push_back(sp);
@@ -305,11 +300,11 @@ void SpanError::post()
 		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
 		this->spans.erase(std::unique(this->spans.begin(), this->spans.end()), this->spans.end());
 
-		strprinterrf("%s\n", getSpannedContext(this->top.loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
+		strprinterrf("%s\n", getSpannedContext(this->top->loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
 
 		// ok now remove the extra thing.
 		if(this->highlightActual)
-			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), Span(this->top.loc, "")));
+			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), util::ESpan(this->top->loc, "")));
 
 		size_t cursor = 0;
 		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
@@ -386,26 +381,15 @@ void SpanError::post()
 
 
 
-bool OverloadError::hasErrors() const
-{
-	return (this->top.hasErrors() || this->cands.size() > 0) || this->subs.size() > 0;
-}
-
 void OverloadError::clear()
 {
 	this->cands.clear();
-	this->top = SimpleError();
+	this->top = 0;
 }
 
-OverloadError* OverloadError::clone() const
+OverloadError& OverloadError::addCand(Locatable* d, ErrorMsg* sp)
 {
-	return new OverloadError(*this);
-}
-
-
-OverloadError& OverloadError::addCand(Locatable* d, const ErrorMsg& sp)
-{
-	this->cands[d] = sp.clone();
+	this->cands[d] = sp;
 	return *this;
 }
 
@@ -414,8 +398,8 @@ OverloadError& OverloadError::addCand(Locatable* d, const ErrorMsg& sp)
 void OverloadError::post()
 {
 	// first, post the original error.
-	this->top.wordsBeforeContext = "(call site)";
-	this->top.post();
+	this->top->wordsBeforeContext = "(call site)";
+	this->top->post();
 
 	// sort the candidates by line number
 	// (idk maybe it's a windows thing but it feels like the order changes every so often)
@@ -435,7 +419,7 @@ void OverloadError::post()
 			auto spe = dynamic_cast<SpanError*>(emg);
 			iceAssert(spe);
 
-			spe->set(SimpleError(loc->loc, strprintf("candidate %d was defined here:", cand_counter++), MsgType::Note));
+			spe->top = SimpleError::make(MsgType::Note, loc->loc, "candidate %d was defined here:", cand_counter++);
 			spe->highlightActual = false;
 			spe->post();
 		}

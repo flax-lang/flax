@@ -44,10 +44,10 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			if(infer == 0)
 			{
-				auto errs = SimpleError::make(this, "ambiguous reference to '%s'", this->name);
+				auto errs = SimpleError::make(this->loc, "ambiguous reference to '%s'", this->name);
 
 				for(auto v : vs)
-					errs.append(SimpleError(v->loc, "potential target here:", MsgType::Note));
+					errs->append(SimpleError::make(MsgType::Note, v->loc, "potential target here:"));
 
 				return TCResult(errs);
 			}
@@ -61,9 +61,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return returnResult(v);
 			}
 
-			auto errs = SimpleError::make(this, "no definition of '%s' matching type '%s'", this->name, infer);
+			auto errs = SimpleError::make(this->loc, "no definition of '%s' matching type '%s'", this->name, infer);
 			for(auto v : vs)
-				errs.append(SimpleError::make(MsgType::Note, v, "potential target here, with type '%s':", v->type ? v->type->str() : "?"));
+				errs->append(SimpleError::make(MsgType::Note, v->loc, "potential target here, with type '%s':", v->type ? v->type->str() : "?"));
 
 			return TCResult(errs);
 		}
@@ -83,9 +83,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				if(!fs->isInFunctionBody() || !fs->getCurrentFunction()->parentTypeForMethod)
 				{
 					return TCResult(
-						SimpleError::make(this, "field '%s' is an instance member of type '%s', and cannot be accessed statically.",
+						SimpleError::make(this->loc, "field '%s' is an instance member of type '%s', and cannot be accessed statically",
 							this->name, fld->parentType->id.name)
-						.append(SimpleError::make(MsgType::Note, def, "Field '%s' was defined here:", def->id.name))
+						->append(SimpleError::make(MsgType::Note, def->loc, "Field '%s' was defined here:", def->id.name))
 					);
 				}
 			}
@@ -120,7 +120,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			{
 				auto err = SimpleError::make(this->loc, "ambiguous reference to '%s', potential candidates:", this->name);
 				for(const auto& p : pots)
-					err.append(SimpleError(p.first.defn()->loc, ""));
+					err->append(SimpleError::make(p.first.defn()->loc, ""));
 
 				return TCResult(err);
 			}
@@ -170,7 +170,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	// check for people being stupid.
 	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
-		return TCResult(SimpleError::make(this, "invalid redefinition of 'self' inside method body"));
+		return TCResult(SimpleError::make(this->loc, "invalid redefinition of 'self' inside method body"));
 
 
 
@@ -211,9 +211,9 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 		else if(fir::getCastDistance(defn->init->type, defn->type) < 0)
 		{
-			SpanError(SimpleError::make(this, "cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
-				.add(SpanError::Span(defn->init->loc, strprintf("type '%s'", defn->init->type)))
-				.postAndQuit();
+			SpanError::make(SimpleError::make(this->loc, "cannot initialise variable of type '%s' with a value of type '%s'", defn->type, defn->init->type))
+				->add(util::ESpan(defn->init->loc, strprintf("type '%s'", defn->init->type)))
+				->postAndQuit();
 		}
 	}
 

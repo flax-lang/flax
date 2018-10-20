@@ -146,11 +146,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 					{
 						if(bf->id.name == fld->id.name)
 						{
-							SimpleError::make(fld, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'",
+							SimpleError::make(fld->loc, "Redefinition of field '%s' (with type '%s'), that exists in the base class '%s'",
 								fld->id.name, fld->type, cls->id)
-								.append(SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class here:", fld->id.name))
-								.append(SimpleError::make(MsgType::Note, cls, "Base class '%s' was defined here:", cls->id))
-								.postAndQuit();
+								->append(SimpleError::make(MsgType::Note, bf->loc, "'%s' was previously defined in the base class here:", fld->id.name))
+								->append(SimpleError::make(MsgType::Note, cls->loc, "Base class '%s' was defined here:", cls->id))
+								->postAndQuit();
 						}
 					}
 
@@ -202,30 +202,32 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 							// nice comprehensive error messages, I hope.
 							if(!meth->isOverride)
 							{
-								auto err = SimpleError::make(meth, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
+								auto err = SimpleError::make(meth->loc, "Redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
 									meth->id.name, meth->type, cls->id);
 
 								if(bf->isVirtual)
 								{
-									err.append(SimpleError::make(MsgType::Note, bf, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name));
+									err->append(SimpleError::make(MsgType::Note, bf->loc, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name));
 								}
 								else
 								{
-									err.append(
-										SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class as a non-virtual method here:",
-											bf->id.name)
-										.append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name)
-									));
+									err->append(
+										SimpleError::make(MsgType::Note, bf->loc,
+											"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
+												BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name)
+										)
+									);
 								}
 
-								err.postAndQuit();
+								err->postAndQuit();
 							}
 							else if(!bf->isVirtual)
 							{
-								SimpleError::make(meth, "Cannot override non-virtual method '%s'", bf->id.name)
-									.append(SimpleError::make(MsgType::Note, bf, "'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name))
-									.append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name))
-									.postAndQuit();
+								SimpleError::make(meth->loc, "Cannot override non-virtual method '%s'", bf->id.name)
+									->append(SimpleError::make(MsgType::Note, bf->loc,
+										"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)
+									)->append(BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name))
+									->postAndQuit();
 							}
 						}
 					}

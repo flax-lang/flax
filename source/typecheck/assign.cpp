@@ -39,10 +39,10 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(!skipCheck && lt != rt && fir::getCastDistance(rt, lt) < 0)
 	{
-		SpanError().set(SimpleError::make(this, "Cannot assign value of type '%s' to expected type '%s'", rt, lt))
-			.add(SpanError::Span(this->left->loc, strprintf("type '%s'", lt)))
-			.add(SpanError::Span(this->right->loc, strprintf("type '%s'", rt)))
-			.postAndQuit();
+		SpanError::make(SimpleError::make(this->loc, "Cannot assign value of type '%s' to expected type '%s'", rt, lt))
+			->add(util::ESpan(this->left->loc, strprintf("type '%s'", lt)))
+			->add(util::ESpan(this->right->loc, strprintf("type '%s'", rt)))
+			->postAndQuit();
 	}
 
 	//* note: check for the special case of assigning to a tuple literal, to allow the (a, b) = (b, a) swapping idiom

@@ -51,8 +51,8 @@ namespace frontend
 						if(auto it = existing.find(op.first); it != existing.end())
 						{
 							SimpleError::make(op.second.loc, "Duplicate declaration for %s operator '%s'", kind, op.second.symbol)
-								.append(SimpleError::make(MsgType::Note, it->second.loc, "Previous declaration was here:"))
-								.postAndQuit();
+								->append(SimpleError::make(MsgType::Note, it->second.loc, "Previous declaration was here:"))
+								->postAndQuit();
 						}
 					}
 				};
@@ -99,8 +99,8 @@ namespace frontend
 					it != imports.end())
 				{
 					SimpleError::make(ithing.loc, "Importing previously imported module '%s'", ithing.name)
-						.append(SimpleError::make(MsgType::Note, it->first.loc, "Previous import was here:"))
-						.postAndQuit();
+						->append(SimpleError::make(MsgType::Note, it->first.loc, "Previous import was here:"))
+						->postAndQuit();
 				}
 
 				imports.push_back({ ithing, stree });
