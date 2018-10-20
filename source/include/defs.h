@@ -288,7 +288,7 @@ struct BareError : ErrorMsg
 
 	virtual void post() override;
 	virtual BareError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
-	virtual BareError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
+	virtual BareError* prepend(ErrorMsg* e) override { this->subs.insert(this->subs.begin(), e); return this; }
 
 	std::string msg;
 
@@ -313,7 +313,7 @@ struct SimpleError : ErrorMsg
 
 	virtual void post() override;
 	virtual SimpleError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
-	virtual SimpleError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
+	virtual SimpleError* prepend(ErrorMsg* e) override { this->subs.insert(this->subs.begin(), e); return this; }
 
 	Location loc;
 	std::string msg;
@@ -340,7 +340,7 @@ struct SpanError : ErrorMsg
 
 	virtual void post() override;
 	virtual SpanError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
-	virtual SpanError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
+	virtual SpanError* prepend(ErrorMsg* e) override { this->subs.insert(this->subs.begin(), e); return this; }
 
 	SimpleError* top = 0;
 	std::vector<util::ESpan> spans;
@@ -368,7 +368,7 @@ struct OverloadError : ErrorMsg
 
 	virtual void post() override;
 	virtual OverloadError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
-	virtual OverloadError* prepend(ErrorMsg* e) { this->subs.insert(this->subs.begin(), e); return this; }
+	virtual OverloadError* prepend(ErrorMsg* e) override { this->subs.insert(this->subs.begin(), e); return this; }
 
 	OverloadError& addCand(Locatable* d, ErrorMsg* e);
 
