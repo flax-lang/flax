@@ -44,6 +44,11 @@ struct FnCallArgument
 	ast::Expr* orig = 0;
 
 	static FnCallArgument make(const Location& l, const std::string& n, fir::Type* t);
+
+	bool operator == (const FnCallArgument& other) const
+	{
+		return this->loc == other.loc && this->name == other.name && this->value == other.value && this->orig == other.orig;
+	}
 };
 
 struct FnParam

@@ -31,11 +31,7 @@ namespace fir
 
 	StructType* StructType::createWithoutBody(const Identifier& name, bool isPacked)
 	{
-		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Struct with name '%s' already exists", name.str());
-
-		else
-			return (typeCache[name] = new StructType(name, { }, isPacked));
+		return StructType::create(name, { }, isPacked);
 	}
 
 

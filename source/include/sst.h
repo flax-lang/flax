@@ -750,7 +750,7 @@ namespace sst
 
 
 
-
+	struct UnionVariantDefn;
 	struct UnionDefn : TypeDefn
 	{
 		UnionDefn(const Location& l) : TypeDefn(l) { this->readableName = "union definition"; }
@@ -759,7 +759,7 @@ namespace sst
 		virtual std::string getKind() override { return "union"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::unordered_map<std::string, Location> variants;
+		std::unordered_map<std::string, UnionVariantDefn*> variants;
 	};
 
 	struct UnionVariantDefn : TypeDefn

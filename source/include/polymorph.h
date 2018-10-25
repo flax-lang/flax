@@ -72,7 +72,7 @@ namespace sst
 			const std::vector<ast::Parameterisable*>& gdefs, const TypeParamMap_t& _gmaps, fir::Type* return_infer,
 			fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args);
 
-		std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing,
+		std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 			const TypeParamMap_t& _gmaps, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args,
 			bool fillplaceholders, fir::Type* problem_infer = 0);
 
@@ -121,13 +121,14 @@ namespace sst
 
 
 
-			std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial);
+			std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
+				const TypeParamMap_t& partial);
 
 			std::vector<std::string> getMissingSolutions(const ProblemSpace_t& needed, const TypeParamMap_t& solution,
 				bool allowPlaceholders);
 
 
-			std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
+			std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 				const ProblemSpace_t& problems, const std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial,
 				fir::Type* return_infer, fir::Type*, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder);
 		}
