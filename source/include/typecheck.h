@@ -205,14 +205,6 @@ namespace sst
 
 		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 		bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
-
-		TCResult resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
-			bool traverseUp, fir::Type* inferredRetType);
-		TCResult resolveFunctionCallFromCandidates(const std::vector<Defn*>& fs, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
-			bool allowImplicitSelf);
-
-		TCResult resolveConstructorCall(TypeDefn* defn, const std::vector<FnCallArgument>& arguments,
-			const TypeParamMap_t& gmaps);
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,

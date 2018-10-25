@@ -31,7 +31,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	std::vector<FnCallArgument> ts = _arguments;
 
 	auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-	auto res = fs->resolveFunctionCall(this->name, &ts, gmaps, this->traverseUpwards, infer);
+	auto res = sst::resolver::resolveFunctionCall(fs, this->name, &ts, gmaps, this->traverseUpwards, infer);
 
 	auto target = res.defn();
 	iceAssert(target);

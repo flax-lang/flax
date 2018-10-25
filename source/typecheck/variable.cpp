@@ -6,6 +6,8 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+
+#include "resolver.h"
 #include "polymorph.h"
 
 #include "ir/type.h"
@@ -90,7 +92,34 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 
-			if(infer && def->type->containsPlaceholders())
+			if(auto treedef = dcast(sst::TreeDefn, def))
+			{
+				return returnResult(treedef, false);
+			}
+			else if(def->type->isUnionVariantType())
+			{
+				auto uvd = dcast(sst::UnionVariantDefn, def);
+				iceAssert(uvd);
+
+				std::vector<FnCallArgument> fake_args;
+				auto res = sst::resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &fake_args, infer);
+
+				if(res.isError())
+					return TCResult(res);
+
+				//* copy-paste from typecheck/call.cpp
+				auto unn = uvd->parentUnion;
+				iceAssert(unn);
+
+				auto ret = util::pool<sst::UnionVariantConstructor>(this->loc, unn->type);
+
+				ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
+				ret->parentUnion = unn;
+				ret->args = { };
+
+				return TCResult(ret);
+			}
+			else if(infer && def->type->containsPlaceholders())
 			{
 				auto fd = dcast(sst::FunctionDefn, def);
 				iceAssert(fd);
