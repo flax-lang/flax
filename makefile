@@ -104,7 +104,7 @@ build: $(OUTPUT) copylibs
 	# built
 
 build/%.flx: build
-	@$(OUTPUT) $(FLXFLAGS) -run -backend none $@
+	@$(OUTPUT) $(FLXFLAGS) -run $@
 
 
 
