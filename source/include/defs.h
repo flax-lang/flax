@@ -413,7 +413,7 @@ struct TCResult
 
 	RK _kind = RK::Invalid;
 
-	~TCResult() { if(this->isError() && this->_pe) delete this->_pe; }
+	~TCResult() { }
 
 	TCResult(RK k) :  _kind(k)                                  { _st = 0; }
 	explicit TCResult(sst::Stmt* s) : _kind(RK::Statement)      { _st = s; }

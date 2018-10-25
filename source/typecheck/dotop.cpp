@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "gluecode.h"
+#include "resolver.h"
 #include "polymorph.h"
 
 #include "ir/type.h"
@@ -303,7 +304,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 
-				return fs->resolveFunctionCallFromCandidates(cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
+				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
 			};
 
 			std::vector<sst::Defn*> mcands;
@@ -533,7 +534,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
 			fs->teleportToScope(news);
-			ret = dot->right->typecheck(fs).expr();
+			ret = dot->right->typecheck(fs, infer).expr();
 
 			//* special-case this thing. if we don't do this, then 'ret' is just a normal VarRef,
 			//* which during codegen will try to trigger the codegen for the UnionVariantDefn,
@@ -643,6 +644,9 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				}
 				else if(!wasfncall && unn->type->containsPlaceholders() && infer == nullptr)
 				{
+					// note that we check infer == 0 before giving this error.
+					// we should be able to pass in the infer value such that it works properly
+					// eg. let x: Foo<int> = Foo.none
 					SimpleError::make(dot->right->loc,
 						"unable to resolve type parameters for polymorphic union '%s' using variant '%s' (which has no values)",
 						unn->id.name, name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();

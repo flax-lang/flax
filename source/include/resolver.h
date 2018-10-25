@@ -28,12 +28,21 @@ namespace sst
 			const std::vector<fir::LocatedType>& _args, bool cvararg);
 
 
-		std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
-			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
-			fir::Type* return_infer);
+		TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments,
+			const TypeParamMap_t& gmaps, bool traverseUp, fir::Type* inferredRetType);
+
+		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cs, std::vector<FnCallArgument>* arguments,
+			const TypeParamMap_t& gmaps, bool allowImplicitSelf);
+
+		TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* defn, const std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps);
+
 
 		std::pair<std::unordered_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
+
+		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
+			fir::Type* return_infer);
+
 
 		namespace misc
 		{
@@ -44,7 +53,6 @@ namespace sst
 				const std::vector<FnCallArgument>& args, ErrorMsg** err);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
-
 
 			template <typename T>
 			std::unordered_map<std::string, size_t> getNameIndexMap(const std::vector<T>& params)
@@ -58,6 +66,13 @@ namespace sst
 
 				return ret;
 			}
+		}
+
+		namespace internal
+		{
+			std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
+				const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
+				fir::Type* return_infer);
 		}
 	}
 }

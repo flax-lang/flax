@@ -14,22 +14,23 @@
 
 #include <set>
 
-namespace sst
+namespace sst {
+namespace resolver
 {
-	TCResult TypecheckState::resolveFunctionCallFromCandidates(const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
+	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
 		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
 	{
 		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
-		auto [ ret, new_args ] = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cds, gmaps, allowImplicitSelf, nullptr);
+		auto [ ret, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cds, gmaps, allowImplicitSelf, nullptr);
 
 		*args = new_args;
 		return ret;
 	}
 
-	TCResult TypecheckState::resolveFunctionCall(const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps, bool travUp,
-		fir::Type* return_infer)
+	TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
+		bool travUp, fir::Type* return_infer)
 	{
-		StateTree* tree = this->stree;
+		StateTree* tree = fs->stree;
 
 		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
 		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
@@ -60,7 +61,7 @@ namespace sst
 				didGeneric = true;
 				auto argcopy = *arguments;
 
-				auto pots = poly::findPolymorphReferences(this, name, gdefs, gmaps, /* return_infer: */ return_infer,
+				auto pots = poly::findPolymorphReferences(fs, name, gdefs, gmaps, /* return_infer: */ return_infer,
 					/* type_infer: */ 0, /* isFnCall: */ true, &argcopy);
 
 				for(const auto& pot : pots)
@@ -92,7 +93,7 @@ namespace sst
 		{
 			if(!didGeneric)
 			{
-				errs = SimpleError::make(this->loc(), "no such function named '%s'", name);
+				errs = SimpleError::make(fs->loc(), "no such function named '%s'", name);
 			}
 
 			return TCResult(errs);
@@ -120,18 +121,18 @@ namespace sst
 			{
 				// ok, then.
 				//* note: no need to specify 'travUp', because we already resolved the type here.
-				return this->resolveConstructorCall(typedf, ts, gmaps);
+				return resolveConstructorCall(fs, typedf, ts, gmaps);
 			}
 			else
 			{
 				return TCResult(
-					SimpleError::make(this->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
+					SimpleError::make(fs->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
 						name, def->type)->append(SimpleError::make(def->loc, "Previously defined here:"))
 				);
 			}
 		}
 
-		auto [ res, new_args ] = resolver::resolveFunctionCallFromCandidates(this, this->loc(), cands, gmaps, travUp, return_infer);
+		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
 		if(res.isDefn())
 		{
 			*arguments = new_args;
@@ -147,8 +148,7 @@ namespace sst
 
 
 
-	TCResult TypecheckState::resolveConstructorCall(TypeDefn* typedf, const std::vector<FnCallArgument>& arguments,
-		const TypeParamMap_t& gmaps)
+	TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
@@ -170,7 +170,7 @@ namespace sst
 			copy.push_back(FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo()));
 			auto copy1 = copy;
 
-			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
+			auto cand = resolveFunctionCallFromCandidates(fs, util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
 			}), &copy, gmaps, true);
 
@@ -183,7 +183,7 @@ namespace sst
 
 			if(cand.isError())
 			{
-				cand.error()->prepend(SimpleError::make(this->loc(), "failed to find matching initialiser for class '%s':", cls->id.name));
+				cand.error()->prepend(SimpleError::make(fs->loc(), "failed to find matching initialiser for class '%s':", cls->id.name));
 				return TCResult(cand.error());
 			}
 
@@ -195,7 +195,7 @@ namespace sst
 			for(auto f : str->fields)
 				fieldNames.insert(f->id.name);
 
-			auto err = resolver::verifyStructConstructorArguments(this->loc(), str->id.name, fieldNames, arguments);
+			auto err = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
 
 			if(err.second != nullptr)
 				return TCResult(err.second);
@@ -205,77 +205,27 @@ namespace sst
 		}
 		else if(auto uvd = dcast(sst::UnionVariantDefn, typedf))
 		{
-			auto name = uvd->id.name;
-
-			auto unn = uvd->parentUnion;
-			iceAssert(unn);
-
-			auto orig_unn = unn->original;
-			iceAssert(orig_unn);
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
 
 			auto copy = arguments;
-			auto [ res, soln ] = poly::attemptToInstantiatePolymorph(this, orig_unn, name, /* gmaps: */ { }, /* return_infer: */ nullptr,
-				/* type_infer: */ nullptr, /* isFnCall: */ true, /* args: */ &copy, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
-
-			// TODO: support re-eval of constructor args!
-			// TODO: support re-eval of constructor args!
-			// TODO: support re-eval of constructor args!
 
 			if(copy != arguments)
 				error("args changed for constructor call -- fixme!!!");
 
-			if(res.isError() || (res.isDefn() && res.defn()->type->containsPlaceholders()))
-			{
-				ErrorMsg* e = SimpleError::make(this->loc(), "unable to infer types for union '%s' using variant '%s'", unn->id.name, name);
-				if(res.isError())   res.error()->prepend(e);
-
-				return TCResult(e);
-			}
-
-			// make it so
-			unn = dcast(sst::UnionDefn, res.defn());
-			iceAssert(unn);
-
-			// re-do it.
-			uvd = unn->variants[name];
-			iceAssert(uvd);
-
-			auto vty = uvd->type->toUnionVariantType()->getInteriorType();
-
-			std::vector<fir::LocatedType> target;
-			if(vty->isTupleType())
-			{
-				for(auto t : vty->toTupleType()->getElements())
-					target.push_back(fir::LocatedType(t, uvd->loc));
-			}
-			else if(!vty->isVoidType())
-			{
-				target.push_back(fir::LocatedType(vty, uvd->loc));
-			}
-
-			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(arguments, [](const FnCallArgument& fca) -> auto {
-				return fir::LocatedType(fca.value->type, fca.loc);
-			}), false);
-
-			if(errs != nullptr || dist == -1)
-			{
-				auto x = SimpleError::make(this->loc(), "mismatched types in construction of variant '%s' of union '%s'", name, unn->id.name);
-				if(errs)    errs->prepend(x);
-				else        errs = x;
-
-				return TCResult(errs);
-			}
-
-			return TCResult(uvd);
+			return resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &copy, /* return_infer: */ nullptr);
 		}
 		else
 		{
 			return TCResult(
-				SimpleError::make(this->loc(), "unsupported constructor call on type '%s'", typedf->id.name)
+				SimpleError::make(fs->loc(), "unsupported constructor call on type '%s'", typedf->id.name)
 			    ->append(SimpleError::make(typedf->loc, "type was defined here:"))
 			);
 		}
 	}
+	}
+
 
 	fir::Type* TypecheckState::checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments)
 	{
@@ -352,7 +302,6 @@ namespace sst
 		return 0;
 	}
 }
-
 
 
 

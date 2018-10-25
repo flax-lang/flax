@@ -75,7 +75,7 @@ namespace sst
 					if(defs.empty())
 					{
 						// try generic defs.
-						StateTree* str = this->stree;
+						StateTree* str = (scoped ? tree : this->stree);
 						std::vector<ast::Parameterisable*> gdefs;
 						while(str && (gdefs = str->getUnresolvedGenericDefnsWithName(name)).size() == 0)
 							str = (scoped ? 0 : str->parent);   // if we're scoped, we can't go upwards.
