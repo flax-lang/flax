@@ -58,8 +58,6 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	defer(fs->popTree());
 
 
-	// size_t maxSize = 0;
-
 	std::unordered_map<std::string, std::pair<size_t, fir::Type*>> vars;
 	std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
 	for(auto variant : this->cases)
@@ -68,7 +66,6 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			? fs->convertParserTypeToFIR(std::get<2>(variant.second)) : fir::Type::getVoid())
 		};
 
-		defn->variants[variant.first] = std::get<1>(variant.second);
 
 		auto vdef = util::pool<sst::UnionVariantDefn>(std::get<1>(variant.second));
 		vdef->parentUnion = defn;
@@ -78,18 +75,9 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		vdefs.push_back({ vdef, std::get<0>(variant.second) });
 
 		fs->stree->addDefinition(variant.first, vdef);
+
+		defn->variants[variant.first] = vdef;
 	}
-
-	// log2 of the number of cases, rounded up, gives us the minimum number of bits we need to represent the thing.
-	// given the number of bits, we divide by 8.
-
-	// size_t idSize = 0;
-	// if(maxSize <= 1)        idSize = std::max(1, (int) std::ceil(std::log2(this->cases.size())) / 8);
-	// else if(maxSize <= 2)   idSize = std::max(2, (int) std::ceil(std::log2(this->cases.size())) / 8);
-	// else if(maxSize <= 4)	idSize = std::max(4, (int) std::ceil(std::log2(this->cases.size())) / 8);
-	// else                    idSize = std::max(8, (int) std::ceil(std::log2(this->cases.size())) / 8);
-
-	// fir::Type* idTy = fir::PrimitiveType::getIntN(idSize * 8);
 
 	auto unionTy = defn->type->toUnionType();
 	unionTy->setBody(vars);
@@ -97,7 +85,6 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	// in a bit of stupidity, we need to set the type of each definition properly.
 	for(const auto& [ uvd, id ] : vdefs)
 		uvd->type = unionTy->getVariant(id);
-
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);

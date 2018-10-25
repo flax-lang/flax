@@ -168,6 +168,7 @@ namespace sst
 
 			//! SELF HANDLING
 			copy.push_back(FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo()));
+			auto copy1 = copy;
 
 			auto cand = this->resolveFunctionCallFromCandidates(util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
@@ -177,8 +178,8 @@ namespace sst
 			// TODO: support re-eval of constructor args!
 			// TODO: support re-eval of constructor args!
 
-			// if(copy != arguments)
-			// 	error("args changed for constructor call -- fixme!!!");
+			if(copy1 != copy)
+				error("args changed for constructor call -- fixme!!!");
 
 			if(cand.isError())
 			{
@@ -209,21 +210,47 @@ namespace sst
 			auto unn = uvd->parentUnion;
 			iceAssert(unn);
 
-			auto unt = unn->type->toUnionType();
+			auto orig_unn = unn->original;
+			iceAssert(orig_unn);
 
-			iceAssert(unn->variants.find(name) != unn->variants.end());
-			auto uvl = unn->variants[name];
+			auto copy = arguments;
+			auto [ res, soln ] = poly::attemptToInstantiatePolymorph(this, orig_unn, name, /* gmaps: */ { }, /* return_infer: */ nullptr,
+				/* type_infer: */ nullptr, /* isFnCall: */ true, /* args: */ &copy, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
 
-			// ok, then. check the type + arguments.
-			std::vector<fir::LocatedType> target;
-			if(unt->getVariant(name)->getInteriorType()->isTupleType())
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
+			// TODO: support re-eval of constructor args!
+
+			if(copy != arguments)
+				error("args changed for constructor call -- fixme!!!");
+
+			if(res.isError() || (res.isDefn() && res.defn()->type->containsPlaceholders()))
 			{
-				for(auto t : unt->getVariant(name)->getInteriorType()->toTupleType()->getElements())
-					target.push_back(fir::LocatedType(t, uvl));
+				ErrorMsg* e = SimpleError::make(this->loc(), "unable to infer types for union '%s' using variant '%s'", unn->id.name, name);
+				if(res.isError())   res.error()->prepend(e);
+
+				return TCResult(e);
 			}
-			else if(!unt->getVariant(name)->getInteriorType()->isVoidType())
+
+			// make it so
+			unn = dcast(sst::UnionDefn, res.defn());
+			iceAssert(unn);
+
+			// re-do it.
+			uvd = unn->variants[name];
+			iceAssert(uvd);
+
+			auto vty = uvd->type->toUnionVariantType()->getInteriorType();
+
+			std::vector<fir::LocatedType> target;
+			if(vty->isTupleType())
 			{
-				target.push_back(fir::LocatedType(unt->getVariant(name)->getInteriorType(), uvl));
+				for(auto t : vty->toTupleType()->getElements())
+					target.push_back(fir::LocatedType(t, uvd->loc));
+			}
+			else if(!vty->isVoidType())
+			{
+				target.push_back(fir::LocatedType(vty, uvd->loc));
 			}
 
 			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(arguments, [](const FnCallArgument& fca) -> auto {

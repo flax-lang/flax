@@ -45,7 +45,8 @@ namespace poly
 		}
 
 
-		std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& partial)
+		std::pair<TCResult, Solution_t> solvePolymorphWithPlaceholders(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
+			const TypeParamMap_t& partial)
 		{
 			TypeParamMap_t copy = partial;
 
@@ -56,7 +57,7 @@ namespace poly
 					copy[p.first] = fir::PolyPlaceholderType::get(p.first, session);
 			}
 
-			return attemptToInstantiatePolymorph(fs, thing, copy, /* return_infer: */ 0, /* type_infer: */ 0,
+			return attemptToInstantiatePolymorph(fs, thing, name, copy, /* return_infer: */ 0, /* type_infer: */ 0,
 				/* isFnCall: */ false, /* args: */ { }, /* fillplaceholders: */ false);
 		}
 	}
@@ -66,16 +67,16 @@ namespace poly
 
 
 
-	std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& _gmaps,
-		fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args, bool fillplaceholders,
-		fir::Type* problem_infer)
+	std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
+		const TypeParamMap_t& _gmaps, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args,
+		bool fillplaceholders, fir::Type* problem_infer)
 	{
 		if(!isFnCall && type_infer == 0 && fillplaceholders)
-			return internal::solvePolymorphWithPlaceholders(fs, thing, _gmaps);
+			return internal::solvePolymorphWithPlaceholders(fs, thing, name, _gmaps);
 
 		// used below.
 		std::unordered_map<std::string, size_t> origParamOrder;
-		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
+		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, name, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
 			problem_infer, &origParamOrder);
 
 		if(err) return { TCResult(err), soln };

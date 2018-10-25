@@ -89,7 +89,7 @@ namespace resolver
 						iceAssert(fd->original);
 
 						// do an inference -- with the arguments that we have.
-						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, gmaps, /* return_infer: */ return_infer,
+						auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, fn->id.name, gmaps, /* return_infer: */ return_infer,
 							/* type_infer: */ nullptr, /* isFnCall: */ true, &replacementArgs, /* fillPlacholders: */ false,
 							/* problem_infer: */ fn->type);
 
