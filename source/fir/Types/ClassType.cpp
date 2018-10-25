@@ -34,11 +34,7 @@ namespace fir
 
 	ClassType* ClassType::createWithoutBody(const Identifier& name)
 	{
-		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Class with name '%s' already exists", name.str());
-
-		else
-			return (typeCache[name] = new ClassType(name, { }, { }, { }));
+		return ClassType::create(name, { }, { }, { });
 	}
 
 

@@ -536,7 +536,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			ret = dot->right->typecheck(fs).expr();
 
 			//* special-case this thing. if we don't do this, then 'ret' is just a normal VarRef,
-			//* which during codegen will try to trigger the codegne for the UnionVariantDefn,
+			//* which during codegen will try to trigger the codegen for the UnionVariantDefn,
 			//* which returns 0 (because there's really nothing to define at code-gen time)
 
 			//? note: ret->type can be null if we're in the middle of a namespace dot-op,
@@ -617,9 +617,11 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))
 			{
+				bool wasfncall = false;
 				std::string name;
 				if(auto fc = dcast(ast::FunctionCall, dot->right))
 				{
+					wasfncall = true;
 					name = fc->name;
 				}
 				else if(auto id = dcast(ast::Ident, dot->right))
@@ -636,8 +638,20 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				if(!unn->type->toUnionType()->hasVariant(name))
 				{
 					SimpleError::make(dot->right->loc, "union '%s' has no variant '%s'", unn->id.name, name)
-						->append(SimpleError::make(MsgType::Note, unn->loc, "Union was defined here:"))
+						->append(SimpleError::make(MsgType::Note, unn->loc, "union was defined here:"))
 						->postAndQuit();
+				}
+				else if(!wasfncall && unn->type->containsPlaceholders() && infer == nullptr)
+				{
+					SimpleError::make(dot->right->loc,
+						"unable to resolve type parameters for polymorphic union '%s' using variant '%s' (which has no values)",
+						unn->id.name, name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();
+				}
+				else if(wasfncall && unn->type->toUnionType()->getVariants()[name]->getInteriorType()->isVoidType())
+				{
+					SimpleError::make(dot->right->loc,
+						"variant '%s' of union does not have values, and cannot be constructed via function-call",
+						name, unn->id.name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();
 				}
 
 				// dot-op on the union to access its variants; we need constructor stuff for it.

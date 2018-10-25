@@ -96,7 +96,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				iceAssert(fd);
 
 				std::vector<FnCallArgument> infer_args;
-				auto [ res, soln ] = sst::poly::attemptToInstantiatePolymorph(fs, fd->original, { }, /* return_infer: */ nullptr,
+				auto [ res, soln ] = sst::poly::attemptToInstantiatePolymorph(fs, fd->original, fd->id.name, { }, /* return_infer: */ nullptr,
 					/* type_infer: */ infer, /* isFnCall: */ false, &infer_args, /* fillPlacholders: */ false,
 					/* problem_infer: */ def->type);
 

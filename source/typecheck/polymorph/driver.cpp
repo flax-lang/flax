@@ -33,7 +33,7 @@ namespace poly
 
 		for(const auto& gdef : gdefs)
 		{
-			pots.push_back(attemptToInstantiatePolymorph(fs, gdef, _gmaps, return_infer, type_infer, isFnCall, args,
+			pots.push_back(attemptToInstantiatePolymorph(fs, gdef, name, _gmaps, return_infer, type_infer, isFnCall, args,
 				/* fillplaceholders: */ true));
 		}
 
@@ -46,9 +46,9 @@ namespace poly
 
 	namespace internal
 	{
-		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicType(TypecheckState* fs, ast::TypeDefn* td, const ProblemSpace_t& problems,
-			const std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
-			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
+		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicType(TypecheckState* fs, ast::TypeDefn* td, const std::string& name,
+			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* return_infer,
+			fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
 		{
 			auto soln = Solution_t(partial);
 
@@ -56,13 +56,65 @@ namespace poly
 			{
 				if(auto missing = getMissingSolutions(problems, soln.solutions, true); missing.size() > 0)
 				{
-					auto ret = solvePolymorphWithPlaceholders(fs, td, partial);
+					auto ret = solvePolymorphWithPlaceholders(fs, td, name, partial);
 					return { ret.second, nullptr };
 				}
 				else
 				{
 					return { soln, nullptr };
 				}
+			}
+			else if(auto unn = dcast(ast::UnionDefn, td))
+			{
+				iceAssert(unn->cases.find(name) != unn->cases.end());
+				auto uvloc = std::get<1>(unn->cases[name]);
+
+				int session = getNextSessionId();
+				fir::Type* vty = convertPtsType(fs, unn->generics, std::get<2>(unn->cases[name]), session);
+
+				// ok, then. check the type + arguments.
+				std::vector<fir::LocatedType> target;
+				if(vty->isTupleType())
+				{
+					for(auto t : vty->toTupleType()->getElements())
+						target.push_back(fir::LocatedType(t, uvloc));
+				}
+				else if(!vty->isVoidType())
+				{
+					target.push_back(fir::LocatedType(vty, uvloc));
+				}
+
+				auto given = util::map(input, [](const FnCallArgument& fca) -> fir::LocatedType {
+					return fir::LocatedType(fca.value->type, fca.loc);
+				});
+
+				return solveTypeList(target, given, soln, isFnCall);
+			}
+			else if(auto cls = dcast(ast::ClassDefn, td))
+			{
+				std::unordered_map<std::string, size_t> paramOrder;
+
+				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
+				for(auto init : cls->initialisers)
+				{
+					rets.push_back(inferTypesForPolymorph(fs, init, name, cls->generics, input, partial, return_infer, type_infer, isFnCall,
+						problem_infer, &paramOrder));
+				}
+
+				// check the distance of all the solutions... i guess?
+				std::pair<Solution_t, ErrorMsg*> best;
+				best.first = soln;
+				best.first.distance = INT_MAX;
+				best.second = SimpleError::make(fs->loc(), "ambiguous reference to constructor of class '%s'", cls->name);
+
+				for(const auto& r : rets)
+				{
+					if(r.first.distance < best.first.distance && r.second == nullptr)
+						best = r;
+				}
+
+				*origParamOrder = paramOrder;
+				return best;
 			}
 			else if(auto str = dcast(ast::StructDefn, td))
 			{
@@ -96,32 +148,6 @@ namespace poly
 				*origParamOrder = fieldNames;
 				return solveTypeList(target, given, soln, isFnCall);
 			}
-			else if(auto cls = dcast(ast::ClassDefn, td))
-			{
-				std::unordered_map<std::string, size_t> paramOrder;
-
-				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
-				for(auto init : cls->initialisers)
-				{
-					rets.push_back(inferTypesForPolymorph(fs, init, cls->generics, input, partial, return_infer, type_infer, isFnCall,
-						problem_infer, &paramOrder));
-				}
-
-				// check the distance of all the solutions... i guess?
-				std::pair<Solution_t, ErrorMsg*> best;
-				best.first = soln;
-				best.first.distance = INT_MAX;
-				best.second = SimpleError::make(fs->loc(), "ambiguous reference to constructor of class '%s'", cls->name);
-
-				for(const auto& r : rets)
-				{
-					if(r.first.distance < best.first.distance && r.second == nullptr)
-						best = r;
-				}
-
-				*origParamOrder = paramOrder;
-				return best;
-			}
 			else
 			{
 				error("no");
@@ -131,7 +157,7 @@ namespace poly
 
 
 
-		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing,
+		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer,
 			std::unordered_map<std::string, size_t>* origParamOrder)
@@ -220,18 +246,18 @@ namespace poly
 
 
 
-		std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing,
+		std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
 			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
 		{
 			if(auto td = dcast(ast::TypeDefn, thing))
 			{
-				return inferPolymorphicType(fs, td, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
+				return inferPolymorphicType(fs, td, name, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
 			}
 			else if(dcast(ast::FuncDefn, thing) || dcast(ast::InitFunctionDefn, thing))
 			{
-				return inferPolymorphicFunction(fs, thing, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
+				return inferPolymorphicFunction(fs, thing, name, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
 			}
 			else
 			{

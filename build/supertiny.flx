@@ -30,28 +30,31 @@ import "libc" as _
 	}
 @entry fn main()
 {
-	// do {
-	// 	class Foo<T>
-	// 	{
-	// 		init() { }
-	// 		static fn bar(x: T) { printf("x = %d\n", x) }
-	// 	}
+	do {
+		class Foo<T>
+		{
+			init() { }
+			static fn bar(x: T) { printf("x = %d\n", x) }
+		}
 
-	// 	Foo.bar(30)
-	// }
+		Foo.bar(30)
+		Foo.bar(40)
+		Foo.bar(50)
+	}
 
-	// union Foo<T>
-	// {
-	// 	some: T
-	// 	none
-	// }
+	union Foo<T>
+	{
+		some: T
+		none
+	}
 
+	let n: Foo<T: int> = Foo.none
 	// let s = Foo.some(301)
-	// println("s = %", s as Foo<T: int>.some)
+	// printf("s = %d\n", s as Foo<T: int>.some)
 
 
-	let f = xxx.Foo(30, 40)
-	printf("f.aaa = %d, f.bbb = %d\n", f.aaa, f.bbb)
+	// let f = xxx.Foo(30, 40)
+	// printf("f.aaa = %d, f.bbb = %d\n", f.aaa, f.bbb)
 }
 
 

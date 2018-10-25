@@ -365,6 +365,7 @@ namespace fir
 		else if(ty->isArraySliceType())     return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isDynamicArrayType())   return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen, found);
+		else if(ty->isUnionVariantType())   return _containsPlaceholders(ty->toUnionVariantType()->getInteriorType(), seen, found);
 		else if(ty->isTupleType())
 		{
 			bool res = false;
@@ -394,6 +395,14 @@ namespace fir
 			bool res = ty->toFunctionType()->getReturnType()->containsPlaceholders();
 			for(auto t : ty->toFunctionType()->getArgumentTypes())
 				res |= _containsPlaceholders(t, seen, found);
+
+			return res;
+		}
+		else if(ty->isUnionType())
+		{
+			bool res = false;
+			for(auto t : ty->toUnionType()->getVariants())
+				res |= _containsPlaceholders(t.second, seen, found);
 
 			return res;
 		}
