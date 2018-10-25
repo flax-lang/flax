@@ -137,7 +137,8 @@ namespace poly
 		}
 		else
 		{
-			return std::make_pair(TCResult(err->append(d.error())), soln);
+			iceAssert(d.isError());
+			return std::make_pair(TCResult(d.error()), soln);
 		}
 	}
 
@@ -202,10 +203,13 @@ namespace poly
 			self_infer = res.defn()->type;
 		}
 
-		auto ret = dcast(Defn, thing->typecheck(fs, self_infer, mappings).defn());
-		iceAssert(ret);
+		if(auto missing = internal::getMissingSolutions(thing->generics, mappings, true); missing.size() > 0)
+		{
+			auto mstr = util::listToEnglish(missing);
+			return TCResult(SimpleError::make(fs->loc(), "type %s %s could not be inferred", util::plural("parameter", missing.size()), mstr));
+		}
 
-		return TCResult(ret);
+		return thing->typecheck(fs, self_infer, mappings);
 	}
 }
 }

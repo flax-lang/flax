@@ -243,6 +243,7 @@ namespace parser
 				error(st.loc(), "expected newline after union variant");
 			}
 
+			if(type == nullptr) type = pts::NamedType::create(VOID_TYPE_STRING);
 			defn->cases[name] = { index, loc, type };
 
 			// do some things
