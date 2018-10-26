@@ -67,7 +67,7 @@ static void _printTiming(T ts, const std::string& thing)
 {
 	auto dur = std::chrono::high_resolution_clock::now() - ts;
 	auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	fprintf(stderr, "%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+	printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
 }
 
 namespace backend
@@ -208,7 +208,7 @@ namespace backend
 			auto entry = this->getEntryFunctionFromJIT();
 
 			_printTiming(ts, "llvm jit");
-			fprintf(stderr, "\n");
+			printf("\n");
 
 			iceAssert(this->jitInstance);
 			entry(1, &argv);
