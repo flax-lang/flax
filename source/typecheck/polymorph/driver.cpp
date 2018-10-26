@@ -64,32 +64,6 @@ namespace poly
 					return { soln, nullptr };
 				}
 			}
-			else if(auto unn = dcast(ast::UnionDefn, td))
-			{
-				iceAssert(unn->cases.find(name) != unn->cases.end());
-				auto uvloc = std::get<1>(unn->cases[name]);
-
-				int session = getNextSessionId();
-				fir::Type* vty = convertPtsType(fs, unn->generics, std::get<2>(unn->cases[name]), session);
-
-				// ok, then. check the type + arguments.
-				std::vector<fir::LocatedType> target;
-				if(vty->isTupleType())
-				{
-					for(auto t : vty->toTupleType()->getElements())
-						target.push_back(fir::LocatedType(t, uvloc));
-				}
-				else if(!vty->isVoidType())
-				{
-					target.push_back(fir::LocatedType(vty, uvloc));
-				}
-
-				auto given = util::map(input, [](const FnCallArgument& fca) -> fir::LocatedType {
-					return fir::LocatedType(fca.value->type, fca.loc);
-				});
-
-				return solveTypeList(target, given, soln, isFnCall);
-			}
 			else if(auto cls = dcast(ast::ClassDefn, td))
 			{
 				std::unordered_map<std::string, size_t> paramOrder;
@@ -118,6 +92,10 @@ namespace poly
 			}
 			else if(auto str = dcast(ast::StructDefn, td))
 			{
+				//* for constructors, we look like a function call, so type_infer is actually return_infer.
+				if(!type_infer && return_infer)
+					std::swap(type_infer, return_infer);
+
 				std::set<std::string> fieldset;
 				std::unordered_map<std::string, size_t> fieldNames;
 				{
@@ -128,6 +106,30 @@ namespace poly
 						fieldNames[f->name] = i++;
 					}
 				}
+
+				//! ACHTUNG !
+				// TODO: deconstruct 'type_infer' to get us the inference information
+				// for cases like this: let x: Foo<int> = Foo()
+				// usually we'd complain that we don't have enough information to solve `Foo()` (which isn't wrong)
+				// but we want to use the infer-info from the VarDefn to help us solve.
+
+				//? same thing applies to the union stuff below.
+				if(type_infer)
+				{
+					auto gen_str = fs->typeDefnMap[type_infer];
+					iceAssert(gen_str);
+
+					for(const auto& v : str->genericVersions)
+					{
+						if(v.first == gen_str)
+						{
+							return inferPolymorphicType(fs, str, name, problems, input, v.second.back(), /* return_infer: */ nullptr,
+								/* type_infer: */ nullptr, isFnCall, problem_infer, origParamOrder);
+						}
+					}
+				}
+
+
 
 				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset, input);
 				if(err) return { soln, err };
@@ -146,6 +148,36 @@ namespace poly
 				}
 
 				*origParamOrder = fieldNames;
+				return solveTypeList(target, given, soln, isFnCall);
+			}
+			else if(auto unn = dcast(ast::UnionDefn, td))
+			{
+				//* for constructors, we look like a function call, so type_infer is actually return_infer.
+				if(!type_infer && return_infer)
+					std::swap(type_infer, return_infer);
+
+				iceAssert(unn->cases.find(name) != unn->cases.end());
+				auto uvloc = std::get<1>(unn->cases[name]);
+
+				int session = getNextSessionId();
+				fir::Type* vty = convertPtsType(fs, unn->generics, std::get<2>(unn->cases[name]), session);
+
+				// ok, then. check the type + arguments.
+				std::vector<fir::LocatedType> target;
+				if(vty->isTupleType())
+				{
+					for(auto t : vty->toTupleType()->getElements())
+						target.push_back(fir::LocatedType(t, uvloc));
+				}
+				else if(!vty->isVoidType())
+				{
+					target.push_back(fir::LocatedType(vty, uvloc));
+				}
+
+				auto given = util::map(input, [](const FnCallArgument& fca) -> fir::LocatedType {
+					return fir::LocatedType(fca.value->type, fca.loc);
+				});
+
 				return solveTypeList(target, given, soln, isFnCall);
 			}
 			else
