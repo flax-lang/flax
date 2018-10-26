@@ -104,6 +104,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(DEPS_DBG_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4099</AdditionalOptions>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -146,6 +147,7 @@ rem exit 0</Command>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(DEPS_REL_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4099</AdditionalOptions>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -188,6 +190,7 @@ rem exit 0</Command>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(DEPS_REL_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/ignore:4099</AdditionalOptions>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
