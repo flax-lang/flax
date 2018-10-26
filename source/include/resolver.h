@@ -41,7 +41,7 @@ namespace sst
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
-			fir::Type* return_infer);
+			fir::Type* return_infer, bool isFnCall);
 
 
 		namespace misc
