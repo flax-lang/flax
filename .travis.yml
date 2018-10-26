@@ -22,8 +22,8 @@ addons:
         - libllvm6.0
         - libmpfr-dev
         - libmpfr4
-	homebrew:
-    	packages:
+    homebrew:
+        packages:
         - llvm@6
         update: true
 
