@@ -94,7 +94,7 @@ namespace sst
 
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
-			fir::Type* union_infer)
+			fir::Type* union_infer, bool isFnCall)
 		{
 			auto name = uvd->id.name;
 
@@ -105,7 +105,7 @@ namespace sst
 			iceAssert(orig_unn);
 
 			auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, orig_unn, name, /* gmaps: */ { }, /* return_infer */ nullptr,
-				/* type_infer: */ union_infer, /* isFnCall: */ true, arguments, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
+				/* type_infer: */ union_infer, isFnCall, arguments, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
 
 			if(res.isError() || (res.isDefn() && res.defn()->type->containsPlaceholders()))
 			{

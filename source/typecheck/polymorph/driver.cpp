@@ -52,7 +52,7 @@ namespace poly
 		{
 			auto soln = Solution_t(partial);
 
-			if(!isFnCall)
+			if(!isFnCall && !type_infer)
 			{
 				if(auto missing = getMissingSolutions(problems, soln.solutions, true); missing.size() > 0)
 				{
