@@ -15,13 +15,13 @@ install:
   # download our deps.
   - ps: "[Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'"
   - ps: Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
-  - cmd: 7z x -y -oc:\projects\lib c:\projects\libs.zip
+  - ps: 7z x -y -oc:\projects\lib c:\projects\libs.zip
 
 
 build_script:
-  - cmd: msbuild -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
+  - ps: msbuild -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
 
 test_script:
-  - cmd: cd c:\projects\flax
-  - cmd: robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /ns /np
-  - cmd: build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
+  - ps: cd c:\projects\flax
+  - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs
+  - ps: build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
