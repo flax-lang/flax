@@ -23,5 +23,5 @@ build_script:
 
 test_script:
   - ps: cd c:\projects\flax
-  - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs
+  - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
   - ps: build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
