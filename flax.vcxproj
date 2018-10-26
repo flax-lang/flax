@@ -50,9 +50,18 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+  	<DEPS_DBG_INCLUDES_DIR Condition="'$(DEPS_DBG_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\DebugNoSyms\include;D:\Projects\lib\mpfr\DebugNoSyms\include;D:\Projects\lib\llvm\DebugNoSyms\include
+    </DEPS_DBG_INCLUDES_DIR>
+    <DEPS_DBG_LIBS_DIR Condition="'$(DEPS_DBG_LIBS_DIR)' == ''">D:\Projects\lib\mpir\DebugNoSyms\lib;D:\Projects\lib\mpfr\DebugNoSyms\lib;D:\Projects\lib\llvm\DebugNoSyms\lib
+		</DEPS_DBG_LIBS_DIR>
+  	<DEPS_REL_INCLUDES_DIR Condition="'$(DEPS_REL_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\Release\include;D:\Projects\lib\mpfr\Release\include;D:\Projects\lib\llvm\Release\include
+    </DEPS_REL_INCLUDES_DIR>
+    <DEPS_REL_LIBS_DIR Condition="'$(DEPS_REL_LIBS_DIR)' == ''">D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\Release\lib
+		</DEPS_REL_LIBS_DIR>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)source\include;$(SolutionDir)external;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
@@ -62,48 +71,19 @@
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
-    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)source\include;$(SolutionDir)external;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
-    <IncludePath>D:\Projects\flax\source\include;D:\Projects\flax\external;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)source\include;$(SolutionDir)external;$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <!-- <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <WarningLevel>All</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <Optimization>Disabled</Optimization>
-    </ClCompile>
-    <Link>
-      <TargetMachine>MachineX86</TargetMachine>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <WarningLevel>All</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <TargetMachine>MachineX86</TargetMachine>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup> -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Projects\flax\source\include;D:\Projects\lib\mpir\Debug\include;D:\Projects\lib\mpfr\Debug\include;D:\Projects\lib\llvm\Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)source\include;$(DEPS_DBG_INCLUDES_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>precompile.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
@@ -120,7 +100,7 @@
       <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Debug\lib;D:\Projects\lib\mpfr\Debug\lib;D:\Projects\lib\llvm\Debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(DEPS_DBG_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -145,7 +125,7 @@ rem exit 0</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Projects\flax\source\include;D:\Projects\lib\mpir\Release\include;D:\Projects\lib\mpfr\Release\include;D:\Projects\lib\llvm\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)source\include;$(DEPS_REL_INCLUDES_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>precompile.h</PrecompiledHeaderFile>
@@ -162,7 +142,7 @@ rem exit 0</Command>
       <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(DEPS_REL_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -187,7 +167,7 @@ rem exit 0</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Projects\flax\source\include;D:\Projects\lib\mpir\Release\include;D:\Projects\lib\mpfr\Release\include;D:\Projects\lib\llvm\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)source\include;$(DEPS_REL_INCLUDES_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>precompile.h</PrecompiledHeaderFile>
@@ -204,7 +184,7 @@ rem exit 0</Command>
       <AdditionalOptions>/we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\Release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(DEPS_REL_LIBS_DIR);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Link>
       <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
