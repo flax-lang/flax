@@ -25,7 +25,7 @@ addons:
 	homebrew:
     	packages:
         - llvm@6
-        - mpfr
+        update: true
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
