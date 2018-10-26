@@ -3,8 +3,6 @@ image: Visual Studio 2017
 clone_folder: c:\projects\flax
 
 environment:
-	arch: x64
-  compiler: msvc2017
   global:
     DEPS_DBG_INCLUDES_DIR:  c:\projects\lib\mpir\DebugNoSyms\include;c:\projects\lib\mpfr\DebugNoSyms\include;c:\projects\lib\llvm\DebugNoSyms\include
     DEPS_REL_INCLUDES_DIR:  c:\projects\lib\mpir\Release\include;c:\projects\lib\mpfr\Release\include;c:\projects\lib\llvm\Release\include
