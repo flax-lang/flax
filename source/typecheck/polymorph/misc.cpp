@@ -194,6 +194,10 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 			return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
 		};
 
+		auto currentGCS = fs->getGenericContextStack();
+		if(!gmaps.empty())
+			currentGCS.push_back(gmaps);
+
 		for(const auto& gv : this->genericVersions)
 		{
 			//* note!! Defn::type can be null for enums -- we need to find a way to prevent this!!
@@ -201,7 +205,7 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 			// TODO: prevent this!!
 			// TODO: prevent this!!
 			// TODO: prevent this!!
-			if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack() + gmaps))
+			if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, currentGCS))
 				return { true, gv.first };
 		}
 
