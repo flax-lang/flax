@@ -23,4 +23,5 @@ build_script:
 
 test_script:
   - cmd: cd c:\projects\flax
+  - cmd: robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /nfl /ndl /njh /njs /nc /ns /np
   - cmd: build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
