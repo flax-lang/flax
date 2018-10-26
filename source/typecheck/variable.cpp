@@ -101,27 +101,20 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				auto uvd = dcast(sst::UnionVariantDefn, def);
 				iceAssert(uvd);
 
-				std::vector<FnCallArgument> fake_args;
-				auto res = sst::resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &fake_args, infer, /* isFnCall: */ false);
+				if(uvd->type->containsPlaceholders() || uvd->parentUnion->type->containsPlaceholders())
+				{
+					std::vector<FnCallArgument> fake_args;
+					auto res = sst::resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &fake_args, infer,
+						/* isFnCall: */ uvd->type->toUnionVariantType()->getInteriorType()->isVoidType() ? true : false);
 
-				if(res.isError())
-					return TCResult(res);
+					if(res.isError())
+						return TCResult(res);
 
-				// update uvd
-				uvd = dcast(sst::UnionVariantDefn, res.defn());
+					// update uvd
+					uvd = dcast(sst::UnionVariantDefn, res.defn());
+				}
+
 				return returnResult(uvd->parentUnion, implicit);
-
-				// //* copy-paste from typecheck/call.cpp
-				// auto unn = uvd->parentUnion;
-				// iceAssert(unn);
-
-				// auto ret = util::pool<sst::UnionVariantConstructor>(this->loc, unn->type);
-
-				// ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
-				// ret->parentUnion = unn;
-				// ret->args = { };
-
-				// return TCResult(ret);
 			}
 			else if(infer && def->type->containsPlaceholders())
 			{

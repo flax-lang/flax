@@ -54,7 +54,7 @@ struct Bar<T>
 
 	// printf("%d, %d\n", q.aaa, q.bbb)
 
-	let n: Foo<T: int> = Foo.none
+	// let n: Foo<T: int> = Foo.none
 	let s = Foo.some(301)
 	printf("s = %d\n", s as Foo<T: int>.some)
 
@@ -78,6 +78,12 @@ struct Bar<T>
 
 
 /*
+	! even more
+	! 26/10
+	{
+		1. scopes are a bit screwed up when we instantiate things while in a dotop -- see generic unions for an example.
+	}
+
 	! more things.
 	! caa 03/10
 	{
@@ -111,37 +117,37 @@ struct Bar<T>
 			- do we duplicate the context?
 			- if not then???
 	}
-	12. allow generic solver to infer things from generic types passed in {
-		eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
-		foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
-	}
+	// 12. allow generic solver to infer things from generic types passed in {
+	// 	eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
+	// 	foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
+	// }
 	15. builtin way to get a character literal {
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
 	}
 	// 17. refcounted moving is broken -- not sure if design flaw or not. investigate.
-	18. generic unions {
-		currently they work okay, but it's very troublesome to unwrap, construct or declare them, because you need to
-		explicitly state the type of the union.
+	// 18. generic unions {
+	// 	currently they work okay, but it's very troublesome to unwrap, construct or declare them, because you need to
+	// 	explicitly state the type of the union.
 
-		given that we just managed to do the thing where we can infer generic types from constructor arguments, we should be
-		able to do a similar thing for this case.
+	// 	given that we just managed to do the thing where we can infer generic types from constructor arguments, we should be
+	// 	able to do a similar thing for this case.
 
-		the problem here is that we need to be able to turn `Option<T: int>.Some(...)` into `Option.Some(...)`, but when we
-		just access `Option` directly without type arguments, we will get yelled at by the typechecker.
+	// 	the problem here is that we need to be able to turn `Option<T: int>.Some(...)` into `Option.Some(...)`, but when we
+	// 	just access `Option` directly without type arguments, we will get yelled at by the typechecker.
 
-		the alternative to this problem is just to disallow inference when doing it like this. then, inference is only enabled
-		when we `use` the union:
+	// 	the alternative to this problem is just to disallow inference when doing it like this. then, inference is only enabled
+	// 	when we `use` the union:
 
-		```
-		using Option
+	// 	```
+	// 	using Option
 
-		let x = Some(30)
-		let y = None
-		```
+	// 	let x = Some(30)
+	// 	let y = None
+	// 	```
 
-		on this hand, we will also need to somehow allow `using` a generic union without specifying its type... bah.
-	}
+	// 	on this hand, we will also need to somehow allow `using` a generic union without specifying its type... bah.
+	// }
 	19. using for unions (see 18 for some issues re: generic types)
 */
 
