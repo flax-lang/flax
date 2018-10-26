@@ -9,6 +9,9 @@ environment:
     DEPS_DBG_LIBS_DIR:      c:\projects\lib\mpir\DebugNoSyms\lib;c:\projects\lib\mpfr\DebugNoSyms\lib;c:\projects\lib\llvm\DebugNoSyms\lib
     DEPS_REL_LIBS_DIR:      c:\projects\lib\mpir\Release\lib;c:\projects\lib\mpfr\Release\lib;c:\projects\lib\llvm\Release\lib
 
+cache:
+  - c:\projects\lib -> appveyor.yml
+
 install:
   # Set up the build environment
   - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
@@ -19,7 +22,7 @@ install:
 
 
 build_script:
-  - ps: msbuild -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
+  - ps: msbuild -maxcpucount -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
 
 test_script:
   - ps: cd c:\projects\flax
