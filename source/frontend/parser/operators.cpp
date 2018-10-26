@@ -108,42 +108,43 @@ namespace parser
 
 		switch(tok_op.type)
 		{
-			case TT::Plus:              return "+";
-			case TT::Minus:             return "-";
-			case TT::Asterisk:          return "*";
-			case TT::Divide:            return "/";
-			case TT::Percent:           return "%";
-			case TT::ShiftLeft:         return "<<";
-			case TT::ShiftRight:        return ">>";
-			case TT::Equal:             return "=";
+			case TT::Plus:              return Operator::Plus;
+			case TT::Minus:             return Operator::Minus;
+			case TT::Asterisk:          return Operator::Multiply;
+			case TT::Divide:            return Operator::Divide;
+			case TT::Percent:           return Operator::Modulo;
+			case TT::ShiftLeft:         return Operator::BitwiseShiftLeft;
+			case TT::ShiftRight:        return Operator::BitwiseShiftRight;
+			case TT::Equal:             return Operator::Assign;
 
-			case TT::LAngle:            return "<";
-			case TT::RAngle:            return ">";
-			case TT::LessThanEquals:    return "<=";
-			case TT::GreaterEquals:     return ">=";
-			case TT::EqualsTo:          return "==";
-			case TT::NotEquals:         return "!=";
+			case TT::LAngle:            return Operator::CompareLT;
+			case TT::RAngle:            return Operator::CompareGT;
+			case TT::LessThanEquals:    return Operator::CompareLEQ;
+			case TT::GreaterEquals:     return Operator::CompareGEQ;
+			case TT::EqualsTo:          return Operator::CompareEQ;
+			case TT::NotEquals:         return Operator::CompareNEQ;
 
-			case TT::Ampersand:         return "&";
-			case TT::Pipe:              return "|";
-			case TT::Caret:             return "^";
-			case TT::LogicalOr:         return "||";
-			case TT::LogicalAnd:        return "&&";
+			case TT::Ampersand:         return Operator::BitwiseAnd;
+			case TT::Pipe:              return Operator::BitwiseOr;
+			case TT::Caret:             return Operator::BitwiseXor;
+			case TT::LogicalOr:         return Operator::LogicalOr;
+			case TT::LogicalAnd:        return Operator::LogicalAnd;
 
-			case TT::PlusEq:            return "+=";
-			case TT::MinusEq:           return "-=";
-			case TT::MultiplyEq:        return "*=";
-			case TT::DivideEq:          return "/=";
-			case TT::ModEq:             return "%=";
-			case TT::ShiftLeftEq:       return "<<=";
-			case TT::ShiftRightEq:      return ">>=";
-			case TT::AmpersandEq:       return "&=";
-			case TT::PipeEq:            return "|=";
-			case TT::CaretEq:           return "^=";
+			case TT::PlusEq:            return Operator::PlusEquals;
+			case TT::MinusEq:           return Operator::MinusEquals;
+			case TT::MultiplyEq:        return Operator::MultiplyEquals;
+			case TT::DivideEq:          return Operator::DivideEquals;
+			case TT::ModEq:             return Operator::ModuloEquals;
+			case TT::ShiftLeftEq:       return Operator::BitwiseShiftLeftEquals;
+			case TT::ShiftRightEq:      return Operator::BitwiseShiftRightEquals;
+			case TT::AmpersandEq:       return Operator::BitwiseAndEquals;
+			case TT::PipeEq:            return Operator::BitwiseOrEquals;
+			case TT::CaretEq:           return Operator::BitwiseXorEquals;
+
+			case TT::As:                return Operator::TypeCast;
+			case TT::Is:                return Operator::TypeIs;
 
 			case TT::Period:            return ".";
-			case TT::As:                return "as";
-			case TT::Is:                return "is";
 			case TT::At:                return "@";
 
 			case TT::Ellipsis:          return "...";

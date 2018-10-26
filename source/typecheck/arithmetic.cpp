@@ -239,7 +239,10 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	}
 	else
 	{
+		this->right->checkAsType = true;
 		r = this->right->typecheck(fs, inferred).expr();
+		if(this->op == Operator::TypeCast)
+			r = util::pool<sst::TypeExpr>(r->loc, r->type);
 	}
 
 	iceAssert(l && r);
@@ -333,7 +336,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else if(this->op == Operator::PointerDeref)
 	{
 		if(!t->isPointerType())
-			error(this, "invalid use of derefernce operator '*' on non-pointer type '%s'", t);
+			error(this, "invalid use of dereference operator '*' on non-pointer type '%s'", t);
 
 		out = t->getPointerElementType();
 	}

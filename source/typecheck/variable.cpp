@@ -21,7 +21,12 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->name == "_")
 		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
 
-	auto returnResult = [this](sst::Defn* def, bool implicit = false) -> TCResult {
+	if(auto builtin = fir::Type::fromBuiltin(this->name))
+		return TCResult(util::pool<sst::TypeExpr>(this->loc, builtin));
+
+
+
+	auto getResult = [this](sst::Defn* def, bool implicit = false) -> TCResult {
 		auto ret = util::pool<sst::VarRef>(this->loc, def->type);
 		ret->name = this->name;
 		ret->def = def;
@@ -60,7 +65,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			for(auto v : vs)
 			{
 				if(v->type == infer)
-					return returnResult(v);
+					return getResult(v);
 			}
 
 			auto errs = SimpleError::make(this->loc, "no definition of '%s' matching type '%s'", this->name, infer);
@@ -94,7 +99,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			if(auto treedef = dcast(sst::TreeDefn, def))
 			{
-				return returnResult(treedef, false);
+				return getResult(treedef, false);
 			}
 			else if(def->type->isUnionVariantType())
 			{
@@ -105,7 +110,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				{
 					std::vector<FnCallArgument> fake_args;
 					auto res = sst::resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &fake_args, infer,
-						/* isFnCall: */ uvd->type->toUnionVariantType()->getInteriorType()->isVoidType() ? true : false);
+						/* isFnCall: */ /* uvd->type->toUnionVariantType()->getInteriorType()->isVoidType() ? true :  */ false);
 
 					if(res.isError())
 						return TCResult(res);
@@ -114,7 +119,21 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					uvd = dcast(sst::UnionVariantDefn, res.defn());
 				}
 
-				return returnResult(uvd->parentUnion, implicit);
+				// see the explanation in ast.h for this flag.
+				if(this->checkAsType)
+				{
+					return getResult(uvd, implicit);
+				}
+				else
+				{
+					auto ret = util::pool<sst::UnionVariantConstructor>(this->loc, uvd->parentUnion->type);
+
+					ret->variantId = uvd->parentUnion->type->toUnionType()->getIdOfVariant(uvd->id.name);
+					ret->parentUnion = uvd->parentUnion;
+					ret->args = { };
+
+					return TCResult(ret);
+				}
 			}
 			else if(infer && def->type->containsPlaceholders())
 			{
@@ -130,10 +149,10 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return TCResult(res);
 
 				else
-					return returnResult(res.defn(), implicit);
+					return getResult(res.defn(), implicit);
 			}
 
-			return returnResult(def, implicit);
+			return getResult(def, implicit);
 		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
@@ -154,7 +173,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			{
 				iceAssert(pots.size() == 1);
 				if(pots[0].first.isDefn())
-					return returnResult(pots[0].first.defn());
+					return getResult(pots[0].first.defn());
 
 				else
 					return pots[0].first;

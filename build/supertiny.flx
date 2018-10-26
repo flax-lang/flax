@@ -48,31 +48,23 @@ struct Bar<T>
 		none
 	}
 
-	// var q: Bar<T: int> = Bar()
-	// q.aaa = 30
-	// q.bbb = 73
 
-	// printf("%d, %d\n", q.aaa, q.bbb)
-
-	// let n: Foo<T: int> = Foo.none
+	let n: Foo<T: int> = Foo.none
 	let s = Foo.some(301)
 	printf("s = %d\n", s as Foo<T: int>.some)
 
-	// union Bar
-	// {
-	// 	some: str
-	// 	other: int
-	// 	none
-	// }
+	union Bar
+	{
+		some: str
+		other: int
+		none
+	}
 
-	// let q = Bar.some("hello")
-	// let v = Bar.other(30)
-	// let m = Bar.none
+	let q = Bar.some("hello")
+	let v = Bar.other(30)
+	let m = Bar.none
 
-	// printf("q = %s, v = %d\n", q as Bar.some, v as Bar.other)
-
-	// let f = xxx.Foo(30, 40)
-	// printf("f.aaa = %d, f.bbb = %d\n", f.aaa, f.bbb)
+	printf("q = %s, v = %d\n", q as Bar.some, v as Bar.other)
 }
 
 

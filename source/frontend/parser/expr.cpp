@@ -395,7 +395,8 @@ namespace parser
 				}
 				else
 				{
-					rhs = util::pool<TypeExpr>(loc, parseType(st));
+					// rhs = util::pool<TypeExpr>(loc, parseType(st));
+					rhs = parseExpr(st);
 				}
 			}
 			else if(op == Operator::TypeIs)

@@ -34,7 +34,7 @@ namespace ast
 	{
 		Stmt(const Location& l) : Locatable(l, "statement") { }
 		virtual ~Stmt();
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) = 0;
 	};
 
 	struct Expr : Stmt
@@ -42,7 +42,14 @@ namespace ast
 		Expr(const Location& l) : Stmt(l) { this->readableName = "expression"; }
 		~Expr();
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) = 0;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) = 0;
+
+		//? this flag is used in very specific cases (as of now [27/10/18] only for union variants), to tell the typecheck
+		//? method to treat the expression as if it were evaluating a type, instead of trying to yield a value.
+		//* specifically, ast::Ident uses this flag if it sees that its target is an sst::UnionVariantDefn;
+		//* if checkAsType == true, it will target the VariantDefn; if checkAsType == false (as default), then
+		//* it will make a UnionVariantConstructor instead.
+		bool checkAsType = false;
 	};
 
 	struct DeferredStmt : Stmt
@@ -50,7 +57,7 @@ namespace ast
 		DeferredStmt(const Location& l) : Stmt(l) { this->readableName = "deferred statement"; }
 		~DeferredStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Stmt* actual = 0;
 	};
@@ -92,7 +99,7 @@ namespace ast
 		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { this->readableName = "import statement"; }
 		~ImportStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string path;
 		std::string resolvedModule;
@@ -105,7 +112,7 @@ namespace ast
 		Block(const Location& l) : Stmt(l) { this->readableName = "block"; }
 		~Block() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Location closingBrace;
 
@@ -178,7 +185,7 @@ namespace ast
 		~ForeignFuncDefn() { }
 
 		sst::FunctionDecl* generatedDecl = 0;
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		using Arg = FuncDefn::Arg;
 
@@ -216,7 +223,7 @@ namespace ast
 		VarDefn(const Location& l) : Stmt(l) { this->readableName = "variable defintion"; }
 		~VarDefn() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string name;
 		pts::Type* type = 0;
@@ -234,7 +241,7 @@ namespace ast
 		DecompVarDefn(const Location& l) : Stmt(l) { this->readableName = "destructuring variable defintion"; }
 		~DecompVarDefn() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		bool immut = false;
 		Expr* initialiser = 0;
@@ -246,7 +253,7 @@ namespace ast
 		IfStmt(const Location& l) : Stmt(l) { this->readableName = "if statement"; }
 		~IfStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		struct Case
 		{
@@ -265,7 +272,7 @@ namespace ast
 		ReturnStmt(const Location& l) : Stmt(l) { this->readableName = "return statement"; }
 		~ReturnStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* value = 0;
 	};
@@ -275,7 +282,7 @@ namespace ast
 		WhileLoop(const Location& l) : Stmt(l) { this->readableName = "while loop"; }
 		~WhileLoop() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* cond = 0;
 		Block* body = 0;
@@ -288,7 +295,7 @@ namespace ast
 		ForLoop(const Location& l) : Stmt(l) { this->readableName = "for loop"; }
 		~ForLoop() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override = 0;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override = 0;
 
 		Block* body = 0;
 	};
@@ -298,7 +305,7 @@ namespace ast
 		ForeachLoop(const Location& l) : ForLoop(l) { this->readableName = "for loop"; }
 		~ForeachLoop() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* array = 0;
 
@@ -312,7 +319,7 @@ namespace ast
 		BreakStmt(const Location& l) : Stmt(l) { this->readableName = "break statement"; }
 		~BreakStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 	};
 
 	struct ContinueStmt : Stmt
@@ -320,7 +327,7 @@ namespace ast
 		ContinueStmt(const Location& l) : Stmt(l) { this->readableName = "continue statement"; }
 		~ContinueStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 	};
 
 	struct UsingStmt : Stmt
@@ -328,7 +335,7 @@ namespace ast
 		UsingStmt(const Location& l) : Stmt(l) { this->readableName = "using statement"; }
 		~UsingStmt() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* expr = 0;
 		std::string useAs;
@@ -444,7 +451,7 @@ namespace ast
 		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { this->readableName = "<TYPE EXPRESSION>"; }
 		~TypeExpr() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		pts::Type* type = 0;
 	};
@@ -455,7 +462,7 @@ namespace ast
 		MutabilityTypeExpr(const Location& l, bool m) : Expr(l), mut(m) { this->readableName = "<TYPE EXPRESSION>"; }
 		~MutabilityTypeExpr() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		bool mut;
 	};
@@ -465,7 +472,7 @@ namespace ast
 		Ident(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "identifier"; }
 		~Ident() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string name;
 		bool traverseUpwards = true;
@@ -481,7 +488,7 @@ namespace ast
 		RangeExpr(const Location& loc) : Expr(loc) { this->readableName = "range expression"; }
 		~RangeExpr() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* start = 0;
 		Expr* end = 0;
@@ -498,7 +505,7 @@ namespace ast
 		AllocOp(const Location& l) : Expr(l) { this->readableName = "alloc statement"; }
 		~AllocOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		pts::Type* allocTy = 0;
 		std::vector<Expr*> counts;
@@ -515,7 +522,7 @@ namespace ast
 		DeallocOp(const Location& l) : Stmt(l) { this->readableName = "free statement"; }
 		~DeallocOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 		Expr* expr = 0;
 	};
 
@@ -524,7 +531,7 @@ namespace ast
 		SizeofOp(const Location& l) : Expr(l) { this->readableName = "sizeof expression"; }
 		~SizeofOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* expr = 0;
 	};
@@ -534,7 +541,7 @@ namespace ast
 		TypeidOp(const Location& l) : Expr(l) { this->readableName = "typeid expression"; }
 		~TypeidOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 		Expr* expr = 0;
 	};
 
@@ -543,7 +550,7 @@ namespace ast
 		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
 		~BinaryOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string op;
 
@@ -556,7 +563,7 @@ namespace ast
 		UnaryOp(const Location& l) : Expr(l) { this->readableName = "unary expression"; }
 		~UnaryOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string op;
 		Expr* expr = 0;
@@ -568,7 +575,7 @@ namespace ast
 		AssignOp(const Location& l) : Expr(l) { this->readableName = "assignment statement"; }
 		~AssignOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string op;
 
@@ -581,7 +588,7 @@ namespace ast
 		SubscriptOp(const Location& l) : Expr(l) { }
 		~SubscriptOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* expr = 0;
 		Expr* inside = 0;
@@ -592,7 +599,7 @@ namespace ast
 		SliceOp(const Location& l) : Expr(l) { this->readableName = "slice expression"; }
 		~SliceOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* expr = 0;
 
@@ -605,7 +612,7 @@ namespace ast
 		SplatOp(const Location& l) : Expr(l) { this->readableName = "splat expression"; }
 		~SplatOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* expr = 0;
 	};
@@ -615,7 +622,7 @@ namespace ast
 		SubscriptDollarOp(const Location& l) : Expr(l) { this->readableName = "dollar expression"; }
 		~SubscriptDollarOp() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 	};
 
 
@@ -625,7 +632,7 @@ namespace ast
 		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "function call"; }
 		~FunctionCall() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args, fir::Type* inferred);
 
 		std::string name;
@@ -641,7 +648,7 @@ namespace ast
 		ExprCall(const Location& l) : Expr(l) { this->readableName = "function call"; }
 		~ExprCall() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 		sst::Expr* typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& args, fir::Type* inferred);
 
 		Expr* callee = 0;
@@ -655,7 +662,7 @@ namespace ast
 		DotOperator(const Location& loc, Expr* l, Expr* r) : Expr(loc), left(l), right(r) { this->readableName = "dot operator"; }
 		~DotOperator() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		Expr* left = 0;
 		Expr* right = 0;
@@ -669,7 +676,7 @@ namespace ast
 		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string num;
 	};
@@ -679,7 +686,7 @@ namespace ast
 		LitBool(const Location& l, bool val) : Expr(l), value(val) { this->readableName = "boolean literal"; }
 		~LitBool() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		bool value = false;
 	};
@@ -689,7 +696,7 @@ namespace ast
 		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { this->readableName = "string literal"; }
 		~LitString() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string str;
 		bool isCString = false;
@@ -700,7 +707,7 @@ namespace ast
 		LitNull(const Location& l) : Expr(l) { this->readableName = "null literal"; }
 		~LitNull() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 	};
 
 	struct LitTuple : Expr
@@ -708,7 +715,7 @@ namespace ast
 		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "tuple literal"; }
 		~LitTuple() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::vector<Expr*> values;
 	};
@@ -718,7 +725,7 @@ namespace ast
 		LitArray(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "array literal"; }
 		~LitArray() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		bool raw = false;
 		pts::Type* explicitType = 0;
@@ -731,7 +738,7 @@ namespace ast
 		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { this->readableName = "namespace"; }
 		~TopLevelBlock() { }
 
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* inferred = 0) override;
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string name;
 		std::vector<Stmt*> statements;
