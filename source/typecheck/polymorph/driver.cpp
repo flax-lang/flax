@@ -94,23 +94,10 @@ namespace poly
 			{
 				//* for constructors, we look like a function call, so type_infer is actually return_infer.
 				if(!type_infer && return_infer)
+				{
+					//* so what we do here is, if we have type_infer, we lookup the sst::Defn, and use it to find the matching genericVersion
+					//* in the ast::Defn, and extract the solution map, then recursively call inferPolymorphicType with our new solution.
 					std::swap(type_infer, return_infer);
-
-				std::set<std::string> fieldset;
-				std::unordered_map<std::string, size_t> fieldNames;
-				{
-					size_t i = 0;
-					for(auto f : str->fields)
-					{
-						fieldset.insert(f->name);
-						fieldNames[f->name] = i++;
-					}
-				}
-
-				//* so what we do here is, if we have type_infer, we lookup the sst::Defn, and use it to find the matching genericVersion
-				//* in the ast::Defn, and extract the solution map, then recursively call inferPolymorphicType with our new solution.
-				if(type_infer)
-				{
 					if(auto gen_str = fs->typeDefnMap[type_infer])
 					{
 						for(const auto& v : str->genericVersions)
@@ -124,6 +111,16 @@ namespace poly
 					}
 				}
 
+				std::set<std::string> fieldset;
+				std::unordered_map<std::string, size_t> fieldNames;
+				{
+					size_t i = 0;
+					for(auto f : str->fields)
+					{
+						fieldset.insert(f->name);
+						fieldNames[f->name] = i++;
+					}
+				}
 
 
 				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset, input);
@@ -147,9 +144,22 @@ namespace poly
 			}
 			else if(auto unn = dcast(ast::UnionDefn, td))
 			{
-				//* for constructors, we look like a function call, so type_infer is actually return_infer.
-				if(!type_infer && return_infer)
-					std::swap(type_infer, return_infer);
+				//* see the comment above -- same thing about infer, except we look for type_infer because for unions we know to pass it there
+				//* (since we don't really look like a function call most of the time)
+				if(type_infer)
+				{
+					if(auto gen_str = fs->typeDefnMap[type_infer])
+					{
+						for(const auto& v : unn->genericVersions)
+						{
+							if(v.first == gen_str)
+							{
+								return inferPolymorphicType(fs, unn, name, problems, input, v.second.back(), /* return_infer: */ nullptr,
+									/* type_infer: */ nullptr, isFnCall, problem_infer, origParamOrder);
+							}
+						}
+					}
+				}
 
 				iceAssert(unn->cases.find(name) != unn->cases.end());
 				auto uvloc = std::get<1>(unn->cases[name]);

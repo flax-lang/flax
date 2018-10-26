@@ -107,6 +107,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				if(res.isError())
 					return TCResult(res);
 
+				// update uvd
+				uvd = dcast(sst::UnionVariantDefn, res.defn());
+
 				//* copy-paste from typecheck/call.cpp
 				auto unn = uvd->parentUnion;
 				iceAssert(unn);
