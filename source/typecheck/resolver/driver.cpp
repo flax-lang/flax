@@ -214,7 +214,7 @@ namespace resolver
 			if(copy != arguments)
 				error("args changed for constructor call -- fixme!!!");
 
-			return resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &copy, /* type_infer: */ nullptr);
+			return resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &copy, /* type_infer: */ nullptr, /* isFnCall: */ true);
 		}
 		else
 		{
