@@ -25,7 +25,7 @@ addons:
 
 before_script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        brew install llvm@6;
+        HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm@6;
         brew upgrade mpfr;
       fi
 
