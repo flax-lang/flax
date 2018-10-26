@@ -48,15 +48,15 @@ struct Bar<T>
 		none
 	}
 
-	var q: Bar<T: int> = Bar()
-	q.aaa = 30
-	q.bbb = 73
+	// var q: Bar<T: int> = Bar()
+	// q.aaa = 30
+	// q.bbb = 73
 
-	printf("%d, %d\n", q.aaa, q.bbb)
+	// printf("%d, %d\n", q.aaa, q.bbb)
 
-	// let n: Foo<T: int> = Foo.none
-	// let s = Foo.some(301)
-	// printf("s = %d\n", s as Foo<T: int>.some)
+	let n: Foo<T: int> = Foo.none
+	let s = Foo.some(301)
+	printf("s = %d\n", s as Foo<T: int>.some)
 
 	// union Bar
 	// {
