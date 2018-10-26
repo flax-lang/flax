@@ -22,5 +22,5 @@ build_script:
   - cmd: msbuild -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
 
 test_script:
-	- cmd: cd c:\projects\flax
+  - cmd: cd c:\projects\flax
   - cmd: build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
