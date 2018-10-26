@@ -500,7 +500,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left, fir::Type* infer)
 {
 	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news,
-		fir::Type* infer) -> sst::Expr* {
+		fir::Type* rhs_infer) -> sst::Expr* {
 
 		if(auto id = dcast(ast::Ident, dot->right))
 			id->traverseUpwards = false;
@@ -520,7 +520,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			});
 
 			fs->teleportToScope(news);
-			ret = fc->typecheckWithArguments(fs, args, infer);
+			ret = fc->typecheckWithArguments(fs, args, rhs_infer);
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
@@ -529,12 +529,12 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			});
 
 			fs->teleportToScope(news);
-			ret = ec->typecheckWithArguments(fs, args, infer);
+			ret = ec->typecheckWithArguments(fs, args, rhs_infer);
 		}
 		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
 			fs->teleportToScope(news);
-			ret = dot->right->typecheck(fs, infer).expr();
+			ret = dot->right->typecheck(fs, rhs_infer).expr();
 
 			//* special-case this thing. if we don't do this, then 'ret' is just a normal VarRef,
 			//* which during codegen will try to trigger the codegen for the UnionVariantDefn,
