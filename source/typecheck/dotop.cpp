@@ -508,7 +508,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		else if(auto fc = dcast(ast::FunctionCall, dot->right))
 			fc->traverseUpwards = false;
 
-
 		// note: for function/expr calls, we typecheck the arguments *before* we teleport to the scope, so that we don't conflate
 		// the scope of the argument (which is the current scope) with the scope of the call target (which is in whatever namespace)
 
@@ -723,6 +722,9 @@ TCResult ast::DotOperator::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);
 	defer(fs->popLoc());
+
+	this->left->checkAsType = this->checkAsType;
+	this->right->checkAsType = this->checkAsType;
 
 	auto ret = doStaticDotOp(fs, this, this->left->typecheck(fs).expr(), infer);
 	if(ret) return TCResult(ret);

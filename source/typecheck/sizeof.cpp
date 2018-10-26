@@ -17,19 +17,13 @@ TCResult ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto ret = util::pool<sst::SizeofOp>(this->loc, fir::Type::getInt64());
 
-	// see what we have.
-	fir::Type* out = 0;
-	if(auto id = dcast(ast::Ident, this->expr))
-	{
-		if(auto ty = fs->convertParserTypeToFIR(pts::NamedType::create(id->name), /* allowFail: */ true))
-			out = ty;
-	}
-	else if(dcast(ast::LitNumber, this->expr))
+	if(dcast(ast::LitNumber, this->expr))
 	{
 		error(this->expr, "literal numbers cannot be sized");
 	}
 
-	if(!out) out = this->expr->typecheck(fs).expr()->type;
+	this->expr->checkAsType = true;
+ 	fir::Type* out = this->expr->typecheck(fs).expr()->type;
 
 	iceAssert(out);
 	ret->typeToSize = out;
@@ -45,19 +39,13 @@ TCResult ast::TypeidOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	auto ret = util::pool<sst::TypeidOp>(this->loc, fir::Type::getUint64());
 
-	// see what we have.
-	fir::Type* out = 0;
-	if(auto id = dcast(ast::Ident, this->expr))
-	{
-		if(auto ty = fs->convertParserTypeToFIR(pts::NamedType::create(id->name), /* allowFail: */ true))
-			out = ty;
-	}
-	else if(dcast(ast::LitNumber, this->expr))
+	if(dcast(ast::LitNumber, this->expr))
 	{
 		error(this->expr, "literal numbers cannot be typeid'd");
 	}
 
-	if(!out) out = this->expr->typecheck(fs).expr()->type;
+	this->expr->checkAsType = true;
+ 	fir::Type* out = this->expr->typecheck(fs).expr()->type;
 
 	iceAssert(out);
 	ret->typeToId = out;
