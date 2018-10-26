@@ -201,7 +201,7 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 			// TODO: prevent this!!
 			// TODO: prevent this!!
 			// TODO: prevent this!!
-			if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack()))
+			if(gv.first->type && !gv.first->type->containsPlaceholders() && doRootsMatch(gv.second, fs->getGenericContextStack() + gmaps))
 				return { true, gv.first };
 		}
 
