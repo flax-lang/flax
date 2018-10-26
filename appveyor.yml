@@ -19,7 +19,7 @@ install:
 
 
 build_script:
-  - cmd: msbuild -verbosity:quiet -nologo c:\projects\flax\flax.vcxproj
+  - cmd: msbuild -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
 
 # test_script:
 #   - cmd: ninja -C builddir test
