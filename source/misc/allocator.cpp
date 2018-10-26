@@ -26,7 +26,7 @@ namespace mem
 			return ret;
 		#else
 			auto ret = mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-			if(ret == nullptr || (uintptr_t) ret == -1)
+			if(ret == nullptr || (uintptr_t) ret == (uintptr_t) -1)
 				_error_and_exit("failed to allocate %d bytes of memory", bytes);
 
 			return ret;

@@ -151,7 +151,7 @@ namespace fir
 	static std::vector<std::unordered_map<std::string, PolyPlaceholderType*>> cache;
 	PolyPlaceholderType* PolyPlaceholderType::get(const std::string& n, int group)
 	{
-		while(group >= cache.size())
+		while((size_t) group >= cache.size())
 			cache.push_back({ });
 
 		if(auto it = cache[group].find(n); it != cache[group].end())
