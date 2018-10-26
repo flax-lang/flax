@@ -21,13 +21,11 @@ import "libc" as _
 // 	foo(30)
 // }
 
-namespace xxx
+
+struct Bar<T>
 {
-	struct Bar<T>
-	{
-		var aaa: T
-		var bbb: T
-	}
+	var aaa: T
+	var bbb: T
 }
 
 @entry fn main()
@@ -50,7 +48,11 @@ namespace xxx
 		none
 	}
 
-	var q: xxx.Bar<T: int> = xxx.Bar()
+	var q: Bar<T: int> = Bar()
+	q.aaa = 30
+	q.bbb = 73
+
+	printf("%d, %d\n", q.aaa, q.bbb)
 
 	// let n: Foo<T: int> = Foo.none
 	// let s = Foo.some(301)
