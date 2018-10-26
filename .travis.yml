@@ -7,7 +7,7 @@ matrix:
       dist: trusty
       sudo: false
     - os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.4
 
 addons:
     apt:
@@ -22,12 +22,10 @@ addons:
         - libllvm6.0
         - libmpfr-dev
         - libmpfr4
-
-before_script:
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm@6;
-        brew upgrade mpfr;
-      fi
+	homebrew:
+    	packages:
+        - llvm@6
+        - mpfr
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
