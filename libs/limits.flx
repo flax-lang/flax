@@ -4,43 +4,43 @@
 
 import "libc"
 
-public namespace i8
+public namespace int8
 {
 	public let min: i8 = -128
 	public let max: i8 = +127
 }
-public namespace i16
+public namespace int16
 {
 	public let min: i16 = -32768
 	public let max: i16 = +32767
 }
-public namespace i32
+public namespace int32
 {
 	public let min: i32 = -2147483648
 	public let max: i32 = +2147483647
 }
-public namespace i64
+public namespace int64
 {
 	public let min: i64 = -9223372036854775808
 	public let max: i64 = +9223372036854775807
 }
 
-public namespace u8
+public namespace uint8
 {
 	public let min: u8 = 0
 	public let max: u8 = 255
 }
-public namespace u16
+public namespace uint16
 {
 	public let min: u16 = 0
 	public let max: u16 = 65535
 }
-public namespace u32
+public namespace uint32
 {
 	public let min: u32 = 0
 	public let max: u32 = 4294967295
 }
-public namespace u64
+public namespace uint64
 {
 	public let min: u64 = 0
 	public let max: u64 = 18446744073709551615
