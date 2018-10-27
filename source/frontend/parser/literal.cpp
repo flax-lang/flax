@@ -41,12 +41,12 @@ namespace parser
 				switch(tmp[i])
 				{
 					// todo: handle hex sequences and stuff
-					case 'n':	ss << '\n';	break;
-					case 'b':	ss << '\b';	break;
-					case 'r':	ss << '\r';	break;
-					case 't':	ss << '\t';	break;
-					case '"':	ss << '\"'; break;
-					case '\\':	ss << '\\'; break;
+					case 'n':   ss << '\n'; break;
+					case 'b':   ss << '\b'; break;
+					case 'r':   ss << '\r'; break;
+					case 't':   ss << '\t'; break;
+					case '"':   ss << '\"'; break;
+					case '\\':  ss << '\\'; break;
 					default:    ss << std::string("\\") + tmp[i]; break;
 				}
 			}
