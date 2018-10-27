@@ -15,10 +15,25 @@ public fn doUnionsTest()
 {
 	do {
 
-		let x = option<T: str>.some("123")
-		let y = option<T: int>.some(456)
+		let x = option.some("foobar")
+		let y = option.some(456)
 
 		printf("x = %s, y = %d\n", x as option<T: str>.some, y as option<T: int>.some)
+	}
+
+	do {
+		union Bar
+		{
+			some: str
+			other: int
+			none
+		}
+
+		let q = Bar.some("hello")
+		let v = Bar.other(30)
+		let m = Bar.none
+
+		printf("q = %s, v = %d\n", q as Bar.some, v as Bar.other)
 	}
 }
 

@@ -110,8 +110,6 @@ namespace n1
 
 public fn doScopeTest(argv: str)
 {
-	var x = argv.ptr + 1
-
 	let p = 64.4 ÷ 4.1
 
 	let m = √(41.5)
@@ -127,7 +125,7 @@ public fn doScopeTest(argv: str)
 	printf("gg.0: %d, gg.1: %.2f\n", (4, 50).0, gg.1)
 
 	printf("[%d]\n", foo.oor)
-	printf("p: %f, g: %d, m: %d, argv[0]: %s, %.14f\n\n", p, another, mmx, x, math.π)
+	printf("p: %f, g: %d, m: %d, %.14f\n\n", p, another, mmx, math.π)
 
 
 	let x1: int = OutsideEnum.Three as int

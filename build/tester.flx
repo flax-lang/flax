@@ -22,6 +22,7 @@ import "tests/forloops"
 import "tests/arraytest"
 import "tests/functions"
 import "tests/unions"
+import "tests/using"
 
 fn runTests()
 {
@@ -42,6 +43,7 @@ fn runTests()
 	let forLoopTitle    = "    *** FOR LOOP REGRESSION TEST ***    \n"
 	let linkedListTitle = "        *** LINKED LIST TEST ***        \n"
 	let unionsTitle     = "           *** UNIONS TEST ***          \n"
+	let usingTitle      = "           *** USING TEST ***           \n"
 	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
 	let thinLine        = "----------------------------------------\n"
 	let endTitle        = "============ TESTS COMPLETE ============\n"
@@ -150,6 +152,12 @@ fn runTests()
 	// unions (generics)
 	libc.printf("%s%s", unionsTitle, thinLine)
 	test_unions.doUnionsTest()
+	libc.printf("\n\n\n")
+
+
+	// using
+	libc.printf("%s%s", usingTitle, thinLine)
+	test_using.doUsingTest()
 	libc.printf("\n\n\n")
 
 

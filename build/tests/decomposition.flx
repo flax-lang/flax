@@ -14,7 +14,7 @@ public fn doDecompositionTest()
 		let tup = (10, 20, 30)
 		let (x, &y, _) = tup
 
-		printf("x = %d, y = %p\n", x, y)
+		printf("x = %d, y = %d\n", x, y == null)
 
 		let (a, (b, c, _, _)) = ("a", (30, 40, 50, 60))
 		printf("a = '%s', b = %d, c = %d\n", a, b, c)
@@ -28,7 +28,7 @@ public fn doDecompositionTest()
 		var [ a, &b, &c, ... &x ] = arr
 		*(b as mut) = 30
 
-		printf("a = %d, b = %d, c = %p, d = %d, e = %d (x.length = %d)\n", a, *b, c, x[0], x[1], x.length)
+		printf("a = %d, b = %d, c = %d, d = %d, e = %d (x.length = %d)\n", a, *b, c == null, x[0], x[1], x.length)
 
 
 		do {

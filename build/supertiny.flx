@@ -22,49 +22,8 @@ import "libc" as _
 // }
 
 
-struct Bar<T>
-{
-	var aaa: T
-	var bbb: T
-}
-
 @entry fn main()
 {
-	// do {
-	// 	class Foo<T>
-	// 	{
-	// 		init() { }
-	// 		static fn bar(x: T) { printf("x = %d\n", x) }
-	// 	}
-
-	// 	Foo.bar(30)
-	// 	Foo.bar(40)
-	// 	Foo.bar(50)
-	// }
-
-	union Foo<T>
-	{
-		some: T
-		none
-	}
-
-
-	let n: Foo<T: int> = Foo.none
-	let s = Foo.some(301)
-	printf("s = %d\n", s as Foo<T: int>.some)
-
-	union Bar
-	{
-		some: str
-		other: int
-		none
-	}
-
-	let q = Bar.some("hello")
-	let v = Bar.other(30)
-	let m = Bar.none
-
-	printf("q = %s, v = %d\n", q as Bar.some, v as Bar.other)
 }
 
 

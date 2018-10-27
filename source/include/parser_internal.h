@@ -199,6 +199,23 @@ namespace parser
 		}
 
 
+		void enterUsingParse()
+		{
+			this->bodyNesting.push_back(4);
+		}
+
+		void leaveUsingParse()
+		{
+			iceAssert(this->bodyNesting.size() > 0 && this->bodyNesting.back() == 4);
+			this->bodyNesting.pop_back();
+		}
+
+		bool isParsingUsing()
+		{
+			return this->bodyNesting.size() > 0 && this->bodyNesting.back() == 4;
+		}
+
+
 
 		// implicitly coerce to location, so we can
 		// error(st, ...)
@@ -217,6 +234,7 @@ namespace parser
 			// 1 = inside function
 			// 2 = inside struct
 			// 3 = inside subscript
+			// 4 = inside using (specifically, in `using X as Y`, we're parsing 'X')
 			std::vector<int> bodyNesting;
 
 			size_t index = 0;
@@ -275,9 +293,6 @@ namespace parser
 	ast::Stmt* parseContinue(State& st);
 
 	std::unordered_map<std::string, TypeConstraints_t> parseGenericTypeList(State& st);
-
-
-
 }
 
 

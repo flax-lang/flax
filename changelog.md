@@ -1,11 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(e365997)`
 - infer polymorphs with union variants (except singleton variants)
 - clean up some of the `TypecheckState` god object
 - fixed a number of related bugs regarding namespaced generics
-- currently not working -- polymorphic types don't get any `type_infer` help at all. includes structs and unions; classes are immune because they use
-	function-style inference with their constructors.
+- give polymorphic types a `TypeParamMap_t` if there was a `type_infer`
 
 `(9de42cb)`
 - major revamp of the generic solver -- the algorithm is mostly unchanged, but the interface and stuff is reworked.

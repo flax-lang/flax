@@ -357,7 +357,7 @@ namespace parser
 		while(true)
 		{
 			int prec = precedence(st);
-			if(prec < prio && !isRightAssociative(st.front()))
+			if((prec < prio && !isRightAssociative(st.front())) || (st.front() == TT::As && st.isParsingUsing()))
 				return lhs;
 
 			// we don't really need to check, because if it's botched we'll have returned due to -1 < everything

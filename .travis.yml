@@ -37,12 +37,12 @@ notifications:
     email: false
 
 after_success:
-    - zip -r linux-x64 build/sysroot
+    - zip -r $TRAVIS_OS_NAME-x64 build/sysroot
 
 deploy:
     provider: releases
     api-key: ${GITHUB_OAUTH_TOKEN}
-    file: linux-x64.zip
+    file: $TRAVIS_OS_NAME-x64.zip
     skip-cleanup: true
     on:
         all_branches: true
