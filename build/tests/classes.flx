@@ -81,7 +81,7 @@ public fn doClassTest()
 		}
 
 		for dog, i in dogs {
-			printf("%d: %s - ", i, dog.name)
+			printf("%d: %s:   \t", i, dog.name)
 			dog.wag()
 		}
 	}

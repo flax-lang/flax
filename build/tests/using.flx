@@ -1,0 +1,43 @@
+// using.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export test_using
+import "libc" as _
+
+public fn doUsingTest()
+{
+	do {
+		enum Foo: int
+		{
+			case Alpha      = 10
+			case Bravo      = 20
+			case Charlie    = 30
+		}
+
+		using Foo as _
+		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
+
+		using Foo as f
+		printf("a = %d, b = %d, c = %d\n", 3 * f.Alpha.value, 3 * f.Bravo.value, 3 * f.Charlie.value)
+	}
+
+	do {
+		struct xxx<T>
+		{
+			var k: T
+			enum Foo: int
+			{
+				case Alpha      = 71
+				case Bravo      = 72
+				case Charlie    = 73
+			}
+		}
+
+		using xxx<T: int>.Foo as _
+
+		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
+	}
+}
+
+

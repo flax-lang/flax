@@ -48,7 +48,23 @@ namespace parser
 		iceAssert(st.front() == TT::Using);
 		st.eat();
 
+		st.enterUsingParse();
+		defer(st.leaveUsingParse());
+
 		auto ret = util::pool<UsingStmt>(st.ploc());
+		ret->expr = parseExpr(st);
+
+		if(st.front() != TT::As)
+			expectedAfter(st.loc(), "'as'", "scope in 'using'", st.front().str());
+
+		st.eat();
+		if(st.front() != TT::Identifier)
+			expectedAfter(st.loc(), "identifier", "'as' in 'using' declaration", st.front().str());
+
+		ret->useAs = st.eat().str();
+		return ret;
+
+		#if 0
 
 		//* so the deal is, we can't use 'parseExpr' here to parse the thing we want to 'use', because "X as Y" parses
 		//* as a cast instead.
@@ -100,6 +116,8 @@ namespace parser
 
 		ret->useAs = st.eat().str();
 		return ret;
+
+		#endif
 	}
 }
 

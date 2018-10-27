@@ -22,7 +22,7 @@ class LinkedList<T>
 
 	init(data: T)
 	{
-		printf("called init with %p\n", data)
+		printf("called init\n")
 	}
 
 	mut fn insert(thing: T)

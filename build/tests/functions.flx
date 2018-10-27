@@ -13,7 +13,7 @@ fn qux() { ("qux\n") }
 class SomeClass
 {
 	init() { }
-	fn foo(a: int) { printf("foo in class: %p // %d\n", self, a) }
+	fn foo(a: int) { printf("foo in class: %d\n", a) }
 	static fn bar(a: int) { printf("static bar in class: %d\n", a) }
 }
 
@@ -25,7 +25,7 @@ namespace SomeNS
 	{
 		init() { }
 
-		fn foo(a: int) { printf("foo in nested class: %p // %d\n", self, a) }
+		fn foo(a: int) { printf("foo in nested class: %d\n", a) }
 		static fn bar(a: int) { printf("static bar in nested class: %d\n", a) }
 
 		// fn mgen<T>(a: T) -> T { printf("method generic: %p // %d\n", self, a) }
@@ -71,7 +71,7 @@ class SomeStruct
 
 	static fn sfn(self: &SomeStruct, a: int) -> int
 	{
-		printf("static: %p, %d\n", self, a);
+		printf("static: %d\n", a);
 		return a;
 	}
 }

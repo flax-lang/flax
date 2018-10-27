@@ -17,9 +17,11 @@ install:
   - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
   # download our deps.
   - ps: "[Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'"
-  - ps: Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
-  - ps: 7z x -y -oc:\projects\lib c:\projects\libs.zip
-
+  - ps: >-
+      If (Test-Path c:\projects\lib -PathType Container) {
+        Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
+        7z x -y -oc:\projects\lib c:\projects\libs.zip
+      }
 
 build_script:
   - ps: msbuild -maxcpucount -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
