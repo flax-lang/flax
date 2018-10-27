@@ -73,7 +73,8 @@ struct Bar<T>
 	! even more
 	! 26/10
 	{
-		1. scopes are a bit screwed up when we instantiate things while in a dotop -- see generic unions for an example.
+		// 1. scopes are a bit screwed up when we instantiate things while in a dotop -- see generic unions for an example.
+		//  (turns out no)
 	}
 
 	! more things.
