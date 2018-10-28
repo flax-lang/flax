@@ -75,7 +75,11 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::CompareEQ || op == Operator::CompareNEQ || op == Operator::CompareLT || op == Operator::CompareGT
 		|| op == Operator::CompareLEQ || op == Operator::CompareGEQ)
 	{
-		return fir::Type::getBool();
+		if(left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0
+			|| (left->isConstantNumberType() && right->isConstantNumberType()))
+		{
+			return fir::Type::getBool();
+		}
 	}
 	else if(op == Operator::TypeIs)
 	{
@@ -99,17 +103,8 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		else if(left->isStringType() && right->isStringType())
 			return fir::Type::getString();
 
-		// else if((left->isStringType() && right->isCharType()) || (left->isCharType() && right->isStringType()))
-		// 	return fir::Type::getString();
-
-		// else if((left->isStringType() && right->isCharSliceType()) || (left->isCharSliceType() && right->isStringType()))
-		// 	return fir::Type::getString();
-
 		else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
 			return left;
-
-		// else if(left->isDynamicArrayType() && right == left->getArrayElementType())
-		// 	return left;
 
 		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
 			return (left->isConstantNumberType() ? right : left);
@@ -203,6 +198,9 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 
 TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	iceAssert(!Operator::isAssignment(this->op));
 
 	// TODO: infer the types properly for literal numbers
@@ -278,6 +276,9 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
 	auto v = this->expr->typecheck(fs, inferred).expr();
 
 	auto t = v->type;
@@ -363,6 +364,87 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	return TCResult(ret);
 }
+
+
+
+
+
+
+
+TCResult ast::ComparisonOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	iceAssert(this->exprs.size() == this->ops.size() + 1);
+
+	/*
+		basically, we transform us into a series of chained "&&" binops.
+		eg:
+
+		10 < 20 < 30 > 25 > 15
+
+		becomes
+
+		(10 < 20) && (20 < 30) && (30 > 25) && (25 > 15)
+	*/
+
+	std::vector<std::pair<BinaryOp*, Location>> bins;
+
+	// loop till the second last.
+	for(size_t i = 0; i < this->exprs.size() - 1; i++)
+	{
+		auto left = this->exprs[i];
+		auto right = this->exprs[i + 1];
+
+		auto op = this->ops[i];
+		bins.push_back({ util::pool<BinaryOp>(op.second, op.first, left, right), op.second });
+	}
+	iceAssert(bins.size() > 0);
+
+
+	// we handle single-comparisons too, so make sure to account for that.
+	if(bins.size() == 1)
+	{
+		return bins[0].first->typecheck(fs, inferred);
+	}
+	else
+	{
+		// make a binop combining everything, left-associatively.
+		iceAssert(bins.size() > 1);
+		BinaryOp* lhs = util::pool<BinaryOp>(bins[0].second, Operator::LogicalAnd, bins[0].first, bins[1].first);
+
+		for(size_t i = 2; i < bins.size(); i++)
+			lhs = util::pool<BinaryOp>(bins[i].second, Operator::LogicalAnd, lhs, bins[i].first);
+
+		return lhs->typecheck(fs, inferred);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

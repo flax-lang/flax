@@ -1,5 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- add chained comparison operators, eg. `10 < x < 30` would *succinctly* check for `x` between 10 and 30.
+- consequently, changed the precedence for all six comparison operators (`==`, `!=`, `<`, `<=`, `>`, and `>=`) to be the same (500)
+
 `(f7fd4e6)`
 - using unions -- including both generic and instantiated unions
 - vastly improved (i'd say) inference for variants of unions (when accessing them implicitly)

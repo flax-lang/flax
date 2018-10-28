@@ -298,15 +298,13 @@ namespace parser
 			case TT::RAngle:
 			case TT::LessThanEquals:
 			case TT::GreaterEquals:
+			case TT::EqualsTo:
+			case TT::NotEquals:
 				return 500;
 
 			case TT::Ellipsis:
 			case TT::HalfOpenEllipsis:
 				return 475;
-
-			case TT::EqualsTo:
-			case TT::NotEquals:
-				return 450;
 
 			case TT::LogicalAnd:
 				return 400;
@@ -413,8 +411,6 @@ namespace parser
 			if(next > prec || isRightAssociative(st.front()))
 				rhs = parseRhs(st, rhs, prec + 1);
 
-			// todo: chained relational operators
-			// eg. 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
 
 			if(op == ".")
 			{
@@ -457,6 +453,25 @@ namespace parser
 				newlhs->op = op;
 
 				lhs = newlhs;
+			}
+			else if(Operator::isComparison(op))
+			{
+				if(auto cmp = dcast(ComparisonOp, lhs))
+				{
+					cmp->ops.push_back({ op, loc });
+					cmp->exprs.push_back(rhs);
+					lhs = cmp;
+				}
+				else
+				{
+					iceAssert(lhs);
+					auto newlhs = util::pool<ComparisonOp>(loc);
+					newlhs->exprs.push_back(lhs);
+					newlhs->exprs.push_back(rhs);
+					newlhs->ops.push_back({ op, loc });
+
+					lhs = newlhs;
+				}
 			}
 			else
 			{
