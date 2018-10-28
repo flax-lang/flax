@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(0b937a5)`
 - add chained comparison operators, eg. `10 < x < 30` would *succinctly* check for `x` between 10 and 30.
 - consequently, changed the precedence for all six comparison operators (`==`, `!=`, `<`, `<=`, `>`, and `>=`) to be the same (500)
 
