@@ -69,7 +69,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		auto vdef = util::pool<sst::UnionVariantDefn>(std::get<1>(variant.second));
 		vdef->parentUnion = defn;
-		vdef->id = Identifier(variant.first, IdKind::Name);
+		vdef->variantName = variant.first;
+		vdef->id = Identifier(defn->id.name + "." + variant.first, IdKind::Name);
 		vdef->id.scope = fs->getCurrentScope();
 
 		vdefs.push_back({ vdef, std::get<0>(variant.second) });

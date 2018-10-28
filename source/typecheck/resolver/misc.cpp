@@ -96,59 +96,64 @@ namespace sst
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
 			fir::Type* union_infer, bool isFnCall)
 		{
-			auto name = uvd->id.name;
-
+			auto name = uvd->variantName;
 			auto unn = uvd->parentUnion;
 			iceAssert(unn);
 
-			auto orig_unn = unn->original;
-			iceAssert(orig_unn);
-
-			auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, orig_unn, name, /* gmaps: */ { }, /* return_infer */ nullptr,
-				/* type_infer: */ union_infer, isFnCall, arguments, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
-
-			if(res.isError() || (res.isDefn() && res.defn()->type->containsPlaceholders()))
+			if(uvd->type->containsPlaceholders())
 			{
-				ErrorMsg* e = SimpleError::make(fs->loc(), "unable to infer types for union '%s' using variant '%s'", unn->id.name, name);
+				auto orig_unn = unn->original;
+				iceAssert(orig_unn);
 
-				if(res.isError())
-					e->append(res.error());
+				auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, orig_unn, name, /* gmaps: */ { }, /* return_infer */ nullptr,
+					/* type_infer: */ union_infer, isFnCall, arguments, /* fillPlaceholders: */ false, /* problem_infer: */ nullptr);
 
-				return TCResult(e);
+				if(res.isError() || (res.isDefn() && res.defn()->type->containsPlaceholders()))
+				{
+					ErrorMsg* e = SimpleError::make(fs->loc(), "unable to infer types for union '%s' using variant '%s'", unn->id.name, name);
+
+					if(res.isError())
+						e->append(res.error());
+
+					return TCResult(e);
+				}
+
+				// make it so
+				unn = dcast(sst::UnionDefn, res.defn());
+				iceAssert(unn);
+
+				// re-do it.
+				uvd = unn->variants[name];
+				iceAssert(uvd);
 			}
-
-			// make it so
-			unn = dcast(sst::UnionDefn, res.defn());
-			iceAssert(unn);
-
-			// re-do it.
-			uvd = unn->variants[name];
-			iceAssert(uvd);
 
 			auto vty = uvd->type->toUnionVariantType()->getInteriorType();
 
-			std::vector<fir::LocatedType> target;
-			if(vty->isTupleType())
+			if(isFnCall)
 			{
-				for(auto t : vty->toTupleType()->getElements())
-					target.push_back(fir::LocatedType(t, uvd->loc));
-			}
-			else if(!vty->isVoidType())
-			{
-				target.push_back(fir::LocatedType(vty, uvd->loc));
-			}
+				std::vector<fir::LocatedType> target;
+				if(vty->isTupleType())
+				{
+					for(auto t : vty->toTupleType()->getElements())
+						target.push_back(fir::LocatedType(t, uvd->loc));
+				}
+				else if(!vty->isVoidType())
+				{
+					target.push_back(fir::LocatedType(vty, uvd->loc));
+				}
 
-			auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(*arguments, [](const FnCallArgument& fca) -> auto {
-				return fir::LocatedType(fca.value->type, fca.loc);
-			}), false);
+				auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(*arguments, [](const FnCallArgument& fca) -> auto {
+					return fir::LocatedType(fca.value->type, fca.loc);
+				}), false);
 
-			if(errs != nullptr || dist == -1)
-			{
-				auto x = SimpleError::make(fs->loc(), "mismatched types in construction of variant '%s' of union '%s'", name, unn->id.name);
-				if(errs)    errs->prepend(x);
-				else        errs = x;
+				if(errs != nullptr || dist == -1)
+				{
+					auto x = SimpleError::make(fs->loc(), "mismatched types in construction of variant '%s' of union '%s'", name, unn->id.name);
+					if(errs)    errs->prepend(x);
+					else        errs = x;
 
-				return TCResult(errs);
+					return TCResult(errs);
+				}
 			}
 
 			return TCResult(uvd);

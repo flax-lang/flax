@@ -770,6 +770,7 @@ namespace sst
 		virtual std::string getKind() override { return "union variant"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		std::string variantName;
 		UnionDefn* parentUnion = 0;
 	};
 

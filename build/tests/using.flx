@@ -38,6 +38,35 @@ public fn doUsingTest()
 
 		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
 	}
+
+	do {
+		union Option<T>
+		{
+			some: T
+			none
+		}
+
+		using Option as _
+
+		let x = some(381)
+		let y = some("hi")
+		printf("x = %d, y = %s\n", x as some, y as some)
+	}
+
+	do {
+		union Option<T>
+		{
+			some: T
+			none
+		}
+
+		using Option<T: int> as _
+		using Option<T: str> as _
+
+		let x = some(30)
+		let y = some("bye")
+		printf("x = %d, y = %s\n", x as some, y as some)
+	}
 }
 
 

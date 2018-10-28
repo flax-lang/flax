@@ -161,7 +161,9 @@ namespace poly
 					}
 				}
 
-				iceAssert(unn->cases.find(name) != unn->cases.end());
+				if(unn->cases.find(name) == unn->cases.end())
+					error("no variant named '%s'", name);
+
 				auto uvloc = std::get<1>(unn->cases[name]);
 
 				int session = getNextSessionId();

@@ -63,61 +63,6 @@ namespace parser
 
 		ret->useAs = st.eat().str();
 		return ret;
-
-		#if 0
-
-		//* so the deal is, we can't use 'parseExpr' here to parse the thing we want to 'use', because "X as Y" parses
-		//* as a cast instead.
-
-		//* so, we parse it manually, including handling the dot operator stuff.
-		// TODO: fix this maybe? more robustness would be good.
-
-		if(st.front() != TT::Identifier)
-			expectedAfter(st.loc(), "identifier", "'using'", st.front().str());
-
-		std::vector<std::pair<std::string, Location>> names;
-		while(st.front() == TT::Identifier)
-		{
-			names.push_back({ st.eat().str(), st.ploc() });
-			if(st.front() == TT::Period)
-			{
-				st.eat();
-				continue;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		// ok, convert the names into a series of dot-op + identifier nesting nonsenses.
-		if(names.size() == 1)
-		{
-			ret->expr = util::pool<Ident>(names[0].second, names[0].first);
-		}
-		else
-		{
-			auto a = util::pool<Ident>(names[0].second, names[0].first);
-			auto b = util::pool<Ident>(names[1].second, names[1].first);
-
-			auto left = util::pool<DotOperator>(names[0].second, a, b);
-			for(size_t i = 2; i < names.size(); i++)
-				left = util::pool<DotOperator>(names[i].second, left, util::pool<Ident>(names[i].second, names[i].first));
-
-			ret->expr = left;
-		}
-
-		if(st.front() != TT::As)
-			expectedAfter(st.loc(), "'as'", "scope in 'using'", st.front().str());
-
-		st.eat();
-		if(st.front() != TT::Identifier)
-			expectedAfter(st.loc(), "identifier", "'as' in 'using' declaration", st.front().str());
-
-		ret->useAs = st.eat().str();
-		return ret;
-
-		#endif
 	}
 }
 

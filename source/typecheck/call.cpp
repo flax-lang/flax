@@ -52,7 +52,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 
 		auto ret = util::pool<sst::UnionVariantConstructor>(this->loc, unn->type);
 
-		ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->id.name);
+		ret->variantId = unn->type->toUnionType()->getIdOfVariant(uvd->variantName);
 		ret->parentUnion = unn;
 		ret->args = ts;
 

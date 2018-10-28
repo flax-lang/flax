@@ -26,12 +26,26 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// and only getting ScopeExpr if it's really a namespace reference.
 
 
-	if(auto vr = dcast(sst::VarRef, user); vr && vr->def && dcast(sst::EnumDefn, vr->def))
+	if(auto vr = dcast(sst::VarRef, user); vr && dcast(sst::EnumDefn, vr->def))
 	{
 		auto enrd = dcast(sst::EnumDefn, vr->def);
 
 		auto scopes = enrd->id.scope;
 		scopes.push_back(enrd->id.name);
+
+		if(this->useAs == "_")
+			fs->importScopeContentsIntoExistingScope(scopes, fs->stree->getScope());
+
+		else
+			fs->importScopeContentsIntoNewScope(scopes, fs->getCurrentScope(), this->useAs);
+	}
+	// uses the same 'vr' from the branch above
+	else if(vr && dcast(sst::UnionDefn, vr->def))
+	{
+		auto unn = dcast(sst::UnionDefn, vr->def);
+
+		auto scopes = unn->id.scope;
+		scopes.push_back(unn->id.name);
 
 		if(this->useAs == "_")
 			fs->importScopeContentsIntoExistingScope(scopes, fs->stree->getScope());
@@ -90,9 +104,8 @@ namespace sst
 
 					if(conflicts) error("conflicts");
 
-
 					// else.
-					to->addDefinition(d->id.name, d);
+					to->addDefinition(ds.first, d);
 				}
 			}
 

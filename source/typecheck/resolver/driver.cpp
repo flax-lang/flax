@@ -34,6 +34,12 @@ namespace resolver
 
 		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
 		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
+		//! ACHTUNG !
+		// TODO: do we even need this didVar nonsense? variables don't overload yes, but we can't even define more than one
+		// TODO: variable in a scope with the same name. if we find something with a matching name we quit immediately, so there
+		// TODO: shouldn't be a point in having 'didVar'!!
+		// TODO: - zhiayang, 28/10/18
+
 
 		//? I can't find any information about this behaviour in languages other than C++, because we need to have a certain set of
 		//? features for it to manifest -- 1. user-defined, explicit namespaces; 2. function overloading.
@@ -109,19 +115,17 @@ namespace resolver
 			{
 				cands.push_back({ fn, ts });
 			}
-			else if(dcast(VarDefn, def) && def->type->isFunctionType())
+			else if(dcast(VarDefn, def) && def->type->isFunctionType() /* && !didVar */)
 			{
-				// ok, we'll check it later i guess.
-				if(!didVar)
-					cands.push_back({ def, ts });
-
+				cands.push_back({ def, ts });
 				didVar = true;
 			}
 			else if(auto typedf = dcast(TypeDefn, def))
 			{
-				// ok, then.
-				//* note: no need to specify 'travUp', because we already resolved the type here.
-				return resolveConstructorCall(fs, typedf, ts, gmaps);
+				// auto res = resolveConstructorCall(fs, typedf, ts, gmaps);
+				// if(!res.isError())
+
+				cands.push_back({ def, ts });
 			}
 			else
 			{
@@ -179,7 +183,7 @@ namespace resolver
 			// TODO: support re-eval of constructor args!
 
 			if(copy1 != copy)
-				error("args changed for constructor call -- fixme!!!");
+				error(fs->loc(), "args changed for constructor call -- fixme!!!");
 
 			if(cand.isError())
 			{
@@ -211,10 +215,12 @@ namespace resolver
 
 			auto copy = arguments;
 
-			if(copy != arguments)
-				error("args changed for constructor call -- fixme!!!");
+			auto ret = resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &copy, /* type_infer: */ nullptr, /* isFnCall: */ true);
 
-			return resolver::resolveAndInstantiatePolymorphicUnion(fs, uvd, &copy, /* type_infer: */ nullptr, /* isFnCall: */ true);
+			if(copy != arguments)
+				error(fs->loc(), "args changed for constructor call -- fixme!!!");
+
+			return ret;
 		}
 		else
 		{
