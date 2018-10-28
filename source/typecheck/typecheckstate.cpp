@@ -324,7 +324,8 @@ namespace sst
 
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
+		// this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
+		this->definitions[sourceFile][name].push_back(def);
 	}
 
 	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)

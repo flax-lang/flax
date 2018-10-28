@@ -240,7 +240,11 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else
 	{
 		this->right->checkAsType = true;
+		if(this->op == Operator::TypeCast && l->type->isUnionType())
+			inferred = l->type;
+
 		r = this->right->typecheck(fs, inferred).expr();
+
 		if(this->op == Operator::TypeCast)
 			r = util::pool<sst::TypeExpr>(r->loc, r->type);
 	}

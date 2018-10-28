@@ -135,6 +135,20 @@ namespace resolver
 						return fir::LocatedType(p.value->type, Location());
 					}), false);
 				}
+				else if(auto td = dcast(TypeDefn, curcandidate))
+				{
+					auto res = resolveConstructorCall(fs, td, replacementArgs, gmaps);
+					if(!res.isDefn())
+					{
+						fails[fn] = res.error();
+						dist = -1;
+					}
+					else
+					{
+						curcandidate = res.defn();
+						std::tie(dist, fails[fn]) = std::make_tuple(0, nullptr);
+					}
+				}
 
 				if(dist == -1)
 					continue;

@@ -1,5 +1,9 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- using unions -- including both generic and instantiated unions
+- vastly improved (i'd say) inference for variants of unions (when accessing them implicitly)
+
 `(e365997)`
 - infer polymorphs with union variants (except singleton variants)
 - clean up some of the `TypecheckState` god object

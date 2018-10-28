@@ -30,10 +30,28 @@ import "libc" as _
 
 /*
 	! even more
-	! 26/10
+	! 28/10
 	{
-		// 1. scopes are a bit screwed up when we instantiate things while in a dotop -- see generic unions for an example.
-		//  (turns out no)
+		1. right now, using unions -- including generic unions -- works fine, except for when we want to use a specific instantiation of
+			the union. eg:
+
+			union Opt<T> { some: T; none }
+			using Opt<T: int> as _
+
+			the intuitive behaviour would be that some("foo") would fail, because we haven't brought the union with T=str into the current
+			scope. However, what actually happens is that, in the resolution of 'some("foo")', we get the UnionVariantDefn -- which in this case
+			isn't polymorphic (by 'using' Opt<T:int>, we would have already instantiated Opt<int>, and hence the 'some' that's in the current scope
+			is some<T:int>)
+
+			* stupid thing here:
+			The problem is, we blindly get the parent union and call resolvePolymorphicUnion (or whatever it's called), even though it's technically
+			not in scope. So, the call to some("foo") will actually succeed.
+
+			However, when we try to cast the value (eg. some("foo") as some), our variable resolution first checks to see if 'some' is polymorphic.
+			Since the 'some' that we imported into the scope via 'using' isn't polymorphic, we don't try to resolve/solve the parent union, and so
+			we fail as expected (some("foo") unrelated union to some bla bla)
+
+			solution is to not do the stupid thing highlighted above.
 	}
 
 	! more things.
