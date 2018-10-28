@@ -18,7 +18,7 @@ install:
   # download our deps.
   - ps: "[Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'"
   - ps: >-
-      If (Test-Path c:\projects\lib -PathType Container) {
+      If (!(Test-Path c:\projects\lib -PathType Container)) {
         Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
         7z x -y -oc:\projects\lib c:\projects\libs.zip
       }

@@ -1,6 +1,6 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(f7fd4e6)`
 - using unions -- including both generic and instantiated unions
 - vastly improved (i'd say) inference for variants of unions (when accessing them implicitly)
 
