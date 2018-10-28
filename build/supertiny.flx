@@ -24,57 +24,24 @@ import "libc" as _
 
 @entry fn main()
 {
+	fn getnum() -> int { printf("got num\n"); return 40 }
+
+	let x = 30
+	if 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
+	{
+		printf("yay\n")
+	}
 }
 
 
 
 /*
-	! even more
-	! 28/10
-	{
-		1. right now, using unions -- including generic unions -- works fine, except for when we want to use a specific instantiation of
-			the union. eg:
-
-			union Opt<T> { some: T; none }
-			using Opt<T: int> as _
-
-			the intuitive behaviour would be that some("foo") would fail, because we haven't brought the union with T=str into the current
-			scope. However, what actually happens is that, in the resolution of 'some("foo")', we get the UnionVariantDefn -- which in this case
-			isn't polymorphic (by 'using' Opt<T:int>, we would have already instantiated Opt<int>, and hence the 'some' that's in the current scope
-			is some<T:int>)
-
-			* stupid thing here:
-			The problem is, we blindly get the parent union and call resolvePolymorphicUnion (or whatever it's called), even though it's technically
-			not in scope. So, the call to some("foo") will actually succeed.
-
-			However, when we try to cast the value (eg. some("foo") as some), our variable resolution first checks to see if 'some' is polymorphic.
-			Since the 'some' that we imported into the scope via 'using' isn't polymorphic, we don't try to resolve/solve the parent union, and so
-			we fail as expected (some("foo") unrelated union to some bla bla)
-
-			solution is to not do the stupid thing highlighted above.
-	}
-
 	! more things.
 	! caa 03/10
 	{
-		// 1. clean up all the nested types -- sst's Decl::Param, FnCallArgument, ast's Defn::Arg, all that shit.
 		2. splatting tuples into a generic function *will not work*
-		// 3. fix errors. should probably go back to using virtual inheritance for them. fuck performance cos we shouldn't be erroring so often,
-		// 	and they're slightly cheaper when we don't use them because it's just a pointer.
 		4. pass the overall location to the polymorph solver.
-		// 5. check for variadic forwarding -- enforce the splat.
-		// 6. print out the solutions we found for inference on error.
-		// 7. clean up FunctionDefn vs FunctionDecl
-		// 8. check if the solution is complete before we blindly try to re-solve everything.
 	}
-
-
-
-
-
-
-
-
 
 
 	TODO for the immediate time frame (that keeps getting longer and where the real work always gets postponed)
@@ -95,30 +62,6 @@ import "libc" as _
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
 	}
-	// 17. refcounted moving is broken -- not sure if design flaw or not. investigate.
-	// 18. generic unions {
-	// 	currently they work okay, but it's very troublesome to unwrap, construct or declare them, because you need to
-	// 	explicitly state the type of the union.
-
-	// 	given that we just managed to do the thing where we can infer generic types from constructor arguments, we should be
-	// 	able to do a similar thing for this case.
-
-	// 	the problem here is that we need to be able to turn `Option<T: int>.Some(...)` into `Option.Some(...)`, but when we
-	// 	just access `Option` directly without type arguments, we will get yelled at by the typechecker.
-
-	// 	the alternative to this problem is just to disallow inference when doing it like this. then, inference is only enabled
-	// 	when we `use` the union:
-
-	// 	```
-	// 	using Option
-
-	// 	let x = Some(30)
-	// 	let y = None
-	// 	```
-
-	// 	on this hand, we will also need to somehow allow `using` a generic union without specifying its type... bah.
-	// }
-	19. using for unions (see 18 for some issues re: generic types)
 */
 
 

@@ -545,6 +545,17 @@ namespace ast
 		Expr* expr = 0;
 	};
 
+	struct ComparisonOp : Expr
+	{
+		ComparisonOp(const Location& loc) : Expr(loc) { this->readableName = "comparsion expression"; }
+		~ComparisonOp() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		std::vector<Expr*> exprs;
+		std::vector<std::pair<std::string, Location>> ops;
+	};
+
 	struct BinaryOp : Expr
 	{
 		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
