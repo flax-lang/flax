@@ -72,11 +72,24 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	{
 		return fir::Type::getBool();
 	}
-	else if(op == Operator::CompareEQ || op == Operator::CompareNEQ || op == Operator::CompareLT || op == Operator::CompareGT
-		|| op == Operator::CompareLEQ || op == Operator::CompareGEQ)
+	else if(op == Operator::CompareEQ || op == Operator::CompareNEQ)
 	{
 		if(left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0
 			|| (left->isConstantNumberType() && right->isConstantNumberType()))
+		{
+			return fir::Type::getBool();
+		}
+	}
+	else if(op == Operator::CompareLT || op == Operator::CompareGT || op == Operator::CompareLEQ || op == Operator::CompareGEQ)
+	{
+		// we handle this separately because we only want to check for number types and string types.
+		bool ty_compat = (left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0
+			|| (left->isConstantNumberType() && right->isConstantNumberType()));
+
+		bool ty_comparable = (left->isStringType() || left->isArraySliceType() || left->isArrayType() || left->isDynamicArrayType()
+			|| left->isPrimitiveType() || left->isEnumType() || left->isConstantNumberType());
+
+		if(ty_compat && ty_comparable)
 		{
 			return fir::Type::getBool();
 		}
