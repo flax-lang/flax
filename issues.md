@@ -39,29 +39,15 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 18. Some way of handling both types and expressions in `sizeof`/`typeid`/`typeof`. Might work if we just check for identifiers, but then
 	what about polymorphic types? Those won't even parse as expressions.
 
+
+19. Do we want to re-typecheck arguments for each function target?? this can help things infer better, but would also probably slow shit down a lot...
+
 -----
 
 
 ### THINGS TO FIX
 
 2. There are still some instances where we explicitly 'initialise' a class equivalent to `memset(0)` -- see *THINGS TO NOTE* below.
-
-
-4. Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
-	then have the compiler enforce that your variable is immutable after that point, eg:
-
-	```
-		var k = ...
-		if(some_cond1)  k = get_value()
-		else            k = get_other_value()
-
-		k.mutating_func()
-
-		make_immutable(k)
-
-		k = ...      // will not compile
-	```
-
 
 
 -----
@@ -145,6 +131,22 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 
 3. Foreach loops where you take more than one thing at a time, like this, maybe:
 	`for [ first, middle, last, ... ] in list { ... }`
+
+
+4. Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
+	then have the compiler enforce that your variable is immutable after that point, eg:
+
+	```
+		var k = ...
+		if(some_cond1)  k = get_value()
+		else            k = get_other_value()
+
+		k.mutating_func()
+
+		make_immutable(k)
+
+		k = ...      // will not compile
+	```
 
 
 5. Type inference for single-expr functions? It's a little weird to have two arrows like this:
