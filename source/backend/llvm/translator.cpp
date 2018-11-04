@@ -380,7 +380,7 @@ namespace backend
 		auto ret = cachedConstants[c];
 		if(ret) return ret;
 
-		if(fir::ConstantInt* ci = dcast(fir::ConstantInt, c))
+		if(auto ci = dcast(fir::ConstantInt, c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			if(ci->getType()->toPrimitiveType()->isSigned())
@@ -392,22 +392,26 @@ namespace backend
 				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
 		}
-		else if(fir::ConstantBool* cc = dcast(fir::ConstantBool, c))
-		{
-			llvm::Type* ct = typeToLlvm(c->getType(), mod);
-			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
-		}
-		else if(fir::ConstantFP* cf = dcast(fir::ConstantFP, c))
+		else if(auto cf = dcast(fir::ConstantFP, c))
 		{
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(fir::ConstantBitcast* cbc = dcast(fir::ConstantBitcast, c))
+		else if(auto cn = dcast(fir::ConstantNumber, c))
+		{
+			error("cannot");
+		}
+		else if(auto cc = dcast(fir::ConstantBool, c))
+		{
+			llvm::Type* ct = typeToLlvm(c->getType(), mod);
+			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
+		}
+		else if(auto cbc = dcast(fir::ConstantBitcast, c))
 		{
 			llvm::Type* t = typeToLlvm(cbc->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantExpr::getBitCast(constToLlvm(cbc->getValue(), valueMap, mod), t);
 		}
-		else if(fir::ConstantArray* ca = dcast(fir::ConstantArray, c))
+		else if(auto ca = dcast(fir::ConstantArray, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
 
@@ -431,7 +435,7 @@ namespace backend
 
 			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
 		}
-		else if(fir::ConstantTuple* ct = dcast(fir::ConstantTuple, c))
+		else if(auto ct = dcast(fir::ConstantTuple, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
 
@@ -443,7 +447,7 @@ namespace backend
 
 			return cachedConstants[c] = llvm::ConstantStruct::getAnon(LLVMBackend::getLLVMContext(), vals);
 		}
-		else if(fir::ConstantEnumCase* cec = dcast(fir::ConstantEnumCase, c))
+		else if(auto cec = dcast(fir::ConstantEnumCase, c))
 		{
 			auto ty = typeToLlvm(cec->getType(), mod);
 			iceAssert(ty->isStructTy());
@@ -451,7 +455,7 @@ namespace backend
 			return cachedConstants[c] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(fir::ConstantString* cs = dcast(fir::ConstantString, c))
+		else if(auto cs = dcast(fir::ConstantString, c))
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "const string");
 			size_t origLen = cs->getValue().length();
@@ -465,8 +469,14 @@ namespace backend
 			std::vector<llvm::Constant*> indices = { zconst, zconst };
 			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
 
-			auto eightconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 8);
-			gepd = llvm::ConstantExpr::getInBoundsGetElementPtr(gepd->getType()->getPointerElementType(), gepd, eightconst);
+			//! ACHTUNG !
+			//????? WTF IS THIS???
+			// seems like a relic from when we were doing the refcount-behind-string-data thing
+			// surprised we never hit a bug due to this, but i'm 99.99999% sure this is wrong.
+			/*
+				auto eightconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 8);
+				gepd = llvm::ConstantExpr::getInBoundsGetElementPtr(gepd->getType()->getPointerElementType(), gepd, eightconst);
+			*/
 
 			auto len = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), origLen);
 
@@ -479,14 +489,14 @@ namespace backend
 			cachedConstants[c] = ret;
 			return ret;
 		}
-		else if(fir::ConstantArraySlice* cas = dcast(fir::ConstantArraySlice, c))
+		else if(auto cas = dcast(fir::ConstantArraySlice, c))
 		{
 			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), valueMap, mod), constToLlvm(cas->getLength(), valueMap, mod) };
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
 			return cachedConstants[c] = ret;
 		}
-		else if(fir::ConstantDynamicArray* cda = dcast(fir::ConstantDynamicArray, c))
+		else if(auto cda = dcast(fir::ConstantDynamicArray, c))
 		{
 			if(cda->getArray())
 			{

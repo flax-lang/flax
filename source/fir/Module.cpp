@@ -16,12 +16,11 @@ namespace fir
 
 	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
-		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
 			error("Already have a global with name '%s'", ident.str());
 
-		this->globals[ident] = gv;
-		return gv;
+		// this adds itself to the module list.
+		return new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 	}
 
 	GlobalVariable* Module::createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage)
