@@ -102,25 +102,25 @@ public fn doFunctionTest()
 	printf("\n\nscope test\n")
 	do {
 
-		g = SomeClass.bar
+		g = SomeClass::bar
 		g(10)
 
-		g = SomeNS.NestedClass.bar
+		g = SomeNS::NestedClass::bar
 		g(20)
 
-		g = SomeNS.foo
+		g = SomeNS::foo
 		g(30)
 	}
 
 
 	printf("\nmethod test\n")
 	do {
-		var method = SomeClass.foo
+		var method = SomeClass::foo
 		let sc = SomeClass()
 		method(&sc, 40)
 
-		var method2 = SomeNS.NestedClass.foo
-		let nc = SomeNS.NestedClass()
+		var method2 = SomeNS::NestedClass::foo
+		let nc = SomeNS::NestedClass()
 		method2(&nc, 50)
 	}
 

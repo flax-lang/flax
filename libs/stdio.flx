@@ -14,14 +14,14 @@ fn char(c: str) -> i8   => c[0]
 
 fn error(msg: str)
 {
-	libc.printf("Invalid format specifier: %s\n", msg)
-	libc.abort()
+	libc::printf("Invalid format specifier: %s\n", msg)
+	libc::abort()
 }
 
 fn to_string_i64(n: i64) -> string
 {
 	var ret = @raw alloc i8 [16]
-	let len = libc.sprintf(ret, "%lld", n)
+	let len = libc::sprintf(ret, "%lld", n)
 
 	let s = string(ret, len)
 	free ret
@@ -32,7 +32,7 @@ fn to_string_i64(n: i64) -> string
 fn to_string_u64(n: u64) -> string
 {
 	var ret = @raw alloc i8 [16]
-	let len = libc.sprintf(ret, "%llu", n)
+	let len = libc::sprintf(ret, "%llu", n)
 
 	let s = string(ret, len)
 	free ret
@@ -44,7 +44,7 @@ fn to_string_u64(n: u64) -> string
 fn to_string_f64(n: f64) -> string
 {
 	var ret = @raw alloc i8 [24]
-	let len = libc.sprintf(ret, "%f", n)
+	let len = libc::sprintf(ret, "%f", n)
 
 	let s = string(ret, len)
 	free ret
@@ -118,7 +118,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 
 public fn println(fmt: str, args: [any: ...])
 {
-	libc.printf("%s\n", format(fmt, ...args).ptr)
+	libc::printf("%s\n", format(fmt, ...args).ptr)
 }
 
 

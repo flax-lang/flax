@@ -677,6 +677,7 @@ namespace ast
 
 		Expr* left = 0;
 		Expr* right = 0;
+		bool isStatic = false;
 	};
 
 
