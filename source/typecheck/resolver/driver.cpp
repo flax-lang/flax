@@ -46,7 +46,8 @@ namespace resolver
 
 		//* how it works in C++, and for now also in Flax, is that once we match *any* names in the current scope, we stop searching upwards
 		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
-		bool didVar = false;
+		// bool didVar = false;
+
 		bool didGeneric = false;
 
 		auto errs = SimpleError::make(Location(), "");
@@ -118,7 +119,7 @@ namespace resolver
 			else if(dcast(VarDefn, def) && def->type->isFunctionType() /* && !didVar */)
 			{
 				cands.push_back({ def, ts });
-				didVar = true;
+				// didVar = true;
 			}
 			else
 			{
