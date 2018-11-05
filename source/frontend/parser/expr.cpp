@@ -254,6 +254,7 @@ namespace parser
 				return 2000;
 
 			case TT::Period:
+			case TT::DoubleColon:
 				return 1000;
 
 			// unary !
@@ -412,12 +413,15 @@ namespace parser
 				rhs = parseRhs(st, rhs, prec + 1);
 
 
-			if(op == ".")
+			if(op == "." || op == "::")
 			{
 				loc.col = lhs->loc.col;
-				loc.len = rhs->loc.col - lhs->loc.col + 1; //! is this correct??? or this?    + rhs->loc.len;
+				loc.len = rhs->loc.col + rhs->loc.len - lhs->loc.col;
 
-				lhs = util::pool<DotOperator>(loc, dynamic_cast<Expr*>(lhs), rhs);
+				auto dot = util::pool<DotOperator>(loc, dynamic_cast<Expr*>(lhs), rhs);
+				dot->isStatic = (op == "::");
+
+				lhs = dot;
 			}
 			else if(op == "..." || op == "..<")
 			{

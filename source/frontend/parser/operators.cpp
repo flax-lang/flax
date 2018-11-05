@@ -141,6 +141,7 @@ namespace parser
 			case TT::As:                return Operator::TypeCast;
 			case TT::Is:                return Operator::TypeIs;
 
+			case TT::DoubleColon:       return "::";
 			case TT::Period:            return ".";
 			case TT::At:                return "@";
 

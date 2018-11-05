@@ -5,7 +5,7 @@
 export supertiny
 
 import "libc" as _
-import "stdio" as _
+// import "stdio" as _
 
 // var glob: any
 // fn test_refcounting_problem_thing()
@@ -29,7 +29,7 @@ import "stdio" as _
 	let x = 30
 	if 1 == 1 < 4 > 3 > -5 == -7 + 2 < 10 > 3
 	{
-		println("yay")
+		printf("yay\n")
 	}
 
 
