@@ -18,7 +18,7 @@ namespace sst {
 namespace resolver
 {
 	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
-		const TypeParamMap_t& gmaps, bool allowImplicitSelf)
+		const PolyArgMapping_t& gmaps, bool allowImplicitSelf)
 	{
 		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
 		auto [ ret, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cds, gmaps, allowImplicitSelf, nullptr);
@@ -27,7 +27,7 @@ namespace resolver
 		return ret;
 	}
 
-	TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments, const TypeParamMap_t& gmaps,
+	TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments, const PolyArgMapping_t& gmaps,
 		bool travUp, fir::Type* return_infer)
 	{
 		StateTree* tree = fs->stree;
@@ -111,21 +111,14 @@ namespace resolver
 		{
 			auto ts = args; // copy it.
 
-			if(auto fn = dcast(FunctionDecl, def))
+			if(dcast(FunctionDecl, def) || dcast(TypeDefn, def))
 			{
-				cands.push_back({ fn, ts });
+				cands.push_back({ def, ts });
 			}
 			else if(dcast(VarDefn, def) && def->type->isFunctionType() /* && !didVar */)
 			{
 				cands.push_back({ def, ts });
 				didVar = true;
-			}
-			else if(auto typedf = dcast(TypeDefn, def))
-			{
-				// auto res = resolveConstructorCall(fs, typedf, ts, gmaps);
-				// if(!res.isError())
-
-				cands.push_back({ def, ts });
 			}
 			else
 			{
@@ -152,7 +145,7 @@ namespace resolver
 
 
 
-	TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps)
+	TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments, const PolyArgMapping_t& pams)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
@@ -176,7 +169,7 @@ namespace resolver
 
 			auto cand = resolveFunctionCallFromCandidates(fs, util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
-			}), &copy, gmaps, true);
+			}), &copy, pams, true);
 
 			// TODO: support re-eval of constructor args!
 			// TODO: support re-eval of constructor args!

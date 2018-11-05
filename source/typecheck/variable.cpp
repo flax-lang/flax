@@ -205,9 +205,8 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
 			std::vector<FnCallArgument> fake;
-			auto gmaps = fs->convertParserTypeArgsToFIR(this->mappings);
-			auto pots = sst::poly::findPolymorphReferences(fs, this->name, gdefs, gmaps, /* return_infer: */ 0, /* type_infer: */ infer,
-				false, &fake);
+			auto pots = sst::poly::findPolymorphReferences(fs, this->name, gdefs, this->mappings, /* return_infer: */ 0, /* type_infer: */ infer,
+				/* isFnCall: */ false, &fake);
 
 			if(pots.size() > 1)
 			{

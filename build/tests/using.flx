@@ -19,7 +19,7 @@ public fn doUsingTest()
 		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
 
 		using Foo as f
-		printf("a = %d, b = %d, c = %d\n", 3 * f.Alpha.value, 3 * f.Bravo.value, 3 * f.Charlie.value)
+		printf("a = %d, b = %d, c = %d\n", 3 * f::Alpha.value, 3 * f::Bravo.value, 3 * f::Charlie.value)
 	}
 
 	do {
@@ -34,7 +34,7 @@ public fn doUsingTest()
 			}
 		}
 
-		using xxx<T: int>.Foo as _
+		using xxx!<int>::Foo as _
 
 		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
 	}
@@ -60,8 +60,8 @@ public fn doUsingTest()
 			none
 		}
 
-		using Option<T: int> as _
-		using Option<T: str> as _
+		using Option!<T: int> as _
+		using Option!<str> as _
 
 		let x = some(30)
 		let y = some("bye")

@@ -7,6 +7,8 @@
 #include "errors.h"
 #include "ir/type.h"
 #include "typecheck.h"
+
+#include "resolver.h"
 #include "polymorph.h"
 
 namespace sst
@@ -112,7 +114,13 @@ namespace sst
 								error(this->loc(), "parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
-							TypeParamMap_t mapping = this->convertParserTypeArgsToFIR(pt->toNamedType()->genericMapping, allowFail);
+							auto [ mapping, err ] = sst::resolver::misc::canonicalisePolyArguments(this, gdef,pt->toNamedType()->genericMapping);
+
+							if(err != nullptr)
+							{
+								err->prepend(BareError::make("mismatched type arguments to instantiation of polymorphic type '%s':", gdef->name)
+									)->postAndQuit();
+							}
 
 							// types generally cannot be overloaded, so it doesn't make sense for it to be SFINAE-ed.
 							// unwrapping it will post the error if any.
@@ -153,7 +161,7 @@ namespace sst
 				};
 
 
-				if(name.find(".") == std::string::npos)
+				if(name.find("::") == std::string::npos)
 				{
 					return returnTheThing(this->stree, name, false, allowFail);
 				}
@@ -164,19 +172,19 @@ namespace sst
 					std::deque<std::string> scopes;
 					{
 						std::string tmp;
-						for(auto c : name)
+						for(size_t i = 0; i < name.size(); i++)
 						{
-							if(c == '.')
+							if(name[i] == ':' && (i + 1 < name.size()) && name[i+1] == ':')
 							{
 								if(tmp.empty())
-									error(this->loc(), "expected identifier between consecutive periods ('.') in nested type specifier");
+									error(this->loc(), "expected identifier between consecutive scopes ('::') in nested type specifier");
 
 								scopes.push_back(tmp);
 								tmp.clear();
 							}
 							else
 							{
-								tmp += c;
+								tmp += name[i];
 							}
 						}
 
