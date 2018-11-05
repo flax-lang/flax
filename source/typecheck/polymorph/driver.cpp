@@ -20,7 +20,7 @@ namespace sst {
 namespace poly
 {
 	std::vector<std::pair<TCResult, Solution_t>> findPolymorphReferences(TypecheckState* fs, const std::string& name,
-		const std::vector<ast::Parameterisable*>& gdefs, const TypeParamMap_t& _gmaps, fir::Type* return_infer, fir::Type* type_infer,
+		const std::vector<ast::Parameterisable*>& gdefs, const PolyArgMapping_t& pams, fir::Type* return_infer, fir::Type* type_infer,
 		bool isFnCall, std::vector<FnCallArgument>* args)
 	{
 		iceAssert(gdefs.size() > 0);
@@ -33,8 +33,16 @@ namespace poly
 
 		for(const auto& gdef : gdefs)
 		{
-			pots.push_back(attemptToInstantiatePolymorph(fs, gdef, name, _gmaps, return_infer, type_infer, isFnCall, args,
-				/* fillplaceholders: */ true));
+			auto [ gmaps, err ] = resolver::misc::canonicalisePolyArguments(fs, gdef, pams);
+			if(err != nullptr)
+			{
+				pots.push_back({ TCResult(err), Solution_t() });
+			}
+			else
+			{
+				pots.push_back(attemptToInstantiatePolymorph(fs, gdef, name, gmaps, return_infer, type_infer, isFnCall, args,
+					/* fillplaceholders: */ true));
+			}
 		}
 
 		return pots;
@@ -197,7 +205,7 @@ namespace poly
 
 
 		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
-			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
+			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer,
 			std::unordered_map<std::string, size_t>* origParamOrder)
 		{
@@ -286,7 +294,7 @@ namespace poly
 
 
 		std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
-			const std::unordered_map<std::string, TypeConstraints_t>& problems, const std::vector<FnCallArgument>& input,
+			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
 			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
 		{

@@ -50,7 +50,7 @@ public fn doLinkedListTest()
 {
 	do {
 		var list = LinkedList(data: 41)
-		LinkedList<T: int>.hello()
+		LinkedList!<int>::hello()
 
 		var list2 = LinkedList(data: "foo")
 		list2.insert("hello")

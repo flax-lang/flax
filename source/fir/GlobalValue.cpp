@@ -29,6 +29,8 @@ namespace fir
 
 		if(!immutable)  this->kind = Kind::lvalue;
 		else            this->kind = Kind::clvalue;
+
+		// module->globals[this->ident] = this;
 	}
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)

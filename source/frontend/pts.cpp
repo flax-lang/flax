@@ -128,22 +128,22 @@ namespace pts
 		return (it = new InferredType());
 	}
 
-	static std::map<std::pair<std::string, std::map<std::string, Type*>>, NamedType*> map;
+	// static std::map<std::pair<std::string, PolyArgMapping_t>, NamedType*> map;
 	NamedType* NamedType::create(const std::string& s)
 	{
 		return NamedType::create(s, { });
 	}
 
-	NamedType* NamedType::create(const std::string& s, const std::map<std::string, Type*>& tm)
+	NamedType* NamedType::create(const std::string& s, const PolyArgMapping_t& tm)
 	{
-		if(map.find({ s, tm }) != map.end())
-			return map[{ s, tm }];
+		// if(map.find({ s, tm }) != map.end())
+		// 	return map[{ s, tm }];
 
 		auto ret = new NamedType(s);
-		for(const auto& p : tm)
-			ret->genericMapping[p.first] = p.second;
+		ret->genericMapping = tm;
 
-		return (map[{ s, tm }] = ret);
+		// return (map[{ s, tm }] = ret);
+		return ret;
 	}
 
 
@@ -156,10 +156,10 @@ namespace pts
 		if(!this->genericMapping.empty())
 		{
 			std::string m;
-			for(auto p : this->genericMapping)
-				m += p.first + ": " + p.second->str() + ", ";
+			for(auto p : this->genericMapping.maps)
+				m += strprintf("%s: %s, ", p.name.empty() ? std::to_string(p.index) : p.name, p.type->str());
 
-			if(this->genericMapping.size() > 0)
+			if(this->genericMapping.maps.size() > 0)
 				m.pop_back(), m.pop_back();
 
 			ret += "<" + m + ">";

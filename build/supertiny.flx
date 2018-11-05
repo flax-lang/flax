@@ -31,6 +31,9 @@ import "libc" as _
 	{
 		printf("yay\n")
 	}
+
+
+	overloadErrorTest()
 }
 
 
@@ -73,32 +76,42 @@ import "libc" as _
 
 
 
-// fn overloadErrorTest()
-// {
-// 	fn printThings(mul: f64, flts: [f64: ...])
-// 	{
-// 		printf("floats: ");
-// 		for i in flts { printf("%.1f ", mul * i) }
+fn overloadErrorTest()
+{
+	fn printThings(mul: f64, flts: [f64: ...])
+	{
+		printf("floats: ");
+		for i in flts { printf("%.1f ", mul * i) }
 
-// 		printf("\n")
-// 	}
+		printf("\n")
+	}
 
-// 	fn printThings(mul: str, flts: [f64: ...])
-// 	{
-// 		printf("floats: ");
-// 		for i in flts { printf("%s: %.1f ", mul.ptr, i) }
+	fn printThings(mul: str, flts: [f64: ...])
+	{
+		printf("floats: ");
+		for i in flts { printf("%s: %.1f ", mul.ptr, i) }
 
-// 		printf("\n")
-// 	}
+		printf("\n")
+	}
 
-// 	fn printThings()
-// 	{
-// 		printf("print things 3\n")
-// 	}
+	fn printThings()
+	{
+		printf("print things 3\n")
+	}
+
+	do {
+		printThings(30, ...[as f64: 1, 2, 3, 4, 5 ])
+		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
+	}
+}
 
 
-// 	do {
-// 		printThings(30, ...[ 1, 2, 3, 4, 5 ])
-// 		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
-// 	}
-// }
+
+
+
+
+
+
+
+
+

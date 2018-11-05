@@ -10,23 +10,23 @@ public fn doFizzBuzz(num: int)
 	var i = 0
 	while i <= num
 	{
-		libc.printf("%02d:      ", i)
+		libc::printf("%02d:      ", i)
 
 		if i % 3 == 0
 		{
-			libc.printf("Fizz")
+			libc::printf("Fizz")
 		}
 		if i % 5 == 0
 		{
-			libc.printf("Buzz")
+			libc::printf("Buzz")
 		}
 
 		if i % 5 != 0 && i % 3 != 0
 		{
-			libc.printf("%d", i)
+			libc::printf("%d", i)
 		}
 
-		libc.printf("\n")
+		libc::printf("\n")
 		i += 1
 	}
 }

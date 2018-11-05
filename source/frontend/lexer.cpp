@@ -304,6 +304,12 @@ namespace lexer
 			tok.text = "^=";
 			read = 2;
 		}
+		else if(hasPrefix(stream, "::"))
+		{
+			tok.type = TokenType::DoubleColon;
+			tok.text = "::";
+			read = 2;
+		}
 		else if(hasPrefix(stream, "..."))
 		{
 			tok.type = TokenType::Ellipsis;

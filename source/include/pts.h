@@ -79,10 +79,10 @@ namespace pts
 		virtual std::string str() override;
 		std::string name;
 
-		std::unordered_map<std::string, Type*> genericMapping;
+		PolyArgMapping_t genericMapping;
 
 		static NamedType* create(const std::string& s);
-		static NamedType* create(const std::string& s, const std::map<std::string, Type*>& genericMapping);
+		static NamedType* create(const std::string& s, const PolyArgMapping_t& genericMapping);
 
 		private:
 		explicit NamedType(const std::string& n) : name(n) { }

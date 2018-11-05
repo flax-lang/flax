@@ -83,7 +83,7 @@ namespace ast
 
 		std::string name;
 
-		std::unordered_map<std::string, TypeConstraints_t> generics;
+		std::vector<std::pair<std::string, TypeConstraints_t>> generics;
 		std::vector<std::pair<sst::Defn*, std::vector<TypeParamMap_t>>> genericVersions;
 
 		// kind of a hack.
@@ -479,7 +479,9 @@ namespace ast
 
 		// for these cases: Foo<T: int>(...) and Foo<T: int>.staticAccess
 		// where Foo is, respectively, a generic function and a generic type.
-		std::unordered_map<std::string, pts::Type*> mappings;
+		// std::unordered_map<std::string, pts::Type*> mappings;
+
+		PolyArgMapping_t mappings;
 	};
 
 
@@ -649,7 +651,7 @@ namespace ast
 		std::string name;
 		std::vector<std::pair<std::string, Expr*>> args;
 
-		std::unordered_map<std::string, pts::Type*> mappings;
+		PolyArgMapping_t mappings;
 
 		bool traverseUpwards = true;
 	};
@@ -677,6 +679,7 @@ namespace ast
 
 		Expr* left = 0;
 		Expr* right = 0;
+		bool isStatic = false;
 	};
 
 

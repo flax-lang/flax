@@ -16,9 +16,6 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	std::tuple<std::vector<FuncDefn::Arg>, std::unordered_map<std::string, TypeConstraints_t>, pts::Type*, bool, Location>
-	parseFunctionLookingDecl(State& st);
-
 	OperatorOverloadDefn* parseOperatorOverload(State& st)
 	{
 		using Kind = OperatorOverloadDefn::Kind;
@@ -144,6 +141,7 @@ namespace parser
 			case TT::As:                return Operator::TypeCast;
 			case TT::Is:                return Operator::TypeIs;
 
+			case TT::DoubleColon:       return "::";
 			case TT::Period:            return ".";
 			case TT::At:                return "@";
 

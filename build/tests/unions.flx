@@ -15,10 +15,10 @@ public fn doUnionsTest()
 {
 	do {
 
-		let x = option.some("foobar")
-		let y = option.some(456)
+		let x = option::some("foobar")
+		let y = option::some(456)
 
-		printf("x = %s, y = %d\n", x as option<T: str>.some, y as option<T: int>.some)
+		printf("x = %s, y = %d\n", x as option!<str>::some, y as option!<int>::some)
 	}
 
 	do {
@@ -29,11 +29,11 @@ public fn doUnionsTest()
 			none
 		}
 
-		let q = Bar.some("hello")
-		let v = Bar.other(30)
-		let m = Bar.none
+		let q = Bar::some("hello")
+		let v = Bar::other(30)
+		let m = Bar::none
 
-		printf("q = %s, v = %d\n", q as Bar.some, v as Bar.other)
+		printf("q = %s, v = %d\n", q as Bar::some, v as Bar::other)
 	}
 }
 

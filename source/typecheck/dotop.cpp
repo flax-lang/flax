@@ -14,12 +14,85 @@
 
 #include "mpool.h"
 
+
+
+// make the nice message.
+static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Location& l, const std::string& name, bool usedStatic)
+{
+	if(usedStatic)
+	{
+		// check static ones for a better error message.
+		sst::Defn* found = 0;
+		for(auto sm : str->methods)
+			if(sm->id.name == name) { found = sm; break; }
+
+		if(!found)
+		{
+			for(auto sf : str->fields)
+				if(sf->id.name == name) { found = sf; break; }
+		}
+
+		if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '.' to refer to the instance member '%s'", name));
+
+		return e;
+	}
+	else
+	{
+		// check static ones for a better error message.
+		sst::Defn* found = 0;
+		for(auto sm : str->staticMethods)
+			if(sm->id.name == name) { found = sm; break; }
+
+		if(!found)
+		{
+			for(auto sf : str->staticFields)
+				if(sf->id.name == name) { found = sf; break; }
+		}
+
+
+		if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '::' to refer to the static member '%s'", name));
+
+		return e;
+	}
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* dotop, fir::Type* infer)
 {
 	auto lhs = dotop->left->typecheck(fs).expr();
 
 	// first we got to find the struct defn based on the type
 	auto type = lhs->type;
+	if(!type)
+	{
+		if(dcast(sst::ScopeExpr, lhs) || (dcast(sst::VarRef, lhs) && dcast(sst::TreeDefn, dcast(sst::VarRef, lhs)->def)))
+		{
+			error(dotop, "invalid use of '.' for static scope access; use '::' instead");
+		}
+		else
+		{
+			error(lhs, "failed to resolve type of lhs in expression dot-op!");
+		}
+	}
+	else if(auto vr = dcast(sst::VarRef, lhs); vr && (dcast(sst::UnionDefn, vr->def) || dcast(sst::EnumDefn, vr->def)))
+	{
+		error(dotop, "use '::' to access enumeration cases and union variants");
+	}
+
 	if(type->isTupleType())
 	{
 		ast::LitNumber* ln = dcast(ast::LitNumber, dotop->right);
@@ -287,6 +360,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
+
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
@@ -304,7 +378,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 
-				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
+				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fc->mappings, false).defn();
 			};
 
 			std::vector<sst::Defn*> mcands;
@@ -331,7 +405,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				while(base)
 				{
 					auto cds = util::filter(util::map(str->fields, [](sst::VarDefn* fd) -> sst::Defn* { return fd; }),
-						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
+						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name && d->type->isFunctionType(); });
 
 					vcands.insert(vcands.end(), cds.begin(), cds.end());
 
@@ -345,11 +419,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 			if(mcands.empty() && vcands.empty())
-				error(fc, "no method or field named '%s' in struct/class '%s'", fc->name, str->id.name);
+			{
+				wrongDotOpError(SimpleError::make(fc->loc, "no method named '%s' in type '%s'", fc->name, str->id.name),
+					str, fc->loc, fc->name, false)->postAndQuit();
+			}
+
 
 			sst::Defn* resolved = search(mcands, &arguments, true);
-
-
 			sst::Expr* finalCall = 0;
 			if(resolved)
 			{
@@ -415,8 +491,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					}
 
 					// ok, we didn't find it.
-					if(auto cls = dcast(sst::ClassDefn, copy); cls && cls->baseClass)
+					if(auto cls = dcast(sst::ClassDefn, copy); cls)
 						copy = cls->baseClass;
+
+					else
+						copy = nullptr;
 				}
 			}
 
@@ -431,10 +510,15 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(meths.empty())
 			{
-				error(dotop->right, "no such instance field or method named '%s' in struct '%s'", name, str->id.name);
+				wrongDotOpError(SimpleError::make(fc->loc, "no field named '%s' in type '%s'", fld->name, str->id.name),
+					str, fld->loc, fld->name, false)->postAndQuit();
 			}
 			else
 			{
+				// ok, we potentially have a method -- if we used '.', error out.
+				if(!dotop->isStatic)
+					error(dotop, "use '::' to refer to a method of a type");
+
 				fir::Type* retty = 0;
 
 				// ok, disambiguate if we need to
@@ -486,7 +570,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		}
 		else
 		{
-			error(dotop->right, "unsupported right-side expression for dot-operator on struct/class '%s'", str->id.name);
+			error(dotop->right, "unsupported right-side expression for dot-operator on type '%s'", str->id.name);
 		}
 	}
 	else
@@ -497,10 +581,14 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 
+
+
+
+
 static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left, fir::Type* infer)
 {
 	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news,
-		fir::Type* rhs_infer) -> sst::Expr* {
+		fir::Type* rhs_infer, sst::StructDefn* possibleStructDefn = 0) -> sst::Expr* {
 
 		if(auto id = dcast(ast::Ident, dot->right))
 			id->traverseUpwards = false;
@@ -533,16 +621,16 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
 		{
 			fs->teleportToScope(news);
-			ret = dot->right->typecheck(fs, rhs_infer).expr();
-
-			//* special-case this thing. if we don't do this, then 'ret' is just a normal VarRef,
-			//* which during codegen will try to trigger the codegen for the UnionVariantDefn,
-			//* which returns 0 (because there's really nothing to define at code-gen time)
-
-			//? note: ret->type can be null if we're in the middle of a namespace dot-op,
-			//? and 'ret' is a ScopeExpr.
-			if(ret->type && ret->type->isUnionVariantType())
-				ret = sst::TypeExpr::make(ret->loc, ret->type);
+			auto res = dot->right->typecheck(fs, rhs_infer);
+			if(res.isError() && possibleStructDefn && dcast(ast::Ident, dot->right))
+			{
+				wrongDotOpError(res.error(), possibleStructDefn, dot->right->loc, dcast(ast::Ident, dot->right)->name, true)->postAndQuit();
+			}
+			else
+			{
+				// will post if res is an error, even if we didn't give the fancy error.
+				ret = res.expr();
+			}
 		}
 		else
 		{
@@ -689,7 +777,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		}
 		else
 		{
-			// note: fallthrough to call to doExpressionDotOp()
+			error(dot, "invalid static access on variable (of type '%s'); use '.' to refer to instance members", def->type);
 		}
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, left))
@@ -713,6 +801,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		}
 	}
 
+	error("????!!!!");
 	return 0;
 }
 
@@ -726,12 +815,25 @@ TCResult ast::DotOperator::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	this->left->checkAsType = this->checkAsType;
 	this->right->checkAsType = this->checkAsType;
 
-	auto ret = doStaticDotOp(fs, this, this->left->typecheck(fs).expr(), infer);
-	if(ret) return TCResult(ret);
-
-	// catch-all, probably.
-	return TCResult(doExpressionDotOp(fs, this, infer));
+	if(this->isStatic)  return TCResult(doStaticDotOp(fs, this, this->left->typecheck(fs).expr(), infer));
+	else                return TCResult(doExpressionDotOp(fs, this, infer));
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -21,6 +21,9 @@ namespace fir
 {
 	struct Module
 	{
+		friend struct GlobalValue;
+		friend struct GlobalVariable;
+
 		Module(std::string nm);
 
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
@@ -59,13 +62,14 @@ namespace fir
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
-		std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> _getVtables() { return this->vtables; }
-		std::unordered_map<Identifier, Function*> _getIntrinsicFunctions() { return this->intrinsicFunctions; }
-		std::unordered_map<std::string, GlobalVariable*> _getGlobalStrings() { return this->globalStrings; }
-		std::unordered_map<Identifier, GlobalVariable*> _getGlobals() { return this->globals; }
-		std::unordered_map<Identifier, Function*> _getFunctions() { return this->functions; }
-		std::unordered_map<Identifier, Type*> _getNamedTypes() { return this->namedTypes; }
+		const std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
+		const std::unordered_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
+		const std::unordered_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
+		const std::unordered_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
+		const std::unordered_map<Identifier, Function*>& _getFunctions() { return this->functions; }
+		const std::unordered_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
 
+		const std::unordered_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
 
 
 		private:
@@ -76,6 +80,8 @@ namespace fir
 		std::unordered_map<Identifier, GlobalVariable*> globals;
 		std::unordered_map<Identifier, Function*> functions;
 		std::unordered_map<Identifier, Type*> namedTypes;
+
+		std::unordered_map<size_t, GlobalValue*> allGlobalValues;
 
 		std::unordered_map<Identifier, Function*> intrinsicFunctions;
 
