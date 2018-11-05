@@ -477,9 +477,13 @@ namespace parser
 				{
 					s += ".", st.eat();
 				}
+				else if(st.front() == TT::DoubleColon)
+				{
+					s += "::", st.eat();
+				}
 				else if(st.front() == TT::Identifier)
 				{
-					if(s.back() != '.')
+					if(s.back() != '.' && s.back() != ':')
 						error(st, "unexpected identifer '%s' in type", st.front().str());
 
 					else
@@ -493,57 +497,60 @@ namespace parser
 
 
 			// check generic mapping
-			std::map<std::string, pts::Type*> gmaps;
-			if(st.front() == TT::LAngle)
+			PolyArgMapping_t pams;
+			if(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle)
 			{
-				// ok
-				st.pop();
-				while(st.hasTokens())
-				{
-					if(st.front() == TT::Identifier)
-					{
-						std::string ty = st.eat().str();
-						if(st.eat() != TT::Colon)
-							expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
-
-						if(gmaps.find(ty) != gmaps.end())
-							error(st, "duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
-
-						gmaps[ty] = parseType(st);
-
-						if(st.front() == TT::Comma)
-						{
-							st.pop();
-							continue;
-						}
-						else if(st.front() == TT::RAngle)
-						{
-							break;
-						}
-						else
-						{
-							expected(st, "either ',' or '>' to continue or terminate parametric type instantiation", st.front().str());
-						}
-					}
-					else if(st.front() == TT::RAngle)
-					{
-						error(st, "need at least one type mapping in parametric type instantiation");
-					}
-					else
-					{
-						// error(st, "Unexpected token '%s' in type mapping", st.front().str());
-						break;
-					}
-				}
-
-				if(st.front() != TT::RAngle)
-					expected(st, "'>' to end type mapping", st.front().str());
-
-				st.pop();
+				//? note: if *failed is nullptr, then we will throw errors where we usually would return.
+				pams = parsePAMs(st, /* fail: */ nullptr);
 			}
+			// 	// ok
+			// 	st.pop();
+			// 	while(st.hasTokens())
+			// 	{
+			// 		if(st.front() == TT::Identifier)
+			// 		{
+			// 			std::string ty = st.eat().str();
+			// 			if(st.eat() != TT::Colon)
+			// 				expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
+
+			// 			if(seen.find(ty) != seen.end())
+			// 				error(st, "duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
+
+			// 			pams.add(ty, parseType(st));
+
+			// 			if(st.front() == TT::Comma)
+			// 			{
+			// 				st.pop();
+			// 				continue;
+			// 			}
+			// 			else if(st.front() == TT::RAngle)
+			// 			{
+			// 				break;
+			// 			}
+			// 			else
+			// 			{
+			// 				expected(st, "either ',' or '>' to continue or terminate parametric type instantiation", st.front().str());
+			// 			}
+			// 		}
+			// 		else if(st.front() == TT::RAngle)
+			// 		{
+			// 			error(st, "need at least one type mapping in parametric type instantiation");
+			// 		}
+			// 		else
+			// 		{
+			// 			// error(st, "Unexpected token '%s' in type mapping", st.front().str());
+			// 			break;
+			// 		}
+			// 	}
+
+			// 	if(st.front() != TT::RAngle)
+			// 		expected(st, "'>' to end type mapping", st.front().str());
+
+			// 	st.pop();
+			// }
 
 
-			return pts::NamedType::create(s, gmaps);
+			return pts::NamedType::create(s, pams);
 		}
 		else if(auto isfn = (st.front() == TT::Func); st.front() == TT::LParen || st.front() == TT::Func)
 		{
@@ -601,4 +608,87 @@ namespace parser
 			error(st, "unexpected token '%s' while parsing type", st.front().str());
 		}
 	}
+
+
+
+	PolyArgMapping_t parsePAMs(State& st, bool* failed)
+	{
+		iceAssert(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle);
+
+		st.pop();
+		st.pop();
+
+		std::unordered_set<std::string> seen;
+		PolyArgMapping_t mappings;
+		{
+			//* foo!<> is an error regardless of whether we're doing expression parsing or call parsing.
+			if(st.front() == TT::RAngle)
+				error(st.loc(), "at least one type argument is required between angle brackets <>");
+
+			// step 2A: start parsing.
+			size_t idx = 0;
+			while(st.front() != TT::RAngle)
+			{
+				if(st.front() != TT::Identifier)
+				{
+					if(failed)
+					{
+						*failed = true;
+						return mappings;
+					}
+					else
+					{
+						expected(st.loc(), "identifier in type argument list", st.front().str());
+					}
+				}
+
+				if(st.front() == TT::Identifier && st.lookahead(1) == TT::Colon)
+				{
+					auto id = st.pop().str();
+					st.pop();
+
+					//? I think beyond this point we pretty much can't fail since we have the colon.
+					//? so, we shouldn't need to handle the case where we fail to parse a type here.
+					if(seen.find(id) != seen.end())
+						error(st.loc(), "duplicate type argument '%s'", id);
+
+					auto ty = parseType(st);
+					mappings.add(id, ty);
+					seen.insert(id);
+				}
+				else
+				{
+					if(!seen.empty())
+						error(st.loc(), "cannot have positional type arguments after named arguments");
+
+					auto ty = parseType(st);
+					mappings.add(idx++, ty);
+				}
+
+				if(st.front() == TT::Comma)
+					st.pop();
+
+				else if(st.front() != TT::RAngle)
+					expected(st.loc(), "',' or '>' in type argument list", st.front().str());
+			}
+
+			iceAssert(st.front() == TT::RAngle);
+			st.pop();
+
+			return mappings;
+		}
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

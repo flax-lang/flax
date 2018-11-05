@@ -71,6 +71,51 @@ namespace sst
 
 
 
+			std::pair<TypeParamMap_t, ErrorMsg*> canonicalisePolyArguments(TypecheckState* fs, ast::Parameterisable* thing, const PolyArgMapping_t& pams)
+			{
+				if(thing->generics.empty())
+					return { { }, SimpleError::make(fs->loc(), "cannot canonicalise poly arguments for non-generic (or nested) entity '%s'", thing->name) };
+
+				TypeParamMap_t ret;
+
+				//? we only check if we provided more than necessary, because (1) we might have optional args in the future, and (2) we can omit args
+				//? to infer stuff.
+				if(thing->generics.size() < pams.maps.size())
+				{
+					return { { }, SimpleError::make(fs->loc(), "mismatched number of type arguments to polymorph '%s'; expected %d, found %d instead",
+						thing->name, thing->generics.size(), pams.maps.size()) };
+				}
+
+				for(const auto& pam : pams.maps)
+				{
+					if(!pam.name.empty())
+					{
+						// check if it exists.
+						auto it = std::find_if(thing->generics.begin(), thing->generics.end(),
+							[&pam](const std::pair<std::string, TypeConstraints_t>& a) -> bool {
+								return a.first == pam.name;
+							});
+
+						if(it == thing->generics.end())
+							return { { }, SimpleError::make(fs->loc(), "no type parameter named '%s' in polymorph '%s'", pam.name, thing->name) };
+
+						// ok, it works.
+						ret[pam.name] = fs->convertParserTypeToFIR(pam.type, /* allowFailure: */ false);
+					}
+					else
+					{
+						// ok, the index ought to exist.
+						iceAssert(pam.index < thing->generics.size());
+
+						// should be simple.
+						ret[thing->generics[pam.index].first] = fs->convertParserTypeToFIR(pam.type, /* allowFailure: */ false);
+					}
+				}
+
+				return { ret, nullptr };
+			}
+
+
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args)
 			{
 				return util::map(args, [fs](const auto& a) -> FnCallArgument {

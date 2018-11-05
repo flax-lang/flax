@@ -49,6 +49,32 @@ sst::Defn* TCResult::defn() const
 }
 
 
+
+
+void PolyArgMapping_t::add(const std::string& name, pts::Type* t)
+{
+	SingleArg arg;
+	arg.name = name;
+	arg.type = t;
+	arg.index = -1;
+
+	this->maps.push_back(arg);
+}
+
+void PolyArgMapping_t::add(size_t idx, pts::Type* t)
+{
+	SingleArg arg;
+	arg.name = "";
+	arg.type = t;
+	arg.index = idx;
+
+	this->maps.push_back(arg);
+}
+
+
+
+
+
 bool Identifier::operator == (const Identifier& other) const
 {
 	return (other.name == this->name) && (other.str() == this->str());
