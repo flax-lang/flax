@@ -706,22 +706,21 @@ namespace parser
 
 		auto ident = util::pool<Ident>(st.ploc(), name);
 
-		//! ACHTUNG !
-		//* here begins the shitshow of generic angle-bracket parsing.
-
-		if(st.front() == TT::LAngle)
+		//* we've modified our generic thing to be Foo!<...>, so there shouldn't
+		//* be any ambiguity left. once we see '!' and '<' we know for sure.
+		//? as long as we don't make '!' a postfix operator...
+		//? for now, we'll leave in the try-and-restore mechanism.
+		if(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle)
 		{
-			// step 1: store the current position so we can rewind later.
+			bool fail = false;
 			auto restore = st.getIndex();
 
-			// step 2: try and parse a generic mapping.
+			st.pop();
+			st.pop();
 
-			bool fail = false;
 			std::unordered_map<std::string, pts::Type*> mappings;
 			{
-				st.pop();
-
-				//* foo<> is an error regardless of whether we're doing expression parsing or call parsing.
+				//* foo!<> is an error regardless of whether we're doing expression parsing or call parsing.
 				if(st.front() == TT::RAngle)
 					error(st.loc(), "at least one type argument is required between angle brackets <>");
 
