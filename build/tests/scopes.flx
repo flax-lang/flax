@@ -10,7 +10,7 @@ import "math"
 
 @operator prefix 900 √
 
-operator prefix √ (x: f64) -> f64 { return math.sqrt(x) }
+operator prefix √ (x: f64) -> f64 { return math::sqrt(x) }
 
 class Orr
 {
@@ -114,7 +114,7 @@ public fn doScopeTest(argv: str)
 
 	let m = √(41.5)
 
-	let mmx = Something.Inside.Another
+	let mmx = Something::Inside::Another
 	let another = 4
 	let foo = Something()
 
@@ -125,25 +125,25 @@ public fn doScopeTest(argv: str)
 	printf("gg.0: %d, gg.1: %.2f\n", (4, 50).0, gg.1)
 
 	printf("[%d]\n", foo.oor)
-	printf("p: %f, g: %d, m: %d, %.14f\n\n", p, another, mmx, math.π)
+	printf("p: %f, g: %d, m: %d, %.14f\n\n", p, another, mmx, math::π)
 
 
-	let x1: int = OutsideEnum.Three as int
-	let x2: int = Something.InsideEnum.Quadruple as int
-	let x3 = n1.n2.DeepClass.DeeperClass()
-	printf("x1: %d, x2: %d, x3: %d\n", x1, x2, n1.n2.DeepClass.DeeperClass.deepStatic())
+	let x1: int = OutsideEnum::Three as int
+	let x2: int = Something::InsideEnum::Quadruple as int
+	let x3 = n1::n2::DeepClass::DeeperClass()
+	printf("x1: %d, x2: %d, x3: %d\n", x1, x2, n1::n2::DeepClass::DeeperClass::deepStatic())
 
 
-	n1.n2.m.foo.oor = 968
+	n1::n2::m.foo.oor = 968
 
-	let t1 = n1.n2.m.foo.somefoo().bar
-	let t2 = n1.n2.nest().0.length
+	let t1 = n1::n2::m.foo.somefoo().bar
+	let t2 = n1::n2::nest().0.length
 
-	n1.n2.tup.0 = "HELLO, WORLD!" //string("HELLO, WORLD") + "!"
-	printf("tup: %s\n", n1.n2.tup.0)
+	n1::n2::tup.0 = "HELLO, WORLD!" //string("HELLO, WORLD") + "!"
+	printf("tup: %s\n", n1::n2::tup.0)
 
 	printf("t1 = %d, t2 = %d\n", t1, t2)
-	printf("afoo: %d\n", Sheep.afoo.somefoo().bar)
+	printf("afoo: %d\n", Sheep::afoo.somefoo().bar)
 
 }
 
