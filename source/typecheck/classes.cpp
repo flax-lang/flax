@@ -370,7 +370,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 		auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
 
-		auto constr = sst::resolver::resolveConstructorCall(fs, call->classty, baseargs, { });
+		auto constr = sst::resolver::resolveConstructorCall(fs, call->classty, baseargs, PolyArgMapping_t::none());
 
 		call->arguments = baseargs;
 		call->target = dcast(sst::FunctionDefn, constr.defn());

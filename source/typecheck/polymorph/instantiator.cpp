@@ -26,7 +26,7 @@ namespace poly
 			return SimpleError::make(l, "type %s %s could not be inferred", util::plural("parameter", strs.size()), mstr);
 		}
 
-		std::vector<std::string> getMissingSolutions(const std::unordered_map<std::string, TypeConstraints_t>& needed, const TypeParamMap_t& solution,
+		std::vector<std::string> getMissingSolutions(const ProblemSpace_t& needed, const TypeParamMap_t& solution,
 			bool allowPlaceholders)
 		{
 			std::vector<std::string> missing;
@@ -175,13 +175,15 @@ namespace poly
 					t = t->getPointerElementType(), ptrs++;
 			}
 
-			if(thing->generics.find(map.first) != thing->generics.end() && ptrs < thing->generics[map.first].pointerDegree)
+			if(auto it = std::find_if(thing->generics.begin(), thing->generics.end(), [&map](const auto& p) -> bool {
+				return map.first == p.first;
+			}); it != thing->generics.end() && ptrs < it->second.pointerDegree)
 			{
 				return TCResult(
 					SimpleError::make(fs->loc(), "cannot map type '%s' to type parameter '%s' in instantiation of generic type '%s'",
 						map.second, map.first, thing->name)->append(
 							SimpleError::make(MsgType::Note, thing->loc,
-								"replacement type has pointer degree %d, which is less than the required %d", ptrs, thing->generics[map.first].pointerDegree)
+								"replacement type has pointer degree %d, which is less than the required %d", ptrs, it->second.pointerDegree)
 							)
 				);
 			}

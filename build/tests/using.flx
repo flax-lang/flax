@@ -34,7 +34,7 @@ public fn doUsingTest()
 			}
 		}
 
-		using xxx!<T: int>.Foo as _
+		using xxx!<int>.Foo as _
 
 		printf("a = %d, b = %d, c = %d\n", Alpha.value, Bravo.value, Charlie.value)
 	}
@@ -61,7 +61,7 @@ public fn doUsingTest()
 		}
 
 		using Option!<T: int> as _
-		using Option!<T: str> as _
+		using Option!<str> as _
 
 		let x = some(30)
 		let y = some("bye")

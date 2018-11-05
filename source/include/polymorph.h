@@ -30,7 +30,7 @@ namespace sst
 
 	namespace poly
 	{
-		using ProblemSpace_t = std::unordered_map<std::string, TypeConstraints_t>;
+		using ProblemSpace_t = std::vector<std::pair<std::string, TypeConstraints_t>>;
 
 		struct Solution_t
 		{
@@ -69,7 +69,7 @@ namespace sst
 
 
 		std::vector<std::pair<TCResult, Solution_t>> findPolymorphReferences(TypecheckState* fs, const std::string& name,
-			const std::vector<ast::Parameterisable*>& gdefs, const TypeParamMap_t& _gmaps, fir::Type* return_infer,
+			const std::vector<ast::Parameterisable*>& gdefs, const PolyArgMapping_t& _gmaps, fir::Type* return_infer,
 			fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args);
 
 		std::pair<TCResult, Solution_t> attemptToInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
