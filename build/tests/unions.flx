@@ -18,7 +18,7 @@ public fn doUnionsTest()
 		let x = option::some("foobar")
 		let y = option::some(456)
 
-		printf("x = %s, y = %d\n", x as option<T: str>::some, y as option<T: int>::some)
+		printf("x = %s, y = %d\n", x as option!<str>::some, y as option!<int>::some)
 	}
 
 	do {
