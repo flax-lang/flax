@@ -50,12 +50,13 @@ namespace sst
 			fir::Type* convertPtsType(TypecheckState* fs, const ProblemSpace_t& problems, pts::Type* input, int polysession)
 			{
 				fir::Type* fty = 0;
-				auto [ ty, trfs ] = decomposeIntoTransforms(input);
+				auto [ _ty, trfs ] = decomposeIntoTransforms(input);
+				pts::Type* ty = _ty;
 
 				if(ty->isNamedType())
 				{
 					fty = fs->convertParserTypeToFIR(ty, true);
-					if(!fty && (std::find_if(problems.begin(), problems.end(), [&ty](const auto& a) -> bool {
+					if(!fty && (std::find_if(problems.begin(), problems.end(), [ty](const auto& a) -> bool {
 							return ty->toNamedType()->name == a.first;
 						}) != problems.end()))
 					{
