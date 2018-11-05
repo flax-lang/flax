@@ -153,7 +153,7 @@ namespace sst
 				};
 
 
-				if(name.find(".") == std::string::npos)
+				if(name.find("::") == std::string::npos)
 				{
 					return returnTheThing(this->stree, name, false, allowFail);
 				}
@@ -164,19 +164,19 @@ namespace sst
 					std::deque<std::string> scopes;
 					{
 						std::string tmp;
-						for(auto c : name)
+						for(size_t i = 0; i < name.size(); i++)
 						{
-							if(c == '.')
+							if(name[i] == ':' && (i + 1 < name.size()) && name[i+1] == ':')
 							{
 								if(tmp.empty())
-									error(this->loc(), "expected identifier between consecutive periods ('.') in nested type specifier");
+									error(this->loc(), "expected identifier between consecutive scopes ('::') in nested type specifier");
 
 								scopes.push_back(tmp);
 								tmp.clear();
 							}
 							else
 							{
-								tmp += c;
+								tmp += name[i];
 							}
 						}
 
