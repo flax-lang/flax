@@ -1,5 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- static access now uses `::` instead of `.`, along the veins of C++ and Rust.
+- polymorph instantiations now take the form of `Foo!<...>` (the exclamation mark) -- making it less likely to be ambiguous.
+- polymorph arguments can now be positional, meaning `Foo!<int>` instead of `Foo!<T: int>`. The rules are similar to that of funtion calls
+	-- no positional arguments after named arguments.
+
 `(0b937a5)`
 - add chained comparison operators, eg. `10 < x < 30` would *succinctly* check for `x` between 10 and 30.
 - consequently, changed the precedence for all six comparison operators (`==`, `!=`, `<`, `<=`, `>`, and `>=`) to be the same (500)
