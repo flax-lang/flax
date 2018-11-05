@@ -706,70 +706,24 @@ namespace parser
 
 		auto ident = util::pool<Ident>(st.ploc(), name);
 
-		//! ACHTUNG !
-		//* here begins the shitshow of generic angle-bracket parsing.
-
-		if(st.front() == TT::LAngle)
+		//* we've modified our generic thing to be Foo!<...>, so there shouldn't
+		//* be any ambiguity left. once we see '!' and '<' we know for sure.
+		//? as long as we don't make '!' a postfix operator...
+		//? for now, we'll leave in the try-and-restore mechanism.
+		if(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle)
 		{
-			// step 1: store the current position so we can rewind later.
+			bool fail = false;
 			auto restore = st.getIndex();
 
-			// step 2: try and parse a generic mapping.
-
-			bool fail = false;
-			std::unordered_map<std::string, pts::Type*> mappings;
+			auto pams = parsePAMs(st, &fail);
+			if(fail)
 			{
-				st.pop();
-
-				//* foo<> is an error regardless of whether we're doing expression parsing or call parsing.
-				if(st.front() == TT::RAngle)
-					error(st.loc(), "at least one type argument is required between angle brackets <>");
-
-				// step 2A: start parsing.
-				while(st.front() != TT::RAngle)
-				{
-					if(st.front() != TT::Identifier)
-					{
-						fail = true;
-						break;
-					}
-
-					auto id = st.pop().str();
-					if(st.pop() != TT::Colon)
-					{
-						fail = true;
-						break;
-					}
-
-					//? I think beyond this point we pretty much can't fail since we have the colon.
-					//? so, we shouldn't need to handle the case where we fail to parse a type here.
-					if(mappings.find(id) != mappings.end())
-						error(st.loc(), "type parameter '%s' already exists in the type parameter list for entity '%s'", id, name);
-
-					auto ty = parseType(st);
-					mappings[id] = ty;
-
-					if(st.front() == TT::Comma)
-						st.pop();
-
-					else if(st.front() != TT::RAngle)
-						expected(st.loc(), "',' or '>' in type parameter list to entity '" + name + "'", st.front().str());
-
-					// ok, if we get an rangle we break out of the loop here.
-				}
-
-				if(fail)
-				{
-					st.rewindTo(restore);
-				}
-				else
-				{
-					iceAssert(st.front() == TT::RAngle);
-					st.pop();
-
-					ident->mappings = mappings;
-					ident->loc.len += (st.ploc().col - st.getTokenList()[restore].loc.col) + 1;
-				}
+				st.rewindTo(restore);
+			}
+			else
+			{
+				ident->mappings = pams;
+				ident->loc.len += (st.ploc().col - st.getTokenList()[restore].loc.col) + 1;
 			}
 		}
 

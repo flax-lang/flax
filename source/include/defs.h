@@ -43,6 +43,7 @@ struct Identifier;
 enum class VisibilityLevel;
 
 namespace fir { struct Type; }
+namespace pts { struct Type; }
 namespace tinyformat
 {
 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
@@ -554,6 +555,25 @@ struct TypeConstraints_t
 };
 
 using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
+
+struct PolyArgMapping_t
+{
+	struct SingleArg
+	{
+		size_t index;
+		std::string name;
+
+		pts::Type* type;
+	};
+
+	std::vector<SingleArg> maps;
+
+	bool empty() const { return maps.empty(); }
+	void add(const std::string& name, pts::Type* t);
+	void add(size_t idx, pts::Type* t);
+
+	static inline PolyArgMapping_t none() { return PolyArgMapping_t(); }
+};
 
 
 namespace util

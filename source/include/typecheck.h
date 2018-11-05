@@ -182,7 +182,6 @@ namespace sst
 		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
 		fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* lit);
-		TypeParamMap_t convertParserTypeArgsToFIR(const std::unordered_map<std::string, pts::Type*>& gmaps, bool allowFailure = false);
 
 
 		fir::Type* checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments);

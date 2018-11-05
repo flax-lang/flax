@@ -14,12 +14,12 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	// declared in parser/operators.cpp (because we use it there)
-	std::tuple<std::vector<FuncDefn::Arg>, std::unordered_map<std::string, TypeConstraints_t>, pts::Type*, bool, Location> parseFunctionLookingDecl(State& st)
+	std::tuple<std::vector<FuncDefn::Arg>, std::vector<std::pair<std::string, TypeConstraints_t>>, pts::Type*, bool, Location>
+	parseFunctionLookingDecl(State& st)
 	{
 		pts::Type* returnType = 0;
 		std::vector<FuncDefn::Arg> args;
-		std::unordered_map<std::string, TypeConstraints_t> generics;
+		std::vector<std::pair<std::string, TypeConstraints_t>> generics;
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -221,9 +221,10 @@ namespace parser
 
 
 
-	std::unordered_map<std::string, TypeConstraints_t> parseGenericTypeList(State& st)
+	std::vector<std::pair<std::string, TypeConstraints_t>> parseGenericTypeList(State& st)
 	{
-		std::unordered_map<std::string, TypeConstraints_t> ret;
+		std::unordered_set<std::string> seen;
+		std::vector<std::pair<std::string, TypeConstraints_t>> ret;
 
 		while(st.front().type != TT::RAngle)
 		{
@@ -257,7 +258,11 @@ namespace parser
 					error(st, "expected ',' or '>' to end type parameter list (2)");
 				}
 
-				ret[gt] = constrs;
+				if(seen.find(gt) != seen.end())
+					error(st, "duplicate type parameter '%s'", gt);
+
+				seen.insert(gt);
+				ret.push_back({ gt, constrs });
 			}
 			else if(st.front().type == TT::Comma)
 			{
