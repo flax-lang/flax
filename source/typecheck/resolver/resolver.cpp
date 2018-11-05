@@ -54,7 +54,7 @@ namespace resolver
 	namespace internal
 	{
 		std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
-			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& _cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
+			const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& _cands, const PolyArgMapping_t& pams, bool allowImplicitSelf,
 			fir::Type* return_infer)
 		{
 			if(_cands.empty())
@@ -90,20 +90,29 @@ namespace resolver
 							iceAssert(fd);
 							iceAssert(fd->original);
 
-							// do an inference -- with the arguments that we have.
-							auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, fn->id.name, gmaps, /* return_infer: */ return_infer,
-								/* type_infer: */ nullptr, /* isFnCall: */ true, &replacementArgs, /* fillPlacholders: */ false,
-								/* problem_infer: */ fn->type);
-
-							if(!res.isDefn())
+							auto [ gmaps, err ] = resolver::misc::canonicalisePolyArguments(fs, fd->original, pams);
+							if(err != nullptr)
 							{
-								fails[fn] = res.error();
+								fails[fn] = err;
 								dist = -1;
 							}
 							else
 							{
-								curcandidate = res.defn();
-								std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, nullptr);
+								// do an inference -- with the arguments that we have.
+								auto [ res, soln ] = poly::attemptToInstantiatePolymorph(fs, fd->original, fn->id.name, gmaps, /* return_infer: */ return_infer,
+									/* type_infer: */ nullptr, /* isFnCall: */ true, &replacementArgs, /* fillPlacholders: */ false,
+									/* problem_infer: */ fn->type);
+
+								if(!res.isDefn())
+								{
+									fails[fn] = res.error();
+									dist = -1;
+								}
+								else
+								{
+									curcandidate = res.defn();
+									std::tie(dist, fails[fn]) = std::make_tuple(soln.distance, nullptr);
+								}
 							}
 						}
 					}
@@ -137,7 +146,7 @@ namespace resolver
 				}
 				else if(auto td = dcast(TypeDefn, curcandidate))
 				{
-					auto res = resolveConstructorCall(fs, td, replacementArgs, gmaps);
+					auto res = resolveConstructorCall(fs, td, replacementArgs, pams);
 					if(!res.isDefn())
 					{
 						fails[fn] = res.error();

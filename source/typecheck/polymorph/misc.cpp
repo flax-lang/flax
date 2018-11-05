@@ -55,8 +55,12 @@ namespace sst
 				if(ty->isNamedType())
 				{
 					fty = fs->convertParserTypeToFIR(ty, true);
-					if(!fty && (problems.find(ty->toNamedType()->name) != problems.end()) /* || fs->findGenericMapping(ty->toNamedType()->name, true) != 0 */)
+					if(!fty && (std::find_if(problems.begin(), problems.end(), [&ty](const auto& a) -> bool {
+							return ty->toNamedType()->name == a.first;
+						}) != problems.end()))
+					{
 						fty = fir::PolyPlaceholderType::get(ty->toNamedType()->name, polysession);
+					}
 
 					if(!fty) error("failed to find type '%s'", input->str());
 				}
@@ -151,16 +155,6 @@ namespace sst
 
 		if(allowFail)   return 0;
 		else            error(this->loc(), "no mapping for type parameter '%s'", name);
-	}
-
-
-	TypeParamMap_t TypecheckState::convertParserTypeArgsToFIR(const std::unordered_map<std::string, pts::Type*>& gmaps, bool allowFailure)
-	{
-		TypeParamMap_t ret;
-		for(const auto& [ name, type ] : gmaps)
-			ret[name] = this->convertParserTypeToFIR(type, allowFailure);
-
-		return ret;
 	}
 }
 

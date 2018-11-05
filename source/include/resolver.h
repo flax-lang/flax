@@ -29,12 +29,12 @@ namespace sst
 
 
 		TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments,
-			const TypeParamMap_t& gmaps, bool traverseUp, fir::Type* inferredRetType);
+			const PolyArgMapping_t& gmaps, bool traverseUp, fir::Type* inferredRetType);
 
 		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cs, std::vector<FnCallArgument>* arguments,
-			const TypeParamMap_t& gmaps, bool allowImplicitSelf);
+			const PolyArgMapping_t& gmaps, bool allowImplicitSelf);
 
-		TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* defn, const std::vector<FnCallArgument>& arguments, const TypeParamMap_t& gmaps);
+		TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* defn, const std::vector<FnCallArgument>& arguments, const PolyArgMapping_t& gmaps);
 
 
 		std::pair<std::unordered_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
@@ -51,6 +51,8 @@ namespace sst
 
 			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
 				const std::vector<FnCallArgument>& args, ErrorMsg** err);
+
+			std::pair<TypeParamMap_t, ErrorMsg*> canonicalisePolyArguments(TypecheckState* fs, ast::Parameterisable* thing, const PolyArgMapping_t& pams);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
 
@@ -71,7 +73,7 @@ namespace sst
 		namespace internal
 		{
 			std::pair<TCResult, std::vector<FnCallArgument>> resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc,
-				const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const TypeParamMap_t& gmaps, bool allowImplicitSelf,
+				const std::vector<std::pair<Defn*, std::vector<FnCallArgument>>>& cands, const PolyArgMapping_t& gmaps, bool allowImplicitSelf,
 				fir::Type* return_infer);
 		}
 	}

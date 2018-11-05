@@ -304,7 +304,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				//* 1. we right now cannot overload based on the mutating aspect of the method
 				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
 
-				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fs->convertParserTypeArgsToFIR(fc->mappings), false).defn();
+				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fc->mappings, false).defn();
 			};
 
 			std::vector<sst::Defn*> mcands;
