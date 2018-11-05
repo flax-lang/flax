@@ -397,7 +397,7 @@ namespace backend
 			llvm::Type* it = typeToLlvm(c->getType(), mod);
 			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(auto cn = dcast(fir::ConstantNumber, c))
+		else if(dcast(fir::ConstantNumber, c))
 		{
 			error("cannot");
 		}
