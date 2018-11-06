@@ -23,6 +23,26 @@ struct timer
 };
 
 
+#ifdef _WIN32
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT
+#endif
+
+extern "C" DLLEXPORT void lmao()
+{
+	printf("LMAO!\n");
+}
+
+extern "C" DLLEXPORT void haha(int x)
+{
+	for(int i = 0; i < x; i++)
+		printf("HA");
+
+	printf("!\n");
+}
+
+
 static void compile(std::string in, std::string out)
 {
 	auto ts = std::chrono::high_resolution_clock::now();
