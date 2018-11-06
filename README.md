@@ -1,6 +1,6 @@
 # [Flax](https://flax-lang.github.io)
 
-A low level language with high level syntax and expressibility, aimed at OSDev work.
+A low level language with high level syntax and expressibility.
 
 
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
@@ -34,9 +34,8 @@ I'm no famous artist but this is my magnum opus, so it'll not be abandoned anyti
 
 - No header files.
 - Minimal runtime
-- Clean, expressive syntax
 - Minimal stupidty
-- No magic behind your back
+- Clean, expressive syntax
 
 
 -----------------------------------------------
@@ -44,14 +43,12 @@ I'm no famous artist but this is my magnum opus, so it'll not be abandoned anyti
 
 ### Current Features
 
-- User-defined types (currently only product types)
+- Structs, classes, unions, enums
 - Arrays (fixed and dynamic), slices
 - Pointer manipulation/arithmetic
 - Operator overloading
-- C++ auto-style type inference
 - Generic functions and types
-- C-style for loops
-- Range-based for loops
+- Type inference (including for generics)
 
 -----------------------------------------------
 
@@ -67,27 +64,29 @@ I'm no famous artist but this is my magnum opus, so it'll not be abandoned anyti
 
 ```rust
 do {
-	fn gincr<A>(x: A) -> A => x + 1
-	fn apply<B, C>(x: B, f: fn(B) -> C) -> C => f(x)
-
-	fn mapstupid<D, E, F>(arr: [D:], f: fn(D) -> E, fa: fn(D, fn(D) -> E) -> F) -> [F]
+	fn prints<T, U>(m: T, a: [U: ...])
 	{
-		var i = 0
-		var ret: [F]
-		while i < arr.length
-		{
-			ret.append(fa(arr[i], f))
-			i += 1
-		}
-
-		return ret
+		for x in a => printf(" %.2d", m * x)
 	}
 
-	printf("set 4:")
-	let new = mapstupid([ 5, 6, 7, 8, 9 ], gincr, apply)
-	for it in new { printf(" %d", it) }
+	printf("set 6:")
+	let xs = [ 1, 2, 3, 4, 5 ]
+	prints(3, ...xs)
 
 	printf("\n")
+}
+
+do {
+	union option<T>
+	{
+		some: T
+		none
+	}
+
+	let x = option::some("foobar")
+	let y = option::some(456)
+
+	println("x = %, y = %", x as some, y as some)
 }
 ```
 

@@ -94,7 +94,7 @@ namespace frontend
 				auto stree = state->dtrees[imported->name]->base;
 				iceAssert(stree);
 
-				ImportThing ithing { imported->name, d->ithing.importAs, d->ithing.loc };
+				ImportThing ithing { imported->name, d->ithing.importAs, d->ithing.pubImport, d->ithing.loc };
 				if(auto it = std::find_if(imports.begin(), imports.end(), [&ithing](auto x) -> bool { return x.first.name == ithing.name; });
 					it != imports.end())
 				{
