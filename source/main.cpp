@@ -23,7 +23,6 @@ struct timer
 };
 
 
-
 static void compile(std::string in, std::string out)
 {
 	auto ts = std::chrono::high_resolution_clock::now();

@@ -189,12 +189,16 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
-	defn->id = Identifier(this->name, IdKind::Name);
+	// use our 'asname' as the identifier.
+	defn->id = Identifier(this->asName, IdKind::Name);
 
 	defn->params = ps;
 	defn->returnType = retty;
 	defn->visibility = this->visibility;
 	defn->isVarArg = this->isVarArg;
+
+	// the realname is the actual name of the function.
+	defn->realName = this->name;
 
 	if(this->isVarArg)
 		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
@@ -229,7 +233,9 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		error(this, "conflicting");
 
 	this->generatedDecl = defn;
-	fs->stree->addDefinition(this->name, defn);
+
+	// same, use our 'asname'.
+	fs->stree->addDefinition(this->asName, defn);
 
 	return TCResult(defn);
 }
