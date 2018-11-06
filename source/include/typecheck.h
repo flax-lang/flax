@@ -60,7 +60,11 @@ namespace sst
 		std::unordered_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
 		std::unordered_map<std::pair<ast::Parameterisable*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
-		using DefnMap = std::unordered_map<std::string, std::vector<Defn*>>;
+		struct DefnMap
+		{
+			bool wasPublicImport = false;
+			std::unordered_map<std::string, std::vector<Defn*>> defns;
+		};
 
 		// maps from filename to defnmap -- allows tracking definitions by where they came from
 		// so we can resolve the import duplication bullshit
@@ -76,7 +80,7 @@ namespace sst
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
 
-		DefnMap getAllDefinitions();
+		std::unordered_map<std::string, std::vector<Defn*>> getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
 		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);

@@ -1,0 +1,11 @@
+// bar.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export bar
+public import "libc"
+
+public fn bar()
+{
+	libc::printf("hello, world!\n")
+}

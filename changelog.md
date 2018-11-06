@@ -1,6 +1,13 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- declare foreign functions `as` something -- useful for OpenGL especially, (1) to deduplicate the `gl` prefix, and (2) to allow overloading of all
+	the different `glVertex<N><T>` where `N = 2, 3, 4`, `T = i, f, d` or something.
+
+`(e2f235b)`
+- `public` and `private` imports, where the former re-exports things and the latter is the default behaviour.
+
+`(494a01e)`
 - static access now uses `::` instead of `.`, along the veins of C++ and Rust.
 - polymorph instantiations now take the form of `Foo!<...>` (the exclamation mark) -- making it less likely to be ambiguous.
 - polymorph arguments can now be positional, meaning `Foo!<int>` instead of `Foo!<T: int>`. The rules are similar to that of funtion calls

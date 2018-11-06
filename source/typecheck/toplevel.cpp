@@ -34,7 +34,7 @@ namespace sst
 	}
 
 	static StateTree* addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
-		StateTree* commonParent)
+		StateTree* commonParent, bool pubImport, const std::string& importer)
 	{
 		// StateTree* tree = cloneTree(_tree, commonParent);
 		StateTree* tree = _tree;
@@ -45,7 +45,7 @@ namespace sst
 			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
 			{
-				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing);
+				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing, pubImport, importer);
 			}
 			else
 			{
@@ -54,19 +54,21 @@ namespace sst
 		}
 
 		// then, add all functions and shit
-		for(auto defs_with_src : tree->definitions)
+		for(auto& defs_with_src : tree->definitions)
 		{
 			auto filename = defs_with_src.first;
+
+			// if we've already seen it, don't waste time re-importing it (and checking for dupes and stuff)
 			if(thingsImported.find(filename) != thingsImported.end())
 				continue;
 
-			for(auto defs : defs_with_src.second)
+			for(auto defs : defs_with_src.second.defns)
 			{
 				auto name = defs.first;
 				for(auto def : defs.second)
 				{
 					// info(def, "hello there (%s)", def->visibility);
-					if(def->visibility == VisibilityLevel::Public)
+					if((pubImport || existing->topLevelFilename == importer) && def->visibility == VisibilityLevel::Public)
 					{
 						auto others = existing->getDefinitionsWithName(name);
 
@@ -115,7 +117,6 @@ namespace sst
 						}
 
 						existing->addDefinition(tree->topLevelFilename, name, def);
-						// debuglog("add def '%s' / %s into tree '%s' (%p)\n", def->id.name, name, existing->name, existing);
 					}
 					else
 					{
@@ -179,23 +180,29 @@ namespace sst
 				if(auto it = insertPoint->subtrees.find(ias); it != insertPoint->subtrees.end())
 				{
 					newinspt = it->second;
+
+					//! ACHTUNG !
+					// do we ever get here????
+					iceAssert(false);
 				}
 				else
 				{
-					newinspt = new sst::StateTree(ias, ithing.name, insertPoint);
+					newinspt = new sst::StateTree(ias, file.name, insertPoint);
 					insertPoint->subtrees[ias] = newinspt;
 
 					auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
 					treedef->id = Identifier(ias, IdKind::Name);
 					treedef->tree = newinspt;
+					treedef->visibility = VisibilityLevel::Public;
 
-					insertPoint->addDefinition(ias, treedef);
+					insertPoint->addDefinition(file.name, ias, treedef);
 				}
 
 				insertPoint = newinspt;
 			}
 
-			addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, 0);
+
+			addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, /* commonParent: */ nullptr, ithing.pubImport, file.name);
 			fs->dtree->thingsImported.insert(ithing.name);
 		}
 
