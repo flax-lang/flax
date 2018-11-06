@@ -1,6 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- flip the declaration of `ffi-as` so the external name is after `as` -- and now as a string literal (because your external names might have
+	flax-illegal characters inside)
+
+`(a2721fc)`
 - declare foreign functions `as` something -- useful for OpenGL especially, (1) to deduplicate the `gl` prefix, and (2) to allow overloading of all
 	the different `glVertex<N><T>` where `N = 2, 3, 4`, `T = i, f, d` or something.
 

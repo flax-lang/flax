@@ -169,14 +169,14 @@ namespace parser
 		if(st.front() == TT::As)
 		{
 			st.pop();
-			if(st.front() != TT::Identifier)
-				expectedAfter(st.loc(), "identifier", "'as' in foreign function declaration", st.front().str());
+			if(st.front() != TT::StringLiteral)
+				expectedAfter(st.loc(), "string literal", "'as' in foreign function declaration", st.front().str());
 
-			ffn->asName = st.eat().str();
+			ffn->realName = st.eat().str();
 		}
 		else
 		{
-			ffn->asName = ffn->name;
+			ffn->realName = ffn->name;
 		}
 
 		return ffn;

@@ -189,8 +189,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
-	// use our 'asname' as the identifier.
-	defn->id = Identifier(this->asName, IdKind::Name);
+	defn->id = Identifier(this->name, IdKind::Name);
 
 	defn->params = ps;
 	defn->returnType = retty;
@@ -198,7 +197,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	defn->isVarArg = this->isVarArg;
 
 	// the realname is the actual name of the function.
-	defn->realName = this->name;
+	defn->realName = this->realName;
 
 	if(this->isVarArg)
 		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
@@ -234,8 +233,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	this->generatedDecl = defn;
 
-	// same, use our 'asname'.
-	fs->stree->addDefinition(this->asName, defn);
+	fs->stree->addDefinition(this->name, defn);
 
 	return TCResult(defn);
 }
