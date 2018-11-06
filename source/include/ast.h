@@ -190,6 +190,7 @@ namespace ast
 		using Arg = FuncDefn::Arg;
 
 		std::string name;
+		std::string asName;
 
 		std::vector<Arg> args;
 		pts::Type* returnType = 0;

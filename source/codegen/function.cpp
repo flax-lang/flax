@@ -116,14 +116,16 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 		ft = fir::FunctionType::get(ptypes, this->returnType);
 
-	auto ef = cs->module->getFunction(this->id);
+	auto realId = Identifier(this->realName, IdKind::Name);
+
+	auto ef = cs->module->getFunction(realId);
 	if(ef && ef->getType() != ft)
 	{
 		error(this, "Foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
 			this->id.str(), ef->getType());
 	}
 
-	auto fn = cs->module->getOrCreateFunction(this->id, ft, fir::LinkageType::External);
+	auto fn = cs->module->getOrCreateFunction(realId, ft, fir::LinkageType::External);
 
 	cs->valueMap[this] = CGResult(fn);
 	return CGResult(fn);
