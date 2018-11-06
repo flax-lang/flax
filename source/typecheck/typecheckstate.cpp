@@ -296,7 +296,7 @@ namespace sst
 	{
 		std::unordered_map<std::string, std::vector<Defn*>> ret;
 		for(auto srcs : this->definitions)
-			ret.insert(srcs.second.begin(), srcs.second.end());
+			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
 
 		return ret;
 	}
@@ -307,7 +307,7 @@ namespace sst
 		for(const auto& [ filename, defnMap ] : this->definitions)
 		{
 			(void) filename;
-			if(auto it = defnMap.find(name); it != defnMap.end())
+			if(auto it = defnMap.defns.find(name); it != defnMap.defns.end())
 			{
 				const auto& defs = it->second;
 				if(defs.size() > 0) ret.insert(ret.end(), defs.begin(), defs.end());
@@ -325,7 +325,7 @@ namespace sst
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
 		// this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
-		this->definitions[sourceFile][name].push_back(def);
+		this->definitions[sourceFile].defns[name].push_back(def);
 	}
 
 	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)

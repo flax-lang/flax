@@ -659,16 +659,19 @@ namespace backend
 		auto entryfunc = this->entryFunction;
 		if(!entryfunc)
 		{
-			entryfunc = this->linkedModule->getFunction("main");
+			// keep trying various things.
+			std::vector<std::string> trymains = { "main", "_FFfoo4main_FAv" };
+			for(const auto& m : trymains)
+			{
+				entryfunc = this->linkedModule->getFunction(m);
+				if(entryfunc) break;
+			}
+
 			if(entryfunc)
-			{
-				warn("No entry point marked with '@entry', defaulting to 'main'");
 				this->entryFunction = entryfunc;
-			}
+
 			else
-			{
 				error("No entry point marked with '@entry', and no 'main' function; cannot compile program");
-			}
 		}
 
 		if(entryfunc->getName() != "main")
