@@ -642,6 +642,8 @@ namespace sst
 		~ForeignFuncDefn() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::string realName;
 	};
 
 	struct OperatorOverloadDefn : FunctionDefn

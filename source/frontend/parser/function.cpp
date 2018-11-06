@@ -165,6 +165,20 @@ namespace parser
 		ffn->visibility = defn->visibility;
 		ffn->returnType = defn->returnType;
 
+		// check for 'as'
+		if(st.front() == TT::As)
+		{
+			st.pop();
+			if(st.front() != TT::Identifier)
+				expectedAfter(st.loc(), "identifier", "'as' in foreign function declaration", st.front().str());
+
+			ffn->asName = st.eat().str();
+		}
+		else
+		{
+			ffn->asName = ffn->name;
+		}
+
 		return ffn;
 	}
 

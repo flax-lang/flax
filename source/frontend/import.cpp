@@ -12,7 +12,7 @@ namespace frontend
 	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath)
 	{
 		std::string ext = ".flx";
-		if(imp.find(".flx") == imp.size() - 4)
+		if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
 			ext = "";
 
 		std::string curpath = getPathFromFile(fullPath);
@@ -68,8 +68,12 @@ namespace parser
 		for(size_t i = 0; i < tokens.size(); i++)
 		{
 			const Token& tok = tokens[i];
-			if(tok == TT::Import)
+			if(tok == TT::Import || ((tok == TT::Public || tok == TT::Private) && tokens[i + 1] == TT::Import))
 			{
+				bool pub = false;
+				if(tok == TT::Public)       i++, pub = true;
+				else if(tok == TT::Private) i++, warn(tok.loc, "imports are private by default, 'private import' is redundant");
+
 				i++;
 
 				Location impLoc;
@@ -106,7 +110,7 @@ namespace parser
 					error(tokens[i].loc, "expected newline or semicolon to terminate import statement, found '%s'", tokens[i].str());
 				}
 
-				frontend::ImportThing it { name, impAs, impLoc };
+				frontend::ImportThing it { name, impAs, pub, impLoc };
 				imports.push_back(it);
 
 				// i++ handled by loop
