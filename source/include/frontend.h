@@ -97,6 +97,7 @@ namespace frontend
 	{
 		std::string name;
 		std::string importAs;
+		bool pubImport = false;
 
 		Location loc;
 	};
