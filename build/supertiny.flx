@@ -7,10 +7,18 @@ export supertiny
 import "libc" as _
 // import "stdio" as _
 
+
+
+ffi fn rofl() as "lmao"
+ffi fn rofl(x: int) -> void as "haha"
+
 @entry fn main()
 {
-	printf("!\n")
+	rofl()
+	rofl(20)
 }
+
+
 
 /*
 	! more things.
