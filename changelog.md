@@ -1,6 +1,10 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- declare foreign functions `as` something -- useful for OpenGL especially, (1) to deduplicate the `gl` prefix, and (2) to allow overloading of all
+	the different `glVertex<N><T>` where `N = 2, 3, 4`, `T = i, f, d` or something.
+
+`(e2f235b)`
 - `public` and `private` imports, where the former re-exports things and the latter is the default behaviour.
 
 `(494a01e)`
