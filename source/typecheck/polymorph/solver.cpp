@@ -42,6 +42,16 @@ namespace sst
 				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, -1);
 				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
+				if(ttrfs != gtrfs)
+				{
+					return SpanError::make(
+						SimpleError::make(given.loc, "incompatible transforms between argument type '%s' and parameter type '%s'",
+							gvn, tgt), { util::ESpan(given.loc, strprintf("type: '%s'", gvn)) }
+					)->append(SpanError::make(SimpleError::make(MsgType::Note, target.loc, "target parameter was here:"),
+						{ util::ESpan(target.loc, strprintf("type: '%s'", tgt)) }
+					));
+				}
+
 				// substitute if possible.
 				if(auto _gt = soln->substitute(gt); _gt != gt)
 					gt = _gt;
