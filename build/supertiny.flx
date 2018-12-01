@@ -19,7 +19,7 @@ ffi fn rofl(x: int) -> void as "haha"
 	rofl()
 	rofl(20)
 
-	libc::printf("int16.max = %d\n", limits::int16::max)
+	libc::printf("int16.max = %d\n", std::limits::int16::max)
 }
 
 

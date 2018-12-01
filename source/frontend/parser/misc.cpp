@@ -28,15 +28,9 @@ namespace parser
 		else if(st.front() == TT::Identifier)
 		{
 			// just consume.
-			while(st.front() == TT::Identifier)
-			{
-				st.eat();
-				if(st.front() == TT::DoubleColon)
-					st.eat();
-
-				else
-					break;
-			}
+			size_t i = st.getIndex();
+			parseIdentPath(st.getTokenList(), &i);
+			st.setIndex(i);
 		}
 		else
 		{
@@ -45,13 +39,18 @@ namespace parser
 
 
 		{
+			st.skipWS();
 
 			// check for 'import as foo'
-			if(st.frontAfterWS() == TT::As)
+			if(st.front() == TT::As)
 			{
 				st.eat();
-				if(st.eat() != TT::Identifier)
-					expectedAfter(st.ploc(), "identifier", "'import-as'", st.prev().str());
+				if(st.front() != TT::Identifier)
+					expectedAfter(st.loc(), "identifier", "'import-as'", st.front().str());
+
+				size_t i = st.getIndex();
+				parseIdentPath(st.getTokenList(), &i);
+				st.setIndex(i);
 			}
 
 			return ret;

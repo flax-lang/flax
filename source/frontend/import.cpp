@@ -94,7 +94,7 @@ namespace parser
 
 				Location impLoc;
 				std::string name;
-				std::string impAs;
+				std::vector<std::string> impAs;
 
 				if(tokens[i] == TT::StringLiteral)
 				{
@@ -119,12 +119,10 @@ namespace parser
 				{
 					i++;
 					if(tokens[i] == TT::Identifier)
-						impAs = tokens[i].str();
+						impAs = parseIdentPath(tokens, &i);
 
 					else
 						expectedAfter(tokens[i - 1].loc, "identifier", "'import-as'", tokens[i - 1].str());
-
-					i++;
 				}
 
 
