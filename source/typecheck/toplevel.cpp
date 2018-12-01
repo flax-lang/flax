@@ -166,41 +166,49 @@ namespace sst
 
 		for(auto [ ithing, import ] : imports)
 		{
-			StateTree* insertPoint = tree;
-
 			auto ias = ithing.importAs;
 			if(ias.empty())
-				ias = cs->parsed[ithing.name].moduleName;
+				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
 
-			if(ias != "_")
+			StateTree* insertPoint = tree;
+			if(ias.size() == 1 && ias[0] == "_")
 			{
-				// ok, make tree the new tree thing.
-				StateTree* newinspt = 0;
-
-				if(auto it = insertPoint->subtrees.find(ias); it != insertPoint->subtrees.end())
+				// do nothing.
+				// insertPoint = tree;
+			}
+			else
+			{
+				StateTree* curinspt = insertPoint;
+				for(const auto& impas : ias)
 				{
-					newinspt = it->second;
+					if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
+					{
+						//! ACHTUNG !
+						// do we ever get here????
+						iceAssert(false);
 
-					//! ACHTUNG !
-					// do we ever get here????
-					iceAssert(false);
+						curinspt = it->second;
+					}
+					else
+					{
+						auto newinspt = new sst::StateTree(impas, file.name, insertPoint);
+						curinspt->subtrees[impas] = newinspt;
+
+						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
+						treedef->id = Identifier(impas, IdKind::Name);
+						treedef->tree = newinspt;
+						treedef->visibility = VisibilityLevel::Public;
+
+						curinspt->addDefinition(file.name, impas, treedef);
+
+						curinspt = newinspt;
+					}
 				}
-				else
-				{
-					newinspt = new sst::StateTree(ias, file.name, insertPoint);
-					insertPoint->subtrees[ias] = newinspt;
 
-					auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
-					treedef->id = Identifier(ias, IdKind::Name);
-					treedef->tree = newinspt;
-					treedef->visibility = VisibilityLevel::Public;
-
-					insertPoint->addDefinition(file.name, ias, treedef);
-				}
-
-				insertPoint = newinspt;
+				insertPoint = curinspt;
 			}
 
+			iceAssert(insertPoint);
 
 			addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, /* commonParent: */ nullptr, ithing.pubImport, file.name);
 			fs->dtree->thingsImported.insert(ithing.name);

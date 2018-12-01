@@ -23,6 +23,7 @@ namespace parser
 	{
 		std::string name;
 		std::string moduleName;
+		std::vector<std::string> modulePath;
 
 		ast::TopLevelBlock* root = 0;
 	};

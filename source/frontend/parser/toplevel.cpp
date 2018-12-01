@@ -16,13 +16,40 @@ using namespace ast;
 
 namespace parser
 {
+	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx)
+	{
+		using TT = lexer::TokenType;
+		std::vector<std::string> path;
 
-	static std::string parseModuleName(std::string fullpath)
+		size_t i = *idx;
+		while(tokens[i] == TT::Identifier)
+		{
+			path.push_back(tokens[i].str());
+			i++;
+
+			if(tokens[i] == TT::DoubleColon)
+			{
+				i++;
+				if(tokens[i] != TT::Identifier)
+					expectedAfter(tokens[i - 1].loc, "identifier", "'::' in path", tokens[i].str());
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		*idx = i;
+		return path;
+	}
+
+
+	static std::pair<std::string, std::vector<std::string>> parseModuleName(const std::string& fullpath)
 	{
 		using TT = lexer::TokenType;
 		auto tokens = frontend::getFileTokens(fullpath);
 
-		std::string ret;
+		std::vector<std::string> path;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before the module name.
@@ -35,14 +62,12 @@ namespace parser
 
 				if(tokens[i].type == TT::Identifier)
 				{
-					ret = tokens[i].str();
-					i++;
+					path = parseIdentPath(tokens, &i);
 				}
 				else
 				{
 					expectedAfter(tokens[i].loc, "identifier for export declaration", "'module'", tokens[i].str());
 				}
-
 
 				if(tokens[i].type != TT::NewLine && tokens[i].type != TT::Semicolon && tokens[i].type != TT::Comment)
 				{
@@ -62,15 +87,15 @@ namespace parser
 			}
 		}
 
-		if(ret == "")
-			ret = frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullpath));
+		if(path.empty())
+			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullpath)) };
 
-		return ret;
+		return { path.back(), util::take(path, path.size() - 1) };
 	}
 
 
 
-	TopLevelBlock* parseTopLevel(State& st, std::string name)
+	TopLevelBlock* parseTopLevel(State& st, const std::string& name)
 	{
 		using TT = lexer::TokenType;
 		TopLevelBlock* root = util::pool<TopLevelBlock>(st.loc(), name);
@@ -221,7 +246,10 @@ namespace parser
 						else
 						{
 							st.eat();
-							st.eat();
+
+							size_t i = st.getIndex();
+							parseIdentPath(st.getTokenList(), &i);
+							st.setIndex(i);
 
 							break;
 						}
@@ -262,13 +290,14 @@ namespace parser
 		state.prefixOps = cs.prefixOps;
 		state.postfixOps = cs.postfixOps;
 
-		auto modname = parseModuleName(full);
+		auto [ modname, modpath ] = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");
 
 
 		return ParsedFile {
 			filename,
 			modname,
+			modpath,
 			toplevel,
 		};
 	}

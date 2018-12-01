@@ -3,8 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 export test_generics
-
-import "libc" as _
+import libc as _
 
 public fn doGenericsTest()
 {

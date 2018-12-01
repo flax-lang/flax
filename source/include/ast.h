@@ -94,17 +94,13 @@ namespace ast
 	};
 
 
+	//* this does nothing!!
 	struct ImportStmt : Stmt
 	{
-		ImportStmt(const Location& l, std::string p) : Stmt(l), path(p) { this->readableName = "import statement"; }
+		ImportStmt(const Location& l) : Stmt(l) { this->readableName = "import statement"; }
 		~ImportStmt() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
-
-		std::string path;
-		std::string resolvedModule;
-
-		std::string importAs;
 	};
 
 	struct Block : Stmt
