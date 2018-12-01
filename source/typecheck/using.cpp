@@ -114,7 +114,7 @@ namespace sst
 				auto n = subs.first;
 
 				if(!to->subtrees[n])
-					to->subtrees[n] = new sst::StateTree(n, from->topLevelFilename, from);
+					to->subtrees[n] = new sst::StateTree(n, from->topLevelFilename, to);
 
 				recursivelyCopyTreeContents(from->subtrees[n], to->subtrees[n]);
 			}
