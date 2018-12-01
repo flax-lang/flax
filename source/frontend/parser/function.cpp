@@ -318,7 +318,7 @@ namespace parser
 			while(st.front() != TT::RBrace)
 			{
 				auto stmt = parseStmt(st);
-				if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
+				if(auto defer = dcast(DeferredStmt, stmt))
 					ret->deferredStatements.push_back(defer);
 
 				else

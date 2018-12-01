@@ -45,6 +45,8 @@ namespace sst
 		HasBlocks() { }
 		virtual ~HasBlocks() { }
 		virtual std::vector<Block*> getBlocks() = 0;
+
+		bool elideMergeBlock = false;
 	};
 
 	struct TypeDefn : Defn
@@ -89,7 +91,6 @@ namespace sst
 		Location closingBrace;
 
 		bool isSingleExpr = false;
-		bool elideMergeBlock = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 

@@ -503,52 +503,6 @@ namespace parser
 				//? note: if *failed is nullptr, then we will throw errors where we usually would return.
 				pams = parsePAMs(st, /* fail: */ nullptr);
 			}
-			// 	// ok
-			// 	st.pop();
-			// 	while(st.hasTokens())
-			// 	{
-			// 		if(st.front() == TT::Identifier)
-			// 		{
-			// 			std::string ty = st.eat().str();
-			// 			if(st.eat() != TT::Colon)
-			// 				expected(st, "':' to specify type mapping in parametric type instantiation", st.prev().str());
-
-			// 			if(seen.find(ty) != seen.end())
-			// 				error(st, "duplicate mapping for parameter '%s' in type arguments to parametric type '%s'", ty, s);
-
-			// 			pams.add(ty, parseType(st));
-
-			// 			if(st.front() == TT::Comma)
-			// 			{
-			// 				st.pop();
-			// 				continue;
-			// 			}
-			// 			else if(st.front() == TT::RAngle)
-			// 			{
-			// 				break;
-			// 			}
-			// 			else
-			// 			{
-			// 				expected(st, "either ',' or '>' to continue or terminate parametric type instantiation", st.front().str());
-			// 			}
-			// 		}
-			// 		else if(st.front() == TT::RAngle)
-			// 		{
-			// 			error(st, "need at least one type mapping in parametric type instantiation");
-			// 		}
-			// 		else
-			// 		{
-			// 			// error(st, "Unexpected token '%s' in type mapping", st.front().str());
-			// 			break;
-			// 		}
-			// 	}
-
-			// 	if(st.front() != TT::RAngle)
-			// 		expected(st, "'>' to end type mapping", st.front().str());
-
-			// 	st.pop();
-			// }
-
 
 			return pts::NamedType::create(s, pams);
 		}

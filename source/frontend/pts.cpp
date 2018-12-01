@@ -32,83 +32,83 @@ namespace pts
 
 	NamedType* Type::toNamedType()
 	{
-		return dynamic_cast<NamedType*>(this);
+		return dcast(NamedType, this);
 	}
 
 	PointerType* Type::toPointerType()
 	{
-		return dynamic_cast<PointerType*>(this);
+		return dcast(PointerType, this);
 	}
 
 	TupleType* Type::toTupleType()
 	{
-		return dynamic_cast<TupleType*>(this);
+		return dcast(TupleType, this);
 	}
 
 	FixedArrayType* Type::toFixedArrayType()
 	{
-		return dynamic_cast<FixedArrayType*>(this);
+		return dcast(FixedArrayType, this);
 	}
 
 	DynamicArrayType* Type::toDynamicArrayType()
 	{
-		return dynamic_cast<DynamicArrayType*>(this);
+		return dcast(DynamicArrayType, this);
 	}
 
 	VariadicArrayType* Type::toVariadicArrayType()
 	{
-		return dynamic_cast<VariadicArrayType*>(this);
+		return dcast(VariadicArrayType, this);
 	}
 
 	FunctionType* Type::toFunctionType()
 	{
-		return dynamic_cast<FunctionType*>(this);
+		return dcast(FunctionType, this);
 	}
 
 	ArraySliceType* Type::toArraySliceType()
 	{
-		return dynamic_cast<ArraySliceType*>(this);
+		return dcast(ArraySliceType, this);
 	}
 
 
 	bool Type::isNamedType()
 	{
-		return dynamic_cast<NamedType*>(this) != 0;
+		return dcast(NamedType, this) != 0;
 	}
 
 	bool Type::isPointerType()
 	{
-		return dynamic_cast<PointerType*>(this) != 0;
+		return dcast(PointerType, this) != 0;
 	}
 
 	bool Type::isTupleType()
 	{
-		return dynamic_cast<TupleType*>(this) != 0;
+		return dcast(TupleType, this) != 0;
 	}
 
 	bool Type::isFixedArrayType()
 	{
-		return dynamic_cast<FixedArrayType*>(this) != 0;
+		return dcast(FixedArrayType, this) != 0;
 	}
 
 	bool Type::isDynamicArrayType()
 	{
-		return dynamic_cast<DynamicArrayType*>(this) != 0;
+		return dcast(DynamicArrayType, this) != 0;
 	}
 
 	bool Type::isVariadicArrayType()
 	{
-		return dynamic_cast<VariadicArrayType*>(this) != 0;
+		return dcast(VariadicArrayType, this) != 0;
 	}
 
 	bool Type::isFunctionType()
 	{
-		return dynamic_cast<FunctionType*>(this) != 0;
+		return dcast(FunctionType, this) != 0;
 	}
 
 	bool Type::isArraySliceType()
 	{
-		return dynamic_cast<ArraySliceType*>(this) != 0;
+		return dcast(ArraySliceType, this) != 0;
 	}
 
 

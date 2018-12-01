@@ -731,7 +731,7 @@ namespace fir
 		iceAssert((targetType->isIntegerType() || targetType->isBoolType()) && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			return ConstantInt::get(targetType, ci->getSignedValue());
 		}
@@ -748,7 +748,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			if(ci->getType()->isSignedIntType())
 				return ConstantInt::get(targetType, ci->getSignedValue());
@@ -769,7 +769,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantFP* cfp = dynamic_cast<ConstantFP*>(v))
+		if(ConstantFP* cfp = dcast(ConstantFP, v))
 		{
 			double _ = 0;
 
@@ -791,7 +791,7 @@ namespace fir
 		iceAssert(targetType->isFloatingPointType() && "target is not floating point type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			ConstantFP* ret = 0;
 			bool sgn = ci->getType()->isSignedIntType();
@@ -1290,15 +1290,15 @@ namespace fir
 		if(!structPtr->islorclvalue())
 			error("cannot do GEP on non-lvalue");
 
-		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()))
+		if(StructType* st = dcast(StructType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		if(ClassType* st = dynamic_cast<ClassType*>(structPtr->getType()))
+		if(ClassType* st = dcast(ClassType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		else if(TupleType* tt = dynamic_cast<TupleType*>(structPtr->getType()))
+		else if(TupleType* tt = dcast(TupleType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, structPtr, memberIndex), vname);
 		}

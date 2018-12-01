@@ -42,7 +42,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		std::vector<fir::ConstantValue*> vals;
 		for(auto v : this->values)
 		{
-			auto cv = dynamic_cast<fir::ConstantValue*>(v->codegen(cs, elmty).value);
+			auto cv = dcast(fir::ConstantValue, v->codegen(cs, elmty).value);
 			if(!cv)
 				error(v, "Constant value required in fixed array literal");
 

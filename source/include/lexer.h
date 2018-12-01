@@ -43,8 +43,6 @@ namespace lexer
 		Defer,
 		Break,
 		Continue,
-		Get,
-		Set,
 		Null,
 		Private,
 		Public,

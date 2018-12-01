@@ -181,6 +181,8 @@ namespace sst
 
 								scopes.push_back(tmp);
 								tmp.clear();
+
+								i++;
 							}
 							else
 							{

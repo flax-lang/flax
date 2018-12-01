@@ -1,0 +1,113 @@
+// map.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export std
+import std::opt
+
+public class map<K, V>
+{
+	init()
+	{
+	}
+
+	struct node
+	{
+		var parent: &node
+		var left: &node
+		var right: &node
+
+		var key: K
+		var value: V
+	}
+
+	var root: &node
+
+
+
+
+
+
+	// returns true if the value existed -- we do not overwrite it.
+	fn insert(key: K, val: V) -> bool
+	{
+		if root == null
+		{
+			root = alloc node(key: key, value: val)
+			return false
+		}
+		else
+		{
+			return self._insert(key, val, root)
+		}
+	}
+
+	fn _insert(key: K, val: V, n: &node) -> bool
+	{
+		// conflict
+		if n.key == key => return true
+		else if key < n.key
+		{
+			if n.left == null
+			{
+				n.left = alloc node(key: key, value: val, parent: n)
+				return false
+			}
+			else
+			{
+				return self._insert(key, val, n.left)
+			}
+		}
+		else if key > n.key
+		{
+			if n.right == null
+			{
+				n.right = alloc node(key: key, value: val, parent: n)
+				return false
+			}
+			else
+			{
+				return self._insert(key, val, n.right)
+			}
+		}
+
+		return false
+	}
+
+
+
+
+
+	fn search(key: K) -> std::opt!<V>
+	{
+		let n = self._search(key, root)
+		if n == null    => return std::opt!<V>::none
+		else            => return std::opt::some(n.value)
+	}
+
+	fn _search(key: K, n: &node) -> &node
+	{
+		if n == null    => return null
+		if n.key == key => return n
+
+		if key < n.key  => return self._search(key, n.left)
+		else            => return self._search(key, n.right)
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,19 @@
+// set.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export std::set
+
+public class set<T>
+{
+	struct node
+	{
+		var parent: &node
+		var left: &node
+		var right: &node
+
+		var data: T
+	}
+
+	var root: &node
+}
