@@ -4,22 +4,12 @@
 
 export supertiny
 
-// import "libc" as _
-// // import "stdio" as _
-
-import libc
-import std::limits
-
-
-ffi fn rofl() as "lmao"
-ffi fn rofl(x: int) -> void as "haha"
+import std::io
 
 @entry fn main()
 {
-	rofl()
-	rofl(20)
-
-	libc::printf("int16.max = %d\n", std::limits::int16::max)
+	using std as _
+	io::println("hello, world!")
 }
 
 

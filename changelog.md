@@ -1,6 +1,12 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
-`(??)`
+`(076e176)`
+- allow `export`-ing a path, eg. `std::limits`. this is different from namespacing the entire file (unlike C++), because we would then
+	get `limits::std::...` instead
+- allow `import`-ing a path as well, so we can do `import std::limits as foo::bar::qux`.
+- `import`s of string paths (eg. `import "foo/bar"`) no longer append an `.flx` extension automatically!
+
+`(59f8469)`
 - flip the declaration of `ffi-as` so the external name is after `as` -- and now as a string literal (because your external names might have
 	flax-illegal characters inside)
 

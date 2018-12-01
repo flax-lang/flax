@@ -191,7 +191,7 @@ namespace sst
 					}
 					else
 					{
-						auto newinspt = new sst::StateTree(impas, file.name, insertPoint);
+						auto newinspt = new sst::StateTree(impas, file.name, curinspt);
 						curinspt->subtrees[impas] = newinspt;
 
 						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);

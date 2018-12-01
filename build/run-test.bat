@@ -1,6 +1,6 @@
 @echo off
 
-robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /purge /nfl /ndl /njh /njs /nc /ns /np
+robocopy libs build\sysroot\usr\local\lib\flaxlibs /e /purge /nfl /ndl /njh /njs /nc /ns /np >nul 2>&1
 
 SETLOCAL
 
