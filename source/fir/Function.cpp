@@ -167,7 +167,7 @@ namespace fir
 	// overridden stuff
 	FunctionType* Function::getType()
 	{
-		FunctionType* ft = dynamic_cast<FunctionType*>(this->valueType);
+		FunctionType* ft = dcast(FunctionType, this->valueType);
 		iceAssert(ft && "Function is impostor (not valid function type)");
 
 		return ft;

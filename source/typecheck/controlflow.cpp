@@ -26,7 +26,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	for(auto c : this->cases)
 	{
 		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs).stmt(); });
-		auto cs = Case(c.cond->typecheck(fs).expr(), dynamic_cast<sst::Block*>(c.body->typecheck(fs).stmt()), inits);
+		auto cs = Case(c.cond->typecheck(fs).expr(), dcast(sst::Block, c.body->typecheck(fs).stmt()), inits);
 
 		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
 			error(cs.cond, "non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
@@ -38,7 +38,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->elseCase)
 	{
-		ret->elseCase = dynamic_cast<sst::Block*>(this->elseCase->typecheck(fs).stmt());
+		ret->elseCase = dcast(sst::Block, this->elseCase->typecheck(fs).stmt());
 		iceAssert(ret->elseCase);
 	}
 
@@ -61,7 +61,7 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		ret->value = this->value->typecheck(fs, retty).expr();
 
-		if(ret->value->type != retty)
+		if(fir::getCastDistance(ret->value->type, retty) < 0)
 		{
 			SpanError::make(SimpleError::make(this->loc, "mismatched type in return statement; function returns '%s', value has type '%s'",
 				retty, ret->value->type))->add(util::ESpan(this->value->loc, strprintf("type '%s'", ret->value->type)))
@@ -99,7 +99,7 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 			auto t = retstmt->expectedType;
 			iceAssert(t);
 
-			if(t != retty)
+			if(fir::getCastDistance(t, retty) < 0)
 			{
 				if(retstmt->expectedType->isVoidType())
 				{
@@ -139,14 +139,15 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 					all &= checkBlockPathsReturn(fs, c.body, retty, faulty);
 
 				exhausted = all & checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
+				ifstmt->elideMergeBlock = exhausted;
 			}
 			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop && whileloop->isDoVariant)
 			{
 				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
+				whileloop->elideMergeBlock = exhausted;
 			}
 
 			ret = exhausted;
-			if(exhausted) block->elideMergeBlock = true;
 		}
 	}
 

@@ -50,7 +50,7 @@ public fn doAnyTest()
 		var x: any = Large(10, 20, 30, 40, 50)
 
 		var k = x as Large
-		k.c = 5413
+		k.c = 173
 		k.a = 631
 
 		foo(x)

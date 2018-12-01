@@ -13,7 +13,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	auto loop = cs->irb.addNewBlockAfter("loop-" + this->loc.shortString(), cs->irb.getCurrentBlock());
 	fir::IRBlock* merge = 0;
 
-	if(!cs->getCurrentBlockPoint().block->elideMergeBlock)
+	if(!this->elideMergeBlock)
 		merge = cs->irb.addNewBlockAfter("merge-" + this->loc.shortString(), cs->irb.getCurrentBlock());
 
 	else if(!this->isDoVariant)

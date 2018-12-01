@@ -31,16 +31,16 @@ namespace parser
 
 		st.pop();
 		auto stmt = parseStmt(st);
-		if(auto defn = dynamic_cast<FuncDefn*>(stmt))
+		if(auto defn = dcast(FuncDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<ForeignFuncDefn*>(stmt))
+		else if(auto defn = dcast(ForeignFuncDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
+		else if(auto defn = dcast(VarDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<TypeDefn*>(stmt))
+		else if(auto defn = dcast(TypeDefn, stmt))
 			defn->visibility = vis;
 
 		else
@@ -364,7 +364,7 @@ namespace parser
 			if(auto tok_op = st.front(); isPostfixUnaryOperator(st, tok_op))
 			{
 				st.eat();
-				lhs = parsePostfixUnary(st, dynamic_cast<Expr*>(lhs), tok_op);
+				lhs = parsePostfixUnary(st, dcast(Expr, lhs), tok_op);
 				continue;
 			}
 
@@ -418,7 +418,7 @@ namespace parser
 				loc.col = lhs->loc.col;
 				loc.len = rhs->loc.col + rhs->loc.len - lhs->loc.col;
 
-				auto dot = util::pool<DotOperator>(loc, dynamic_cast<Expr*>(lhs), rhs);
+				auto dot = util::pool<DotOperator>(loc, dcast(Expr, lhs), rhs);
 				dot->isStatic = (op == "::");
 
 				lhs = dot;
@@ -452,7 +452,7 @@ namespace parser
 			{
 				auto newlhs = util::pool<AssignOp>(loc);
 
-				newlhs->left = dynamic_cast<Expr*>(lhs);
+				newlhs->left = dcast(Expr, lhs);
 				newlhs->right = rhs;
 				newlhs->op = op;
 
@@ -479,7 +479,7 @@ namespace parser
 			}
 			else
 			{
-				lhs = util::pool<BinaryOp>(loc, op, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = util::pool<BinaryOp>(loc, op, dcast(Expr, lhs), rhs);
 			}
 		}
 	}
@@ -637,7 +637,7 @@ namespace parser
 			std::string argname;
 
 			auto ex = parseExpr(st);
-			if(auto id = dynamic_cast<Ident*>(ex); id && st.front() == TT::Colon)
+			if(auto id = dcast(Ident, ex); id && st.front() == TT::Colon)
 			{
 				argname = id->name;
 				if(seenNames.find(argname) != seenNames.end())
@@ -685,7 +685,7 @@ namespace parser
 
 	static Expr* parseCall(State& st, Expr* lhs, Token op)
 	{
-		if(Ident* id = dynamic_cast<Ident*>(lhs))
+		if(Ident* id = dcast(Ident, lhs))
 		{
 			auto ret = parseFunctionCall(st, id->name);
 			ret->mappings = id->mappings;

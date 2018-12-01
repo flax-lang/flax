@@ -193,16 +193,8 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
-
 		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
 			const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& params);
-
-
-		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
-		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
-
-		//* kind of like the above, but subtly different in that we create a *new scope* named _name_ in the scope _toParent_
-		void importScopeContentsIntoNewScope(const std::vector<std::string>& from, const std::vector<std::string>& toParent, const std::string& name);
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
@@ -212,6 +204,9 @@ namespace sst
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports);
+
+
+	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);
 }
 
 

@@ -20,7 +20,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::IRBlock* mergeblk = 0;
 	auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + this->loc.shortString(), cs->irb.getCurrentBlock());
 
-	if(!cs->getCurrentBlockPoint().block->elideMergeBlock)
+	if(!this->elideMergeBlock)
 		mergeblk = cs->irb.addNewBlockAfter("mergeCase-" + this->loc.shortString(), trueblk);
 
 	else

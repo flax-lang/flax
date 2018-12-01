@@ -165,16 +165,16 @@ namespace parser
 				case TT::Attr_NoMangle: {
 					st.pop();
 					auto stmt = parseStmt(st);
-					if(!dynamic_cast<FuncDefn*>(stmt) && !dynamic_cast<VarDefn*>(stmt))
+					if(!dcast(FuncDefn, stmt) && !dcast(VarDefn, stmt))
 						error(st, "attribute '@nomangle' can only be applied on function and variable declarations");
 
-					else if(dynamic_cast<ForeignFuncDefn*>(stmt))
+					else if(dcast(ForeignFuncDefn, stmt))
 						warn(st, "attribute '@nomangle' is redundant on 'ffi' functions");
 
-					else if(auto fd = dynamic_cast<FuncDefn*>(stmt))
+					else if(auto fd = dcast(FuncDefn, stmt))
 						fd->noMangle = true;
 
-					else if(auto vd = dynamic_cast<VarDefn*>(stmt))
+					else if(auto vd = dcast(VarDefn, stmt))
 						vd->noMangle = true;
 
 					root->statements.push_back(stmt);
@@ -187,7 +187,7 @@ namespace parser
 				case TT::Attr_EntryFn: {
 					st.pop();
 					auto stmt = parseStmt(st);
-					if(auto fd = dynamic_cast<FuncDefn*>(stmt))
+					if(auto fd = dcast(FuncDefn, stmt))
 						fd->isEntry = true;
 
 					else

@@ -421,7 +421,7 @@ void OverloadError::post()
 		}
 		else
 		{
-			auto spe = dynamic_cast<SpanError*>(emg);
+			auto spe = dcast(SpanError, emg);
 			iceAssert(spe);
 
 			spe->top = SimpleError::make(MsgType::Note, loc->loc, "candidate %d was defined here:", cand_counter++);

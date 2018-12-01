@@ -4,17 +4,31 @@
 
 export supertiny
 
-import std::io
+// import std::io
+import std::map
 
 @entry fn main()
 {
-	using std as _
-	io::println("hello, world!")
+	// using std as _
+	// std::io::println("hello, world!")
+
+	var fff: std::map!<int, int>
 }
 
 
 
 /*
+	! bugs !!!
+	! 02/12
+	{
+		1. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
+			we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
+			in the compiler itself...
+
+			expected: a = 631, b = 20, c = 173/30, d = 40, e = 50
+			actual:   a = 631, b = 20, c = 173/-572662307, d = 40, e = 50
+	}
+
 	! more things.
 	! caa 03/10
 	{

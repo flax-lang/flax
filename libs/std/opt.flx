@@ -1,0 +1,11 @@
+// opt.flx
+// Copyright (c) 2017, zhiayang@gmail.com
+// Licensed under the Apache License Version 2.0.
+
+export std
+
+public union opt<T>
+{
+	some: T
+	none
+}
