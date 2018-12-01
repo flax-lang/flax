@@ -4,7 +4,7 @@
 
 export test_classes
 
-import "libc" as _
+import libc as _
 
 ffi fn srand(s: i32)
 ffi fn rand() -> i32

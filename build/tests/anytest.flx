@@ -5,7 +5,7 @@
 export test_any
 // import "stdio" as _
 
-import "libc" as _
+import libc as _
 
 var glob: any
 

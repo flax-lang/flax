@@ -4,25 +4,25 @@
 
 export tester
 
-import "libc"
-import "std/limits"
+import libc
+import std::limits
 
-import "tests/fizzbuzz"
-import "tests/recursiveFib"
-import "tests/slices"
-import "tests/classes"
-import "tests/scopes"
-import "tests/defertest"
-import "tests/anytest"
-import "tests/decomposition"
-import "tests/intlimits"
-import "tests/generics"
-import "tests/linkedlist"
-import "tests/forloops"
-import "tests/arraytest"
-import "tests/functions"
-import "tests/unions"
-import "tests/using"
+import "tests/fizzbuzz.flx"
+import "tests/recursiveFib.flx"
+import "tests/slices.flx"
+import "tests/classes.flx"
+import "tests/scopes.flx"
+import "tests/defertest.flx"
+import "tests/anytest.flx"
+import "tests/decomposition.flx"
+import "tests/intlimits.flx"
+import "tests/generics.flx"
+import "tests/linkedlist.flx"
+import "tests/forloops.flx"
+import "tests/arraytest.flx"
+import "tests/functions.flx"
+import "tests/unions.flx"
+import "tests/using.flx"
 
 fn runTests()
 {

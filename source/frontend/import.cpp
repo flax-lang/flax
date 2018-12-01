@@ -19,12 +19,12 @@ namespace frontend
 		if(auto it = importCache.find({ imp, fullPath }); it != importCache.end())
 			return it->second;
 
-		std::string ext = ".flx";
-		if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
-			ext = "";
+		// std::string ext = ".flx";
+		// if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
+		// 	ext = "";
 
 		std::string curpath = getPathFromFile(fullPath);
-		std::string fullname = curpath + "/" + imp + ext;
+		std::string fullname = curpath + "/" + imp;
 
 		if(fullname == fullPath)
 			error(loc, "cannot import module from within itself");
@@ -38,7 +38,7 @@ namespace frontend
 		}
 		else
 		{
-			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ext;
+			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp;
 
 			if(platform::checkFileExists(builtinlib))
 			{
