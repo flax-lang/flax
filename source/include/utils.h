@@ -143,7 +143,17 @@ namespace util
 		return std::vector<T>(v.begin(), v.begin() + num);
 	}
 
+	inline std::string join(const std::vector<std::string>& list, const std::string& sep)
+	{
+		if(list.empty())            return "";
+		else if(list.size() == 1)   return list[0];
 
+		std::string ret;
+		for(size_t i = 0; i < list.size() - 1; i++)
+			ret += list[i] + sep;
+
+		return ret + list.back();
+	}
 
 
 

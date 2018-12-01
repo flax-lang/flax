@@ -4,7 +4,7 @@
 
 export test_decomposition
 
-import "libc" as _
+import libc as _
 
 public fn doDecompositionTest()
 {
