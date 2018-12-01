@@ -5,7 +5,7 @@
 export tester
 
 import "libc"
-import "limits"
+import "std/limits"
 
 import "tests/fizzbuzz"
 import "tests/recursiveFib"

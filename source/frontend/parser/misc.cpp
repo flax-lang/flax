@@ -16,26 +16,41 @@ namespace parser
 	ImportStmt* parseImport(State& st)
 	{
 		iceAssert(st.front() == TT::Import);
-		st.eat();
+		auto ret = util::pool<ImportStmt>(st.loc());
 
-		if(st.frontAfterWS() != TT::StringLiteral)
-			expectedAfter(st, "string literal", "'import' for module specifier", st.frontAfterWS().str());
+		st.eat();
+		st.skipWS();
+
+		if(st.front() == TT::StringLiteral)
+		{
+			st.eat();
+		}
+		else if(st.front() == TT::Identifier)
+		{
+			// just consume.
+			while(st.front() == TT::Identifier)
+			{
+				st.eat();
+				if(st.front() == TT::DoubleColon)
+					st.eat();
+
+				else
+					break;
+			}
+		}
+		else
+		{
+			expectedAfter(st, "string literal or identifier path", "'import'", st.front().str());
+		}
+
 
 		{
-			auto ret = util::pool<ImportStmt>(st.loc(), st.frontAfterWS().str());
-			ret->resolvedModule = frontend::resolveImport(ret->path, ret->loc, st.currentFilePath);
-
-			st.eat();
 
 			// check for 'import as foo'
 			if(st.frontAfterWS() == TT::As)
 			{
 				st.eat();
-				auto t = st.eat();
-				if(t == TT::Identifier)
-					ret->importAs = util::to_string(t.text);
-
-				else
+				if(st.eat() != TT::Identifier)
 					expectedAfter(st.ploc(), "identifier", "'import-as'", st.prev().str());
 			}
 
