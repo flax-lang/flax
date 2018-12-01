@@ -5,7 +5,7 @@
 export test_limits
 
 import "libc"
-import "limits"
+import "std/limits"
 
 public fn printIntegerLimits()
 {
