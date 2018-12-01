@@ -248,12 +248,7 @@ namespace parser
 				else if(kind == 2)	prefix[oper.symbol] = oper;
 				else if(kind == 3)	postfix[oper.symbol] = oper;
 			}
-			else if(tok == TT::Export)
-			{
-				// skip the name as well
-				i++;
-			}
-			else if(tok == TT::Import)
+			else if(tok == TT::Export || tok == TT::Import)
 			{
 				// skip until a newline.
 				while(tokens[i] != TT::Comment && tokens[i] != TT::NewLine)
