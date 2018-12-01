@@ -96,7 +96,7 @@ namespace frontend
 	struct ImportThing
 	{
 		std::string name;
-		std::string importAs;
+		std::vector<std::string> importAs;
 		bool pubImport = false;
 
 		Location loc;
