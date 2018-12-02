@@ -164,7 +164,7 @@ namespace resolver
 
 			auto copy = arguments;
 
-			//! SELF HANDLING
+			//! SELF HANDLING (INSERTION) (CONSTRUCTOR)
 			copy.push_back(FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo()));
 			auto copy1 = copy;
 

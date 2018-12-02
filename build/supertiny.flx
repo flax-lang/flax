@@ -4,6 +4,8 @@
 
 export supertiny
 
+import libc
+
 // import std::io
 import std::map
 
@@ -12,7 +14,7 @@ import std::map
 	// using std as _
 	// std::io::println("hello, world!")
 
-	var fff: std::map!<int, int>
+	var map: std::map!<int, int>
 }
 
 
@@ -21,7 +23,14 @@ import std::map
 	! bugs !!!
 	! 02/12
 	{
-		1. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
+		1. implicit method calling don't seem to work any more... strangely. done a cursory search for our
+			'SELF HANDLING' markers, but i can't seem to find the actual place where we *insert* the argument??
+			only where we insert the /parameter/ ...
+
+			i think this is less of a bug and more of an omission when we first started taking out the
+			haphazard self-handling.
+
+		2. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
 			we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
 			in the compiler itself...
 

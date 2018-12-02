@@ -605,6 +605,7 @@ namespace sst
 	{
 		std::vector<FnParam> params;
 		fir::Type* returnType = 0;
+		fir::Type* parentTypeForMethod = 0;
 
 		bool isEntry = false;
 		bool noMangle = false;
@@ -628,7 +629,6 @@ namespace sst
 
 		Block* body = 0;
 		bool needReturnVoid = false;
-		fir::Type* parentTypeForMethod = 0;
 
 		bool isVirtual = false;
 		bool isOverride = false;

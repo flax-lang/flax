@@ -90,8 +90,8 @@ public class map<K, V>
 		if n == null    => return null
 		if n.key == key => return n
 
-		if key < n.key  => return self._search(key, n.left)
-		else            => return self._search(key, n.right)
+		if key < n.key  => return _search(key, n.left)
+		else            => return _search(key, n.right)
 	}
 }
 

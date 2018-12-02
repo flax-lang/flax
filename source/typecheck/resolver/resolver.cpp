@@ -78,6 +78,19 @@ namespace resolver
 					//* there are some assumptions we can make -- primarily that this will always be a static method of a type.
 					//? (a): namespaces cannot be generic.
 					//? (b): instance methods must have an associated 'self', and you can't have a variable of generic type
+					//! are these assumptions still valid?? 02/12/18
+
+					//! SELF HANDLING (INSERTION) (METHOD CALL)
+					bool insertedSelf = false;
+					if(fn->parentTypeForMethod && (replacementArgs.size() == fn->params.size() - 1))
+					{
+						// add the thing... i guess??
+						insertedSelf = true;
+						replacementArgs.insert(replacementArgs.begin(), FnCallArgument::make(fn->loc, "self",
+							fn->parentTypeForMethod->getMutablePointerTo()));
+					}
+
+
 					if(fn->type->containsPlaceholders())
 					{
 						if(auto fd = dcast(FunctionDefn, fn); !fd)
@@ -120,6 +133,10 @@ namespace resolver
 					{
 						std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
 					}
+
+					//! SELF HANDLING (REMOVAL) (METHOD CALL)
+					if(insertedSelf)
+						replacementArgs.erase(replacementArgs.begin());
 				}
 				else if(auto vr = dcast(VarDefn, curcandidate))
 				{
