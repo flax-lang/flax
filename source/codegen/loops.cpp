@@ -28,7 +28,7 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 			error(c, "non-boolean expression with type '%s' cannot be used as a conditional", cv->getType());
 
 		// ok
-		return cs->irb.ICmpEQ(cv, fir::ConstantBool::get(true));
+		return cv;
 	};
 
 

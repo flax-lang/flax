@@ -1,5 +1,25 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
+`(??)`
+- fix omission of floating-point comparison ops (oops)
+- further patches to merge-block-elision
+- fix ir-block error when doing multiple logical operators (`&&` and `||`)
+- `is` check parses its rhs-operand the same way as `as` now (aka properly!)
+- add the concept of `realScope`, which is the original scope of a definition -- aka where it got defined. we need this idea because we can call `ast::typecheck()` from *any* scope, usually when instantiating generics
+- clean up string output to use `::` for scopes instead of `.`
+- change the criteria of finding an existing definition (for generic things) to only match the last N items of the current
+	state with the stored state -- instead of the previous vice-versa situation. (ie. the current state can be smaller than the stored state)
+- add a distance penalty for resolving a generic function, also add a check where we don't re-add a function twice (eg. when recursively calling a
+	generic function)
+- `ast::Block`s now push an anonymous scope -- no idea why they didn't. fixes a pretty massive bug where bodies of an if statement shared the same scope
+- probably some other misc fixes i forgot
+
+
+`(05b3953)`
+- fix a using bug (`d1a0efe`)
+- clean up the generated IR blocks, and implement 'merge-block-elision' properly (`76481a2`)
+- fix implicit method calls (that i forgot to fix after refactoring the self-handling previously)
+
 `(076e176)`
 - allow `export`-ing a path, eg. `std::limits`. this is different from namespacing the entire file (unlike C++), because we would then
 	get `limits::std::...` instead

@@ -161,12 +161,11 @@ namespace util
 
 	inline std::string serialiseScope(const std::vector<std::string>& scope)
 	{
-		std::string ret;
-		for(const std::string& s : scope)
-			ret += s + ".";
+		if(scope.empty()) return "";
 
-		if(!ret.empty() && ret.back() == '.')
-			ret.pop_back();
+		std::string ret = scope[0];
+		for(size_t i = 1; i < scope.size(); i++)
+			ret += "::" + scope[i];
 
 		return ret;
 	}
@@ -197,4 +196,6 @@ namespace util
 		return ret;
 	}
 }
+
+
 

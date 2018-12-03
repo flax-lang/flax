@@ -45,7 +45,6 @@ namespace sst
 		fir::Type* type = 0;
 	};
 
-
 	struct Defn : Stmt
 	{
 		Defn(const Location& l) : Stmt(l) { this->readableName = "definition"; }

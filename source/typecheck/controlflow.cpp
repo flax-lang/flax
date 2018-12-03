@@ -18,9 +18,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	using Case = sst::IfStmt::Case;
 	auto ret = util::pool<sst::IfStmt>(this->loc);
 
-	auto n = fs->getAnonymousScopeName();
-
-	fs->pushTree(n);
+	fs->pushTree(fs->getAnonymousScopeName());
 	defer(fs->popTree());
 
 	for(auto c : this->cases)
@@ -127,24 +125,34 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				doTheExit();
 			}
 		}
-		else if(i == block->statements.size() - 1)
+		else /* if(i == block->statements.size() - 1) */
 		{
-			bool exhausted = false;
+			//* it's our duty to check the internals of these things regardless of their exhaustiveness
+			//* so that we can check for the elision of the merge block.
+			//? eg: if 's' itself does not have an else case, but say one of its branches is exhaustive (all arms return),
+			//? then we can elide the merge block for that branch, even though we can't for 's' itself.
+			//* this isn't strictly necessary (the program is still correct without it), but we generate nicer IR this way.
 
-			// we can only be exhaustive if we have an else case.
-			if(auto ifstmt = dcast(sst::IfStmt, s); ifstmt && ifstmt->elseCase)
+			bool exhausted = false;
+			if(auto ifstmt = dcast(sst::IfStmt, s); ifstmt)
 			{
 				bool all = true;
 				for(const auto& c: ifstmt->cases)
-					all &= checkBlockPathsReturn(fs, c.body, retty, faulty);
+					all = all && checkBlockPathsReturn(fs, c.body, retty, faulty);
 
-				exhausted = all & checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
+				exhausted = all && ifstmt->elseCase && checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
 				ifstmt->elideMergeBlock = exhausted;
 			}
-			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop && whileloop->isDoVariant)
+			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop)
 			{
-				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
+				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty) && whileloop->isDoVariant;
 				whileloop->elideMergeBlock = exhausted;
+			}
+			else if(auto feloop = dcast(sst::ForeachLoop, s); feloop)
+			{
+				// we don't set 'exhausted' here beacuse for loops cannot be guaranteed to be exhaustive.
+				// but we still want to check the block inside for elision.
+				feloop->elideMergeBlock = checkBlockPathsReturn(fs, feloop->body, retty, faulty);
 			}
 
 			ret = exhausted;

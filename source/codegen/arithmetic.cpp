@@ -64,6 +64,8 @@ namespace sst
 
 					cs->irb.setCurrentBlock(invalid);
 					{
+						// TODO: actually say what the variant was -- requires creating a runtime array of the names of the variants,
+						// TODO: probably. might be easier once we have type info at runtime!
 						cgn::glue::printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
 							"invalid unwrap of value of union '%s' into variant '%s'", {
 								cs->module->createGlobalString(vt->str()),
@@ -309,6 +311,17 @@ namespace cgn
 				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr, rr));
 				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr, rr));
 				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr, rr));
+
+				error("no");
+			}
+			else if(lt->isFloatingPointType() && rt->isFloatingPointType())
+			{
+				if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr, rr));
+				if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lr, rr));
+				if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lr, rr));
+				if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lr, rr));
+				if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lr, rr));
+				if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lr, rr));
 
 				error("no");
 			}

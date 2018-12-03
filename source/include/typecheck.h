@@ -207,6 +207,8 @@ namespace sst
 
 
 	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);
+
+	std::vector<TypeParamMap_t> collateGenericArgStacks();
 }
 
 

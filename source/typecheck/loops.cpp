@@ -17,9 +17,8 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	defer(fs->popLoc());
 
 	auto ret = util::pool<sst::ForeachLoop>(this->loc);
-	auto n = fs->getAnonymousScopeName();
 
-	fs->pushTree(n);
+	fs->pushTree(fs->getAnonymousScopeName());
 	defer(fs->popTree());
 
 
@@ -95,9 +94,7 @@ TCResult ast::WhileLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	sst::WhileLoop* ret = util::pool<sst::WhileLoop>(this->loc);
 	ret->isDoVariant = this->isDoVariant;
 
-	auto n = fs->getAnonymousScopeName();
-
-	fs->pushTree(n);
+	fs->pushTree(fs->getAnonymousScopeName());
 	defer(fs->popTree());
 
 	fs->enterBreakableBody();

@@ -262,25 +262,45 @@ namespace sst
 		{
 			return tree;
 		}
-		else if(scope.size() == 1)
-		{
-			auto s = scope[0];
-			if(tree->subtrees[s] == 0)
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+		// else if(scope.size() == 1)
+		// {
+		// 	auto s = scope[0];
+		// 	//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
+		// 	//* things in the global scope -- which is allowed!
 
-			return tree->subtrees[s];
-		}
+		// 	if(s == tree->name)
+		// 		return tree;
 
 
+		// 	if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
+		// 	{
+		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+		// 	}
+		// 	else
+		// 	{
+		// 		return it->second;
+		// 	}
+		// }
 
-		for(size_t i = 1; i < scope.size(); i++)
+
+		for(size_t i = 0; i < scope.size(); i++)
 		{
 			auto s = scope[i];
 
-			if(tree->subtrees[s] == 0)
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
+			//* things in the global scope -- which is allowed!
 
-			tree = tree->subtrees[s];
+			if(s == tree->name)
+				continue;
+
+			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
+			{
+				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+			}
+			else
+			{
+				tree = it->second;
+			}
 		}
 
 		return tree;

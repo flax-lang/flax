@@ -58,7 +58,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 
 	defn->id = Identifier(this->name, IdKind::Function);
-	defn->id.scope = fs->getCurrentScope();
+	defn->id.scope = this->realScope;
 	defn->id.params = ptys;
 
 	defn->params = ps;
@@ -108,7 +108,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		error(this, "conflicting");
 
 	if(!defn->type->containsPlaceholders())
-		fs->stree->addDefinition(this->name, defn, gmaps);
+		fs->getTreeOfScope(this->realScope)->addDefinition(this->name, defn, gmaps);
 
 	else if(fs->stree->unresolvedGenericDefs[this->name].empty())
 		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
@@ -137,6 +137,9 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	// if we have placeholders, don't bother generating anything.
 	if(!defn->type->containsPlaceholders())
 	{
+		auto oldscope = fs->getCurrentScope();
+		fs->teleportToScope(defn->id.scope);
+
 		fs->enterFunctionBody(defn);
 		fs->pushTree(defn->id.mangledName());
 		{
@@ -163,6 +166,8 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 		}
 		fs->popTree();
 		fs->leaveFunctionBody();
+
+		fs->teleportToScope(oldscope);
 
 		// ok, do the check.
 		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
@@ -247,6 +252,9 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
+	fs->pushTree(fs->getAnonymousScopeName());
+	defer(fs->popTree());
+
 	auto ret = util::pool<sst::Block>(this->loc);
 
 	ret->closingBrace = this->closingBrace;
@@ -278,6 +286,9 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	{
 		for(auto stmt : this->statements)
 		{
+			if(auto p = dcast(Parameterisable, stmt); p)
+				p->realScope = fs->getCurrentScope();
+
 			auto tcr = stmt->typecheck(fs);
 			if(tcr.isError())
 				return TCResult(tcr.error());
@@ -288,6 +299,9 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 		for(auto dstmt : this->deferredStatements)
 		{
+			if(auto p = dcast(Parameterisable, dstmt); p)
+				p->realScope = fs->getCurrentScope();
+
 			auto tcr = dstmt->typecheck(fs);
 			if(tcr.isError())
 				return TCResult(tcr.error());

@@ -511,7 +511,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(meths.empty())
 			{
-				wrongDotOpError(SimpleError::make(fc->loc, "no field named '%s' in type '%s'", fld->name, str->id.name),
+				wrongDotOpError(SimpleError::make(fld->loc, "no field named '%s' in type '%s'", fld->name, str->id.name),
 					str, fld->loc, fld->name, false)->postAndQuit();
 			}
 			else
