@@ -178,15 +178,18 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 
 		* note: bug fix: what we should really be checking for is that the stored generic map is a strict child (ie. the last N elements match
 		* our stored state, while the preceding ones don't matter). (this is why we use reverse iterators for std::equal)
+
+		* note: bug fix of the bug fix: we should be checking whether our current state is a child of the stored state, instead of the
+		* other way around. probably.
 	*/
 
 	{
 		auto doRootsMatch = [](const std::vector<TypeParamMap_t>& expected, const std::vector<TypeParamMap_t>& given) -> bool {
-			if(given.size() < expected.size())
+			if(given.size() > expected.size())
 				return false;
 
 			//* reverse iterators
-			return std::equal(expected.rbegin(), expected.rend(), given.rbegin());
+			return std::equal(given.rbegin(), given.rend(), expected.rbegin());
 		};
 
 		auto currentGCS = fs->getGenericContextStack();

@@ -100,7 +100,7 @@ namespace sst
 						// TODO: not re-entrant either.
 						auto restore = this->stree;
 
-						this->stree = (scoped ? this->stree : str);
+						this->stree = (scoped ? tree : str);
 						iceAssert(this->stree);
 
 						{

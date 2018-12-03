@@ -2220,7 +2220,11 @@ namespace fir
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
 		{
-			// warn("changing current function in irbuilder");
+			// warn("changing current function in irbuilder (from %s to %s)",
+			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
+			// 	func->getName()
+			// );
+
 			this->currentFunction = block->parentFunction;
 		}
 
@@ -2242,7 +2246,12 @@ namespace fir
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
 		{
-			warn("changing current function in irbuilder");
+			// warn("changing current function in irbuilder (from %s to %s)",
+			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
+			// 	nb->parentFunction->getName()
+			// );
+
+
 			this->currentFunction = nb->parentFunction;
 		}
 

@@ -91,6 +91,14 @@ namespace ast
 
 		// another hack-y thing
 		TypeDefn* parentType = 0;
+
+		// hacky thing #3
+		// explanation: the 'scope' of a type is always fixed, and it is the scope at the point of definition.
+		// however, as we typecheck users of the type, our 'currentScope' moves around -- so we need to remember
+		// the real, original scope of the type.
+		//? we set this in typecheck/toplevel.cpp when generating the declarations.
+		//? for methods & nested types, we set them in structs.cpp/classes.cpp
+		std::vector<std::string> realScope;
 	};
 
 

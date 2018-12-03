@@ -84,7 +84,23 @@ namespace resolver
 						if(def->type->containsPlaceholders())
 							error("wtf??? '%s'", def->type);
 
-						fns.push_back({ def, argcopy, pot.second });
+						// make sure we didn't already find this in the non-generic search
+						//? (can happen when we recursively call a generic function!)
+						if(auto it = std::find_if(fns.begin(), fns.end(), [def](const auto& tup) -> bool {
+							return std::get<0>(tup) == def;
+						}); it != fns.end())
+						{
+							continue;
+						}
+
+						auto sln = pot.second;
+						// ! ACHTUNG !
+						// insert a hefty penalty for using a polymorphic function!
+						// this doesn't disallow polymorphic functions from participating in
+						// overloading, but this makes our resolver prefer non-generic functions.
+						sln.distance += 10;
+
+						fns.push_back({ def, argcopy, sln });
 					}
 				}
 			}

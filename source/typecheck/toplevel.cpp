@@ -253,7 +253,10 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 	for(auto stmt : ns->statements)
 	{
 		if(auto decl = dcast(ast::Parameterisable, stmt))
+		{
+			decl->realScope = fs->getCurrentScope();
 			decl->generateDeclaration(fs, 0, { });
+		}
 
 		else if(auto ffd = dcast(ast::ForeignFuncDefn, stmt))
 			ffd->typecheck(fs);

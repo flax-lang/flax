@@ -400,7 +400,8 @@ namespace parser
 			}
 			else if(op == Operator::TypeIs)
 			{
-				rhs = util::pool<TypeExpr>(loc, parseType(st));
+				// rhs = util::pool<TypeExpr>(loc, parseType(st));
+				rhs = parseExpr(st);
 			}
 			else
 			{
@@ -536,6 +537,7 @@ namespace parser
 			error(st.loc(), "empty tuples are not supported");
 
 		Expr* within = parseExpr(st);
+		st.skipWS();
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
 			expected(opening.loc, "closing ')' to match opening parenthesis here, or ',' to begin a tuple", st.front().str());

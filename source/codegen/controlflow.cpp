@@ -47,7 +47,9 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 
 	// do a comparison
-	fir::Value* cmpRes = cs->irb.ICmpEQ(firstCond, fir::ConstantBool::get(true));
+	// don't be stupid and cmp bool == true
+	fir::Value* cmpRes = firstCond;
+
 	auto restore = cs->irb.getCurrentBlock();
 
 	//! ACHTUNG !
@@ -60,7 +62,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto c = this->cases.front();
 		c.body->codegen(cs);
 
-		if(!cs->irb.getCurrentBlock()->isTerminated())
+		if(cs->irb.getCurrentBlock() != nullptr && !cs->irb.getCurrentBlock()->isTerminated())
 			cs->irb.UnCondBranch(mergeblk);
 	}
 
@@ -69,7 +71,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(remaining.size() > 0)
 	{
 		// this block serves the purpose of initialising the conditions and stuff
-		auto falseblk = cs->irb.addNewBlockAfter("falseCase", trueblk);
+		auto falseblk = cs->irb.addNewBlockAfter("falseCase-" + remaining[0].body->loc.shortString(), trueblk);
 		{
 			//* the patching -- if we have 'else-if' cases.
 			cs->irb.setCurrentBlock(restore);
@@ -87,10 +89,12 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType());
 
 			// ok
-			auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + elif.cond->loc.shortString(), cs->irb.getCurrentBlock());
-			auto falseblkr = cs->irb.addNewBlockAfter("falseCase-" + elif.cond->loc.shortString(), cs->irb.getCurrentBlock());
+			auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + elif.body->loc.shortString(), cs->irb.getCurrentBlock());
+			fir::IRBlock* falseblkr = 0;
+			if(elif == remaining.back())    falseblkr = elseblk;
+			else                            falseblkr = cs->irb.addNewBlockAfter("falseCase-" + elif.body->loc.shortString(), cs->irb.getCurrentBlock());
 
-			fir::Value* cmpr = cs->irb.ICmpEQ(cond, fir::ConstantBool::get(true));
+			fir::Value* cmpr = cond;
 
 			cs->irb.CondBranch(cmpr, trueblk, falseblkr);
 
@@ -107,13 +111,13 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// ok, do the next thing.
 				// if we're the last block, then gtfo and branch to merge
-				if(elif == remaining.back())
-				{
-					if(!cs->irb.getCurrentBlock()->isTerminated())
-						cs->irb.UnCondBranch(elseblk);
+				// if()
+				// {
+				// 	if(!cs->irb.getCurrentBlock()->isTerminated())
+				// 		cs->irb.UnCondBranch(elseblk);
 
-					break;
-				}
+				// 	break;
+				// }
 			}
 		}
 	}
@@ -134,9 +138,14 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->irb.UnCondBranch(mergeblk);
 	}
 
-	cs->irb.setCurrentBlock(mergeblk);
+	if(mergeblk) cs->irb.setCurrentBlock(mergeblk);
 
-	return CGResult(0);
+	// if we were supposed to elide the merge block, it means we have no more stuff after us.
+	// tell our parent block this -- so that it can skip any extraneous codegen, eg:
+	// fn x() { if true { return } else { return } return }
+	// the last 'return' will cause a problem in IR generation if we don't skip it.
+
+	return CGResult(0, this->elideMergeBlock ? CGResult::VK::EarlyOut : CGResult::VK::Normal);
 }
 
 std::vector<sst::Block*> sst::IfStmt::getBlocks()

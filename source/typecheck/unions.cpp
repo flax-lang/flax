@@ -21,7 +21,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = util::pool<sst::UnionDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = fs->getCurrentScope();
+	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 
@@ -29,7 +29,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
-	fs->stree->addDefinition(defnname, defn, gmaps);
+	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 
@@ -53,9 +53,9 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	if(this->finishedTypechecking.find(defn) != this->finishedTypechecking.end())
 		return TCResult(defn);
 
-
+	auto oldscope = fs->getCurrentScope();
+	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
-	defer(fs->popTree());
 
 
 	std::unordered_map<std::string, std::pair<size_t, fir::Type*>> vars;
@@ -88,6 +88,11 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		uvd->type = unionTy->getVariant(id);
 
 	this->finishedTypechecking.insert(defn);
+
+
+	fs->popTree();
+	fs->teleportToScope(oldscope);
+
 	return TCResult(defn);
 }
 
