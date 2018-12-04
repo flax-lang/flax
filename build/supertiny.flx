@@ -7,25 +7,23 @@ export supertiny
 import libc
 
 // import std::io
-// import std::map
 import std::opt
+import std::map
 
 @entry fn main()
 {
 	// using std as _
 	// std::io::println("hello, world!")
 
-	// var map: std::map!<int, str>
-	// map.insert(3, "foo")
+	var map: std::map!<int, str>
+	map.insert(3, "foo")
 
-	// let r = map.search(3)
-	let q = std::opt::some("q")
-	let n = q as std::opt::some
+	let r = map.search(3)
 
-	// libc::printf("map[3] = %s\n", map.search(3) as std::opt::some)
+	libc::printf("map[3] = %s\n", map.search(3) as std::opt::some)
 
-	// let res = map.remove(3)
-	// libc::printf("map[3]: res = %d, is_none = %d\n", res, map.search(3) as std::opt::none)
+	let res = map.remove(3)
+	libc::printf("map[3]: res = %d, is_none = %d\n", res, map.search(3) is std::opt::none)
 }
 
 
@@ -51,6 +49,11 @@ import std::opt
 		3. after we enabled referring to types by name in any scope (see typecheck/variable.cpp), we have an issue because
 			they're in the same namespace! we give super suboptimal error messages when we try to use a type as a value, or
 			when we name a variable the same as a type (ie trying to use a value as a type!)
+
+		4. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
+			eg: std::opt::some!<str> works, which is a little strange.
+			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
+			get treated like a function call (and so finds no functions!)
 	}
 
 	! more things.

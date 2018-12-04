@@ -54,6 +54,21 @@ namespace util
 		return (first == second) || match(first, comps...);
 	}
 
+	template <typename T>
+	std::vector<T> merge(const std::vector<T>& x)
+	{
+		return x;
+	}
+
+	template <typename T, typename... Args>
+	std::vector<T> merge(const std::vector<T>& x, const Args&... xs)
+	{
+		return x + merge(xs...);
+	}
+
+
+
+
 
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)

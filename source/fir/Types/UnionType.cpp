@@ -141,12 +141,12 @@ namespace fir
 
 	std::string UnionVariantType::str()
 	{
-		return this->parent->str() + "." + this->name;
+		return this->parent->str() + "::" + this->name;
 	}
 
 	std::string UnionVariantType::encodedStr()
 	{
-		return this->parent->encodedStr() + "." + this->name;
+		return this->parent->encodedStr() + "::" + this->name;
 	}
 
 	bool UnionVariantType::isTypeEqual(Type* other)

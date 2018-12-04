@@ -143,27 +143,34 @@ namespace sst
 
 		for(auto f : tree->unresolvedGenericDefs)
 		{
-			existing->unresolvedGenericDefs[f.first].insert(existing->unresolvedGenericDefs[f.first].end(),
-				f.second.begin(), f.second.end());
+			// do a proper thing!
+			auto& ex = existing->unresolvedGenericDefs[f.first];
+			for(auto x : f.second)
+			{
+				if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
+					ex.push_back(x);
+			}
 		}
 
-
-		for(auto f : tree->infixOperatorOverloads)
+		for(auto& pair : {
+			std::make_pair(&existing->infixOperatorOverloads, tree->infixOperatorOverloads),
+			std::make_pair(&existing->prefixOperatorOverloads, tree->prefixOperatorOverloads),
+			std::make_pair(&existing->postfixOperatorOverloads, tree->postfixOperatorOverloads)
+		})
 		{
-			existing->infixOperatorOverloads[f.first].insert(existing->infixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
-		}
+			auto& exst = *pair.first;
+			auto& add = pair.second;
 
-		for(auto f : tree->prefixOperatorOverloads)
-		{
-			existing->prefixOperatorOverloads[f.first].insert(existing->prefixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
-		}
-
-		for(auto f : tree->postfixOperatorOverloads)
-		{
-			existing->postfixOperatorOverloads[f.first].insert(existing->postfixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
+			for(const auto& f : add)
+			{
+				// do a proper thing!
+				auto& ex = exst[f.first];
+				for(auto x : f.second)
+				{
+					if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
+						ex.push_back(x);
+				}
+			}
 		}
 
 		return existing;
@@ -181,7 +188,6 @@ namespace sst
 	{
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);
-
 
 		for(auto [ ithing, import ] : imports)
 		{

@@ -145,7 +145,7 @@ namespace sst
 			auto unn = uvd->parentUnion;
 			iceAssert(unn);
 
-			if(uvd->type->containsPlaceholders())
+			if(unn->type->containsPlaceholders())
 			{
 				auto orig_unn = unn->original;
 				iceAssert(orig_unn);

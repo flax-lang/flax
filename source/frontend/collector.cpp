@@ -108,7 +108,6 @@ namespace frontend
 				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
-			// debuglog("typecheck %s\n", file);
 			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports);
 		}
 
