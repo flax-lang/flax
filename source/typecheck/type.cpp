@@ -114,7 +114,7 @@ namespace sst
 								error(this->loc(), "parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
-							auto [ mapping, err ] = sst::resolver::misc::canonicalisePolyArguments(this, gdef,pt->toNamedType()->genericMapping);
+							auto [ mapping, err ] = sst::resolver::misc::canonicalisePolyArguments(this, gdef, pt->toNamedType()->genericMapping);
 
 							if(err != nullptr)
 							{

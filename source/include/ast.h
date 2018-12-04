@@ -92,6 +92,9 @@ namespace ast
 		// another hack-y thing
 		TypeDefn* parentType = 0;
 
+
+		VisibilityLevel visibility = VisibilityLevel::Internal;
+
 		// hacky thing #3
 		// explanation: the 'scope' of a type is always fixed, and it is the scope at the point of definition.
 		// however, as we typecheck users of the type, our 'currentScope' moves around -- so we need to remember
@@ -151,8 +154,6 @@ namespace ast
 
 		Block* body = 0;
 
-		VisibilityLevel visibility = VisibilityLevel::Internal;
-
 		bool isEntry = false;
 		bool noMangle = false;
 
@@ -200,6 +201,8 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
+
+		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
@@ -236,7 +239,9 @@ namespace ast
 		bool immut = false;
 		Expr* initialiser = 0;
 
+		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+
 		bool noMangle = false;
 	};
 
@@ -373,8 +378,6 @@ namespace ast
 	{
 		TypeDefn(const Location& l) : Parameterisable(l) { this->readableName = "type definition"; }
 		~TypeDefn() { }
-
-		VisibilityLevel visibility = VisibilityLevel::Internal;
 	};
 
 	struct StructDefn : TypeDefn

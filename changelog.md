@@ -1,6 +1,11 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fixed a bug where we failed to infer union types -- was just checking the wrong thing.
+- add a check for unwrapping (with `as`) union values to variants with no values (eg. `opt::none`)
+- fixed a bug where we were not checking for duplicates when adding unresolved generic defns and operator overloads.
+
+`(2dbb858)`
 - fix omission of floating-point comparison ops (oops)
 - further patches to merge-block-elision
 - fix ir-block error when doing multiple logical operators (`&&` and `||`)
