@@ -186,19 +186,38 @@ public class map<K, V>
 		else if(key < n.key)
 		{
 			side = -1
-			if(n.left == null)  => n.left = alloc node(key: key, value: val, parent: n)
+			if(n.left == null)
+			{
+				n.left = alloc node(key: key, value: val, parent: n)
+				if(n.left == null)
+				{
+					libc::printf("node alloc failed!\n")
+					libc::abort()
+				}
+			}
 			else                => return _insert(key, val, n.left)
 		}
 		else
 		{
 			side = 1
-			if(n.right == null) => n.right = alloc node(key: key, value: val, parent: n)
+			if(n.right == null)
+			{
+				n.right = alloc node(key: key, value: val, parent: n)
+				if(n.right == null)
+				{
+					libc::printf("node alloc failed!\n")
+					libc::abort()
+				}
+			}
 			else                => return _insert(key, val, n.right)
 		}
 
-		if(n.rank == 0)
+
+
+
+		if(n.parent != null && n.parent.rank == 0)
 		{
-			n.rank += 1
+			n.parent.rank += 1
 
 			var par = n.parent
 			while(par != null && n.rank + 1 != par.rank)

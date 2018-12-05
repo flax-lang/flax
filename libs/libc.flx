@@ -37,4 +37,4 @@ public ffi fn fsync(fd: i32) -> i32
 public ffi fn fflush(fd: &void) -> i32
 public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
 
-public ffi fn fdopen(fd: i32, mode: &i8) -> &void
+public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"

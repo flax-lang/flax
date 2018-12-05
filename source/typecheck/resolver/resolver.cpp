@@ -197,7 +197,14 @@ namespace resolver
 					cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
 
 				for(auto f : fails)
+				{
+					// TODO: HACK -- pass the location around more then!!
+					// patch in the location if it's not present!
+					if(auto se = dcast(SimpleError, f.second); se && se->loc == Location())
+						se->loc = f.first->loc;
+
 					errs->addCand(f.first, f.second);
+				}
 
 				return { TCResult(errs), { } };
 			}

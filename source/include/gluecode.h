@@ -144,6 +144,7 @@ namespace cgn
 
 		namespace misc
 		{
+			fir::Function* getMallocWrapperFunction(CodegenState* cs);
 			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
 		}
 	}

@@ -46,6 +46,22 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 		}
 	}
 
+	// check if we're not doing something stupid!
+	if(auto vd = dcast(sst::VarDefn, def))
+	{
+		if(fs->isInFunctionBody() && vd->definingFunction && vd->definingFunction != fs->getCurrentFunction())
+		{
+			return TCResult(
+				SimpleError::make(ident->loc, "invalid reference to variable '%s', which was defined in another function", ident->name)
+					->append(SimpleError::make(MsgType::Note, vd->loc, "'%s' was defined here:", ident->name))
+					->append(SimpleError::make(MsgType::Note, vd->definingFunction->loc, "in function '%s' here:", vd->definingFunction->id.name))
+					->append(BareError::make(MsgType::Note, "variable capturing (ie. closures) are currently not supported"))
+			);
+		}
+	}
+
+
+
 
 	if(auto treedef = dcast(sst::TreeDefn, def))
 	{
@@ -310,6 +326,10 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	fs->stree->addDefinition(this->name, defn);
+
+	// store the place where we were defined.
+	if(fs->isInFunctionBody())
+		defn->definingFunction = fs->getCurrentFunction();
 
 	return TCResult(defn);
 }

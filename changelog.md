@@ -1,6 +1,13 @@
 ## CHANGELOG (FIXED / IMPLEMENTED THINGS)
 
 `(??)`
+- fixed our `std::map` implementation a bit
+- calls to `malloc` should go through our new malloc wrapper which checks for `null` returns
+- hoist `make_lval` similar to `alloca` -- was causing stack overflow issues!
+- apply type transforms (`poly/transforms.cpp`) in reverse, duh! surprised we didn't run into this sooner.
+- fix an oversight where we allowed variables to be 'used' in nested functions (due to the scoping rules implicitly), and let it slip to llvm-land (!)
+
+`(3119634)`
 - fixed a bug where we failed to infer union types -- was just checking the wrong thing.
 - add a check for unwrapping (with `as`) union values to variants with no values (eg. `opt::none`)
 - fixed a bug where we were not checking for duplicates when adding unresolved generic defns and operator overloads.
