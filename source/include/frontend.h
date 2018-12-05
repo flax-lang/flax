@@ -45,6 +45,8 @@ namespace frontend
 	bool getPrintFIR();
 	bool getPrintLLVMIR();
 
+	bool getAbortOnError();
+
 	bool getIsFreestanding();
 	bool getIsPositionIndependent();
 	std::vector<std::string> getFrameworksToLink();

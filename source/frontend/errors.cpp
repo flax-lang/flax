@@ -443,11 +443,8 @@ void OverloadError::post()
 {
 	fprintf(stderr, "there were errors, compilation cannot continue\n");
 
-	#ifdef NDEBUG
-		exit(1);
-	#else
-		abort();
-	#endif
+	if(frontend::getAbortOnError()) abort();
+	else                            exit(-1);
 }
 
 

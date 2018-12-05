@@ -155,7 +155,6 @@ namespace parser
 	Stmt* parseVariable(State& st)
 	{
 		using TT = lexer::TokenType;
-		auto loc = st.front().loc;
 
 		iceAssert(st.front() == TT::Var || st.front() == TT::Val);
 
@@ -171,6 +170,8 @@ namespace parser
 		{
 			expectedAfter(st, "identifier", "'" + std::string(isImmut ? "val" : "var") + "'", st.front().str());
 		}
+
+		auto loc = st.front().loc;
 
 		std::string name = st.eat().str();
 		pts::Type* type = pts::InferredType::get();
