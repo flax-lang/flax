@@ -590,6 +590,7 @@ namespace sst
 
 		Expr* init = 0;
 		bool immutable = false;
+		FunctionDefn* definingFunction = 0;
 	};
 
 	struct ArgumentDefn : VarDefn

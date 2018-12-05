@@ -1181,7 +1181,7 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
-		// we need to 'lift' the allocation up to make it the first in the block
+		// we need to 'lift' (hoist) the allocation up to make it the first in the block
 		// this is an llvm requirement.
 
 		// MEMORY LEAK
@@ -1200,7 +1200,7 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
-		// we need to 'lift' the allocation up to the entry block of the function
+		// we need to 'lift' (hoist) the allocation up to the entry block of the function
 		// this prevents allocation inside loops eating stack memory forever
 
 		fir::Value* ret = instr->realOutput;
@@ -2078,7 +2078,21 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
 			Value::Kind::lvalue);
 
-		return this->addInstruction(instr, vname);
+		fir::Value* ret = instr->realOutput;
+		ret->setName(vname);
+
+		// get the parent function
+		auto parent = this->currentBlock->getParentFunction();
+		iceAssert(parent);
+
+		// get the entry block
+		auto entry = parent->getBlockList().front();
+		iceAssert(entry);
+
+		// insert at the front (back = no guarantees)
+		entry->instructions.insert(entry->instructions.begin(), instr);
+
+		return ret;
 	}
 
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
@@ -2087,10 +2101,22 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
 			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
-		auto ret = this->addInstruction(instr, vname);
-		this->Store(val, ret);
+		fir::Value* ret = instr->realOutput;
+		ret->setName(vname);
 
+		this->Store(val, ret);
 		ret->makeConst();
+
+		// get the parent function
+		auto parent = this->currentBlock->getParentFunction();
+		iceAssert(parent);
+
+		// get the entry block
+		auto entry = parent->getBlockList().front();
+		iceAssert(entry);
+
+		// insert at the front (back = no guarantees)
+		entry->instructions.insert(entry->instructions.begin(), instr);
 		return ret;
 	}
 

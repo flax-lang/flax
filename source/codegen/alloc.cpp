@@ -56,9 +56,6 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 
 static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc, fir::Type* type, std::vector<sst::Expr*> counts, bool isRaw)
 {
-	auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-	iceAssert(mallocf);
-
 	auto callSetFunction = [cs](fir::Type* type, sst::AllocOp* alloc, fir::Value* ptr, fir::Value* count) -> void {
 
 		auto callUserCode = [cs, alloc](fir::Value* elmp, fir::Value* idxp) {
@@ -144,7 +141,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
 		auto sz = cs->irb.Multiply(cs->irb.Sizeof(type), cnt);
-		auto mem = cs->irb.Call(mallocf, sz);
+		auto mem = cs->irb.Call(cgn::glue::misc::getMallocWrapperFunction(cs), sz, fir::ConstantString::get(alloc->loc.shortString()));
 		mem = cs->irb.PointerTypeCast(mem, type->getMutablePointerTo());
 
 		callSetFunction(type, alloc, mem, cnt);

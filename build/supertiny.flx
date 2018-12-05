@@ -7,13 +7,26 @@ export supertiny
 import libc
 
 // import std::io
-import std::opt
-import std::map
+// import std::map
 
 @entry fn main()
 {
 	// using std as _
-	// std::io::println("hello, world!")
+
+	var bar = 30
+	fn foo()
+	{
+		libc::printf("foo! (%d)\n", bar)
+	}
+
+	libc::printf("done!\n")
+}
+
+
+/*
+
+import std::opt
+import std::map
 
 	var map: std::map!<int, str>
 	map.insert(3, "foo")
@@ -24,7 +37,8 @@ import std::map
 
 	let res = map.remove(3)
 	libc::printf("map[3]: res = %d, is_none = %d\n", res, map.search(3) is std::opt::none)
-}
+
+	 */
 
 
 
@@ -54,6 +68,11 @@ import std::map
 			eg: std::opt::some!<str> works, which is a little strange.
 			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
 			get treated like a function call (and so finds no functions!)
+
+		! 5. nested functions 'capture' the scope at which they are defined -- including variables!
+			this is Bad News(tm) because we don't support closures, but the typechecker (and codegen) sees the variable 'in scope', and doesn't
+			complain. need to figure out a way around this!!!
+
 	}
 
 	! more things.
