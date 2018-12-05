@@ -54,7 +54,6 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 			return TCResult(
 				SimpleError::make(ident->loc, "invalid reference to variable '%s', which was defined in another function", ident->name)
 					->append(SimpleError::make(MsgType::Note, vd->loc, "'%s' was defined here:", ident->name))
-					->append(SimpleError::make(MsgType::Note, vd->definingFunction->loc, "in function '%s' here:", vd->definingFunction->id.name))
 					->append(BareError::make(MsgType::Note, "variable capturing (ie. closures) are currently not supported"))
 			);
 		}

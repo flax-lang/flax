@@ -35,6 +35,9 @@
 #define ARG_TARGET								"-target"
 #define ARG_FREESTANDING						"-ffreestanding"
 
+// for internal use!
+#define ARG_ABORT_ON_ERROR                      "-abort-on-error"
+
 #define WARNING_DISABLE_ALL						"-w"
 #define WARNINGS_AS_ERRORS						"-Werror"
 
@@ -159,6 +162,8 @@ namespace frontend
 	bool _printClangOutput = false;
 	bool _noAutoGlobalConstructor = false;
 
+	bool _abortOnError = false;
+
 	std::string _mcModel;
 	std::string _targetArch;
 	std::string _sysrootPath;
@@ -185,6 +190,12 @@ namespace frontend
 	BackendOption getBackendOption()
 	{
 		return _backendCodegen;
+	}
+
+
+	bool getAbortOnError()
+	{
+		return _abortOnError;
 	}
 
 
@@ -533,6 +544,10 @@ namespace frontend
 								_error_and_exit("error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);
 						}
 					}
+				}
+				else if(!strcmp(argv[i], ARG_ABORT_ON_ERROR))
+				{
+					frontend::_abortOnError = true;
 				}
 
 				// warnings.
