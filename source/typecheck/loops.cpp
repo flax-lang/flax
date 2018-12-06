@@ -44,7 +44,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	{
 		auto fake = util::pool<ast::VarDefn>(this->loc);
 		fake->name = this->indexVar;
-		fake->type = pts::NamedType::create(INT64_TYPE_STRING);
+		fake->type = pts::NamedType::create(this->loc, INT64_TYPE_STRING);
 
 		ret->indexVar = dcast(sst::VarDefn, fake->typecheck(fs).defn());
 		iceAssert(ret->indexVar);

@@ -45,7 +45,7 @@ namespace parser
 		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
 
 		if(ret->returnType == 0)
-			ret->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			ret->returnType = pts::NamedType::create(ret->loc, VOID_TYPE_STRING);
 
 		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
 
