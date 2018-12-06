@@ -124,25 +124,19 @@ namespace pts
 	InferredType* InferredType::get()
 	{
 		if(it) return it;
-
-		return (it = new InferredType());
+		return (it = new InferredType(Location()));
 	}
 
-	// static std::map<std::pair<std::string, PolyArgMapping_t>, NamedType*> map;
-	NamedType* NamedType::create(const std::string& s)
+	NamedType* NamedType::create(const Location& l, const std::string& s)
 	{
-		return NamedType::create(s, { });
+		return NamedType::create(l, s, { });
 	}
 
-	NamedType* NamedType::create(const std::string& s, const PolyArgMapping_t& tm)
+	NamedType* NamedType::create(const Location& l, const std::string& s, const PolyArgMapping_t& tm)
 	{
-		// if(map.find({ s, tm }) != map.end())
-		// 	return map[{ s, tm }];
-
-		auto ret = new NamedType(s);
+		auto ret = new NamedType(l, s);
 		ret->genericMapping = tm;
 
-		// return (map[{ s, tm }] = ret);
 		return ret;
 	}
 

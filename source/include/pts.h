@@ -55,15 +55,17 @@ namespace pts
 		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
+		Location loc;
+
 		protected:
-			Type() { }
+			Type(const Location& l) : loc(l) { }
 	};
 
 
 	struct InferredType : Type
 	{
 		virtual ~InferredType() { }
-		InferredType() { }
+		InferredType(const Location& l) : Type(l) { }
 
 		virtual std::string str() override { return "?"; }
 
@@ -81,18 +83,18 @@ namespace pts
 
 		PolyArgMapping_t genericMapping;
 
-		static NamedType* create(const std::string& s);
-		static NamedType* create(const std::string& s, const PolyArgMapping_t& genericMapping);
+		static NamedType* create(const Location& l, const std::string& s);
+		static NamedType* create(const Location& l, const std::string& s, const PolyArgMapping_t& genericMapping);
 
 		private:
-		explicit NamedType(const std::string& n) : name(n) { }
+		explicit NamedType(const Location& l, const std::string& n) : Type(l), name(n) { }
 	};
 
 
 	struct PointerType : Type
 	{
 		virtual ~PointerType() { }
-		explicit PointerType(pts::Type* b, bool mut) : base(b), isMutable(mut) { }
+		explicit PointerType(const Location& l, pts::Type* b, bool mut) : Type(l), base(b), isMutable(mut) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
@@ -103,7 +105,7 @@ namespace pts
 	struct TupleType : Type
 	{
 		virtual ~TupleType() { }
-		explicit TupleType(const std::vector<pts::Type*>& ts) : types(ts) { }
+		explicit TupleType(const Location& l, const std::vector<pts::Type*>& ts) : Type(l), types(ts) { }
 		virtual std::string str() override;
 
 		std::vector<pts::Type*> types;
@@ -114,7 +116,7 @@ namespace pts
 	struct FixedArrayType : Type
 	{
 		virtual ~FixedArrayType() { }
-		explicit FixedArrayType(pts::Type* b, size_t s) : base(b), size(s) { }
+		explicit FixedArrayType(const Location& l, pts::Type* b, size_t s) : Type(l), base(b), size(s) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
@@ -126,7 +128,7 @@ namespace pts
 	struct DynamicArrayType : Type
 	{
 		virtual ~DynamicArrayType() { }
-		explicit DynamicArrayType(pts::Type* b) : base(b) { }
+		explicit DynamicArrayType(const Location& l, pts::Type* b) : Type(l), base(b) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
@@ -136,7 +138,7 @@ namespace pts
 	struct VariadicArrayType : Type
 	{
 		virtual ~VariadicArrayType() { }
-		explicit VariadicArrayType(pts::Type* b) : base(b) { }
+		explicit VariadicArrayType(const Location& l, pts::Type* b) : Type(l), base(b) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
@@ -146,7 +148,7 @@ namespace pts
 	struct ArraySliceType : Type
 	{
 		virtual ~ArraySliceType() { }
-		explicit ArraySliceType(pts::Type* b, bool m) : base(b), mut(m) { }
+		explicit ArraySliceType(const Location& l, pts::Type* b, bool m) : Type(l), base(b), mut(m) { }
 		virtual std::string str() override;
 
 		pts::Type* base = 0;
@@ -157,7 +159,7 @@ namespace pts
 	struct FunctionType : Type
 	{
 		virtual ~FunctionType() { }
-		explicit FunctionType(const std::vector<pts::Type*>& args, pts::Type* ret) : argTypes(args), returnType(ret) { }
+		explicit FunctionType(const Location& l, const std::vector<pts::Type*>& args, pts::Type* ret) : Type(l), argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
 		std::unordered_map<std::string, TypeConstraints_t> genericTypes;

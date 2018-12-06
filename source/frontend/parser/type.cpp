@@ -243,7 +243,7 @@ namespace parser
 				error(st.loc(), "expected newline after union variant");
 			}
 
-			if(type == nullptr) type = pts::NamedType::create(VOID_TYPE_STRING);
+			if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
 			defn->cases[name] = { index, loc, type };
 
 			// do some things
@@ -385,31 +385,42 @@ namespace parser
 		using TT = lexer::TokenType;
 		if(st.front() == TT::Ampersand)
 		{
+			auto l = st.loc();
 			st.pop();
 
 			// check for mutability.
 			bool mut = st.front() == TT::Mutable;
 			if(mut) st.pop();
 
-			return util::pool<pts::PointerType>(parseType(st), mut);
+			auto base = parseType(st);
+			l.len = base->loc.col - l.col + base->loc.len;
+
+			return util::pool<pts::PointerType>(l, base, mut);
 		}
 		else if(st.front() == TT::LogicalAnd)
 		{
 			// lmao.
-
+			auto l = st.loc();
 			st.pop();
+
 			bool mut = st.front() == TT::Mutable;
 			if(mut) st.pop();
 
-			//* note: above handles cases like & (&mut T)
+			//* note: this handles cases like & (&mut T)
 			//* so, the outer pointer is never mutable, but the inner one might be.
-			return util::pool<pts::PointerType>(util::pool<pts::PointerType>(parseType(st), mut), false);
+
+			auto base = parseType(st);
+			l.len = base->loc.col - l.col + base->loc.len;
+
+			return util::pool<pts::PointerType>(l, util::pool<pts::PointerType>(l, base, mut), false);
 		}
 		else if(st.front() == TT::LSquare)
 		{
 			// [T] is a dynamic array
 			// [T:] is a slice
 			// [T: N] is a fixed array of size 'N'
+
+			auto loc = st.loc();
 
 			st.pop();
 
@@ -424,16 +435,19 @@ namespace parser
 				st.pop();
 				if(st.front() == TT::RSquare)
 				{
+					loc.len = st.loc().col - loc.col + st.loc().len;
 					st.pop();
-					return util::pool<pts::ArraySliceType>(elm, mut);
+					return util::pool<pts::ArraySliceType>(loc, elm, mut);
 				}
 				else if(st.front() == TT::Ellipsis)
 				{
 					st.pop();
+					loc.len = st.loc().col - loc.col + st.loc().len;
+
 					if(st.pop() != TT::RSquare)
 						expectedAfter(st, "']'", "... in variadic array type", st.front().str());
 
-					return util::pool<pts::VariadicArrayType>(elm);
+					return util::pool<pts::VariadicArrayType>(loc, elm);
 				}
 				else if(st.front() != TT::Number)
 				{
@@ -446,12 +460,14 @@ namespace parser
 						expected(st, "positive, non-zero size for fixed array", st.front().str());
 
 					st.pop();
+					loc.len = st.loc().col - loc.col + st.loc().len;
+
 					if(st.eat() != TT::RSquare)
 						expectedAfter(st, "closing ']'", "array type", st.front().str());
 
 					//! ACHTUNG !
 					// TODO: support mutable arrays??
-					return util::pool<pts::FixedArrayType>(elm, sz);
+					return util::pool<pts::FixedArrayType>(loc, elm, sz);
 				}
 			}
 			else if(st.front() == TT::RSquare)
@@ -459,8 +475,10 @@ namespace parser
 				// dynamic array.
 				if(mut) error(st.loc(), "dynamic arrays are always mutable, specifying 'mut' is unnecessary");
 
+				loc.len = st.loc().col - loc.col + st.loc().len;
+
 				st.pop();
-				return util::pool<pts::DynamicArrayType>(elm);
+				return util::pool<pts::DynamicArrayType>(loc, elm);
 			}
 			else
 			{
@@ -469,6 +487,7 @@ namespace parser
 		}
 		else if(st.front() == TT::Identifier)
 		{
+			auto loc = st.loc();
 			std::string s = st.eat().str();
 
 			while(st.hasTokens())
@@ -504,11 +523,14 @@ namespace parser
 				pams = parsePAMs(st, /* fail: */ nullptr);
 			}
 
-			return pts::NamedType::create(s, pams);
+			loc.len = st.ploc().col - loc.col + st.ploc().len;
+			return pts::NamedType::create(loc, s, pams);
 		}
 		else if(auto isfn = (st.front() == TT::Func); st.front() == TT::LParen || st.front() == TT::Func)
 		{
 			// tuple or function
+			auto loc = st.loc();
+
 			st.pop();
 
 			if(isfn) st.pop();
@@ -529,6 +551,7 @@ namespace parser
 				types.push_back(ty);
 			}
 
+			loc.len = st.loc().col - loc.col + st.loc().len;
 			if(st.eat().type != TT::RParen)
 				expected(st, "')' to end type list", st.prev().str());
 
@@ -539,8 +562,13 @@ namespace parser
 					expected(st, "'->' in function type specifier after parameter types", st.front().str());
 
 				st.eat();
+
 				// eat the arrow, parse the type
-				return util::pool<pts::FunctionType>(types, parseType(st));
+				auto retty = parseType(st);
+
+				loc.len = st.ploc().col - loc.col + st.ploc().len;
+
+				return util::pool<pts::FunctionType>(loc, types, retty);
 			}
 			else
 			{
@@ -554,7 +582,7 @@ namespace parser
 				else if(types.size() == 1)
 					return types[0];
 
-				return util::pool<pts::TupleType>(types);
+				return util::pool<pts::TupleType>(loc, types);
 			}
 		}
 		else
