@@ -412,7 +412,7 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn->args = this->args;
 	this->actualDefn->body = this->body;
 	this->actualDefn->parentType = this->parentType;
-	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+	this->actualDefn->returnType = pts::NamedType::create(this->loc, VOID_TYPE_STRING);
 
 	this->actualDefn->realScope = this->realScope;
 

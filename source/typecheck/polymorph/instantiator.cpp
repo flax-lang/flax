@@ -75,7 +75,7 @@ namespace poly
 			return internal::solvePolymorphWithPlaceholders(fs, thing, name, _gmaps);
 
 		// used below.
-		std::unordered_map<std::string, size_t> origParamOrder;
+		ska::flat_hash_map<std::string, size_t> origParamOrder;
 		auto [ soln, err ] = internal::inferTypesForPolymorph(fs, thing, name, thing->generics, *args, _gmaps, return_infer, type_infer, isFnCall,
 			problem_infer, &origParamOrder);
 

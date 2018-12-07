@@ -45,7 +45,7 @@ namespace parser
 		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
 
 		if(ret->returnType == 0)
-			ret->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			ret->returnType = pts::NamedType::create(ret->loc, VOID_TYPE_STRING);
 
 		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
 
@@ -218,17 +218,17 @@ namespace parser
 	}
 
 
-	std::tuple<std::unordered_map<std::string, parser::CustomOperatorDecl>,
-				std::unordered_map<std::string, parser::CustomOperatorDecl>,
-				std::unordered_map<std::string, parser::CustomOperatorDecl>>
+	std::tuple<ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,
+				ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,
+				ska::flat_hash_map<std::string, parser::CustomOperatorDecl>>
 	parseOperators(const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
 		using TT = lexer::TokenType;
 
-		std::unordered_map<std::string, CustomOperatorDecl> infix;
-		std::unordered_map<std::string, CustomOperatorDecl> prefix;
-		std::unordered_map<std::string, CustomOperatorDecl> postfix;
+		ska::flat_hash_map<std::string, CustomOperatorDecl> infix;
+		ska::flat_hash_map<std::string, CustomOperatorDecl> prefix;
+		ska::flat_hash_map<std::string, CustomOperatorDecl> postfix;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before imports
