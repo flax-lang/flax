@@ -226,9 +226,9 @@ namespace parser
 
 		std::string currentFilePath;
 
-		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		private:
 			// 1 = inside function

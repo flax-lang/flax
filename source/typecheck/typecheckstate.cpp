@@ -312,9 +312,9 @@ namespace sst
 	}
 
 
-	std::unordered_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
+	ska::flat_hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
 	{
-		std::unordered_map<std::string, std::vector<Defn*>> ret;
+		ska::flat_hash_map<std::string, std::vector<Defn*>> ret;
 		for(auto srcs : this->definitions)
 			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
 

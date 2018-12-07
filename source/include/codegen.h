@@ -75,15 +75,15 @@ namespace cgn
 		std::pair<fir::Function*, Location> entryFunction = { };
 
 		std::vector<Location> locationStack;
-		std::unordered_map<sst::Defn*, CGResult> valueMap;
+		ska::flat_hash_map<sst::Defn*, CGResult> valueMap;
 		std::vector<fir::Value*> methodSelfStack;
 
 		fir::Function* globalInitFunc = 0;
 		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
-		std::unordered_map<fir::Function*, fir::Type*> methodList;
+		ska::flat_hash_map<fir::Function*, fir::Type*> methodList;
 
-		std::unordered_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+		ska::flat_hash_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
 
 
 		size_t _debugIRIndent = 0;
@@ -155,7 +155,7 @@ namespace cgn
 
 		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 
-		std::unordered_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
+		ska::flat_hash_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
 
 		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
 
