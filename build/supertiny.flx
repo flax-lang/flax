@@ -18,7 +18,7 @@ struct foo
 {
 	// using std as _
 	let foo = foo(30)
-	var bar: foo
+	var bar: ::foo
 
 	libc::printf("foo.k = %d\n", foo.k)
 

@@ -748,7 +748,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		fir::Type* memberType = 0;
-		std::unordered_map<std::string, EnumCaseDefn*> cases;
+		ska::flat_hash_map<std::string, EnumCaseDefn*> cases;
 	};
 
 
@@ -763,7 +763,7 @@ namespace sst
 		virtual std::string getKind() override { return "union"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::unordered_map<std::string, UnionVariantDefn*> variants;
+		ska::flat_hash_map<std::string, UnionVariantDefn*> variants;
 	};
 
 	struct UnionVariantDefn : TypeDefn

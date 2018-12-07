@@ -451,7 +451,7 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
-		std::unordered_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
+		ska::flat_hash_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
 	};
 
 	struct TypeExpr : Expr
@@ -487,8 +487,6 @@ namespace ast
 
 		// for these cases: Foo<T: int>(...) and Foo<T: int>.staticAccess
 		// where Foo is, respectively, a generic function and a generic type.
-		// std::unordered_map<std::string, pts::Type*> mappings;
-
 		PolyArgMapping_t mappings;
 	};
 

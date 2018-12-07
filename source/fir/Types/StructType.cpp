@@ -19,7 +19,7 @@ namespace fir
 		this->setBody(mems);
 	}
 
-	static std::unordered_map<Identifier, StructType*> typeCache;
+	static ska::flat_hash_map<Identifier, StructType*> typeCache;
 	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
@@ -117,7 +117,7 @@ namespace fir
 		}
 	}
 
-	fir::Type* StructType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* StructType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");

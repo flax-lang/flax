@@ -59,11 +59,11 @@ namespace frontend
 	{
 		std::unordered_set<std::string> importedFiles;
 		std::map<std::string, parser::ParsedFile> parsed;
-		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
+		ska::flat_hash_map<std::string, sst::DefinitionTree*> dtrees;
 
-		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		DependencyGraph* graph = 0;
 		std::string fullMainFile;
@@ -140,7 +140,7 @@ namespace frontend
 
 	std::vector<std::string> checkForCycles(const std::string& topmod, frontend::DependencyGraph* graph);
 	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
-		std::unordered_map<std::string, bool>& visited);
+		ska::flat_hash_map<std::string, bool>& visited);
 }
 
 

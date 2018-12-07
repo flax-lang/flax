@@ -375,7 +375,7 @@ struct OverloadError : ErrorMsg
 
 
 	SimpleError* top = 0;
-	std::unordered_map<Locatable*, ErrorMsg*> cands;
+	ska::flat_hash_map<Locatable*, ErrorMsg*> cands;
 
 	protected:
 	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
@@ -554,7 +554,7 @@ struct TypeConstraints_t
 	}
 };
 
-using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
+using TypeParamMap_t = ska::flat_hash_map<std::string, fir::Type*>;
 
 struct PolyArgMapping_t
 {

@@ -77,7 +77,7 @@ namespace lexer
 	}
 
 
-	static std::unordered_map<util::string_view, TokenType> keywordMap;
+	static ska::flat_hash_map<util::string_view, TokenType> keywordMap;
 	static void initKeywordMap()
 	{
 		if(keywordMap.size() > 0) return;

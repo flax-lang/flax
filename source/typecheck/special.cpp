@@ -51,7 +51,7 @@ TCResult ast::Parameterisable::typecheck(sst::TypecheckState* fs, fir::Type* inf
 }
 
 
-static std::unordered_map<fir::Type*, sst::TypeExpr*> cache;
+static ska::flat_hash_map<fir::Type*, sst::TypeExpr*> cache;
 sst::TypeExpr* sst::TypeExpr::make(const Location& l, fir::Type* t)
 {
 	if(auto it = cache.find(t); it != cache.end())
