@@ -6,9 +6,9 @@
 #include "codegen.h"
 #include "gluecode.h"
 
-ska::flat_hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
+util::hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
 {
-	ska::flat_hash_map<std::string, size_t> idxmap;
+	util::hash_map<std::string, size_t> idxmap;
 
 	for(size_t i = 0; i < fd->params.size(); i++)
 		idxmap[fd->params[i].name] = i;
@@ -22,7 +22,7 @@ ska::flat_hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::
 
 
 static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::CodegenState* cs, fir::FunctionType* ft,
-	const std::vector<FnCallArgument>& arguments, const ska::flat_hash_map<std::string, size_t>& idxmap)
+	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap)
 {
 	// do this so we can index directly.
 	auto numArgs = ft->getArgumentTypes().size();
@@ -129,7 +129,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft,
 	const std::vector<FnCallArgument>& arguments)
 {
-	ska::flat_hash_map<std::string, size_t> idxmap;
+	util::hash_map<std::string, size_t> idxmap;
 	if(auto fd = dcast(sst::FunctionDefn, target))
 		idxmap = this->getNameIndexMap(fd);
 

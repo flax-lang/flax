@@ -127,7 +127,7 @@ namespace fir
 		}
 	}
 
-	fir::Type* FunctionType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* FunctionType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		auto args = util::map(this->functionParams, [&subst](auto t) -> auto { return t->substitutePlaceholders(subst); });
 		auto ret = this->functionRetType->substitutePlaceholders(subst);

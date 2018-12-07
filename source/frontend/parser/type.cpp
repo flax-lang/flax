@@ -485,20 +485,19 @@ namespace parser
 				expected(st.loc(), "']' in array type specifier", st.front().str());
 			}
 		}
-		else if(st.front() == TT::Identifier)
+		else if(st.front() == TT::Identifier || st.front() == TT::DoubleColon || st.front() == TT::Caret)
 		{
+			if(st.front() == TT::Caret && st.lookahead(1) != TT::DoubleColon)
+				error(st, "'^' in type specifier must be followed by '::' (to specify parent scope)");
+
 			auto loc = st.loc();
 			std::string s = st.eat().str();
 
 			while(st.hasTokens())
 			{
-				if(st.front() == TT::Period)
+				if(util::match(st.front(), TT::DoubleColon, TT::Caret))
 				{
-					s += ".", st.eat();
-				}
-				else if(st.front() == TT::DoubleColon)
-				{
-					s += "::", st.eat();
+					s += st.front().str(), st.eat();
 				}
 				else if(st.front() == TT::Identifier)
 				{
@@ -513,7 +512,6 @@ namespace parser
 					break;
 				}
 			}
-
 
 			// check generic mapping
 			PolyArgMapping_t pams;

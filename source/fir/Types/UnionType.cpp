@@ -10,15 +10,15 @@
 namespace fir
 {
 	// structs
-	UnionType::UnionType(const Identifier& name, const ska::flat_hash_map<std::string, std::pair<size_t, Type*>>& mems)
+	UnionType::UnionType(const Identifier& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
 		: Type(TypeKind::Union)
 	{
 		this->unionName = name;
 		this->setBody(mems);
 	}
 
-	static ska::flat_hash_map<Identifier, UnionType*> typeCache;
-	UnionType* UnionType::create(const Identifier& name, const ska::flat_hash_map<std::string, std::pair<size_t, Type*>>& mems)
+	static util::hash_map<Identifier, UnionType*> typeCache;
+	UnionType* UnionType::create(const Identifier& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("Union with name '%s' already exists", name.str());
@@ -79,7 +79,7 @@ namespace fir
 			error("no variant with name '%s'", name);
 	}
 
-	ska::flat_hash_map<std::string, UnionVariantType*> UnionType::getVariants()
+	util::hash_map<std::string, UnionVariantType*> UnionType::getVariants()
 	{
 		return this->variants;
 	}
@@ -109,7 +109,7 @@ namespace fir
 
 
 
-	void UnionType::setBody(const ska::flat_hash_map<std::string, std::pair<size_t, Type*>>& members)
+	void UnionType::setBody(const util::hash_map<std::string, std::pair<size_t, Type*>>& members)
 	{
 		for(const auto& [ n, p ] : members)
 		{
@@ -120,7 +120,7 @@ namespace fir
 		}
 	}
 
-	fir::Type* UnionType::substitutePlaceholders(const ska::flat_hash_map<Type*, Type*>& subst)
+	fir::Type* UnionType::substitutePlaceholders(const util::hash_map<Type*, Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");
@@ -157,7 +157,7 @@ namespace fir
 		return false;
 	}
 
-	fir::Type* UnionVariantType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* UnionVariantType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");

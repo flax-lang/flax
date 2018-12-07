@@ -15,10 +15,15 @@ namespace sst
 
 	void TypecheckState::pushLoc(ast::Stmt* stmt)
 	{
-		// this->pushLoc(stmt->loc);
-
 		this->locationStack.push_back(stmt->loc);
 	}
+
+	void TypecheckState::pushLoc(const Location& l)
+	{
+		this->locationStack.push_back(l);
+	}
+
+
 
 	Location TypecheckState::popLoc()
 	{
@@ -132,7 +137,7 @@ namespace sst
 
 
 
-	void TypecheckState::pushTree(const std::string& name)
+	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
 
@@ -142,7 +147,7 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree);
+			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
 			this->stree = newtree;
 		}
@@ -159,26 +164,6 @@ namespace sst
 
 		return ret;
 	}
-
-	StateTree* TypecheckState::recursivelyFindTreeUpwards(const std::string& name)
-	{
-		StateTree* tree = this->stree;
-
-		iceAssert(tree);
-		while(tree)
-		{
-			if(tree->name == name)
-				return tree;
-
-			else if(auto it = tree->subtrees.find(name); it != tree->subtrees.end())
-				return it->second;
-
-			tree = tree->parent;
-		}
-
-		return 0;
-	}
-
 
 	void TypecheckState::enterBreakableBody()
 	{
@@ -312,9 +297,9 @@ namespace sst
 	}
 
 
-	ska::flat_hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
+	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
 	{
-		ska::flat_hash_map<std::string, std::vector<Defn*>> ret;
+		util::hash_map<std::string, std::vector<Defn*>> ret;
 		for(auto srcs : this->definitions)
 			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
 
@@ -522,10 +507,10 @@ namespace sst
 		return false;
 	}
 
-	std::string TypecheckState::getAnonymousScopeName()
+	void TypecheckState::pushAnonymousTree()
 	{
 		static size_t _anonId = 0;
-		return std::to_string(_anonId++);
+		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
 	}
 }
 

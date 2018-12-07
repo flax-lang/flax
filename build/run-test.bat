@@ -17,6 +17,6 @@ IF /I "%1"=="debugopt" (
 )
 
 
-ninja -C %buildDir% && cls && %buildDir%\flaxc.exe -Ox -backend none -sysroot build\sysroot -run build\%2.flx
+ninja -C %buildDir% && cls && %buildDir%\flaxc.exe -Ox -sysroot build\sysroot -run build\%2.flx
 
 ENDLOCAL

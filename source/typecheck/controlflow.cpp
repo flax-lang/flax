@@ -18,7 +18,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	using Case = sst::IfStmt::Case;
 	auto ret = util::pool<sst::IfStmt>(this->loc);
 
-	fs->pushTree(fs->getAnonymousScopeName());
+	fs->pushAnonymousTree();
 	defer(fs->popTree());
 
 	for(auto c : this->cases)

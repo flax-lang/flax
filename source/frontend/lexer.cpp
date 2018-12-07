@@ -77,7 +77,7 @@ namespace lexer
 	}
 
 
-	static ska::flat_hash_map<util::string_view, TokenType> keywordMap;
+	static util::hash_map<util::string_view, TokenType> keywordMap;
 	static void initKeywordMap()
 	{
 		if(keywordMap.size() > 0) return;
