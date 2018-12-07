@@ -226,9 +226,9 @@ namespace parser
 
 		std::string currentFilePath;
 
-		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
-		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
-		ska::flat_hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		private:
 			// 1 = inside function
@@ -291,6 +291,8 @@ namespace parser
 
 	ast::Stmt* parseBreak(State& st);
 	ast::Stmt* parseContinue(State& st);
+
+	ast::Expr* parseCaretScopeExpr(State& st);
 
 	std::vector<std::pair<std::string, TypeConstraints_t>> parseGenericTypeList(State& st);
 

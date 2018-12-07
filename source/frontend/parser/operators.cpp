@@ -218,17 +218,17 @@ namespace parser
 	}
 
 
-	std::tuple<ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,
-				ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,
-				ska::flat_hash_map<std::string, parser::CustomOperatorDecl>>
+	std::tuple<util::hash_map<std::string, parser::CustomOperatorDecl>,
+				util::hash_map<std::string, parser::CustomOperatorDecl>,
+				util::hash_map<std::string, parser::CustomOperatorDecl>>
 	parseOperators(const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
 		using TT = lexer::TokenType;
 
-		ska::flat_hash_map<std::string, CustomOperatorDecl> infix;
-		ska::flat_hash_map<std::string, CustomOperatorDecl> prefix;
-		ska::flat_hash_map<std::string, CustomOperatorDecl> postfix;
+		util::hash_map<std::string, CustomOperatorDecl> infix;
+		util::hash_map<std::string, CustomOperatorDecl> prefix;
+		util::hash_map<std::string, CustomOperatorDecl> postfix;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before imports

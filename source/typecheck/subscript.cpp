@@ -14,7 +14,7 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	fs->pushTree(fs->getAnonymousScopeName());
+	fs->pushAnonymousTree();
 	defer(fs->popTree());
 
 	auto ls = this->expr->typecheck(fs).expr();

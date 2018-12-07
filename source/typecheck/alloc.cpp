@@ -80,7 +80,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		fake2->name = "i";
 
 		// make a temp scope to enclose it, I guess
-		fs->pushTree(fs->getAnonymousScopeName());
+		fs->pushAnonymousTree();
 		{
 			ret->initBlockVar = dcast(sst::VarDefn, fake->typecheck(fs).defn());
 			ret->initBlockIdx = dcast(sst::VarDefn, fake2->typecheck(fs).defn());

@@ -9,20 +9,28 @@ import libc
 // import std::io
 // import std::map
 
-struct foo
-{
-	var k: int
-}
-
 @entry fn main()
 {
-	// using std as _
-	let foo = foo(30)
-	var bar: ::foo
+	struct foo
+	{
+		var k: int
+	}
 
-	libc::printf("foo.k = %d\n", foo.k)
+	do {
+		// using std as _
+		let foo = foo(30)
+		do {
+			do {
+				do {
+					var bar: ^::foo
+				}
+			}
+		}
 
-	libc::printf("done!\n")
+		libc::printf("foo.k = %d\n", foo.k)
+
+		libc::printf("done!\n")
+	}
 }
 
 

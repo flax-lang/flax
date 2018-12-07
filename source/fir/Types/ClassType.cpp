@@ -21,7 +21,7 @@ namespace fir
 		this->setInitialiserFunctions(inits);
 	}
 
-	static ska::flat_hash_map<Identifier, ClassType*> typeCache;
+	static util::hash_map<Identifier, ClassType*> typeCache;
 	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
 		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
@@ -325,7 +325,7 @@ namespace fir
 		this->inlineInitialiser = fn;
 	}
 
-	fir::Type* ClassType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* ClassType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");

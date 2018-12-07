@@ -162,7 +162,7 @@ namespace pts
 		explicit FunctionType(const Location& l, const std::vector<pts::Type*>& args, pts::Type* ret) : Type(l), argTypes(args), returnType(ret) { }
 		virtual std::string str() override;
 
-		ska::flat_hash_map<std::string, TypeConstraints_t> genericTypes;
+		util::hash_map<std::string, TypeConstraints_t> genericTypes;
 		std::vector<pts::Type*> argTypes;
 		pts::Type* returnType = 0;
 	};

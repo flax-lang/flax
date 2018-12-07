@@ -75,15 +75,15 @@ namespace cgn
 		std::pair<fir::Function*, Location> entryFunction = { };
 
 		std::vector<Location> locationStack;
-		ska::flat_hash_map<sst::Defn*, CGResult> valueMap;
+		util::hash_map<sst::Defn*, CGResult> valueMap;
 		std::vector<fir::Value*> methodSelfStack;
 
 		fir::Function* globalInitFunc = 0;
 		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
-		ska::flat_hash_map<fir::Function*, fir::Type*> methodList;
+		util::hash_map<fir::Function*, fir::Type*> methodList;
 
-		ska::flat_hash_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+		util::hash_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
 
 
 		size_t _debugIRIndent = 0;
@@ -155,7 +155,7 @@ namespace cgn
 
 		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 
-		ska::flat_hash_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
+		util::hash_map<std::string, size_t> getNameIndexMap(sst::FunctionDefn* fd);
 
 		std::vector<fir::Value*> codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft, const std::vector<FnCallArgument>& args);
 
