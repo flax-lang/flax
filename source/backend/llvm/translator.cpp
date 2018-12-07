@@ -46,7 +46,7 @@
 
 namespace backend
 {
-	static std::unordered_map<Identifier, llvm::StructType*> createdTypes;
+	static ska::flat_hash_map<Identifier, llvm::StructType*> createdTypes;
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
 
@@ -320,7 +320,7 @@ namespace backend
 	}
 
 
-	static llvm::Function* translateFunctionDecl(fir::Function* ffn, std::unordered_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
+	static llvm::Function* translateFunctionDecl(fir::Function* ffn, ska::flat_hash_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
 	{
 		if(auto it = valueMap.find(ffn->id); it != valueMap.end())
 			return llvm::cast<llvm::Function>(it->second);
@@ -374,7 +374,7 @@ namespace backend
 		return func;
 	}
 
-	static llvm::Constant* constToLlvm(fir::ConstantValue* c, std::unordered_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
+	static llvm::Constant* constToLlvm(fir::ConstantValue* c, ska::flat_hash_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
 	{
 		iceAssert(c);
 		auto ret = cachedConstants[c];
@@ -571,7 +571,7 @@ namespace backend
 		createdTypes.clear();
 		cachedConstants.clear();
 
-		std::unordered_map<size_t, llvm::Value*>& valueMap = *(new std::unordered_map<size_t, llvm::Value*>());
+		ska::flat_hash_map<size_t, llvm::Value*>& valueMap = *(new ska::flat_hash_map<size_t, llvm::Value*>());
 
 
 

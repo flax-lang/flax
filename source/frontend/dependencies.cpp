@@ -209,7 +209,7 @@ namespace frontend
 	}
 
 	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
-		std::unordered_map<std::string, bool>& visited)
+		ska::flat_hash_map<std::string, bool>& visited)
 	{
 		auto tokens = frontend::getFileTokens(full);
 		auto imports = parser::parseImports(full, tokens);

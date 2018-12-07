@@ -26,7 +26,7 @@ for i in counts:
 		flaxc_path = "build/sysroot/usr/local/bin/flaxc"
 
 	output = subprocess.run([ flaxc_path, "-sysroot", "build/sysroot", "-run", "-backend", "none", "build/massive.flx" ],
-		capture_output = True, text = True).stderr
+		capture_output = True, text = True).stdout
 
 	# rex = re.findall(r"compile took (\d+\.\d+) \(lexer: (\d+\.\d+), parser: (\d+\.\d+), typecheck: (\d+\.\d+), codegen (\d+\.\d+)\) ms(.+)",
 		# output)

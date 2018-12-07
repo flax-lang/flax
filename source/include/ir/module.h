@@ -62,28 +62,28 @@ namespace fir
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
-		const std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
-		const std::unordered_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
-		const std::unordered_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
-		const std::unordered_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
-		const std::unordered_map<Identifier, Function*>& _getFunctions() { return this->functions; }
-		const std::unordered_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
+		const ska::flat_hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
+		const ska::flat_hash_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
+		const ska::flat_hash_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
+		const ska::flat_hash_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
+		const ska::flat_hash_map<Identifier, Function*>& _getFunctions() { return this->functions; }
+		const ska::flat_hash_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
 
-		const std::unordered_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
+		const ska::flat_hash_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
 
 
 		private:
 		std::string moduleName;
-		std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
-		std::unordered_map<std::string, GlobalVariable*> globalStrings;
+		ska::flat_hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
+		ska::flat_hash_map<std::string, GlobalVariable*> globalStrings;
 
-		std::unordered_map<Identifier, GlobalVariable*> globals;
-		std::unordered_map<Identifier, Function*> functions;
-		std::unordered_map<Identifier, Type*> namedTypes;
+		ska::flat_hash_map<Identifier, GlobalVariable*> globals;
+		ska::flat_hash_map<Identifier, Function*> functions;
+		ska::flat_hash_map<Identifier, Type*> namedTypes;
 
-		std::unordered_map<size_t, GlobalValue*> allGlobalValues;
+		ska::flat_hash_map<size_t, GlobalValue*> allGlobalValues;
 
-		std::unordered_map<Identifier, Function*> intrinsicFunctions;
+		ska::flat_hash_map<Identifier, Function*> intrinsicFunctions;
 
 		Function* entryFunction = 0;
 	};

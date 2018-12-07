@@ -76,7 +76,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		fake->name = "it";
 
 		auto fake2 = util::pool<ast::VarDefn>(this->initBody->loc);
-		fake2->type = pts::NamedType::create(INT64_TYPE_STRING);
+		fake2->type = pts::NamedType::create(this->initBody->loc, INT64_TYPE_STRING);
 		fake2->name = "i";
 
 		// make a temp scope to enclose it, I guess

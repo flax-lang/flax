@@ -56,31 +56,31 @@ namespace sst
 
 		StateTree* parent = 0;
 
-		std::unordered_map<std::string, StateTree*> subtrees;
-		std::unordered_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
-		std::unordered_map<std::pair<ast::Parameterisable*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
+		ska::flat_hash_map<std::string, StateTree*> subtrees;
+		ska::flat_hash_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
+		ska::flat_hash_map<std::pair<ast::Parameterisable*, ska::flat_hash_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
 		struct DefnMap
 		{
 			bool wasPublicImport = false;
-			std::unordered_map<std::string, std::vector<Defn*>> defns;
+			ska::flat_hash_map<std::string, std::vector<Defn*>> defns;
 		};
 
 		// maps from filename to defnmap -- allows tracking definitions by where they came from
 		// so we can resolve the import duplication bullshit
-		std::unordered_map<std::string, DefnMap> definitions;
+		ska::flat_hash_map<std::string, DefnMap> definitions;
 
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are
 		// handled the usual way.
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
+		ska::flat_hash_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
+		ska::flat_hash_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
+		ska::flat_hash_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
 
-		std::unordered_map<std::string, std::vector<Defn*>> getAllDefinitions();
+		ska::flat_hash_map<std::string, std::vector<Defn*>> getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
 		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);
@@ -97,7 +97,7 @@ namespace sst
 		NamespaceDefn* topLevel = 0;
 		std::unordered_set<std::string> thingsImported;
 
-		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
+		ska::flat_hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
 
 	struct TypecheckState
@@ -109,9 +109,7 @@ namespace sst
 		DefinitionTree* dtree = 0;
 		StateTree*& stree;
 
-		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
-
-		std::vector<std::unordered_map<std::string, VarDefn*>> symbolTableStack;
+		ska::flat_hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 
 		std::vector<Location> locationStack;
 
@@ -193,7 +191,7 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
-		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
+		std::pair<ska::flat_hash_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
 			const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& params);
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);

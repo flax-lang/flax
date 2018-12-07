@@ -126,7 +126,7 @@ def gen_test(reps):
 
 
 		do {
-			var list: LinkedList(?)<T: int>
+			var list: LinkedList(?)!<T: int>
 
 			list.insert(10)
 			list.insert(20)
@@ -200,8 +200,7 @@ def gen_test(reps):
 	outfile = open("build/massive.flx", "wt")
 
 	outfile.write("export massive\n")
-	outfile.write("import \"libc\" as _\n")
-	outfile.write("import \"math\" as _\n")
+	outfile.write("import libc as _\n")
 	outfile.write("ffi fn srand(s: i32)\n")
 	outfile.write("ffi fn rand() -> i32\n")
 

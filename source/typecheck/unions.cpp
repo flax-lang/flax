@@ -58,7 +58,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	fs->pushTree(defn->id.name);
 
 
-	std::unordered_map<std::string, std::pair<size_t, fir::Type*>> vars;
+	ska::flat_hash_map<std::string, std::pair<size_t, fir::Type*>> vars;
 	std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
 	for(auto variant : this->cases)
 	{

@@ -182,7 +182,7 @@ namespace parser
 			st.pop();
 			type = parseType(st);
 		}
-		else if(st.front() != TT::Equal && type == pts::InferredType::get())
+		else if(st.front() != TT::Equal)
 		{
 			error(st, "expected initial value for type inference on variable '%s'", name);
 		}

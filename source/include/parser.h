@@ -39,8 +39,8 @@ namespace parser
 		Kind kind = Kind::Invalid;
 	};
 
-	std::tuple<std::unordered_map<std::string, parser::CustomOperatorDecl>,	std::unordered_map<std::string, parser::CustomOperatorDecl>,
-		std::unordered_map<std::string, parser::CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
+	std::tuple<ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,	ska::flat_hash_map<std::string, parser::CustomOperatorDecl>,
+		ska::flat_hash_map<std::string, parser::CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
 
 	// strange api
 	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t i, int* kind, CustomOperatorDecl* out);

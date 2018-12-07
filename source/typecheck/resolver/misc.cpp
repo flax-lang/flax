@@ -16,7 +16,7 @@ namespace sst
 		namespace misc
 		{
 			static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target,
-				const std::unordered_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, ErrorMsg** err)
+				const ska::flat_hash_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, ErrorMsg** err)
 			{
 				std::vector<fir::LocatedType> ret(args.size());
 
@@ -205,7 +205,7 @@ namespace sst
 		}
 
 
-		std::pair<std::unordered_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
+		std::pair<ska::flat_hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments)
 		{
 			// ok, structs get named arguments, and no un-named arguments.
@@ -221,7 +221,7 @@ namespace sst
 			bool firstName = true;
 
 			size_t ctr = 0;
-			std::unordered_map<std::string, size_t> seenNames;
+			ska::flat_hash_map<std::string, size_t> seenNames;
 			for(auto arg : arguments)
 			{
 				if(arg.name.empty() && useNames)
