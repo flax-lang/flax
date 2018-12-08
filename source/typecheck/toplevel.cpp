@@ -187,6 +187,9 @@ namespace sst
 	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports)
 	{
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
+		tree->treeDefn = util::pool<TreeDefn>(Location());
+		tree->treeDefn->tree = tree;
+
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ ithing, import ] : imports)
@@ -222,6 +225,7 @@ namespace sst
 						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
 						treedef->id = Identifier(impas, IdKind::Name);
 						treedef->tree = newinspt;
+						treedef->tree->treeDefn = treedef;
 						treedef->visibility = VisibilityLevel::Public;
 
 						curinspt->addDefinition(file.name, impas, treedef);
@@ -316,7 +320,9 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	if(tree->parent)
 	{
 		auto td = util::pool<sst::TreeDefn>(this->loc);
+
 		td->tree = tree;
+		td->tree->treeDefn = td;
 		td->id = Identifier(this->name, IdKind::Name);
 		td->id.scope = tree->parent->getScope();
 
