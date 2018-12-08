@@ -24,13 +24,6 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// make all our methods be methods
-	for(auto m : this->methods)
-		m->parentType = this;
-
-	for(auto m : this->initialisers)
-		m->parentType = this;
-
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
 	if(!success)    return TCResult::getParametric();
@@ -40,9 +33,15 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	auto defn = util::pool<sst::ClassDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = fs->getCurrentScope();
+	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+
+	// make all our methods be methods
+	for(auto m : this->methods)         { m->parentType = this; m->realScope = this->realScope + defn->id.name; }
+	for(auto m : this->initialisers)    { m->parentType = this; m->realScope = this->realScope + defn->id.name; }
+	for(auto m : this->staticMethods)   { m->realScope = this->realScope + defn->id.name; }
+
 
 	auto cls = fir::ClassType::createWithoutBody(defn->id);
 	defn->type = cls;
@@ -69,16 +68,23 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->stree->addDefinition(defnname, defn, gmaps);
+		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[cls] = defn;
 	}
 
+	auto oldscope = fs->getCurrentScope();
+	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
 	{
 		for(auto t : this->nestedTypes)
+		{
+			t->realScope = this->realScope + defn->id.name;
 			t->generateDeclaration(fs, 0, { });
+		}
 	}
 	fs->popTree();
+	fs->teleportToScope(oldscope);
+
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
@@ -102,6 +108,8 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	auto cls = defn->type->toClassType();
 	iceAssert(cls);
 
+	auto oldscope = fs->getCurrentScope();
+	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
 
 	if(this->initialisers.empty())
@@ -110,8 +118,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
-	// for(auto t : this->nestedTypes)
-	// 	t->generateDeclaration(fs, 0, { });
 
 	for(auto t : this->nestedTypes)
 	{
@@ -326,7 +332,9 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 	cls->setMembers(tys);
+
 	fs->popTree();
+	fs->teleportToScope(oldscope);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
@@ -404,7 +412,9 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn->args = this->args;
 	this->actualDefn->body = this->body;
 	this->actualDefn->parentType = this->parentType;
-	this->actualDefn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+	this->actualDefn->returnType = pts::NamedType::create(this->loc, VOID_TYPE_STRING);
+
+	this->actualDefn->realScope = this->realScope;
 
 	//* note: constructors will always mutate, definitely.
 	this->actualDefn->isMutating = true;

@@ -33,7 +33,7 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	fs->pushTree(fs->getAnonymousScopeName());
+	fs->pushAnonymousTree();
 	defer(fs->popTree());
 
 	auto array = this->expr->typecheck(fs).expr();

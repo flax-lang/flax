@@ -36,7 +36,7 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 			i++;
 		}
 
-		if(names) iceAssert(i == str->getElementCount());
+		// if(names) iceAssert(i == str->getElementCount());
 	}
 
 	if(this->isRefCountedType(str))

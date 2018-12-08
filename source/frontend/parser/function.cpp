@@ -110,7 +110,7 @@ namespace parser
 		std::tie(defn->args, defn->generics, defn->returnType, isvar, loc) = parseFunctionLookingDecl(st);
 
 		if(defn->returnType == 0)
-			defn->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			defn->returnType = pts::NamedType::create(defn->loc, VOID_TYPE_STRING);
 
 		return std::make_tuple(defn, isvar, loc);
 	}
@@ -318,7 +318,7 @@ namespace parser
 			while(st.front() != TT::RBrace)
 			{
 				auto stmt = parseStmt(st);
-				if(auto defer = dynamic_cast<DeferredStmt*>(stmt))
+				if(auto defer = dcast(DeferredStmt, stmt))
 					ret->deferredStatements.push_back(defer);
 
 				else

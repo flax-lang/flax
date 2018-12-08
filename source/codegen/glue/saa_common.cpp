@@ -283,11 +283,8 @@ namespace saa_common
 				auto lhsbytecount = cs->irb.Multiply(lhslen, cs->irb.Sizeof(slicetype->getArrayElementType()), "lhsbytecount");
 				auto newbytecount = cs->irb.Multiply(newcap, cs->irb.Sizeof(slicetype->getArrayElementType()), "newbytecount");
 
-
-				auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
-				iceAssert(mallocf);
-
-				fir::Value* newbuf = cs->irb.Call(mallocf, !isArray ? cs->irb.Add(newbytecount, getCI(1)) : newbytecount, "buf");
+				fir::Value* newbuf = cs->irb.Call(cgn::glue::misc::getMallocWrapperFunction(cs),
+					!isArray ? cs->irb.Add(newbytecount, getCI(1)) : newbytecount, fir::ConstantString::get("(no location)"), "buf");
 				{
 					// fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 					// cs->irb.Call(memcpyf, { buf, castRawBufToElmPtr(cs, saa, lhsbuf), lhsbytecount,

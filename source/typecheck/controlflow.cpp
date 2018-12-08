@@ -18,15 +18,13 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	using Case = sst::IfStmt::Case;
 	auto ret = util::pool<sst::IfStmt>(this->loc);
 
-	auto n = fs->getAnonymousScopeName();
-
-	fs->pushTree(n);
+	fs->pushAnonymousTree();
 	defer(fs->popTree());
 
 	for(auto c : this->cases)
 	{
 		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs).stmt(); });
-		auto cs = Case(c.cond->typecheck(fs).expr(), dynamic_cast<sst::Block*>(c.body->typecheck(fs).stmt()), inits);
+		auto cs = Case(c.cond->typecheck(fs).expr(), dcast(sst::Block, c.body->typecheck(fs).stmt()), inits);
 
 		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
 			error(cs.cond, "non-boolean expression with type '%s' cannot be used as a conditional", cs.cond->type);
@@ -38,7 +36,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->elseCase)
 	{
-		ret->elseCase = dynamic_cast<sst::Block*>(this->elseCase->typecheck(fs).stmt());
+		ret->elseCase = dcast(sst::Block, this->elseCase->typecheck(fs).stmt());
 		iceAssert(ret->elseCase);
 	}
 
@@ -61,7 +59,7 @@ TCResult ast::ReturnStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		ret->value = this->value->typecheck(fs, retty).expr();
 
-		if(ret->value->type != retty)
+		if(fir::getCastDistance(ret->value->type, retty) < 0)
 		{
 			SpanError::make(SimpleError::make(this->loc, "mismatched type in return statement; function returns '%s', value has type '%s'",
 				retty, ret->value->type))->add(util::ESpan(this->value->loc, strprintf("type '%s'", ret->value->type)))
@@ -99,7 +97,7 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 			auto t = retstmt->expectedType;
 			iceAssert(t);
 
-			if(t != retty)
+			if(fir::getCastDistance(t, retty) < 0)
 			{
 				if(retstmt->expectedType->isVoidType())
 				{
@@ -127,26 +125,37 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				doTheExit();
 			}
 		}
-		else if(i == block->statements.size() - 1)
+		else /* if(i == block->statements.size() - 1) */
 		{
-			bool exhausted = false;
+			//* it's our duty to check the internals of these things regardless of their exhaustiveness
+			//* so that we can check for the elision of the merge block.
+			//? eg: if 's' itself does not have an else case, but say one of its branches is exhaustive (all arms return),
+			//? then we can elide the merge block for that branch, even though we can't for 's' itself.
+			//* this isn't strictly necessary (the program is still correct without it), but we generate nicer IR this way.
 
-			// we can only be exhaustive if we have an else case.
-			if(auto ifstmt = dcast(sst::IfStmt, s); ifstmt && ifstmt->elseCase)
+			bool exhausted = false;
+			if(auto ifstmt = dcast(sst::IfStmt, s); ifstmt)
 			{
 				bool all = true;
 				for(const auto& c: ifstmt->cases)
-					all &= checkBlockPathsReturn(fs, c.body, retty, faulty);
+					all = all && checkBlockPathsReturn(fs, c.body, retty, faulty);
 
-				exhausted = all & checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
+				exhausted = all && ifstmt->elseCase && checkBlockPathsReturn(fs, ifstmt->elseCase, retty, faulty);
+				ifstmt->elideMergeBlock = exhausted;
 			}
-			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop && whileloop->isDoVariant)
+			else if(auto whileloop = dcast(sst::WhileLoop, s); whileloop)
 			{
-				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty);
+				exhausted = checkBlockPathsReturn(fs, whileloop->body, retty, faulty) && whileloop->isDoVariant;
+				whileloop->elideMergeBlock = exhausted;
+			}
+			else if(auto feloop = dcast(sst::ForeachLoop, s); feloop)
+			{
+				// we don't set 'exhausted' here beacuse for loops cannot be guaranteed to be exhaustive.
+				// but we still want to check the block inside for elision.
+				feloop->elideMergeBlock = checkBlockPathsReturn(fs, feloop->body, retty, faulty);
 			}
 
 			ret = exhausted;
-			if(exhausted) block->elideMergeBlock = true;
 		}
 	}
 

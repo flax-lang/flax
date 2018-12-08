@@ -31,16 +31,16 @@ namespace parser
 
 		st.pop();
 		auto stmt = parseStmt(st);
-		if(auto defn = dynamic_cast<FuncDefn*>(stmt))
+		if(auto defn = dcast(FuncDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<ForeignFuncDefn*>(stmt))
+		else if(auto defn = dcast(ForeignFuncDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<VarDefn*>(stmt))
+		else if(auto defn = dcast(VarDefn, stmt))
 			defn->visibility = vis;
 
-		else if(auto defn = dynamic_cast<TypeDefn*>(stmt))
+		else if(auto defn = dcast(TypeDefn, stmt))
 			defn->visibility = vis;
 
 		else
@@ -227,25 +227,9 @@ namespace parser
 		return -1;
 	}
 
-	static int precedence(State& st)
+	static int tok_precedence(State& st, TokenType t)
 	{
-		if(st.remaining() > 1 && (st.front() == TT::LAngle || st.front() == TT::RAngle))
-		{
-			// check if the next one matches.
-			if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LAngle)
-				return 650;
-
-			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::RAngle)
-				return 650;
-
-			else if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LessThanEquals)
-				return 100;
-
-			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::GreaterEquals)
-				return 100;
-		}
-
-		switch(st.front())
+		switch(t)
 		{
 			// () and [] have the same precedence.
 			// not sure if this should stay -- works for now.
@@ -343,6 +327,27 @@ namespace parser
 		}
 	}
 
+	static int precedence(State& st)
+	{
+		if(st.remaining() > 1 && (st.front() == TT::LAngle || st.front() == TT::RAngle))
+		{
+			// check if the next one matches.
+			if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LAngle)
+				return 650;
+
+			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::RAngle)
+				return 650;
+
+			else if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LessThanEquals)
+				return 100;
+
+			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::GreaterEquals)
+				return 100;
+		}
+
+		return tok_precedence(st, st.front());
+	}
+
 
 	static Expr* parseUnary(State& st);
 	static Expr* parsePrimary(State& st);
@@ -364,7 +369,7 @@ namespace parser
 			if(auto tok_op = st.front(); isPostfixUnaryOperator(st, tok_op))
 			{
 				st.eat();
-				lhs = parsePostfixUnary(st, dynamic_cast<Expr*>(lhs), tok_op);
+				lhs = parsePostfixUnary(st, dcast(Expr, lhs), tok_op);
 				continue;
 			}
 
@@ -400,7 +405,8 @@ namespace parser
 			}
 			else if(op == Operator::TypeIs)
 			{
-				rhs = util::pool<TypeExpr>(loc, parseType(st));
+				// rhs = util::pool<TypeExpr>(loc, parseType(st));
+				rhs = parseExpr(st);
 			}
 			else
 			{
@@ -418,7 +424,7 @@ namespace parser
 				loc.col = lhs->loc.col;
 				loc.len = rhs->loc.col + rhs->loc.len - lhs->loc.col;
 
-				auto dot = util::pool<DotOperator>(loc, dynamic_cast<Expr*>(lhs), rhs);
+				auto dot = util::pool<DotOperator>(loc, dcast(Expr, lhs), rhs);
 				dot->isStatic = (op == "::");
 
 				lhs = dot;
@@ -452,7 +458,7 @@ namespace parser
 			{
 				auto newlhs = util::pool<AssignOp>(loc);
 
-				newlhs->left = dynamic_cast<Expr*>(lhs);
+				newlhs->left = dcast(Expr, lhs);
 				newlhs->right = rhs;
 				newlhs->op = op;
 
@@ -479,9 +485,30 @@ namespace parser
 			}
 			else
 			{
-				lhs = util::pool<BinaryOp>(loc, op, dynamic_cast<Expr*>(lhs), rhs);
+				lhs = util::pool<BinaryOp>(loc, op, dcast(Expr, lhs), rhs);
 			}
 		}
+	}
+
+
+	Expr* parseCaretOrColonScopeExpr(State& st)
+	{
+		iceAssert(util::match(st.front(), TT::DoubleColon, TT::Caret));
+
+		auto str = st.front().str();
+		auto loc = st.loc();
+
+		if(st.front() == TT::Caret)
+		{
+			st.eat();
+			if(st.front() != TT::DoubleColon)
+				expectedAfter(st.loc(), "'::'", "'^' in scope-path-specifier", st.front().str());
+		}
+
+		// ^::(^::((foo::bar)::qux))
+
+		auto ident = util::pool<ast::Ident>(loc, str);
+		return parseRhs(st, ident, tok_precedence(st, TT::DoubleColon));
 	}
 
 
@@ -536,6 +563,7 @@ namespace parser
 			error(st.loc(), "empty tuples are not supported");
 
 		Expr* within = parseExpr(st);
+		st.skipWS();
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
 			expected(opening.loc, "closing ')' to match opening parenthesis here, or ',' to begin a tuple", st.front().str());
@@ -637,7 +665,7 @@ namespace parser
 			std::string argname;
 
 			auto ex = parseExpr(st);
-			if(auto id = dynamic_cast<Ident*>(ex); id && st.front() == TT::Colon)
+			if(auto id = dcast(Ident, ex); id && st.front() == TT::Colon)
 			{
 				argname = id->name;
 				if(seenNames.find(argname) != seenNames.end())
@@ -685,7 +713,7 @@ namespace parser
 
 	static Expr* parseCall(State& st, Expr* lhs, Token op)
 	{
-		if(Ident* id = dynamic_cast<Ident*>(lhs))
+		if(Ident* id = dcast(Ident, lhs))
 		{
 			auto ret = parseFunctionCall(st, id->name);
 			ret->mappings = id->mappings;
@@ -705,7 +733,7 @@ namespace parser
 
 	static Expr* parseIdentifier(State& st)
 	{
-		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
+		iceAssert(util::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
 		std::string name = st.pop().str();
 
 		auto ident = util::pool<Ident>(st.ploc(), name);
@@ -980,6 +1008,8 @@ namespace parser
 
 
 
+
+
 	static Expr* parsePrimary(State& st)
 	{
 		if(!st.hasTokens())
@@ -1050,6 +1080,10 @@ namespace parser
 				case TT::Identifier:
 				case TT::UnicodeSymbol:
 					return parseIdentifier(st);
+
+				case TT::Caret:
+				case TT::DoubleColon:
+					return parseCaretOrColonScopeExpr(st);
 
 				case TT::Alloc:
 					return parseAlloc(st, false);

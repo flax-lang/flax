@@ -251,13 +251,22 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else
 	{
 		this->right->checkAsType = (this->op == Operator::TypeCast || this->op == Operator::TypeIs);
-		if(this->op == Operator::TypeCast && l->type->isUnionType())
+		if(this->right->checkAsType && l->type->isUnionType())
 			inferred = l->type;
 
 		r = this->right->typecheck(fs, inferred).expr();
 
 		if(this->right->checkAsType)
 			r = util::pool<sst::TypeExpr>(r->loc, r->type);
+
+		// final check -- see if we're trying to unwrap to a union variant with no value (ie. a void type!)
+		// note: this is valid if we're just checking 'if' -- but not if we're casting (ie unwrapping!)
+		if(this->op == Operator::TypeCast && l->type->isUnionType() && r->type->isUnionVariantType()
+			&& r->type->toUnionVariantType()->getInteriorType()->isVoidType())
+		{
+			error(this->right, "unwrapping a value (of union type '%s') to the variant '%s' does not yield a value (the variant has no data)",
+				l->type, r->type->toUnionVariantType()->getName());
+		}
 	}
 
 	iceAssert(l && r);

@@ -2,8 +2,8 @@
 // Copyright (c) 2017, zhiayang@gmail.com
 // Licensed under the Apache License Version 2.0.
 
-export stdio
-import "libc"
+export std::io
+import libc
 
 let ASCII_BACKSLASH: i8     = 92
 let ASCII_PERCENT: i8       = 37

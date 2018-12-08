@@ -6,35 +6,43 @@
 
 #include "errors.h"
 #include "frontend.h"
+#include "parser_internal.h"
 
 namespace frontend
 {
+	// map from (imp, fullPath) -> resolvedPath
+	static util::hash_map<std::pair<std::string, std::string>, std::string> importCache;
+
+	// 'imp' is always a path
 	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath)
 	{
-		std::string ext = ".flx";
-		if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
-			ext = "";
+		if(auto it = importCache.find({ imp, fullPath }); it != importCache.end())
+			return it->second;
+
+		// std::string ext = ".flx";
+		// if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
+		// 	ext = "";
 
 		std::string curpath = getPathFromFile(fullPath);
-		std::string fullname = curpath + "/" + imp + ext;
+		std::string fullname = curpath + "/" + imp;
 
 		if(fullname == fullPath)
 			error(loc, "cannot import module from within itself");
 
-		auto fname = platform::getFullPath(fullname);
+		std::string resolved;
 
 		// a file here
-		if(!fname.empty())
+		if(auto fname = platform::getFullPath(fullname); !fname.empty())
 		{
-			return fname;
+			resolved = fname;
 		}
 		else
 		{
-			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp + ext;
+			std::string builtinlib = frontend::getParameter("sysroot") + "/" + frontend::getParameter("prefix") + "/lib/flaxlibs/" + imp;
 
 			if(platform::checkFileExists(builtinlib))
 			{
-				return getFullPathOfFile(builtinlib);
+				resolved = getFullPathOfFile(builtinlib);
 			}
 			else
 			{
@@ -44,6 +52,10 @@ namespace frontend
 					->postAndQuit();
 			}
 		}
+
+
+		importCache[{ imp, fullPath }] = resolved;
+		return resolved;
 	}
 }
 
@@ -54,6 +66,10 @@ namespace frontend
 
 namespace parser
 {
+	// TODO: do we want to combine this "pre-parsing" with the actual import parsing??
+	// note that the 'real' parse that we do (to make an AST) makes a useless AST, because we have no
+	// use for imports after the files are collected.
+
 	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
@@ -78,7 +94,7 @@ namespace parser
 
 				Location impLoc;
 				std::string name;
-				std::string impAs;
+				std::vector<std::string> impAs;
 
 				if(tokens[i] == TT::StringLiteral)
 				{
@@ -86,9 +102,16 @@ namespace parser
 					impLoc = tokens[i].loc;
 					i++;
 				}
+				else if(tokens[i] == TT::Identifier)
+				{
+					std::vector<std::string> bits = parseIdentPath(tokens, &i);
+
+					//* we concatanate the thing, using '/' as the path separator, and appending '.flx' to the end.
+					name = util::join(bits, "/") + ".flx";
+				}
 				else
 				{
-					expectedAfter(tokens[i].loc, "string literal for path", "'import'", tokens[i].str());
+					expectedAfter(tokens[i].loc, "string literal or identifier path", "'import'", tokens[i].str());
 				}
 
 				// check for 'import as foo'
@@ -96,12 +119,10 @@ namespace parser
 				{
 					i++;
 					if(tokens[i] == TT::Identifier)
-						impAs = tokens[i].str();
+						impAs = parseIdentPath(tokens, &i);
 
 					else
 						expectedAfter(tokens[i - 1].loc, "identifier", "'import-as'", tokens[i - 1].str());
-
-					i++;
 				}
 
 
@@ -117,8 +138,9 @@ namespace parser
 			}
 			else if(tok == TT::Export)
 			{
-				// skip the name as well
-				i++;
+				// skip until a newline.
+				while(tokens[i] != TT::Comment && tokens[i] != TT::NewLine)
+					i++;
 			}
 			else if(tok == TT::Comment || tok == TT::NewLine)
 			{

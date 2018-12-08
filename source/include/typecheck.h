@@ -49,38 +49,46 @@ namespace sst
 
 	struct StateTree
 	{
-		StateTree(const std::string& nm, const std::string& filename, StateTree* p) : name(nm), topLevelFilename(filename), parent(p) { }
+		StateTree(const std::string& nm, const std::string& filename, StateTree* p, bool anon = false)
+			: name(nm), topLevelFilename(filename), parent(p), isAnonymous(anon) { }
 
 		std::string name;
 		std::string topLevelFilename;
 
 		StateTree* parent = 0;
+		TreeDefn* treeDefn = 0;
 
-		std::unordered_map<std::string, StateTree*> subtrees;
-		std::unordered_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
-		std::unordered_map<std::pair<ast::Parameterisable*, std::unordered_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
+		// for those anonymous scopes (with numbers) that we create.
+		// currently we only keep track of this for scope-path resolution, so we can skip them
+		// when we do '^' -- if not we'll end up in the middle of something and the user doesn't expect
+		// there to be scopes where there are no braces!
+		bool isAnonymous = false;
+
+		util::hash_map<std::string, StateTree*> subtrees;
+		util::hash_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
+		util::hash_map<std::pair<ast::Parameterisable*, util::hash_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
 		struct DefnMap
 		{
 			bool wasPublicImport = false;
-			std::unordered_map<std::string, std::vector<Defn*>> defns;
+			util::hash_map<std::string, std::vector<Defn*>> defns;
 		};
 
 		// maps from filename to defnmap -- allows tracking definitions by where they came from
 		// so we can resolve the import duplication bullshit
-		std::unordered_map<std::string, DefnMap> definitions;
+		util::hash_map<std::string, DefnMap> definitions;
 
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are
 		// handled the usual way.
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
-		std::unordered_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
+		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
+		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
+		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
 
-		std::unordered_map<std::string, std::vector<Defn*>> getAllDefinitions();
+		util::hash_map<std::string, std::vector<Defn*>> getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
 		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);
@@ -97,7 +105,7 @@ namespace sst
 		NamespaceDefn* topLevel = 0;
 		std::unordered_set<std::string> thingsImported;
 
-		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
+		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 	};
 
 	struct TypecheckState
@@ -109,13 +117,11 @@ namespace sst
 		DefinitionTree* dtree = 0;
 		StateTree*& stree;
 
-		std::unordered_map<fir::Type*, TypeDefn*> typeDefnMap;
-
-		std::vector<std::unordered_map<std::string, VarDefn*>> symbolTableStack;
+		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 
 		std::vector<Location> locationStack;
 
-		// void pushLoc(const Location& l);
+		void pushLoc(const Location& l);
 		void pushLoc(ast::Stmt* stmt);
 
 		std::vector<int> bodyStack;
@@ -163,15 +169,13 @@ namespace sst
 		void leaveDeferBlock();
 		bool isInDeferBlock();
 
-		std::string getAnonymousScopeName();
-
 		Location loc();
 		Location popLoc();
 
-		void pushTree(const std::string& name);
+		void pushTree(const std::string& name, bool createAnonymously = false);
 		StateTree* popTree();
 
-		StateTree* recursivelyFindTreeUpwards(const std::string& name);
+		void pushAnonymousTree();
 
 		std::string serialiseCurrentScope();
 		std::vector<std::string> getCurrentScope();
@@ -193,16 +197,8 @@ namespace sst
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
-
-		std::pair<std::unordered_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
+		std::pair<util::hash_map<std::string, size_t>, SimpleError> verifyStructConstructorArguments(const std::string& name,
 			const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& params);
-
-
-		//* basically does the work that makes 'using' actually 'use' stuff. Imports everything in _from_ to _to_.
-		void importScopeContentsIntoExistingScope(const std::vector<std::string>& from, const std::vector<std::string>& to);
-
-		//* kind of like the above, but subtly different in that we create a *new scope* named _name_ in the scope _toParent_
-		void importScopeContentsIntoNewScope(const std::vector<std::string>& from, const std::vector<std::string>& toParent, const std::string& name);
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 
@@ -212,6 +208,11 @@ namespace sst
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports);
+
+
+	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);
+
+	std::vector<TypeParamMap_t> collateGenericArgStacks();
 }
 
 

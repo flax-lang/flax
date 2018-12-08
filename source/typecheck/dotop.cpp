@@ -369,7 +369,9 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
-			//! SELF HANDLING
+			//! SELF HANDLING (INSERTION) (DOT-METHOD-CALL)
+			//* note: how we handle this is that we insert the self argument to interface with our resolver,
+			//* then remove it below since our codegen will handle the actual insertion.
 			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "self", str->type->getMutablePointerTo()));
 
 			auto search = [fs, fc](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
@@ -435,7 +437,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				c->target = resolved;
 				c->isImplicitMethodCall = false;
 
-				//! SELF HANDLING
+				//! SELF HANDLING (REMOVAL) (DOT-METHOD-CALL)
 				c->arguments.erase(c->arguments.begin(), c->arguments.begin() + 1);
 				finalCall = c;
 			}
@@ -455,9 +457,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 				c->callee = tmp;
 
-				//! SELF HANDLING
+				//! SELF HANDLING (REMOVAL) (DOT-METHOD-CALL)
 				c->arguments.erase(c->arguments.begin(), c->arguments.begin() + 1);
-
 				finalCall = c;
 			}
 
@@ -510,7 +511,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			if(meths.empty())
 			{
-				wrongDotOpError(SimpleError::make(fc->loc, "no field named '%s' in type '%s'", fld->name, str->id.name),
+				wrongDotOpError(SimpleError::make(fld->loc, "no field named '%s' in type '%s'", fld->name, str->id.name),
 					str, fld->loc, fld->name, false)->postAndQuit();
 			}
 			else

@@ -20,7 +20,7 @@ namespace frontend
 
 		auto graph = new DependencyGraph();
 
-		std::unordered_map<std::string, bool> visited;
+		util::hash_map<std::string, bool> visited;
 
 		state->allFiles = checkForCycles(full, buildDependencyGraph(graph, full, visited));
 		state->fullMainFile = full;
@@ -43,8 +43,8 @@ namespace frontend
 
 			{
 				// TODO: clean this up maybe.
-				auto checkDupes = [](const std::unordered_map<std::string, parser::CustomOperatorDecl>& existing,
-					const std::unordered_map<std::string, parser::CustomOperatorDecl>& newops, const std::string& kind) {
+				auto checkDupes = [](const util::hash_map<std::string, parser::CustomOperatorDecl>& existing,
+					const util::hash_map<std::string, parser::CustomOperatorDecl>& newops, const std::string& kind) {
 
 					for(const auto& op : newops)
 					{
@@ -108,7 +108,6 @@ namespace frontend
 				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
-			// debuglog("typecheck %s\n", file);
 			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports);
 		}
 

@@ -62,28 +62,28 @@ namespace fir
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
-		const std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
-		const std::unordered_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
-		const std::unordered_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
-		const std::unordered_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
-		const std::unordered_map<Identifier, Function*>& _getFunctions() { return this->functions; }
-		const std::unordered_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
+		const util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
+		const util::hash_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
+		const util::hash_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
+		const util::hash_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
+		const util::hash_map<Identifier, Function*>& _getFunctions() { return this->functions; }
+		const util::hash_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
 
-		const std::unordered_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
+		const util::hash_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
 
 
 		private:
 		std::string moduleName;
-		std::unordered_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
-		std::unordered_map<std::string, GlobalVariable*> globalStrings;
+		util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
+		util::hash_map<std::string, GlobalVariable*> globalStrings;
 
-		std::unordered_map<Identifier, GlobalVariable*> globals;
-		std::unordered_map<Identifier, Function*> functions;
-		std::unordered_map<Identifier, Type*> namedTypes;
+		util::hash_map<Identifier, GlobalVariable*> globals;
+		util::hash_map<Identifier, Function*> functions;
+		util::hash_map<Identifier, Type*> namedTypes;
 
-		std::unordered_map<size_t, GlobalValue*> allGlobalValues;
+		util::hash_map<size_t, GlobalValue*> allGlobalValues;
 
-		std::unordered_map<Identifier, Function*> intrinsicFunctions;
+		util::hash_map<Identifier, Function*> intrinsicFunctions;
 
 		Function* entryFunction = 0;
 	};

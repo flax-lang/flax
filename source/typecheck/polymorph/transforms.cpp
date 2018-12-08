@@ -133,7 +133,7 @@ namespace poly
 				}
 				else if(t->isPointerType())
 				{
-					ret.push_back(Trf(TrfType::Pointer));
+					ret.push_back(Trf(TrfType::Pointer, t->toPointerType()->isMutable));
 					t = t->toPointerType()->base;
 				}
 				else if(t->isVariadicArrayType())
@@ -153,20 +153,21 @@ namespace poly
 
 		fir::Type* applyTransforms(fir::Type* base, const std::vector<Trf>& trfs)
 		{
-			for(auto t : trfs)
+			for(auto it = trfs.rbegin(); it != trfs.rend(); it++)
 			{
-				switch(t.type)
+				switch(it->type)
 				{
 					case TrfType::None:
 						break;
 					case TrfType::Slice:
-						base = fir::ArraySliceType::get(base, (bool) t.data);
+						base = fir::ArraySliceType::get(base, (bool) it->data);
 						break;
 					case TrfType::Pointer:
 						base = base->getPointerTo();
+						if((bool) it->data) base = base->getMutablePointerVersion();
 						break;
 					case TrfType::FixedArray:
-						base = fir::ArrayType::get(base, t.data);
+						base = fir::ArrayType::get(base, it->data);
 						break;
 					case TrfType::DynamicArray:
 						base = fir::DynamicArrayType::get(base);
@@ -175,7 +176,7 @@ namespace poly
 						base = fir::ArraySliceType::getVariadic(base);
 						break;
 					default:
-						error("unsupported transformation '%d'", (int) t.type);
+						error("unsupported transformation '%d'", (int) it->type);
 				}
 			}
 			return base;

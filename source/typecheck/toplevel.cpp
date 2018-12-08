@@ -33,8 +33,8 @@ namespace sst
 		return clone;
 	}
 
-	static StateTree* addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
-		StateTree* commonParent, bool pubImport, const std::string& importer)
+	static StateTree* _addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
+		StateTree* commonParent, bool pubImport, bool ignoreVis, const std::string& importer)
 	{
 		// StateTree* tree = cloneTree(_tree, commonParent);
 		StateTree* tree = _tree;
@@ -45,7 +45,7 @@ namespace sst
 			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
 			{
-				addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing, pubImport, importer);
+				_addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing, pubImport, ignoreVis, importer);
 			}
 			else
 			{
@@ -68,21 +68,21 @@ namespace sst
 				for(auto def : defs.second)
 				{
 					// info(def, "hello there (%s)", def->visibility);
-					if((pubImport || existing->topLevelFilename == importer) && def->visibility == VisibilityLevel::Public)
+					if(ignoreVis || ((pubImport || existing->topLevelFilename == importer) && def->visibility == VisibilityLevel::Public))
 					{
 						auto others = existing->getDefinitionsWithName(name);
 
 						for(auto ot : others)
 						{
-							if(auto fn = dynamic_cast<FunctionDecl*>(def))
+							if(auto fn = dcast(FunctionDecl, def))
 							{
-								if(auto v = dynamic_cast<VarDefn*>(ot))
+								if(auto v = dcast(VarDefn, ot))
 								{
 									SimpleError::make(fn->loc, "conflicting definition for function '%s'; was previously defined as a variable")
 										->append(SimpleError::make(MsgType::Note, v->loc, "conflicting definition was here:"))
 										->postAndQuit();
 								}
-								else if(auto f = dynamic_cast<FunctionDecl*>(ot))
+								else if(auto f = dcast(FunctionDecl, ot))
 								{
 									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](auto p) -> fir::Type* { return p.type; }),
 										util::map(f->params, [](auto p) -> fir::Type* { return p.type; })))
@@ -97,7 +97,7 @@ namespace sst
 									error(def, "??");
 								}
 							}
-							else if(auto vr = dynamic_cast<sst::VarDefn*>(def))
+							else if(auto vr = dcast(VarDefn, def))
 							{
 								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'");
 
@@ -106,10 +106,24 @@ namespace sst
 
 								err->postAndQuit();
 							}
+							else if(auto uvd = dcast(UnionVariantDefn, def))
+							{
+								// these just... don't conflict.
+								if(auto ovd = dcast(UnionVariantDefn, ot); ovd)
+								{
+									if(ovd->parentUnion->original != uvd->parentUnion->original)
+										goto conflict;
+								}
+								else
+								{
+									// ! GOTO !
+									goto conflict;
+								}
+							}
 							else
 							{
 								// probably a class or something
-
+								conflict:
 								SimpleError::make(def->loc, "duplicate definition of '%s'", def->id.name)
 									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
 									->postAndQuit();
@@ -129,30 +143,42 @@ namespace sst
 
 		for(auto f : tree->unresolvedGenericDefs)
 		{
-			existing->unresolvedGenericDefs[f.first].insert(existing->unresolvedGenericDefs[f.first].end(),
-				f.second.begin(), f.second.end());
+			// do a proper thing!
+			auto& ex = existing->unresolvedGenericDefs[f.first];
+			for(auto x : f.second)
+			{
+				if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
+					ex.push_back(x);
+			}
 		}
 
-
-		for(auto f : tree->infixOperatorOverloads)
+		for(auto& pair : {
+			std::make_pair(&existing->infixOperatorOverloads, tree->infixOperatorOverloads),
+			std::make_pair(&existing->prefixOperatorOverloads, tree->prefixOperatorOverloads),
+			std::make_pair(&existing->postfixOperatorOverloads, tree->postfixOperatorOverloads)
+		})
 		{
-			existing->infixOperatorOverloads[f.first].insert(existing->infixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
-		}
+			auto& exst = *pair.first;
+			auto& add = pair.second;
 
-		for(auto f : tree->prefixOperatorOverloads)
-		{
-			existing->prefixOperatorOverloads[f.first].insert(existing->prefixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
-		}
-
-		for(auto f : tree->postfixOperatorOverloads)
-		{
-			existing->postfixOperatorOverloads[f.first].insert(existing->postfixOperatorOverloads[f.first].end(),
-				f.second.begin(), f.second.end());
+			for(const auto& f : add)
+			{
+				// do a proper thing!
+				auto& ex = exst[f.first];
+				for(auto x : f.second)
+				{
+					if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
+						ex.push_back(x);
+				}
+			}
 		}
 
 		return existing;
+	}
+
+	StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent, bool pubImport, bool ignoreVis)
+	{
+		return _addTreeToExistingTree({ }, existing, _tree, commonParent, pubImport, ignoreVis, existing->topLevelFilename);
 	}
 
 
@@ -161,52 +187,65 @@ namespace sst
 	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports)
 	{
 		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
-		auto fs = new TypecheckState(tree);
+		tree->treeDefn = util::pool<TreeDefn>(Location());
+		tree->treeDefn->tree = tree;
 
+		auto fs = new TypecheckState(tree);
 
 		for(auto [ ithing, import ] : imports)
 		{
-			StateTree* insertPoint = tree;
-
 			auto ias = ithing.importAs;
 			if(ias.empty())
-				ias = cs->parsed[ithing.name].moduleName;
+				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
 
-			if(ias != "_")
+			StateTree* insertPoint = tree;
+			if(ias.size() == 1 && ias[0] == "_")
 			{
-				// ok, make tree the new tree thing.
-				StateTree* newinspt = 0;
-
-				if(auto it = insertPoint->subtrees.find(ias); it != insertPoint->subtrees.end())
+				// do nothing.
+				// insertPoint = tree;
+			}
+			else
+			{
+				StateTree* curinspt = insertPoint;
+				for(const auto& impas : ias)
 				{
-					newinspt = it->second;
+					if(impas == curinspt->name)
+					{
+						// skip it.
+					}
+					else if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
+					{
+						curinspt = it->second;
+					}
+					else
+					{
+						auto newinspt = new sst::StateTree(impas, file.name, curinspt);
+						curinspt->subtrees[impas] = newinspt;
 
-					//! ACHTUNG !
-					// do we ever get here????
-					iceAssert(false);
+						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
+						treedef->id = Identifier(impas, IdKind::Name);
+						treedef->tree = newinspt;
+						treedef->tree->treeDefn = treedef;
+						treedef->visibility = VisibilityLevel::Public;
+
+						curinspt->addDefinition(file.name, impas, treedef);
+
+						curinspt = newinspt;
+					}
 				}
-				else
-				{
-					newinspt = new sst::StateTree(ias, file.name, insertPoint);
-					insertPoint->subtrees[ias] = newinspt;
 
-					auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
-					treedef->id = Identifier(ias, IdKind::Name);
-					treedef->tree = newinspt;
-					treedef->visibility = VisibilityLevel::Public;
-
-					insertPoint->addDefinition(file.name, ias, treedef);
-				}
-
-				insertPoint = newinspt;
+				insertPoint = curinspt;
 			}
 
+			iceAssert(insertPoint);
 
-			addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, /* commonParent: */ nullptr, ithing.pubImport, file.name);
+			_addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, /* commonParent: */ nullptr, ithing.pubImport,
+				/* ignoreVis: */ false, file.name);
+
 			fs->dtree->thingsImported.insert(ithing.name);
 		}
 
-		auto tns = dynamic_cast<NamespaceDefn*>(file.root->typecheck(fs).stmt());
+		auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
 		iceAssert(tns);
 
 		tns->name = file.moduleName;
@@ -223,13 +262,16 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
 {
 	for(auto stmt : ns->statements)
 	{
-		if(auto decl = dynamic_cast<ast::Parameterisable*>(stmt))
+		if(auto decl = dcast(ast::Parameterisable, stmt))
+		{
+			decl->realScope = fs->getCurrentScope();
 			decl->generateDeclaration(fs, 0, { });
+		}
 
-		else if(auto ffd = dynamic_cast<ast::ForeignFuncDefn*>(stmt))
+		else if(auto ffd = dcast(ast::ForeignFuncDefn, stmt))
 			ffd->typecheck(fs);
 
-		else if(auto ns = dynamic_cast<ast::TopLevelBlock*>(stmt))
+		else if(auto ns = dcast(ast::TopLevelBlock, stmt))
 		{
 			fs->pushTree(ns->name);
 			visitDeclarables(fs, ns);
@@ -278,7 +320,9 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	if(tree->parent)
 	{
 		auto td = util::pool<sst::TreeDefn>(this->loc);
+
 		td->tree = tree;
+		td->tree->treeDefn = td;
 		td->id = Identifier(this->name, IdKind::Name);
 		td->id.scope = tree->parent->getScope();
 

@@ -46,12 +46,52 @@ namespace sst
 	}
 
 
+	static ErrorMsg* _complainNoParentScope(TypecheckState* fs, const std::string& top)
+	{
+		return SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", top)
+		->append(BareError::make(MsgType::Note, "current scope is '%s'", fs->serialiseCurrentScope()));
+	}
+
+
+	static StateTree* recursivelyFindTreeUpwards(TypecheckState* fs, const std::string& name)
+	{
+		auto from = fs->stree;
+
+		if(name == "^")
+		{
+			if(!from->parent)
+				_complainNoParentScope(fs, from->name)->postAndQuit();
+
+			// move to our parent scope.
+			while(from->parent && from->isAnonymous)
+				from = from->parent;
+
+			return from;
+		}
+
+		while(from)
+		{
+			if(from->name == name)
+				return from;
+
+			else if(auto it = from->subtrees.find(name); it != from->subtrees.end())
+				return it->second;
+
+			from = from->parent;
+		}
+
+		return 0;
+	}
+
+
 	fir::Type* TypecheckState::convertParserTypeToFIR(pts::Type* pt, bool allowFail)
 	{
 		//* note: 'allowFail' allows failure when we *don't find anything*
 		//* but if we find something _wrong_, then we will always fail.
 
 		iceAssert(pt);
+		this->pushLoc(pt->loc);
+		defer(this->popLoc());
 
 		if(pt->isNamedType())
 		{
@@ -100,7 +140,7 @@ namespace sst
 						// TODO: not re-entrant either.
 						auto restore = this->stree;
 
-						this->stree = (scoped ? this->stree : str);
+						this->stree = (scoped ? tree : str);
 						iceAssert(this->stree);
 
 						{
@@ -114,7 +154,7 @@ namespace sst
 								error(this->loc(), "parametric type '%s' cannot be referenced without type arguments", pt->toNamedType()->name);
 
 							// right, now we instantiate it.
-							auto [ mapping, err ] = sst::resolver::misc::canonicalisePolyArguments(this, gdef,pt->toNamedType()->genericMapping);
+							auto [ mapping, err ] = sst::resolver::misc::canonicalisePolyArguments(this, gdef, pt->toNamedType()->genericMapping);
 
 							if(err != nullptr)
 							{
@@ -140,17 +180,53 @@ namespace sst
 					}
 
 
-					for(auto d : defs)
 					{
+						auto d = defs[0];
+
 						auto tyd = dcast(TypeDefn, d);
 						if(!tyd)
 						{
-							if(allowFail) return 0;
+							// helpful error message: see if there's a actually a type further up!
+							ErrorMsg* extraHelp = 0;
+							{
+								auto t = tree->parent;
+								while(!extraHelp && t)
+								{
+									if(auto ds = t->getDefinitionsWithName(name); ds.size() > 0)
+									{
+										for(const auto& d : ds)
+										{
+											if(dcast(sst::TypeDefn, d))
+											{
+												std::vector<std::string> ss;
+												auto t1 = tree;
+												while(t1 != t)
+												{
+													t1 = t1->parent;
+													if(!t1->isAnonymous)
+														ss.push_back("^");
+												}
+
+												ss.push_back(name);
+
+												extraHelp = SimpleError::make(MsgType::Note, d->loc,
+													"'%s' was defined as a type in the parent scope, here:", name)
+													->append(BareError::make(MsgType::Note, "to refer to it, use '%s'", util::serialiseScope(ss)));
+											}
+										}
+									}
+
+									t = t->parent;
+								}
+							}
 
 							//* example of something 'wrong'
-							SimpleError::make(this->loc(), "definition of '%s' cannot be used as a type", d->id.name)
-								->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name))
-								->postAndQuit();
+							auto err = SimpleError::make(this->loc(), "definition of '%s' cannot be used as a type", d->id.name)
+								->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name));
+
+							if(extraHelp) err->append(extraHelp);
+
+							err->postAndQuit();
 						}
 
 						return tyd->type;
@@ -169,6 +245,7 @@ namespace sst
 				{
 					// fuck me
 					std::string actual;
+					bool skip_to_root = false;
 					std::deque<std::string> scopes;
 					{
 						std::string tmp;
@@ -177,10 +254,31 @@ namespace sst
 							if(name[i] == ':' && (i + 1 < name.size()) && name[i+1] == ':')
 							{
 								if(tmp.empty())
-									error(this->loc(), "expected identifier between consecutive scopes ('::') in nested type specifier");
+								{
+									if(i == 0)
+									{
+										i++;
+										skip_to_root = true;
+										continue;
+									}
+									else
+									{
+										error(this->loc(), "expected identifier between consecutive scopes ('::') in nested type specifier");
+									}
+								}
 
 								scopes.push_back(tmp);
 								tmp.clear();
+
+								i++;
+							}
+							else if(name[i] == '^')
+							{
+								if(!tmp.empty())
+									error(this->loc(), "parent-scope-specifier '^' must appear in its own path segment ('%s' is invalid)", tmp + name[i]);
+
+								else
+									tmp = "^";
 							}
 							else
 							{
@@ -189,35 +287,65 @@ namespace sst
 						}
 
 						if(tmp.empty())
-							error(this->loc(), "expected identifier after final '.' in nested type specifier");
+							error(this->loc(), "expected identifier after final '::' in nested type specifier");
 
 						// don't push back.
 						actual = tmp;
 					}
 
-					auto begin = this->recursivelyFindTreeUpwards(scopes.front());
+					StateTree* begin = 0;
+
+					if(skip_to_root)
+					{
+						begin = this->stree;
+						while(begin->parent)
+							begin = begin->parent;
+					}
+					else
+					{
+						iceAssert(scopes.size() > 0);
+						begin = recursivelyFindTreeUpwards(this, scopes.front());
+					}
+
 					if(!begin)
 					{
 						if(allowFail)   return 0;
 						else            error(this->loc(), "no such scope '%s'", scopes.front());
 					}
 
-					std::string prev = scopes.front();
-					scopes.pop_front();
 
-					while(scopes.size() > 0)
+					if(scopes.size() > 0)
 					{
-						auto it = begin->subtrees.find(scopes.front());
-						if(it == begin->subtrees.end())
+						std::string prev = scopes.front();
+
+						if(!skip_to_root)
+							scopes.pop_front();
+
+						while(scopes.size() > 0)
 						{
-							if(allowFail)   return 0;
-							else            error(this->loc(), "no such entity '%s' in scope '%s'", scopes.front(), prev);
+							if(scopes.front() == "^")
+							{
+								if(!begin->parent)
+									_complainNoParentScope(this, begin->name)->postAndQuit();
+
+								while(begin->parent && begin->isAnonymous)
+									begin = begin->parent;
+							}
+							else
+							{
+								auto it = begin->subtrees.find(scopes.front());
+								if(it == begin->subtrees.end())
+								{
+									if(allowFail)   return 0;
+									else            error(this->loc(), "no such entity '%s' in scope '%s'", scopes.front(), prev);
+								}
+
+								begin = it->second;
+							}
+
+							prev = scopes.front();
+							scopes.pop_front();
 						}
-
-						prev = scopes.front();
-						scopes.pop_front();
-
-						begin = it->second;
 					}
 
 					return returnTheThing(begin, actual, true, allowFail);

@@ -289,8 +289,13 @@ void SpanError::post()
 		size_t margin = 0;
 		size_t num_width = 0;
 
-		if(this->highlightActual)
+		bool didExtra = false;
+		if(this->highlightActual && std::find_if(this->spans.begin(), this->spans.end(), [this](const util::ESpan& s) -> bool {
+			return s.loc == this->top->loc;
+		}) == this->spans.end())
 		{
+			didExtra = true;
+
 			auto sp = util::ESpan(this->top->loc, "");
 			sp.colour = COLOUR_RED_BOLD;
 
@@ -303,7 +308,7 @@ void SpanError::post()
 		strprinterrf("%s\n", getSpannedContext(this->top->loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
 
 		// ok now remove the extra thing.
-		if(this->highlightActual)
+		if(didExtra)
 			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), util::ESpan(this->top->loc, "")));
 
 		size_t cursor = 0;
@@ -346,7 +351,7 @@ void SpanError::post()
 					}
 					else
 					{
-						cursor += 3 + strprinterrf("%s", spaces(1 + num_width + col - adjust - cursor));
+						cursor += 3 + strprinterrf("%s", spaces(2 + num_width + col - adjust - cursor));
 						strprinterrf("%s|>%s ", COLOUR_CYAN_BOLD, COLOUR_RESET);
 
 						spanscopy[i].msg = remaining.substr(segment.length());
@@ -355,7 +360,7 @@ void SpanError::post()
 				}
 				else
 				{
-					cursor += 1 + strprinterrf("%s", spaces(1 + num_width + col - adjust - cursor));
+					cursor += 1 + strprinterrf("%s", spaces(2 + num_width + col - adjust - cursor));
 					strprinterrf("%s|%s", COLOUR_CYAN_BOLD, COLOUR_RESET);
 				}
 			}
@@ -416,7 +421,7 @@ void OverloadError::post()
 		}
 		else
 		{
-			auto spe = dynamic_cast<SpanError*>(emg);
+			auto spe = dcast(SpanError, emg);
 			iceAssert(spe);
 
 			spe->top = SimpleError::make(MsgType::Note, loc->loc, "candidate %d was defined here:", cand_counter++);
@@ -438,11 +443,8 @@ void OverloadError::post()
 {
 	fprintf(stderr, "there were errors, compilation cannot continue\n");
 
-	#ifdef NDEBUG
-		exit(1);
-	#else
-		abort();
-	#endif
+	if(frontend::getAbortOnError()) abort();
+	else                            exit(-1);
 }
 
 

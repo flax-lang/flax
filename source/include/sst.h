@@ -45,6 +45,8 @@ namespace sst
 		HasBlocks() { }
 		virtual ~HasBlocks() { }
 		virtual std::vector<Block*> getBlocks() = 0;
+
+		bool elideMergeBlock = false;
 	};
 
 	struct TypeDefn : Defn
@@ -89,7 +91,6 @@ namespace sst
 		Location closingBrace;
 
 		bool isSingleExpr = false;
-		bool elideMergeBlock = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferred;
 
@@ -589,6 +590,7 @@ namespace sst
 
 		Expr* init = 0;
 		bool immutable = false;
+		FunctionDefn* definingFunction = 0;
 	};
 
 	struct ArgumentDefn : VarDefn
@@ -604,6 +606,7 @@ namespace sst
 	{
 		std::vector<FnParam> params;
 		fir::Type* returnType = 0;
+		fir::Type* parentTypeForMethod = 0;
 
 		bool isEntry = false;
 		bool noMangle = false;
@@ -627,7 +630,6 @@ namespace sst
 
 		Block* body = 0;
 		bool needReturnVoid = false;
-		fir::Type* parentTypeForMethod = 0;
 
 		bool isVirtual = false;
 		bool isOverride = false;
@@ -746,7 +748,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		fir::Type* memberType = 0;
-		std::unordered_map<std::string, EnumCaseDefn*> cases;
+		util::hash_map<std::string, EnumCaseDefn*> cases;
 	};
 
 
@@ -761,7 +763,7 @@ namespace sst
 		virtual std::string getKind() override { return "union"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::unordered_map<std::string, UnionVariantDefn*> variants;
+		util::hash_map<std::string, UnionVariantDefn*> variants;
 	};
 
 	struct UnionVariantDefn : TypeDefn

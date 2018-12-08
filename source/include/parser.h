@@ -23,6 +23,7 @@ namespace parser
 	{
 		std::string name;
 		std::string moduleName;
+		std::vector<std::string> modulePath;
 
 		ast::TopLevelBlock* root = 0;
 	};
@@ -38,8 +39,8 @@ namespace parser
 		Kind kind = Kind::Invalid;
 	};
 
-	std::tuple<std::unordered_map<std::string, parser::CustomOperatorDecl>,	std::unordered_map<std::string, parser::CustomOperatorDecl>,
-		std::unordered_map<std::string, parser::CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
+	std::tuple<util::hash_map<std::string, parser::CustomOperatorDecl>,	util::hash_map<std::string, parser::CustomOperatorDecl>,
+		util::hash_map<std::string, parser::CustomOperatorDecl>> parseOperators(const lexer::TokenList& tokens);
 
 	// strange api
 	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t i, int* kind, CustomOperatorDecl* out);

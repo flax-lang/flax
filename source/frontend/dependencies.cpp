@@ -179,11 +179,7 @@ namespace frontend
 				{
 					for(auto u : m->users)
 					{
-						// va_list ap;
-
 						info(u.second, "");
-
-						// __error_gen(MultiErrorImport(dynamic_cast<Import*>(u.second), u.first->name), "here", "Note", false, ap);
 					}
 				}
 
@@ -213,7 +209,7 @@ namespace frontend
 	}
 
 	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
-		std::unordered_map<std::string, bool>& visited)
+		util::hash_map<std::string, bool>& visited)
 	{
 		auto tokens = frontend::getFileTokens(full);
 		auto imports = parser::parseImports(full, tokens);

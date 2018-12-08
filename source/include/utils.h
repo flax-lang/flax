@@ -54,6 +54,21 @@ namespace util
 		return (first == second) || match(first, comps...);
 	}
 
+	template <typename T>
+	std::vector<T> merge(const std::vector<T>& x)
+	{
+		return x;
+	}
+
+	template <typename T, typename... Args>
+	std::vector<T> merge(const std::vector<T>& x, const Args&... xs)
+	{
+		return x + merge(xs...);
+	}
+
+
+
+
 
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
@@ -143,7 +158,17 @@ namespace util
 		return std::vector<T>(v.begin(), v.begin() + num);
 	}
 
+	inline std::string join(const std::vector<std::string>& list, const std::string& sep)
+	{
+		if(list.empty())            return "";
+		else if(list.size() == 1)   return list[0];
 
+		std::string ret;
+		for(size_t i = 0; i < list.size() - 1; i++)
+			ret += list[i] + sep;
+
+		return ret + list.back();
+	}
 
 
 
@@ -151,12 +176,11 @@ namespace util
 
 	inline std::string serialiseScope(const std::vector<std::string>& scope)
 	{
-		std::string ret;
-		for(const std::string& s : scope)
-			ret += s + ".";
+		if(scope.empty()) return "";
 
-		if(!ret.empty() && ret.back() == '.')
-			ret.pop_back();
+		std::string ret = scope[0];
+		for(size_t i = 1; i < scope.size(); i++)
+			ret += "::" + scope[i];
 
 		return ret;
 	}
@@ -187,4 +211,6 @@ namespace util
 		return ret;
 	}
 }
+
+
 

@@ -187,7 +187,7 @@ namespace fir
 
 		if(this->opKind == OpKind::Value_CreatePHI)
 		{
-			auto phi = dynamic_cast<PHINode*>(this->realOutput);
+			auto phi = dcast(PHINode, this->realOutput);
 			iceAssert(phi);
 			std::string nodes;
 
@@ -210,28 +210,28 @@ namespace fir
 						didfn = true;
 					}
 				}
-				else if(ConstantInt* ci = dynamic_cast<ConstantInt*>(op))
+				else if(ConstantInt* ci = dcast(ConstantInt, op))
 				{
 					ops += std::to_string(ci->getSignedValue());
 				}
-				else if(ConstantFP* cf = dynamic_cast<ConstantFP*>(op))
+				else if(ConstantFP* cf = dcast(ConstantFP, op))
 				{
 					ops += std::to_string(cf->getValue());
 				}
-				else if(ConstantBool* cb = dynamic_cast<ConstantBool*>(op))
+				else if(ConstantBool* cb = dcast(ConstantBool, op))
 				{
 					ops += cb->getValue() ? "true" : "false";
 				}
-				else if(ConstantArraySlice* cas = dynamic_cast<ConstantArraySlice*>(op))
+				else if(ConstantArraySlice* cas = dcast(ConstantArraySlice, op))
 				{
 					ops += "(const slice %" + std::to_string(op->id) + ", %" + std::to_string(cas->getData()->id) + ", %"
 						+ std::to_string(cas->getLength()->id) + " :: " + op->getType()->str();
 				}
-				else if(dynamic_cast<ConstantValue*>(op))
+				else if(dcast(ConstantValue, op))
 				{
 					ops += "(const %" + std::to_string(op->id) + " :: " + op->getType()->str() + ")";
 				}
-				else if(IRBlock* ib = dynamic_cast<IRBlock*>(op))
+				else if(IRBlock* ib = dcast(IRBlock, op))
 				{
 					ops += "$" + ib->getName().str();
 				}

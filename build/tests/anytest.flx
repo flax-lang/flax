@@ -5,7 +5,7 @@
 export test_any
 // import "stdio" as _
 
-import "libc" as _
+import libc as _
 
 var glob: any
 
@@ -50,7 +50,7 @@ public fn doAnyTest()
 		var x: any = Large(10, 20, 30, 40, 50)
 
 		var k = x as Large
-		k.c = 5413
+		k.c = 173
 		k.a = 631
 
 		foo(x)
@@ -60,7 +60,7 @@ public fn doAnyTest()
 		fn bar() -> any => any(10)
 
 		printf("bar = %d, qux = %d\n", bar() as int, 30)
-		printf("a = %d, b = %d, c = %d/%d, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
+		printf("a = %d, b = %d, c = %d/%x, d = %d, e = %d\n", k.a, k.b, k.c, (x as Large).c, k.d, k.e)
 	}
 }
 

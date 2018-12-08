@@ -226,9 +226,9 @@ namespace parser
 
 		std::string currentFilePath;
 
-		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		private:
 			// 1 = inside function
@@ -287,10 +287,12 @@ namespace parser
 	ast::IfStmt* parseIfStmt(State& st);
 	ast::WhileLoop* parseWhileLoop(State& st);
 
-	ast::TopLevelBlock* parseTopLevel(State& st, std::string name);
+	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);
 
 	ast::Stmt* parseBreak(State& st);
 	ast::Stmt* parseContinue(State& st);
+
+	ast::Expr* parseCaretOrColonScopeExpr(State& st);
 
 	std::vector<std::pair<std::string, TypeConstraints_t>> parseGenericTypeList(State& st);
 
@@ -298,6 +300,8 @@ namespace parser
 
 	std::tuple<std::vector<ast::FuncDefn::Arg>, std::vector<std::pair<std::string, TypeConstraints_t>>,
 		pts::Type*, bool, Location> parseFunctionLookingDecl(State& st);
+
+	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx);
 }
 
 
