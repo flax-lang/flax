@@ -88,6 +88,11 @@ std::string strprintf(const char* fmt, Ts... ts)
 
 #define dcast(t, v)		dynamic_cast<t*>(v)
 
+#define USE_SKA_HASHMAP false
+#if USE_SKA_HASHMAP
+	#include "ska/flat_hash_map.hpp"
+#endif
+
 namespace util
 {
 	#ifndef STRING_VIEW_TYPE
@@ -105,7 +110,6 @@ namespace util
 	#endif
 
 
-	#define USE_SKA_HASHMAP false
 
 	#if USE_SKA_HASHMAP
 		using hash_map = ska::flat_hash_map;
