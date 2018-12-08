@@ -270,14 +270,29 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		if(auto e = dcast(ast::Expr, s))
 		{
 			auto ex = e->typecheck(fs, inferred).expr();
-			if(inferred && ex->type != inferred)
-				error(ex, "invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
+			if(inferred && fir::getCastDistance(ex->type, inferred) < 0)
+			{
+				if(inferred->isVoidType())
+				{
+					// no issues.
+					auto rst = util::pool<sst::ReturnStmt>(s->loc);
+					rst->expectedType = fir::Type::getVoid();
 
-			auto rst = util::pool<sst::ReturnStmt>(s->loc);
-			rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
-			rst->value = ex;
+					ret->statements = { ex, rst };
+				}
+				else
+				{
+					error(ex, "invalid single-expression with type '%s' in function returning '%s'", ex->type, inferred);
+				}
+			}
+			else
+			{
+				auto rst = util::pool<sst::ReturnStmt>(s->loc);
+				rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
+				rst->value = ex;
 
-			ret->statements = { rst };
+				ret->statements = { rst };
+			}
 		}
 		else
 		{

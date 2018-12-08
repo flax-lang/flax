@@ -56,6 +56,7 @@ namespace sst
 		std::string topLevelFilename;
 
 		StateTree* parent = 0;
+		TreeDefn* treeDefn = 0;
 
 		// for those anonymous scopes (with numbers) that we create.
 		// currently we only keep track of this for scope-path resolution, so we can skip them

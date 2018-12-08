@@ -32,7 +32,7 @@ if the_compiler.get_id() == 'msvc'
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
 	add_project_link_arguments('/machine:X64', language: 'cpp')
-	# add_project_link_arguments('/incremental', language: 'cpp')
+	add_project_link_arguments('/incremental', language: 'cpp')
 	add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
