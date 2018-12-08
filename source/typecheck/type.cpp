@@ -236,6 +236,14 @@ namespace sst
 
 								i++;
 							}
+							else if(name[i] == '^')
+							{
+								if(!tmp.empty())
+									error(this->loc(), "parent-scope-specifier '^' must appear in its own path segment ('%s' is invalid)", tmp + name[i]);
+
+								else
+									tmp = "^";
+							}
 							else
 							{
 								tmp += name[i];

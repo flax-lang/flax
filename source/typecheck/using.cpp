@@ -28,6 +28,7 @@ static void importScopeContentsIntoNewScope(sst::TypecheckState* fs, const std::
 	// add a thing in the current scope
 	auto treedef = util::pool<sst::TreeDefn>(fs->loc());
 	treedef->tree = fs->getTreeOfScope(sfrom);
+	treedef->tree->treeDefn = treedef;
 
 	parent->addDefinition(name, treedef);
 }
