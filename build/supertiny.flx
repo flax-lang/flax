@@ -9,28 +9,9 @@ import libc
 // import std::io
 // import std::map
 
+
 @entry fn main()
 {
-	struct foo
-	{
-		var k: int
-	}
-
-	do {
-		// using std as _
-		let foo = foo(30)
-		do {
-			do {
-				do {
-					var bar: ^::foo
-				}
-			}
-		}
-
-		libc::printf("foo.k = %d\n", foo.k)
-
-		libc::printf("done!\n")
-	}
 }
 
 
@@ -65,14 +46,14 @@ import std::map
 		// 	i think this is less of a bug and more of an omission when we first started taking out the
 		// 	haphazard self-handling.
 
-		2. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
-			we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
-			in the compiler itself...
+		// 2. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
+		// 	we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
+		// 	in the compiler itself...
 
-			expected: a = 631, b = 20, c = 173/30, d = 40, e = 50
-			actual:   a = 631, b = 20, c = 173/-572662307, d = 40, e = 50
+		// 	expected: a = 631, b = 20, c = 173/30, d = 40, e = 50
+		// 	actual:   a = 631, b = 20, c = 173/-572662307, d = 40, e = 50
 
-			note: it's 0xDDDDDDDD in hex, and according to The Internet (tm), that marks FREED MEMORY!
+		// 	note: it's 0xDDDDDDDD in hex, and according to The Internet (tm), that marks FREED MEMORY!
 
 		3. after we enabled referring to types by name in any scope (see typecheck/variable.cpp), we have an issue because
 			they're in the same namespace! we give super suboptimal error messages when we try to use a type as a value, or
