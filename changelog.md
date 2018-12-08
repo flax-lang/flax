@@ -1,8 +1,29 @@
 # Partial Changelog
 
 
+### 2018-12-09 `(1350296)`
+- fix a refcounting bug where things were getting freed too early. the cause of this bug is when we transitioned to the lvalue system, around
+	`24addf2`, when we added arguments to the refcounting stack; we forgot to include a corresponding increment in the call argument codegen, which
+	has since been rectified.
+
+
 ---
-### 2018-12-06 `(??)`
+### 2018-12-08 `(201a2ce)`
+- allow `::` to refer to the topmost scope, like in C++
+- allow `^` at any location in the scope path to refer to the parent scope -- eg. `::qux::^::foo::^::bar` (naturally will fail at the root scope!)
+- for some reason, added a more verbose error message when you try to use a value as a type -- it searches up the tree for an actual type with the name,
+	and tells you how to refer to it -- using the parent-scope specifier mentioned above.
+
+
+---
+### 2018-12-07 `(621aea2)`
+- add location info to `pts` types -- which will soon need to be carried over to `fir` -- probably some kind of `TypeLocator` struct that I have in mind.
+- abstract away which `hash_map` we use -- preliminary tests show `ska::flat_hash_map` gives us a ~9% perf improvement across-the-board -- using the
+	`massive.flx` and associated test framework.
+
+
+---
+### 2018-12-06 `(aa33f64)`
 - add a flag to call `abort()` on error -- now the default behaviour is to `exit(-1)`.
 
 
