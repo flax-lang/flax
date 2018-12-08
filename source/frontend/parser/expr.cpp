@@ -227,25 +227,9 @@ namespace parser
 		return -1;
 	}
 
-	static int precedence(State& st)
+	static int tok_precedence(State& st, TokenType t)
 	{
-		if(st.remaining() > 1 && (st.front() == TT::LAngle || st.front() == TT::RAngle))
-		{
-			// check if the next one matches.
-			if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LAngle)
-				return 650;
-
-			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::RAngle)
-				return 650;
-
-			else if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LessThanEquals)
-				return 100;
-
-			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::GreaterEquals)
-				return 100;
-		}
-
-		switch(st.front())
+		switch(t)
 		{
 			// () and [] have the same precedence.
 			// not sure if this should stay -- works for now.
@@ -341,6 +325,27 @@ namespace parser
 
 				return -1;
 		}
+	}
+
+	static int precedence(State& st)
+	{
+		if(st.remaining() > 1 && (st.front() == TT::LAngle || st.front() == TT::RAngle))
+		{
+			// check if the next one matches.
+			if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LAngle)
+				return 650;
+
+			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::RAngle)
+				return 650;
+
+			else if(st.front().type == TT::LAngle && st.lookahead(1).type == TT::LessThanEquals)
+				return 100;
+
+			else if(st.front().type == TT::RAngle && st.lookahead(1).type == TT::GreaterEquals)
+				return 100;
+		}
+
+		return tok_precedence(st, st.front());
 	}
 
 
@@ -486,9 +491,24 @@ namespace parser
 	}
 
 
-	Expr* parseCaretScopeExpr(State& st)
+	Expr* parseCaretOrColonScopeExpr(State& st)
 	{
-		return 0;
+		iceAssert(util::match(st.front(), TT::DoubleColon, TT::Caret));
+
+		auto str = st.front().str();
+		auto loc = st.loc();
+
+		if(st.front() == TT::Caret)
+		{
+			st.eat();
+			if(st.front() != TT::DoubleColon)
+				expectedAfter(st.loc(), "'::'", "'^' in scope-path-specifier", st.front().str());
+		}
+
+		// ^::(^::((foo::bar)::qux))
+
+		auto ident = util::pool<ast::Ident>(loc, str);
+		return parseRhs(st, ident, tok_precedence(st, TT::DoubleColon));
 	}
 
 
@@ -713,7 +733,7 @@ namespace parser
 
 	static Expr* parseIdentifier(State& st)
 	{
-		iceAssert(st.front() == TT::Identifier || st.front() == TT::UnicodeSymbol);
+		iceAssert(util::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
 		std::string name = st.pop().str();
 
 		auto ident = util::pool<Ident>(st.ploc(), name);
@@ -1058,12 +1078,12 @@ namespace parser
 					return parseParenthesised(st);
 
 				case TT::Identifier:
-				case TT::DoubleColon:
 				case TT::UnicodeSymbol:
 					return parseIdentifier(st);
 
 				case TT::Caret:
-					return parseCaretScopeExpr(st);
+				case TT::DoubleColon:
+					return parseCaretOrColonScopeExpr(st);
 
 				case TT::Alloc:
 					return parseAlloc(st, false);

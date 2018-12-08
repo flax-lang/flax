@@ -22,9 +22,9 @@ public ffi fn memset(dest: &i8, value: i32, length: u64) -> &i8
 // public ffi fn free(pointer: &i8)
 
 // strings
-public ffi fn strlen(str: &i8) -> i64
-public ffi fn strcmp(str1: &i8, str2: &i8) -> i32
-public ffi fn strncmp(str1: &i8, str2: &i8, length: i64) -> i32
+public ffi fn strlen(s: &i8) -> i64
+public ffi fn strcmp(s1: &i8, s2: &i8) -> i32
+public ffi fn strncmp(s1: &i8, s2: &i8, length: i64) -> i32
 
 // random things
 public ffi fn usleep(usec: u32) -> i32
@@ -38,3 +38,8 @@ public ffi fn fflush(fd: &void) -> i32
 public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
 
 public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"
+
+
+public ffi fn fopen(path: &i8, mode: &i8) -> &void
+public ffi fn fread(buf: &i8, sz: u64, cnt: u64, file: &void) -> u64
+public ffi fn fclose(file: &void) -> i32

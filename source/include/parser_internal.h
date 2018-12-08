@@ -292,7 +292,7 @@ namespace parser
 	ast::Stmt* parseBreak(State& st);
 	ast::Stmt* parseContinue(State& st);
 
-	ast::Expr* parseCaretScopeExpr(State& st);
+	ast::Expr* parseCaretOrColonScopeExpr(State& st);
 
 	std::vector<std::pair<std::string, TypeConstraints_t>> parseGenericTypeList(State& st);
 
