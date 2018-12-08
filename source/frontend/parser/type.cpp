@@ -495,13 +495,19 @@ namespace parser
 
 			while(st.hasTokens())
 			{
-				if(util::match(st.front(), TT::DoubleColon, TT::Caret))
+				if(st.front() == TT::DoubleColon)
 				{
-					s += st.front().str(), st.eat();
+					s += st.eat().str();
+				}
+				else if(st.front() == TT::Caret)
+				{
+					s += st.eat().str();
+					if(st.front() != TT::DoubleColon)
+						error(st, "expected '::' after '^' in scope path");
 				}
 				else if(st.front() == TT::Identifier)
 				{
-					if(s.back() != '.' && s.back() != ':')
+					if(s.back() != ':')
 						error(st, "unexpected identifer '%s' in type", st.front().str());
 
 					else

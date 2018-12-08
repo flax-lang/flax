@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 #include <deque>
 
@@ -150,6 +151,10 @@ namespace sst
 			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
 			this->stree = newtree;
+
+			// make a treedef.
+			newtree->treeDefn = util::pool<TreeDefn>(Location());
+			newtree->treeDefn->tree = newtree;
 		}
 
 		// if(!this->locationStack.empty())

@@ -242,6 +242,10 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->incrementRefCount(v);
 
 		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
+
+		if(v->getType() != this->expectedType)
+			v = cs->oneWayAutocast(v, this->expectedType);
+
 		cs->irb.Return(v);
 	}
 	else
