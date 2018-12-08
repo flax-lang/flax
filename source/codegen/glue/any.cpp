@@ -279,6 +279,7 @@ namespace any
 					// we then just load and return that.
 					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo()->getMutablePointerTo());
 					auto typeptr = cs->irb.ReadPtr(fakeptr);
+
 					cs->irb.Return(cs->irb.ReadPtr(typeptr));
 				}
 				else
