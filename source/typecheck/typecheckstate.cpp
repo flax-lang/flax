@@ -7,6 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
+#include "mpool.h"
 
 #include <deque>
 
@@ -15,10 +16,15 @@ namespace sst
 
 	void TypecheckState::pushLoc(ast::Stmt* stmt)
 	{
-		// this->pushLoc(stmt->loc);
-
 		this->locationStack.push_back(stmt->loc);
 	}
+
+	void TypecheckState::pushLoc(const Location& l)
+	{
+		this->locationStack.push_back(l);
+	}
+
+
 
 	Location TypecheckState::popLoc()
 	{
@@ -132,7 +138,7 @@ namespace sst
 
 
 
-	void TypecheckState::pushTree(const std::string& name)
+	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
 
@@ -142,9 +148,13 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree);
+			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
 			this->stree = newtree;
+
+			// make a treedef.
+			newtree->treeDefn = util::pool<TreeDefn>(Location());
+			newtree->treeDefn->tree = newtree;
 		}
 
 		// if(!this->locationStack.empty())
@@ -159,26 +169,6 @@ namespace sst
 
 		return ret;
 	}
-
-	StateTree* TypecheckState::recursivelyFindTreeUpwards(const std::string& name)
-	{
-		StateTree* tree = this->stree;
-
-		iceAssert(tree);
-		while(tree)
-		{
-			if(tree->name == name)
-				return tree;
-
-			else if(auto it = tree->subtrees.find(name); it != tree->subtrees.end())
-				return it->second;
-
-			tree = tree->parent;
-		}
-
-		return 0;
-	}
-
 
 	void TypecheckState::enterBreakableBody()
 	{
@@ -262,25 +252,45 @@ namespace sst
 		{
 			return tree;
 		}
-		else if(scope.size() == 1)
-		{
-			auto s = scope[0];
-			if(tree->subtrees[s] == 0)
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+		// else if(scope.size() == 1)
+		// {
+		// 	auto s = scope[0];
+		// 	//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
+		// 	//* things in the global scope -- which is allowed!
 
-			return tree->subtrees[s];
-		}
+		// 	if(s == tree->name)
+		// 		return tree;
 
 
+		// 	if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
+		// 	{
+		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+		// 	}
+		// 	else
+		// 	{
+		// 		return it->second;
+		// 	}
+		// }
 
-		for(size_t i = 1; i < scope.size(); i++)
+
+		for(size_t i = 0; i < scope.size(); i++)
 		{
 			auto s = scope[i];
 
-			if(tree->subtrees[s] == 0)
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
+			//* things in the global scope -- which is allowed!
 
-			tree = tree->subtrees[s];
+			if(s == tree->name)
+				continue;
+
+			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
+			{
+				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+			}
+			else
+			{
+				tree = it->second;
+			}
 		}
 
 		return tree;
@@ -292,9 +302,9 @@ namespace sst
 	}
 
 
-	std::unordered_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
+	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
 	{
-		std::unordered_map<std::string, std::vector<Defn*>> ret;
+		util::hash_map<std::string, std::vector<Defn*>> ret;
 		for(auto srcs : this->definitions)
 			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
 
@@ -442,7 +452,7 @@ namespace sst
 
 		for(auto otherdef : defs)
 		{
-			if(!otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
+			if(!dcast(TreeDefn, otherdef) && !otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
 			{
 				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
@@ -502,10 +512,10 @@ namespace sst
 		return false;
 	}
 
-	std::string TypecheckState::getAnonymousScopeName()
+	void TypecheckState::pushAnonymousTree()
 	{
 		static size_t _anonId = 0;
-		return std::to_string(_anonId++);
+		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
 	}
 }
 

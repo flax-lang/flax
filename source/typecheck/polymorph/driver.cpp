@@ -56,7 +56,7 @@ namespace poly
 	{
 		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicType(TypecheckState* fs, ast::TypeDefn* td, const std::string& name,
 			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input, const TypeParamMap_t& partial, fir::Type* return_infer,
-			fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
+			fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer, util::hash_map<std::string, size_t>* origParamOrder)
 		{
 			auto soln = Solution_t(partial);
 
@@ -74,7 +74,7 @@ namespace poly
 			}
 			else if(auto cls = dcast(ast::ClassDefn, td))
 			{
-				std::unordered_map<std::string, size_t> paramOrder;
+				util::hash_map<std::string, size_t> paramOrder;
 
 				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
 				for(auto init : cls->initialisers)
@@ -120,7 +120,7 @@ namespace poly
 				}
 
 				std::set<std::string> fieldset;
-				std::unordered_map<std::string, size_t> fieldNames;
+				util::hash_map<std::string, size_t> fieldNames;
 				{
 					size_t i = 0;
 					for(auto f : str->fields)
@@ -207,7 +207,7 @@ namespace poly
 		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer,
-			std::unordered_map<std::string, size_t>* origParamOrder)
+			util::hash_map<std::string, size_t>* origParamOrder)
 		{
 			auto soln = Solution_t(partial);
 
@@ -296,7 +296,7 @@ namespace poly
 		std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall,
-			fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder)
+			fir::Type* problem_infer, util::hash_map<std::string, size_t>* origParamOrder)
 		{
 			if(auto td = dcast(ast::TypeDefn, thing))
 			{

@@ -155,7 +155,6 @@ namespace parser
 	Stmt* parseVariable(State& st)
 	{
 		using TT = lexer::TokenType;
-		auto loc = st.front().loc;
 
 		iceAssert(st.front() == TT::Var || st.front() == TT::Val);
 
@@ -172,6 +171,8 @@ namespace parser
 			expectedAfter(st, "identifier", "'" + std::string(isImmut ? "val" : "var") + "'", st.front().str());
 		}
 
+		auto loc = st.front().loc;
+
 		std::string name = st.eat().str();
 		pts::Type* type = pts::InferredType::get();
 		Expr* value = 0;
@@ -181,7 +182,7 @@ namespace parser
 			st.pop();
 			type = parseType(st);
 		}
-		else if(st.front() != TT::Equal && type == pts::InferredType::get())
+		else if(st.front() != TT::Equal)
 		{
 			error(st, "expected initial value for type inference on variable '%s'", name);
 		}

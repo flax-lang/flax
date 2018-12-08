@@ -45,7 +45,7 @@ namespace parser
 		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
 
 		if(ret->returnType == 0)
-			ret->returnType = pts::NamedType::create(VOID_TYPE_STRING);
+			ret->returnType = pts::NamedType::create(ret->loc, VOID_TYPE_STRING);
 
 		if(isvar) error(ret, "C-style variadic arguments are not supported on non-foreign functions");
 
@@ -218,17 +218,17 @@ namespace parser
 	}
 
 
-	std::tuple<std::unordered_map<std::string, parser::CustomOperatorDecl>,
-				std::unordered_map<std::string, parser::CustomOperatorDecl>,
-				std::unordered_map<std::string, parser::CustomOperatorDecl>>
+	std::tuple<util::hash_map<std::string, parser::CustomOperatorDecl>,
+				util::hash_map<std::string, parser::CustomOperatorDecl>,
+				util::hash_map<std::string, parser::CustomOperatorDecl>>
 	parseOperators(const lexer::TokenList& tokens)
 	{
 		using Token = lexer::Token;
 		using TT = lexer::TokenType;
 
-		std::unordered_map<std::string, CustomOperatorDecl> infix;
-		std::unordered_map<std::string, CustomOperatorDecl> prefix;
-		std::unordered_map<std::string, CustomOperatorDecl> postfix;
+		util::hash_map<std::string, CustomOperatorDecl> infix;
+		util::hash_map<std::string, CustomOperatorDecl> prefix;
+		util::hash_map<std::string, CustomOperatorDecl> postfix;
 
 		// basically, this is how it goes:
 		// only allow comments to occur before imports
@@ -248,12 +248,7 @@ namespace parser
 				else if(kind == 2)	prefix[oper.symbol] = oper;
 				else if(kind == 3)	postfix[oper.symbol] = oper;
 			}
-			else if(tok == TT::Export)
-			{
-				// skip the name as well
-				i++;
-			}
-			else if(tok == TT::Import)
+			else if(tok == TT::Export || tok == TT::Import)
 			{
 				// skip until a newline.
 				while(tokens[i] != TT::Comment && tokens[i] != TT::NewLine)

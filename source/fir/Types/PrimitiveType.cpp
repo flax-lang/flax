@@ -22,7 +22,7 @@ namespace fir
 
 
 
-	static std::unordered_map<size_t, std::vector<PrimitiveType*>> primitiveTypeCache;
+	static util::hash_map<size_t, std::vector<PrimitiveType*>> primitiveTypeCache;
 	PrimitiveType* PrimitiveType::getIntWithBitWidthAndSignage(size_t bits, bool issigned)
 	{
 		std::vector<PrimitiveType*>& types = primitiveTypeCache[bits];
@@ -257,7 +257,7 @@ namespace fir
 		}
 	}
 
-	fir::Type* PrimitiveType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* PrimitiveType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		return this;
 	}

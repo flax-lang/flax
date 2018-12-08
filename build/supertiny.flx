@@ -4,23 +4,72 @@
 
 export supertiny
 
-import "libc" as _
-// import "stdio" as _
+import libc as _
 
+// import std::io
+// import std::map
 
-
-ffi fn rofl() as "lmao"
-ffi fn rofl(x: int) -> void as "haha"
 
 @entry fn main()
 {
-	rofl()
-	rofl(20)
 }
 
 
 
 /*
+
+import std::opt
+import std::    map
+
+	var map: std::map!<int, str>
+	map.insert(3, "foo")
+
+	let r = map.search(3)
+
+	libc::printf("map[3] = %s\n", map.search(3) as std::opt::some)
+
+	let res = map.remove(3)
+	libc::printf("map[3]: res = %d, is_none = %d\n", res, map.search(3) is std::opt::none)
+
+	 */
+
+
+
+/*
+	! bugs !!!
+	! 02/12
+	{
+		// 1. implicit method calling don't seem to work any more... strangely. done a cursory search for our
+		// 	'SELF HANDLING' markers, but i can't seem to find the actual place where we *insert* the argument??
+		// 	only where we insert the /parameter/ ...
+
+		// 	i think this is less of a bug and more of an omission when we first started taking out the
+		// 	haphazard self-handling.
+
+		// 2. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
+		// 	we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
+		// 	in the compiler itself...
+
+		// 	expected: a = 631, b = 20, c = 173/30, d = 40, e = 50
+		// 	actual:   a = 631, b = 20, c = 173/-572662307, d = 40, e = 50
+
+		// 	note: it's 0xDDDDDDDD in hex, and according to The Internet (tm), that marks FREED MEMORY!
+
+		// 3. after we enabled referring to types by name in any scope (see typecheck/variable.cpp), we have an issue because
+		// 	they're in the same namespace! we give super suboptimal error messages when we try to use a type as a value, or
+		// 	when we name a variable the same as a type (ie trying to use a value as a type!)
+
+		4. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
+			eg: std::opt::some!<str> works, which is a little strange.
+			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
+			get treated like a function call (and so finds no functions!)
+
+		// 5. nested functions 'capture' the scope at which they are defined -- including variables!
+		// 	this is Bad News(tm) because we don't support closures, but the typechecker (and codegen) sees the variable 'in scope', and doesn't
+		// 	complain. need to figure out a way around this!!!
+
+	}
+
 	! more things.
 	! caa 03/10
 	{

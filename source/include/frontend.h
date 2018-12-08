@@ -45,6 +45,8 @@ namespace frontend
 	bool getPrintFIR();
 	bool getPrintLLVMIR();
 
+	bool getAbortOnError();
+
 	bool getIsFreestanding();
 	bool getIsPositionIndependent();
 	std::vector<std::string> getFrameworksToLink();
@@ -57,11 +59,11 @@ namespace frontend
 	{
 		std::unordered_set<std::string> importedFiles;
 		std::map<std::string, parser::ParsedFile> parsed;
-		std::unordered_map<std::string, sst::DefinitionTree*> dtrees;
+		util::hash_map<std::string, sst::DefinitionTree*> dtrees;
 
-		std::unordered_map<std::string, parser::CustomOperatorDecl> binaryOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> prefixOps;
-		std::unordered_map<std::string, parser::CustomOperatorDecl> postfixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
+		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
 		DependencyGraph* graph = 0;
 		std::string fullMainFile;
@@ -96,7 +98,7 @@ namespace frontend
 	struct ImportThing
 	{
 		std::string name;
-		std::string importAs;
+		std::vector<std::string> importAs;
 		bool pubImport = false;
 
 		Location loc;
@@ -138,7 +140,7 @@ namespace frontend
 
 	std::vector<std::string> checkForCycles(const std::string& topmod, frontend::DependencyGraph* graph);
 	frontend::DependencyGraph* buildDependencyGraph(frontend::DependencyGraph* graph, const std::string& full,
-		std::unordered_map<std::string, bool>& visited);
+		util::hash_map<std::string, bool>& visited);
 }
 
 

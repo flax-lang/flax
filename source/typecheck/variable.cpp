@@ -46,6 +46,21 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 		}
 	}
 
+	// check if we're not doing something stupid!
+	if(auto vd = dcast(sst::VarDefn, def))
+	{
+		if(fs->isInFunctionBody() && vd->definingFunction && vd->definingFunction != fs->getCurrentFunction())
+		{
+			return TCResult(
+				SimpleError::make(ident->loc, "invalid reference to variable '%s', which was defined in another function", ident->name)
+					->append(SimpleError::make(MsgType::Note, vd->loc, "'%s' was defined here:", ident->name))
+					->append(BareError::make(MsgType::Note, "variable capturing (ie. closures) are currently not supported"))
+			);
+		}
+	}
+
+
+
 
 	if(auto treedef = dcast(sst::TreeDefn, def))
 	{
@@ -132,6 +147,39 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->name == "_")
 		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
+
+	// else if(this->name == "::" || this->name == "^")
+	// 	error(this, "invalid use of scope-path-specifier '%s' in a non-scope-path context", this->name);
+
+	if(this->name == "::")
+	{
+		// find the root.
+		auto t = fs->stree;
+		while(t->parent)
+			t = t->parent;
+
+		iceAssert(t->treeDefn);
+		return getResult(this, t->treeDefn);
+	}
+	else if(this->name == "^")
+	{
+		if(!fs->stree->parent)
+		{
+			return TCResult(
+				SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", fs->stree->name)
+			);
+		}
+		else
+		{
+			auto t = fs->stree->parent;
+			while(t->isAnonymous && t->parent)
+				t = t->parent;
+
+			iceAssert(t->treeDefn);
+			return getResult(this, t->treeDefn);
+		}
+	}
+
 
 	if(auto builtin = fir::Type::fromBuiltin(this->name))
 		return TCResult(util::pool<sst::TypeExpr>(this->loc, builtin));
@@ -310,6 +358,10 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	fs->stree->addDefinition(this->name, defn);
+
+	// store the place where we were defined.
+	if(fs->isInFunctionBody())
+		defn->definingFunction = fs->getCurrentFunction();
 
 	return TCResult(defn);
 }

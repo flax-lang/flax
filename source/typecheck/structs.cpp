@@ -64,9 +64,6 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// make all our methods be methods
-	for(auto m : this->methods)
-		m->parentType = this;
 
 	auto [ success, ret ] = this->checkForExistingDeclaration(fs, gmaps);
 	if(!success)    return TCResult::getParametric();
@@ -75,9 +72,13 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = util::pool<sst::StructDefn>(this->loc);
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = fs->getCurrentScope();
+	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+
+	// make all our methods be methods
+	for(auto m : this->methods)
+		m->parentType = this, m->realScope = this->realScope + defn->id.name;
 
 	auto str = fir::StructType::createWithoutBody(defn->id);
 	defn->type = str;
@@ -87,17 +88,24 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->stree->addDefinition(defnname, defn, gmaps);
+		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[str] = defn;
 	}
 
 
+	auto oldscope = fs->getCurrentScope();
+	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
 	{
 		for(auto t : this->nestedTypes)
+		{
+			t->realScope = this->realScope + defn->id.name;
 			t->generateDeclaration(fs, 0, { });
+		}
 	}
+
 	fs->popTree();
+	fs->teleportToScope(oldscope);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
@@ -122,7 +130,11 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	iceAssert(str);
 
 
+	auto oldscope = fs->getCurrentScope();
+	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
+
+
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
@@ -208,7 +220,9 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 
 	str->setBody(tys);
+
 	fs->popTree();
+	fs->teleportToScope(oldscope);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);

@@ -103,6 +103,24 @@ namespace util
 	#else
 		#error "No string_view, or unknown type"
 	#endif
+
+
+	#define USE_SKA_HASHMAP false
+
+	#if USE_SKA_HASHMAP
+		using hash_map = ska::flat_hash_map;
+
+		template <typename K, typename V>
+		std::vector<std::pair<K, V>> pairs(const util::hash_map<K, V>& map)
+		{
+			auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
+			return ret;
+		}
+	#else
+		template<typename K, typename V>
+		using hash_map = std::unordered_map<K, V>;
+	#endif
+
 }
 
 namespace fir
@@ -375,7 +393,7 @@ struct OverloadError : ErrorMsg
 
 
 	SimpleError* top = 0;
-	std::unordered_map<Locatable*, ErrorMsg*> cands;
+	util::hash_map<Locatable*, ErrorMsg*> cands;
 
 	protected:
 	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
@@ -554,7 +572,7 @@ struct TypeConstraints_t
 	}
 };
 
-using TypeParamMap_t = std::unordered_map<std::string, fir::Type*>;
+using TypeParamMap_t = util::hash_map<std::string, fir::Type*>;
 
 struct PolyArgMapping_t
 {

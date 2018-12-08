@@ -3,7 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 export test_arrays
-import "libc"
+import libc
 
 public fn doArrayTest()
 {

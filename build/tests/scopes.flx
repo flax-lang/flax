@@ -4,8 +4,8 @@
 
 export test_scopes
 
-import "libc" as _
-import "math"
+import libc as _
+import std::math
 
 
 @operator prefix 900 √

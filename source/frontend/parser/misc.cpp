@@ -16,27 +16,41 @@ namespace parser
 	ImportStmt* parseImport(State& st)
 	{
 		iceAssert(st.front() == TT::Import);
-		st.eat();
+		auto ret = util::pool<ImportStmt>(st.loc());
 
-		if(st.frontAfterWS() != TT::StringLiteral)
-			expectedAfter(st, "string literal", "'import' for module specifier", st.frontAfterWS().str());
+		st.eat();
+		st.skipWS();
+
+		if(st.front() == TT::StringLiteral)
+		{
+			st.eat();
+		}
+		else if(st.front() == TT::Identifier)
+		{
+			// just consume.
+			size_t i = st.getIndex();
+			parseIdentPath(st.getTokenList(), &i);
+			st.setIndex(i);
+		}
+		else
+		{
+			expectedAfter(st, "string literal or identifier path", "'import'", st.front().str());
+		}
+
 
 		{
-			auto ret = util::pool<ImportStmt>(st.loc(), st.frontAfterWS().str());
-			ret->resolvedModule = frontend::resolveImport(ret->path, ret->loc, st.currentFilePath);
-
-			st.eat();
+			st.skipWS();
 
 			// check for 'import as foo'
-			if(st.frontAfterWS() == TT::As)
+			if(st.front() == TT::As)
 			{
 				st.eat();
-				auto t = st.eat();
-				if(t == TT::Identifier)
-					ret->importAs = util::to_string(t.text);
+				if(st.front() != TT::Identifier)
+					expectedAfter(st.loc(), "identifier", "'import-as'", st.front().str());
 
-				else
-					expectedAfter(st.ploc(), "identifier", "'import-as'", st.prev().str());
+				size_t i = st.getIndex();
+				parseIdentPath(st.getTokenList(), &i);
+				st.setIndex(i);
 			}
 
 			return ret;

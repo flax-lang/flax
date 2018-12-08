@@ -6,9 +6,9 @@
 #include "codegen.h"
 #include "gluecode.h"
 
-std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
+util::hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::FunctionDefn* fd)
 {
-	std::unordered_map<std::string, size_t> idxmap;
+	util::hash_map<std::string, size_t> idxmap;
 
 	for(size_t i = 0; i < fd->params.size(); i++)
 		idxmap[fd->params[i].name] = i;
@@ -22,7 +22,7 @@ std::unordered_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::
 
 
 static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::CodegenState* cs, fir::FunctionType* ft,
-	const std::vector<FnCallArgument>& arguments, const std::unordered_map<std::string, size_t>& idxmap)
+	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap)
 {
 	// do this so we can index directly.
 	auto numArgs = ft->getArgumentTypes().size();
@@ -67,6 +67,13 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		auto vr = arg.value->codegen(cs, inf);
 		auto val = vr.value;
 
+		// ! ACHTUNG !
+		// TODO: is this actually necessary, or will we end up leaking memory???
+		if(cs->isRefCountedType(val->getType()))
+			cs->incrementRefCount(val);
+
+
+
 		if(val->getType()->isConstantNumberType())
 		{
 			auto cv = dcast(fir::ConstantValue, val);
@@ -107,6 +114,16 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 			else if(val->getType()->isCharSliceType())
 				val = cs->irb.GetArraySliceData(val);
+
+			// also, see if we need to promote the type!
+			// anything < int gets promoted to int; float -> double
+			else if(val->getType() == fir::Type::getFloat32())
+				val = cs->irb.FExtend(val, fir::Type::getFloat64());
+
+			// don't need to worry about signedness for this; if you're smaller than int32,
+			// int32 can represent you even if you're unsigned
+			else if(val->getType()->isIntegerType() && val->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
+				val = cs->irb.IntSizeCast(val, val->getType()->isSignedIntType() ? fir::Type::getInt32() : fir::Type::getUint32());
 		}
 
 		ret[i] = val;
@@ -129,7 +146,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArguments(sst::Defn* target, fir::FunctionType* ft,
 	const std::vector<FnCallArgument>& arguments)
 {
-	std::unordered_map<std::string, size_t> idxmap;
+	util::hash_map<std::string, size_t> idxmap;
 	if(auto fd = dcast(sst::FunctionDefn, target))
 		idxmap = this->getNameIndexMap(fd);
 
@@ -201,10 +218,11 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(ft);
 
+	//! SELF HANDLING (INSERTION) (CODEGEN)
 	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody() && this->isImplicitMethodCall)
 	{
 		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
-		fake->rawValue = CGResult(cs->getMethodSelf());
+		fake->rawValue = CGResult(cs->irb.AddressOf(cs->getMethodSelf(), true));
 
 		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake, 0));
 	}
@@ -316,9 +334,8 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(auto te = dcast(sst::TypeExpr, this->callee))
-	{
 		return callBuiltinTypeConstructor(cs, te->type, this->arguments);
-	}
+
 
 	fir::Value* fn = this->callee->codegen(cs).value;
 	iceAssert(fn->getType()->isFunctionType());
@@ -331,28 +348,11 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			ft->getArgumentTypes().size(), this->arguments.size());
 	}
 
-	std::vector<fir::Value*> args;
-	for(size_t i = 0; i < this->arguments.size(); i++)
-	{
-		fir::Type* inf = 0;
+	std::vector<FnCallArgument> fcas = util::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
+		return FnCallArgument(arg->loc, "", arg, /* orig: */ nullptr);
+	});
 
-		if(i < ft->getArgumentTypes().size())
-			inf = ft->getArgumentN(i);
-
-		else
-			inf = ft->getArgumentTypes().back()->getArrayElementType();
-
-		auto rarg = this->arguments[i]->codegen(cs, inf);
-		auto arg = cs->oneWayAutocast(rarg.value, inf);
-
-		if(!arg || arg->getType() != inf)
-		{
-			error(this->arguments[i], "Mismatched types in argument %zu; expected type '%s', but given type '%s'", i, inf,
-				arg ? arg->getType() : fir::Type::getVoid());
-		}
-
-		args.push_back(arg);
-	}
+	std::vector<fir::Value*> args = cs->codegenAndArrangeFunctionCallArguments(/* targetDefn: */ nullptr, ft, fcas);
 
 	auto ret = cs->irb.CallToFunctionPointer(fn, ft, args);
 	return CGResult(ret);

@@ -7,6 +7,7 @@
 #include "gluecode.h"
 
 // generate runtime glue code
+#define BUILTIN_MALLOC_WRAPPER_FUNC_NAME		    "__malloc_wrapper"
 #define BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME		"__range_sanitycheck"
 
 
@@ -51,6 +52,56 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 
 namespace misc
 {
+	fir::Function* getMallocWrapperFunction(CodegenState* cs)
+	{
+		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_MALLOC_WRAPPER_FUNC_NAME, IdKind::Name));
+
+		if(!fn)
+		{
+			auto restore = cs->irb.getCurrentBlock();
+
+			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_MALLOC_WRAPPER_FUNC_NAME, IdKind::Name),
+				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getCharSlice(false) }, fir::Type::getMutInt8Ptr()), fir::LinkageType::Internal);
+
+			func->setAlwaysInline();
+
+			auto sz = func->getArguments()[0];
+			auto locstr = func->getArguments()[1];
+
+			auto entry = cs->irb.addNewBlockInFunction("entry", func);
+			cs->irb.setCurrentBlock(entry);
+
+			// do the alloc.
+			auto mallocf = cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC);
+			iceAssert(mallocf);
+
+			auto mem = cs->irb.Call(mallocf, sz);
+			auto cond = cs->irb.ICmpEQ(mem, fir::ConstantValue::getZeroValue(fir::Type::getInt8Ptr()));
+
+			auto alloc_succ = cs->irb.addNewBlockAfter("success", cs->irb.getCurrentBlock());
+			auto alloc_fail = cs->irb.addNewBlockAfter("failure", cs->irb.getCurrentBlock());
+
+			cs->irb.CondBranch(cond, alloc_fail, alloc_succ);
+			cs->irb.setCurrentBlock(alloc_succ);
+			{
+				cs->irb.Return(mem);
+			}
+
+			cs->irb.setCurrentBlock(alloc_fail);
+			{
+				printRuntimeError(cs, locstr, "allocation failed (returned null) (tried to allocate %d bytes)", { sz });
+
+				// it emits an unreachable for us.
+			}
+
+			fn = func;
+			cs->irb.setCurrentBlock(restore);
+		}
+
+		iceAssert(fn);
+		return fn;
+	}
+
 	fir::Function* getRangeSanityCheckFunction(CodegenState* cs)
 	{
 		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME, IdKind::Name));

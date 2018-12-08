@@ -77,7 +77,7 @@ namespace lexer
 	}
 
 
-	static std::unordered_map<util::string_view, TokenType> keywordMap;
+	static util::hash_map<util::string_view, TokenType> keywordMap;
 	static void initKeywordMap()
 	{
 		if(keywordMap.size() > 0) return;
@@ -88,8 +88,6 @@ namespace lexer
 		keywordMap["is"]        = TokenType::Is;
 		keywordMap["let"]       = TokenType::Val;
 		keywordMap["var"]       = TokenType::Var;
-		keywordMap["get"]       = TokenType::Get;
-		keywordMap["set"]       = TokenType::Set;
 		keywordMap["for"]       = TokenType::For;
 		keywordMap["fn"]        = TokenType::Func;
 		keywordMap["else"]      = TokenType::Else;

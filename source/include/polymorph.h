@@ -35,7 +35,7 @@ namespace sst
 		struct Solution_t
 		{
 			Solution_t() { }
-			explicit Solution_t(const std::unordered_map<std::string, fir::Type*>& p) : solutions(p) { }
+			explicit Solution_t(const util::hash_map<std::string, fir::Type*>& p) : solutions(p) { }
 
 			bool hasSolution(const std::string& n) const ;
 			fir::LocatedType getSolution(const std::string& n) const;
@@ -50,8 +50,8 @@ namespace sst
 
 			// incorporate distance so we can use this shit for our function resolution.
 			int distance = 0;
-			std::unordered_map<std::string, fir::Type*> solutions;
-			std::unordered_map<fir::Type*, fir::Type*> substitutions;
+			util::hash_map<std::string, fir::Type*> solutions;
+			util::hash_map<fir::Type*, fir::Type*> substitutions;
 		};
 
 
@@ -130,7 +130,7 @@ namespace sst
 
 			std::pair<Solution_t, ErrorMsg*> inferTypesForPolymorph(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
 				const ProblemSpace_t& problems, const std::vector<FnCallArgument>& _input, const TypeParamMap_t& partial,
-				fir::Type* return_infer, fir::Type*, bool isFnCall, fir::Type* problem_infer, std::unordered_map<std::string, size_t>* origParamOrder);
+				fir::Type* return_infer, fir::Type*, bool isFnCall, fir::Type* problem_infer, util::hash_map<std::string, size_t>* origParamOrder);
 		}
 	}
 }

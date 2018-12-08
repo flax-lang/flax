@@ -731,7 +731,7 @@ namespace fir
 		iceAssert((targetType->isIntegerType() || targetType->isBoolType()) && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			return ConstantInt::get(targetType, ci->getSignedValue());
 		}
@@ -748,7 +748,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			if(ci->getType()->isSignedIntType())
 				return ConstantInt::get(targetType, ci->getSignedValue());
@@ -769,7 +769,7 @@ namespace fir
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		// make constant result for constant operand
-		if(ConstantFP* cfp = dynamic_cast<ConstantFP*>(v))
+		if(ConstantFP* cfp = dcast(ConstantFP, v))
 		{
 			double _ = 0;
 
@@ -791,7 +791,7 @@ namespace fir
 		iceAssert(targetType->isFloatingPointType() && "target is not floating point type");
 
 		// make constant result for constant operand
-		if(ConstantInt* ci = dynamic_cast<ConstantInt*>(v))
+		if(ConstantInt* ci = dcast(ConstantInt, v))
 		{
 			ConstantFP* ret = 0;
 			bool sgn = ci->getType()->isSignedIntType();
@@ -1181,7 +1181,7 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreatePHI, false, this->currentBlock, type->getPointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
-		// we need to 'lift' the allocation up to make it the first in the block
+		// we need to 'lift' (hoist) the allocation up to make it the first in the block
 		// this is an llvm requirement.
 
 		// MEMORY LEAK
@@ -1200,7 +1200,7 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_StackAlloc, false, this->currentBlock, type->getMutablePointerTo(),
 			{ ConstantValue::getZeroValue(type) });
 
-		// we need to 'lift' the allocation up to the entry block of the function
+		// we need to 'lift' (hoist) the allocation up to the entry block of the function
 		// this prevents allocation inside loops eating stack memory forever
 
 		fir::Value* ret = instr->realOutput;
@@ -1290,15 +1290,15 @@ namespace fir
 		if(!structPtr->islorclvalue())
 			error("cannot do GEP on non-lvalue");
 
-		if(StructType* st = dynamic_cast<StructType*>(structPtr->getType()))
+		if(StructType* st = dcast(StructType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		if(ClassType* st = dynamic_cast<ClassType*>(structPtr->getType()))
+		if(ClassType* st = dcast(ClassType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		else if(TupleType* tt = dynamic_cast<TupleType*>(structPtr->getType()))
+		else if(TupleType* tt = dcast(TupleType, structPtr->getType()))
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, structPtr, memberIndex), vname);
 		}
@@ -2078,7 +2078,21 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
 			Value::Kind::lvalue);
 
-		return this->addInstruction(instr, vname);
+		fir::Value* ret = instr->realOutput;
+		ret->setName(vname);
+
+		// get the parent function
+		auto parent = this->currentBlock->getParentFunction();
+		iceAssert(parent);
+
+		// get the entry block
+		auto entry = parent->getBlockList().front();
+		iceAssert(entry);
+
+		// insert at the front (back = no guarantees)
+		entry->instructions.insert(entry->instructions.begin(), instr);
+
+		return ret;
 	}
 
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
@@ -2087,10 +2101,22 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
 			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
-		auto ret = this->addInstruction(instr, vname);
-		this->Store(val, ret);
+		fir::Value* ret = instr->realOutput;
+		ret->setName(vname);
 
+		this->Store(val, ret);
 		ret->makeConst();
+
+		// get the parent function
+		auto parent = this->currentBlock->getParentFunction();
+		iceAssert(parent);
+
+		// get the entry block
+		auto entry = parent->getBlockList().front();
+		iceAssert(entry);
+
+		// insert at the front (back = no guarantees)
+		entry->instructions.insert(entry->instructions.begin(), instr);
 		return ret;
 	}
 
@@ -2220,7 +2246,11 @@ namespace fir
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
 		{
-			// warn("changing current function in irbuilder");
+			// warn("changing current function in irbuilder (from %s to %s)",
+			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
+			// 	func->getName()
+			// );
+
 			this->currentFunction = block->parentFunction;
 		}
 
@@ -2242,7 +2272,12 @@ namespace fir
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
 		{
-			warn("changing current function in irbuilder");
+			// warn("changing current function in irbuilder (from %s to %s)",
+			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
+			// 	nb->parentFunction->getName()
+			// );
+
+
 			this->currentFunction = nb->parentFunction;
 		}
 

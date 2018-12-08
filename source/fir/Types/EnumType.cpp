@@ -68,7 +68,7 @@ namespace fir
 
 
 
-	static std::unordered_map<Identifier, EnumType*> typeCache;
+	static util::hash_map<Identifier, EnumType*> typeCache;
 
 	EnumType* EnumType::get(const Identifier& name, Type* caseType)
 	{
@@ -89,7 +89,7 @@ namespace fir
 		return empty;
 	}
 
-	fir::Type* EnumType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* EnumType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");

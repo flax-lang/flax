@@ -55,7 +55,7 @@ namespace fir
 	}
 
 
-	fir::Type* ArrayType::substitutePlaceholders(const std::unordered_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* ArrayType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		return ArrayType::get(this->arrayElementType->substitutePlaceholders(subst), this->arraySize);
 	}
