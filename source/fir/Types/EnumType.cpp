@@ -68,7 +68,7 @@ namespace fir
 
 
 
-	static ska::flat_hash_map<Identifier, EnumType*> typeCache;
+	static util::hash_map<Identifier, EnumType*> typeCache;
 
 	EnumType* EnumType::get(const Identifier& name, Type* caseType)
 	{
@@ -89,7 +89,7 @@ namespace fir
 		return empty;
 	}
 
-	fir::Type* EnumType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* EnumType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		if(this->containsPlaceholders())
 			error("not supported!");

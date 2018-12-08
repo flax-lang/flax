@@ -40,7 +40,7 @@ namespace fir
 		return TypeCache::get().getOrAddCachedType(new DynamicArrayType(elementType));
 	}
 
-	fir::Type* DynamicArrayType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* DynamicArrayType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		return DynamicArrayType::get(this->arrayElementType->substitutePlaceholders(subst));
 	}

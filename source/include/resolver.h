@@ -37,7 +37,7 @@ namespace sst
 		TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* defn, const std::vector<FnCallArgument>& arguments, const PolyArgMapping_t& gmaps);
 
 
-		std::pair<ska::flat_hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
+		std::pair<util::hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
 			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
@@ -57,9 +57,9 @@ namespace sst
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);
 
 			template <typename T>
-			ska::flat_hash_map<std::string, size_t> getNameIndexMap(const std::vector<T>& params)
+			util::hash_map<std::string, size_t> getNameIndexMap(const std::vector<T>& params)
 			{
-				ska::flat_hash_map<std::string, size_t> ret;
+				util::hash_map<std::string, size_t> ret;
 				for(size_t i = 0; i < params.size(); i++)
 				{
 					const auto& arg = params[i];

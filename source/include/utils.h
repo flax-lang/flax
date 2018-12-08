@@ -5,7 +5,6 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
-#include "ska/flat_hash_map.hpp"
 
 template <typename T>
 std::vector<T> operator + (const std::vector<T>& vec, const T& elm)
@@ -207,14 +206,6 @@ namespace util
 
 	template <typename K, typename V>
 	std::vector<std::pair<K, V>> pairs(const std::unordered_map<K, V>& map)
-	{
-		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
-		return ret;
-	}
-
-
-	template <typename K, typename V>
-	std::vector<std::pair<K, V>> pairs(const ska::flat_hash_map<K, V>& map)
 	{
 		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
 		return ret;

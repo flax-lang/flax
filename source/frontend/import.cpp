@@ -11,7 +11,7 @@
 namespace frontend
 {
 	// map from (imp, fullPath) -> resolvedPath
-	static ska::flat_hash_map<std::pair<std::string, std::string>, std::string> importCache;
+	static util::hash_map<std::pair<std::string, std::string>, std::string> importCache;
 
 	// 'imp' is always a path
 	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath)

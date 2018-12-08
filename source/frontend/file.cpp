@@ -28,7 +28,7 @@ namespace frontend
 		bool isLexing = false;
 	};
 
-	static ska::flat_hash_map<std::string, FileInnards> fileList;
+	static util::hash_map<std::string, FileInnards> fileList;
 
 	static FileInnards& readFileIfNecessary(const std::string& fullPath)
 	{
@@ -150,7 +150,7 @@ namespace frontend
 
 
 	static std::vector<std::string> fileNames { "null" };
-	static ska::flat_hash_map<std::string, size_t> existingNames;
+	static util::hash_map<std::string, size_t> existingNames;
 	const std::string& getFilenameFromID(size_t fileID)
 	{
 		iceAssert(fileID > 0 && fileID < fileNames.size());

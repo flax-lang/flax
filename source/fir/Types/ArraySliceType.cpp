@@ -82,7 +82,7 @@ namespace fir
 	}
 
 
-	fir::Type* ArraySliceType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* ArraySliceType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		return ArraySliceType::get(this->arrayElementType->substitutePlaceholders(subst), this->isSliceMutable);
 	}
