@@ -110,7 +110,7 @@ namespace fir
 		return this->baseType->isTypeEqual(op->baseType) && (this->isPtrMutable == op->isPtrMutable);
 	}
 
-	fir::Type* PointerType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* PointerType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		auto base = this->baseType->substitutePlaceholders(subst);
 		if(this->isMutable())   return base->getMutablePointerTo();

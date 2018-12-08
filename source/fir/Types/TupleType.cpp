@@ -60,7 +60,7 @@ namespace fir
 		return TupleType::get(std::vector<Type*>(mems.begin(), mems.end()));
 	}
 
-	fir::Type* TupleType::substitutePlaceholders(const ska::flat_hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* TupleType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{
 		auto args = util::map(this->members, [&subst](auto t) -> auto { return t->substitutePlaceholders(subst); });
 

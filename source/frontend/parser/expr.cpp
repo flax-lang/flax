@@ -486,6 +486,12 @@ namespace parser
 	}
 
 
+	Expr* parseCaretScopeExpr(State& st)
+	{
+		return 0;
+	}
+
+
 	static Expr* parseTuple(State& st, Expr* lhs)
 	{
 		iceAssert(lhs);
@@ -982,6 +988,8 @@ namespace parser
 
 
 
+
+
 	static Expr* parsePrimary(State& st)
 	{
 		if(!st.hasTokens())
@@ -1050,8 +1058,12 @@ namespace parser
 					return parseParenthesised(st);
 
 				case TT::Identifier:
+				case TT::DoubleColon:
 				case TT::UnicodeSymbol:
 					return parseIdentifier(st);
+
+				case TT::Caret:
+					return parseCaretScopeExpr(st);
 
 				case TT::Alloc:
 					return parseAlloc(st, false);
