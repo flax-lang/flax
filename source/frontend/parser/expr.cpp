@@ -140,8 +140,15 @@ namespace parser
 				case TT::Continue:
 					return parseContinue(st);
 
+				case TT::Attr_Raw:
+					st.eat();
+					if(st.front() != TT::Union)
+						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
+
+					return parseUnion(st, /* isRaw: */ true);
+
 				case TT::Union:
-					return parseUnion(st);
+					return parseUnion(st, /* isRaw: */ false);
 
 				case TT::Struct:
 					return parseStruct(st);
@@ -1100,16 +1107,16 @@ namespace parser
 				case TT::Attr_Raw:
 					st.pop();
 					if(st.front() == TT::StringLiteral)
-						return parseString(st, true);
+						return parseString(st, /* isRaw: */ true);
 
 					else if(st.front() == TT::LSquare)
-						return parseArray(st, true);
+						return parseArray(st, /* isRaw: */ true);
 
 					else if(st.front() == TT::Alloc)
-						return parseAlloc(st, true);
+						return parseAlloc(st, /* isRaw: */ true);
 
 					else
-						expectedAfter(st, "one of string-literal, array, or alloc", "@raw", st.front().str());
+						expectedAfter(st, "one of string-literal, array, or alloc", "'@raw' while parsing expression", st.front().str());
 
 				case TT::StringLiteral:
 					return parseString(st, false);

@@ -186,7 +186,7 @@ namespace parser
 
 
 
-	UnionDefn* parseUnion(State& st)
+	UnionDefn* parseUnion(State& st, bool israw)
 	{
 		iceAssert(st.front() == TT::Union);
 		st.eat();
@@ -213,6 +213,10 @@ namespace parser
 		st.skipWS();
 		if(st.eat() != TT::LBrace)
 			expectedAfter(st.ploc(), "opening brace", "'union'", st.front().str());
+
+		st.skipWS();
+		if(st.front() == TT::RBrace)
+			error(st, "union must contain at least one variant");
 
 		size_t index = 0;
 		while(st.front() != TT::RBrace)
@@ -266,6 +270,7 @@ namespace parser
 		iceAssert(st.front() == TT::RBrace);
 		st.eat();
 
+		defn->israw = israw;
 		return defn;
 	}
 

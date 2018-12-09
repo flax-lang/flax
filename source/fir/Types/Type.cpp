@@ -1006,6 +1006,30 @@ namespace fir
 
 			return getAggregateSize(tys);
 		}
+		else if(type->isUnionType())
+		{
+			auto ut = type->toUnionType();
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+			{
+				if(!v.second->getInteriorType()->isVoidType())
+					maxSz = std::max(maxSz, getSizeOfType(v.second->getInteriorType()));
+			}
+
+			if(maxSz > 0)
+			{
+				return getAggregateSize({ Type::getInt64(), ArrayType::get(Type::getInt8(), maxSz) });
+			}
+			else
+			{
+				return getAggregateSize({ Type::getInt64() });
+			}
+		}
+		else if(type->isUnionVariantType())
+		{
+			return getSizeOfType(type->toUnionVariantType()->getInteriorType());
+		}
 		else
 		{
 			error("cannot get size of unsupported type '%s'", type);

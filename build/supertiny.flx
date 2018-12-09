@@ -8,10 +8,16 @@ import libc as _
 
 // import std::io
 // import std::map
+import std::opt
 
+@raw union foo {
+	foo: i64
+	bar: str
+}
 
 @entry fn main()
 {
+	printf("%d\n", sizeof(foo))
 }
 
 

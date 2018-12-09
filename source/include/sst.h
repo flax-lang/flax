@@ -763,6 +763,7 @@ namespace sst
 		virtual std::string getKind() override { return "union"; }
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		bool israw = false;
 		util::hash_map<std::string, UnionVariantDefn*> variants;
 	};
 
