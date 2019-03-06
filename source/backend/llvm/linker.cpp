@@ -26,6 +26,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
@@ -37,6 +38,7 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/DynamicLibrary.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #ifdef _MSC_VER
@@ -103,7 +105,7 @@ namespace backend
 			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().mangled());
 
 
-		this->linkedModule = std::shared_ptr<llvm::Module>(mainModule);
+		this->linkedModule = std::unique_ptr<llvm::Module>(mainModule);
 		this->finaliseGlobalConstructors();
 
 		// ok, move some shit into here because llvm is fucking retarded
@@ -160,7 +162,6 @@ namespace backend
 			fpm.add(llvm::createFlattenCFGPass());
 			fpm.add(llvm::createScalarizerPass());
 			fpm.add(llvm::createSinkingPass());
-			fpm.add(llvm::createInstructionSimplifierPass());
 			fpm.add(llvm::createDeadStoreEliminationPass());
 			fpm.add(llvm::createMemCpyOptPass());
 
@@ -221,7 +222,7 @@ namespace backend
 			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
 			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
-			llvm::WriteBitcodeToFile(this->linkedModule.get(), rso);
+			llvm::WriteBitcodeToFile(*this->linkedModule.get(), rso);
 			rso.close();
 
 			_printTiming(ts, "writing bitcode file");
@@ -441,7 +442,7 @@ namespace backend
 		{
 			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_emit_object");
 			llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-			targetMachine->addPassesToEmitFile(pm, *rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
+			targetMachine->addPassesToEmitFile(pm, *rawStream, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
 			pm.run(*this->linkedModule);
 		}
 
@@ -585,7 +586,7 @@ namespace backend
 			#if 1
 
 			this->jitInstance = new LLVMJit(this->targetMachine);
-			this->jitInstance->addModule(this->linkedModule);
+			this->jitInstance->addModule(std::move(this->linkedModule));
 
 			auto name = this->entryFunction->getName().str();
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
