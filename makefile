@@ -78,15 +78,15 @@ osxflags:
 
 osx: prep jit osxflags
 
-satest: prep osxflags build
+satest: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tester: prep osxflags build
+tester: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
-ci: prep test
+ci: test
 
-linux: prep jit
+linux: jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
@@ -115,7 +115,7 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): prep $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 
