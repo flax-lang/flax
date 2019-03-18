@@ -323,7 +323,7 @@ namespace parser
 			}
 			else if(hadValue)
 			{
-				// todo: remove this restriction maybe
+				//? this is mostly because we don't want to deal with auto-incrementing stuff
 				error(st.loc(), "enumeration cases must either all have no values, or all have values; a mix is not allowed.");
 			}
 

@@ -67,8 +67,9 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		auto vr = arg.value->codegen(cs, inf);
 		auto val = vr.value;
 
-		// ! ACHTUNG !
-		// TODO: is this actually necessary, or will we end up leaking memory???
+		//* arguments are added to the refcounting list in the function,
+		//* so we need to "pre-increment" the refcount here, so it does not
+		//* get freed when the function returns.
 		if(cs->isRefCountedType(val->getType()))
 			cs->incrementRefCount(val);
 

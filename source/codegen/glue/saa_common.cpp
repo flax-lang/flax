@@ -670,7 +670,6 @@ namespace saa_common
 
 				cs->irb.setCurrentBlock(doExpansion);
 				{
-					// TODO: is it faster to times 3 divide by 2, or do FP casts and times 1.5?
 					auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
 
 					// call realloc. handles the null case as well, which is nice.

@@ -216,9 +216,6 @@ TCResult ast::BinaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 
 	iceAssert(!Operator::isAssignment(this->op));
 
-	// TODO: infer the types properly for literal numbers
-	// this has always been a thorn, dammit
-
 	auto l = this->left->typecheck(fs, inferred).expr();
 
 	sst::Expr* r = 0;
