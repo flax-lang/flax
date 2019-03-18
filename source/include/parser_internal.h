@@ -241,6 +241,8 @@ namespace parser
 			const lexer::TokenList& tokens;
 	};
 
+	std::string parseStringEscapes(const std::string& str);
+
 	std::string parseOperatorTokens(State& st);
 
 	pts::Type* parseType(State& st);
