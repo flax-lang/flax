@@ -688,7 +688,6 @@ namespace backend
 		for(auto type : firmod->_getNamedTypes())
 		{
 			// should just automatically create it.
-			// if(!isGenericInAnyWay(type.second))
 			typeToLlvm(type.second, module);
 		}
 
@@ -696,30 +695,32 @@ namespace backend
 		{
 			llvm::Constant* fn = 0;
 
+			//* in LLVM 7, the intrinsics changed to no longer specify the alignment
+			//* so, the arugments are: [ ptr, ptr, size, is_volatile ]
 			if(intr.first.str() == "memcpy")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memmove")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memmove.p0i8.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memset.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memcmp")
 			{
-				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
+				// in line with the rest, take 4 arguments. (this is our own "intrinsic")
 
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 
 				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.memcmp", module);
 				llvm::Function* func = llvm::cast<llvm::Function>(fn);

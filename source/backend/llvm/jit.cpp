@@ -17,6 +17,7 @@ namespace backend
 			else
 				return llvm::JITSymbol(nullptr);
 		}, [](llvm::Error err) { llvm::cantFail(std::move(err), "lookupFlags failed"); })),
+		dataLayout(this->targetMachine->createDataLayout()),
 		objectLayer(this->execSession, [this](llvm::orc::VModuleKey) -> auto { 
 			return llvm::orc::RTDyldObjectLinkingLayer::Resources { 
 				std::make_shared<llvm::SectionMemoryManager>(), this->symbolResolver }; }),
@@ -47,9 +48,9 @@ namespace backend
 	{
 		std::string mangledName;
 		llvm::raw_string_ostream out(mangledName);
-		llvm::Mangler::getNameWithPrefix(out, name, this->targetMachine->createDataLayout());
+		llvm::Mangler::getNameWithPrefix(out, name, this->dataLayout);
 
-		return this->compileLayer.findSymbol(out.str(), false);
+		return this->compileLayer.findSymbol(out.str(), true);
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
