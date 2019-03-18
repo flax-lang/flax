@@ -13,6 +13,12 @@
 using namespace ast;
 using namespace lexer;
 
+// #ifdef _WIN32
+// 	#define PLATFORM_NEWLINE "\r\n"
+// #else
+// 	#define PLATFORM_NEWLINE "\n"
+// #endif
+
 using TT = lexer::TokenType;
 namespace parser
 {
@@ -24,39 +30,42 @@ namespace parser
 		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
+	std::string parseStringEscapes(const std::string& str)
+	{
+		std::stringstream ss;
+
+		for(size_t i = 0; i < str.length(); i++)
+		{
+			if(str[i] == '\\')
+			{
+				i++;
+				switch(str[i])
+				{
+					// todo: handle hex sequences and stuff
+					case 'n':   ss << "\n"; break;
+					case 'b':   ss << "\b"; break;
+					case 'r':   ss << "\r"; break;
+					case 't':   ss << "\t"; break;
+					case '"':   ss << "\""; break;
+					case '\\':  ss << "\\"; break;
+					default:    ss << std::string("\\") + str[i]; break;
+				}
+			}
+			else
+			{
+				ss << str[i];
+			}
+		}
+
+		return ss.str();
+	}
+
 	LitString* parseString(State& st, bool israw)
 	{
 		iceAssert(st.front() == TT::StringLiteral);
 		auto t = st.eat();
 
-		// do replacement here, instead of in the lexer.
-		std::string tmp = t.str();
-		std::stringstream ss;
-
-		for(size_t i = 0; i < tmp.length(); i++)
-		{
-			if(tmp[i] == '\\')
-			{
-				i++;
-				switch(tmp[i])
-				{
-					// todo: handle hex sequences and stuff
-					case 'n':   ss << '\n'; break;
-					case 'b':   ss << '\b'; break;
-					case 'r':   ss << '\r'; break;
-					case 't':   ss << '\t'; break;
-					case '"':   ss << '\"'; break;
-					case '\\':  ss << '\\'; break;
-					default:    ss << std::string("\\") + tmp[i]; break;
-				}
-			}
-			else
-			{
-				ss << tmp[i];
-			}
-		}
-
-		return util::pool<LitString>(st.ploc(), ss.str(), israw);
+		return util::pool<LitString>(st.ploc(), parseStringEscapes(t.str()), israw);
 	}
 
 	LitArray* parseArray(State& st, bool israw)
