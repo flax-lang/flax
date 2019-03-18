@@ -6,12 +6,23 @@
 
 namespace backend
 {
-	LLVMJit::LLVMJit(llvm::TargetMachine* tm) :
-		objectLayer([]() -> auto { return std::make_shared<llvm::SectionMemoryManager>(); }),
-		compileLayer(this->objectLayer, llvm::orc::SimpleCompiler(*tm))
-	{
-		this->targetMachine = std::unique_ptr<llvm::TargetMachine>(tm);
+	LLVMJit::LLVMJit(llvm::TargetMachine* tm) : 
+		targetMachine(tm), 
+		symbolResolver(llvm::orc::createLegacyLookupResolver(this->execSession, [&](const std::string& name) -> llvm::JITSymbol {
+			if(auto sym = this->compileLayer.findSymbol(name, false))   return sym;
+			else if(auto err = sym.takeError())                         return std::move(err);
 
+			if(auto symaddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
+				return llvm::JITSymbol(symaddr, llvm::JITSymbolFlags::Exported);
+			else
+				return llvm::JITSymbol(nullptr);
+		}, [](llvm::Error err) { llvm::cantFail(std::move(err), "lookupFlags failed"); })),
+		dataLayout(this->targetMachine->createDataLayout()),
+		objectLayer(this->execSession, [this](llvm::orc::VModuleKey) -> auto { 
+			return llvm::orc::RTDyldObjectLinkingLayer::Resources { 
+				std::make_shared<llvm::SectionMemoryManager>(), this->symbolResolver }; }),
+		compileLayer(this->objectLayer, llvm::orc::SimpleCompiler(*this->targetMachine.get()))
+	{
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 	}
 
@@ -20,23 +31,12 @@ namespace backend
 		return this->targetMachine.get();
 	}
 
-	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::shared_ptr<llvm::Module> mod)
+	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
 	{
-		auto resolver = llvm::orc::createLambdaResolver([&](const std::string& name) -> auto {
-			if(auto sym = this->compileLayer.findSymbol(name, false))
-				return sym;
+		auto vmod = this->execSession.allocateVModule();
+		llvm::cantFail(this->compileLayer.addModule(vmod, std::move(mod)));
 
-			else
-				return llvm::JITSymbol(nullptr);
-		}, [](const std::string& name) -> auto {
-			if(auto symaddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
-				return llvm::JITSymbol(symaddr, llvm::JITSymbolFlags::Exported);
-
-			else
-				return llvm::JITSymbol(nullptr);
-		});
-
-		return llvm::cantFail(this->compileLayer.addModule(mod, std::move(resolver)));
+		return vmod;
 	}
 
 	void LLVMJit::removeModule(LLVMJit::ModuleHandle_t mod)
@@ -48,9 +48,9 @@ namespace backend
 	{
 		std::string mangledName;
 		llvm::raw_string_ostream out(mangledName);
-		llvm::Mangler::getNameWithPrefix(out, name, this->targetMachine->createDataLayout());
+		llvm::Mangler::getNameWithPrefix(out, name, this->dataLayout);
 
-		return this->compileLayer.findSymbol(out.str(), false);
+		return this->compileLayer.findSymbol(out.str(), true);
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
