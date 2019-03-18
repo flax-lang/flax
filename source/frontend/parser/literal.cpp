@@ -8,6 +8,8 @@
 
 #include "mpool.h"
 
+#include "utf8rewind/include/utf8rewind/utf8rewind.h"
+
 #include <sstream>
 
 using namespace ast;
@@ -30,7 +32,64 @@ namespace parser
 		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
-	std::string parseStringEscapes(const std::string& str)
+	static std::string parseHexEscapes(const Location& loc, std::string_view sv)
+	{
+		if(sv[0] == 'x')
+		{
+			if(sv.size() < 3)
+				error(loc, "malformed escape sequence: unexpected end of string");
+
+			if(!isxdigit(sv[1]) || !isxdigit(sv[2]))
+				error(loc, "malformed escape sequence: non-hex character in \\x escape");
+
+			// ok then.
+			char s[2] = { sv[0], sv[1] };
+			char val = std::stol(s, /* pos: */ 0, /* base: */ 16);
+
+			return std::string(&val, 1);
+		}
+		else if(sv[0] == 'u')
+		{
+			if(sv.size() < 3)
+				error(loc, "malformed escape sequence: unexpected end of string");
+
+			sv.remove_prefix(1);
+			if(sv[0] != '{')
+				error(loc, "malformed escape sequence: expected '{' after \\u");
+
+			sv.remove_prefix(1);
+
+			std::string digits;
+			for(size_t i = 0; i < sv.size(); i++)
+			{
+				if(sv[i] == '}') break;
+
+				if(!isxdigit(sv[i]))
+					error(loc, "malformed escape sequence: non-hex character '%c' inside \\u{...}", sv[i]);
+
+				if(digits.size() == 8)
+					error(loc, "malformed escape sequence: too many digits inside \\u{...}; up to 8 are allowed");
+
+				digits += sv[i];
+			}
+
+			uint32_t codepoint = std::stol(digits, /* pos: */ 0, /* base: */ 16);
+
+			char output[8] = { 0 };
+			int err = 0;
+			auto sz = utf32toutf8(&codepoint, 4, output, 8, &err);
+			if(err != UTF8_ERR_NONE)
+				error(loc, "invalid utf32 codepoint!");
+
+			return std::string(output, sz);
+		}
+		else
+		{
+			iceAssert("wtf yo" && 0);
+		}
+	}
+
+	std::string parseStringEscapes(const Location& loc, const std::string& str)
 	{
 		std::stringstream ss;
 
@@ -48,7 +107,15 @@ namespace parser
 					case 't':   ss << "\t"; break;
 					case '"':   ss << "\""; break;
 					case '\\':  ss << "\\"; break;
-					default:    ss << std::string("\\") + str[i]; break;
+
+					case 'x':   // fallthrough
+					case 'u':
+						ss << parseHexEscapes(loc, std::string_view(str.c_str() + i, str.size() - i));
+						break;
+
+					default:
+						ss << std::string("\\") + str[i];
+						break;
 				}
 			}
 			else
@@ -65,7 +132,7 @@ namespace parser
 		iceAssert(st.front() == TT::StringLiteral);
 		auto t = st.eat();
 
-		return util::pool<LitString>(st.ploc(), parseStringEscapes(t.str()), israw);
+		return util::pool<LitString>(st.ploc(), parseStringEscapes(st.ploc(), t.str()), israw);
 	}
 
 	LitArray* parseArray(State& st, bool israw)
