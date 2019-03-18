@@ -21,7 +21,7 @@ addons:
         - llvm-7-dev
         - libllvm7
         - libmpfr-dev
-        - libmpfr6
+        - libmpfr4
     homebrew:
         packages:
         - llvm@7
