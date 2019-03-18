@@ -584,11 +584,11 @@ namespace backend
 		if(this->entryFunction)
 		{
 			#if 1
+			auto name = this->entryFunction->getName().str();
 
 			this->jitInstance = new LLVMJit(this->targetMachine);
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
-			auto name = this->entryFunction->getName().str();
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
 			ret = (int (*)(int, const char**)) entryaddr;
 

@@ -77,6 +77,7 @@ namespace backend
 		std::unique_ptr<llvm::TargetMachine> targetMachine;
 		std::shared_ptr<llvm::orc::SymbolResolver> symbolResolver;
 
+		llvm::DataLayout dataLayout;
 		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
 		llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
 	};
