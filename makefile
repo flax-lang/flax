@@ -100,7 +100,7 @@ test: build
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
-build: $(OUTPUT) copylibs
+build: $(OUTPUT) prep copylibs
 	# built
 
 build/%.flx: build
@@ -115,7 +115,7 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): prep $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 

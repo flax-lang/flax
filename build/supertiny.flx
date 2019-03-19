@@ -17,7 +17,8 @@ import std::opt
 
 @entry fn main()
 {
-	printf("%d\n", sizeof(foo))
+	printf("sizeof foo = %d\n", sizeof(foo))
+	printf("foo \u{42f} lmao\n")
 }
 
 
