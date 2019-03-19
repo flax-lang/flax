@@ -4,7 +4,7 @@
 
 
 
-WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wno-deprecated-declarations
 
 
 CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat
@@ -78,15 +78,15 @@ osxflags:
 
 osx: prep jit osxflags
 
-satest: prep osxflags build
+satest: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tester: prep osxflags build
+tester: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
-ci: prep test
+ci: test
 
-linux: prep jit
+linux: jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
@@ -115,9 +115,9 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): prep $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) -lmpfr -lgmp $(LDFLAGS) -lpthread
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 
 
 %.cpp.o: %.cpp

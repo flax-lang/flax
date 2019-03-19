@@ -178,7 +178,7 @@ namespace saa_common
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
 			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
-				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 
 			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
 			{
@@ -224,7 +224,7 @@ namespace saa_common
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
 			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
-				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false) });
+				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 		}
 		else
 		{
@@ -382,7 +382,7 @@ namespace saa_common
 				cs->irb.Call(memcpyf, {
 					cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
 					cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr()), rhsbytecount,
-					fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
+					fir::ConstantBool::get(false)
 				});
 
 				// null terminator
@@ -521,11 +521,11 @@ namespace saa_common
 				auto rhsbytecount = cs->irb.Multiply(rhslen, cs->irb.Sizeof(getSAAElm(saa)), "rhsbytecount");
 
 				cs->irb.Call(memcpyf, { rawbuf, rawlhsbuf,
-					lhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
+					lhsbytecount, fir::ConstantBool::get(false)
 				});
 
 				cs->irb.Call(memcpyf, { cs->irb.PointerAdd(rawbuf, lhsbytecount), rawrhsbuf,
-					rhsbytecount, fir::ConstantInt::getInt32(0), fir::ConstantBool::get(false)
+					rhsbytecount, fir::ConstantBool::get(false)
 				});
 
 				// if it's a string, again, null terminator.
@@ -670,7 +670,6 @@ namespace saa_common
 
 				cs->irb.setCurrentBlock(doExpansion);
 				{
-					// TODO: is it faster to times 3 divide by 2, or do FP casts and times 1.5?
 					auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
 
 					// call realloc. handles the null case as well, which is nice.

@@ -59,20 +59,26 @@ namespace backend
 
 	struct LLVMJit
 	{
-		typedef llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT ModuleHandle_t;
+		// typedef llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT ModuleHandle_t;
+
+		using ModuleHandle_t = llvm::orc::VModuleKey;
 
 		LLVMJit(llvm::TargetMachine* tm);
 		llvm::TargetMachine* getTargetMachine();
 
 		void removeModule(ModuleHandle_t mod);
-		ModuleHandle_t addModule(std::shared_ptr<llvm::Module> mod);
+		ModuleHandle_t addModule(std::unique_ptr<llvm::Module> mod);
 
 		llvm::JITSymbol findSymbol(const std::string& name);
 		llvm::JITTargetAddress getSymbolAddress(const std::string& name);
 
 		private:
-		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
+		llvm::orc::ExecutionSession execSession;
 		std::unique_ptr<llvm::TargetMachine> targetMachine;
+		std::shared_ptr<llvm::orc::SymbolResolver> symbolResolver;
+
+		llvm::DataLayout dataLayout;
+		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
 		llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
 	};
 
@@ -99,7 +105,7 @@ namespace backend
 
 		llvm::Function* entryFunction = 0;
 		llvm::TargetMachine* targetMachine = 0;
-		std::shared_ptr<llvm::Module> linkedModule;
+		std::unique_ptr<llvm::Module> linkedModule;
 
 		LLVMJit* jitInstance = 0;
 	};
