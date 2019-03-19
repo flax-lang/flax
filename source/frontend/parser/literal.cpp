@@ -43,7 +43,7 @@ namespace parser
 				error(loc, "malformed escape sequence: non-hex character in \\x escape");
 
 			// ok then.
-			char s[2] = { sv[0], sv[1] };
+			char s[2] = { sv[1], sv[2] };
 			char val = std::stol(s, /* pos: */ 0, /* base: */ 16);
 
 			*ofs = 3;
