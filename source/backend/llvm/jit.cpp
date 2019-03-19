@@ -6,8 +6,8 @@
 
 namespace backend
 {
-	LLVMJit::LLVMJit(llvm::TargetMachine* tm) : 
-		targetMachine(tm), 
+	LLVMJit::LLVMJit(llvm::TargetMachine* tm) :
+		targetMachine(tm),
 		symbolResolver(llvm::orc::createLegacyLookupResolver(this->execSession, [&](const std::string& name) -> llvm::JITSymbol {
 			if(auto sym = this->compileLayer.findSymbol(name, false))   return sym;
 			else if(auto err = sym.takeError())                         return std::move(err);
@@ -18,8 +18,8 @@ namespace backend
 				return llvm::JITSymbol(nullptr);
 		}, [](llvm::Error err) { llvm::cantFail(std::move(err), "lookupFlags failed"); })),
 		dataLayout(this->targetMachine->createDataLayout()),
-		objectLayer(this->execSession, [this](llvm::orc::VModuleKey) -> auto { 
-			return llvm::orc::RTDyldObjectLinkingLayer::Resources { 
+		objectLayer(this->execSession, [this](llvm::orc::VModuleKey) -> auto {
+			return llvm::orc::RTDyldObjectLinkingLayer::Resources {
 				std::make_shared<llvm::SectionMemoryManager>(), this->symbolResolver }; }),
 		compileLayer(this->objectLayer, llvm::orc::SimpleCompiler(*this->targetMachine.get()))
 	{
@@ -50,7 +50,7 @@ namespace backend
 		llvm::raw_string_ostream out(mangledName);
 		llvm::Mangler::getNameWithPrefix(out, name, this->dataLayout);
 
-		return this->compileLayer.findSymbol(out.str(), true);
+		return this->compileLayer.findSymbol(out.str(), false);
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
