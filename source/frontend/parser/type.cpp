@@ -242,9 +242,13 @@ namespace parser
 				st.eat();
 				type = parseType(st);
 			}
-			else if(st.front() != TT::NewLine)
+			else
 			{
-				error(st.loc(), "expected newline after union variant");
+				if(israw)
+					error(st.loc(), "raw unions cannot have empty variants (must have a type)");
+
+				else if(st.front() != TT::NewLine)
+					error(st.loc(), "expected newline after union variant");
 			}
 
 			if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);

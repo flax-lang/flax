@@ -26,7 +26,7 @@ namespace fir
 		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Class with name '%s' already exists", name.str());
+			error("class with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new ClassType(name, members, methods, inits));
@@ -304,7 +304,7 @@ namespace fir
 		}
 		else
 		{
-			error("No such method named '%s' matching signature '%s' in virtual method table of class '%s'",
+			error("no such method named '%s' matching signature '%s' in virtual method table of class '%s'",
 				name, (Type*) ft, this->getTypeName().name);
 		}
 	}

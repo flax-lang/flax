@@ -519,6 +519,12 @@ namespace fir
 		return static_cast<UnionType*>(this);
 	}
 
+	RawUnionType* Type::toRawUnionType()
+	{
+		if(this->kind != TypeKind::RawUnion) error("not raw union type");
+		return static_cast<RawUnionType*>(this);
+	}
+
 	AnyType* Type::toAnyType()
 	{
 		if(this->kind != TypeKind::Any) error("not any type");
@@ -660,6 +666,11 @@ namespace fir
 	bool Type::isUnionType()
 	{
 		return this->kind == TypeKind::Union;
+	}
+
+	bool Type::isRawUnionType()
+	{
+		return this->kind == TypeKind::RawUnion;
 	}
 
 	bool Type::isAnyType()
@@ -1006,7 +1017,7 @@ namespace fir
 
 			return getAggregateSize(tys);
 		}
-		else if(type->isUnionType())
+		else if(type->isUnionType() )
 		{
 			auto ut = type->toUnionType();
 
@@ -1025,6 +1036,17 @@ namespace fir
 			{
 				return getAggregateSize({ Type::getInt64() });
 			}
+		}
+		else if(type->isRawUnionType())
+		{
+			auto ut = type->toRawUnionType();
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+				maxSz = std::max(maxSz, getSizeOfType(v.second));
+
+			iceAssert(maxSz > 0);
+			return getAggregateSize({ ArrayType::get(Type::getInt8(), maxSz) });
 		}
 		else if(type->isUnionVariantType())
 		{

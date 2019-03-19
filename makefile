@@ -38,12 +38,11 @@ CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
-
-
+DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE)
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE)
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE)
 

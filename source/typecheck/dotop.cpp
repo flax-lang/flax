@@ -344,14 +344,27 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough
 	}
+	else if(type->isRawUnionType())
+	{
+		auto rut = type->toRawUnionType();
+		if(auto vr = dcast(ast::Ident, dotop->right))
+		{
+			if(rut->hasVariant(vr->name))
+			{
+				auto ret = util::pool<sst::FieldDotOp>(dotop->loc, rut->getVariant(vr->name));
+				ret->lhs = lhs;
+				ret->rhsIdent = vr->name;
+
+				return ret;
+			}
+
+			// again, fallthrough
+		}
+
+		// else: fallthrough
+	}
 
 	// TODO: plug in extensions here.
-
-
-	if(!type->isStructType() && !type->isClassType())
-	{
-		error(dotop->right, "unsupported right-side expression for dot operator on type '%s'", type);
-	}
 
 
 	// ok.
@@ -360,7 +373,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
-
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{

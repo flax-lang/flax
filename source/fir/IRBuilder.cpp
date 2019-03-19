@@ -1536,7 +1536,6 @@ namespace fir
 			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 
-		// note: no sideeffects, since we return a new aggregate
 		Instruction* instr = make_instr(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
 		return this->addInstruction(instr, vname);
 	}

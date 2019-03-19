@@ -10,17 +10,21 @@ import libc as _
 // import std::map
 import std::opt
 
-@raw union foo {
+@raw union unn {
 	foo: i64
 	bar: str
 }
 
 @entry fn main()
 {
-	printf("sizeof foo = %d\n", sizeof(foo))
-	printf("foo \u{42f} lmao\n")
-}
+	printf("sizeof foo = %d\n", sizeof(unn))
 
+	var x: unn
+	x.foo = 30
+
+
+	printf("ucodes: \x45 \u{42f} \u{90c6}\n")
+}
 
 
 /*

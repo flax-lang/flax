@@ -21,7 +21,7 @@ namespace fir
 	UnionType* UnionType::create(const Identifier& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Union with name '%s' already exists", name.str());
+			error("union with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new UnionType(name, mems));
