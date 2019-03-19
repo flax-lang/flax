@@ -353,21 +353,21 @@ namespace fir
 		{
 			name = Identifier("memcpy", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt64(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
 			name = Identifier("memmove", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt64(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
 			name = Identifier("memset", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
-				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt64(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memcmp")
@@ -377,7 +377,7 @@ namespace fir
 
 			name = Identifier("memcmp", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getInt32(), fir::Type::getBool() },
+				fir::Type::getInt64(), fir::Type::getBool() },
 				fir::Type::getInt32());
 		}
 		else if(id == "roundup_pow2")

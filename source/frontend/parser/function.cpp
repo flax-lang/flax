@@ -172,7 +172,7 @@ namespace parser
 			if(st.front() != TT::StringLiteral)
 				expectedAfter(st.loc(), "string literal", "'as' in foreign function declaration", st.front().str());
 
-			ffn->realName = st.eat().str();
+			ffn->realName = parseStringEscapes(st.loc(), st.eat().str());
 		}
 		else
 		{
