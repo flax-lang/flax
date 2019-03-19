@@ -34,7 +34,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	}
 	else if(restype->isPointerType() && isAutoDereferencable(restype->getPointerElementType()))
 	{
-		iceAssert(isAutoDereferencable(res.value->getType()));
+		iceAssert(isAutoDereferencable(res.value->getType()->getPointerElementType()));
 
 		retv = cs->irb.Dereference(res.value);
 		*baseType = restype->getPointerElementType();
