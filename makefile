@@ -38,12 +38,11 @@ CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
-
-
+DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE)
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE)
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE)
 
@@ -100,7 +99,7 @@ test: build
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
-build: $(OUTPUT) copylibs
+build: $(OUTPUT) prep copylibs
 	# built
 
 build/%.flx: build
@@ -115,7 +114,7 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): prep $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 

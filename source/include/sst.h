@@ -752,6 +752,17 @@ namespace sst
 	};
 
 
+	struct RawUnionDefn : TypeDefn
+	{
+		RawUnionDefn(const Location& l) : TypeDefn(l) { this->readableName = "raw union definition"; }
+		~RawUnionDefn() { }
+
+		virtual std::string getKind() override { return "raw union"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		util::hash_map<std::string, StructFieldDefn*> fields;
+	};
+
 
 
 	struct UnionVariantDefn;

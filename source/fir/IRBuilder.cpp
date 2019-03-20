@@ -1265,6 +1265,27 @@ namespace fir
 	}
 
 
+	Value* IRBuilder::GetRawUnionField(Value* lval, const std::string& field, const std::string& vname)
+	{
+		if(!lval->islorclvalue())
+			error("cannot do raw union ops on non-lvalue");
+
+		if(!lval->getType()->isRawUnionType())
+			error("'%s' is not a raw union type!", lval->getType());
+
+		auto rut = lval->getType()->toRawUnionType();
+		if(!rut->hasVariant(field))
+			error("union '%s' does not have a field '%s'", rut->getTypeName(), field);
+
+		auto ty = rut->getVariant(field);
+
+		Instruction* instr = make_instr(OpKind::RawUnion_GEP, false, this->currentBlock, ty, { lval, ConstantValue::getZeroValue(ty) });
+
+		auto ret = this->addInstruction(instr, "");
+		ret->setKind(lval->kind);
+
+		return ret;
+	}
 
 
 
@@ -1294,9 +1315,9 @@ namespace fir
 		{
 			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
 		}
-		if(ClassType* st = dcast(ClassType, structPtr->getType()))
+		if(ClassType* ct = dcast(ClassType, structPtr->getType()))
 		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
+			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, ct, structPtr, memberIndex), vname);
 		}
 		else if(TupleType* tt = dcast(TupleType, structPtr->getType()))
 		{
@@ -1308,7 +1329,7 @@ namespace fir
 		}
 	}
 
-	Value* IRBuilder::GetStructMember(Value* ptr, std::string memberName)
+	Value* IRBuilder::GetStructMember(Value* ptr, const std::string& memberName)
 	{
 		if(!ptr->islorclvalue())
 			error("cannot do GEP on non-lvalue");
@@ -1536,7 +1557,6 @@ namespace fir
 			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 
-		// note: no sideeffects, since we return a new aggregate
 		Instruction* instr = make_instr(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
 		return this->addInstruction(instr, vname);
 	}

@@ -73,7 +73,7 @@ namespace fir
 	EnumType* EnumType::get(const Identifier& name, Type* caseType)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Enum with name '%s' already exists", name.str());
+			error("enum with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new EnumType(name, caseType));
