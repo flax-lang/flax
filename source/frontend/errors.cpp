@@ -163,8 +163,8 @@ std::string __error_gen_internal(const Location& loc, const std::string& msg, co
 	// bool empty = strcmp(type, "") == 0;
 	// bool dobold = strcmp(type, "note") != 0;
 
-	// todo: do we want to truncate the file path?
-	// we're doing it now, might want to change (or use a flag)
+	//? do we want to truncate the file path?
+	//? we're doing it now, might want to change (or use a flag)
 
 	std::string filename = frontend::getFilenameFromPath(loc.fileID == 0 ? "(unknown)"
 		: frontend::getFilenameFromID(loc.fileID));

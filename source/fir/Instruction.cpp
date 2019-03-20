@@ -172,6 +172,8 @@ namespace fir
 			case OpKind::Union_GetVariantID:                instrname = "get_union.id"; break;
 			case OpKind::Union_SetVariantID:                instrname = "set_union.id"; break;
 
+			case OpKind::RawUnion_GEP:                      instrname = "raw_union_gep"; break;
+
 			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
 			case OpKind::Value_Store:                       instrname = "store"; break;
 			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;

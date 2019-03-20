@@ -7,9 +7,6 @@
 
 CGResult sst::UnionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this);
-	defer(cs->popLoc());
-
 	// there's actually nothing to do.
 	// nothing at all.
 
@@ -18,9 +15,12 @@ CGResult sst::UnionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::UnionVariantDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	cs->pushLoc(this);
-	defer(cs->popLoc());
+	return CGResult(0);
+}
 
+CGResult sst::RawUnionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	// again, does nothing.
 	return CGResult(0);
 }
 

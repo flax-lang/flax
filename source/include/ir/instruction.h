@@ -162,6 +162,8 @@ namespace fir
 		Union_GetVariantID,
 		Union_SetVariantID,
 
+		RawUnion_GEP,
+
 		Branch_UnCond,
 		Branch_Cond,
 

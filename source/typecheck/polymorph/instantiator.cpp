@@ -161,10 +161,6 @@ namespace poly
 		fs->pushGenericContext();
 		defer(fs->popGenericContext());
 
-		//* allowFail is only allowed to forgive a failure when we're checking for type conformance to protocols or something like that.
-		//* we generally don't look into type or function bodies when checking stuff, and it'd be hard to check for something like this (eg.
-		//* T passes all the checks, but causes some kind of type-checking failure when substituted in)
-		// TODO: ??? do we want this to be the behaviour ???
 		for(auto map : mappings)
 		{
 			int ptrs = 0;

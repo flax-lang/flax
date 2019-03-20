@@ -4,7 +4,7 @@ compiler: clang
 matrix:
     include:
     - os: linux
-      dist: trusty
+      dist: xenial
       sudo: false
     - os: osx
       osx_image: xcode9.4
@@ -12,25 +12,25 @@ matrix:
 addons:
     apt:
         sources:
-        - llvm-toolchain-trusty-6.0
+        - llvm-toolchain-xenial-7
         - ubuntu-toolchain-r-test
 
         packages:
         - g++-8
-        - llvm-6.0
-        - llvm-6.0-dev
-        - libllvm6.0
+        - llvm-7
+        - llvm-7-dev
+        - libllvm7
         - libmpfr-dev
         - libmpfr4
     homebrew:
         packages:
-        - llvm@6
+        - llvm@7
         update: true
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then PATH="/usr/local/opt/llvm@6/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
-      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION make ci;
+        then PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
+      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make ci;
       fi
 
 notifications:
