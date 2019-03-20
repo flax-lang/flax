@@ -94,26 +94,18 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 	if(this->lhs->type->isRawUnionType())
 	{
+		fir::Value* field = 0;
 		if(res->islorclvalue())
 		{
-			// get the address of it (which for lvalues should be a no-op)
-			// then cast that to a pointer to the desired type.
-
-			// set 'mut' based on whether we got an lvalue or a clvalue
-			auto addr = cs->irb.AddressOf(res.value, (res.value->isclvalue() ? false : true));
-
-			auto ptr = cs->irb.PointerTypeCast(addr, (res.value->isclvalue() ? this->type->getPointerTo()
-				: this->type->getMutablePointerTo()));
-
-			return CGResult(cs->irb.Dereference(ptr));
+			field = cs->irb.GetRawUnionField(res.value, this->rhsIdent);
 		}
 		else
 		{
 			auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
-			auto ptr = cs->irb.PointerTypeCast(addr, this->type->getPointerTo());
-
-			return CGResult(cs->irb.ReadPtr(ptr));
+			field = cs->irb.GetRawUnionField(addr, this->rhsIdent);;
 		}
+
+		return CGResult(field);
 	}
 	else
 	{

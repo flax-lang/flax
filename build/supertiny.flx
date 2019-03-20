@@ -12,18 +12,16 @@ import std::opt
 
 @raw union unn {
 	foo: i64
-	bar: str
+	bar: f64
 }
 
 @entry fn main()
 {
-	printf("sizeof foo = %d\n", sizeof(unn))
-
 	var x: unn
-	x.foo = 30
+	x.bar = 3.14159
 
-
-	printf("ucodes: \x45 \u{42f} \u{90c6}\n")
+	printf("x = %.2lf\n", x.bar)
+	printf("x = %d\n", x.foo)
 }
 
 
