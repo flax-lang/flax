@@ -94,9 +94,11 @@ namespace fir
 		Value* StackAlloc(Type* type, const std::string& vname = "");
 		Value* ImmutStackAlloc(Type* type, Value* initialValue, const std::string& vname = "");
 
+		// given an l or cl value of raw_union type, return an l or cl value of the correct type of the field
+		Value* GetRawUnionField(Value* lval, const std::string& field, const std::string& vname = "");
 
 		// equivalent to GEP(ptr*, 0, memberIndex)
-		Value* GetStructMember(Value* ptr, std::string memberName);
+		Value* GetStructMember(Value* ptr, const std::string& memberName);
 		Value* StructGEP(Value* structPtr, size_t memberIndex, const std::string& vname = "");
 
 		// equivalent to GEP(ptr*, index)

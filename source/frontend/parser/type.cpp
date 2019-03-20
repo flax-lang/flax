@@ -186,7 +186,7 @@ namespace parser
 
 
 
-	UnionDefn* parseUnion(State& st)
+	UnionDefn* parseUnion(State& st, bool israw)
 	{
 		iceAssert(st.front() == TT::Union);
 		st.eat();
@@ -214,6 +214,10 @@ namespace parser
 		if(st.eat() != TT::LBrace)
 			expectedAfter(st.ploc(), "opening brace", "'union'", st.front().str());
 
+		st.skipWS();
+		if(st.front() == TT::RBrace)
+			error(st, "union must contain at least one variant");
+
 		size_t index = 0;
 		while(st.front() != TT::RBrace)
 		{
@@ -238,9 +242,13 @@ namespace parser
 				st.eat();
 				type = parseType(st);
 			}
-			else if(st.front() != TT::NewLine)
+			else
 			{
-				error(st.loc(), "expected newline after union variant");
+				if(israw)
+					error(st.loc(), "raw unions cannot have empty variants (must have a type)");
+
+				else if(st.front() != TT::NewLine)
+					error(st.loc(), "expected newline after union variant");
 			}
 
 			if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
@@ -266,6 +274,7 @@ namespace parser
 		iceAssert(st.front() == TT::RBrace);
 		st.eat();
 
+		defn->israw = israw;
 		return defn;
 	}
 

@@ -309,6 +309,27 @@ namespace backend
 
 			return createdTypes[ut->getTypeName()];
 		}
+		else if(type->isRawUnionType())
+		{
+			auto ut = type->toRawUnionType();
+
+			if(createdTypes.find(ut->getTypeName()) != createdTypes.end())
+				return createdTypes[ut->getTypeName()];
+
+			auto dl = llvm::DataLayout(mod);
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+				maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second, mod)));
+
+			iceAssert(maxSz > 0);
+			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
+				// llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
+				llvm::IntegerType::getIntNTy(gc, maxSz * CHAR_BIT)
+			}, ut->getTypeName().mangled());
+
+			return createdTypes[ut->getTypeName()];
+		}
 		else if(type->isPolyPlaceholderType())
 		{
 			error("llvm: Unfulfilled polymorphic placeholder type '%s'", type);
@@ -2308,6 +2329,19 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::RawUnion_GEP:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getUndecayedOperand(inst, 0);
+							llvm::Type* target = typeToLlvm(inst->operands[1]->getType(), module);
+
+							iceAssert(a->getType()->isPointerTy() && a->getType()->getPointerElementType()->isStructTy());
+							auto ptr = builder.CreateConstGEP2_32(a->getType()->getPointerElementType(), a, 0, 0);
+							ptr = builder.CreatePointerCast(ptr, target->getPointerTo());
+
+							addValueToMap(ptr, inst->realOutput);
+							break;
+						}
 
 
 

@@ -32,7 +32,7 @@ namespace parser
 		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
-	static std::string parseHexEscapes(const Location& loc, std::string_view sv)
+	static std::string parseHexEscapes(const Location& loc, std::string_view sv, size_t* ofs)
 	{
 		if(sv[0] == 'x')
 		{
@@ -43,9 +43,10 @@ namespace parser
 				error(loc, "malformed escape sequence: non-hex character in \\x escape");
 
 			// ok then.
-			char s[2] = { sv[0], sv[1] };
+			char s[2] = { sv[1], sv[2] };
 			char val = std::stol(s, /* pos: */ 0, /* base: */ 16);
 
+			*ofs = 3;
 			return std::string(&val, 1);
 		}
 		else if(sv[0] == 'u')
@@ -60,7 +61,8 @@ namespace parser
 			sv.remove_prefix(1);
 
 			std::string digits;
-			for(size_t i = 0; i < sv.size(); i++)
+			size_t i = 0;
+			for(i = 0; i < sv.size(); i++)
 			{
 				if(sv[i] == '}') break;
 
@@ -73,6 +75,9 @@ namespace parser
 				digits += sv[i];
 			}
 
+			if(sv[i] != '}')
+				error(loc, "malformed escape sequence: expcected '}' to end codepoint escape");
+
 			uint32_t codepoint = std::stol(digits, /* pos: */ 0, /* base: */ 16);
 
 			char output[8] = { 0 };
@@ -81,6 +86,7 @@ namespace parser
 			if(err != UTF8_ERR_NONE)
 				error(loc, "invalid utf32 codepoint!");
 
+			*ofs = 3 + digits.size();
 			return std::string(output, sz);
 		}
 		else
@@ -100,7 +106,6 @@ namespace parser
 				i++;
 				switch(str[i])
 				{
-					// todo: handle hex sequences and stuff
 					case 'n':   ss << "\n"; break;
 					case 'b':   ss << "\b"; break;
 					case 'r':   ss << "\r"; break;
@@ -109,9 +114,12 @@ namespace parser
 					case '\\':  ss << "\\"; break;
 
 					case 'x':   // fallthrough
-					case 'u':
-						ss << parseHexEscapes(loc, std::string_view(str.c_str() + i, str.size() - i));
+					case 'u': {
+						size_t ofs = 0;
+						ss << parseHexEscapes(loc, std::string_view(str.c_str() + i, str.size() - i), &ofs);
+						i += ofs - 1;
 						break;
+					}
 
 					default:
 						ss << std::string("\\") + str[i];

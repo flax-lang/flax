@@ -451,6 +451,7 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
+		bool israw = false;
 		util::hash_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
 	};
 

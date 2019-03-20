@@ -23,7 +23,7 @@ namespace fir
 	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Struct with name '%s' already exists", name.str());
+			error("struct with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new StructType(name, members, packed));

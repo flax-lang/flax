@@ -8,12 +8,21 @@ import libc as _
 
 // import std::io
 // import std::map
+import std::opt
 
+@raw union unn {
+	foo: i64
+	bar: f64
+}
 
 @entry fn main()
 {
-}
+	var x: unn
+	x.bar = 3.14159
 
+	printf("x = %.2lf\n", x.bar)
+	printf("x = %d\n", x.foo)
+}
 
 
 /*

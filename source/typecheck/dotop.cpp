@@ -344,14 +344,27 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough
 	}
+	else if(type->isRawUnionType())
+	{
+		auto rut = type->toRawUnionType();
+		if(auto vr = dcast(ast::Ident, dotop->right))
+		{
+			if(rut->hasVariant(vr->name))
+			{
+				auto ret = util::pool<sst::FieldDotOp>(dotop->loc, rut->getVariant(vr->name));
+				ret->lhs = lhs;
+				ret->rhsIdent = vr->name;
+
+				return ret;
+			}
+
+			// again, fallthrough
+		}
+
+		// else: fallthrough
+	}
 
 	// TODO: plug in extensions here.
-
-
-	if(!type->isStructType() && !type->isClassType())
-	{
-		error(dotop->right, "unsupported right-side expression for dot operator on type '%s'", type);
-	}
 
 
 	// ok.
@@ -360,7 +373,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
-
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
@@ -736,7 +748,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 					// we should be able to pass in the infer value such that it works properly
 					// eg. let x: Foo<int> = Foo.none
 					SimpleError::make(dot->right->loc,
-						"unable to resolve type parameters for polymorphic union '%s' using variant '%s' (which has no values)",
+						"could not infer type parameters for polymorphic union '%s' using variant '%s' ",
 						unn->id.name, name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();
 				}
 				else if(wasfncall && unn->type->toUnionType()->getVariants()[name]->getInteriorType()->isVoidType())
