@@ -52,7 +52,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getInt64(0));
 
-			iceAssert(cs->isRefCountedType(ret->getType()));
+			iceAssert(fir::isRefCountedType(ret->getType()));
 			cs->addRefCountedValue(ret);
 
 			return CGResult(ret);

@@ -1063,6 +1063,50 @@ namespace fir
 		if(type->isArrayType())     return getAlignmentOfType(type->getArrayElementType());
 		else                        return getSizeOfType(type);
 	}
+
+
+	bool isRefCountedType(Type* type)
+	{
+		// strings, and structs with rc inside
+		if(type->isStructType())
+		{
+			for(auto m : type->toStructType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isClassType())
+		{
+			for(auto m : type->toClassType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isTupleType())
+		{
+			for(auto m : type->toTupleType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isArrayType())	// note: no slices, because slices don't own memory
+		{
+			return isRefCountedType(type->getArrayElementType());
+		}
+		else
+		{
+			return type->isStringType() || type->isAnyType() || type->isDynamicArrayType();
+		}
+	}
 }
 
 

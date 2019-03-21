@@ -240,7 +240,7 @@ namespace cgn
 		}
 		else
 		{
-			if(this->isRefCountedType(result->getType()))
+			if(fir::isRefCountedType(result->getType()))
 				this->addRefCountedValue(result);
 
 			return result;

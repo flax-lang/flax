@@ -32,7 +32,7 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 
 	//* also, since the vardefn adds itself to the counting stack, when it dies we will get decremented.
 	//* however, this cannot be allowed to happen, because we want a copy and not a move.
-	if(cs->isRefCountedType(res->getType()))
+	if(fir::isRefCountedType(res->getType()))
 	{
 		cs->addRefCountedValue(res.value);
 		cs->incrementRefCount(res.value);
