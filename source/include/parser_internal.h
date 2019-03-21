@@ -224,6 +224,8 @@ namespace parser
 			return this->loc();
 		}
 
+		std::vector<ast::TypeDefn*> anonymousTypeDefns;
+
 		std::string currentFilePath;
 
 		util::hash_map<std::string, parser::CustomOperatorDecl> binaryOps;
@@ -268,8 +270,10 @@ namespace parser
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
-	ast::StructDefn* parseStruct(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
+
+	ast::StructDefn* parseStruct(State& st, bool nameless);
+	ast::UnionDefn* parseUnion(State& st, bool israw, bool nameless);
 
 	ast::Expr* parseDollarExpr(State& st);
 
@@ -283,7 +287,6 @@ namespace parser
 	ast::LitNumber* parseNumber(State& st);
 	ast::LitString* parseString(State& st, bool israw);
 	ast::LitArray* parseArray(State& st, bool israw);
-	ast::UnionDefn* parseUnion(State& st, bool israw);
 
 	ast::Stmt* parseForLoop(State& st);
 	ast::IfStmt* parseIfStmt(State& st);

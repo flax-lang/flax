@@ -275,6 +275,9 @@ namespace parser
 			st.eat();
 		}
 
+		// throw in all anonymous types to the top level
+		root->statements.insert(root->statements.begin(), st.anonymousTypeDefns.begin(), st.anonymousTypeDefns.end());
+
 		return root;
 	}
 
