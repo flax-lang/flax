@@ -18,11 +18,6 @@ import std::opt
 // 	raw: u32
 // }
 
-@raw union unn
-{
-	bar: f64
-	foo: i64
-}
 
 struct foo
 {
@@ -32,13 +27,17 @@ struct foo
 
 @entry fn main()
 {
-	var x: unn
+	var x: @raw union {
+		bar: f64
+		foo: i64
+	}
 	x.bar = 3.14159
 
 	printf("x = %.2lf\n", x.bar)
 	printf("x = %d\n", x.foo)
 }
 
+// transparent fields!
 
 /*
 
@@ -119,6 +118,17 @@ import std::    map
 	15. builtin way to get a character literal {
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
+	}
+
+	16. operator overload errors {
+		something like this:
+
+		failed to resolve candidate for 'operator == (type_1, type_2)'
+		callsite was here: 'foo == bar'
+		potential candidates: 'operator == (type_1, type_3)'
+
+		ofc potential candidates should be limited to ones where at least one of the types
+		are similar.
 	}
 */
 

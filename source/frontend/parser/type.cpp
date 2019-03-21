@@ -119,16 +119,30 @@ namespace parser
 
 
 
-	StructDefn* parseStruct(State& st)
+	StructDefn* parseStruct(State& st, bool nameless)
 	{
+		static size_t anon_counter = 0;
+
 		iceAssert(st.front() == TT::Struct);
 		st.eat();
 
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'struct'", st.front().str());
-
 		StructDefn* defn = util::pool<StructDefn>(st.loc());
-		defn->name = st.eat().str();
+		if(nameless)
+		{
+			defn->name = strprintf("__anon_struct_%zu", anon_counter);
+		}
+		else
+		{
+			if(st.front() == TT::LBrace)
+				error(st, "declared structs (in non-type usage) must be named");
+
+			else if(st.front() != TT::Identifier)
+				expectedAfter(st, "identifier", "'struct'", st.front().str());
+
+			else
+				defn->name = st.eat().str();
+		}
+
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -212,22 +226,29 @@ namespace parser
 	}
 
 
-	UnionDefn* parseUnion(State& st, bool israw)
+	UnionDefn* parseUnion(State& st, bool israw, bool nameless)
 	{
+		static size_t anon_counter = 0;
 		iceAssert(st.front() == TT::Union);
 		st.eat();
 
-		if(st.front() != TT::Identifier)
+		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
+		if(nameless)
 		{
-			if(st.front() == TT::Var || st.front() == TT::Val)
-				error(st.loc(), "union fields are declared as 'name: type'; val/let is omitted");
+			defn->name = strprintf("__anon_union_%zu", anon_counter);
+		}
+		else
+		{
+			if(st.front() == TT::LBrace)
+				error(st, "declared unions (in non-type usage) must be named");
+
+			else if(st.front() != TT::Identifier)
+				expectedAfter(st, "identifier", "'union'", st.front().str());
 
 			else
-				expectedAfter(st, "identifier", "'union'", st.front().str());
+				defn->name = st.eat().str();
 		}
 
-		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
-		defn->name = st.eat().str();
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -256,7 +277,13 @@ namespace parser
 			st.skipWS();
 
 			if(st.front() != TT::Identifier)
-				expected(st.loc(), "identifier inside union body", st.front().str());
+			{
+				if(st.front() == TT::Var || st.front() == TT::Val)
+					error(st.loc(), "union fields are declared as 'name: type'; val/let is omitted");
+
+				else
+					expected(st.loc(), "identifier inside union body", st.front().str());
+			}
 
 			auto loc = st.loc();
 			pts::Type* type = 0;
@@ -630,6 +657,27 @@ namespace parser
 				return util::pool<pts::TupleType>(loc, types);
 			}
 		}
+		else if(st.front() == TT::Struct)
+		{
+			auto str = parseStruct(st, /* nameless: */ true);
+			st.anonymousTypeDefns.push_back(str);
+
+			return pts::NamedType::create(str->loc, str->name);
+		}
+		else if(st.front() == TT::Union || (st.front() == TT::Attr_Raw && st.lookahead(1) == TT::Union))
+		{
+			bool israw = st.front() == TT::Attr_Raw;
+			if(israw) st.eat();
+
+			auto unn = parseUnion(st, israw, /* nameless: */ true);
+			st.anonymousTypeDefns.push_back(unn);
+
+			return pts::NamedType::create(unn->loc, unn->name);
+		}
+		else if(st.front() == TT::Class)
+		{
+			error(st, "classes cannot be defined anonymously");
+		}
 		else
 		{
 			error(st, "unexpected token '%s' while parsing type", st.front().str());
@@ -637,7 +685,7 @@ namespace parser
 	}
 
 
-
+	// PAM == PolyArgMapping
 	PolyArgMapping_t parsePAMs(State& st, bool* failed)
 	{
 		iceAssert(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle);

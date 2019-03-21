@@ -145,13 +145,13 @@ namespace parser
 					if(st.front() != TT::Union)
 						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
 
-					return parseUnion(st, /* isRaw: */ true);
+					return parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
 
 				case TT::Union:
-					return parseUnion(st, /* isRaw: */ false);
+					return parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
 
 				case TT::Struct:
-					return parseStruct(st);
+					return parseStruct(st, /* nameless: */ false);
 
 				case TT::Class:
 					return parseClass(st);
