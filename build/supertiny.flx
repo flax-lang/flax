@@ -10,9 +10,24 @@ import libc as _
 // import std::map
 import std::opt
 
-@raw union unn {
-	foo: i64
+// @raw union ipv4_addr
+// {
+// 	_: struct {
+// 		bytes: [u8: 4]
+// 	}
+// 	raw: u32
+// }
+
+@raw union unn
+{
 	bar: f64
+	foo: i64
+}
+
+struct foo
+{
+	x: int
+	y: str
 }
 
 @entry fn main()

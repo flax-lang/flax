@@ -30,7 +30,7 @@ namespace saa_common
 
 	static fir::Function* generateIncrementArrayRefCountInLoopFunction(CodegenState* cs, fir::Type* elm)
 	{
-		iceAssert(cs->isRefCountedType(elm));
+		iceAssert(fir::isRefCountedType(elm));
 
 		auto fname = "__loop_incr_rc_" + elm->str();
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
@@ -396,7 +396,7 @@ namespace saa_common
 			lhs = cs->irb.SetSAALength(lhs, cs->irb.Add(lhslen, rhslen));
 
 			// handle refcounting
-			if(cs->isRefCountedType(getSAAElm(saa)))
+			if(fir::isRefCountedType(getSAAElm(saa)))
 			{
 				auto incrfn = generateIncrementArrayRefCountInLoopFunction(cs, getSAAElm(saa));
 				iceAssert(incrfn);
@@ -533,7 +533,7 @@ namespace saa_common
 				{
 					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(rawbuf, cs->irb.Add(lhsbytecount, rhsbytecount)));
 				}
-				else if(cs->isRefCountedType(getSAAElm(saa)))
+				else if(fir::isRefCountedType(getSAAElm(saa)))
 				{
 					auto incrfn = generateIncrementArrayRefCountInLoopFunction(cs, getSAAElm(saa));
 					iceAssert(incrfn);

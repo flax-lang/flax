@@ -13,72 +13,6 @@ using namespace lexer;
 namespace parser
 {
 	using TT = lexer::TokenType;
-	StructDefn* parseStruct(State& st)
-	{
-		iceAssert(st.front() == TT::Struct);
-		st.eat();
-
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'struct'", st.front().str());
-
-		StructDefn* defn = util::pool<StructDefn>(st.loc());
-		defn->name = st.eat().str();
-
-		// check for generic function
-		if(st.front() == TT::LAngle)
-		{
-			st.eat();
-			// parse generic
-			if(st.front() == TT::RAngle)
-				error(st, "empty type parameter lists are not allowed");
-
-			defn->generics = parseGenericTypeList(st);
-		}
-
-		st.skipWS();
-		if(st.front() != TT::LBrace)
-			expectedAfter(st, "'{'", "'struct'", st.front().str());
-
-		st.enterStructBody();
-
-		auto blk = parseBracedBlock(st);
-		for(auto s : blk->statements)
-		{
-			if(auto v = dcast(VarDefn, s))
-			{
-				if(v->type == pts::InferredType::get())
-					error(v, "struct fields must have types explicitly specified");
-
-				else if(v->initialiser)
-					error(v->initialiser, "struct fields cannot have inline initialisers");
-
-				defn->fields.push_back(v);
-			}
-			else if(auto f = dcast(FuncDefn, s))
-			{
-				defn->methods.push_back(f);
-			}
-			else if(auto t = dcast(TypeDefn, s))
-			{
-				defn->nestedTypes.push_back(t);
-			}
-			else if(dcast(InitFunctionDefn, s))
-			{
-				error(s, "structs cannot have user-defined initialisers");
-			}
-			else
-			{
-				error(s, "unsupported expression or statement in struct body");
-			}
-		}
-
-		for(auto s : blk->deferredStatements)
-			error(s, "unsupported expression or statement in struct body");
-
-		st.leaveStructBody();
-		return defn;
-	}
-
 
 	ClassDefn* parseClass(State& st)
 	{
@@ -185,6 +119,98 @@ namespace parser
 
 
 
+	StructDefn* parseStruct(State& st)
+	{
+		iceAssert(st.front() == TT::Struct);
+		st.eat();
+
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'struct'", st.front().str());
+
+		StructDefn* defn = util::pool<StructDefn>(st.loc());
+		defn->name = st.eat().str();
+
+		// check for generic function
+		if(st.front() == TT::LAngle)
+		{
+			st.eat();
+			// parse generic
+			if(st.front() == TT::RAngle)
+				error(st, "empty type parameter lists are not allowed");
+
+			defn->generics = parseGenericTypeList(st);
+		}
+
+		// unions don't inherit stuff (for now????) so we don't check for it.
+
+		st.skipWS();
+		if(st.eat() != TT::LBrace)
+			expectedAfter(st.ploc(), "opening brace", "'struct'", st.front().str());
+
+		st.enterStructBody();
+		st.skipWS();
+
+		size_t index = 0;
+		while(st.front() != TT::RBrace)
+		{
+			st.skipWS();
+
+			if(st.front() == TT::Identifier)
+			{
+				auto loc = st.loc();
+				std::string name = st.eat().str();
+
+				if(auto it = std::find_if(defn->fields.begin(), defn->fields.end(), [&name](const auto& p) -> bool {
+					return std::get<0>(p) == name;
+				}); it != defn->fields.end())
+				{
+					SimpleError::make(loc, "duplicate field '%s' in struct definition", name)
+						->append(SimpleError::make(MsgType::Note, std::get<1>(*it), "field '%s' previously defined here:", name))
+						->postAndQuit();
+				}
+
+				if(st.eat() != TT::Colon)
+					error(st.ploc(), "expected type specifier after field name in struct");
+
+				pts::Type* type = parseType(st);
+				defn->fields.push_back(std::make_tuple(name, loc, type));
+			}
+			else if(st.front() == TT::Func)
+			{
+				// ok parse a func as usual
+				defn->methods.push_back(parseFunction(st));
+			}
+			else if(st.front() == TT::Var || st.front() == TT::Val)
+			{
+				error(st.loc(), "struct fields are declared as 'name: type'; val/let is omitted");
+			}
+			else if(st.front() == TT::Static)
+			{
+				error(st.loc(), "structs cannot have static declarations");
+			}
+			else if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
+			{
+				st.pop();
+			}
+			else if(st.front() == TT::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				error(st.loc(), "unexpected token '%s' inside struct body", st.front().str());
+			}
+
+			index++;
+		}
+
+		iceAssert(st.front() == TT::RBrace);
+		st.eat();
+
+		st.leaveStructBody();
+		return defn;
+	}
+
 
 	UnionDefn* parseUnion(State& st, bool israw)
 	{
@@ -192,7 +218,13 @@ namespace parser
 		st.eat();
 
 		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'union'", st.front().str());
+		{
+			if(st.front() == TT::Var || st.front() == TT::Val)
+				error(st.loc(), "union fields are declared as 'name: type'; val/let is omitted");
+
+			else
+				expectedAfter(st, "identifier", "'union'", st.front().str());
+		}
 
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		defn->name = st.eat().str();

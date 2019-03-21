@@ -92,21 +92,6 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 		fs->typeDefnMap[str] = defn;
 	}
 
-
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
-	{
-		for(auto t : this->nestedTypes)
-		{
-			t->realScope = this->realScope + defn->id.name;
-			t->generateDeclaration(fs, 0, { });
-		}
-	}
-
-	fs->popTree();
-	fs->teleportToScope(oldscope);
-
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
 }
@@ -134,21 +119,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
 
-
 	std::vector<std::pair<std::string, fir::Type*>> tys;
-
-
-	for(auto t : this->nestedTypes)
-	{
-		auto tcr = t->typecheck(fs);
-		if(tcr.isParametric())  continue;
-		if(tcr.isError())       error(t, "failed to generate declaration for nested type '%s' in struct '%s'", t->name, this->name);
-
-		auto st = dcast(sst::TypeDefn, tcr.defn());
-		iceAssert(st);
-
-		defn->nestedTypes.push_back(st);
-	}
 
 
 	//* this is a slight misnomer, since we only 'enter' the struct body when generating methods.
@@ -158,7 +129,13 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	{
 		for(auto f : this->fields)
 		{
-			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs).defn());
+			auto vdef = util::pool<ast::VarDefn>(std::get<1>(f));
+			vdef->immut = false;
+			vdef->name = std::get<0>(f);
+			vdef->initialiser = nullptr;
+			vdef->type = std::get<2>(f);
+
+			auto v = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(v);
 
 			if(v->init) error(v, "struct fields cannot have inline initialisers");
@@ -187,36 +164,6 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	}
 	fs->leaveStructBody();
 
-
-	// do static things.
-	{
-		for(auto f : this->staticFields)
-		{
-			auto v = dcast(sst::VarDefn, f->typecheck(fs).defn());
-			iceAssert(v);
-
-			defn->staticFields.push_back(v);
-		}
-
-		// same deal so we can call them out of order.
-		for(auto m : this->staticMethods)
-		{
-			// infer is 0 because this is a static thing
-			auto res = m->generateDeclaration(fs, str, { });
-			if(res.isParametric())
-				error(m, "static methods of a type cannot be polymorphic (for now???)");
-
-			auto decl = dcast(sst::FunctionDefn, res.defn());
-			iceAssert(decl);
-
-			defn->staticMethods.push_back(decl);
-		}
-
-		for(auto m : this->staticMethods)
-		{
-			m->typecheck(fs, 0, { });
-		}
-	}
 
 
 	str->setBody(tys);

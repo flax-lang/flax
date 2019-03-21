@@ -70,7 +70,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		//* arguments are added to the refcounting list in the function,
 		//* so we need to "pre-increment" the refcount here, so it does not
 		//* get freed when the function returns.
-		if(cs->isRefCountedType(val->getType()))
+		if(fir::isRefCountedType(val->getType()))
 			cs->incrementRefCount(val);
 
 
@@ -263,7 +263,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	// do the refcounting if we need to
-	if(cs->isRefCountedType(ret->getType()))
+	if(fir::isRefCountedType(ret->getType()))
 		cs->addRefCountedValue(ret);
 
 	return CGResult(ret);

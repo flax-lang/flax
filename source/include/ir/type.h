@@ -45,6 +45,7 @@ namespace fir
 	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
 
 	int getCastDistance(Type* from, Type* to);
+	bool isRefCountedType(Type* ty);
 
 	enum class TypeKind
 	{

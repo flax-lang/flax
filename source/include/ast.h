@@ -391,13 +391,8 @@ namespace ast
 
 		std::vector<pts::Type*> bases;
 
-		std::vector<VarDefn*> fields;
+		std::vector<std::tuple<std::string, Location, pts::Type*>> fields;
 		std::vector<FuncDefn*> methods;
-
-		std::vector<VarDefn*> staticFields;
-		std::vector<FuncDefn*> staticMethods;
-
-		std::vector<TypeDefn*> nestedTypes;
 	};
 
 	struct ClassDefn : TypeDefn

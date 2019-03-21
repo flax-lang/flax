@@ -125,8 +125,10 @@ namespace poly
 					size_t i = 0;
 					for(auto f : str->fields)
 					{
-						fieldset.insert(f->name);
-						fieldNames[f->name] = i++;
+						auto nm = std::get<0>(f);
+
+						fieldset.insert(nm);
+						fieldNames[nm] = i++;
 					}
 				}
 
@@ -143,7 +145,8 @@ namespace poly
 				{
 					auto idx = fieldNames[s.first];
 
-					target[idx] = fir::LocatedType(convertPtsType(fs, str->generics, str->fields[idx]->type, session), str->fields[idx]->loc);
+					target[idx] = fir::LocatedType(convertPtsType(fs, str->generics, std::get<2>(str->fields[idx]), session),
+						std::get<1>(str->fields[idx]));
 					given[idx] = fir::LocatedType(input[s.second].value->type, input[s.second].loc);
 				}
 

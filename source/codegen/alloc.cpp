@@ -98,7 +98,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 					auto value = cs->getDefaultValue(type);
 
-					if(cs->isRefCountedType(type))
+					if(fir::isRefCountedType(type))
 						cs->addRefCountedValue(value);
 
 					cs->autoAssignRefCountedValue(ptr, value, true, true);

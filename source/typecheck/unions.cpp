@@ -88,6 +88,9 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			auto sfd = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(sfd);
 
+			if(fir::isRefCountedType(sfd->type))
+				error(sfd, "reference-counted type '%s' cannot be a member of a raw union", sfd->type);
+
 			fields[variant.first] = sfd;
 			types[variant.first] = sfd->type;
 		}

@@ -63,11 +63,7 @@ TESTSRC			:= build/tester.flx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx linux ci prep satest tiny osxflags
-
-prep:
-	@# echo C++ compiler is: $(CXX)
-	@mkdir -p $(dir $(OUTPUT))
+.PHONY: copylibs jit compile clean build osx linux ci satest tiny osxflags
 
 osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
@@ -75,7 +71,7 @@ osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWAR
 osxflags:
 
 
-osx: prep jit osxflags
+osx: jit osxflags
 
 satest: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
@@ -99,7 +95,9 @@ test: build
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
-build: $(OUTPUT) prep copylibs
+build1:
+
+build: build1 $(OUTPUT) copylibs
 	# built
 
 build/%.flx: build
@@ -116,6 +114,7 @@ copylibs: $(FLXSRC)
 
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
+	@mkdir -p $(dir $(OUTPUT))
 	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 
 
