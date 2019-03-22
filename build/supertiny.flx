@@ -30,16 +30,19 @@ struct foo
 {
 	do {
 		var addr: ipv4
-		addr.raw = 123445;
+		// addr.raw = -16668480;
+		addr.raw = 0xff01a8c0;
 
-		addr.bytes[0] = 192
-		addr.bytes[1] = 168
-		addr.bytes[2] = 1
-		addr.bytes[3] = 1
+		printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
+
+		// addr._.bytes[0] = 192
+		// addr._.bytes[1] = 168
+		// addr._.bytes[2] = 1
+		// addr._.bytes[3] = 1
 	}
 
 
-	do {
+	/* do {
 		var x: @raw union {
 			bar: f64
 			foo: i64
@@ -49,7 +52,7 @@ struct foo
 
 		printf("x = %.2lf\n", x.bar)
 		printf("x = %d\n", x.foo)
-	}
+	} */
 }
 
 

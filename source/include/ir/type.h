@@ -148,6 +148,7 @@ namespace fir
 		bool isIntegerType();
 		bool isFunctionType();
 		bool isSignedIntType();
+		bool isUnsignedIntType();
 		bool isFloatingPointType();
 
 		bool isArraySliceType();
