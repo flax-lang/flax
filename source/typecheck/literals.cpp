@@ -40,6 +40,9 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	size_t bits = mpfr_min_prec(mpfr::mpreal(this->num.substr(0, this->num.size() - 1) + "9").mpfr_ptr());
 
 	printf("number %s: %d / %d\n", number.toString().c_str(), sgn, bits);
+
+	printf("bits for %s: %d\n", this->num.c_str(), mpfr_min_prec(mpfr::mpreal(this->num).mpfr_ptr()));
+
 	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
 	ret->num = mpfr::mpreal(this->num);
 
