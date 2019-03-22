@@ -92,32 +92,69 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::Type* sty = 0;
 	auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
-	if(this->lhs->type->isRawUnionType())
+
+	// TODO: clean up the code dupe here
+	if(this->isTransparentField)
 	{
-		fir::Value* field = 0;
-		if(res->islorclvalue())
+		iceAssert(this->lhs->type->isRawUnionType() || this->lhs->type->isStructType());
+		if(this->lhs->type->isRawUnionType())
 		{
-			field = cs->irb.GetRawUnionField(res.value, this->rhsIdent);
+			fir::Value* field = 0;
+			if(res->islorclvalue())
+			{
+				field = cs->irb.GetRawUnionFieldByType(res.value, this->type);
+			}
+			else
+			{
+				auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
+				field = cs->irb.GetRawUnionFieldByType(addr, this->type);
+			}
+
+			return CGResult(field);
 		}
 		else
 		{
-			auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
-			field = cs->irb.GetRawUnionField(addr, this->rhsIdent);;
+			if(res->islorclvalue())
+			{
+				// ok, at this point it's just a normal, instance field.
+				return CGResult(cs->irb.StructGEP(res.value, this->indexOfTransparentField));
+			}
+			else
+			{
+				// use extractvalue.
+				return CGResult(cs->irb.ExtractValue(res.value, { this->indexOfTransparentField }));
+			}
 		}
-
-		return CGResult(field);
 	}
 	else
 	{
-		if(res->islorclvalue())
+		if(this->lhs->type->isRawUnionType())
 		{
-			// ok, at this point it's just a normal, instance field.
-			return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
+			fir::Value* field = 0;
+			if(res->islorclvalue())
+			{
+				field = cs->irb.GetRawUnionField(res.value, this->rhsIdent);
+			}
+			else
+			{
+				auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
+				field = cs->irb.GetRawUnionField(addr, this->rhsIdent);
+			}
+
+			return CGResult(field);
 		}
 		else
 		{
-			// use extractvalue.
-			return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent));
+			if(res->islorclvalue())
+			{
+				// ok, at this point it's just a normal, instance field.
+				return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
+			}
+			else
+			{
+				// use extractvalue.
+				return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent));
+			}
 		}
 	}
 }

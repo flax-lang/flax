@@ -65,8 +65,70 @@ static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Locati
 
 
 
+static sst::FieldDotOp* resolveFieldNameDotOp(sst::TypecheckState* fs, sst::TypeDefn* defn, sst::Expr* lhs,
+	const std::vector<sst::StructFieldDefn*>& fields, const Location& loc, const std::string& name)
+{
+	size_t idx = 0;
+	for(auto df : fields)
+	{
+		if(df->id.name == name)
+		{
+			auto ret = util::pool<sst::FieldDotOp>(loc, df->type);
+			ret->lhs = lhs;
+			ret->rhsIdent = name;
+
+			return ret;
+		}
+		else if(df->isTransparentField)
+		{
+			auto ty = df->type;
+			assert(ty->isRawUnionType() || ty->isStructType());
+
+			auto defn = fs->typeDefnMap[ty];
+			iceAssert(defn);
+
+			std::vector<sst::StructFieldDefn*> flds;
+			if(auto str = dcast(sst::StructDefn, defn); str)
+				flds = str->fields;
+
+			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
+				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; });
+
+			else
+				error(loc, "what kind of type is this? '%s'", ty);
 
 
+			// hmm.
+			auto hmm = sst::FieldDotOp(loc, df->type);
+
+			hmm.lhs = lhs;
+			hmm.rhsIdent = "";
+			hmm.isTransparentField = true;
+			hmm.indexOfTransparentField = idx;
+
+			auto hmm2 = resolveFieldNameDotOp(fs, defn, &hmm, flds, loc, name);
+			if(hmm2)
+			{
+				// make 'hmm' into a pool node.
+				iceAssert(hmm2->lhs == &hmm);
+
+				auto real = util::pool<sst::FieldDotOp>(hmm.loc, hmm.type);
+				real->lhs = lhs;
+				real->rhsIdent = "";
+				real->isTransparentField = true;
+				real->indexOfTransparentField = idx;
+
+				hmm2->lhs = real;
+
+				return hmm2;
+			}
+		}
+
+		idx += 1;
+	}
+
+	return nullptr;
+}
 
 
 
@@ -344,27 +406,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough
 	}
-	else if(type->isRawUnionType())
-	{
-		auto rut = type->toRawUnionType();
-		if(auto vr = dcast(ast::Ident, dotop->right))
-		{
-			if(rut->hasVariant(vr->name))
-			{
-				auto ret = util::pool<sst::FieldDotOp>(dotop->loc, rut->getVariant(vr->name));
-				ret->lhs = lhs;
-				ret->rhsIdent = vr->name;
 
-				return ret;
-			}
-
-			// again, fallthrough
-		}
-
-		// else: fallthrough
-	}
-
-	// TODO: plug in extensions here.
 
 
 	// ok.
@@ -485,23 +527,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		else if(auto fld = dcast(ast::Ident, dotop->right))
 		{
 			auto name = fld->name;
-
 			{
 				auto copy = str;
 
 				while(copy)
 				{
-					for(auto f : copy->fields)
-					{
-						if(f->id.name == name)
-						{
-							auto ret = util::pool<sst::FieldDotOp>(dotop->loc, f->type);
-							ret->lhs = lhs;
-							ret->rhsIdent = name;
-
-							return ret;
-						}
-					}
+					auto hmm = resolveFieldNameDotOp(fs, copy, lhs, copy->fields, dotop->loc, name);
+					if(hmm) return hmm;
 
 					// ok, we didn't find it.
 					if(auto cls = dcast(sst::ClassDefn, copy); cls)
@@ -586,10 +618,33 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			error(dotop->right, "unsupported right-side expression for dot-operator on type '%s'", str->id.name);
 		}
 	}
+	else if(auto rnn = dcast(sst::RawUnionDefn, defn))
+	{
+		if(auto fld = dcast(ast::Ident, dotop->right))
+		{
+			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; });
+			auto hmm = resolveFieldNameDotOp(fs, rnn, lhs, flds, dotop->loc, fld->name);
+			if(hmm)
+			{
+				return hmm;
+			}
+			else
+			{
+				// ok we didn't return. this is a raw union so extensions R NOT ALLOWED!! (except methods maybe)
+				error(fld, "union '%s' has no member named '%s'", rnn->id.name, fld->name);
+			}
+		}
+		else
+		{
+			error(dotop->right, "unsupported right-side expression for dot-operator on type '%s'", defn->id.name);
+		}
+	}
 	else
 	{
 		error(lhs, "unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
+
+	// TODO: plug in extensions here!!
 }
 
 

@@ -417,6 +417,9 @@ namespace sst
 		Expr* lhs = 0;
 		std::string rhsIdent;
 		bool isMethodRef = false;
+
+		bool isTransparentField = false;
+		size_t indexOfTransparentField = 0;
 	};
 
 	struct MethodDotOp : Expr
@@ -679,6 +682,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
 
 		TypeDefn* parentType = 0;
+		bool isTransparentField = false;
 	};
 
 	struct ClassInitialiserDefn : FunctionDefn
