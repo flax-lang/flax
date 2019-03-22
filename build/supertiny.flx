@@ -10,13 +10,14 @@ import libc as _
 // import std::map
 import std::opt
 
-// @raw union ipv4_addr
-// {
-// 	_: struct {
-// 		bytes: [u8: 4]
-// 	}
-// 	raw: u32
-// }
+@raw union ipv4
+{
+	_: struct {
+		bytes: [u8: 4]
+	}
+
+	raw: u32
+}
 
 
 struct foo
@@ -27,17 +28,32 @@ struct foo
 
 @entry fn main()
 {
-	var x: @raw union {
-		bar: f64
-		foo: i64
-	}
-	x.bar = 3.14159
+	do {
+		var addr: ipv4
+		addr.raw = 123445;
 
-	printf("x = %.2lf\n", x.bar)
-	printf("x = %d\n", x.foo)
+		addr.bytes[0] = 192
+		addr.bytes[1] = 168
+		addr.bytes[2] = 1
+		addr.bytes[3] = 1
+	}
+
+
+	do {
+		var x: @raw union {
+			bar: f64
+			foo: i64
+		}
+
+		x.bar = 3.14159
+
+		printf("x = %.2lf\n", x.bar)
+		printf("x = %d\n", x.foo)
+	}
 }
 
-// transparent fields!
+
+
 
 /*
 
@@ -59,6 +75,14 @@ import std::    map
 
 
 /*
+	!!! bugs (2) !!!
+	!!! 22/03/19
+	{
+		1. we currently check whether you are trying to put a refcounted type as a field of a raw union. however!
+			you can circumvent this check if you nest the field into inner types, or if you use transparent fields!!
+	}
+
+
 	! bugs !!!
 	! 02/12
 	{

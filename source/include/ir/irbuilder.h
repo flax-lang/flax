@@ -97,6 +97,10 @@ namespace fir
 		// given an l or cl value of raw_union type, return an l or cl value of the correct type of the field
 		Value* GetRawUnionField(Value* lval, const std::string& field, const std::string& vname = "");
 
+		// same as the above, but give it a type instead -- this is hacky cos it's not checked.
+		// the backend will just do some pointer magic regardless, so it doesn't really matter.
+		Value* GetRawUnionFieldByType(Value* lval, Type* type, const std::string& vname = "");
+
 		// equivalent to GEP(ptr*, 0, memberIndex)
 		Value* GetStructMember(Value* ptr, const std::string& memberName);
 		Value* StructGEP(Value* structPtr, size_t memberIndex, const std::string& vname = "");
