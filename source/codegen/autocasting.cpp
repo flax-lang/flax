@@ -29,14 +29,14 @@ namespace cgn
 		}
 		else
 		{
-				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-					return fir::ConstantInt::getInt64(cn->getInt64());
+			if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
+				return fir::ConstantInt::getInt64(cn->getInt64());
 
-				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
-					return fir::ConstantInt::getUint64(cn->getUint64());
+			else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
+				return fir::ConstantInt::getUint64(cn->getUint64());
 
-				else
-					error("int overflow");
+			else
+				error("int overflow");
 		}
 	}
 
@@ -65,7 +65,7 @@ namespace cgn
 		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
 		{
 			// TODO: actually do what we say.
-			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; resulting value will be the limit of the casted type",
+			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
 				target);
 		}
 

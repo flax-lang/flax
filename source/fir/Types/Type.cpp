@@ -608,6 +608,11 @@ namespace fir
 		return this->isIntegerType() && this->toPrimitiveType()->isSigned();
 	}
 
+	bool Type::isUnsignedIntType()
+	{
+		return this->isIntegerType() && !this->toPrimitiveType()->isSigned();
+	}
+
 	bool Type::isFunctionType()
 	{
 		return this->kind == TypeKind::Function;

@@ -15,8 +15,12 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// set base = 0 to autodetect.
-	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), /* base: */ 0);
+	// i don't think mpfr auto-detects base, LMAO
+	int base = 10;
+	if(this->num.find("0x") == 0 || this->num.find("0X") == 0)
+		base = 16;
+
+	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
 	bool sgn = mpfr::signbit(number);
 	bool flt = !mpfr::isint(number);
 
@@ -35,6 +39,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	size_t bits = mpfr_min_prec(mpfr::mpreal(this->num.substr(0, this->num.size() - 1) + "9").mpfr_ptr());
 
+	printf("number %s: %d / %d\n", number.toString().c_str(), sgn, bits);
 	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
 	ret->num = mpfr::mpreal(this->num);
 

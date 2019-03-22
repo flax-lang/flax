@@ -238,15 +238,18 @@ namespace parser
 	{
 		switch(t)
 		{
-			// () and [] have the same precedence.
-			// not sure if this should stay -- works for now.
+			case TT::DoubleColon:
+				return 5000;
+
 			case TT::LParen:
-			case TT::LSquare:
 				return 2000;
 
 			case TT::Period:
-			case TT::DoubleColon:
+				return 1500;
+
+			case TT::LSquare:
 				return 1000;
+
 
 			// unary !
 			// unary +/-
