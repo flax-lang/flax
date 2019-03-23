@@ -4,7 +4,8 @@
 
 export supertiny
 
-import libc as _
+// import libc as _
+import libc
 
 // import std::io
 // import std::map
@@ -28,18 +29,19 @@ struct foo
 
 @entry fn main()
 {
-	do {
-		var addr: ipv4
-		// addr.raw = -16668480;
-		addr.raw = 0xff01a8c0;
+	libc::printf("hello world %d\n", 1)
+	// do {
+	// 	var addr: ipv4
+	// 	// addr.raw = -16668480;
+	// 	addr.raw = 0xff01a8c0;
 
-		printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
+	// 	printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
 
-		// addr._.bytes[0] = 192
-		// addr._.bytes[1] = 168
-		// addr._.bytes[2] = 1
-		// addr._.bytes[3] = 1
-	}
+	// 	// addr._.bytes[0] = 192
+	// 	// addr._.bytes[1] = 168
+	// 	// addr._.bytes[2] = 1
+	// 	// addr._.bytes[3] = 1
+	// }
 
 
 	/* do {

@@ -343,10 +343,13 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto ft = fn->getType()->toFunctionType();
 
-	if(ft->getArgumentTypes().size() != this->arguments.size() && !ft->isVariadicFunc())
+	if(ft->getArgumentTypes().size() != this->arguments.size())
 	{
-		error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
-			ft->getArgumentTypes().size(), this->arguments.size());
+		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentTypes().size())
+		{
+			error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
+				ft->getArgumentTypes().size(), this->arguments.size());
+		}
 	}
 
 	std::vector<FnCallArgument> fcas = util::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
