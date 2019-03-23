@@ -235,7 +235,7 @@ llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_dir
 		the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
+		# the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),
