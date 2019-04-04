@@ -448,6 +448,8 @@ namespace ast
 
 		bool israw = false;
 		util::hash_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
+
+		std::vector<std::pair<Location, pts::Type*>> transparentFields;
 	};
 
 	struct TypeExpr : Expr

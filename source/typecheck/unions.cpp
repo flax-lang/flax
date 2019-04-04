@@ -9,6 +9,13 @@
 #include "ir/type.h"
 #include "mpool.h"
 
+// defined in typecheck/structs.cpp
+void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc);
+
+
+
+
+
 TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
@@ -74,6 +81,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		//* to enter the struct body.
 
 		fs->enterStructBody(defn);
+		auto unionTy = defn->type->toRawUnionType();
 
 		util::hash_map<std::string, fir::Type*> types;
 		util::hash_map<std::string, sst::StructFieldDefn*> fields;
@@ -91,13 +99,14 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			if(fir::isRefCountedType(sfd->type))
 				error(sfd, "reference-counted type '%s' cannot be a member of a raw union", sfd->type);
 
-			fields[variant.first] = sfd;
-			types[variant.first] = sfd->type;
+			checkFieldRecursion(fs, unionTy, sfd->type, sfd->loc);
+
+			fields[vdef->name] = sfd;
+			types[vdef->name] = sfd->type;
 		}
 
 		defn->fields = fields;
 
-		auto unionTy = defn->type->toRawUnionType();
 		unionTy->setBody(types);
 
 		fs->leaveStructBody();
@@ -110,6 +119,9 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		util::hash_map<std::string, std::pair<size_t, fir::Type*>> vars;
 		std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
+
+		iceAssert(this->transparentFields.empty());
+
 		for(auto variant : this->cases)
 		{
 			vars[variant.first] = { std::get<0>(variant.second), (std::get<2>(variant.second)
