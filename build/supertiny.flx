@@ -4,8 +4,7 @@
 
 export supertiny
 
-// import libc as _
-import libc
+import libc as _
 
 // import std::io
 // import std::map
@@ -15,6 +14,10 @@ import std::opt
 {
 	_: struct {
 		bytes: [u8: 4]
+	}
+
+	_: struct {
+		raw2: u32
 	}
 
 	raw: u32
@@ -29,19 +32,38 @@ struct foo
 
 @entry fn main()
 {
-	libc::printf("hello world %d\n", 1)
-	// do {
-	// 	var addr: ipv4
-	// 	// addr.raw = -16668480;
-	// 	addr.raw = 0xff01a8c0;
+	do {
+		var addr: ipv4
+		// addr.raw = -16668480;
+		addr.raw = 0xff01a8c0;
 
-	// 	printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
+		printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
 
-	// 	// addr._.bytes[0] = 192
-	// 	// addr._.bytes[1] = 168
-	// 	// addr._.bytes[2] = 1
-	// 	// addr._.bytes[3] = 1
-	// }
+		/*
+			todo list
+
+			1. implement the collapseAndCollectTransparentFields() function.
+
+			2. check for duplicate fields in totality
+
+			3. figure out the modifications necessary to dotops to achieve transparent access
+
+			4. figure out how to coerce the codegen/ir type layer to handle this crap
+				stuff like duplicate names of "_" in the IR need to be handled somehow
+				("transparent_field_0" anonymous name?)
+
+				ir codegen currently grabs fields using names, which obviously won't work well
+				here... we could legitimise transparent fields in the IR, but that's quite pointless
+				and useless, definitely smells like a frontend feature, not a backend one.
+		*/
+
+		// addr._.bytes[0] = 192
+		// addr._.bytes[1] = 168
+		// addr._.bytes[2] = 1
+		// addr._.bytes[3] = 1
+
+
+	}
 
 
 	/* do {

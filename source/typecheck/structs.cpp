@@ -37,15 +37,30 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 		for(auto f : field->toStructType()->getElements())
 			_checkFieldRecursion(fs, field, f, floc, seeing);
 	}
+	else if(field->isRawUnionType())
+	{
+		for(auto f : field->toRawUnionType()->getVariants())
+			_checkFieldRecursion(fs, field, f.second, floc, seeing);
+	}
 
 	// ok, we should be fine...?
 }
 
+// used in typecheck/unions.cpp and typecheck/classes.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
 {
 	std::set<fir::Type*> seeing;
 	_checkFieldRecursion(fs, strty, field, floc, seeing);
 }
+
+
+
+// std::vector
+
+
+
+
+
 
 
 
@@ -122,9 +137,6 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
-	//* this is a slight misnomer, since we only 'enter' the struct body when generating methods.
-	//* for all intents and purposes, static methods (aka functions) don't really need any special
-	//* treatment anyway, apart from living in a special namespace -- so this should really be fine.
 	fs->enterStructBody(defn);
 	{
 		for(auto f : this->fields)
@@ -137,8 +149,6 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 			auto v = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(v);
-
-			if(v->init) error(v, "struct fields cannot have inline initialisers");
 
 			defn->fields.push_back(v);
 			tys.push_back({ v->id.name, v->type });
