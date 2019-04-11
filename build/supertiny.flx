@@ -16,9 +16,9 @@ import std::opt
 		bytes: [u8: 4]
 	}
 
-	_: struct {
-		raw2: u32
-	}
+	// _: struct {
+	// 	raw2: u32
+	// }
 
 	raw: u32
 }
@@ -37,7 +37,7 @@ struct foo
 		// addr.raw = -16668480;
 		addr.raw = 0xff01a8c0;
 
-		printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
+		printf("%d.%d.%d.%d\n", addr.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
 
 		/*
 			todo list
