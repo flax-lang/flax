@@ -11,7 +11,7 @@
 
 // defined in typecheck/structs.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc);
-
+void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields);
 
 
 
@@ -83,13 +83,16 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		util::hash_map<std::string, fir::Type*> types;
 		util::hash_map<std::string, sst::StructFieldDefn*> fields;
-		for(auto variant : this->cases)
-		{
-			auto vdef = util::pool<ast::VarDefn>(std::get<1>(variant.second));
+
+
+
+		auto make_field = [fs, unionTy](const std::string& name, const Location& loc, pts::Type* ty) -> sst::StructFieldDefn* {
+
+			auto vdef = util::pool<ast::VarDefn>(loc);
 			vdef->immut = false;
-			vdef->name = variant.first;
+			vdef->name = name;
 			vdef->initialiser = nullptr;
-			vdef->type = std::get<2>(variant.second);
+			vdef->type = ty;
 
 			auto sfd = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(sfd);
@@ -98,45 +101,46 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 				error(sfd, "reference-counted type '%s' cannot be a member of a raw union", sfd->type);
 
 			checkFieldRecursion(fs, unionTy, sfd->type, sfd->loc);
+			return sfd;
+		};
 
-			fields[vdef->name] = sfd;
-			types[vdef->name] = sfd->type;
+		std::vector<sst::StructFieldDefn*> tfields;
+		std::vector<sst::StructFieldDefn*> allFields;
+
+		for(auto variant : this->cases)
+		{
+			auto sfd = make_field(variant.first, std::get<1>(variant.second), std::get<2>(variant.second));
+			iceAssert(sfd);
+
+			fields[sfd->id.name] = sfd;
+			types[sfd->id.name] = sfd->type;
+
+			allFields.push_back(sfd);
 		}
 
-		defn->fields = fields;
 
 		// do the transparent fields
-		// TODO: cleanup code dupe here.
-		std::vector<sst::StructFieldDefn*> tfields;
 		{
 			size_t tfn = 0;
 			for(auto [ loc, pty ] : this->transparentFields)
 			{
-				auto vdef = util::pool<ast::VarDefn>(loc);
-				vdef->immut = false;
-				vdef->name = strprintf("__transparent_field_%zu", tfn++);
-				vdef->initialiser = nullptr;
-				vdef->type = pty;
-
-				auto sfd = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
+				auto sfd = make_field(strprintf("__transparent_field_%zu", tfn++), loc, pty);
 				iceAssert(sfd);
 
-				if(fir::isRefCountedType(sfd->type))
-					error(sfd, "reference-counted type '%s' cannot be a member of a raw union", sfd->type);
-
-				checkFieldRecursion(fs, unionTy, sfd->type, sfd->loc);
+				sfd->isTransparentField = true;
 
 				// still add to the types, cos we need to compute sizes and stuff
-				types[vdef->name] = sfd->type;
-
-				sfd->isTransparentField = true;
+				types[sfd->id.name] = sfd->type;
 				tfields.push_back(sfd);
+				allFields.push_back(sfd);
 			}
-
-			defn->transparentFields = tfields;
 		}
 
+		checkTransparentFieldRedefinition(fs, defn, allFields);
 
+
+		defn->fields = fields;
+		defn->transparentFields = tfields;
 
 
 

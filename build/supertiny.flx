@@ -12,6 +12,13 @@ import std::opt
 
 @raw union ipv4
 {
+	// _: struct {
+	// 	_: union {
+	// 		bytes: [u8: 4]
+	// 		raw3: u32
+	// 	}
+	// }
+
 	_: struct {
 		bytes: [u8: 4]
 	}
