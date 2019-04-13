@@ -53,9 +53,52 @@ void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* f
 	_checkFieldRecursion(fs, strty, field, floc, seeing);
 }
 
+static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
+	util::hash_map<std::string, Location>& seen)
+{
+	for(auto fld : fields)
+	{
+		if(fld->isTransparentField)
+		{
+			auto ty = fld->type;
+			assert(ty->isRawUnionType() || ty->isStructType());
 
+			auto defn = fs->typeDefnMap[ty];
+			iceAssert(defn);
 
-// std::vector
+			std::vector<sst::StructFieldDefn*> flds;
+			if(auto str = dcast(sst::StructDefn, defn); str)
+				flds = str->fields;
+
+			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
+				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+
+			else
+				error(fs->loc(), "what kind of type is this? '%s'", ty);
+
+			_checkTransparentFieldRedefinition(fs, defn, flds, seen);
+		}
+		else
+		{
+			if(auto it = seen.find(fld->id.name); it != seen.end())
+			{
+				SimpleError::make(fld->loc, "redefinition of transparently accessible field '%s'", fld->id.name)
+					->append(SimpleError::make(MsgType::Note, it->second, "previous definition was here:"))
+					->postAndQuit();
+			}
+			else
+			{
+				seen[fld->id.name] = fld->loc;
+			}
+		}
+	}
+}
+
+void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields)
+{
+	util::hash_map<std::string, Location> seen;
+	_checkTransparentFieldRedefinition(fs, defn, fields, seen);
+}
 
 
 

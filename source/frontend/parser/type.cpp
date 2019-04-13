@@ -243,7 +243,7 @@ namespace parser
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_union_%zu", anon_counter);
+			defn->name = strprintf("__anon_union_%zu", anon_counter++);
 		}
 		else
 		{
