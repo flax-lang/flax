@@ -92,7 +92,7 @@ static sst::FieldDotOp* resolveFieldNameDotOp(sst::TypecheckState* fs, sst::Type
 				flds = str->fields;
 
 			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
-				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; });
+				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
 
 			else
 				error(loc, "what kind of type is this? '%s'", ty);
@@ -622,7 +622,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	{
 		if(auto fld = dcast(ast::Ident, dotop->right))
 		{
-			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; });
+			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; }) + rnn->transparentFields;
 			auto hmm = resolveFieldNameDotOp(fs, rnn, lhs, flds, dotop->loc, fld->name);
 			if(hmm)
 			{
