@@ -105,6 +105,42 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		defn->fields = fields;
 
+		// do the transparent fields
+		// TODO: cleanup code dupe here.
+		std::vector<sst::StructFieldDefn*> tfields;
+		{
+			size_t tfn = 0;
+			for(auto [ loc, pty ] : this->transparentFields)
+			{
+				auto vdef = util::pool<ast::VarDefn>(loc);
+				vdef->immut = false;
+				vdef->name = strprintf("__transparent_field_%zu", tfn++);
+				vdef->initialiser = nullptr;
+				vdef->type = pty;
+
+				auto sfd = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
+				iceAssert(sfd);
+
+				if(fir::isRefCountedType(sfd->type))
+					error(sfd, "reference-counted type '%s' cannot be a member of a raw union", sfd->type);
+
+				checkFieldRecursion(fs, unionTy, sfd->type, sfd->loc);
+
+				// still add to the types, cos we need to compute sizes and stuff
+				types[vdef->name] = sfd->type;
+
+				sfd->isTransparentField = true;
+				tfields.push_back(sfd);
+			}
+
+			defn->transparentFields = tfields;
+		}
+
+
+
+
+
+
 		unionTy->setBody(types);
 
 		fs->leaveStructBody();
