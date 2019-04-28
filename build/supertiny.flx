@@ -46,6 +46,20 @@ struct foo
 		printf("%d.%d.%d.%d\n", addr.bytes[0], addr.bytes[1], addr.bytes[2], addr.bytes[3]);
 	}
 
+	do {
+		var x: int
+		var y: int
+
+		(x, y) = (30, 40)
+		(x, y) = (y, x)
+
+		printf("%d, %d\n", x, y)
+	}
+
+	do {
+		let k = foo(a: "20", b: 31)
+	}
+
 
 	/* do {
 		var x: @raw union {
@@ -83,53 +97,26 @@ import std::    map
 
 
 /*
-	!!! bugs (2) !!!
-	!!! 22/03/19
+	! bugs 2 !
+	! 29/04
 	{
-		1. we currently check whether you are trying to put a refcounted type as a field of a raw union. however!
-			you can circumvent this check if you nest the field into inner types, or if you use transparent fields!!
+		1. we're not verifying/typechecking constructor arguments to structs *at all*. I feel like `verifyStructConstructorArguments` was
+			the prince that was promised, but it does 0 checking and we fallthrough to IR-level type mismatches.
+
+			like if the first argument was positional, then all the checking goes out the window or something like that, and we
+			don't even check the field names or whatever.
 	}
 
 
-	! bugs !!!
-	! 02/12
+	! bugs !
 	{
-		// 1. implicit method calling don't seem to work any more... strangely. done a cursory search for our
-		// 	'SELF HANDLING' markers, but i can't seem to find the actual place where we *insert* the argument??
-		// 	only where we insert the /parameter/ ...
-
-		// 	i think this is less of a bug and more of an omission when we first started taking out the
-		// 	haphazard self-handling.
-
-		// 2. see anytest.flx -- the last segment, with (x as Large).c has some kind of corruption.
-		// 	we're getting bogus values on debug builds of the compiler?? which means there's some kind of UB going on
-		// 	in the compiler itself...
-
-		// 	expected: a = 631, b = 20, c = 173/30, d = 40, e = 50
-		// 	actual:   a = 631, b = 20, c = 173/-572662307, d = 40, e = 50
-
-		// 	note: it's 0xDDDDDDDD in hex, and according to The Internet (tm), that marks FREED MEMORY!
-
-		// 3. after we enabled referring to types by name in any scope (see typecheck/variable.cpp), we have an issue because
-		// 	they're in the same namespace! we give super suboptimal error messages when we try to use a type as a value, or
-		// 	when we name a variable the same as a type (ie trying to use a value as a type!)
-
-		4. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
+		1. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
 			eg: std::opt::some!<str> works, which is a little strange.
 			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
 			get treated like a function call (and so finds no functions!)
 
-		// 5. nested functions 'capture' the scope at which they are defined -- including variables!
-		// 	this is Bad News(tm) because we don't support closures, but the typechecker (and codegen) sees the variable 'in scope', and doesn't
-		// 	complain. need to figure out a way around this!!!
-
-	}
-
-	! more things.
-	! caa 03/10
-	{
 		2. splatting tuples into a generic function *will not work*
-		4. pass the overall location to the polymorph solver.
+		3. pass the overall location to the polymorph solver.
 	}
 
 
@@ -143,10 +130,7 @@ import std::    map
 			- do we duplicate the context?
 			- if not then???
 	}
-	// 12. allow generic solver to infer things from generic types passed in {
-	// 	eg: fn foobar<A, B>(a: Qux<T: A>, b: Qux<T: B>) => ...
-	// 	foobar(Qux<T: i64>(), Qux<T: str>()) should infer that A = i64 and B = str.
-	// }
+
 	15. builtin way to get a character literal {
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
@@ -162,61 +146,52 @@ import std::    map
 		ofc potential candidates should be limited to ones where at least one of the types
 		are similar.
 	}
+
+	17. better errors for ref-counting legality {
+		when throwing an error due to having a ref-counted type in unsupported places (like in a raw-union), we
+		should let the compiler show which member made the struct refcounted (because having a RC field in a struct
+		makes that struct RC), since the 'root cause' could be nested very deep in the type hierarchy somewhere.
+
+		eg.
+		error: reference-counted type 'foo' cannot be a member of a raw-union:
+		 39 |    bar: foo
+
+		note:  'foo' inherits reference-counting from indirectly containing a field with a reference-counted type:
+		 303 |   blabla: string
+
+		note:  this is the type hierarchy leading from 'foo' leading to the type in question:
+		       (foo <- qux <- some_type_t <- ... <- some_struct <- string)
+
+
+		of course it would be nice if we can selectively print more context and omit stuff in the middle, like this:
+
+		10  |    struct some_struct {
+		... |       ...
+		391 |       blabla: string
+		    |
+
+		something like that. detecting indentation would be a little tricky if we want to correctly indent the
+		'...' that would appear in the struct body.
+
+		actually having a proper API to set up this kind of error message would be a tough one as well...
+	}
+
+	18. figure out how constructors should work with transparent fields {
+
+		i don't really feel like testing it out now, but more than likely it will not work properly, or at all.
+
+		the ideal case is to enforce named arguments if the type has transparency, since we also enforce that you can't have
+		fields with the same name that are accessible at the same "level".
+
+		that should be fine I guess, but we have to make provisions for initialising all the intermediate structs/unions
+		etc.
+
+		also there's currently a massive bug with struct constructors. how nice.
+	}
 */
 
 
 
-
-
-
-
-
-
-
-// fn overloadErrorTest()
-// {
-// 	fn printThings(mul: f64, flts: [f64: ...])
-// 	{
-// 		printf("floats: ");
-// 		for i in flts { printf("%.1f ", mul * i) }
-
-// 		printf("\n")
-// 	}
-
-// 	fn printThings(mul: str, flts: [f64: ...])
-// 	{
-// 		printf("floats: ");
-// 		for i in flts { printf("%s: %.1f ", mul.ptr, i) }
-
-// 		printf("\n")
-// 	}
-
-// 	fn printThings()
-// 	{
-// 		printf("print things 3\n")
-// 	}
-
-// 	do {
-// 		printThings(30, ...[as f64: 1, 2, 3, 4, 5 ])
-// 		printThings(0.813, 1, 2, 4.41, 39, 491.3, 381.7)
-// 	}
-// }
-
-
-
-// var glob: any
-// fn test_refcounting_problem_thing()
-// {
-// 	fn foo(x: any)
-// 	{
-// 		if(x is int)
-// 		{
-// 			glob = x
-// 		}
-// 	}
-
-// 	foo(30)
-// }
 
 
 
