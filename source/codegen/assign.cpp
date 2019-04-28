@@ -149,7 +149,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	for(auto v : this->lefts)
 	{
 		auto res = v->codegen(cs, tty->getElementN(idx));
-		if(res->islvalue())
+		if(!res->islvalue())
 			error(v, "Cannot assign to non-lvalue expression in tuple assignment");
 
 		results.push_back(res);
