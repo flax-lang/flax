@@ -765,6 +765,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		util::hash_map<std::string, StructFieldDefn*> fields;
+		std::vector<StructFieldDefn*> transparentFields;
 	};
 
 

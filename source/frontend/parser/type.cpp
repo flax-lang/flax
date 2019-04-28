@@ -129,7 +129,7 @@ namespace parser
 		StructDefn* defn = util::pool<StructDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_struct_%zu", anon_counter);
+			defn->name = strprintf("__anon_struct_%zu", anon_counter++);
 		}
 		else
 		{
@@ -174,13 +174,18 @@ namespace parser
 				auto loc = st.loc();
 				std::string name = st.eat().str();
 
-				if(auto it = std::find_if(defn->fields.begin(), defn->fields.end(), [&name](const auto& p) -> bool {
-					return std::get<0>(p) == name;
-				}); it != defn->fields.end())
+				// we can't check for duplicates when it's transparent, duh
+				// we'll collapse and collect and check during typechecking.
+				if(name != "_")
 				{
-					SimpleError::make(loc, "duplicate field '%s' in struct definition", name)
-						->append(SimpleError::make(MsgType::Note, std::get<1>(*it), "field '%s' previously defined here:", name))
-						->postAndQuit();
+					if(auto it = std::find_if(defn->fields.begin(), defn->fields.end(), [&name](const auto& p) -> bool {
+						return std::get<0>(p) == name;
+					}); it != defn->fields.end())
+					{
+						SimpleError::make(loc, "duplicate field '%s' in struct definition", name)
+							->append(SimpleError::make(MsgType::Note, std::get<1>(*it), "field '%s' previously defined here:", name))
+							->postAndQuit();
+					}
 				}
 
 				if(st.eat() != TT::Colon)
@@ -188,6 +193,9 @@ namespace parser
 
 				pts::Type* type = parseType(st);
 				defn->fields.push_back(std::make_tuple(name, loc, type));
+
+				if(st.front() == TT::Equal)
+					error(st.loc(), "struct fields cannot have initialisers");
 			}
 			else if(st.front() == TT::Func)
 			{
@@ -235,7 +243,7 @@ namespace parser
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_union_%zu", anon_counter);
+			defn->name = strprintf("__anon_union_%zu", anon_counter++);
 		}
 		else
 		{
@@ -289,13 +297,7 @@ namespace parser
 			pts::Type* type = 0;
 			std::string name = st.eat().str();
 
-			if(auto it = defn->cases.find(name); it != defn->cases.end())
-			{
-				SimpleError::make(loc, "duplicate variant '%s' in union definition", name)
-					->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "variant '%s' previously defined here:", name))
-					->postAndQuit();
-			}
-
+			// to improve code flow, handle the type first.
 			if(st.front() == TT::Colon)
 			{
 				st.eat();
@@ -310,8 +312,26 @@ namespace parser
 					error(st.loc(), "expected newline after union variant");
 			}
 
-			if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
-			defn->cases[name] = { index, loc, type };
+			if(name == "_")
+			{
+				if(!israw)
+					error(loc, "transparent fields can only be present in raw unions");
+
+				iceAssert(type);
+				defn->transparentFields.push_back({ loc, type });
+			}
+			else
+			{
+				if(auto it = defn->cases.find(name); it != defn->cases.end())
+				{
+					SimpleError::make(loc, "duplicate variant '%s' in union definition", name)
+						->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "variant '%s' previously defined here:", name))
+						->postAndQuit();
+				}
+
+				if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
+				defn->cases[name] = { index, loc, type };
+			}
 
 			// do some things
 			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
