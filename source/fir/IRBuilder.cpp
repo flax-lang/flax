@@ -1265,6 +1265,37 @@ namespace fir
 	}
 
 
+	Value* IRBuilder::GetRawUnionFieldByType(Value* lval, Type* type, const std::string& vname)
+	{
+		if(!lval->islorclvalue())
+			error("cannot do raw union ops on non-lvalue");
+
+		if(!lval->getType()->isRawUnionType())
+			error("'%s' is not a raw union type!", lval->getType());
+
+		Instruction* instr = make_instr(OpKind::RawUnion_GEP, false, this->currentBlock, type, { lval, ConstantValue::getZeroValue(type) });
+
+		auto ret = this->addInstruction(instr, "");
+		ret->setKind(lval->kind);
+
+		return ret;
+	}
+
+	Value* IRBuilder::GetRawUnionField(Value* lval, const std::string& field, const std::string& vname)
+	{
+		if(!lval->islorclvalue())
+			error("cannot do raw union ops on non-lvalue");
+
+		if(!lval->getType()->isRawUnionType())
+			error("'%s' is not a raw union type!", lval->getType());
+
+		auto rut = lval->getType()->toRawUnionType();
+		if(!rut->hasVariant(field))
+			error("union '%s' does not have a field '%s'", rut->getTypeName(), field);
+
+		auto ty = rut->getVariant(field);
+		return this->GetRawUnionFieldByType(lval, ty, vname);
+	}
 
 
 
@@ -1290,17 +1321,16 @@ namespace fir
 		if(!structPtr->islorclvalue())
 			error("cannot do GEP on non-lvalue");
 
-		if(StructType* st = dcast(StructType, structPtr->getType()))
+		//* note: we do not allow raw gep (by index) into classes, because V T A B L E
+		if(structPtr->getType()->isStructType())
 		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
+			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, structPtr->getType()->toStructType(),
+				structPtr, memberIndex), vname);
 		}
-		if(ClassType* st = dcast(ClassType, structPtr->getType()))
+		else if(structPtr->getType()->isTupleType())
 		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, st, structPtr, memberIndex), vname);
-		}
-		else if(TupleType* tt = dcast(TupleType, structPtr->getType()))
-		{
-			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, tt, structPtr, memberIndex), vname);
+			return this->addInstruction(doGEPOnCompoundType(this->currentBlock, structPtr->getType()->toTupleType(),
+				structPtr, memberIndex), vname);
 		}
 		else
 		{
@@ -1308,7 +1338,7 @@ namespace fir
 		}
 	}
 
-	Value* IRBuilder::GetStructMember(Value* ptr, std::string memberName)
+	Value* IRBuilder::GetStructMember(Value* ptr, const std::string& memberName)
 	{
 		if(!ptr->islorclvalue())
 			error("cannot do GEP on non-lvalue");
@@ -1536,7 +1566,6 @@ namespace fir
 			args.push_back(fir::ConstantInt::getInt64(id + ofs));
 
 
-		// note: no sideeffects, since we return a new aggregate
 		Instruction* instr = make_instr(OpKind::Value_ExtractValue, false, this->currentBlock, et, args);
 		return this->addInstruction(instr, vname);
 	}

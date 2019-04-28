@@ -140,11 +140,18 @@ namespace parser
 				case TT::Continue:
 					return parseContinue(st);
 
+				case TT::Attr_Raw:
+					st.eat();
+					if(st.front() != TT::Union)
+						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
+
+					return parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
+
 				case TT::Union:
-					return parseUnion(st);
+					return parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
 
 				case TT::Struct:
-					return parseStruct(st);
+					return parseStruct(st, /* nameless: */ false);
 
 				case TT::Class:
 					return parseClass(st);
@@ -231,15 +238,78 @@ namespace parser
 	{
 		switch(t)
 		{
-			// () and [] have the same precedence.
-			// not sure if this should stay -- works for now.
+			/*
+				! ACHTUNG !
+				* DOCUMENT THIS SOMEWHERE PROPERLY!!! *
+
+				due to how we handle identifiers and scope paths (foo::bar), function calls must have higher precedence
+				than scope resolution.
+
+				this might seem counter-intuitive (i should be resolving the complete identifier first, then calling it with
+				()! why would it be any other way???), this is a sad fact of how the typechecker works.
+
+				as it stands, identifiers are units; paths consist of multiple identifiers in a DotOp with the :: operator, which
+				is left-associative. so for something like foo::bar::qux, it's ((foo)::(bar))::qux.
+
+				to resolve a function call, eg. foo::bar::qux(), the DotOp is laid out as [foo::bar]::[qux()] (with [] for grouping),
+				instead of the 'intuitive' [[foo::bar]::qux](). the reason for this design was the original rewrite goal of not
+				relying on string manipulation in the compiler; having identifiers contain :: would have been counter to that
+				goal.
+
+				(note: currently we are forced to manipulate ::s in the pts->fir type converter!!)
+
+				the current typechecker will thus first find a namespace 'foo', and within that a namespace 'bar', and within that
+				a function 'qux'. this is opposed to finding a namespace 'foo', then 'bar', then an identifier 'qux', and leaving
+				that to be resolved later.
+
+				also, another potential issue is how we deal with references to functions (ie. function pointers). our resolver
+				for ExprCall is strictly less advanced than that for a normal FunctionCall (for reasons i can't reCALL (lmao)), so
+				we would prefer to return a FuncCall rather than an ExprCall.
+
+
+				this model could be re-architected without a *major* rewrite, but it would be a non-trivial task and a considerable amount
+				of work and debugging. for reference:
+
+				1.  make Idents be able to refer to entire paths; just a datastructure change
+				2.  make :: have higher precedence than (), to take advantage of (1)
+				3.  parse ExprCall and FuncCall identically -- they should both just be a NewCall, with an Expr as the callee
+
+				4.  in typechecking a NewCall, just call ->typecheck() on the LHS; the current implementation of Ident::typecheck
+					returns an sst::VarRef, which has an sst::VarDefn field which we can use.
+
+				4a. if the Defn was a VarDefn, they cannot overload, and we can just do what we currently do for ExprCall.
+					if it was a function defn, then things get more complicated.
+
+				5.  the Defn was a FuncDefn. currently Ident cannot return more than one Defn in the event of ambiguous results (eg.
+					when overloading!), which means we are unable to properly do overload resolution! (duh) we need to make a mechanism
+					for Ident to return a list of Defns.
+
+					potential solution (A): make an sst::AmbiguousDefn struct that itself holds a list of Defns. the VarRef returned by
+					Ident would then return that in the ->def field. this would only happen when the target is function; i presume we
+					have existing mechanisms to detect invalid "overload" scenarios.
+
+					back to (4), we should in theory be able to resolve functions from a list of defns.
+
+
+				the problem with this is that while it might seem like a simple 5.5-step plan, a lot of the supporting resolver functions
+				need to change, and effort is better spent elsewhere tbh
+
+				for now we just stick to parsing () at higher precedence than ::.
+			*/
+
+
 			case TT::LParen:
-			case TT::LSquare:
-				return 2000;
+				return 9001;    // very funny
+
+			case TT::DoubleColon:
+				return 5000;
 
 			case TT::Period:
-			case TT::DoubleColon:
+				return 1500;
+
+			case TT::LSquare:
 				return 1000;
+
 
 			// unary !
 			// unary +/-
@@ -1100,16 +1170,16 @@ namespace parser
 				case TT::Attr_Raw:
 					st.pop();
 					if(st.front() == TT::StringLiteral)
-						return parseString(st, true);
+						return parseString(st, /* isRaw: */ true);
 
 					else if(st.front() == TT::LSquare)
-						return parseArray(st, true);
+						return parseArray(st, /* isRaw: */ true);
 
 					else if(st.front() == TT::Alloc)
-						return parseAlloc(st, true);
+						return parseAlloc(st, /* isRaw: */ true);
 
 					else
-						expectedAfter(st, "one of string-literal, array, or alloc", "@raw", st.front().str());
+						expectedAfter(st, "one of string-literal, array, or alloc", "'@raw' while parsing expression", st.front().str());
 
 				case TT::StringLiteral:
 					return parseString(st, false);

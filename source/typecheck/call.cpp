@@ -119,14 +119,14 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 	iceAssert(target);
 
 	if(!target->type->isFunctionType())
-		error(this->callee, "expression with non-function-type '%s' cannot be called");
+		error(this->callee, "expression with non-function-type '%s' cannot be called", target->type);
 
 	auto ft = target->type->toFunctionType();
 	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
 		return fir::LocatedType(t, Location());
 	}), util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
 		return fir::LocatedType(fca.value->type, fca.loc);
-	}), false);
+	}), target->type->toFunctionType()->isCStyleVarArg());
 
 	if(errs != nullptr || dist == -1)
 	{

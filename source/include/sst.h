@@ -417,6 +417,9 @@ namespace sst
 		Expr* lhs = 0;
 		std::string rhsIdent;
 		bool isMethodRef = false;
+
+		bool isTransparentField = false;
+		size_t indexOfTransparentField = 0;
 	};
 
 	struct MethodDotOp : Expr
@@ -679,6 +682,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
 
 		TypeDefn* parentType = 0;
+		bool isTransparentField = false;
 	};
 
 	struct ClassInitialiserDefn : FunctionDefn
@@ -751,6 +755,18 @@ namespace sst
 		util::hash_map<std::string, EnumCaseDefn*> cases;
 	};
 
+
+	struct RawUnionDefn : TypeDefn
+	{
+		RawUnionDefn(const Location& l) : TypeDefn(l) { this->readableName = "raw union definition"; }
+		~RawUnionDefn() { }
+
+		virtual std::string getKind() override { return "raw union"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		util::hash_map<std::string, StructFieldDefn*> fields;
+		std::vector<StructFieldDefn*> transparentFields;
+	};
 
 
 

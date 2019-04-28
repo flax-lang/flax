@@ -238,7 +238,7 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->value)
 	{
 		auto v = this->value->codegen(cs, this->expectedType).value;
-		if(cs->isRefCountedType(v->getType()))
+		if(fir::isRefCountedType(v->getType()))
 			cs->incrementRefCount(v);
 
 		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());

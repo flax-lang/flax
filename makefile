@@ -4,7 +4,7 @@
 
 
 
-WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wno-deprecated-declarations
 
 
 CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat
@@ -38,12 +38,11 @@ CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 
-
-
+DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE)
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE)
+CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
+CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE)
 
@@ -64,11 +63,7 @@ TESTSRC			:= build/tester.flx
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx linux ci prep satest tiny osxflags
-
-prep:
-	@# echo C++ compiler is: $(CXX)
-	@mkdir -p $(dir $(OUTPUT))
+.PHONY: copylibs jit compile clean build osx linux ci satest tiny osxflags
 
 osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
@@ -76,17 +71,17 @@ osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWAR
 osxflags:
 
 
-osx: prep jit osxflags
+osx: jit osxflags
 
-satest: prep osxflags build
+satest: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tester: prep osxflags build
+tester: osxflags build
 	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
-ci: prep test
+ci: test
 
-linux: prep jit
+linux: jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
@@ -100,7 +95,9 @@ test: build
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
-build: $(OUTPUT) copylibs
+build1:
+
+build: build1 $(OUTPUT) copylibs
 	# built
 
 build/%.flx: build
@@ -117,7 +114,8 @@ copylibs: $(FLXSRC)
 
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object) -lmpfr -lgmp $(LDFLAGS) -lpthread
+	@mkdir -p $(dir $(OUTPUT))
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
 
 
 %.cpp.o: %.cpp

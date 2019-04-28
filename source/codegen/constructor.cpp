@@ -39,7 +39,7 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 		// if(names) iceAssert(i == str->getElementCount());
 	}
 
-	if(this->isRefCountedType(str))
+	if(fir::isRefCountedType(str))
 		this->addRefCountedValue(value);
 
 	return value;
@@ -128,7 +128,7 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 	cs->constructClassWithArguments(cls->toClassType(), this->target, cs->irb.AddressOf(self, true), this->arguments, true);
 
 	// auto value = cs->irb.Dereference(self);
-	if(cs->isRefCountedType(cls))
+	if(fir::isRefCountedType(cls))
 		cs->addRefCountedValue(self);
 
 	return CGResult(self);

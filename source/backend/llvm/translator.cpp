@@ -309,6 +309,27 @@ namespace backend
 
 			return createdTypes[ut->getTypeName()];
 		}
+		else if(type->isRawUnionType())
+		{
+			auto ut = type->toRawUnionType();
+
+			if(createdTypes.find(ut->getTypeName()) != createdTypes.end())
+				return createdTypes[ut->getTypeName()];
+
+			auto dl = llvm::DataLayout(mod);
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+				maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second, mod)));
+
+			iceAssert(maxSz > 0);
+			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
+				// llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
+				llvm::IntegerType::getIntNTy(gc, maxSz * CHAR_BIT)
+			}, ut->getTypeName().mangled());
+
+			return createdTypes[ut->getTypeName()];
+		}
 		else if(type->isPolyPlaceholderType())
 		{
 			error("llvm: Unfulfilled polymorphic placeholder type '%s'", type);
@@ -688,7 +709,6 @@ namespace backend
 		for(auto type : firmod->_getNamedTypes())
 		{
 			// should just automatically create it.
-			// if(!isGenericInAnyWay(type.second))
 			typeToLlvm(type.second, module);
 		}
 
@@ -696,30 +716,32 @@ namespace backend
 		{
 			llvm::Constant* fn = 0;
 
+			//* in LLVM 7, the intrinsics changed to no longer specify the alignment
+			//* so, the arugments are: [ ptr, ptr, size, is_volatile ]
 			if(intr.first.str() == "memcpy")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memmove")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memmove.p0i8.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 				fn = module->getOrInsertFunction("llvm.memset.p0i8.i64", ft);
 			}
 			else if(intr.first.str() == "memcmp")
 			{
-				// in line with the rest, take 5 arguments, the last 2 being alignment and isvolatile.
+				// in line with the rest, take 4 arguments. (this is our own "intrinsic")
 
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt32Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
 
 				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.memcmp", module);
 				llvm::Function* func = llvm::cast<llvm::Function>(fn);
@@ -2307,6 +2329,19 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::RawUnion_GEP:
+						{
+							iceAssert(inst->operands.size() == 2);
+							llvm::Value* a = getUndecayedOperand(inst, 0);
+							llvm::Type* target = typeToLlvm(inst->operands[1]->getType(), module);
+
+							iceAssert(a->getType()->isPointerTy() && a->getType()->getPointerElementType()->isStructTy());
+							auto ptr = builder.CreateConstGEP2_32(a->getType()->getPointerElementType(), a, 0, 0);
+							ptr = builder.CreatePointerCast(ptr, target->getPointerTo());
+
+							addValueToMap(ptr, inst->realOutput);
+							break;
+						}
 
 
 

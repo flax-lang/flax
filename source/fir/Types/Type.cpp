@@ -519,6 +519,12 @@ namespace fir
 		return static_cast<UnionType*>(this);
 	}
 
+	RawUnionType* Type::toRawUnionType()
+	{
+		if(this->kind != TypeKind::RawUnion) error("not raw union type");
+		return static_cast<RawUnionType*>(this);
+	}
+
 	AnyType* Type::toAnyType()
 	{
 		if(this->kind != TypeKind::Any) error("not any type");
@@ -602,6 +608,11 @@ namespace fir
 		return this->isIntegerType() && this->toPrimitiveType()->isSigned();
 	}
 
+	bool Type::isUnsignedIntType()
+	{
+		return this->isIntegerType() && !this->toPrimitiveType()->isSigned();
+	}
+
 	bool Type::isFunctionType()
 	{
 		return this->kind == TypeKind::Function;
@@ -660,6 +671,11 @@ namespace fir
 	bool Type::isUnionType()
 	{
 		return this->kind == TypeKind::Union;
+	}
+
+	bool Type::isRawUnionType()
+	{
+		return this->kind == TypeKind::RawUnion;
 	}
 
 	bool Type::isAnyType()
@@ -1006,6 +1022,41 @@ namespace fir
 
 			return getAggregateSize(tys);
 		}
+		else if(type->isUnionType() )
+		{
+			auto ut = type->toUnionType();
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+			{
+				if(!v.second->getInteriorType()->isVoidType())
+					maxSz = std::max(maxSz, getSizeOfType(v.second->getInteriorType()));
+			}
+
+			if(maxSz > 0)
+			{
+				return getAggregateSize({ Type::getInt64(), ArrayType::get(Type::getInt8(), maxSz) });
+			}
+			else
+			{
+				return getAggregateSize({ Type::getInt64() });
+			}
+		}
+		else if(type->isRawUnionType())
+		{
+			auto ut = type->toRawUnionType();
+
+			size_t maxSz = 0;
+			for(auto v : ut->getVariants())
+				maxSz = std::max(maxSz, getSizeOfType(v.second));
+
+			iceAssert(maxSz > 0);
+			return getAggregateSize({ ArrayType::get(Type::getInt8(), maxSz) });
+		}
+		else if(type->isUnionVariantType())
+		{
+			return getSizeOfType(type->toUnionVariantType()->getInteriorType());
+		}
 		else
 		{
 			error("cannot get size of unsupported type '%s'", type);
@@ -1016,6 +1067,50 @@ namespace fir
 	{
 		if(type->isArrayType())     return getAlignmentOfType(type->getArrayElementType());
 		else                        return getSizeOfType(type);
+	}
+
+
+	bool isRefCountedType(Type* type)
+	{
+		// strings, and structs with rc inside
+		if(type->isStructType())
+		{
+			for(auto m : type->toStructType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isClassType())
+		{
+			for(auto m : type->toClassType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isTupleType())
+		{
+			for(auto m : type->toTupleType()->getElements())
+			{
+				if(isRefCountedType(m))
+					return true;
+			}
+
+			return false;
+		}
+		else if(type->isArrayType())	// note: no slices, because slices don't own memory
+		{
+			return isRefCountedType(type->getArrayElementType());
+		}
+		else
+		{
+			return type->isStringType() || type->isAnyType() || type->isDynamicArrayType();
+		}
 	}
 }
 

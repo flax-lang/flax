@@ -62,6 +62,116 @@ static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Locati
 
 
 
+struct search_result_t
+{
+	search_result_t() { }
+	search_result_t(fir::Type* t, size_t i, bool tr) : type(t), fieldIdx(i), isTransparent(tr) { }
+
+	fir::Type* type = 0;
+	size_t fieldIdx = 0;
+	bool isTransparent = false;
+};
+
+static std::vector<search_result_t> searchTransparentFields(sst::TypecheckState* fs, std::vector<search_result_t> stack,
+	const std::vector<sst::StructFieldDefn*>& fields, const Location& loc, const std::string& name)
+{
+	// search for them by name first, instead of doing a super-depth-first-search.
+	for(auto df : fields)
+	{
+		if(df->id.name == name)
+		{
+			stack.push_back(search_result_t(df->type, 0, false));
+			return stack;
+		}
+	}
+
+
+	size_t idx = 0;
+	for(auto df : fields)
+	{
+		if(df->isTransparentField)
+		{
+			auto ty = df->type;
+			assert(ty->isRawUnionType() || ty->isStructType());
+
+			auto defn = fs->typeDefnMap[ty];
+			iceAssert(defn);
+
+			std::vector<sst::StructFieldDefn*> flds;
+			if(auto str = dcast(sst::StructDefn, defn); str)
+				flds = str->fields;
+
+			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
+				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+
+			else
+				error(loc, "what kind of type is this? '%s'", ty);
+
+			stack.push_back(search_result_t(ty, idx, true));
+			auto ret = searchTransparentFields(fs, stack, flds, loc, name);
+
+			if(!ret.empty())    return ret;
+			else                stack.pop_back();
+		}
+
+		idx += 1;
+	}
+
+	// if we've reached the end of the line, return nothing.
+	return { };
+}
+
+
+static sst::FieldDotOp* resolveFieldNameDotOp(sst::TypecheckState* fs, sst::Expr* lhs, const std::vector<sst::StructFieldDefn*>& fields,
+	const Location& loc, const std::string& name)
+{
+	for(auto df : fields)
+	{
+		if(df->id.name == name)
+		{
+			auto ret = util::pool<sst::FieldDotOp>(loc, df->type);
+			ret->lhs = lhs;
+			ret->rhsIdent = name;
+
+			return ret;
+		}
+	}
+
+	// sad. search for the field, recursively, in transparent members.
+	auto ops = searchTransparentFields(fs, { }, fields, loc, name);
+	if(ops.empty())
+		return nullptr;
+
+	// ok, now we just need to make a link of fielddotops...
+	sst::Expr* cur = lhs;
+	for(const auto& x : ops)
+	{
+		auto op = util::pool<sst::FieldDotOp>(loc, x.type);
+
+		op->lhs = cur;
+		op->isTransparentField = x.isTransparent;
+		op->indexOfTransparentField = x.fieldIdx;
+
+		// don't set a name if we're transparent.
+		op->rhsIdent = (x.isTransparent ? "" : name);
+
+		cur = op;
+	}
+
+	auto ret = dcast(sst::FieldDotOp, cur);
+	assert(ret);
+
+	return ret;
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -345,13 +455,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		// else: fallthrough
 	}
 
-	// TODO: plug in extensions here.
-
-
-	if(!type->isStructType() && !type->isClassType())
-	{
-		error(dotop->right, "unsupported right-side expression for dot operator on type '%s'", type);
-	}
 
 
 	// ok.
@@ -360,7 +463,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
-
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
@@ -473,23 +575,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		else if(auto fld = dcast(ast::Ident, dotop->right))
 		{
 			auto name = fld->name;
-
 			{
 				auto copy = str;
 
 				while(copy)
 				{
-					for(auto f : copy->fields)
-					{
-						if(f->id.name == name)
-						{
-							auto ret = util::pool<sst::FieldDotOp>(dotop->loc, f->type);
-							ret->lhs = lhs;
-							ret->rhsIdent = name;
-
-							return ret;
-						}
-					}
+					auto hmm = resolveFieldNameDotOp(fs, lhs, copy->fields, dotop->loc, name);
+					if(hmm) return hmm;
 
 					// ok, we didn't find it.
 					if(auto cls = dcast(sst::ClassDefn, copy); cls)
@@ -574,10 +666,33 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			error(dotop->right, "unsupported right-side expression for dot-operator on type '%s'", str->id.name);
 		}
 	}
+	else if(auto rnn = dcast(sst::RawUnionDefn, defn))
+	{
+		if(auto fld = dcast(ast::Ident, dotop->right))
+		{
+			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; }) + rnn->transparentFields;
+			auto hmm = resolveFieldNameDotOp(fs, lhs, flds, dotop->loc, fld->name);
+			if(hmm)
+			{
+				return hmm;
+			}
+			else
+			{
+				// ok we didn't return. this is a raw union so extensions R NOT ALLOWED!! (except methods maybe)
+				error(fld, "union '%s' has no member named '%s'", rnn->id.name, fld->name);
+			}
+		}
+		else
+		{
+			error(dotop->right, "unsupported right-side expression for dot-operator on type '%s'", defn->id.name);
+		}
+	}
 	else
 	{
 		error(lhs, "unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
+
+	// TODO: plug in extensions here!!
 }
 
 
@@ -736,7 +851,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 					// we should be able to pass in the infer value such that it works properly
 					// eg. let x: Foo<int> = Foo.none
 					SimpleError::make(dot->right->loc,
-						"unable to resolve type parameters for polymorphic union '%s' using variant '%s' (which has no values)",
+						"could not infer type parameters for polymorphic union '%s' using variant '%s' ",
 						unn->id.name, name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();
 				}
 				else if(wasfncall && unn->type->toUnionType()->getVariants()[name]->getInteriorType()->isVoidType())

@@ -8,11 +8,58 @@ import libc as _
 
 // import std::io
 // import std::map
+import std::opt
 
+@raw union ipv4
+{
+	_: struct {
+		_: @raw union {
+			bytes2: [u8: 4]
+			raw3: u32
+		}
+	}
+
+	_: struct {
+		bytes: [u8: 4]
+	}
+
+	_: struct {
+		raw2: u32
+	}
+
+	raw: u32
+}
+
+
+struct foo
+{
+	x: int
+	y: str
+}
 
 @entry fn main()
 {
+	do {
+		var addr: ipv4
+		addr.raw3 = 0xff01a8c0;
+
+		printf("%d.%d.%d.%d\n", addr.bytes[0], addr.bytes[1], addr.bytes[2], addr.bytes[3]);
+	}
+
+
+	/* do {
+		var x: @raw union {
+			bar: f64
+			foo: i64
+		}
+
+		x.bar = 3.14159
+
+		printf("x = %.2lf\n", x.bar)
+		printf("x = %d\n", x.foo)
+	} */
 }
+
 
 
 
@@ -36,6 +83,14 @@ import std::    map
 
 
 /*
+	!!! bugs (2) !!!
+	!!! 22/03/19
+	{
+		1. we currently check whether you are trying to put a refcounted type as a field of a raw union. however!
+			you can circumvent this check if you nest the field into inner types, or if you use transparent fields!!
+	}
+
+
 	! bugs !!!
 	! 02/12
 	{
@@ -95,6 +150,17 @@ import std::    map
 	15. builtin way to get a character literal {
 		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
 		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
+	}
+
+	16. operator overload errors {
+		something like this:
+
+		failed to resolve candidate for 'operator == (type_1, type_2)'
+		callsite was here: 'foo == bar'
+		potential candidates: 'operator == (type_1, type_3)'
+
+		ofc potential candidates should be limited to ones where at least one of the types
+		are similar.
 	}
 */
 

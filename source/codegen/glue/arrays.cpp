@@ -563,7 +563,7 @@ namespace array
 						iceAssert(freefn);
 
 						// only when we free, do we loop through our array and decrement its refcount.
-						if(cs->isRefCountedType(elmtype))
+						if(fir::isRefCountedType(elmtype))
 						{
 							auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
 							cs->irb.WritePtr(zv, ctrp);

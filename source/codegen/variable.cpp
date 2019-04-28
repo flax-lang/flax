@@ -32,8 +32,6 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(auto it = cs->typeDefnMap.find(this->type); it != cs->typeDefnMap.end())
 		it->second->codegen(cs);
 
-	// bool refcounted = cs->isRefCountedType(this->type);
-
 	if(this->global)
 	{
 		auto rest = cs->enterGlobalInitFunction();
@@ -111,7 +109,7 @@ void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* a
 	if(val.value)
 		this->autoAssignRefCountedValue(alloc, val.value, /* isInitial: */ true, /* performStore: */ !var->immutable);
 
-	if(this->isRefCountedType(var->type))
+	if(fir::isRefCountedType(var->type))
 		this->addRefCountedValue(alloc);
 }
 
