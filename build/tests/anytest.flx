@@ -11,11 +11,11 @@ var glob: any
 
 struct Large
 {
-	var a: i64
-	var b: i64
-	var c: i64
-	var d: i64
-	var e: i64
+	a: i64
+	b: i64
+	c: i64
+	d: i64
+	e: i64
 }
 
 public fn doAnyTest()

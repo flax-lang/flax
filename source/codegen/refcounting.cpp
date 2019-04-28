@@ -128,7 +128,7 @@ namespace cgn
 
 		// warn(this->loc(), "hi (%d)", rhs->islorclvalue());
 
-		if(this->isRefCountedType(rhs->getType()))
+		if(fir::isRefCountedType(rhs->getType()))
 		{
 			if(rhs->islorclvalue())
 				this->performRefCountingAssignment(lhs, rhs, isinit);
@@ -167,12 +167,10 @@ namespace cgn
 	template <typename T>
 	void doRefCountOfAggregateType(CodegenState* cs, T* type, fir::Value* value, bool incr)
 	{
-		// iceAssert(cgi->isRefCountedType(type));
-
 		size_t i = 0;
 		for(auto m : type->getElements())
 		{
-			if(cs->isRefCountedType(m))
+			if(fir::isRefCountedType(m))
 			{
 				fir::Value* mem = cs->irb.ExtractValue(value, { i });
 
@@ -223,16 +221,6 @@ namespace cgn
 		}
 		else if(type->isArrayType())
 		{
-			// fir::ArrayType* at = type->toArrayType();
-			// for(size_t i = 0; i < at->getArraySize(); i++)
-			// {
-			// 	fir::Value* elm = cs->irb.ExtractValue(type, { i });
-			// 	iceAssert(cs->isRefCountedType(elm->getType()));
-
-			// 	if(incr) cs->incrementRefCount(elm);
-			// 	else cs->decrementRefCount(elm);
-			// }
-
 			error("no array");
 		}
 		else if(type->isAnyType())
@@ -253,61 +241,14 @@ namespace cgn
 
 	void CodegenState::incrementRefCount(fir::Value* val)
 	{
-		iceAssert(this->isRefCountedType(val->getType()));
+		iceAssert(fir::isRefCountedType(val->getType()));
 		_doRefCount(this, val, true);
 	}
 
 	void CodegenState::decrementRefCount(fir::Value* val)
 	{
-		iceAssert(this->isRefCountedType(val->getType()));
+		iceAssert(fir::isRefCountedType(val->getType()));
 		_doRefCount(this, val, false);
-	}
-
-
-
-
-
-	bool CodegenState::isRefCountedType(fir::Type* type)
-	{
-		// strings, and structs with rc inside
-		if(type->isStructType())
-		{
-			for(auto m : type->toStructType()->getElements())
-			{
-				if(this->isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isClassType())
-		{
-			for(auto m : type->toClassType()->getElements())
-			{
-				if(this->isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isTupleType())
-		{
-			for(auto m : type->toTupleType()->getElements())
-			{
-				if(this->isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isArrayType())	// note: no slices, because slices don't own memory
-		{
-			return this->isRefCountedType(type->getArrayElementType());
-		}
-		else
-		{
-			return type->isStringType() || type->isAnyType() || type->isDynamicArrayType();
-		}
 	}
 }
 

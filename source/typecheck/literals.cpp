@@ -15,28 +15,46 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// set base = 0 to autodetect.
-	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), /* base: */ 0);
+	// i don't think mpfr auto-detects base, LMAO
+	int base = 10;
+	if(this->num.find("0x") == 0 || this->num.find("0X") == 0)
+		base = 16;
+
+	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
 	bool sgn = mpfr::signbit(number);
 	bool flt = !mpfr::isint(number);
 
-	//* this is the stupidest thing.
+	size_t bits = 0;
+	if(flt)
+	{
+		// fuck it lah.
+		bits = sizeof(double) * CHAR_BIT;
+	}
+	else
+	{
+		auto m_ptr = number.mpfr_ptr();
+		auto m_rnd = MPFR_RNDN;
+		if(mpfr_fits_sshort_p(m_ptr, m_rnd))
+			bits = sizeof(short) * CHAR_BIT;
 
-	// mpfr's 'get_min_prec' returns the number of bits required to store the significand (eg. for 1.413x10^-2, it is 1.413).
-	// so you'd think that, for example, given '1024', it would return '10', given that 2^10 == 1024.
-	// no, it returns '1', because you only need one bit -- the 10th bit -- to get the value 1024.
-	// which is fucking stupid.
+		else if(mpfr_fits_sint_p(m_ptr, m_rnd))
+			bits = sizeof(int) * CHAR_BIT;
 
-	// so what we do here is we change the last digit of the number to be '9'. this effectively forces the first
-	// bit of the entire number to be set (we don't use '1' because we don't want to make the number smaller
-	// -- eg. 1024 would become 1021, which would only need 9 bits to store -- versus 1029)
+		else if(mpfr_fits_slong_p(m_ptr, m_rnd))
+			bits = sizeof(long) * CHAR_BIT;
 
-	// in this way we force mpfr to return the real number of bits required to store the entire thing properly.
+		else if(mpfr_fits_intmax_p(m_ptr, m_rnd))
+			bits = sizeof(intmax_t) * CHAR_BIT;
 
-	size_t bits = mpfr_min_prec(mpfr::mpreal(this->num.substr(0, this->num.size() - 1) + "9").mpfr_ptr());
+		else if(!sgn && mpfr_fits_uintmax_p(m_ptr, m_rnd))
+			bits = sizeof(uintmax_t) * CHAR_BIT;
+
+		else    // lmao
+			bits = SIZE_MAX;
+	}
 
 	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
-	ret->num = mpfr::mpreal(this->num);
+	ret->num = number;
 
 	return TCResult(ret);
 }

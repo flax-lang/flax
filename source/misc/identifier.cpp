@@ -7,11 +7,6 @@
 #include "sst.h"
 
 
-//* so how this works is, instead of having to do manual checks and error-posting, since everyone uses this TCResult system,
-//* when we try to unwrap something we got from a typecheck and it's actually an error, we just post the error and quit.
-//? in theory this should work like it used to, probably.
-// TODO: investigate??
-
 sst::Stmt* TCResult::stmt() const
 {
 	if(this->_kind == RK::Error)

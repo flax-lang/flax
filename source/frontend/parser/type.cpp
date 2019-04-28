@@ -13,72 +13,6 @@ using namespace lexer;
 namespace parser
 {
 	using TT = lexer::TokenType;
-	StructDefn* parseStruct(State& st)
-	{
-		iceAssert(st.front() == TT::Struct);
-		st.eat();
-
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'struct'", st.front().str());
-
-		StructDefn* defn = util::pool<StructDefn>(st.loc());
-		defn->name = st.eat().str();
-
-		// check for generic function
-		if(st.front() == TT::LAngle)
-		{
-			st.eat();
-			// parse generic
-			if(st.front() == TT::RAngle)
-				error(st, "empty type parameter lists are not allowed");
-
-			defn->generics = parseGenericTypeList(st);
-		}
-
-		st.skipWS();
-		if(st.front() != TT::LBrace)
-			expectedAfter(st, "'{'", "'struct'", st.front().str());
-
-		st.enterStructBody();
-
-		auto blk = parseBracedBlock(st);
-		for(auto s : blk->statements)
-		{
-			if(auto v = dcast(VarDefn, s))
-			{
-				if(v->type == pts::InferredType::get())
-					error(v, "struct fields must have types explicitly specified");
-
-				else if(v->initialiser)
-					error(v->initialiser, "struct fields cannot have inline initialisers");
-
-				defn->fields.push_back(v);
-			}
-			else if(auto f = dcast(FuncDefn, s))
-			{
-				defn->methods.push_back(f);
-			}
-			else if(auto t = dcast(TypeDefn, s))
-			{
-				defn->nestedTypes.push_back(t);
-			}
-			else if(dcast(InitFunctionDefn, s))
-			{
-				error(s, "structs cannot have user-defined initialisers");
-			}
-			else
-			{
-				error(s, "unsupported expression or statement in struct body");
-			}
-		}
-
-		for(auto s : blk->deferredStatements)
-			error(s, "unsupported expression or statement in struct body");
-
-		st.leaveStructBody();
-		return defn;
-	}
-
 
 	ClassDefn* parseClass(State& st)
 	{
@@ -185,17 +119,144 @@ namespace parser
 
 
 
-
-	UnionDefn* parseUnion(State& st)
+	StructDefn* parseStruct(State& st, bool nameless)
 	{
+		static size_t anon_counter = 0;
+
+		iceAssert(st.front() == TT::Struct);
+		st.eat();
+
+		StructDefn* defn = util::pool<StructDefn>(st.loc());
+		if(nameless)
+		{
+			defn->name = strprintf("__anon_struct_%zu", anon_counter++);
+		}
+		else
+		{
+			if(st.front() == TT::LBrace)
+				error(st, "declared structs (in non-type usage) must be named");
+
+			else if(st.front() != TT::Identifier)
+				expectedAfter(st, "identifier", "'struct'", st.front().str());
+
+			else
+				defn->name = st.eat().str();
+		}
+
+
+		// check for generic function
+		if(st.front() == TT::LAngle)
+		{
+			st.eat();
+			// parse generic
+			if(st.front() == TT::RAngle)
+				error(st, "empty type parameter lists are not allowed");
+
+			defn->generics = parseGenericTypeList(st);
+		}
+
+		// unions don't inherit stuff (for now????) so we don't check for it.
+
+		st.skipWS();
+		if(st.eat() != TT::LBrace)
+			expectedAfter(st.ploc(), "opening brace", "'struct'", st.front().str());
+
+		st.enterStructBody();
+		st.skipWS();
+
+		size_t index = 0;
+		while(st.front() != TT::RBrace)
+		{
+			st.skipWS();
+
+			if(st.front() == TT::Identifier)
+			{
+				auto loc = st.loc();
+				std::string name = st.eat().str();
+
+				// we can't check for duplicates when it's transparent, duh
+				// we'll collapse and collect and check during typechecking.
+				if(name != "_")
+				{
+					if(auto it = std::find_if(defn->fields.begin(), defn->fields.end(), [&name](const auto& p) -> bool {
+						return std::get<0>(p) == name;
+					}); it != defn->fields.end())
+					{
+						SimpleError::make(loc, "duplicate field '%s' in struct definition", name)
+							->append(SimpleError::make(MsgType::Note, std::get<1>(*it), "field '%s' previously defined here:", name))
+							->postAndQuit();
+					}
+				}
+
+				if(st.eat() != TT::Colon)
+					error(st.ploc(), "expected type specifier after field name in struct");
+
+				pts::Type* type = parseType(st);
+				defn->fields.push_back(std::make_tuple(name, loc, type));
+
+				if(st.front() == TT::Equal)
+					error(st.loc(), "struct fields cannot have initialisers");
+			}
+			else if(st.front() == TT::Func)
+			{
+				// ok parse a func as usual
+				defn->methods.push_back(parseFunction(st));
+			}
+			else if(st.front() == TT::Var || st.front() == TT::Val)
+			{
+				error(st.loc(), "struct fields are declared as 'name: type'; val/let is omitted");
+			}
+			else if(st.front() == TT::Static)
+			{
+				error(st.loc(), "structs cannot have static declarations");
+			}
+			else if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
+			{
+				st.pop();
+			}
+			else if(st.front() == TT::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				error(st.loc(), "unexpected token '%s' inside struct body", st.front().str());
+			}
+
+			index++;
+		}
+
+		iceAssert(st.front() == TT::RBrace);
+		st.eat();
+
+		st.leaveStructBody();
+		return defn;
+	}
+
+
+	UnionDefn* parseUnion(State& st, bool israw, bool nameless)
+	{
+		static size_t anon_counter = 0;
 		iceAssert(st.front() == TT::Union);
 		st.eat();
 
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'union'", st.front().str());
-
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
-		defn->name = st.eat().str();
+		if(nameless)
+		{
+			defn->name = strprintf("__anon_union_%zu", anon_counter++);
+		}
+		else
+		{
+			if(st.front() == TT::LBrace)
+				error(st, "declared unions (in non-type usage) must be named");
+
+			else if(st.front() != TT::Identifier)
+				expectedAfter(st, "identifier", "'union'", st.front().str());
+
+			else
+				defn->name = st.eat().str();
+		}
+
 
 		// check for generic function
 		if(st.front() == TT::LAngle)
@@ -214,37 +275,63 @@ namespace parser
 		if(st.eat() != TT::LBrace)
 			expectedAfter(st.ploc(), "opening brace", "'union'", st.front().str());
 
+		st.skipWS();
+		if(st.front() == TT::RBrace)
+			error(st, "union must contain at least one variant");
+
 		size_t index = 0;
 		while(st.front() != TT::RBrace)
 		{
 			st.skipWS();
 
 			if(st.front() != TT::Identifier)
-				expected(st.loc(), "identifier inside union body", st.front().str());
+			{
+				if(st.front() == TT::Var || st.front() == TT::Val)
+					error(st.loc(), "union fields are declared as 'name: type'; val/let is omitted");
+
+				else
+					expected(st.loc(), "identifier inside union body", st.front().str());
+			}
 
 			auto loc = st.loc();
 			pts::Type* type = 0;
 			std::string name = st.eat().str();
 
-			if(auto it = defn->cases.find(name); it != defn->cases.end())
-			{
-				SimpleError::make(loc, "duplicate variant '%s' in union definition", name)
-					->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "variant '%s' previously defined here:", name))
-					->postAndQuit();
-			}
-
+			// to improve code flow, handle the type first.
 			if(st.front() == TT::Colon)
 			{
 				st.eat();
 				type = parseType(st);
 			}
-			else if(st.front() != TT::NewLine)
+			else
 			{
-				error(st.loc(), "expected newline after union variant");
+				if(israw)
+					error(st.loc(), "raw unions cannot have empty variants (must have a type)");
+
+				else if(st.front() != TT::NewLine)
+					error(st.loc(), "expected newline after union variant");
 			}
 
-			if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
-			defn->cases[name] = { index, loc, type };
+			if(name == "_")
+			{
+				if(!israw)
+					error(loc, "transparent fields can only be present in raw unions");
+
+				iceAssert(type);
+				defn->transparentFields.push_back({ loc, type });
+			}
+			else
+			{
+				if(auto it = defn->cases.find(name); it != defn->cases.end())
+				{
+					SimpleError::make(loc, "duplicate variant '%s' in union definition", name)
+						->append(SimpleError::make(MsgType::Note, std::get<1>(it->second), "variant '%s' previously defined here:", name))
+						->postAndQuit();
+				}
+
+				if(type == nullptr) type = pts::NamedType::create(loc, VOID_TYPE_STRING);
+				defn->cases[name] = { index, loc, type };
+			}
 
 			// do some things
 			if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
@@ -266,6 +353,7 @@ namespace parser
 		iceAssert(st.front() == TT::RBrace);
 		st.eat();
 
+		defn->israw = israw;
 		return defn;
 	}
 
@@ -323,7 +411,7 @@ namespace parser
 			}
 			else if(hadValue)
 			{
-				// todo: remove this restriction maybe
+				//? this is mostly because we don't want to deal with auto-incrementing stuff
 				error(st.loc(), "enumeration cases must either all have no values, or all have values; a mix is not allowed.");
 			}
 
@@ -589,6 +677,27 @@ namespace parser
 				return util::pool<pts::TupleType>(loc, types);
 			}
 		}
+		else if(st.front() == TT::Struct)
+		{
+			auto str = parseStruct(st, /* nameless: */ true);
+			st.anonymousTypeDefns.push_back(str);
+
+			return pts::NamedType::create(str->loc, str->name);
+		}
+		else if(st.front() == TT::Union || (st.front() == TT::Attr_Raw && st.lookahead(1) == TT::Union))
+		{
+			bool israw = st.front() == TT::Attr_Raw;
+			if(israw) st.eat();
+
+			auto unn = parseUnion(st, israw, /* nameless: */ true);
+			st.anonymousTypeDefns.push_back(unn);
+
+			return pts::NamedType::create(unn->loc, unn->name);
+		}
+		else if(st.front() == TT::Class)
+		{
+			error(st, "classes cannot be defined anonymously");
+		}
 		else
 		{
 			error(st, "unexpected token '%s' while parsing type", st.front().str());
@@ -596,7 +705,7 @@ namespace parser
 	}
 
 
-
+	// PAM == PolyArgMapping
 	PolyArgMapping_t parsePAMs(State& st, bool* failed)
 	{
 		iceAssert(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle);

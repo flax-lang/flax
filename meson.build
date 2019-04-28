@@ -5,17 +5,15 @@ the_compiler = meson.get_compiler('c')
 # buildKind = get_option('buildtype')
 # message('build type is ' + buildKind)
 
-# libKind = 'DebugNoSyms'
-
 if get_option('buildtype') == 'debug'
-	libKind = 'DebugNoSyms'
+	libKind = 'Debug'
 else
 	libKind = 'Release'
 endif
 
 mpir_root_dir = 'D:/Projects/lib/mpir'
 mpfr_root_dir = 'D:/Projects/lib/mpfr'
-llvm_root_dir = 'D:/Projects/lib/llvm'
+llvm_root_dir = 'D:/Projects/lib/llvm/7.0.1/'
 
 mpir_hdr_dir = mpir_root_dir + '/' + libKind + '/include/'
 mpfr_hdr_dir = mpfr_root_dir + '/' + libKind + '/include/'
@@ -164,6 +162,7 @@ source_files = files([
 	'source/fir/Types/ArraySliceType.cpp',
 	'source/fir/Types/PrimitiveType.cpp',
 	'source/fir/Types/FunctionType.cpp',
+	'source/fir/Types/RawUnionType.cpp',
 	'source/fir/Types/PointerType.cpp',
 	'source/fir/Types/SingleTypes.cpp',
 	'source/fir/Types/StructType.cpp',
@@ -206,7 +205,7 @@ mpir_dep = declare_dependency(version: '3.0.0', include_directories: include_dir
 mpfr_dep = declare_dependency(version: '4.0.0', include_directories: include_directories(mpfr_hdr_dir),
 	dependencies: the_compiler.find_library('mpfr', dirs: mpfr_lib_dir))
 
-llvm_dep = declare_dependency(version: '6.0.0', include_directories: include_directories(llvm_hdr_dir),
+llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_directories(llvm_hdr_dir),
 	dependencies: [ mpfr_dep, mpir_dep,
 		# the_compiler.find_library('LLVM_all', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
@@ -236,7 +235,7 @@ llvm_dep = declare_dependency(version: '6.0.0', include_directories: include_dir
 		the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
+		# the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),

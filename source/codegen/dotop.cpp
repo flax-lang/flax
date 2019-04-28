@@ -7,6 +7,10 @@
 #include "typecheck.h"
 
 
+static bool isAutoDereferencable(fir::Type* t)
+{
+	return (t->isStructType() || t->isClassType() || t->isRawUnionType());
+}
 
 static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* user, sst::Expr* lhs, fir::Type** baseType)
 {
@@ -15,10 +19,10 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 
 	fir::Value* retv = 0;
 
-	if(restype->isStructType() || restype->isClassType())
+	if(isAutoDereferencable(restype))
 	{
 		auto t = res.value->getType();
-		iceAssert(t->isStructType() || t->isClassType());
+		iceAssert(isAutoDereferencable(t));
 
 		retv = res.value;
 		*baseType = restype;
@@ -28,9 +32,9 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 		retv = res.value;
 		*baseType = restype;
 	}
-	else if(restype->isPointerType() && (restype->getPointerElementType()->isStructType() || restype->getPointerElementType()->isClassType()))
+	else if(restype->isPointerType() && isAutoDereferencable(restype->getPointerElementType()))
 	{
-		iceAssert(res.value->getType()->getPointerElementType()->isStructType() || res.value->getType()->getPointerElementType()->isClassType());
+		iceAssert(isAutoDereferencable(res.value->getType()->getPointerElementType()));
 
 		retv = cs->irb.Dereference(res.value);
 		*baseType = restype->getPointerElementType();
@@ -57,8 +61,6 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// basically what we need to do is just get the pointer
 		fir::Type* sty = 0;
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
-		// if(!res.pointer)
-		// 	res.pointer = cs->irb.ImmutStackAlloc(sty, res.value);
 
 		// then we insert it as the first argument
 		auto rv = new sst::RawValueExpr(this->loc, res.value->getType()->getMutablePointerTo());
@@ -90,15 +92,70 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::Type* sty = 0;
 	auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
-	if(!res->islorclvalue())
+
+	// TODO: clean up the code dupe here
+	if(this->isTransparentField)
 	{
-		// use extractvalue.
-		return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent));
+		iceAssert(this->lhs->type->isRawUnionType() || this->lhs->type->isStructType());
+		if(this->lhs->type->isRawUnionType())
+		{
+			fir::Value* field = 0;
+			if(res->islorclvalue())
+			{
+				field = cs->irb.GetRawUnionFieldByType(res.value, this->type);
+			}
+			else
+			{
+				auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
+				field = cs->irb.GetRawUnionFieldByType(addr, this->type);
+			}
+
+			return CGResult(field);
+		}
+		else
+		{
+			if(res->islorclvalue())
+			{
+				// ok, at this point it's just a normal, instance field.
+				return CGResult(cs->irb.StructGEP(res.value, this->indexOfTransparentField));
+			}
+			else
+			{
+				// use extractvalue.
+				return CGResult(cs->irb.ExtractValue(res.value, { this->indexOfTransparentField }));
+			}
+		}
 	}
 	else
 	{
-		// ok, at this point it's just a normal, instance field.
-		return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
+		if(this->lhs->type->isRawUnionType())
+		{
+			fir::Value* field = 0;
+			if(res->islorclvalue())
+			{
+				field = cs->irb.GetRawUnionField(res.value, this->rhsIdent);
+			}
+			else
+			{
+				auto addr = cs->irb.ImmutStackAlloc(this->lhs->type, res.value);
+				field = cs->irb.GetRawUnionField(addr, this->rhsIdent);
+			}
+
+			return CGResult(field);
+		}
+		else
+		{
+			if(res->islorclvalue())
+			{
+				// ok, at this point it's just a normal, instance field.
+				return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
+			}
+			else
+			{
+				// use extractvalue.
+				return CGResult(cs->irb.ExtractValueByName(res.value, this->rhsIdent));
+			}
+		}
 	}
 }
 

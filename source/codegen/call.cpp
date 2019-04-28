@@ -67,9 +67,10 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		auto vr = arg.value->codegen(cs, inf);
 		auto val = vr.value;
 
-		// ! ACHTUNG !
-		// TODO: is this actually necessary, or will we end up leaking memory???
-		if(cs->isRefCountedType(val->getType()))
+		//* arguments are added to the refcounting list in the function,
+		//* so we need to "pre-increment" the refcount here, so it does not
+		//* get freed when the function returns.
+		if(fir::isRefCountedType(val->getType()))
 			cs->incrementRefCount(val);
 
 
@@ -262,7 +263,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	// do the refcounting if we need to
-	if(cs->isRefCountedType(ret->getType()))
+	if(fir::isRefCountedType(ret->getType()))
 		cs->addRefCountedValue(ret);
 
 	return CGResult(ret);
@@ -342,10 +343,13 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto ft = fn->getType()->toFunctionType();
 
-	if(ft->getArgumentTypes().size() != this->arguments.size() && !ft->isVariadicFunc())
+	if(ft->getArgumentTypes().size() != this->arguments.size())
 	{
-		error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
-			ft->getArgumentTypes().size(), this->arguments.size());
+		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentTypes().size())
+		{
+			error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
+				ft->getArgumentTypes().size(), this->arguments.size());
+		}
 	}
 
 	std::vector<FnCallArgument> fcas = util::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {

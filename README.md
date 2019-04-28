@@ -95,11 +95,16 @@ do {
 
 ### Building the Flax compiler
 
+#### Dependencies ####
+- LLVM 7, mostly due to their obsession with changing the IR interface every damn version (6 does not work, 8 does not work)
+- GMP/MPIR
+- MPFR
+
 
 #### macOS / Linux
 
 - Flax uses a makefile; most likely some form of GNU-compatible `make` will work.
-- LLVM needs to be installed. On macOS, `brew install llvm@6` should work. (note: llvm 7 and up seems to have changed some JIT-related things)
+- LLVM needs to be installed. On macOS, `brew install llvm@7` should work. (note: llvm 8 and up seems to have changed some JIT-related things)
 - For macOS people, simply call `make`.
 - Linux people, call `make linux`.
 - A *C++17*-compatible compiler should be used.

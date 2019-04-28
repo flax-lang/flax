@@ -29,6 +29,7 @@ namespace fir
 	struct StringType;
 	struct PointerType;
 	struct FunctionType;
+	struct RawUnionType;
 	struct PrimitiveType;
 	struct ArraySliceType;
 	struct DynamicArrayType;
@@ -44,6 +45,7 @@ namespace fir
 	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
 
 	int getCastDistance(Type* from, Type* to);
+	bool isRefCountedType(Type* ty);
 
 	enum class TypeKind
 	{
@@ -63,6 +65,7 @@ namespace fir
 		String,
 		Pointer,
 		Function,
+		RawUnion,
 		Primitive,
 		ArraySlice,
 		DynamicArray,
@@ -108,6 +111,7 @@ namespace fir
 		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
+		RawUnionType* toRawUnionType();
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
 		StructType* toStructType();
@@ -130,6 +134,7 @@ namespace fir
 		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
+		bool isRawUnionType();
 		bool isUnionVariantType();
 
 		bool isRangeType();
@@ -143,6 +148,7 @@ namespace fir
 		bool isIntegerType();
 		bool isFunctionType();
 		bool isSignedIntType();
+		bool isUnsignedIntType();
 		bool isFloatingPointType();
 
 		bool isArraySliceType();
@@ -580,6 +586,40 @@ namespace fir
 		Type* interiorType;
 		std::string name;
 		size_t variantId;
+	};
+
+
+
+	struct RawUnionType : Type
+	{
+		friend struct Type;
+
+		Identifier getTypeName();
+		size_t getVariantCount();
+
+		bool hasVariant(const std::string& name);
+		Type* getVariant(const std::string& name);
+		util::hash_map<std::string, Type*> getVariants();
+
+		void setBody(const util::hash_map<std::string, Type*>& variants);
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+
+
+		virtual ~RawUnionType() override { }
+		protected:
+
+		RawUnionType(const Identifier& id, const util::hash_map<std::string, Type*>& variants);
+
+		Identifier unionName;
+		util::hash_map<std::string, Type*> variants;
+
+		public:
+		static RawUnionType* create(const Identifier& id, const util::hash_map<std::string, Type*>& variants);
+		static RawUnionType* createWithoutBody(const Identifier& id);
 	};
 
 

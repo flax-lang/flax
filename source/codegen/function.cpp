@@ -142,7 +142,7 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto fn = cs->getCurrentFunction();
 
 	auto arg = cs->irb.CreateConstLValue(fn->getArgumentWithName(this->id.name), this->id.name);
-	if(cs->isRefCountedType(arg->getType()))
+	if(fir::isRefCountedType(arg->getType()))
 		cs->addRefCountedValue(arg);
 
 	// ok...

@@ -11,9 +11,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 3. Optional arguments.
 
 
-4. Public and private imports (ie. do we re-export our imports (currently the default), or do we keep them to ourselves (the new default)
-
-
 5. String operators
 
 

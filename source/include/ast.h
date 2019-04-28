@@ -391,13 +391,8 @@ namespace ast
 
 		std::vector<pts::Type*> bases;
 
-		std::vector<VarDefn*> fields;
+		std::vector<std::tuple<std::string, Location, pts::Type*>> fields;
 		std::vector<FuncDefn*> methods;
-
-		std::vector<VarDefn*> staticFields;
-		std::vector<FuncDefn*> staticMethods;
-
-		std::vector<TypeDefn*> nestedTypes;
 	};
 
 	struct ClassDefn : TypeDefn
@@ -451,7 +446,10 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
+		bool israw = false;
 		util::hash_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
+
+		std::vector<std::pair<Location, pts::Type*>> transparentFields;
 	};
 
 	struct TypeExpr : Expr
