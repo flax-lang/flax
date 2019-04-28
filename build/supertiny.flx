@@ -4,8 +4,7 @@
 
 export supertiny
 
-// import libc as _
-import libc
+import libc as _
 
 // import std::io
 // import std::map
@@ -14,7 +13,18 @@ import std::opt
 @raw union ipv4
 {
 	_: struct {
+		_: @raw union {
+			bytes2: [u8: 4]
+			raw3: u32
+		}
+	}
+
+	_: struct {
 		bytes: [u8: 4]
+	}
+
+	_: struct {
+		raw2: u32
 	}
 
 	raw: u32
@@ -29,19 +39,12 @@ struct foo
 
 @entry fn main()
 {
-	libc::printf("hello world %d\n", 1)
-	// do {
-	// 	var addr: ipv4
-	// 	// addr.raw = -16668480;
-	// 	addr.raw = 0xff01a8c0;
+	do {
+		var addr: ipv4
+		addr.raw3 = 0xff01a8c0;
 
-	// 	printf("%d.%d.%d.%d\n", addr._.bytes[0], addr._.bytes[1], addr._.bytes[2], addr._.bytes[3]);
-
-	// 	// addr._.bytes[0] = 192
-	// 	// addr._.bytes[1] = 168
-	// 	// addr._.bytes[2] = 1
-	// 	// addr._.bytes[3] = 1
-	// }
+		printf("%d.%d.%d.%d\n", addr.bytes[0], addr.bytes[1], addr.bytes[2], addr.bytes[3]);
+	}
 
 
 	/* do {

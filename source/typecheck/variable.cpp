@@ -357,7 +357,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 	}
 
-	fs->stree->addDefinition(this->name, defn);
+	if(this->name != "_")
+		fs->stree->addDefinition(this->name, defn);
 
 	// store the place where we were defined.
 	if(fs->isInFunctionBody())

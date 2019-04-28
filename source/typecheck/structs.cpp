@@ -37,15 +37,77 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 		for(auto f : field->toStructType()->getElements())
 			_checkFieldRecursion(fs, field, f, floc, seeing);
 	}
+	else if(field->isRawUnionType())
+	{
+		for(auto f : field->toRawUnionType()->getVariants())
+			_checkFieldRecursion(fs, field, f.second, floc, seeing);
+	}
 
 	// ok, we should be fine...?
 }
 
+// used in typecheck/unions.cpp and typecheck/classes.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
 {
 	std::set<fir::Type*> seeing;
 	_checkFieldRecursion(fs, strty, field, floc, seeing);
 }
+
+static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
+	util::hash_map<std::string, Location>& seen)
+{
+	for(auto fld : fields)
+	{
+		if(fld->isTransparentField)
+		{
+			auto ty = fld->type;
+			if(!ty->isRawUnionType() && !ty->isStructType())
+			{
+				// you can't have a transparentl field if it's not an aggregate type, lmao
+				error(fld, "transparent fields must have either a struct or raw-union type.");
+			}
+
+			auto defn = fs->typeDefnMap[ty];
+			iceAssert(defn);
+
+			std::vector<sst::StructFieldDefn*> flds;
+			if(auto str = dcast(sst::StructDefn, defn); str)
+				flds = str->fields;
+
+			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
+				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+
+			else
+				error(fs->loc(), "what kind of type is this? '%s'", ty);
+
+			_checkTransparentFieldRedefinition(fs, defn, flds, seen);
+		}
+		else
+		{
+			if(auto it = seen.find(fld->id.name); it != seen.end())
+			{
+				SimpleError::make(fld->loc, "redefinition of transparently accessible field '%s'", fld->id.name)
+					->append(SimpleError::make(MsgType::Note, it->second, "previous definition was here:"))
+					->postAndQuit();
+			}
+			else
+			{
+				seen[fld->id.name] = fld->loc;
+			}
+		}
+	}
+}
+
+void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields)
+{
+	util::hash_map<std::string, Location> seen;
+	_checkTransparentFieldRedefinition(fs, defn, fields, seen);
+}
+
+
+
+
+
 
 
 
@@ -122,9 +184,6 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
-	//* this is a slight misnomer, since we only 'enter' the struct body when generating methods.
-	//* for all intents and purposes, static methods (aka functions) don't really need any special
-	//* treatment anyway, apart from living in a special namespace -- so this should really be fine.
 	fs->enterStructBody(defn);
 	{
 		for(auto f : this->fields)
@@ -138,7 +197,8 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			auto v = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(v);
 
-			if(v->init) error(v, "struct fields cannot have inline initialisers");
+			if(v->id.name == "_")
+				v->isTransparentField = true;
 
 			defn->fields.push_back(v);
 			tys.push_back({ v->id.name, v->type });
@@ -162,6 +222,10 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		for(auto m : this->methods)
 			m->typecheck(fs, str, { });
 	}
+
+	checkTransparentFieldRedefinition(fs, defn, defn->fields);
+
+
 	fs->leaveStructBody();
 
 
