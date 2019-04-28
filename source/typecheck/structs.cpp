@@ -61,7 +61,11 @@ static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::Typ
 		if(fld->isTransparentField)
 		{
 			auto ty = fld->type;
-			assert(ty->isRawUnionType() || ty->isStructType());
+			if(!ty->isRawUnionType() && !ty->isStructType())
+			{
+				// you can't have a transparentl field if it's not an aggregate type, lmao
+				error(fld, "transparent fields must have either a struct or raw-union type.");
+			}
 
 			auto defn = fs->typeDefnMap[ty];
 			iceAssert(defn);
@@ -193,6 +197,9 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			auto v = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(v);
 
+			if(v->id.name == "_")
+				v->isTransparentField = true;
+
 			defn->fields.push_back(v);
 			tys.push_back({ v->id.name, v->type });
 
@@ -215,6 +222,10 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		for(auto m : this->methods)
 			m->typecheck(fs, str, { });
 	}
+
+	checkTransparentFieldRedefinition(fs, defn, defn->fields);
+
+
 	fs->leaveStructBody();
 
 

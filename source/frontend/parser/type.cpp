@@ -312,8 +312,6 @@ namespace parser
 					error(st.loc(), "expected newline after union variant");
 			}
 
-
-
 			if(name == "_")
 			{
 				if(!israw)
