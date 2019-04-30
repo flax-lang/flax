@@ -218,8 +218,9 @@ namespace resolver
 			}
 			else
 			{
-				std::vector<FnParam> target = util::filterMap(str->fields, [&seen](sst::StructFieldDefn* f) -> bool {
-					return seen.find(f->id.name) != seen.end();
+				auto seencopy = seen;
+				std::vector<FnParam> target = util::filterMap(str->fields, [&seencopy](sst::StructFieldDefn* f) -> bool {
+					return seencopy.find(f->id.name) != seencopy.end();
 				}, [](sst::StructFieldDefn* f) -> FnParam {
 					return FnParam(f->loc, f->id.name, f->type);
 				});
