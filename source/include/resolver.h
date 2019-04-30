@@ -38,7 +38,7 @@ namespace sst
 
 
 		std::pair<util::hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
-			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
+			const std::string& name, const std::vector<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
 			fir::Type* return_infer, bool isFnCall);

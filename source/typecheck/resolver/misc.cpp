@@ -206,7 +206,7 @@ namespace sst
 
 
 		std::pair<util::hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
-			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments)
+			const std::string& name, const std::vector<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments)
 		{
 			//* note that structs don't have inline member initialisers, so there's no trouble with this approach (in the codegeneration)
 			//* of inserting missing arguments as just '0' or whatever their default value is
@@ -221,7 +221,7 @@ namespace sst
 			util::hash_map<std::string, size_t> seenNames;
 			for(auto arg : arguments)
 			{
-				if(arg.name.empty() && useNames || (!firstName && !useNames && !arg.name.empty()))
+				if((arg.name.empty() && useNames) || (!firstName && !useNames && !arg.name.empty()))
 				{
 					return { { }, SimpleError::make(arg.loc, "named arguments cannot be mixed with positional arguments in a struct constructor") };
 				}
@@ -231,7 +231,7 @@ namespace sst
 				}
 
 
-				if(!arg.name.empty() && fieldNames.find(arg.name) == fieldNames.end())
+				if(!arg.name.empty() && std::find(fieldNames.begin(), fieldNames.end(), arg.name) == fieldNames.end())
 				{
 					return { { }, SimpleError::make(arg.loc, "field '%s' does not exist in struct '%s'", arg.name, name) };
 				}
@@ -247,14 +247,21 @@ namespace sst
 			}
 
 			//* note: if we're doing positional args, allow only all or none.
-			if(!useNames && arguments.size() != fieldNames.size() && arguments.size() > 0)
+			if(!useNames)
 			{
-				return { { }, SimpleError::make(callLoc,
-					"mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
-					name, fieldNames.size(), arguments.size())->append(
-						BareError::make(MsgType::Note, "all arguments are mandatory when using positional arguments")
-					)
-				};
+				if(arguments.size() != fieldNames.size() && arguments.size() > 0)
+				{
+					return { { }, SimpleError::make(callLoc,
+						"mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
+						name, fieldNames.size(), arguments.size())->append(
+							BareError::make(MsgType::Note, "all arguments are mandatory when using positional arguments")
+						)
+					};
+				}
+
+				// ok; populate 'seenNames' with all the fields, because we 'saw' them, I guess.
+				for(size_t i = 0; i < fieldNames.size(); i++)
+					seenNames[fieldNames[i]] = i;
 			}
 
 			return { seenNames, nullptr };
