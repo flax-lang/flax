@@ -166,13 +166,13 @@ namespace resolver
 					auto res = resolveConstructorCall(fs, td, replacementArgs, pams);
 					if(!res.isDefn())
 					{
-						fails[fn] = res.error();
+						fails[td] = res.error();
 						dist = -1;
 					}
 					else
 					{
 						curcandidate = res.defn();
-						std::tie(dist, fails[fn]) = std::make_tuple(0, nullptr);
+						std::tie(dist, fails[td]) = std::make_tuple(0, nullptr);
 					}
 				}
 

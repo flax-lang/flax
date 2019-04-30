@@ -1008,7 +1008,7 @@ namespace fir
 	struct LocatedType
 	{
 		LocatedType() { }
-		LocatedType(fir::Type* t) : type(t) { }
+		explicit LocatedType(fir::Type* t) : type(t) { }
 		LocatedType(fir::Type* t, const Location& l) : type(t), loc(l) { }
 
 		operator fir::Type* () const { return this->type; }
