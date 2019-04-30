@@ -57,7 +57,7 @@ struct foo
 	// }
 
 	do {
-		let k = foo("20", 31)
+		let k = foo(y: "20", x: 31)
 	}
 
 
@@ -92,7 +92,7 @@ import std::    map
 	let res = map.remove(3)
 	libc::printf("map[3]: res = %d, is_none = %d\n", res, map.search(3) is std::opt::none)
 
-	 */
+*/
 
 
 

@@ -205,14 +205,10 @@ namespace resolver
 		}
 		else if(auto str = dcast(StructDefn, typedf))
 		{
-			std::vector<fir::LocatedType> structFields;
-			std::set<std::string> fieldNames;
+			std::vector<std::string> fieldNames;
 
 			for(auto f : str->fields)
-			{
-				fieldNames.insert(f->id.name);
-				structFields.push_back(fir::LocatedType(f->type));
-			}
+				fieldNames.push_back(f->id.name);
 
 			auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
 
@@ -222,12 +218,19 @@ namespace resolver
 			}
 			else
 			{
-				// ok, we need to actually check the arguments.
-				auto args = util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
-					return fir::LocatedType(fca.value->type, fca.loc);
+				std::vector<FnParam> target = util::filterMap(str->fields, [&seen](sst::StructFieldDefn* f) -> bool {
+					return seen.find(f->id.name) != seen.end();
+				}, [](sst::StructFieldDefn* f) -> FnParam {
+					return FnParam(f->loc, f->id.name, f->type);
 				});
 
-				auto [ soln, err ] = poly::solveTypeList(structFields, args, poly::Solution_t(), /* isFnCall: */ true);
+				ErrorMsg* _err = 0;
+				auto args = resolver::misc::canonicaliseCallArguments(fs->loc(), target, arguments, &_err);
+				if(_err != 0) return TCResult(_err);
+
+				auto [ soln, err ] = poly::solveTypeList(util::map(target, [](const FnParam& f) -> fir::LocatedType {
+					return fir::LocatedType(f.type, f.loc);
+				}), args, poly::Solution_t(), /* isFnCall: */ true);
 
 				// in actual fact we just return the thing here. sigh.
 				if(err != nullptr)  return TCResult(err);
