@@ -205,17 +205,34 @@ namespace resolver
 		}
 		else if(auto str = dcast(StructDefn, typedf))
 		{
+			std::vector<fir::LocatedType> structFields;
 			std::set<std::string> fieldNames;
+
 			for(auto f : str->fields)
+			{
 				fieldNames.insert(f->id.name);
+				structFields.push_back(fir::LocatedType(f->type));
+			}
 
-			auto err = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
+			auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
 
-			if(err.second != nullptr)
-				return TCResult(err.second);
+			if(err != nullptr)
+			{
+				return TCResult(err);
+			}
+			else
+			{
+				// ok, we need to actually check the arguments.
+				auto args = util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
+					return fir::LocatedType(fca.value->type, fca.loc);
+				});
 
-			// in actual fact we just return the thing here. sigh.
-			return TCResult(str);
+				auto [ soln, err ] = poly::solveTypeList(structFields, args, poly::Solution_t(), /* isFnCall: */ true);
+
+				// in actual fact we just return the thing here. sigh.
+				if(err != nullptr)  return TCResult(err);
+				else                return TCResult(str);
+			}
 		}
 		else if(auto uvd = dcast(sst::UnionVariantDefn, typedf))
 		{
