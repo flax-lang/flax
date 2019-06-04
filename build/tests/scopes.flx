@@ -8,7 +8,7 @@ import libc as _
 import std::math
 
 
-@operator prefix 900 √
+@operator[prefix, 900, √]
 
 operator prefix √ (x: f64) -> f64 { return math::sqrt(x) }
 

@@ -15,7 +15,7 @@ TCResult ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = util::pool<sst::SizeofOp>(this->loc, fir::Type::getInt64());
+	auto ret = util::pool<sst::SizeofOp>(this->loc, fir::Type::getNativeWord());
 
 	if(dcast(ast::LitNumber, this->expr))
 	{
@@ -37,7 +37,7 @@ TCResult ast::TypeidOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto ret = util::pool<sst::TypeidOp>(this->loc, fir::Type::getUint64());
+	auto ret = util::pool<sst::TypeidOp>(this->loc, fir::Type::getNativeUWord());
 
 	if(dcast(ast::LitNumber, this->expr))
 	{

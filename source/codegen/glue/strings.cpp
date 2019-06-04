@@ -54,7 +54,7 @@ namespace string
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
 				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
-				fir::Type::getInt64()), fir::LinkageType::Internal);
+				fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -109,8 +109,8 @@ namespace string
 					cs->irb.setCurrentBlock(loopincr);
 					{
 						// increment str1 and str2
-						fir::Value* v1 = cs->irb.PointerAdd(str1, fir::ConstantInt::getInt64(1));
-						fir::Value* v2 = cs->irb.PointerAdd(str2, fir::ConstantInt::getInt64(1));
+						fir::Value* v1 = cs->irb.PointerAdd(str1, fir::ConstantInt::getNative(1));
+						fir::Value* v2 = cs->irb.PointerAdd(str2, fir::ConstantInt::getNative(1));
 
 						cs->irb.WritePtr(v1, str1p);
 						cs->irb.WritePtr(v2, str2p);
@@ -145,13 +145,13 @@ namespace string
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 		fir::IRBlock* dorc = cs->irb.addNewBlockInFunction("dorc", func);
 
-		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr())),
+		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr())),
 			merge, dorc);
 
 		cs->irb.setCurrentBlock(dorc);
 		{
 			auto oldrc = cs->irb.ReadPtr(rcp, "oldrc");
-			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
+			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getNative(decrement ? -1 : 1));
 
 			cs->irb.SetSAARefCount(str, newrc);
 
@@ -167,7 +167,7 @@ namespace string
 			if(decrement)
 			{
 				fir::IRBlock* dofree = cs->irb.addNewBlockInFunction("dofree", func);
-				cs->irb.CondBranch(cs->irb.ICmpEQ(newrc, fir::ConstantInt::getInt64(0)),
+				cs->irb.CondBranch(cs->irb.ICmpEQ(newrc, fir::ConstantInt::getNative(0)),
 					dofree, merge);
 
 				cs->irb.setCurrentBlock(dofree);
@@ -270,7 +270,7 @@ namespace string
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -304,11 +304,11 @@ namespace string
 					return len
 				}
 			*/
-			auto i0 = fir::ConstantInt::getInt64(0);
-			auto i1 = fir::ConstantInt::getInt64(1);
+			auto i0 = fir::ConstantInt::getNative(0);
+			auto i1 = fir::ConstantInt::getNative(1);
 			auto c0 = fir::ConstantInt::getInt8(0);
 
-			fir::Value* lenp = cs->irb.StackAlloc(fir::Type::getInt64());
+			fir::Value* lenp = cs->irb.StackAlloc(fir::Type::getNativeWord());
 			cs->irb.WritePtr(i0, lenp);
 
 

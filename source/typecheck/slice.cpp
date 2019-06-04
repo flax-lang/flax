@@ -55,8 +55,8 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	else
 		error(array, "invalid type '%s' for slice operation", ty);
 
-	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getInt64()).expr() : 0;
-	auto end = this->end ? this->end->typecheck(fs, fir::Type::getInt64()).expr() : 0;
+	auto begin = this->start ? this->start->typecheck(fs, fir::Type::getNativeWord()).expr() : 0;
+	auto end = this->end ? this->end->typecheck(fs, fir::Type::getNativeWord()).expr() : 0;
 
 	if(begin && !begin->type->isIntegerType())
 		error(begin, "expected integer type for start index of slice; found '%s'", begin->type);

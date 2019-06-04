@@ -20,7 +20,7 @@ TCResult ast::PlatformDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	{
 		return this->intrinsicDefn->typecheck(fs, infer);
 	}
-	else if(this->defnType == Type::NativeWord)
+	else if(this->defnType == Type::IntegerType)
 	{
 		auto defn = util::pool<sst::BareTypeDefn>(this->loc);
 		// auto opty = fir::OpaqueType::get(this->typeName, this->typeSizeInBits);
@@ -46,3 +46,19 @@ TCResult ast::PlatformDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return TCResult(SimpleError::make(this->loc, "nani?"));
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

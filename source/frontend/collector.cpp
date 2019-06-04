@@ -80,6 +80,10 @@ namespace frontend
 
 	sst::DefinitionTree* typecheckFiles(CollectorState* state)
 	{
+		// do a simple thing.
+		if(state->nativeWordSize != 0)  fir::setNativeWordSizeInBits(state->nativeWordSize);
+		else                            fir::setNativeWordSizeInBits(64);
+
 		// typecheck
 		for(const auto& file : state->allFiles)
 		{

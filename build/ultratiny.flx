@@ -4,12 +4,12 @@
 
 export ultratiny
 
-@platform[native_word, 32] word
+@platform[native_word_size] 32
+@platform[integer_type, 32] word
 @platform[intrinsic, "lscvm.P"] fn putchar(c: i32)
 @platform[intrinsic, "lscvm.I"] fn putint(i: i32)
 
 fn main()
 {
-	let y = 3 + 7
-	let g: word = 30
+	let s: str = "foo"
 }

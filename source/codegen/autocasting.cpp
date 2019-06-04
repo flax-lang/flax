@@ -29,11 +29,11 @@ namespace cgn
 		}
 		else
 		{
-			if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-				return fir::ConstantInt::getInt64(cn->getInt64());
+			if(ty->getMinBits() < fir::Type::getNativeWord()->getBitWidth() - 1)
+				return fir::ConstantInt::getNative(cn->getInt64());
 
-			else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
-				return fir::ConstantInt::getUint64(cn->getUint64());
+			else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
+				return fir::ConstantInt::getUNative(cn->getUint64());
 
 			else
 				error("int overflow");
@@ -101,7 +101,10 @@ namespace cgn
 		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getUint16());
 		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getUint32());
 		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getUint64());
-		else										error("unsupported type '%s'", target);
+
+		else if(target == fir::Type::getNativeWord())   return fir::ConstantInt::get(target, num->getInt64());
+		else if(target == fir::Type::getNativeUWord())  return fir::ConstantInt::get(target, num->getUint64());
+		else										    error("unsupported type '%s'", target);
 	}
 
 

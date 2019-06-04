@@ -67,7 +67,7 @@ TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* i
 			->add(util::ESpan(arr->loc, "here"))->postAndQuit();
 	}
 
-	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getInt64()));
+	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getNativeWord()));
 }
 
 

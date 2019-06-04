@@ -119,37 +119,37 @@ namespace parser
 		size_t tix = (size_t) -1;
 
 
-		// flags that determine whether or not 'import' and '@operator' things can still be done.
-		bool importsStillValid = true;
-		bool operatorsStillValid = true;
-
-
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
 		{
 			switch(st.front())
 			{
 				case TT::Import: {
-					if(name != "" || !importsStillValid)
+					if(name != "" || !st.importsStillValid)
 						error(st, "import statements are not allowed here");
 
 					root->statements.push_back(parseImport(st));
 				} break;
 
 				case TT::Attr_Operator: {
-					if(name != "" || !operatorsStillValid)
+					if(name != "" || !st.operatorsStillValid)
 						error(st, "custom operator declarations are not allowed here");
 
 					// just skip it.
 					st.setIndex(parseOperatorDecl(st.getTokenList(), st.getIndex(), 0, 0));
 
-					importsStillValid = false;
+					st.importsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 				} break;
 
 				case TT::Attr_Platform: {
 
-					root->statements.push_back(parsePlatformDefn(st));
+					auto ret = parsePlatformDefn(st);
 
-					importsStillValid = false;
+					if(ret) // sometimes we set a setting, but it doesn't need to have an AST node.
+						root->statements.push_back(ret);
+
+					st.importsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 				} break;
 
 				case TT::Namespace: {
@@ -164,8 +164,9 @@ namespace parser
 
 					root->statements.push_back(ns);
 
-					importsStillValid = false;
-					operatorsStillValid = false;
+					st.importsStillValid = false;
+					st.operatorsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 
 				} break;
 
@@ -186,8 +187,9 @@ namespace parser
 
 					root->statements.push_back(stmt);
 
-					importsStillValid = false;
-					operatorsStillValid = false;
+					st.importsStillValid = false;
+					st.operatorsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 
 				} break;
 
@@ -202,8 +204,9 @@ namespace parser
 
 					root->statements.push_back(stmt);
 
-					importsStillValid = false;
-					operatorsStillValid = false;
+					st.importsStillValid = false;
+					st.operatorsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 
 				} break;
 
@@ -262,8 +265,9 @@ namespace parser
 						}
 					}
 
-					importsStillValid = false;
-					operatorsStillValid = false;
+					st.importsStillValid = false;
+					st.operatorsStillValid = false;
+					st.nativeWordSizeStillValid = false;
 
 					root->statements.push_back(parseStmt(st));
 				} break;
@@ -299,6 +303,8 @@ namespace parser
 		state.binaryOps = cs.binaryOps;
 		state.prefixOps = cs.prefixOps;
 		state.postfixOps = cs.postfixOps;
+
+		state.cState = &cs;
 
 		auto [ modname, modpath ] = parseModuleName(full);
 		auto toplevel = parseTopLevel(state, "");

@@ -68,6 +68,8 @@ namespace frontend
 		DependencyGraph* graph = 0;
 		std::string fullMainFile;
 		std::vector<std::string> allFiles;
+
+		size_t nativeWordSize = 0;
 	};
 
 	// fir::Module* collectFiles(std::string filename);

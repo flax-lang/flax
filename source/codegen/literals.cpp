@@ -24,7 +24,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			return CGResult(fir::ConstantFP::get(this->type, this->num.toDouble()));
 
 		else
-			return CGResult(fir::ConstantInt::get(this->type, this->num.toLLong()));
+			return CGResult(fir::ConstantInt::get(this->type, this->type->isSignedIntType() ? this->num.toLLong() : this->num.toULLong()));
 	}
 }
 
@@ -75,17 +75,16 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// ok.
 				elmty = infer->getArrayElementType();
-				// error(this, "elmty = %s", elmty);
 
-				auto z = fir::ConstantInt::getInt64(0);
-				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()),
-					z, z));
+				auto z = fir::ConstantInt::getNative(0);
+				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
 			}
 			else if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
 
-				auto z = fir::ConstantInt::getInt64(0);
+				auto z = fir::ConstantInt::getNative(0);
 
 				//* note: it's clearly a null pointer, so it must be immutable.
 				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
@@ -158,9 +157,9 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
 			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
-			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getInt64(-1));
-			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
+			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
+			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
 
 			return CGResult(aa);
 		}
@@ -171,7 +170,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
 
 			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));
-			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getInt64(this->values.size()));
+			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getNative(this->values.size()));
 
 			return CGResult(aa);
 		}
@@ -268,7 +267,7 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		auto str = cs->module->createGlobalString(this->str);
-		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getInt64(this->str.length()));
+		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getNative(this->str.length()));
 
 		return CGResult(slc);
 	}

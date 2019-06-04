@@ -36,9 +36,9 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// TODO: LVALUE HOLE
 		if(lr->islorclvalue())
 		{
-			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getInt64(0),
-				fir::ConstantInt::getInt64(0));
-			maxlength = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
+			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getNative(0),
+				fir::ConstantInt::getNative(0));
+			maxlength = fir::ConstantInt::getNative(lt->toArrayType()->getArraySize());
 		}
 		else
 		{

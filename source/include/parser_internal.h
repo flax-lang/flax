@@ -232,6 +232,13 @@ namespace parser
 		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
 		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
+		// flags that determine whether or not 'import' and '@operator' things can still be done.
+		bool importsStillValid = true;
+		bool operatorsStillValid = true;
+		bool nativeWordSizeStillValid = true;
+
+		frontend::CollectorState* cState = 0;
+
 		private:
 			// 1 = inside function
 			// 2 = inside struct

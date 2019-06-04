@@ -119,9 +119,9 @@ namespace fir
 		}
 		else
 		{
-			if(cnt->getMinBits() <= 63)
+			if(cnt->getMinBits() < fir::Type::getNativeWord()->getBitWidth())
 			{
-				return fir::Type::getInt64();
+				return fir::Type::getNativeWord();
 			}
 			else if(cnt->isSigned())
 			{
@@ -129,10 +129,10 @@ namespace fir
 			}
 			else
 			{
-				if(cnt->getMinBits() > 64)
+				if(cnt->getMinBits() > fir::Type::getNativeUWord()->getBitWidth())
 					error("constant number type '%s' requires too many bits", (Type*) cnt);
 
-				return fir::Type::getUint64();
+				return fir::Type::getNativeUWord();
 			}
 		}
 	}

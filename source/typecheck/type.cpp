@@ -30,14 +30,11 @@ namespace sst
 			}
 			else
 			{
-				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-					return fir::Type::getInt64();
+				if(ty->getMinBits() <= fir::Type::getNativeWord()->getBitWidth() - 1)
+					return fir::Type::getNativeWord();
 
-				else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
-					return fir::Type::getInt128();
-
-				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint128()->getBitWidth())
-					return fir::Type::getUint128();
+				else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
+					return fir::Type::getNativeUWord();
 
 				else
 					error("int overflow");

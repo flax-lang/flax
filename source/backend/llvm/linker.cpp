@@ -740,8 +740,6 @@ namespace backend
 			builder.SetInsertPoint(f);
 			builder.CreateCall(this->linkedModule->getFunction("__global_init_function__"));
 
-			// auto x = builder.CreateAlloca(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), nullptr, "x");
-			// builder.CreateStore(llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 491), x, true);
 			builder.CreateBr(entryblock);
 		}
 	}
