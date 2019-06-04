@@ -1,0 +1,15 @@
+// ultratiny.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+export ultratiny
+
+@platform[native_word, 32] word
+@platform[intrinsic, "lscvm.P"] fn putchar(c: i32)
+@platform[intrinsic, "lscvm.I"] fn putint(i: i32)
+
+fn main()
+{
+	let y = 3 + 7
+	let g: word = 30
+}

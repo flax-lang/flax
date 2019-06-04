@@ -1,5 +1,5 @@
 // function.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -94,7 +94,7 @@ namespace parser
 	}
 
 
-	static std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
+	std::tuple<FuncDefn*, bool, Location> parseFunctionDecl(State& st)
 	{
 		iceAssert(st.front() == TT::Func);
 		st.eat();
