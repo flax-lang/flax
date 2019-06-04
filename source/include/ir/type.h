@@ -48,6 +48,9 @@ namespace fir
 	int getCastDistance(Type* from, Type* to);
 	bool isRefCountedType(Type* ty);
 
+	void setNativeWordSizeInBits(size_t sz);
+	size_t getNativeWordSizeInBits();
+
 	enum class TypeKind
 	{
 		Invalid,
@@ -236,6 +239,11 @@ namespace fir
 		static RangeType* getRange();
 
 		static AnyType* getAny();
+
+		static PrimitiveType* getNativeWord();
+		static PrimitiveType* getNativeUWord();
+
+		static PointerType* getNativeWordPtr();
 
 
 		virtual ~Type() { }
@@ -1014,6 +1022,7 @@ namespace fir
 		virtual bool isTypeEqual(Type* other) override;
 		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
 
+		size_t getTypeSizeInBits() { return this->typeSizeInBits; }
 
 		// protected constructor
 		virtual ~OpaqueType() override { }

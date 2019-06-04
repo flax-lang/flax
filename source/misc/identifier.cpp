@@ -17,7 +17,7 @@ sst::Stmt* TCResult::stmt() const
 		case RK::Statement:     return this->_st;
 		case RK::Expression:    return this->_ex;
 		case RK::Definition:    return this->_df;
-		default:                _error_and_exit("not stmt");
+		default:                _error_and_exit("not stmt\n");
 	}
 }
 

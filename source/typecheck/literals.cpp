@@ -50,10 +50,12 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			bits = sizeof(uintmax_t) * CHAR_BIT;
 
 		else    // lmao
-			bits = SIZE_MAX;
+			bits = sizeof(uintmax_t) * CHAR_BIT;
 	}
 
-	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
+	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer
+		: fir::ConstantNumberType::get(sgn, flt, bits));
+
 	ret->num = number;
 
 	return TCResult(ret);

@@ -32,13 +32,13 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 	auto merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
 
 	{
-		fir::Value* neg = cs->irb.ICmpLT(beginIndex, fir::ConstantInt::getInt64(0));
+		fir::Value* neg = cs->irb.ICmpLT(beginIndex, fir::ConstantInt::getNative(0));
 		cs->irb.CondBranch(neg, neg_begin, check1);
 	}
 
 	cs->irb.setCurrentBlock(check1);
 	{
-		fir::Value* neg = cs->irb.ICmpLT(endIndex, fir::ConstantInt::getInt64(0));
+		fir::Value* neg = cs->irb.ICmpLT(endIndex, fir::ConstantInt::getNative(0));
 		cs->irb.CondBranch(neg, neg_end, check2);
 	}
 
@@ -122,8 +122,8 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(ty->isDynamicArrayType())	length = cs->irb.GetSAALength(lhs, "orig_len");
 	else if(ty->isArraySliceType())	length = cs->irb.GetArraySliceLength(lhs, "orig_len");
 	else if(ty->isStringType())		length = cs->irb.GetSAALength(lhs, "orig_len");
-	else if(ty->isArrayType())		length = fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize());
-	else if(ty->isPointerType())    length = fir::ConstantInt::getInt64(0);
+	else if(ty->isArrayType())		length = fir::ConstantInt::getNative(ty->toArrayType()->getArraySize());
+	else if(ty->isPointerType())    length = fir::ConstantInt::getNative(0);
 	else							error(this, "unsupported type '%s'", ty);
 
 	fir::Value* beginIdx = 0;
@@ -139,13 +139,13 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			error(this, "slicing operation on pointers requires an ending index");
 
 		if(this->begin)	beginIdx = this->begin->codegen(cs).value;
-		else			beginIdx = fir::ConstantInt::getInt64(0);
+		else			beginIdx = fir::ConstantInt::getNative(0);
 
 		if(this->end)	endIdx = this->end->codegen(cs).value;
 		else			endIdx = length;
 
-		beginIdx = cs->oneWayAutocast(beginIdx, fir::Type::getInt64());
-		endIdx = cs->oneWayAutocast(endIdx, fir::Type::getInt64());
+		beginIdx = cs->oneWayAutocast(beginIdx, fir::Type::getNativeWord());
+		endIdx = cs->oneWayAutocast(endIdx, fir::Type::getNativeWord());
 	}
 
 	beginIdx->setName("begin");

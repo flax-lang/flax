@@ -135,6 +135,16 @@ namespace fir
 		return ConstantInt::get(Type::getUint64(), value);
 	}
 
+	ConstantInt* ConstantInt::getNative(int64_t value)
+	{
+		return ConstantInt::get(Type::getNativeWord(), value);
+	}
+
+	ConstantInt* ConstantInt::getUNative(uint64_t value)
+	{
+		return ConstantInt::get(Type::getNativeUWord(), value);
+	}
+
 
 
 

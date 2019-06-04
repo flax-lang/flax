@@ -313,10 +313,10 @@ namespace resolver
 							error(arguments[0].loc, "first argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
 								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
 						}
-						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getInt64()) < 0)
+						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getNativeWord()) < 0)
 						{
 							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								(fir::Type*) fir::Type::getInt64(), t2);
+								(fir::Type*) fir::Type::getNativeWord(), t2);
 						}
 						else
 						{

@@ -85,7 +85,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ cls->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ cls->getPointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -102,10 +102,9 @@ namespace array
 			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
+			auto ctrptr = cs->irb.StackAlloc(fir::Type::getNativeWord());
 
 			// already set to 0 internally
-			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrptr);
 
 			cs->irb.UnCondBranch(check);
 			cs->irb.setCurrentBlock(check);
@@ -121,7 +120,7 @@ namespace array
 
 				cs->constructClassWithArguments(cls, constr, ptr, args, true);
 
-				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getNative(1)), ctrptr);
 
 				cs->irb.UnCondBranch(check);
 			}
@@ -152,7 +151,8 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getInt64(), elmType }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getNativeWord(), elmType }, fir::Type::getVoid()),
+				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -168,10 +168,7 @@ namespace array
 			fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-			auto ctrptr = cs->irb.StackAlloc(fir::Type::getInt64());
-
-			// already set to 0 internally
-			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrptr);
+			auto ctrptr = cs->irb.StackAlloc(fir::Type::getNativeWord());
 
 			cs->irb.UnCondBranch(check);
 			cs->irb.setCurrentBlock(check);
@@ -187,7 +184,7 @@ namespace array
 
 				cs->autoAssignRefCountedValue(ptr, value, true, true);
 
-				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrptr);
+				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getNative(1)), ctrptr);
 
 				cs->irb.UnCondBranch(check);
 			}
@@ -216,7 +213,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -259,8 +256,8 @@ namespace array
 		fir::Value* arg1, fir::Value* arg2)
 	{
 		// ok, ez.
-		fir::Value* zeroval = fir::ConstantInt::getInt64(0);
-		fir::Value* oneval = fir::ConstantInt::getInt64(1);
+		fir::Value* zeroval = fir::ConstantInt::getNative(0);
+		fir::Value* oneval = fir::ConstantInt::getNative(1);
 
 		fir::IRBlock* cond = cs->irb.addNewBlockInFunction("cond", func);
 		fir::IRBlock* body = cs->irb.addNewBlockInFunction("body", func);
@@ -303,8 +300,8 @@ namespace array
 		}
 		else if(arrtype->isArrayType())
 		{
-			len1 = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
-			len2 = fir::ConstantInt::getInt64(arrtype->toArrayType()->getArraySize());
+			len1 = fir::ConstantInt::getNative(arrtype->toArrayType()->getArraySize());
+			len2 = fir::ConstantInt::getNative(arrtype->toArrayType()->getArraySize());
 		}
 		else
 		{
@@ -312,10 +309,10 @@ namespace array
 		}
 
 		// we compare to this to break
-		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getInt64());
+		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getNativeWord());
 		cs->irb.WritePtr(zeroval, counter);
 
-		fir::Value* res = cs->irb.StackAlloc(fir::Type::getInt64());
+		fir::Value* res = cs->irb.StackAlloc(fir::Type::getNativeWord());
 		cs->irb.WritePtr(zeroval, res);
 
 
@@ -359,13 +356,13 @@ namespace array
 
 
 			cs->irb.setCurrentBlock(retlt);
-			cs->irb.Return(fir::ConstantInt::getInt64(-1));
+			cs->irb.Return(fir::ConstantInt::getNative(-1));
 
 			cs->irb.setCurrentBlock(reteq);
-			cs->irb.Return(fir::ConstantInt::getInt64(0));
+			cs->irb.Return(fir::ConstantInt::getNative(0));
 
 			cs->irb.setCurrentBlock(retgt);
-			cs->irb.Return(fir::ConstantInt::getInt64(+1));
+			cs->irb.Return(fir::ConstantInt::getNative(+1));
 		}
 
 
@@ -381,7 +378,7 @@ namespace array
 			// if c == true, then lhs == rhs, and so we should have 0.
 
 			c = cs->irb.LogicalNot(c);
-			c = cs->irb.IntSizeCast(c, fir::Type::getInt64());
+			c = cs->irb.IntSizeCast(c, fir::Type::getNativeWord());
 
 			cs->irb.WritePtr(c, res);
 
@@ -412,7 +409,6 @@ namespace array
 	static void _compareFunctionUsingOperatorFunction(CodegenState* cs, fir::Type* arrtype, fir::Function* curfunc,
 		fir::Value* arg1, fir::Value* arg2, fir::Function* opf)
 	{
-		// fir::Value* zeroval = fir::ConstantInt::getInt64(0);
 		error("notsup");
 	}
 
@@ -430,7 +426,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
-				fir::FunctionType::get({ arrtype, arrtype }, fir::Type::getInt64()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ arrtype, arrtype }, fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -504,7 +500,7 @@ namespace array
 				auto dontrc = cs->irb.addNewBlockInFunction("dontrcliteral", cs->irb.getCurrentFunction());
 				{
 					auto rcp = cs->irb.GetSAARefCountPointer(arr);
-					auto cond = cs->irb.ICmpNEQ(cs->irb.PointerToIntCast(rcp, fir::Type::getInt64()), fir::ConstantInt::getInt64(0));
+					auto cond = cs->irb.ICmpNEQ(cs->irb.PointerToIntCast(rcp, fir::Type::getNativeWord()), fir::ConstantInt::getNative(0));
 
 					cs->irb.CondBranch(cond, dorc, dontrc);
 				}
@@ -515,8 +511,8 @@ namespace array
 					therefc = cs->irb.GetSAARefCount(arr);
 
 					fir::Value* newrc = 0;
-					if(incr)    newrc = cs->irb.Add(therefc, fir::ConstantInt::getInt64(1));
-					else        newrc = cs->irb.Subtract(therefc, fir::ConstantInt::getInt64(1));
+					if(incr)    newrc = cs->irb.Add(therefc, fir::ConstantInt::getNative(1));
+					else        newrc = cs->irb.Subtract(therefc, fir::ConstantInt::getNative(1));
 
 					// update it.
 					therefc = newrc;
@@ -541,14 +537,14 @@ namespace array
 					fir::IRBlock* dealloc = cs->irb.addNewBlockInFunction("dealloc", func);
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-					auto zv = fir::ConstantInt::getInt64(0);
+					auto zv = fir::ConstantInt::getNative(0);
 
 					//! NOTE: what we want to happen here is for us to free the memory, but only if refcnt == 0 && capacity >= 0
 					//* so our condition is (REFCOUNT == 0) & (CAP >= 0)
 
-					auto refc = cs->irb.CreatePHINode(fir::Type::getInt64());
+					auto refc = cs->irb.CreatePHINode(fir::Type::getNativeWord());
 					refc->addIncoming(therefc, dorc);
-					refc->addIncoming(fir::ConstantInt::getInt64(-1), prevblk);
+					refc->addIncoming(fir::ConstantInt::getNative(-1), prevblk);
 
 					auto dofree = cs->irb.BitwiseAND(cs->irb.ICmpEQ(refc, zv), cs->irb.ICmpGEQ(cap, zv));
 
@@ -565,7 +561,7 @@ namespace array
 						// only when we free, do we loop through our array and decrement its refcount.
 						if(fir::isRefCountedType(elmtype))
 						{
-							auto ctrp = cs->irb.StackAlloc(fir::Type::getInt64());
+							auto ctrp = cs->irb.StackAlloc(fir::Type::getNativeWord());
 							cs->irb.WritePtr(zv, ctrp);
 
 							cs->createWhileLoop([cs, ctrp, len](auto pass, auto fail) {
@@ -579,7 +575,7 @@ namespace array
 
 								cs->decrementRefCount(cs->irb.ReadPtr(p));
 
-								cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getInt64(1)), ctrp);
+								cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getNative(1)), ctrp);
 							});
 						}
 
@@ -720,7 +716,7 @@ namespace array
 			fir::IRBlock* fail = cs->irb.addNewBlockInFunction("fail", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-			auto cond = cs->irb.ICmpLT(origlen, fir::ConstantInt::getInt64(1));
+			auto cond = cs->irb.ICmpLT(origlen, fir::ConstantInt::getNative(1));
 
 			cs->irb.CondBranch(cond, fail, merge);
 			cs->irb.setCurrentBlock(fail);
@@ -731,7 +727,7 @@ namespace array
 
 			cs->irb.setCurrentBlock(merge);
 			{
-				auto newlen = cs->irb.Subtract(origlen, fir::ConstantInt::getInt64(1));
+				auto newlen = cs->irb.Subtract(origlen, fir::ConstantInt::getNative(1));
 				fir::Value* ret = 0;
 
 				// first, load the last value

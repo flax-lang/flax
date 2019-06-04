@@ -269,16 +269,15 @@ namespace ast
 		{
 			Invalid,
 			Intrinsic,
-			NativeWord,
-			Type
+			IntegerType
 		};
 
 		Type defnType = Type::Invalid;
 
-		// only valid if defnType == Type::Intrinsic
+		// only valid if defnType == Intrinsic
 		ForeignFuncDefn* intrinsicDefn = 0;
 
-		// only valid if defnType == Type::Type or NativeWord
+		// only valid if defnType == IntegerType
 		std::string typeName;
 		size_t typeSizeInBits = 0;
 	};

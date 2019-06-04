@@ -61,7 +61,8 @@ namespace misc
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_MALLOC_WRAPPER_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getCharSlice(false) }, fir::Type::getMutInt8Ptr()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getMutInt8Ptr()),
+				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -140,7 +141,7 @@ namespace misc
 			auto upper = cs->irb.GetRangeUpper(func->getArguments()[0]);
 			auto step = cs->irb.GetRangeStep(func->getArguments()[0]);
 
-			auto zero = fir::ConstantInt::getInt64(0);
+			auto zero = fir::ConstantInt::getNative(0);
 			// first of all check if step is zero.
 			{
 				auto cond = cs->irb.ICmpEQ(step, zero);

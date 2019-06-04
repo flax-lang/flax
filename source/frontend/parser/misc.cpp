@@ -132,10 +132,10 @@ namespace parser
 
 			pd->intrinsicDefn = ffn;
 		}
-		else if(st.front() == TT::Identifier && st.front().str() == "native_word")
+		else if(st.front() == TT::Identifier && st.front().str() == "integer_type")
 		{
 			st.eat();
-			pd->defnType = PlatformDefn::Type::NativeWord;
+			pd->defnType = PlatformDefn::Type::IntegerType;
 
 			if(st.eat() != TT::Comma)
 				expected(st.ploc(), "',' in argument list to @platform", st.prev().str());
@@ -160,9 +160,38 @@ namespace parser
 
 			pd->typeName = st.eat().str();
 		}
+		else if(st.front() == TT::Identifier && st.front().str() == "native_word_size")
+		{
+			if(!st.nativeWordSizeStillValid)
+			{
+				SimpleError::make(st.loc(), "setting the native word size is no longer possible at this point")->append(
+					BareError::make(MsgType::Note, "@platform[native_word_size] must appear before any code declarations, "
+						"and be the first '@platform' declaration"))->postAndQuit();
+			}
+
+			st.eat();
+
+			if(st.eat() != TT::RSquare)
+				expectedAfter(st.ploc(), "']'", "@platform definition", st.prev().str());
+
+			auto num = st.front().str();
+			if(st.front() != TT::Number || num.find('.') != std::string::npos)
+				expected(st.ploc(), "integer value to specify word size (in bits)", st.front().str());
+
+			st.eat();
+
+			int sz = std::stoi(num);
+			if(sz <= 0)     expected(st.ploc(), "non-zero and non-negative size", num);
+			else if(sz < 8) error(st.ploc(), "types less than 8-bits wide are currently not supported");
+
+			//? should we warn if it was already set?
+			st.cState->nativeWordSize = sz;
+
+			return 0;
+		}
 		else
 		{
-			expectedAfter(st.loc(), "'intrinsic' or 'native_word'", "platform definition", st.front().str());
+			error(st.loc(), "invalid platform declaration of type '%s'", st.front().str());
 		}
 
 		return pd;

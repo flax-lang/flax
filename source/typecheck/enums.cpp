@@ -69,7 +69,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	fs->pushTree(defn->id.name);
 
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
-	else					defn->memberType = fir::Type::getInt64();
+	else					defn->memberType = fir::Type::getNativeWord();
 
 	auto ety = fir::EnumType::get(defn->id, defn->memberType);
 

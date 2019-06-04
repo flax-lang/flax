@@ -84,6 +84,8 @@ namespace fir
 		static ConstantInt* getUint32(uint32_t value);
 		static ConstantInt* getUint64(uint64_t value);
 
+		static ConstantInt* getNative(int64_t value);
+		static ConstantInt* getUNative(uint64_t value);
 
 		int64_t getSignedValue();
 		uint64_t getUnsignedValue();

@@ -56,7 +56,7 @@ namespace sst
 					fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
 
-					auto targetId = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+					auto targetId = fir::ConstantInt::getNative(target->toUnionVariantType()->getVariantId());
 					auto variantId = cs->irb.GetUnionVariantID(value);
 
 					auto valid = cs->irb.ICmpEQ(targetId, variantId);
@@ -100,22 +100,22 @@ namespace sst
 			{
 				// get the type out.
 				auto res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value),
-					cs->irb.BitwiseNOT(fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)));
+					cs->irb.BitwiseNOT(fir::ConstantInt::getUNative(BUILTIN_ANY_FLAG_MASK)));
 
-				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
+				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUNative(target->getID())));
 			}
 			else if(value->getType()->isUnionType() && target->isUnionVariantType())
 			{
 				// it's slightly more complicated.
 				auto vid1 = cs->irb.GetUnionVariantID(value);
-				auto vid2 = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+				auto vid2 = fir::ConstantInt::getNative(target->toUnionVariantType()->getVariantId());
 
 				return CGResult(cs->irb.ICmpEQ(vid1, vid2));
 			}
 			else
 			{
-				auto res = fir::ConstantInt::getUint64(value->getType()->getID());
-				return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
+				auto res = fir::ConstantInt::getUNative(value->getType()->getID());
+				return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUNative(target->getID())));
 			}
 		}
 
@@ -355,7 +355,7 @@ namespace cgn
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
 				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
-				fir::Value* zero = fir::ConstantInt::getInt64(0);
+				fir::Value* zero = fir::ConstantInt::getNative(0);
 
 				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
@@ -386,7 +386,7 @@ namespace cgn
 				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt, 0);
 				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
-				fir::Value* zero = fir::ConstantInt::getInt64(0);
+				fir::Value* zero = fir::ConstantInt::getNative(0);
 
 				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
@@ -414,7 +414,7 @@ namespace cgn
 				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
 			{
 				auto ofsv = (lt->isPointerType() ? rv : lv);
-				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getInt64());
+				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getNativeWord());
 
 				iceAssert(ofs->getType()->isIntegerType());
 
