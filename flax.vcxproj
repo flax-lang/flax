@@ -236,7 +236,7 @@ rem exit 0</Command>
     <ClInclude Include="external\mpreal\mpreal.h" />
     <ClInclude Include="external\stx\string_view.hpp" />
     <ClInclude Include="external\tinyformat\tinyformat.h" />
-    <ClInclude Include="external\tinyprocesslib\process.h" />
+    <ClInclude Include="external\tinyprocesslib\tinyprocess.h" />
     <ClInclude Include="external\utf8rewind\include\utf8rewind\utf8rewind.h" />
     <ClInclude Include="external\utf8rewind\source\internal\base.h" />
     <ClInclude Include="external\utf8rewind\source\internal\casemapping.h" />

@@ -1,5 +1,5 @@
 // lexer.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -130,6 +130,7 @@ namespace lexer
 		Attr_EntryFn,
 		Attr_NoMangle,
 		Attr_Operator,
+		Attr_Platform,
 	};
 
 	struct Token

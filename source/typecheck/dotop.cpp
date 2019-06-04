@@ -1,5 +1,5 @@
 // dotop.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -814,6 +814,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				defer(fs->popGenericContext());
 				{
 					int pses = sst::poly::internal::getNextSessionId();
+
+					iceAssert(typdef->original);
 					for(auto g : typdef->original->generics)
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}

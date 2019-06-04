@@ -1,5 +1,5 @@
 // sst.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -694,6 +694,15 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->FunctionDefn::_codegen(cs, inferred); }
 	};
 
+
+	struct BareTypeDefn : TypeDefn
+	{
+		BareTypeDefn(const Location& l) : TypeDefn(l) { this->readableName = "type definition"; }
+		~BareTypeDefn() { }
+
+		virtual std::string getKind() override { return "type"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+	};
 
 
 	struct StructDefn : TypeDefn

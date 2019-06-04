@@ -1,5 +1,5 @@
 // type.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -27,6 +27,7 @@ namespace fir
 	struct UnionType;
 	struct StructType;
 	struct StringType;
+	struct OpaqueType;
 	struct PointerType;
 	struct FunctionType;
 	struct RawUnionType;
@@ -63,6 +64,7 @@ namespace fir
 		Union,
 		Struct,
 		String,
+		Opaque,
 		Pointer,
 		Function,
 		RawUnion,
@@ -114,6 +116,7 @@ namespace fir
 		RawUnionType* toRawUnionType();
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
+		OpaqueType* toOpaqueType();
 		StructType* toStructType();
 		StringType* toStringType();
 		RangeType* toRangeType();
@@ -141,6 +144,8 @@ namespace fir
 
 		bool isCharType();
 		bool isStringType();
+
+		bool isOpaqueType();
 
 		bool isAnyType();
 		bool isEnumType();
@@ -999,6 +1004,28 @@ namespace fir
 	};
 
 
+	struct OpaqueType : Type
+	{
+		friend struct Type;
+
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+
+
+		// protected constructor
+		virtual ~OpaqueType() override { }
+		protected:
+		OpaqueType(const std::string& name, size_t sizeInBits);
+
+		std::string typeName;
+		size_t typeSizeInBits;
+
+		public:
+		static OpaqueType* get(const std::string& name, size_t sizeInBits);
+	};
 
 
 

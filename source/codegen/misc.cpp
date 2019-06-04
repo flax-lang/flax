@@ -1,5 +1,5 @@
 // misc.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -20,6 +20,15 @@ CGResult sst::TreeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	error(this, "Cannot codegen tree definition -- something fucked up somewhere");
 }
 
+CGResult sst::BareTypeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	// there's nothing to do here...
+
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	return CGResult(0);
+}
 
 
 

@@ -1,5 +1,5 @@
 // lexer.cpp
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "lexer.h"
@@ -386,6 +386,8 @@ namespace lexer
 			unexpected(tok.loc, "'*/'");
 		}
 
+
+
 		// attrs
 		else if(hasPrefix(stream, "@nomangle"))
 		{
@@ -409,6 +411,12 @@ namespace lexer
 		{
 			tok.type = TokenType::Attr_Operator;
 			tok.text = "@operator";
+			read = 9;
+		}
+		else if(hasPrefix(stream, "@platform"))
+		{
+			tok.type = TokenType::Attr_Platform;
+			tok.text = "@platform";
 			read = 9;
 		}
 

@@ -1,5 +1,5 @@
 // SingleTypes.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -59,6 +59,9 @@ namespace fir
 	bool StringType::isTypeEqual(Type* other)           { return other && other->isStringType(); }
 	StringType* StringType::get()                       { return singleString = (singleString ? singleString : new StringType()); }
 	fir::Type* StringType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)  { return this; }
+
+
+
 
 
 
@@ -190,8 +193,6 @@ namespace fir
 	{
 		return _substitute(subst, this);
 	}
-
-
 }
 
 

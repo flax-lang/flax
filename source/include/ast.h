@@ -1,5 +1,5 @@
 // ast.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -131,7 +131,6 @@ namespace ast
 
 
 
-
 	struct FuncDefn : Parameterisable
 	{
 		FuncDefn(const Location& l) : Parameterisable(l) { this->readableName = "function defintion"; }
@@ -257,6 +256,44 @@ namespace ast
 		Expr* initialiser = 0;
 		DecompMapping bindings;
 	};
+
+
+	struct PlatformDefn : Stmt
+	{
+		PlatformDefn(const Location& l) : Stmt(l) { this->readableName = "platform-specific definition"; }
+		~PlatformDefn() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		enum class Type
+		{
+			Invalid,
+			Intrinsic,
+			NativeWord,
+			Type
+		};
+
+		Type defnType = Type::Invalid;
+
+		// only valid if defnType == Type::Intrinsic
+		ForeignFuncDefn* intrinsicDefn = 0;
+
+		// only valid if defnType == Type::Type or NativeWord
+		std::string typeName;
+		size_t typeSizeInBits = 0;
+	};
+
+
+
+
+
+
+
+
+
+
+
+
 
 	struct IfStmt : Stmt
 	{

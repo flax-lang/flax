@@ -1,5 +1,5 @@
 // linker.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -17,6 +17,7 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+	#pragma warning(disable: 4267)
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -59,7 +60,7 @@
 #include "frontend.h"
 #include "backends/llvm.h"
 
-#include "tinyprocesslib/process.h"
+#include "tinyprocesslib/tinyprocess.h"
 
 
 static llvm::LLVMContext globalContext;
@@ -661,7 +662,7 @@ namespace backend
 		if(!entryfunc)
 		{
 			// keep trying various things.
-			std::vector<std::string> trymains = { "main", "_FFfoo4main_FAv" };
+			std::vector<std::string> trymains = { "main", "_FF" + this->compiledData.module->getModuleName() + "4main_FAv" };
 			for(const auto& m : trymains)
 			{
 				entryfunc = this->linkedModule->getFunction(m);

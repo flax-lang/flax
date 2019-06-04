@@ -1,5 +1,5 @@
 // toplevel.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -128,14 +128,14 @@ namespace parser
 		{
 			switch(st.front())
 			{
-				case TT::Import:
+				case TT::Import: {
 					if(name != "" || !importsStillValid)
 						error(st, "import statements are not allowed here");
 
 					root->statements.push_back(parseImport(st));
-					break;
+				} break;
 
-				case TT::Attr_Operator:
+				case TT::Attr_Operator: {
 					if(name != "" || !operatorsStillValid)
 						error(st, "custom operator declarations are not allowed here");
 
@@ -143,7 +143,14 @@ namespace parser
 					st.setIndex(parseOperatorDecl(st.getTokenList(), st.getIndex(), 0, 0));
 
 					importsStillValid = false;
-					break;
+				} break;
+
+				case TT::Attr_Platform: {
+
+					root->statements.push_back(parsePlatformDefn(st));
+
+					importsStillValid = false;
+				} break;
 
 				case TT::Namespace: {
 					st.eat();
@@ -228,7 +235,7 @@ namespace parser
 					if(!hadLBrace) error(st, "Unexpected '}'");
 					goto out;
 
-				default:
+				default: {
 					if(priv != VisibilityLevel::Invalid)
 					{
 						st.rewindTo(tix);
@@ -259,7 +266,7 @@ namespace parser
 					operatorsStillValid = false;
 
 					root->statements.push_back(parseStmt(st));
-					break;
+				} break;
 			}
 
 			isFirst = false;

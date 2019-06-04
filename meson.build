@@ -26,6 +26,7 @@ llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/std:c++17', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
+	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
@@ -77,6 +78,7 @@ source_files = files([
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
+	'source/typecheck/misc.cpp',
 	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',
 	'source/typecheck/using.cpp',
@@ -165,6 +167,7 @@ source_files = files([
 	'source/fir/Types/RawUnionType.cpp',
 	'source/fir/Types/PointerType.cpp',
 	'source/fir/Types/SingleTypes.cpp',
+	'source/fir/Types/OpaqueType.cpp',
 	'source/fir/Types/StructType.cpp',
 	'source/fir/Types/ArrayType.cpp',
 	'source/fir/Types/ClassType.cpp',
