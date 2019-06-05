@@ -137,7 +137,7 @@ static void compile(std::string in, std::string out)
 		}
 		else
 		{
-			error("Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str(),
+			error("Selected backend '%s' does not have some required capabilities (missing %s)\n", backend->str(),
 				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}

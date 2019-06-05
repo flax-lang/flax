@@ -99,7 +99,7 @@ std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan
 	iceAssert((underline == bottompad || bottompad) && "cannot underline without bottom pad");
 
 	if(!std::is_sorted(spans.begin(), spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; }))
-		_error_and_exit("spans must be sorted!");
+		_error_and_exit("spans must be sorted!\n");
 
 	*num_width = std::to_string(loc.line + 1).length();
 

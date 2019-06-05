@@ -13,17 +13,17 @@ namespace backend
 
 	void x64Backend::performCompilation()
 	{
-		_error_and_exit("enotsup");
+		_error_and_exit("enotsup\n");
 	}
 
 	void x64Backend::optimiseProgram()
 	{
-		_error_and_exit("enotsup");
+		_error_and_exit("enotsup\n");
 	}
 
 	void x64Backend::writeOutput()
 	{
-		_error_and_exit("enotsup");
+		_error_and_exit("enotsup\n");
 	}
 
 	std::string x64Backend::str()

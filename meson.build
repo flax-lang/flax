@@ -78,6 +78,9 @@ source_files = files([
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
+	'source/backend/lscvm/emulator.cpp',
+	'source/backend/lscvm/translator.cpp',
+
 	'source/typecheck/misc.cpp',
 	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',

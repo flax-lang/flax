@@ -203,6 +203,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	// the realname is the actual name of the function.
 	defn->realName = this->realName;
+	defn->isIntrinsic = this->isIntrinsic;
 
 	if(this->isVarArg)
 		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);

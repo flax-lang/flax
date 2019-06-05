@@ -648,6 +648,7 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
+		bool isIntrinsic = false;
 		std::string realName;
 	};
 
