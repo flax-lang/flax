@@ -43,13 +43,13 @@ namespace platform
 
 			HANDLE hd = CreateFile((LPCSTR) path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
 
 			// ok, presumably it exists. so, get the size
 			LARGE_INTEGER sz;
 			bool success = GetFileSizeEx(hd, &sz);
 			if(!success)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
 
 			CloseHandle(hd);
 
@@ -59,7 +59,7 @@ namespace platform
 
 			struct stat st;
 			if(stat(path.c_str(), &st) != 0)
-				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
+				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)\n", path, errno, strerror(errno));
 
 			return st.st_size;
 
@@ -139,7 +139,6 @@ namespace platform
 
 			if(hd == INVALID_HANDLE_VALUE)
 				return platform::InvalidFileHandle;
-				// _error_and_exit("Failed to open file '%s' (error code %d)", name, GetLastError());
 
 			return hd;
 		#else
@@ -166,7 +165,7 @@ namespace platform
 			DWORD didRead = 0;
 			bool success = ReadFile(fd, buf, (platform::DWORD) count, &didRead, 0);
 			if(!success)
-				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
+				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)\n", count, didRead, GetLastError());
 
 			return (size_t) didRead;
 		#else
@@ -180,7 +179,7 @@ namespace platform
 			DWORD didWrite = 0;
 			bool success = WriteFile(fd, buf, (platform::DWORD) count, &didWrite, 0);
 			if(!success)
-				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
+				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)\n", count, didWrite, GetLastError());
 
 			return (size_t) didWrite;
 		#else
@@ -225,7 +224,6 @@ namespace platform
 			HANDLE hd = CreateFile((LPCSTR) p.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
 				return "";
-				// _error_and_exit("Failed to open file '%s' (error code %d)", partial, GetLastError());
 
 			// ok, presumably it exists.
 			defer(CloseHandle(hd));
@@ -242,7 +240,6 @@ namespace platform
 			}
 			else
 			{
-				// _error_and_exit("Failed to open file '%s' (error code %d)", partial, GetLastError());
 				return "";
 			}
 		}

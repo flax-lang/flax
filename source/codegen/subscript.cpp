@@ -15,8 +15,6 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lr = this->expr->codegen(cs);
 	auto lt = lr.value->getType();
 
-	fir::Function* boundscheckfn = cgn::glue::saa_common::generateBoundsCheckFunction(cs,
-		/* isString: */ lt->isStringType(), /* isDecomp: */false);;
 
 	fir::Value* datapointer = 0;
 	fir::Value* maxlength = 0;
@@ -72,7 +70,11 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	if(maxlength)
-		cs->irb.Call(boundscheckfn, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+	{
+		fir::Function* checkf = cgn::glue::saa_common::generateBoundsCheckFunction(cs, /* isString: */ lt->isStringType(), /* isDecomp: */false);
+		if(checkf)
+			cs->irb.Call(checkf, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+	}
 
 	// ok, do it
 	fir::Value* ptr = cs->irb.GetPointer(datapointer, index);

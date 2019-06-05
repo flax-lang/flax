@@ -11,43 +11,45 @@
 
 #define VERSION_STRING	"0.30.0-pre"
 
-#define ARG_COMPILE_ONLY						"-c"
-#define ARG_BACKEND								"-backend"
-#define ARG_EMIT_LLVM_IR						"-emit-llvm"
-#define ARG_LINK_FRAMEWORK						"-framework"
-#define ARG_FRAMEWORK_SEARCH_PATH				"-F"
-#define ARG_HELP								"-help"
-#define ARG_VERSION								"-version"
-#define ARG_JITPROGRAM							"-jit"
-#define ARG_LINK_LIBRARY						"-l"
-#define ARG_LIBRARY_SEARCH_PATH					"-L"
-#define ARG_MCMODEL								"-mcmodel"
-#define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS	"-no-auto-gconstr"
-#define ARG_OUTPUT_FILE							"-o"
-#define ARG_OPTIMISATION_LEVEL_SELECT			"-O"
-#define ARG_POSINDEPENDENT						"-pic"
-#define ARG_PRINT_FIR							"-print-fir"
-#define ARG_PRINT_LLVMIR						"-print-lir"
-#define ARG_PROFILE								"-profile"
-#define ARG_RUNPROGRAM							"-run"
-#define ARG_SHOW_CLANG_OUTPUT					"-show-clang"
-#define ARG_SYSROOT								"-sysroot"
-#define ARG_TARGET								"-target"
-#define ARG_FREESTANDING						"-ffreestanding"
+#define ARG_COMPILE_ONLY                        "-c"
+#define ARG_BACKEND                             "-backend"
+#define ARG_EMIT_LLVM_IR                        "-emit-llvm"
+#define ARG_LINK_FRAMEWORK                      "-framework"
+#define ARG_FRAMEWORK_SEARCH_PATH               "-F"
+#define ARG_HELP                                "-help"
+#define ARG_VERSION                             "-version"
+#define ARG_JITPROGRAM                          "-jit"
+#define ARG_LINK_LIBRARY                        "-l"
+#define ARG_LIBRARY_SEARCH_PATH                 "-L"
+#define ARG_MCMODEL                             "-mcmodel"
+#define ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS    "-no-auto-gconstr"
+#define ARG_OUTPUT_FILE                         "-o"
+#define ARG_OPTIMISATION_LEVEL_SELECT           "-O"
+#define ARG_POSINDEPENDENT                      "-pic"
+#define ARG_PRINT_FIR                           "-print-fir"
+#define ARG_PRINT_LLVMIR                        "-print-lir"
+#define ARG_PROFILE                             "-profile"
+#define ARG_RUNPROGRAM                          "-run"
+#define ARG_SHOW_CLANG_OUTPUT                   "-show-clang"
+#define ARG_SYSROOT                             "-sysroot"
+#define ARG_TARGET                              "-target"
+#define ARG_FREESTANDING                        "-ffreestanding"
+#define ARG_NO_RUNTIME_CHECKS                   "-no-runtime-checks"
+#define ARG_NO_RUNTIME_ERROR_STRINGS            "-no-runtime-error-strings"
 
 // for internal use!
 #define ARG_ABORT_ON_ERROR                      "-abort-on-error"
 
-#define WARNING_DISABLE_ALL						"-w"
-#define WARNINGS_AS_ERRORS						"-Werror"
+#define WARNING_DISABLE_ALL                     "-w"
+#define WARNINGS_AS_ERRORS                      "-Werror"
 
 
 // actual warnings
-#define WARNING_ENABLE_UNUSED_VARIABLE			"-Wunused-variable"
-#define WARNING_ENABLE_VARIABLE_CHECKER			"-Wvar-checker"
+#define WARNING_ENABLE_UNUSED_VARIABLE          "-Wunused-variable"
+#define WARNING_ENABLE_VARIABLE_CHECKER         "-Wvar-checker"
 
-#define WARNING_DISABLE_UNUSED_VARIABLE			"-Wno-unused-variable"
-#define WARNING_DISABLE_VARIABLE_CHECKER		"-Wno-var-checker"
+#define WARNING_DISABLE_UNUSED_VARIABLE         "-Wno-unused-variable"
+#define WARNING_DISABLE_VARIABLE_CHECKER        "-Wno-var-checker"
 
 
 static std::vector<std::pair<std::string, std::string>> list;
@@ -65,7 +67,8 @@ static void setupMap()
 	list.push_back({ ARG_MCMODEL + std::string(" <model>"), "Change the mcmodel of the code" });
 	list.push_back({ ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS, "Disable calling constructors before main()" });
 	list.push_back({ ARG_OUTPUT_FILE + std::string(" <file>"), "Set the name of the output file" });
-	list.push_back({ ARG_OPTIMISATION_LEVEL_SELECT + std::string("<level>"), "Change the optimisation level; -O0, -O1, -O2, -O3, and -Ox are valid options" });
+	list.push_back({ ARG_OPTIMISATION_LEVEL_SELECT + std::string("<level>"), "Change the optimisation level; -O0, -O1, -O2, "
+		"-O3, and -Ox are valid options" });
 
 	list.push_back({ ARG_POSINDEPENDENT, "Generate position independent code" });
 	list.push_back({ ARG_PRINT_FIR, "Print the FlaxIR before compilation" });
@@ -79,6 +82,8 @@ static void setupMap()
 	list.push_back({ WARNING_DISABLE_ALL, "Disable all warnings" });
 	list.push_back({ WARNINGS_AS_ERRORS, "Treat all warnings as errors" });
 
+	list.push_back({ ARG_NO_RUNTIME_CHECKS, "Disable all runtime checks" });
+	list.push_back({ ARG_NO_RUNTIME_ERROR_STRINGS, "Disable runtime error messages (program will just abort)" });
 
 	list.push_back({ WARNING_ENABLE_UNUSED_VARIABLE, "Enable warnings for unused variables" });
 	list.push_back({ WARNING_ENABLE_VARIABLE_CHECKER, "Enable warnings from the variable state checker" });
@@ -161,8 +166,10 @@ namespace frontend
 	bool _isFreestanding = false;
 	bool _printClangOutput = false;
 	bool _noAutoGlobalConstructor = false;
-
 	bool _abortOnError = false;
+
+	bool _noRuntimeChecks = false;
+	bool _noRuntimeErrorStrings = false;
 
 	std::string _mcModel;
 	std::string _targetArch;
@@ -192,6 +199,15 @@ namespace frontend
 		return _backendCodegen;
 	}
 
+	bool getIsNoRuntimeChecks()
+	{
+		return _noRuntimeChecks;
+	}
+
+	bool getIsNoRuntimeErrorStrings()
+	{
+		return _noRuntimeErrorStrings;
+	}
 
 	bool getAbortOnError()
 	{
@@ -398,6 +414,14 @@ namespace frontend
 					// set freestanding mode
 					frontend::_isFreestanding = true;
 				}
+				else if(!strcmp(argv[i], ARG_NO_RUNTIME_CHECKS))
+				{
+					frontend::_noRuntimeChecks = true;
+				}
+				else if(!strcmp(argv[i], ARG_NO_RUNTIME_ERROR_STRINGS))
+				{
+					frontend::_noRuntimeErrorStrings = true;
+				}
 				else if(!strcmp(argv[i], ARG_BACKEND))
 				{
 					if(i != argc - 1)
@@ -416,6 +440,10 @@ namespace frontend
 						else if(str == "none")
 						{
 							frontend::_backendCodegen = BackendOption::None;
+						}
+						else if(str == "lscvm")
+						{
+							frontend::_backendCodegen = BackendOption::CDDCLSCVM;
 						}
 						else
 						{
@@ -600,7 +628,7 @@ namespace frontend
 		// sanity check
 		// what are you even trying to do m8
 		if(frontend::_outputMode == ProgOutputMode::RunJit && frontend::_isFreestanding)
-			_error_and_exit("cannot JIT program in freestanding mode");
+			_error_and_exit("cannot JIT program in freestanding mode\n");
 
 		return { filenames[0], outname };
 	}

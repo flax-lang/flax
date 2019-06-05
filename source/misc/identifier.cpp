@@ -205,7 +205,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else
 	{
-		_error_and_exit("unsupported ir type??? ('%s')", t);
+		_error_and_exit("unsupported ir type??? ('%s')\n", t);
 	}
 }
 
@@ -245,7 +245,7 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 		}
 		else
 		{
-			_error_and_exit("invalid");
+			_error_and_exit("invalid\n");
 		}
 	}
 	else

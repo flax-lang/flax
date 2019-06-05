@@ -127,6 +127,9 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto fn = cs->module->getOrCreateFunction(realId, ft, fir::LinkageType::External);
 
+	if(this->isIntrinsic)
+		fn->setIsIntrinsic();
+
 	cs->valueMap[this] = CGResult(fn);
 	return CGResult(fn);
 }

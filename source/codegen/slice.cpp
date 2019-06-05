@@ -69,9 +69,8 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		// endindex is non-inclusive -- if we're doing a decomposition check then it compares length instead
 		// of indices here.
 		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, /* isPerformingDecomposition: */ true);
-		iceAssert(checkf);
-
-		cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
+		if(checkf)
+			cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
 	}
 }
 

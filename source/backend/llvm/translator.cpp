@@ -553,7 +553,7 @@ namespace backend
 		}
 		else if(dcast(fir::ConstantStruct, c))
 		{
-			_error_and_exit("notsup const struct");
+			_error_and_exit("notsup const struct\n");
 		}
 		else if(auto it = valueMap.find(c->id); it != valueMap.end() && llvm::isa<llvm::Constant>(it->second))
 		{
@@ -573,7 +573,6 @@ namespace backend
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 		llvm::IRBuilder<> builder(gc);

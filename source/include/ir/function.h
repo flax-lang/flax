@@ -65,6 +65,9 @@ namespace fir
 		bool isAlwaysInlined();
 		void setAlwaysInline();
 
+		bool isIntrinsicFunction();
+		void setIsIntrinsic();
+
 		void cullUnusedValues();
 
 		// overridden stuff
@@ -81,6 +84,7 @@ namespace fir
 
 		bool alwaysInlined = false;
 		bool hadBodyElsewhere = false;
+		bool fnIsIntrinsicFunction = false;
 	};
 }
 

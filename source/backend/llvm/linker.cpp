@@ -279,7 +279,8 @@ namespace backend
 
 				size_t num_extra = 0;
 				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
-				const char** argv = new const char*[s];
+				const char** argv = (const char**) malloc(s * sizeof(const char*));
+
 				memset(argv, 0, s * sizeof(const char*));
 
 				argv[0] = "cc";
@@ -340,7 +341,7 @@ namespace backend
 				});
 
 
-				delete[] argv;
+				free(argv);
 
 				if(status != 0 || output.size() != 0)
 				{

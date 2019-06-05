@@ -92,10 +92,11 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
 		{
 			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, true);
-			iceAssert(checkf);
-
-			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
+			if(checkf)
+			{
+				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
+			}
 		}
 
 		//* note: special-case this, because 1. we want to return chars
@@ -147,15 +148,16 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		{
 			//* note: 'true' means we're performing a decomposition, so print a more appropriate error message on bounds failure.
 			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
-			iceAssert(checkf);
+			if(checkf)
+			{
+				if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
+				else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
+				else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
+				else                                iceAssert(0);
 
-			if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
-			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
-			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
-			else                                iceAssert(0);
-
-			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, arrlen, numbinds, strloc);
+				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				cs->irb.Call(checkf, arrlen, numbinds, strloc);
+			}
 		}
 
 		// # if 0

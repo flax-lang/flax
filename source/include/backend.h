@@ -60,6 +60,7 @@ namespace backend
 		None,
 		LLVM,
 		Assembly_x64,
+		CDDCLSCVM,
 	};
 
 	std::string capabilitiesToString(BackendCaps::Capabilities caps);

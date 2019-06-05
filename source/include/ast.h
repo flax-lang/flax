@@ -200,6 +200,7 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
+		bool isIntrinsic = false;
 
 		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;

@@ -21,13 +21,13 @@ namespace mem
 	{
 		#ifdef _WIN32
 			auto ret = VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-			if(ret == nullptr) _error_and_exit("failed to allocate %d bytes of memory (large page min: %d)", bytes, GetLargePageMinimum());
+			if(ret == nullptr) _error_and_exit("failed to allocate %d bytes of memory (large page min: %d)\n", bytes, GetLargePageMinimum());
 
 			return ret;
 		#else
 			auto ret = mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 			if(ret == nullptr || (uintptr_t) ret == (uintptr_t) -1)
-				_error_and_exit("failed to allocate %d bytes of memory", bytes);
+				_error_and_exit("failed to allocate %d bytes of memory\n", bytes);
 
 			return ret;
 		#endif

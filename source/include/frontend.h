@@ -49,6 +49,10 @@ namespace frontend
 
 	bool getIsFreestanding();
 	bool getIsPositionIndependent();
+
+	bool getIsNoRuntimeChecks();
+	bool getIsNoRuntimeErrorStrings();
+
 	std::vector<std::string> getFrameworksToLink();
 	std::vector<std::string> getFrameworkSearchPaths();
 	std::vector<std::string> getLibrariesToLink();

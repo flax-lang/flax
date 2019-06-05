@@ -6,6 +6,7 @@
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
+#include "frontend.h"
 
 // namespace cgn::glue::saa_common
 namespace cgn {
@@ -758,6 +759,9 @@ namespace saa_common
 
 	fir::Function* generateBoundsCheckFunction(CodegenState* cs, bool isString, bool isDecomp)
 	{
+		if(frontend::getIsNoRuntimeChecks())
+			return 0;
+
 		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_");
 
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));

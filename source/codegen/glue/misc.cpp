@@ -5,6 +5,7 @@
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
+#include "frontend.h"
 
 // generate runtime glue code
 #define BUILTIN_MALLOC_WRAPPER_FUNC_NAME		    "__malloc_wrapper"
@@ -19,30 +20,32 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
 
-	iceAssert(pos->getType()->isCharSliceType());
-
-	#ifdef _WIN32
+	if(!frontend::getIsNoRuntimeErrorStrings())
 	{
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
-		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
+		iceAssert(pos->getType()->isCharSliceType());
 
-		std::vector<fir::Value*> as = { fmtstr, posstr };
-		as.insert(as.end(), args.begin(), args.end());
+		#ifdef _WIN32
+		{
+			fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
+			fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
-		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+			std::vector<fir::Value*> as = { fmtstr, posstr };
+			as.insert(as.end(), args.begin(), args.end());
+
+			cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+		}
+		#else
+		{
+			fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
+			fir::Value* posstr = cs->irb.GetArraySliceData(pos);
+
+			std::vector<fir::Value*> as = { fmtstr, posstr };
+			as.insert(as.end(), args.begin(), args.end());
+
+			cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+		}
+		#endif
 	}
-	#else
-	{
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
-		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
-
-		std::vector<fir::Value*> as = { fmtstr, posstr };
-		as.insert(as.end(), args.begin(), args.end());
-
-		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
-	}
-	#endif
-
 
 	// cs->irb.Call(cs->getOrDeclareLibCFunction("exit"), fir::ConstantInt::getInt32(1));
 	cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));

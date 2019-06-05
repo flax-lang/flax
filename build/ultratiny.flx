@@ -9,7 +9,8 @@ export ultratiny
 @platform[intrinsic, "lscvm.P"] fn putchar(c: i32)
 @platform[intrinsic, "lscvm.I"] fn putint(i: i32)
 
-fn main()
+@entry fn main()
 {
-	let s: str = "foo"
+	// let s: str = "hello, world!"
+	putchar(65)
 }

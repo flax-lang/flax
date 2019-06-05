@@ -18,6 +18,7 @@ TCResult ast::PlatformDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->defnType == Type::Intrinsic)
 	{
+		this->intrinsicDefn->isIntrinsic = true;
 		return this->intrinsicDefn->typecheck(fs, infer);
 	}
 	else if(this->defnType == Type::IntegerType)

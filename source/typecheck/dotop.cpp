@@ -92,7 +92,7 @@ static std::vector<search_result_t> searchTransparentFields(sst::TypecheckState*
 		if(df->isTransparentField)
 		{
 			auto ty = df->type;
-			assert(ty->isRawUnionType() || ty->isStructType());
+			iceAssert(ty->isRawUnionType() || ty->isStructType());
 
 			auto defn = fs->typeDefnMap[ty];
 			iceAssert(defn);

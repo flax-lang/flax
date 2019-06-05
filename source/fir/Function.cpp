@@ -113,6 +113,15 @@ namespace fir
 		this->blocks.clear();
 	}
 
+	bool Function::isIntrinsicFunction()
+	{
+		return this->fnIsIntrinsicFunction;
+	}
+
+	void Function::setIsIntrinsic()
+	{
+		this->fnIsIntrinsicFunction = true;
+	}
 
 
 	void Function::cullUnusedValues()
