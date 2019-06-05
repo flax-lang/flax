@@ -10,26 +10,36 @@
 #include "backends/lscvm.h"
 
 
+const std::string CONST_0               = "a";
+const std::string CONST_1               = "b";
+const std::string CONST_2               = "c";
+const std::string CONST_3               = "d";
+const std::string CONST_4               = "e";
+const std::string CONST_5               = "f";
+const std::string CONST_6               = "g";
+const std::string CONST_7               = "h";
+const std::string CONST_8               = "i";
+const std::string CONST_9               = "j";
 
-constexpr char OP_ADD                   = 'A';
-constexpr char OP_HALT                  = 'B';
-constexpr char OP_CALL                  = 'C';
-constexpr char OP_DROP                  = 'D';
-constexpr char OP_READ_MEM              = 'E';
-constexpr char OP_FETCH_STACK           = 'F';
-constexpr char OP_JMP_REL_FWD           = 'G';
-constexpr char OP_FETCH_DEL_STACK       = 'H';
-constexpr char OP_PRINT_INT             = 'I';
-constexpr char OP_COMPARE               = 'J';
-constexpr char OP_WRITE_MEM             = 'K';
-constexpr char OP_MULTIPLY              = 'M';
-constexpr char OP_PRINT_CHAR            = 'P';
-constexpr char OP_RETURN                = 'R';
-constexpr char OP_SUBTRACT              = 'S';
-constexpr char OP_DIVIDE                = 'V';
-constexpr char OP_JMP_REL_IF_ZERO       = 'Z';
+const std::string OP_ADD                = "A";
+const std::string OP_HALT               = "B";
+const std::string OP_CALL               = "C";
+const std::string OP_DROP               = "D";
+const std::string OP_READ_MEM           = "E";
+const std::string OP_FETCH_STACK        = "F";
+const std::string OP_JMP_REL_FWD        = "G";
+const std::string OP_FETCH_DEL_STACK    = "H";
+const std::string OP_PRINT_INT          = "I";
+const std::string OP_COMPARE            = "J";
+const std::string OP_WRITE_MEM          = "K";
+const std::string OP_MULTIPLY           = "M";
+const std::string OP_PRINT_CHAR         = "P";
+const std::string OP_RETURN             = "R";
+const std::string OP_SUBTRACT           = "S";
+const std::string OP_DIVIDE             = "V";
+const std::string OP_JMP_REL_IF_ZERO    = "Z";
 
-constexpr char INTRINSIC_PRINT_CHAR[]   = "lscvm.P";
+const std::string INTRINSIC_PRINT_CHAR  = "lscvm.P";
 
 
 std::string createNumber(int num)
@@ -105,7 +115,6 @@ namespace backend
 
 		std::string program;
 
-		int32_t memoryWatermark = 0;
 		int32_t relocationOffset = 0;
 
 		util::hash_map<size_t, int32_t> memoryValueMap;
@@ -121,20 +130,89 @@ namespace backend
 		// we need to replace the instruction (or value) at that location with the real address...
 		util::hash_map<int32_t, size_t> relocations;
 
-
-
+		// watermark for constant memory -- starts at CONSTANT_OFFSET_IN_MEMORY (0x12000)
+		int32_t constantMemoryWatermark = 0;
 
 		util::hash_map<fir::ConstantValue*, std::string> cachedConstants;
+
+		int32_t currentStackFrameSize = 0;
+		util::hash_map<size_t, int32_t> stackFrameValueMap;
 	};
 
-	constexpr int32_t CONSTANT_OFFSET_IN_MEMORY = 0x10000;
-	constexpr int32_t MAX_RELOCATION_SIZE       = 32;
+	constexpr size_t WORD_SIZE                      = 4;
+
+	constexpr int32_t MAX_RELOCATION_SIZE           = 32;
 
 	// spaces are also no-ops, so that's good.
-	constexpr char EmptyRelocation[]            = "                                ";
+	constexpr char EmptyRelocation[]                = "                                ";
+
+	// limits are imposed by the vm!
+	constexpr int32_t MAX_PROGRAM_SIZE              = 0x2000;
+
+	constexpr int32_t STACK_POINTER_IN_MEMORY       = 0x10000;
+	constexpr int32_t STACK_FRAME_IN_MEMORY         = 0x10001;
+
+	constexpr int32_t CONSTANT_OFFSET_IN_MEMORY     = 0x12000;
+	constexpr int32_t MAX_MEMORY_SIZE               = 0x13880;
+
+
+	/*
+		! calling convention !
+
+		* function calling
+		arguments are pushed RIGHT TO LEFT. ie. the last argument will be pushed first
+		this follows cdecl calling convention.
+
+		since we have no registers, return value will be pushed on the stack before a return. in effect,
+		doing 'C' will pop the function and any arguments, the push the return value (if any).
+
+		typechecking should have ensured we don't try to do anything funny with void functions
+
+		so before a call, the stack will look like this, for some foo(1, 2, 3)
+		[ 3, 2, 1, <foo> ].
+
+		there are no registers so there's nothing to preserve.
+
+
+		* local variables
+		since we're doing SSA, everything is immutable. we can use 'F' to fetch from the stack, so all those
+		temporary values can just live on the stack.
+
+		for allocas, we must spill them to memory, because we can't modify the contents of the stack.
+	*/
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+	static size_t getSizeInWords(fir::Type* ty)
+	{
+		auto sz = fir::getSizeOfType(ty);
+		if(sz == 0) return 0;
+
+		return std::max((size_t) 1, sz / WORD_SIZE);
+	}
+
+	static std::string makeinstr()
+	{
+		return "";
+	}
+
+	template<typename... Args>
+	static std::string makeinstr(const std::string& a, Args... args)
+	{
+		return a + makeinstr(args...);
+	}
 
 
 
@@ -142,11 +220,19 @@ namespace backend
 	{
 		if(auto ci = dcast(fir::ConstantInt, c))
 		{
+			std::string ret = "";
 			if(ci->getType()->toPrimitiveType()->isSigned())
-				return st->cachedConstants[c] = createNumber(ci->getSignedValue());
+				ret = createNumber(ci->getSignedValue());
 
 			else
-				return st->cachedConstants[c] = createNumber(ci->getUnsignedValue());
+				ret = createNumber(ci->getUnsignedValue());
+
+			// we don't support integers > 32-bits, but just fill in the rest with 0s.
+			for(size_t i = 1; i < getSizeInWords(c->getType()); i++)
+				ret += makeinstr(CONST_0);
+
+			st->cachedConstants[c] = ret;
+			return ret;
 		}
 		else
 		{
@@ -154,6 +240,14 @@ namespace backend
 		}
 	}
 
+
+	static std::string calcStackAddr(State* st, int32_t addr)
+	{
+		// basically, read from the current stack pointer,
+		// subtract the maxstackwatermark, add the address.
+		auto ofs = st->currentStackFrameSize - addr;
+		return makeinstr(createNumber(ofs), createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, OP_SUBTRACT);
+	};
 
 	static std::string getValue(State* st, fir::Value* fv)
 	{
@@ -168,9 +262,23 @@ namespace backend
 		}
 		else
 		{
-			return "";
+			if(auto it = st->stackFrameValueMap.find(fv->id); it != st->stackFrameValueMap.end())
+			{
+				return calcStackAddr(st, it->second);
+			}
+			else
+			{
+				error("no value for id '%zu'", fv->id);
+				return "";
+			}
 		}
 	}
+
+
+
+
+
+
 
 
 
@@ -179,56 +287,210 @@ namespace backend
 		State st;
 		st.firmod = this->compiledData.module;
 
+		st.constantMemoryWatermark = CONSTANT_OFFSET_IN_MEMORY;
 
 		for(auto string : st.firmod->_getGlobalStrings())
 		{
 			std::string init;
 
-			int32_t loc = st.memoryWatermark;
+			int32_t loc = st.constantMemoryWatermark;
 			for(char c : string.first)
 			{
-				init += createNumber(c);
-				init += createNumber(st.memoryWatermark);
-				init += "K";
-
-				st.memoryWatermark++;
+				init += makeinstr(createNumber(c), createNumber(st.constantMemoryWatermark), OP_WRITE_MEM);
+				st.constantMemoryWatermark++;
 			}
 
 			st.memoryInitialisers.push_back(init);
 			st.memoryValueMap[string.second->id] = loc;
 		}
 
+		// setup the stack pointer.
+		{
+			auto sp_addr = createNumber(STACK_POINTER_IN_MEMORY);   // 0x10000
+			auto sp = createNumber(STACK_FRAME_IN_MEMORY);          // 0x10004
+
+			st.memoryInitialisers.push_back(makeinstr(sp, sp_addr, OP_WRITE_MEM));
+		}
+
+
+
+
+		auto decay = [&st](fir::Value* fv, const std::string& lv) -> std::string {
+			if(fv->islorclvalue())
+				return makeinstr(lv, OP_READ_MEM);
+
+			else
+				return lv;
+		};
+
+		auto getUndecayedOperand = [&st](fir::Instruction* instr, size_t op) -> std::string {
+			iceAssert(op < instr->operands.size());
+
+			auto oper = instr->operands[op];
+			return getValue(&st, oper);
+		};
+
+		auto getOperand = [&st, &decay](fir::Instruction* instr, size_t op) -> std::string {
+			iceAssert(op < instr->operands.size());
+
+			auto oper = instr->operands[op];
+			return decay(oper, getValue(&st, oper));
+		};
+
+
+
+
 
 
 		for(auto fn : st.firmod->getAllFunctions())
 		{
+			if(fn->getBlockList().empty())
+				continue;
+
+
+			st.program += strprintf("\n\n; function %s\n", fn->getName().str());
+
+			st.stackFrameValueMap.clear();
 			st.functionLocations[fn->id] = st.program.size();
 
-			// map from the fir id (of any temporary values) to the location in the stack.
-			util::hash_map<size_t, int32_t> stackLocations;
+			st.currentStackFrameSize = 0;
+			for(auto t : fn->getStackAllocations())
+				st.currentStackFrameSize += getSizeInWords(t);
 
 
-			auto getOperand = [&st](fir::Instruction* instr, size_t op) -> std::string {
-				iceAssert(op < instr->operands.size());
+			//* this is the function prologue! essentially
+			//* push %rbp; mov %rsp, %rbp; sub $N, %rsp
+			{
+				st.program += "\n; prologue\n";
 
-				auto oper = instr->operands[op];
-				return getValue(&st, oper);
+				// now that we know how big the stack frame must be, we store the current stack pointer
+				// (on the stack, just by reading from it)
+				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM);
+
+				// then, we change the stack pointer. first, since the old value is already on the stack,
+				// use 'F' to duplicate it.
+				st.program += makeinstr(CONST_0, OP_FETCH_STACK);
+
+				// then, add our 'maxwatermark' to it.
+				st.program += makeinstr(createNumber(st.currentStackFrameSize), OP_ADD);
+
+				// finally, store it into the pointer.
+				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+			}
+
+
+			int32_t currentStackWatermark = 0;
+			auto allocStackMem = [&st, &currentStackWatermark](fir::Type* ty) -> int32_t {
+
+				auto sz = getSizeInWords(ty);
+				iceAssert(currentStackWatermark + sz <= st.currentStackFrameSize);
+
+				auto ret = currentStackWatermark;
+				currentStackWatermark += sz;
+
+				return ret;
 			};
+
 
 
 			for(auto block : fn->getBlockList())
 			{
+				st.program += strprintf("\n\n; block %s\n", block->getName().str());
+
 				st.basicBlockLocations[block->id] = st.program.size();
 
 				for(auto inst : block->getInstructions())
 				{
 					switch(inst->opKind)
 					{
+						case fir::OpKind::Signed_Add:
+						case fir::OpKind::Unsigned_Add:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							st.program += makeinstr(a, b, OP_ADD);
+							break;
+						}
+
+
+
+
+
+
+
+
+
+						case fir::OpKind::Value_CreateLVal:
+						{
+							st.program += "\n; create lvalue\n";
+
+							iceAssert(inst->operands.size() == 1);
+							fir::Type* ft = inst->operands[0]->getType();
+
+							auto stackaddr = allocStackMem(ft);
+
+							// small opt: only make the base address once, use 'F' to get it subsequently
+							st.program += calcStackAddr(&st, stackaddr);
+
+							for(size_t i = 0; i < getSizeInWords(ft); i++)
+							{
+								auto ofs = createNumber(i);
+
+								// write 0s.
+								st.program += makeinstr(CONST_5, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+							}
+
+							// throw the thing away
+							st.program += makeinstr(OP_DROP);
+
+							st.stackFrameValueMap[inst->realOutput->id] = stackaddr;
+							break;
+						}
+
+						case fir::OpKind::Value_Store:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto val = getOperand(inst, 0);
+							auto ptr = getUndecayedOperand(inst, 1);
+
+							// see how big it is..
+							auto sz = getSizeInWords(inst->operands[0]->getType());
+
+							// presumably the size of the value will be the same!
+							st.program += val;
+
+							// same optimisation -- push the address first, then use 'F' to calculate offsets.
+							st.program += ptr;
+
+							for(size_t i = 0; i < sz; i++)
+							{
+								auto ofs = createNumber(i);
+
+								// this is the offset of the 'current word' for multi-word values.
+								auto valofs = createNumber(sz - i);
+
+								st.program += makeinstr(valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+							}
+
+							st.program += makeinstr(OP_DROP);
+
+							for(size_t i = 0; i < sz; i++) // drop the value also
+								st.program += makeinstr(OP_DROP);
+
+							break;
+						}
+
+
+
+
 
 
 
 						case fir::OpKind::Value_CallFunction:
 						{
+							st.program += "\n; call\n";
 							iceAssert(inst->operands.size() >= 1);
 
 							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
@@ -241,8 +503,7 @@ namespace backend
 									iceAssert(inst->operands.size() == 2);
 									auto arg = getOperand(inst, 1);
 
-									st.program += arg;
-									st.program += OP_PRINT_CHAR;
+									st.program += makeinstr(arg, OP_PRINT_CHAR);
 								}
 								else
 								{
@@ -251,19 +512,34 @@ namespace backend
 							}
 							else
 							{
+								// throw in a relocation.
 								error("what function '%s'", fn->getName().str());
 							}
 
 							break;
 						}
 
-
-
 						default:
-							warn("unhandled");
+							warn("unhandled: '%s'", inst->str());
 							break;
 					}
 				}
+			}
+
+
+
+			//* this is the function epilogue
+			//* mov %rbp, %rsp; pop %rbp
+			{
+				// so what we do is just restore the value on the stack, which, barring any suspicious things, should
+				// still be there -- but behind any return values.
+
+				st.program += "\n; epilogue\n";
+				size_t returnValueSize = getSizeInWords(fn->getReturnType());
+				st.program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
+
+				// now it's at the top -- we write that to the stack pointer place.
+				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
 			}
 		}
 
@@ -334,9 +610,6 @@ namespace backend
 			}
 		}
 
-		// st.program += "jjAjiAjhAjgAjfAjeAjdAjcAjbA jihgfedcba EPEPEPEPEPEPEPEPEPEPEPEPEP";
-
-
 		this->program = st.program;
 	}
 
@@ -360,9 +633,10 @@ namespace backend
 	{
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
-			printf("\ncompiled program (%#zx bytes):\n", this->program.size());
+			printf("\ncompiled program (%#zx bytes):\n\n", this->program.size());
 			printf("%s\n\n", this->program.c_str());
 
+			this->program += "?!";
 			this->executeProgram(this->program);
 		}
 		else

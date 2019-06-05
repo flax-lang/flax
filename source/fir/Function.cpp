@@ -123,6 +123,16 @@ namespace fir
 		this->fnIsIntrinsicFunction = true;
 	}
 
+	void Function::addStackAllocation(Type* ty)
+	{
+		this->stackAllocs.push_back(ty);
+	}
+
+	std::vector<Type*> Function::getStackAllocations()
+	{
+		return this->stackAllocs;
+	}
+
 
 	void Function::cullUnusedValues()
 	{

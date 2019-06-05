@@ -11,6 +11,6 @@ export ultratiny
 
 @entry fn main()
 {
-	// let s: str = "hello, world!"
-	putchar(65)
+	var x: i64 = 65
+	putchar(66)
 }

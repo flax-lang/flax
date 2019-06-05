@@ -1021,7 +1021,7 @@ namespace fir
 
 		if(type->isVoidType())                                      return 0;
 		else if(type->isBoolType())                                 return 1;
-		else if(type->isPointerType() || type->isFunctionType())    return sizeof(void*);
+		else if(type->isPointerType() || type->isFunctionType())    return getSizeOfType(wordty);
 		else if(type->isPrimitiveType())                            return type->getBitWidth() / 8;
 		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, wordty });
 		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, wordty, wordty, ptrt });

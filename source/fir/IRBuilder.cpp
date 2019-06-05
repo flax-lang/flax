@@ -1210,6 +1210,9 @@ namespace fir
 		auto parent = this->currentBlock->getParentFunction();
 		iceAssert(parent);
 
+		parent->addStackAllocation(type);
+
+
 		// get the entry block
 		auto entry = parent->getBlockList().front();
 		iceAssert(entry);
@@ -2103,7 +2106,7 @@ namespace fir
 
 	Value* IRBuilder::CreateLValue(Type* type, const std::string& vname)
 	{
-		// ok...
+		// needs to be hoisted also
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, type, { ConstantValue::getZeroValue(type) },
 			Value::Kind::lvalue);
 
@@ -2113,6 +2116,8 @@ namespace fir
 		// get the parent function
 		auto parent = this->currentBlock->getParentFunction();
 		iceAssert(parent);
+
+		parent->addStackAllocation(type);
 
 		// get the entry block
 		auto entry = parent->getBlockList().front();
@@ -2126,7 +2131,7 @@ namespace fir
 
 	Value* IRBuilder::CreateConstLValue(Value* val, const std::string& vname)
 	{
-		// ok...
+		// needs to be hoisted also
 		Instruction* instr = make_instr(OpKind::Value_CreateLVal, true, this->currentBlock, val->getType(),
 			{ ConstantValue::getZeroValue(val->getType()) }, Value::Kind::lvalue);
 
@@ -2139,6 +2144,8 @@ namespace fir
 		// get the parent function
 		auto parent = this->currentBlock->getParentFunction();
 		iceAssert(parent);
+
+		parent->addStackAllocation(val->getType());
 
 		// get the entry block
 		auto entry = parent->getBlockList().front();
