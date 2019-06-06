@@ -11,6 +11,6 @@ export ultratiny
 
 @entry fn main()
 {
-	var x: i64 = 65
-	putchar(66)
+	var x = 80
+	putchar(x - 15)
 }

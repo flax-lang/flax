@@ -137,6 +137,9 @@ namespace backend
 
 		int32_t currentStackFrameSize = 0;
 		util::hash_map<size_t, int32_t> stackFrameValueMap;
+
+		size_t currentStackOffset = 0;
+		util::hash_map<size_t, int32_t> stackValues;
 	};
 
 	constexpr size_t WORD_SIZE                      = 4;
@@ -157,7 +160,9 @@ namespace backend
 
 
 	/*
-		! calling convention !
+		! convention !
+		* multi-word values are stored in BIG-ENDIAN FORMAT!!!
+
 
 		* function calling
 		arguments are pushed RIGHT TO LEFT. ie. the last argument will be pushed first
@@ -241,13 +246,14 @@ namespace backend
 	}
 
 
-	static std::string calcStackAddr(State* st, int32_t addr)
+	static std::string calcAddrInStackFrame(State* st, int32_t addr)
 	{
 		// basically, read from the current stack pointer,
 		// subtract the maxstackwatermark, add the address.
 		auto ofs = st->currentStackFrameSize - addr;
 		return makeinstr(createNumber(ofs), createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, OP_SUBTRACT);
 	};
+
 
 	static std::string getValue(State* st, fir::Value* fv)
 	{
@@ -264,7 +270,26 @@ namespace backend
 		{
 			if(auto it = st->stackFrameValueMap.find(fv->id); it != st->stackFrameValueMap.end())
 			{
-				return calcStackAddr(st, it->second);
+				return calcAddrInStackFrame(st, it->second);
+			}
+			else if(auto it = st->stackValues.find(fv->id); it != st->stackValues.end())
+			{
+				// we need to fetch the number from deep in the stack, possibly.
+				// calculate how far back we need to go. 0 = it's at the top already, up to a max of
+				// st.currentStackOffset - 1.
+
+				std::string ret;
+
+				// fetch however many words it needs.
+				for(size_t i = 0; i < getSizeInWords(fv->getType()); i++)
+				{
+					auto ofs = createNumber(st->currentStackOffset + i - 1 - it->second);
+
+					// fetch it.
+					ret += makeinstr(ofs, OP_FETCH_STACK);
+				}
+
+				return ret;
 			}
 			else
 			{
@@ -350,7 +375,13 @@ namespace backend
 
 			st.program += strprintf("\n\n; function %s\n", fn->getName().str());
 
+			// this one is for the real stack
+			st.stackValues.clear();
+			st.currentStackOffset = 0;
+
+			// this one is for the stack frame, ie. what lives in memory.
 			st.stackFrameValueMap.clear();
+
 			st.functionLocations[fn->id] = st.program.size();
 
 			st.currentStackFrameSize = 0;
@@ -404,13 +435,38 @@ namespace backend
 					switch(inst->opKind)
 					{
 						case fir::OpKind::Signed_Add:
+						case fir::OpKind::Signed_Sub:
+						case fir::OpKind::Signed_Mul:
+						case fir::OpKind::Signed_Div:
 						case fir::OpKind::Unsigned_Add:
+						case fir::OpKind::Unsigned_Sub:
+						case fir::OpKind::Unsigned_Mul:
+						case fir::OpKind::Unsigned_Div:
 						{
 							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
+							auto b = getOperand(inst, 0);
+							auto a = getOperand(inst, 1);
 
-							st.program += makeinstr(a, b, OP_ADD);
+							std::string op;
+							switch(inst->opKind)
+							{
+								case fir::OpKind::Signed_Add: case fir::OpKind::Unsigned_Add:
+									op = OP_ADD; break;
+								case fir::OpKind::Signed_Sub: case fir::OpKind::Unsigned_Sub:
+									op = OP_SUBTRACT; break;
+								case fir::OpKind::Signed_Mul: case fir::OpKind::Unsigned_Mul:
+									op = OP_MULTIPLY; break;
+								case fir::OpKind::Signed_Div: case fir::OpKind::Unsigned_Div:
+									op = OP_DIVIDE; break;
+								default:
+									iceAssert(0); break;
+							}
+
+							st.program += makeinstr(a, b, op);
+
+							st.stackValues[inst->realOutput->id] = st.currentStackOffset;
+							st.currentStackOffset++;
+
 							break;
 						}
 
@@ -432,7 +488,7 @@ namespace backend
 							auto stackaddr = allocStackMem(ft);
 
 							// small opt: only make the base address once, use 'F' to get it subsequently
-							st.program += calcStackAddr(&st, stackaddr);
+							st.program += calcAddrInStackFrame(&st, stackaddr);
 
 							for(size_t i = 0; i < getSizeInWords(ft); i++)
 							{
@@ -526,6 +582,9 @@ namespace backend
 				}
 			}
 
+			// drop all the locals
+			for(size_t i = 0; i < st.currentStackOffset; i++)
+				st.program += makeinstr(OP_DROP);
 
 
 			//* this is the function epilogue
