@@ -27,7 +27,7 @@ const std::string OP_CALL               = "C";
 const std::string OP_DROP               = "D";
 const std::string OP_READ_MEM           = "E";
 const std::string OP_FETCH_STACK        = "F";
-const std::string OP_JMP_REL_FWD        = "G";
+const std::string OP_JMP_REL            = "G";
 const std::string OP_FETCH_DEL_STACK    = "H";
 const std::string OP_PRINT_INT          = "I";
 const std::string OP_COMPARE            = "J";
@@ -251,7 +251,7 @@ namespace backend
 		// basically, read from the current stack pointer,
 		// subtract the maxstackwatermark, add the address.
 		auto ofs = st->currentStackFrameSize - addr;
-		return makeinstr(createNumber(ofs), createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, OP_SUBTRACT);
+		return makeinstr(createNumber(STACK_POINTER_IN_MEMORY), createNumber(ofs), OP_READ_MEM, OP_SUBTRACT);
 	};
 
 
@@ -276,7 +276,7 @@ namespace backend
 			{
 				// we need to fetch the number from deep in the stack, possibly.
 				// calculate how far back we need to go. 0 = it's at the top already, up to a max of
-				// st.currentStackOffset - 1.
+				// st->currentStackOffset - 1.
 
 				std::string ret;
 
@@ -299,6 +299,13 @@ namespace backend
 		}
 	}
 
+	static void recordLocalOnStack(State* st, fir::Instruction* inst, size_t ofs = -1)
+	{
+		if(ofs == -1) ofs = st->currentStackOffset;
+
+		st->stackValues[inst->realOutput->id] = ofs;
+		st->currentStackOffset += getSizeInWords(inst->realOutput->getType());
+	}
 
 
 
@@ -309,24 +316,26 @@ namespace backend
 
 	void LSCVMBackend::performCompilation()
 	{
-		State st;
-		st.firmod = this->compiledData.module;
+		State _st;
+		auto st = &_st;
 
-		st.constantMemoryWatermark = CONSTANT_OFFSET_IN_MEMORY;
+		st->firmod = this->compiledData.module;
 
-		for(auto string : st.firmod->_getGlobalStrings())
+		st->constantMemoryWatermark = CONSTANT_OFFSET_IN_MEMORY;
+
+		for(auto string : st->firmod->_getGlobalStrings())
 		{
 			std::string init;
 
-			int32_t loc = st.constantMemoryWatermark;
+			int32_t loc = st->constantMemoryWatermark;
 			for(char c : string.first)
 			{
-				init += makeinstr(createNumber(c), createNumber(st.constantMemoryWatermark), OP_WRITE_MEM);
-				st.constantMemoryWatermark++;
+				init += makeinstr(createNumber(c), createNumber(st->constantMemoryWatermark), OP_WRITE_MEM);
+				st->constantMemoryWatermark++;
 			}
 
-			st.memoryInitialisers.push_back(init);
-			st.memoryValueMap[string.second->id] = loc;
+			st->memoryInitialisers.push_back(init);
+			st->memoryValueMap[string.second->id] = loc;
 		}
 
 		// setup the stack pointer.
@@ -334,7 +343,7 @@ namespace backend
 			auto sp_addr = createNumber(STACK_POINTER_IN_MEMORY);   // 0x10000
 			auto sp = createNumber(STACK_FRAME_IN_MEMORY);          // 0x10004
 
-			st.memoryInitialisers.push_back(makeinstr(sp, sp_addr, OP_WRITE_MEM));
+			st->memoryInitialisers.push_back(makeinstr(sp, sp_addr, OP_WRITE_MEM));
 		}
 
 
@@ -352,14 +361,14 @@ namespace backend
 			iceAssert(op < instr->operands.size());
 
 			auto oper = instr->operands[op];
-			return getValue(&st, oper);
+			return getValue(st, oper);
 		};
 
 		auto getOperand = [&st, &decay](fir::Instruction* instr, size_t op) -> std::string {
 			iceAssert(op < instr->operands.size());
 
 			auto oper = instr->operands[op];
-			return decay(oper, getValue(&st, oper));
+			return decay(oper, getValue(st, oper));
 		};
 
 
@@ -367,46 +376,46 @@ namespace backend
 
 
 
-		for(auto fn : st.firmod->getAllFunctions())
+		for(auto fn : st->firmod->getAllFunctions())
 		{
 			if(fn->getBlockList().empty())
 				continue;
 
 
-			st.program += strprintf("\n\n; function %s\n", fn->getName().str());
+			st->program += strprintf("\n\n; function %s\n", fn->getName().str());
 
 			// this one is for the real stack
-			st.stackValues.clear();
-			st.currentStackOffset = 0;
+			st->stackValues.clear();
+			st->currentStackOffset = 0;
 
 			// this one is for the stack frame, ie. what lives in memory.
-			st.stackFrameValueMap.clear();
+			st->stackFrameValueMap.clear();
 
-			st.functionLocations[fn->id] = st.program.size();
+			st->functionLocations[fn->id] = st->program.size();
 
-			st.currentStackFrameSize = 0;
+			st->currentStackFrameSize = 0;
 			for(auto t : fn->getStackAllocations())
-				st.currentStackFrameSize += getSizeInWords(t);
+				st->currentStackFrameSize += getSizeInWords(t);
 
 
 			//* this is the function prologue! essentially
 			//* push %rbp; mov %rsp, %rbp; sub $N, %rsp
 			{
-				st.program += "\n; prologue\n";
+				st->program += "\n; prologue\n";
 
 				// now that we know how big the stack frame must be, we store the current stack pointer
 				// (on the stack, just by reading from it)
-				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM);
+				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM);
 
 				// then, we change the stack pointer. first, since the old value is already on the stack,
 				// use 'F' to duplicate it.
-				st.program += makeinstr(CONST_0, OP_FETCH_STACK);
+				st->program += makeinstr(CONST_0, OP_FETCH_STACK);
 
 				// then, add our 'maxwatermark' to it.
-				st.program += makeinstr(createNumber(st.currentStackFrameSize), OP_ADD);
+				st->program += makeinstr(createNumber(st->currentStackFrameSize), OP_ADD);
 
 				// finally, store it into the pointer.
-				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
 			}
 
 
@@ -414,7 +423,7 @@ namespace backend
 			auto allocStackMem = [&st, &currentStackWatermark](fir::Type* ty) -> int32_t {
 
 				auto sz = getSizeInWords(ty);
-				iceAssert(currentStackWatermark + sz <= st.currentStackFrameSize);
+				iceAssert(currentStackWatermark + sz <= st->currentStackFrameSize);
 
 				auto ret = currentStackWatermark;
 				currentStackWatermark += sz;
@@ -426,9 +435,9 @@ namespace backend
 
 			for(auto block : fn->getBlockList())
 			{
-				st.program += strprintf("\n\n; block %s\n", block->getName().str());
+				st->program += strprintf("\n\n; block %s\n", block->getName().str());
 
-				st.basicBlockLocations[block->id] = st.program.size();
+				st->basicBlockLocations[block->id] = st->program.size();
 
 				for(auto inst : block->getInstructions())
 				{
@@ -444,8 +453,8 @@ namespace backend
 						case fir::OpKind::Unsigned_Div:
 						{
 							iceAssert(inst->operands.size() == 2);
-							auto b = getOperand(inst, 0);
-							auto a = getOperand(inst, 1);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
 
 							std::string op;
 							switch(inst->opKind)
@@ -462,11 +471,107 @@ namespace backend
 									iceAssert(0); break;
 							}
 
-							st.program += makeinstr(a, b, op);
+							st->program += makeinstr(b, a, op);
 
-							st.stackValues[inst->realOutput->id] = st.currentStackOffset;
-							st.currentStackOffset++;
+							recordLocalOnStack(st, inst);
+							break;
+						}
 
+
+
+						case fir::OpKind::ICompare_Equal:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							/*
+								<A><B>SdZabGb, which is essentially this:
+
+								sub <A>, <B>
+								jz true
+								push 0
+								jmp merge
+								true: push 1
+								merge:
+							*/
+
+							st->program += makeinstr(a, b, OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_0, CONST_1, OP_JMP_REL, CONST_1);
+							recordLocalOnStack(st, inst);
+
+							break;
+						}
+
+						case fir::OpKind::ICompare_NotEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							// similar to icmpeq, but we just swap the 0 and the 1 constant.
+							st->program += makeinstr(a, b, OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_1, CONST_1, OP_JMP_REL, CONST_0);
+							recordLocalOnStack(st, inst);
+							break;
+						}
+
+						case fir::OpKind::ICompare_Greater:
+						{
+							// <B><A>cGeGJgMGaeGaaab
+							// what this is doing, is multiplying the result of J with some constant, so it either
+							// jumps forward, backwards, or nowhere, depending on the result. then, we just push
+							// the appropriate constants depending on the result.
+							// it's a more general form of SdZabGb that we used for == and !=.
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							st->program += makeinstr(a, b, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+							recordLocalOnStack(st, inst);
+							break;
+						}
+
+						case fir::OpKind::ICompare_Less:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							// we just swap the order of operands.
+							st->program += makeinstr(b, a, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+							recordLocalOnStack(st, inst);
+							break;
+						}
+
+
+						case fir::OpKind::ICompare_GreaterEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							// take the < version, and invert the outputs
+							st->program += makeinstr(b, a, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+							recordLocalOnStack(st, inst);
+							break;
+						}
+
+						case fir::OpKind::ICompare_LessEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							// take the > version, and invert the outputs
+							st->program += makeinstr(a, b, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+							recordLocalOnStack(st, inst);
 							break;
 						}
 
@@ -476,11 +581,9 @@ namespace backend
 
 
 
-
-
 						case fir::OpKind::Value_CreateLVal:
 						{
-							st.program += "\n; create lvalue\n";
+							st->program += "\n; create lvalue\n";
 
 							iceAssert(inst->operands.size() == 1);
 							fir::Type* ft = inst->operands[0]->getType();
@@ -488,20 +591,20 @@ namespace backend
 							auto stackaddr = allocStackMem(ft);
 
 							// small opt: only make the base address once, use 'F' to get it subsequently
-							st.program += calcAddrInStackFrame(&st, stackaddr);
+							st->program += calcAddrInStackFrame(st, stackaddr);
 
 							for(size_t i = 0; i < getSizeInWords(ft); i++)
 							{
 								auto ofs = createNumber(i);
 
 								// write 0s.
-								st.program += makeinstr(CONST_5, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+								st->program += makeinstr(CONST_5, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
 							}
 
 							// throw the thing away
-							st.program += makeinstr(OP_DROP);
+							st->program += makeinstr(OP_DROP);
 
-							st.stackFrameValueMap[inst->realOutput->id] = stackaddr;
+							st->stackFrameValueMap[inst->realOutput->id] = stackaddr;
 							break;
 						}
 
@@ -515,10 +618,10 @@ namespace backend
 							auto sz = getSizeInWords(inst->operands[0]->getType());
 
 							// presumably the size of the value will be the same!
-							st.program += val;
+							st->program += val;
 
 							// same optimisation -- push the address first, then use 'F' to calculate offsets.
-							st.program += ptr;
+							st->program += ptr;
 
 							for(size_t i = 0; i < sz; i++)
 							{
@@ -527,13 +630,13 @@ namespace backend
 								// this is the offset of the 'current word' for multi-word values.
 								auto valofs = createNumber(sz - i);
 
-								st.program += makeinstr(valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+								st->program += makeinstr(valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
 							}
 
-							st.program += makeinstr(OP_DROP);
+							st->program += makeinstr(OP_DROP);
 
 							for(size_t i = 0; i < sz; i++) // drop the value also
-								st.program += makeinstr(OP_DROP);
+								st->program += makeinstr(OP_DROP);
 
 							break;
 						}
@@ -546,7 +649,7 @@ namespace backend
 
 						case fir::OpKind::Value_CallFunction:
 						{
-							st.program += "\n; call\n";
+							st->program += "\n; call\n";
 							iceAssert(inst->operands.size() >= 1);
 
 							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
@@ -559,7 +662,7 @@ namespace backend
 									iceAssert(inst->operands.size() == 2);
 									auto arg = getOperand(inst, 1);
 
-									st.program += makeinstr(arg, OP_PRINT_CHAR);
+									st->program += makeinstr(arg, OP_PRINT_CHAR);
 								}
 								else
 								{
@@ -583,8 +686,9 @@ namespace backend
 			}
 
 			// drop all the locals
-			for(size_t i = 0; i < st.currentStackOffset; i++)
-				st.program += makeinstr(OP_DROP);
+			st->program += "\n; dropping locals\n?";
+			for(size_t i = 0; i < st->currentStackOffset; i++)
+				st->program += makeinstr(OP_DROP);
 
 
 			//* this is the function epilogue
@@ -593,12 +697,12 @@ namespace backend
 				// so what we do is just restore the value on the stack, which, barring any suspicious things, should
 				// still be there -- but behind any return values.
 
-				st.program += "\n; epilogue\n";
+				st->program += "\n; epilogue\n";
 				size_t returnValueSize = getSizeInWords(fn->getReturnType());
-				st.program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
+				st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
 
 				// now it's at the top -- we write that to the stack pointer place.
-				st.program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
 			}
 		}
 
@@ -620,7 +724,7 @@ namespace backend
 
 		{
 			std::string tmp;
-			for(const auto& mi : st.memoryInitialisers)
+			for(const auto& mi : st->memoryInitialisers)
 				tmp += mi;
 
 
@@ -628,31 +732,31 @@ namespace backend
 			std::string tmp2;
 
 			// tmp2 += EmptyRelocation; tmp2 += OP_CALL;
-			// st.relocations[0] = firmod->getFunction(Identifier("__global_init_function__", IdKind::Name))->id;
+			// st->relocations[0] = firmod->getFunction(Identifier("__global_init_function__", IdKind::Name))->id;
 
-			st.program = (tmp + tmp2 + st.program);
-			st.relocationOffset = tmp.size();
+			st->program = (tmp + tmp2 + st->program);
+			st->relocationOffset = tmp.size();
 
 			// handle relocations.
-			for(auto [ _instr, target ] : st.relocations)
+			for(auto [ _instr, target ] : st->relocations)
 			{
-				auto instr = st.relocationOffset + _instr;
+				auto instr = st->relocationOffset + _instr;
 
 				// expect the relocation to be unfilled!
-				if(st.program.find(EmptyRelocation, instr) != instr)
+				if(st->program.find(EmptyRelocation, instr) != instr)
 					error("wtf? '%s'");
 
 				int32_t loc = 0;
-				if(auto it = st.functionLocations.find(target); it != st.functionLocations.end())
+				if(auto it = st->functionLocations.find(target); it != st->functionLocations.end())
 					loc = it->second;
 
-				else if(auto it = st.basicBlockLocations.find(target); it != st.basicBlockLocations.end())
+				else if(auto it = st->basicBlockLocations.find(target); it != st->basicBlockLocations.end())
 					loc = it->second;
 
 				else
 					error("no relocation for value id %zu", target);
 
-				loc += st.relocationOffset;
+				loc += st->relocationOffset;
 				auto str = createNumber(loc);
 
 				if(str.size() > MAX_RELOCATION_SIZE)
@@ -665,11 +769,11 @@ namespace backend
 					str += std::string(MAX_RELOCATION_SIZE - str.size(), ' ');
 
 				iceAssert(str.size() == MAX_RELOCATION_SIZE);
-				st.program.replace(instr, MAX_RELOCATION_SIZE, str);
+				st->program.replace(instr, MAX_RELOCATION_SIZE, str);
 			}
 		}
 
-		this->program = st.program;
+		this->program = st->program;
 	}
 
 

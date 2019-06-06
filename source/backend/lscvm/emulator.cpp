@@ -98,8 +98,8 @@ namespace backend
 
 				// add two operands
 				case 'A': {
-					auto a = pop();
 					auto b = pop();
+					auto a = pop();
 					push(a + b);
 				} break;
 
@@ -148,11 +148,12 @@ namespace backend
 
 				// relative jump forward
 				case 'G': {
-					auto jmp = pop();
+					auto jmp = (int32_t) pop();
 					if(st->pc + jmp >= st->instructions.size())
 						halt("jump to instruction '%u' out of bounds (max %zu)\n", st->instructions.size() - 1);
 
-					st->pc += jmp;
+					if(jmp < 0 && st->pc < -jmp)    st->pc = 0;
+					else                            st->pc += jmp;
 				} break;
 
 				// same as fetch (F), but remove it also.
@@ -174,8 +175,8 @@ namespace backend
 
 				// compare (-1, 0, +1)
 				case 'J': {
-					auto a = pop();
 					auto b = pop();
+					auto a = pop();
 
 					if(a < b)  push(-1);
 					if(a == b) push(0);
@@ -195,8 +196,8 @@ namespace backend
 
 				// multiply
 				case 'M': {
-					auto a = pop();
 					auto b = pop();
+					auto a = pop();
 					push(a * b);
 				} break;
 
@@ -216,15 +217,15 @@ namespace backend
 
 				// subtract
 				case 'S': {
-					auto a = pop();
 					auto b = pop();
+					auto a = pop();
 					push(a - b);
 				} break;
 
 				// divide
 				case 'V': {
-					auto a = pop();
 					auto b = pop();
+					auto a = pop();
 					push(a / b);
 				} break;
 
@@ -270,6 +271,21 @@ namespace backend
 			}
 
 			st->pc++;
+
+			if((false))
+			{
+				printf("op: %c | pc: %zu\n", op, st->pc);
+				printf("stack: [");
+				for(auto x : st->stack)
+					printf(" %d", x);
+
+				printf(" ]\n");
+				printf("callstack:\n");
+				for(auto x : st->callStack)
+					printf("   %d\n", x);
+
+				printf("\n");
+			}
 		}
 	}
 

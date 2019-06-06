@@ -11,6 +11,8 @@ export ultratiny
 
 @entry fn main()
 {
-	var x = 80
-	putchar(x - 15)
+	// let x = 30
+
+	// if(x > 10)  => putchar(65)
+	// else        => putchar(66)
 }
