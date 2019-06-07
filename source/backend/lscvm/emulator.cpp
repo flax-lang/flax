@@ -301,7 +301,7 @@ namespace backend
 		{
 			char c = input[i];
 
-			if(isspace(c))
+			if(isspace(c) || c == '(' || c == ')')
 			{
 				// for an accurate cycle count.
 				ret.push_back(' ');

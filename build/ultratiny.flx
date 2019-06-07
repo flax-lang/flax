@@ -11,8 +11,6 @@ export ultratiny
 
 @entry fn main()
 {
-	// let x = 30
-
-	// if(x > 10)  => putchar(65)
-	// else        => putchar(66)
+	if(30 > 10) => putchar("hello"[2])
+	else        => putchar(66)
 }
