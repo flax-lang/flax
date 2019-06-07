@@ -41,6 +41,8 @@ const std::string OP_JMP_REL_IF_ZERO    = "Z";
 
 const std::string INTRINSIC_PRINT_CHAR  = "lscvm.P";
 
+// spaces are also no-ops, so that's good.
+const std::string EMPTY_RELOCATION      = "                                ";
 
 std::string createNumber(int num)
 {
@@ -130,6 +132,9 @@ namespace backend
 		// we need to replace the instruction (or value) at that location with the real address...
 		util::hash_map<int32_t, size_t> relocations;
 
+		// same as relocations, but we'll replace them with relative values. pair is { id, current_pc }.
+		util::hash_map<int32_t, std::pair<size_t, int32_t>> relativeRelocations;
+
 		// watermark for constant memory -- starts at CONSTANT_OFFSET_IN_MEMORY (0x12000)
 		int32_t constantMemoryWatermark = 0;
 
@@ -145,9 +150,6 @@ namespace backend
 	constexpr size_t WORD_SIZE                      = 4;
 
 	constexpr int32_t MAX_RELOCATION_SIZE           = 32;
-
-	// spaces are also no-ops, so that's good.
-	constexpr char EmptyRelocation[]                = "                                ";
 
 	// limits are imposed by the vm!
 	constexpr int32_t MAX_PROGRAM_SIZE              = 0x2000;
@@ -262,6 +264,10 @@ namespace backend
 			// hmm.
 			return "";
 		}
+		else if(auto bb = dcast(fir::IRBlock, fv))
+		{
+			error("don't use getValue with basic block");
+		}
 		else if(auto cv = dcast(fir::ConstantValue, fv))
 		{
 			return createConstant(st, cv);
@@ -307,8 +313,20 @@ namespace backend
 		st->currentStackOffset += getSizeInWords(inst->realOutput->getType());
 	}
 
+	static void addRelocation(State* st, fir::Value* val, int32_t location = -1)
+	{
+		st->relocations[location == -1 ? st->program.size() : location] = val->id;
+		st->program += makeinstr(EMPTY_RELOCATION);
+	}
 
-
+	// if you don't provide 'pc', then it assumes the relative jump instruction (G or Z) immediately follows this constant!
+	static void addRelativeRelocation(State* st, fir::Value* val, int32_t pc = -1, int32_t location = -1)
+	{
+		st->relativeRelocations[location == -1 ? st->program.size() : location] = {
+			val->id, (int32_t) (pc == -1 ? (st->program.size() + EMPTY_RELOCATION.size() + 1) : pc)
+		};
+		st->program += makeinstr(EMPTY_RELOCATION);
+	}
 
 
 
@@ -348,6 +366,22 @@ namespace backend
 
 
 
+		// add a jump to the global init function.
+		addRelocation(st, st->firmod->getFunction(Identifier("__global_init_function__", IdKind::Name)));
+		st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
+
+		// then, call main:
+		addRelocation(st, st->firmod->getEntryFunction());
+		st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
+
+		// then, quit.
+		st->program += makeinstr(OP_HALT);
+
+
+
+
+
+
 
 		auto decay = [&st](fir::Value* fv, const std::string& lv) -> std::string {
 			if(fv->islorclvalue())
@@ -382,7 +416,8 @@ namespace backend
 				continue;
 
 
-			st->program += strprintf("\n\n; function %s\n", fn->getName().str());
+			// st->program += strprintf("\n\n; function %s\n", fn->getName().str());
+
 
 			// this one is for the real stack
 			st->stackValues.clear();
@@ -401,7 +436,7 @@ namespace backend
 			//* this is the function prologue! essentially
 			//* push %rbp; mov %rsp, %rbp; sub $N, %rsp
 			{
-				st->program += "\n; prologue\n";
+				// st->program += "\n; prologue\n";
 
 				// now that we know how big the stack frame must be, we store the current stack pointer
 				// (on the stack, just by reading from it)
@@ -435,7 +470,7 @@ namespace backend
 
 			for(auto block : fn->getBlockList())
 			{
-				st->program += strprintf("\n\n; block %s\n", block->getName().str());
+				// st->program += strprintf("\n\n; block %s - %zu\n", block->getName().str(), st->program.size());
 
 				st->basicBlockLocations[block->id] = st->program.size();
 
@@ -477,7 +512,53 @@ namespace backend
 							break;
 						}
 
+						case fir::OpKind::Branch_Cond:
+						{
+							iceAssert(inst->operands.size() == 3);
+							auto cond = getOperand(inst, 0);
 
+							// we want to jump if 1, so just do 1 minus that.
+							st->program += makeinstr(cond, CONST_1, OP_SUBTRACT);
+
+							addRelativeRelocation(st, inst->operands[1]);
+							st->program += makeinstr(OP_JMP_REL_IF_ZERO);
+
+							addRelativeRelocation(st, inst->operands[2]);
+							st->program += makeinstr(OP_JMP_REL);
+
+							break;
+						}
+
+						case fir::OpKind::Branch_UnCond:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							addRelativeRelocation(st, inst->operands[0]);
+							st->program += makeinstr(OP_JMP_REL);
+
+							break;
+						}
+
+
+
+
+
+
+
+
+
+						case fir::OpKind::ICompare_Multi:
+						{
+							// this is dead simple -- basically just 'J'.
+							// but i don't think we emit this from flax just yet.
+							iceAssert(inst->operands.size() == 2);
+							auto a = getOperand(inst, 0);
+							auto b = getOperand(inst, 1);
+
+							st->program += makeinstr(a, b, OP_COMPARE);
+							recordLocalOnStack(st, inst);
+							break;
+						}
 
 						case fir::OpKind::ICompare_Equal:
 						{
@@ -546,7 +627,6 @@ namespace backend
 							break;
 						}
 
-
 						case fir::OpKind::ICompare_GreaterEqual:
 						{
 							iceAssert(inst->operands.size() == 2);
@@ -583,7 +663,7 @@ namespace backend
 
 						case fir::OpKind::Value_CreateLVal:
 						{
-							st->program += "\n; create lvalue\n";
+							// st->program += "\n; create lvalue\n";
 
 							iceAssert(inst->operands.size() == 1);
 							fir::Type* ft = inst->operands[0]->getType();
@@ -649,7 +729,7 @@ namespace backend
 
 						case fir::OpKind::Value_CallFunction:
 						{
-							st->program += "\n; call\n";
+							// st->program += "\n; call\n";
 							iceAssert(inst->operands.size() >= 1);
 
 							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
@@ -672,9 +752,32 @@ namespace backend
 							else
 							{
 								// throw in a relocation.
-								error("what function '%s'", fn->getName().str());
+								if(inst->operands.size() > 1) error("not supported");
+
+								addRelocation(st, inst->operands[0]);
+								st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
 							}
 
+							break;
+						}
+
+						case fir::OpKind::Value_Return:
+						{
+							if(inst->operands.size() == 0)
+							{
+								st->program += makeinstr(OP_RETURN);
+							}
+							else
+							{
+								error("unsupported");
+
+								iceAssert(inst->operands.size() == 1);
+								// llvm::Value* a = getOperand(inst, 0);
+
+								// ret = builder.CreateRet(a);
+							}
+
+							// addValueToMap(ret, inst->realOutput);
 							break;
 						}
 
@@ -686,7 +789,7 @@ namespace backend
 			}
 
 			// drop all the locals
-			st->program += "\n; dropping locals\n?";
+			// st->program += "\n; dropping locals\n?";
 			for(size_t i = 0; i < st->currentStackOffset; i++)
 				st->program += makeinstr(OP_DROP);
 
@@ -697,7 +800,7 @@ namespace backend
 				// so what we do is just restore the value on the stack, which, barring any suspicious things, should
 				// still be there -- but behind any return values.
 
-				st->program += "\n; epilogue\n";
+				// st->program += "\n; epilogue\n";
 				size_t returnValueSize = getSizeInWords(fn->getReturnType());
 				st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
 
@@ -727,24 +830,16 @@ namespace backend
 			for(const auto& mi : st->memoryInitialisers)
 				tmp += mi;
 
-
-			// add a jump to the global init function.
-			std::string tmp2;
-
-			// tmp2 += EmptyRelocation; tmp2 += OP_CALL;
-			// st->relocations[0] = firmod->getFunction(Identifier("__global_init_function__", IdKind::Name))->id;
-
-			st->program = (tmp + tmp2 + st->program);
+			st->program = (tmp + st->program);
 			st->relocationOffset = tmp.size();
 
-			// handle relocations.
-			for(auto [ _instr, target ] : st->relocations)
-			{
+			auto relocate = [&st](int32_t _instr, size_t target, int32_t origin) {
+
 				auto instr = st->relocationOffset + _instr;
 
 				// expect the relocation to be unfilled!
-				if(st->program.find(EmptyRelocation, instr) != instr)
-					error("wtf? '%s'");
+				if(st->program.find(EMPTY_RELOCATION, instr) != instr)
+					error("wtf? '%s'", st->program.substr(instr, 32));
 
 				int32_t loc = 0;
 				if(auto it = st->functionLocations.find(target); it != st->functionLocations.end())
@@ -756,8 +851,11 @@ namespace backend
 				else
 					error("no relocation for value id %zu", target);
 
-				loc += st->relocationOffset;
-				auto str = createNumber(loc);
+				loc -= origin;
+				// printf("relocation of id %zu from prog %d is %d\n", target, origin, loc);
+
+				loc += (origin != 0 ? 0 : st->relocationOffset);
+				auto str = "(" + createNumber(loc) + ")";
 
 				if(str.size() > MAX_RELOCATION_SIZE)
 				{
@@ -770,7 +868,16 @@ namespace backend
 
 				iceAssert(str.size() == MAX_RELOCATION_SIZE);
 				st->program.replace(instr, MAX_RELOCATION_SIZE, str);
-			}
+			};
+
+
+
+			// handle relocations.
+			for(auto [ _instr, target ] : st->relocations)
+				relocate(_instr, target, 0);
+
+			for(auto [ _instr, target ] : st->relativeRelocations)
+				relocate(_instr, target.first, target.second);
 		}
 
 		this->program = st->program;
