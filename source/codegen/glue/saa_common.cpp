@@ -762,7 +762,7 @@ namespace saa_common
 		if(frontend::getIsNoRuntimeChecks())
 			return 0;
 
-		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_");
+		auto fname = (isDecomp ? "__boundscheck_decomp_" : "__boundscheck_");
 
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 

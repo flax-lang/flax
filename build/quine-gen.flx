@@ -1,0 +1,163 @@
+// quine-gen.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+export ultratiny
+
+@platform[native_word_size] 32
+@platform[integer_type, 32] word
+@platform[intrinsic, "lscvm.P"] fn pc(c: i32)
+@platform[intrinsic, "lscvm.I"] fn putint(i: i32)
+@platform[intrinsic, "lscvm.B"] fn haltvm()
+@platform[intrinsic, "lscvm.!"] fn dump_memory()
+@platform[intrinsic, "lscvm.?"] fn dump_stack()
+
+/*
+	0 = a
+	1 = b
+	2 = c
+	3 = d
+	4 = e
+	5 = f
+	6 = g
+	7 = h
+	8 = i
+	9 = j
+ */
+
+
+@entry fn main()
+{
+	var inp: &i32 = (0x00 as &i32)
+	var i = 9
+
+	while inp[i] != 0
+	{
+		do {
+			do {
+				var c = (inp[i] as int)
+
+				// these are all ascii.
+				if(c == ' ')
+				{
+					pc('e'); pc('i'); pc('M')
+				}
+				else if(c > 'A')
+				{
+					if(c <= 'I')
+					{
+						pc('i'); pc('i'); pc('M')
+						pc('b' as int + (c - 'A' as int))
+						pc('A')
+					}
+					else if(c <= 'P')
+					{
+						pc('i'); pc('j'); pc('M')
+						pc('c' as int + (c - 'J' as int))
+						pc('A')
+					}
+					else
+					{
+						pc('j'); pc('j'); pc('M')
+						pc('b' as int + (c - 'R' as int))
+						pc('A')
+					}
+				}
+				else
+				{
+					return
+				}
+			}
+
+			do {
+				// uwu.
+				var c = i
+
+				if(c < 10)
+				{
+					pc('a' as int + c)
+				}
+				else
+				{
+					var d = 0       // 9^1
+					while c > 9
+					{
+						c -= 9
+						d += 1
+					}
+
+					var e = 0       // 9^2
+					while d > 9
+					{
+						d -= 9
+						e += 1
+					}
+
+					var f = 0       // 9^3
+					while e > 9
+					{
+						e -= 9
+						f += 1
+					}
+
+					// var g = 0       // 9^4
+					// while f > 9
+					// {
+					// 	f -= 9
+					// 	g += 1
+					// }
+
+					// too big uwu
+
+					pc('a' as int + c);
+
+					if d > 0
+					{
+						pc('j'); pc('a' as int + d)
+						pc('M'); pc('A')
+					}
+
+					if e > 0
+					{
+						pc('j'); pc('j'); pc('a' as int + e)
+						pc('M'); pc('A')
+					}
+
+					if f > 0
+					{
+						pc('j'); pc('j'); pc('j'); pc('a' as int + f)
+						pc('M'); pc('A')
+					}
+
+					// if g > 0
+					// {
+					// 	pc('j'); pc('j'); pc('j'); pc('j'); pc('a' as int + g)
+					// 	pc('M'); pc('A')
+					// }
+				}
+			}
+
+			pc('K')
+		}
+
+		i += 1
+	}
+
+
+	i = 9
+	while inp[i] != 0
+	{
+		pc(inp[i])
+		i += 1
+	}
+}
+
+
+
+
+
+
+
+
+
+

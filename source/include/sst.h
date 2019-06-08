@@ -511,6 +511,16 @@ namespace sst
 		bool value = false;
 	};
 
+	struct LiteralChar : Expr
+	{
+		LiteralChar(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "character literal"; }
+		~LiteralChar() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		uint32_t value = false;
+	};
+
 	struct LiteralTuple : Expr
 	{
 		LiteralTuple(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "tuple literal"; }

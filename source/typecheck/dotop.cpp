@@ -459,7 +459,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	// ok.
 	auto defn = fs->typeDefnMap[type];
-	iceAssert(defn);
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
@@ -689,6 +688,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	}
 	else
 	{
+		// TODO: this error message could be better!!!
+		//* it's because we are pending extension support!
 		error(lhs, "unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
 

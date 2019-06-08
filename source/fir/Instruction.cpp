@@ -235,7 +235,7 @@ namespace fir
 				}
 				else if(IRBlock* ib = dcast(IRBlock, op))
 				{
-					ops += "$" + ib->getName().str();
+					ops += strprintf("$%zu/%s", ib->id, ib->getName().str());
 				}
 				else
 				{

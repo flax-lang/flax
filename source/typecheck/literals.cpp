@@ -81,6 +81,17 @@ TCResult ast::LitBool::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	return TCResult(ret);
 }
 
+TCResult ast::LitChar::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto ret = util::pool<sst::LiteralChar>(this->loc, fir::Type::getInt8());
+	ret->value = this->value;
+
+	return TCResult(ret);
+}
+
 TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	fs->pushLoc(this);

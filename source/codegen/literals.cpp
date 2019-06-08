@@ -252,6 +252,14 @@ CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(fir::ConstantBool::get(this->value));
 }
 
+CGResult sst::LiteralChar::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	return CGResult(fir::ConstantInt::getInt8((int8_t) this->value));
+}
+
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);

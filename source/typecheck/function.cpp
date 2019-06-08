@@ -275,11 +275,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			{
 				if(inferred->isVoidType())
 				{
-					// no issues.
-					auto rst = util::pool<sst::ReturnStmt>(s->loc);
-					rst->expectedType = fir::Type::getVoid();
-
-					ret->statements = { ex, rst };
+					ret->statements = { ex };
 				}
 				else
 				{
@@ -288,11 +284,18 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			}
 			else
 			{
-				auto rst = util::pool<sst::ReturnStmt>(s->loc);
-				rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
-				rst->value = ex;
+				if(!fs->getCurrentFunction()->returnType->isVoidType())
+				{
+					auto rst = util::pool<sst::ReturnStmt>(s->loc);
+					rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
+					rst->value = ex;
 
-				ret->statements = { rst };
+					ret->statements = { rst };
+				}
+				else
+				{
+					ret->statements = { ex };
+				}
 			}
 		}
 		else

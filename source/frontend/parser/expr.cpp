@@ -1190,6 +1190,10 @@ namespace parser
 				case TT::LSquare:
 					return parseArray(st, false);
 
+				case TT::CharacterLiteral:
+					st.pop();
+					return util::pool<LitChar>(tok.loc, (uint32_t) tok.text[0]);
+
 				// no point creating separate functions for these
 				case TT::True:
 					st.pop();
