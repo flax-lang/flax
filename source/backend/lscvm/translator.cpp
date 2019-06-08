@@ -40,9 +40,7 @@ const std::string OP_DIVIDE             = "V";
 const std::string OP_JMP_REL_IF_ZERO    = "Z";
 
 const std::string INTRINSIC_PRINT_CHAR  = "lscvm.P";
-
-// spaces are also no-ops, so that's good.
-const std::string EMPTY_RELOCATION      = "                                ";
+const std::string INTRINSIC_PRINT_INT   = "lscvm.I";
 
 std::string createNumber(int num)
 {
@@ -144,21 +142,36 @@ namespace backend
 		util::hash_map<size_t, int32_t> stackFrameValueMap;
 
 		size_t currentStackOffset = 0;
+		size_t numberOfLocalValues = 0;
+
+		// the amount of space taken by operands for each opcode that we are translating. once the opcode is done being
+		// translated, there's supposed to be no extra stuff left on the stack, except any output values. the whole reason
+		// we need this, is because the act of pushing an operand onto the stack by its nature needs to modify currentStackOffset,
+		// because subsequent opcodes need a larger index into the stack to fetch their values.
+		size_t temporaryStackValueOffset = 0;
+
+		// usually this is the same as `currentStackOffset`, except when there are arguments;
+		// then, numberOfLocalValues < currentStackOffset. the latter tracks the number of values on the stack, the former
+		// tracks how many locals we need to pop on function epilogue --- this is necessary cos we use cdecl convention, where
+		// the caller cleans the stack.
 		util::hash_map<size_t, int32_t> stackValues;
 	};
 
 	constexpr size_t WORD_SIZE                      = 4;
 
-	constexpr int32_t MAX_RELOCATION_SIZE           = 32;
+	constexpr int32_t MAX_RELOCATION_SIZE           = 16;
 
 	// limits are imposed by the vm!
 	constexpr int32_t MAX_PROGRAM_SIZE              = 0x2000;
 
-	constexpr int32_t STACK_POINTER_IN_MEMORY       = 0x10000;
-	constexpr int32_t STACK_FRAME_IN_MEMORY         = 0x10001;
+	constexpr int32_t STACK_POINTER_IN_MEMORY       = 0x00000;
+	constexpr int32_t STACK_FRAME_IN_MEMORY         = 0x00001;
 
 	constexpr int32_t CONSTANT_OFFSET_IN_MEMORY     = 0x12000;
 	constexpr int32_t MAX_MEMORY_SIZE               = 0x13880;
+
+	// spaces are also no-ops, so that's good.
+	const std::string EMPTY_RELOCATION              = std::string(MAX_RELOCATION_SIZE, ' ');
 
 
 	/*
@@ -253,16 +266,15 @@ namespace backend
 		// basically, read from the current stack pointer,
 		// subtract the maxstackwatermark, add the address.
 		auto ofs = st->currentStackFrameSize - addr;
-		return makeinstr(createNumber(STACK_POINTER_IN_MEMORY), createNumber(ofs), OP_READ_MEM, OP_SUBTRACT);
+		return makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, createNumber(ofs), OP_SUBTRACT);
 	};
 
 
-	static std::string getValue(State* st, fir::Value* fv)
+	static void fetchValue(State* st, fir::Value* fv)
 	{
 		if(auto fn = dcast(fir::Function, fv))
 		{
 			// hmm.
-			return "";
 		}
 		else if(auto bb = dcast(fir::IRBlock, fv))
 		{
@@ -270,13 +282,15 @@ namespace backend
 		}
 		else if(auto cv = dcast(fir::ConstantValue, fv))
 		{
-			return createConstant(st, cv);
+			st->program += createConstant(st, cv);
+			st->temporaryStackValueOffset++;
 		}
 		else
 		{
 			if(auto it = st->stackFrameValueMap.find(fv->id); it != st->stackFrameValueMap.end())
 			{
-				return calcAddrInStackFrame(st, it->second);
+				st->program += calcAddrInStackFrame(st, it->second);
+				st->temporaryStackValueOffset++;
 			}
 			else if(auto it = st->stackValues.find(fv->id); it != st->stackValues.end())
 			{
@@ -289,28 +303,29 @@ namespace backend
 				// fetch however many words it needs.
 				for(size_t i = 0; i < getSizeInWords(fv->getType()); i++)
 				{
-					auto ofs = createNumber(st->currentStackOffset + i - 1 - it->second);
+					auto ofs = createNumber(st->currentStackOffset + st->temporaryStackValueOffset + i - 1 - it->second);
 
 					// fetch it.
 					ret += makeinstr(ofs, OP_FETCH_STACK);
 				}
 
-				return ret;
+				st->program += ret;
+				st->temporaryStackValueOffset += getSizeInWords(fv->getType());
 			}
 			else
 			{
 				error("no value for id '%zu'", fv->id);
-				return "";
 			}
 		}
 	}
 
-	static void recordLocalOnStack(State* st, fir::Instruction* inst, size_t ofs = -1)
+	static void recordLocalOnStack(State* st, fir::Value* v, size_t ofs = -1)
 	{
 		if(ofs == -1) ofs = st->currentStackOffset;
 
-		st->stackValues[inst->realOutput->id] = ofs;
-		st->currentStackOffset += getSizeInWords(inst->realOutput->getType());
+		st->stackValues[v->id] = ofs;
+		st->currentStackOffset += getSizeInWords(v->getType());
+		st->numberOfLocalValues += getSizeInWords(v->getType());
 	}
 
 	static void addRelocation(State* st, fir::Value* val, int32_t location = -1)
@@ -323,7 +338,7 @@ namespace backend
 	static void addRelativeRelocation(State* st, fir::Value* val, int32_t pc = -1, int32_t location = -1)
 	{
 		st->relativeRelocations[location == -1 ? st->program.size() : location] = {
-			val->id, (int32_t) (pc == -1 ? (st->program.size() + EMPTY_RELOCATION.size() + 1) : pc)
+			val->id, (int32_t) (pc == -1 ? (st->program.size() + MAX_RELOCATION_SIZE + 1) : pc)
 		};
 		st->program += makeinstr(EMPTY_RELOCATION);
 	}
@@ -367,12 +382,12 @@ namespace backend
 
 
 		// add a jump to the global init function.
-		addRelocation(st, st->firmod->getFunction(Identifier("__global_init_function__", IdKind::Name)));
-		st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
+		// addRelocation(st, st->firmod->getFunction(Identifier("__global_init_function__", IdKind::Name)));
+		// st->program += makeinstr(OP_CALL);
 
 		// then, call main:
 		addRelocation(st, st->firmod->getEntryFunction());
-		st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
+		st->program += makeinstr(OP_CALL);
 
 		// then, quit.
 		st->program += makeinstr(OP_HALT);
@@ -383,26 +398,23 @@ namespace backend
 
 
 
-		auto decay = [&st](fir::Value* fv, const std::string& lv) -> std::string {
+		auto decay = [&st](fir::Value* fv) {
+			fetchValue(st, fv);
+
 			if(fv->islorclvalue())
-				return makeinstr(lv, OP_READ_MEM);
-
-			else
-				return lv;
+				st->program += makeinstr(OP_READ_MEM);
 		};
 
-		auto getUndecayedOperand = [&st](fir::Instruction* instr, size_t op) -> std::string {
+		auto fetchUndecayedOperand = [&st](fir::Instruction* instr, size_t op) {
 			iceAssert(op < instr->operands.size());
 
-			auto oper = instr->operands[op];
-			return getValue(st, oper);
+			fetchValue(st, instr->operands[op]);
 		};
 
-		auto getOperand = [&st, &decay](fir::Instruction* instr, size_t op) -> std::string {
+		auto fetchOperand = [&st, &decay](fir::Instruction* instr, size_t op) {
 			iceAssert(op < instr->operands.size());
 
-			auto oper = instr->operands[op];
-			return decay(oper, getValue(st, oper));
+			decay(instr->operands[op]);
 		};
 
 
@@ -416,12 +428,15 @@ namespace backend
 				continue;
 
 
+
+
 			// st->program += strprintf("\n\n; function %s\n", fn->getName().str());
 
 
 			// this one is for the real stack
 			st->stackValues.clear();
 			st->currentStackOffset = 0;
+			st->numberOfLocalValues = 0;
 
 			// this one is for the stack frame, ie. what lives in memory.
 			st->stackFrameValueMap.clear();
@@ -431,6 +446,8 @@ namespace backend
 			st->currentStackFrameSize = 0;
 			for(auto t : fn->getStackAllocations())
 				st->currentStackFrameSize += getSizeInWords(t);
+
+
 
 
 			//* this is the function prologue! essentially
@@ -451,7 +468,26 @@ namespace backend
 
 				// finally, store it into the pointer.
 				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+
+				// account for the base pointer on the stack
+				st->currentStackOffset++;
 			}
+
+
+
+			// add the arguments. they are immutable, so we do not need to spill them to memory!
+			for(auto arg : fn->getArguments())
+			{
+				// arguments were pushed in reverse order, meaning the first argument is now on the top of the stack.
+				// they're already pushed, so we just track the offsets.
+
+				// we do this manually, because we don't want to increment numberOfLocalValues --- only currentStackOffset.
+
+				st->stackValues[arg->id] = st->currentStackOffset - 1;
+				st->currentStackOffset += getSizeInWords(arg->getType());
+			}
+
+
 
 
 			int32_t currentStackWatermark = 0;
@@ -467,7 +503,6 @@ namespace backend
 			};
 
 
-
 			for(auto block : fn->getBlockList())
 			{
 				// st->program += strprintf("\n\n; block %s - %zu\n", block->getName().str(), st->program.size());
@@ -476,49 +511,87 @@ namespace backend
 
 				for(auto inst : block->getInstructions())
 				{
+					st->temporaryStackValueOffset = 0;
+					using fir::OpKind;
+
 					switch(inst->opKind)
 					{
-						case fir::OpKind::Signed_Add:
-						case fir::OpKind::Signed_Sub:
-						case fir::OpKind::Signed_Mul:
-						case fir::OpKind::Signed_Div:
-						case fir::OpKind::Unsigned_Add:
-						case fir::OpKind::Unsigned_Sub:
-						case fir::OpKind::Unsigned_Mul:
-						case fir::OpKind::Unsigned_Div:
+
+						// all of these are basically no-ops for us.
+						case OpKind::Cast_PointerType:
+						case OpKind::Cast_PointerToInt:
+						case OpKind::Cast_IntToPointer:
 						{
 							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
+
+							fetchOperand(inst, 0);  // the thing.
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_WritePtr:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							fetchOperand(inst, 0);  // val
+							fetchOperand(inst, 1);  // ptr
+
+							st->program += makeinstr(OP_WRITE_MEM);
+							break;
+						}
+
+						case OpKind::Value_ReadPtr:
+						{
+							iceAssert(inst->operands.size() == 1);
+							fetchOperand(inst, 0);  // ptr
+
+							st->program += makeinstr(OP_READ_MEM);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Signed_Add:
+						case OpKind::Signed_Sub:
+						case OpKind::Signed_Mul:
+						case OpKind::Signed_Div:
+						case OpKind::Unsigned_Add:
+						case OpKind::Unsigned_Sub:
+						case OpKind::Unsigned_Mul:
+						case OpKind::Unsigned_Div:
+						{
+							iceAssert(inst->operands.size() == 2);
 
 							std::string op;
 							switch(inst->opKind)
 							{
-								case fir::OpKind::Signed_Add: case fir::OpKind::Unsigned_Add:
+								case OpKind::Signed_Add: case OpKind::Unsigned_Add:
 									op = OP_ADD; break;
-								case fir::OpKind::Signed_Sub: case fir::OpKind::Unsigned_Sub:
+								case OpKind::Signed_Sub: case OpKind::Unsigned_Sub:
 									op = OP_SUBTRACT; break;
-								case fir::OpKind::Signed_Mul: case fir::OpKind::Unsigned_Mul:
+								case OpKind::Signed_Mul: case OpKind::Unsigned_Mul:
 									op = OP_MULTIPLY; break;
-								case fir::OpKind::Signed_Div: case fir::OpKind::Unsigned_Div:
+								case OpKind::Signed_Div: case OpKind::Unsigned_Div:
 									op = OP_DIVIDE; break;
 								default:
 									iceAssert(0); break;
 							}
 
-							st->program += makeinstr(b, a, op);
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(op);
 
-							recordLocalOnStack(st, inst);
+							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
 
-						case fir::OpKind::Branch_Cond:
+						case OpKind::Branch_Cond:
 						{
 							iceAssert(inst->operands.size() == 3);
-							auto cond = getOperand(inst, 0);
+
+							fetchOperand(inst, 0);  // cond
 
 							// we want to jump if 1, so just do 1 minus that.
-							st->program += makeinstr(cond, CONST_1, OP_SUBTRACT);
+							st->program += makeinstr(CONST_1, OP_SUBTRACT);
 
 							addRelativeRelocation(st, inst->operands[1]);
 							st->program += makeinstr(OP_JMP_REL_IF_ZERO);
@@ -529,7 +602,7 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Branch_UnCond:
+						case OpKind::Branch_UnCond:
 						{
 							iceAssert(inst->operands.size() == 1);
 
@@ -539,129 +612,8 @@ namespace backend
 							break;
 						}
 
-
-
-
-
-
-
-
-
-						case fir::OpKind::ICompare_Multi:
-						{
-							// this is dead simple -- basically just 'J'.
-							// but i don't think we emit this from flax just yet.
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							st->program += makeinstr(a, b, OP_COMPARE);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-						case fir::OpKind::ICompare_Equal:
-						{
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							/*
-								<A><B>SdZabGb, which is essentially this:
-
-								sub <A>, <B>
-								jz true
-								push 0
-								jmp merge
-								true: push 1
-								merge:
-							*/
-
-							st->program += makeinstr(a, b, OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_0, CONST_1, OP_JMP_REL, CONST_1);
-							recordLocalOnStack(st, inst);
-
-							break;
-						}
-
-						case fir::OpKind::ICompare_NotEqual:
-						{
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							// similar to icmpeq, but we just swap the 0 and the 1 constant.
-							st->program += makeinstr(a, b, OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_1, CONST_1, OP_JMP_REL, CONST_0);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-						case fir::OpKind::ICompare_Greater:
-						{
-							// <B><A>cGeGJgMGaeGaaab
-							// what this is doing, is multiplying the result of J with some constant, so it either
-							// jumps forward, backwards, or nowhere, depending on the result. then, we just push
-							// the appropriate constants depending on the result.
-							// it's a more general form of SdZabGb that we used for == and !=.
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							st->program += makeinstr(a, b, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
-								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-						case fir::OpKind::ICompare_Less:
-						{
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							// we just swap the order of operands.
-							st->program += makeinstr(b, a, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
-								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-						case fir::OpKind::ICompare_GreaterEqual:
-						{
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							// take the < version, and invert the outputs
-							st->program += makeinstr(b, a, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
-								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-						case fir::OpKind::ICompare_LessEqual:
-						{
-							iceAssert(inst->operands.size() == 2);
-							auto a = getOperand(inst, 0);
-							auto b = getOperand(inst, 1);
-
-							// take the > version, and invert the outputs
-							st->program += makeinstr(a, b, CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
-								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
-							recordLocalOnStack(st, inst);
-							break;
-						}
-
-
-
-
-
-
-
-						case fir::OpKind::Value_CreateLVal:
+						case OpKind::Value_StackAlloc:
+						case OpKind::Value_CreateLVal:
 						{
 							// st->program += "\n; create lvalue\n";
 
@@ -678,7 +630,7 @@ namespace backend
 								auto ofs = createNumber(i);
 
 								// write 0s.
-								st->program += makeinstr(CONST_5, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+								st->program += makeinstr(CONST_0, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
 							}
 
 							// throw the thing away
@@ -688,20 +640,33 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_Store:
+						case OpKind::Value_AddressOf:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							fetchUndecayedOperand(inst, 0); // thing
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_Dereference:
+						{
+							iceAssert(inst->operands.size() == 1);
+
+							fetchOperand(inst, 0);  // thing
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::Value_Store:
 						{
 							iceAssert(inst->operands.size() == 2);
-							auto val = getOperand(inst, 0);
-							auto ptr = getUndecayedOperand(inst, 1);
 
 							// see how big it is..
 							auto sz = getSizeInWords(inst->operands[0]->getType());
 
-							// presumably the size of the value will be the same!
-							st->program += val;
-
-							// same optimisation -- push the address first, then use 'F' to calculate offsets.
-							st->program += ptr;
+							fetchOperand(inst, 0);          // val
+							fetchUndecayedOperand(inst, 1); // ptr
 
 							for(size_t i = 0; i < sz; i++)
 							{
@@ -721,15 +686,8 @@ namespace backend
 							break;
 						}
 
-
-
-
-
-
-
-						case fir::OpKind::Value_CallFunction:
+						case OpKind::Value_CallFunction:
 						{
-							// st->program += "\n; call\n";
 							iceAssert(inst->operands.size() >= 1);
 
 							fir::Function* fn = dcast(fir::Function, inst->operands[0]);
@@ -740,9 +698,16 @@ namespace backend
 								if(fn->getName().str() == INTRINSIC_PRINT_CHAR)
 								{
 									iceAssert(inst->operands.size() == 2);
-									auto arg = getOperand(inst, 1);
 
-									st->program += makeinstr(arg, OP_PRINT_CHAR);
+									fetchOperand(inst, 1);  // arg
+									st->program += makeinstr(OP_PRINT_CHAR);
+								}
+								else if(fn->getName().str() == INTRINSIC_PRINT_INT)
+								{
+									iceAssert(inst->operands.size() == 2);
+
+									fetchOperand(inst, 1);  // arg
+									st->program += makeinstr(OP_PRINT_INT);
 								}
 								else
 								{
@@ -751,61 +716,185 @@ namespace backend
 							}
 							else
 							{
-								// throw in a relocation.
-								if(inst->operands.size() > 1) error("not supported");
+								// push the arguments
+								for(size_t i = 1; i < inst->operands.size(); i++)
+									fetchOperand(inst, i);
 
 								addRelocation(st, inst->operands[0]);
-								st->program += makeinstr(EMPTY_RELOCATION, OP_CALL);
+								st->program += makeinstr(OP_CALL);
+
+								// we just pop the arguments here again -- cdecl is caller-cleanup
+								for(size_t i = 1; i < inst->operands.size(); i++)
+								{
+									// problem: the arguments that we pushed are currently behind the return value
+									// solution: use the fetch-and-delete (H) to grab them, then drop them.
+									st->program += makeinstr(createNumber(getSizeInWords(fn->getReturnType())), OP_FETCH_DEL_STACK, OP_DROP);
+								}
 							}
+
+
+
+							if(!fn->getReturnType()->isVoidType())
+								recordLocalOnStack(st, inst->realOutput);
 
 							break;
 						}
 
-						case fir::OpKind::Value_Return:
+						case OpKind::Value_Return:
 						{
-							if(inst->operands.size() == 0)
+							if(inst->operands.size() > 0)
 							{
-								st->program += makeinstr(OP_RETURN);
-							}
-							else
-							{
-								error("unsupported");
-
 								iceAssert(inst->operands.size() == 1);
-								// llvm::Value* a = getOperand(inst, 0);
 
-								// ret = builder.CreateRet(a);
+								// just push the value.
+								fetchOperand(inst, 0);
 							}
 
-							// addValueToMap(ret, inst->realOutput);
+							size_t returnValueSize = getSizeInWords(fn->getReturnType());
+
+							// similar deal -- in certain cases (eg. `return foo()`), the local value that we 'recorded' is right on top
+							// of the stack. we can't drop it yet, because we need it! so, push a copy first, then yank the locals from
+							// behind using 'H' and drop them.
+							for(size_t i = 0; i < st->numberOfLocalValues; i++)
+								st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK, OP_DROP);
+
+							//* this is the function epilogue
+							{
+								//* mov %rbp, %rsp; pop %rbp
+								{
+									// so what we do is just restore the value on the stack, which, barring any suspicious things, should
+									// still be there -- but behind any return values.
+
+									st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
+
+									// now it's at the top -- we write that to the stack pointer place.
+									st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+								}
+							}
+
+
+							st->program += makeinstr(OP_RETURN);
 							break;
 						}
+
+
+
+						case OpKind::ICompare_Multi:
+						{
+							// this is dead simple -- basically just 'J'.
+							// but i don't think we emit this from flax just yet.
+							iceAssert(inst->operands.size() == 2);
+
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(OP_COMPARE);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ICompare_Equal:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							/*
+								<A><B>SdZabGb, which is essentially this:
+
+								sub <A>, <B>
+								jz true
+								push 0
+								jmp merge
+								true: push 1
+								merge:
+							*/
+
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_0, CONST_1, OP_JMP_REL, CONST_1);
+							recordLocalOnStack(st, inst->realOutput);
+
+							break;
+						}
+
+						case OpKind::ICompare_NotEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							// similar to icmpeq, but we just swap the 0 and the 1 constant.
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_1, CONST_1, OP_JMP_REL, CONST_0);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ICompare_Greater:
+						{
+							// <B><A>cGeGJgMGaeGaaab
+							// what this is doing, is multiplying the result of J with some constant, so it either
+							// jumps forward, backwards, or nowhere, depending on the result. then, we just push
+							// the appropriate constants depending on the result.
+							// it's a more general form of SdZabGb that we used for == and !=.
+							iceAssert(inst->operands.size() == 2);
+
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ICompare_Less:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							// we just swap the order of operands.
+							fetchOperand(inst, 1);  // b
+							fetchOperand(inst, 0);  // a
+							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ICompare_GreaterEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							// take the < version, and invert the outputs
+							fetchOperand(inst, 1);  // b
+							fetchOperand(inst, 0);  // a
+							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+						case OpKind::ICompare_LessEqual:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							// take the > version, and invert the outputs
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+
+
 
 						default:
 							warn("unhandled: '%s'", inst->str());
 							break;
 					}
 				}
-			}
-
-			// drop all the locals
-			// st->program += "\n; dropping locals\n?";
-			for(size_t i = 0; i < st->currentStackOffset; i++)
-				st->program += makeinstr(OP_DROP);
-
-
-			//* this is the function epilogue
-			//* mov %rbp, %rsp; pop %rbp
-			{
-				// so what we do is just restore the value on the stack, which, barring any suspicious things, should
-				// still be there -- but behind any return values.
-
-				// st->program += "\n; epilogue\n";
-				size_t returnValueSize = getSizeInWords(fn->getReturnType());
-				st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
-
-				// now it's at the top -- we write that to the stack pointer place.
-				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
 			}
 		}
 
@@ -852,10 +941,12 @@ namespace backend
 					error("no relocation for value id %zu", target);
 
 				loc -= origin;
-				// printf("relocation of id %zu from prog %d is %d\n", target, origin, loc);
-
 				loc += (origin != 0 ? 0 : st->relocationOffset);
-				auto str = "(" + createNumber(loc) + ")";
+
+				printf("relocation of id %zu from prog %d is %d\n", target, origin, loc);
+
+
+				auto str = createNumber(loc);
 
 				if(str.size() > MAX_RELOCATION_SIZE)
 				{
@@ -906,7 +997,7 @@ namespace backend
 			printf("\ncompiled program (%#zx bytes):\n\n", this->program.size());
 			printf("%s\n\n", this->program.c_str());
 
-			this->program += "?!";
+			// this->program += "?!";
 			this->executeProgram(this->program);
 		}
 		else
@@ -936,7 +1027,107 @@ namespace backend
 
 
 
+/*
+	todo list:
 
+	// Invalid
+	// Signed_Add
+	// Signed_Sub
+	// Signed_Mul
+	// Signed_Div
+	// Signed_Mod
+	// Signed_Neg
+	// Unsigned_Add
+	// Unsigned_Sub
+	// Unsigned_Mul
+	// Unsigned_Div
+	// Unsigned_Mod
+	// ICompare_Equal
+	// ICompare_NotEqual
+	// ICompare_Greater
+	// ICompare_Less
+	// ICompare_GreaterEqual
+	// ICompare_LessEqual
+	// ICompare_Multi
+	// Branch_UnCond
+	// Branch_Cond
+	// Unreachable
+	// Value_Store
+	// Value_CreateLVal
+	// * Value_CallFunction
+	// * Value_Return
+	// Value_ReadPtr
+	// Value_WritePtr
+	// Value_StackAlloc
+	// Cast_PointerType
+	// Cast_PointerToInt
+	// Cast_IntToPointer
+	// Value_Dereference
+	// Value_AddressOf
+	Value_PointerAddition
+	Value_PointerSubtraction
+	Value_GetPointerToStructMember
+	Value_GetStructMember
+	Value_GetPointer
+	Value_GetGEP2
+	Value_InsertValue
+	Value_ExtractValue
+	Value_Select
+	Value_CreatePHI
+	* Value_CallFunctionPointer
+	* Value_CallVirtualMethod
+	? Bitwise_Not
+	? Bitwise_Xor
+	? Bitwise_Arithmetic_Shr
+	? Bitwise_Logical_Shr
+	? Bitwise_Shl
+	? Bitwise_And
+	? Bitwise_Or
+	Cast_Bitcast
+	Cast_IntSize
+	Cast_Signedness
+	Cast_PointerType
+	Cast_PointerToInt
+	Cast_IntToPointer
+	Cast_IntSignedness
+	Integer_ZeroExt
+	Integer_Truncate
+	Logical_Not
+	Misc_Sizeof
+	SAA_GetData
+	SAA_SetData
+	SAA_GetLength
+	SAA_SetLength
+	SAA_GetCapacity
+	SAA_SetCapacity
+	SAA_GetRefCountPtr
+	SAA_SetRefCountPtr
+	ArraySlice_GetData
+	ArraySlice_SetData
+	ArraySlice_GetLength
+	ArraySlice_SetLength
+	Any_GetData
+	Any_SetData
+	Any_GetTypeID
+	Any_SetTypeID
+	Any_GetRefCountPtr
+	Any_SetRefCountPtr
+	Range_GetLower
+	Range_SetLower
+	Range_GetUpper
+	Range_SetUpper
+	Range_GetStep
+	Range_SetStep
+	Enum_GetIndex
+	Enum_SetIndex
+	Enum_GetValue
+	Enum_SetValue
+	Union_SetValue
+	Union_GetValue
+	Union_GetVariantID
+	Union_SetVariantID
+	RawUnion_GEP
+*/
 
 
 
