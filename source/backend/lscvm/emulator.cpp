@@ -62,6 +62,9 @@ namespace backend
 		va_end(args);
 	}
 
+
+	static bool debug = false;
+
 	static void run(state_t* st)
 	{
 		auto pop = [st]() -> uint32_t {
@@ -231,7 +234,7 @@ namespace backend
 
 				// relative jump forward if 0 (cond, ofs)
 				case 'Z': {
-					auto ofs = pop();
+					auto ofs = (int32_t) pop();
 					auto cond = pop();
 					if(cond == 0)
 					{
@@ -243,6 +246,8 @@ namespace backend
 
 				// debug: dump stack
 				case '?': {
+					if(!debug) break;
+
 					printf("\nstack dump:\n");
 
 					if(st->stack.size() > 0)    hexdump(&st->stack[0], st->stack.size());
@@ -253,6 +258,8 @@ namespace backend
 
 				// debug: dump memory.
 				case '!': {
+					if(!debug) break;
+
 					printf("\nmemory dump:\n");
 					hexdump(&st->memory[0], MEMORY_SIZE);
 					printf("\n");
@@ -272,7 +279,7 @@ namespace backend
 
 			st->pc++;
 
-			if((false))
+			if(false && debug)
 			{
 				printf("op: %c | pc: %zu\n", op, st->pc);
 				printf("stack: [");

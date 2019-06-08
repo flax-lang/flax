@@ -176,7 +176,7 @@ namespace fir
 
 			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
 			case OpKind::Value_Store:                       instrname = "store"; break;
-			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;
+			case OpKind::Value_Dereference:                 instrname = "dereference"; break;
 			case OpKind::Value_CreateLVal:                  instrname = "make_lval"; break;
 
 			case OpKind::Unreachable:                       instrname = "<unreachable>"; break;

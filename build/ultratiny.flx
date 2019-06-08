@@ -9,8 +9,60 @@ export ultratiny
 @platform[intrinsic, "lscvm.P"] fn putchar(c: i32)
 @platform[intrinsic, "lscvm.I"] fn putint(i: i32)
 
+
+
+// fn fib(n: int, v: int, prev: int) -> int
+// {
+// 	if n == 0 => return prev
+// 	if n == 1 => return v
+
+// 	return fib(n - 1, v + prev, v)
+// }
+
+// fn fib(n: int) -> int
+// {
+// 	return fib(n, 1, 0)
+// }
+
+// fn dofib(n: int)
+// {
+// 	var i = 1
+// 	while i < n
+// 	{
+// 		putint(fib(i))
+// 		i += 1
+
+// 		if i != n => putchar(44)
+// 	}
+// }
+
 @entry fn main()
 {
-	if(30 > 10) => putchar("hello"[2])
-	else        => putchar(66)
+	// dofib(20)
+
+	var x = (0x10 as &i32) as mut
+	var y = (0x11 as &i32) as mut
+	var z = (0x12 as &i32) as mut
+
+	*x = 65
+	*y = 37
+	*z = *x + *y
+
+	putchar(*z)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
