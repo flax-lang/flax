@@ -28,7 +28,7 @@ const std::string OP_DROP               = "D";
 const std::string OP_READ_MEM           = "E";
 const std::string OP_FETCH_STACK        = "F";
 const std::string OP_JMP_REL            = "G";
-const std::string OP_FETCH_DEL_STACK    = "H";
+const std::string OP_YANK_STACK         = "H";
 const std::string OP_PRINT_INT          = "I";
 const std::string OP_COMPARE            = "J";
 const std::string OP_WRITE_MEM          = "K";
@@ -39,8 +39,26 @@ const std::string OP_SUBTRACT           = "S";
 const std::string OP_DIVIDE             = "V";
 const std::string OP_JMP_REL_IF_ZERO    = "Z";
 
+const std::string INTRINSIC_HALT        = "lscvm.B";
 const std::string INTRINSIC_PRINT_CHAR  = "lscvm.P";
 const std::string INTRINSIC_PRINT_INT   = "lscvm.I";
+const std::string INTRINSIC_DUMP_STACK  = "lscvm.?";
+const std::string INTRINSIC_DUMP_MEMORY = "lscvm.!";
+
+
+constexpr size_t SLICE_DATA_INDEX       = 0;
+constexpr size_t SLICE_LENGTH_INDEX     = 1;
+
+constexpr size_t SAA_DATA_INDEX         = 0;
+constexpr size_t SAA_LENGTH_INDEX       = 1;
+constexpr size_t SAA_CAPACITY_INDEX     = 2;
+constexpr size_t SAA_REFCOUNTPTR_INDEX  = 3;
+
+constexpr size_t ANY_TYPEID_INDEX       = 0;
+constexpr size_t ANY_REFCOUNTPTR_INDEX  = 1;
+constexpr size_t ANY_DATA_ARRAY_INDEX   = 2;
+
+
 
 std::string createNumber(int num)
 {
@@ -64,29 +82,29 @@ std::string createNumber(int num)
 			case 'b': return "jjMjAiA";
 			case 'c': return "jjMjAjA";
 			case 'd': return "cfMcfMM";
-			case 'e': return "cfMcfMMbA";
+			case 'e': return "jggAMhS";
 			case 'f': return "jiAcdMM";
-			case 'g': return "jiAcdMMbA";
+			case 'g': return "jggAMfS";
 			case 'h': return "jeAiM";
 			case 'i': return "hdfMM";
 			case 'j': return "hdfMMbA";
-			case 'k': return "hdfMMcA";
-			case 'l': return "ggdMM";
-			case 'm': return "ggdMMbA";
-			case 'n': return "fgAfMcM";
-			case 'o': return "fgAfMcMbA";
-			case 'p': return "fgAfMcMcA";
-			case 'q': return "fgAfMcMdA";
-			case 'r': return "fgAfMcMeA";
-			case 's': return "fgAfMcMfA";
-			case 't': return "fgAfMcMgA";
-			case 'u': return "fgAfMcMhA";
-			case 'v': return "fgAfMcMiA";
-			case 'w': return "fgAfMcMjA";
-			case 'x': return "gcfcMMM";
-			case 'y': return "fgAfgAM";
-			case 'z': return "fgAfgAMbA";
-			case '_': return "gfdMMfA";
+			case 'A': return "iiMbA";
+			case 'B': return "iiMcA";
+			case 'C': return "iiMdA";
+			case 'D': return "iiMeA";
+			case 'E': return "iiMfA";
+			case 'F': return "iiMgA";
+			case 'G': return "iiMhA";
+			case 'H': return "iiMiA";
+			case 'I': return "iiMjA";
+			case 'J': return "ijMcA";
+			case 'K': return "ijMdA";
+			case 'M': return "ijMfA";
+			case 'P': return "ijMiA";
+			case 'R': return "jjMbA";
+			case 'S': return "jjMcA";
+			case 'V': return "jjMfA";
+			case 'Z': return "jjMjA";
 			case '!': return "fgAdM";
 			case '-': return "fddMM";
 
@@ -94,11 +112,11 @@ std::string createNumber(int num)
 			default: {
 				std::string ret;
 
-				int x = num / 10;
-				ret = createNumber(x) + createNumber(10) + "M";
+				int x = num / 9;
+				ret = createNumber(x) + CONST_9 + "M";
 
-				int y = num % 10;
-				ret += createNumber(y) + "A";
+				int y = num % 9;
+				if(y > 0) ret += createNumber(y) + "A";
 
 				return ret;
 			} break;
@@ -141,7 +159,13 @@ namespace backend
 		int32_t currentStackFrameSize = 0;
 		util::hash_map<size_t, int32_t> stackFrameValueMap;
 
+
 		size_t currentStackOffset = 0;
+
+		// usually this is the same as `currentStackOffset`, except when there are arguments;
+		// then, numberOfLocalValues < currentStackOffset. the latter tracks the number of values on the stack, the former
+		// tracks how many locals we need to pop on function epilogue --- this is necessary cos we use cdecl convention, where
+		// the caller cleans the stack.
 		size_t numberOfLocalValues = 0;
 
 		// the amount of space taken by operands for each opcode that we are translating. once the opcode is done being
@@ -150,24 +174,22 @@ namespace backend
 		// because subsequent opcodes need a larger index into the stack to fetch their values.
 		size_t temporaryStackValueOffset = 0;
 
-		// usually this is the same as `currentStackOffset`, except when there are arguments;
-		// then, numberOfLocalValues < currentStackOffset. the latter tracks the number of values on the stack, the former
-		// tracks how many locals we need to pop on function epilogue --- this is necessary cos we use cdecl convention, where
-		// the caller cleans the stack.
 		util::hash_map<size_t, int32_t> stackValues;
+
+		util::hash_map<std::string, int32_t> stringTable;
 	};
 
 	constexpr size_t WORD_SIZE                      = 4;
 
-	constexpr int32_t MAX_RELOCATION_SIZE           = 16;
+	constexpr int32_t MAX_RELOCATION_SIZE           = 24;
 
 	// limits are imposed by the vm!
 	constexpr int32_t MAX_PROGRAM_SIZE              = 0x2000;
 
 	constexpr int32_t STACK_POINTER_IN_MEMORY       = 0x00000;
-	constexpr int32_t STACK_FRAME_IN_MEMORY         = 0x00001;
+	constexpr int32_t STACK_FRAME_IN_MEMORY         = 0x00008;
 
-	constexpr int32_t CONSTANT_OFFSET_IN_MEMORY     = 0x12000;
+	constexpr int32_t CONSTANT_OFFSET_IN_MEMORY     = 0x00F0;
 	constexpr int32_t MAX_MEMORY_SIZE               = 0x13880;
 
 	// spaces are also no-ops, so that's good.
@@ -199,6 +221,12 @@ namespace backend
 		temporary values can just live on the stack.
 
 		for allocas, we must spill them to memory, because we can't modify the contents of the stack.
+
+		note that the lscvm backend has an additional restriction which might fuck us --- temporary locals (ie. non-lvalues) cannot
+		be shared across blocks. non-lvalue locals (SSA temporaries) are dropped at the end of every block to prevent stack overflow,
+		because we can't directly modify the "Real Stack" pointer (to save/restore and drop everything at once).
+
+		so far it's not an issue, but we might get fucked later if programs get a bit more serious (PHI NODES!)
 	*/
 
 
@@ -223,29 +251,106 @@ namespace backend
 		return std::max((size_t) 1, sz / WORD_SIZE);
 	}
 
-	static std::string makeinstr()
+
+
+
+	static std::pair<bool, std::string> peephole(const std::string& a, const std::string& b)
 	{
-		return "";
+		if(a == CONST_0 && (b == OP_YANK_STACK || b == OP_ADD || b == OP_SUBTRACT))
+			return { true, "" };
+
+		if(a == CONST_1 && (b == OP_MULTIPLY || b == OP_DIVIDE))
+			return { true, "" };
+
+		return { false, "" };
 	}
 
-	template<typename... Args>
-	static std::string makeinstr(const std::string& a, Args... args)
+	static std::string makeinstr(const std::vector<std::string>& instrs)
 	{
-		return a + makeinstr(args...);
+		std::stringstream ss;
+
+		for(size_t i = 0; i < instrs.size(); i++)
+		{
+			if(i + 1 < instrs.size())
+			{
+				auto [ success, replacement ] = peephole(instrs[i], instrs[i+1]);
+				if(success) (ss << replacement), i++;
+				else        ss << instrs[i];
+			}
+			else
+			{
+				ss << instrs[i];
+			}
+		}
+
+		return ss.str();
 	}
+
+	static std::string makeinstr(const std::string& s)
+	{
+		return s;
+	}
+
+
+
+	static int32_t createGlobalString(State* st, const std::string& str, int32_t* _ofs = 0)
+	{
+		if(auto it = st->stringTable.find(str); it != st->stringTable.end())
+			return it->second;
+
+		auto ret = st->constantMemoryWatermark;
+
+		if(!_ofs)
+			st->memoryInitialisers.push_back(createNumber(st->constantMemoryWatermark));
+
+		std::string init;
+
+		int32_t ofs = (_ofs ? *_ofs : 0);
+		int32_t origofs = ofs;
+
+		for(char c : str)
+		{
+			init += makeinstr({ createNumber(c), CONST_1, OP_FETCH_STACK, createNumber(ofs), OP_ADD, OP_WRITE_MEM });
+			ofs++;
+		}
+
+		// null terminate!
+		init += makeinstr({ CONST_0, createNumber(ofs), OP_WRITE_MEM });
+		ofs++;
+
+		st->memoryInitialisers.push_back(init);
+		st->constantMemoryWatermark += (ofs - origofs);
+
+		// then drop it.
+		if(!_ofs)
+			st->memoryInitialisers.push_back(makeinstr(OP_DROP));
+
+		else
+			*_ofs = ofs;
+
+		st->stringTable[str] = ret;
+		return ret;
+	}
+
+
+
 
 
 
 	static std::string createConstant(State* st, fir::ConstantValue* c)
 	{
-		if(auto ci = dcast(fir::ConstantInt, c))
+		if(auto it = st->cachedConstants.find(c); it != st->cachedConstants.end())
+			return it->second;
+
+
+		if(auto cint = dcast(fir::ConstantInt, c))
 		{
 			std::string ret = "";
-			if(ci->getType()->toPrimitiveType()->isSigned())
-				ret = createNumber(ci->getSignedValue());
+			if(cint->getType()->toPrimitiveType()->isSigned())
+				ret = createNumber(cint->getSignedValue());
 
 			else
-				ret = createNumber(ci->getUnsignedValue());
+				ret = createNumber(cint->getUnsignedValue());
 
 			// we don't support integers > 32-bits, but just fill in the rest with 0s.
 			for(size_t i = 1; i < getSizeInWords(c->getType()); i++)
@@ -254,8 +359,41 @@ namespace backend
 			st->cachedConstants[c] = ret;
 			return ret;
 		}
+		else if(auto cslice = dcast(fir::ConstantArraySlice, c))
+		{
+			auto ptr = createConstant(st, cslice->getData());
+			auto len = createConstant(st, cslice->getLength());
+
+			// just push the pointer followed by the length.
+			auto ret = (ptr + len);
+
+			st->cachedConstants[c] = ret;
+			return ret;
+		}
+		else if(auto cstr = dcast(fir::ConstantString, c))
+		{
+			auto ofs = createGlobalString(st, cstr->getValue());
+
+			// this is really just a char slice, so make the pointer:
+			auto ptr = createNumber(ofs);
+			auto len = createNumber(cstr->getValue().size());
+
+			auto ret = (ptr + len);
+
+			st->cachedConstants[c] = ret;
+			return ret;
+		}
+		else if(auto cglobal = dcast(fir::GlobalVariable, c))
+		{
+			if(auto it = st->memoryValueMap.find(cglobal->id); it != st->memoryValueMap.end())
+				return createNumber(it->second);
+
+			else
+				error("global (id %zu) has not been created yet", cglobal->id);
+		}
 		else
 		{
+			warn("unsupported constant (id %zu) (%s)", c->id, c->getType());
 			return "";
 		}
 	}
@@ -266,7 +404,7 @@ namespace backend
 		// basically, read from the current stack pointer,
 		// subtract the maxstackwatermark, add the address.
 		auto ofs = st->currentStackFrameSize - addr;
-		return makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, createNumber(ofs), OP_SUBTRACT);
+		return makeinstr({ createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM, createNumber(ofs), OP_SUBTRACT });
 	};
 
 
@@ -283,7 +421,7 @@ namespace backend
 		else if(auto cv = dcast(fir::ConstantValue, fv))
 		{
 			st->program += createConstant(st, cv);
-			st->temporaryStackValueOffset++;
+			st->temporaryStackValueOffset += getSizeInWords(fv->getType());
 		}
 		else
 		{
@@ -294,6 +432,8 @@ namespace backend
 			}
 			else if(auto it = st->stackValues.find(fv->id); it != st->stackValues.end())
 			{
+				auto sz = getSizeInWords(fv->getType());
+
 				// we need to fetch the number from deep in the stack, possibly.
 				// calculate how far back we need to go. 0 = it's at the top already, up to a max of
 				// st->currentStackOffset - 1.
@@ -301,16 +441,16 @@ namespace backend
 				std::string ret;
 
 				// fetch however many words it needs.
-				for(size_t i = 0; i < getSizeInWords(fv->getType()); i++)
+				for(size_t i = 0; i < sz; i++)
 				{
 					auto ofs = createNumber(st->currentStackOffset + st->temporaryStackValueOffset + i - 1 - it->second);
 
 					// fetch it.
-					ret += makeinstr(ofs, OP_FETCH_STACK);
+					ret += makeinstr({ ofs, OP_FETCH_STACK });
 				}
 
 				st->program += ret;
-				st->temporaryStackValueOffset += getSizeInWords(fv->getType());
+				st->temporaryStackValueOffset += sz;
 			}
 			else
 			{
@@ -323,9 +463,11 @@ namespace backend
 	{
 		if(ofs == -1) ofs = st->currentStackOffset;
 
-		st->stackValues[v->id] = ofs;
-		st->currentStackOffset += getSizeInWords(v->getType());
-		st->numberOfLocalValues += getSizeInWords(v->getType());
+		auto sz = getSizeInWords(v->getType());
+
+		st->stackValues[v->id] = (ofs - (sz - 1));
+		st->currentStackOffset += sz;
+		st->numberOfLocalValues += sz;
 	}
 
 	static void addRelocation(State* st, fir::Value* val, int32_t location = -1)
@@ -345,8 +487,6 @@ namespace backend
 
 
 
-
-
 	void LSCVMBackend::performCompilation()
 	{
 		State _st;
@@ -356,34 +496,34 @@ namespace backend
 
 		st->constantMemoryWatermark = CONSTANT_OFFSET_IN_MEMORY;
 
-		for(auto string : st->firmod->_getGlobalStrings())
+		if(st->firmod->_getGlobalStrings().size() > 0)
 		{
-			std::string init;
+			st->memoryInitialisers.push_back(createNumber(st->constantMemoryWatermark));
 
-			int32_t loc = st->constantMemoryWatermark;
-			for(char c : string.first)
+			int32_t ofs = 0;
+			for(auto str : st->firmod->_getGlobalStrings())
 			{
-				init += makeinstr(createNumber(c), createNumber(st->constantMemoryWatermark), OP_WRITE_MEM);
-				st->constantMemoryWatermark++;
+				auto pos = createGlobalString(st, str.first, &ofs);
+				st->memoryValueMap[str.second->id] = pos;
 			}
 
-			st->memoryInitialisers.push_back(init);
-			st->memoryValueMap[string.second->id] = loc;
+			// then drop it.
+			st->memoryInitialisers.push_back(makeinstr(OP_DROP));
 		}
+
+
 
 		// setup the stack pointer.
 		{
 			auto sp_addr = createNumber(STACK_POINTER_IN_MEMORY);   // 0x10000
 			auto sp = createNumber(STACK_FRAME_IN_MEMORY);          // 0x10004
 
-			st->memoryInitialisers.push_back(makeinstr(sp, sp_addr, OP_WRITE_MEM));
+			st->memoryInitialisers.push_back(makeinstr({ sp, sp_addr, OP_WRITE_MEM }));
 		}
-
-
 
 		// add a jump to the global init function.
 		// addRelocation(st, st->firmod->getFunction(Identifier("__global_init_function__", IdKind::Name)));
-		// st->program += makeinstr(OP_CALL);
+		// st->program += makeinstr({ OP_CALL });
 
 		// then, call main:
 		addRelocation(st, st->firmod->getEntryFunction());
@@ -402,7 +542,19 @@ namespace backend
 			fetchValue(st, fv);
 
 			if(fv->islorclvalue())
-				st->program += makeinstr(OP_READ_MEM);
+			{
+				// we need to fetch each word to the stack.
+				size_t sz = getSizeInWords(fv->getType());
+
+				// the address is already on top of the stack -- we just use fetch to get it again.
+				for(size_t i = 0; i < sz; i++)
+				{
+					st->program += makeinstr({ createNumber(i), OP_FETCH_STACK, createNumber(i), OP_ADD, OP_READ_MEM });
+				}
+
+				// yank and drop it.
+				st->program += makeinstr({ createNumber(sz), OP_YANK_STACK, OP_DROP });
+			}
 		};
 
 		auto fetchUndecayedOperand = [&st](fir::Instruction* instr, size_t op) {
@@ -424,6 +576,8 @@ namespace backend
 
 		for(auto fn : st->firmod->getAllFunctions())
 		{
+			// printf("fn %s (id %zu)\n", fn->getName().str().c_str(), fn->id);
+
 			if(fn->getBlockList().empty())
 				continue;
 
@@ -457,17 +611,17 @@ namespace backend
 
 				// now that we know how big the stack frame must be, we store the current stack pointer
 				// (on the stack, just by reading from it)
-				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM);
+				st->program += makeinstr({ createNumber(STACK_POINTER_IN_MEMORY), OP_READ_MEM });
 
 				// then, we change the stack pointer. first, since the old value is already on the stack,
 				// use 'F' to duplicate it.
-				st->program += makeinstr(CONST_0, OP_FETCH_STACK);
+				st->program += makeinstr({ CONST_0, OP_FETCH_STACK });
 
 				// then, add our 'maxwatermark' to it.
-				st->program += makeinstr(createNumber(st->currentStackFrameSize), OP_ADD);
+				st->program += makeinstr({ createNumber(st->currentStackFrameSize), OP_ADD });
 
 				// finally, store it into the pointer.
-				st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+				st->program += makeinstr({ createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM });
 
 				// account for the base pointer on the stack
 				st->currentStackOffset++;
@@ -502,9 +656,18 @@ namespace backend
 				return ret;
 			};
 
+			auto dropBlockLocals = [&st](int32_t ofs = 0) {
 
+				for(size_t i = 0; i < st->numberOfLocalValues; i++)
+					st->program += makeinstr({ createNumber(ofs), OP_YANK_STACK, OP_DROP });
+
+				st->numberOfLocalValues = 0;
+			};
+
+			size_t blkIdx = 0;
 			for(auto block : fn->getBlockList())
 			{
+				// printf("block %s (id %zu)\n", block->getName().str().c_str(), block->id);
 				// st->program += strprintf("\n\n; block %s - %zu\n", block->getName().str(), st->program.size());
 
 				st->basicBlockLocations[block->id] = st->program.size();
@@ -516,11 +679,127 @@ namespace backend
 
 					switch(inst->opKind)
 					{
+						case OpKind::ArraySlice_GetData:
+						case OpKind::ArraySlice_GetLength:
+						{
+							iceAssert(inst->operands.size() == 1);
+							size_t slicesz = getSizeInWords(inst->operands[0]->getType());
+
+							size_t ind = 0;
+							if(inst->opKind == OpKind::ArraySlice_GetData)         ind = SLICE_DATA_INDEX;
+							else if(inst->opKind == OpKind::ArraySlice_GetLength)  ind = SLICE_LENGTH_INDEX;
+
+							// fetch the struct:
+							fetchOperand(inst, 0);
+
+							// then, fetch the N-1-ith bit of the stack, where N is the size of the slice (2 words), and i is the index
+							//? note: implicit assumption that both data and length are one word in size
+							st->program += makeinstr({ createNumber(slicesz - 1 - ind), OP_FETCH_STACK });
+
+							// we need to get rid of the struct in memory now.
+							for(size_t i = 0; i < slicesz; i++)
+								st->program += makeinstr({ CONST_1, OP_YANK_STACK, OP_DROP });
+
+							// we're done
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+
+
+						case OpKind::ArraySlice_SetData:
+						case OpKind::ArraySlice_SetLength:
+						{
+							iceAssert(inst->operands.size() == 2);
+							size_t slicesz = getSizeInWords(inst->operands[0]->getType());
+
+							size_t ind = 0;
+							if(inst->opKind == OpKind::ArraySlice_GetData)         ind = SLICE_DATA_INDEX;
+							else if(inst->opKind == OpKind::ArraySlice_GetLength)  ind = SLICE_LENGTH_INDEX;
+
+							// fetch the struct:
+							fetchOperand(inst, 0);
+
+							// now, we loop over all words in the struct; if it's the index we're modifying, we push the new
+							// value on the stack. if it's not, we use 'fetch' to get the existing value.
+							for(size_t i = 0; i < slicesz; i++)
+							{
+								if(i == ind)    fetchOperand(inst, 1);
+								else            st->program += makeinstr({ createNumber(slicesz - 1 - i), OP_FETCH_STACK });
+							}
+
+							// we need to get rid of the struct in memory now.
+							for(size_t i = 0; i < slicesz; i++)
+								st->program += makeinstr({ createNumber(slicesz), OP_YANK_STACK, OP_DROP });
+
+							// we're done
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+
+
+
+						// basically, pointer arithmetic --- precisely equivalent to PointerAddition and PointerSubtraction.
+						case OpKind::Value_GetPointer:  // fallthrough
+
+						// just some integer multiplication and add/sub.
+						case OpKind::Value_PointerAddition:
+						case OpKind::Value_PointerSubtraction:
+						{
+							iceAssert(inst->operands.size() == 2);
+							auto typesz = getSizeInWords(inst->operands[0]->getType());
+
+							// multiply the typesize (or -1*typesize if subtraction) with the offset, then add to the pointer.
+							fetchOperand(inst, 1);
+							st->program += makeinstr({ createNumber(typesz * (inst->opKind == OpKind::Value_PointerSubtraction ? -1 : 1)),
+								OP_MULTIPLY });
+
+							fetchOperand(inst, 0);
+							st->program += makeinstr(OP_ADD);
+
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
+
+						// this one is less equivalent, and we really only use it for arrays.
+						// after indexing the pointer, we need to index again. say we have gep([T]*, M, N), the first index will add
+						// M*sizeof([T]), the second index will add N*sizeof(T)
+						case OpKind::Value_GetGEP2:
+						{
+							iceAssert(inst->operands.size() == 3);
+
+							auto ptrty = inst->operands[0]->getType();
+							iceAssert(ptrty->isPointerType() && ptrty->getPointerElementType()->isArrayType());
+
+							auto arraysz = getSizeInWords(ptrty->getPointerElementType());
+							auto arrelmsz = getSizeInWords(ptrty->getPointerElementType()->getArrayElementType());
+
+							// fetch the first level index, then multiply by the array size
+							fetchOperand(inst, 1);
+							st->program += makeinstr({ createNumber(arraysz), OP_MULTIPLY });
+
+							// fetch the second level index, then add the element size
+							fetchOperand(inst, 2);
+							st->program += makeinstr({ createNumber(arrelmsz), OP_ADD });
+
+							// fetch the actual pointer, and just add.
+							fetchOperand(inst, 0);
+							st->program += makeinstr(OP_ADD);
+
+							// done
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
 
 						// all of these are basically no-ops for us.
+						case OpKind::Cast_IntSize:
 						case OpKind::Cast_PointerType:
 						case OpKind::Cast_PointerToInt:
 						case OpKind::Cast_IntToPointer:
+						case OpKind::Cast_IntSignedness:
 						{
 							iceAssert(inst->operands.size() == 2);
 
@@ -584,20 +863,51 @@ namespace backend
 							break;
 						}
 
+						case OpKind::Signed_Mod:
+						case OpKind::Unsigned_Mod:
+						{
+							iceAssert(inst->operands.size() == 2);
+
+							// a % b = a - (b*(a / b))
+
+							fetchOperand(inst, 0);  // a
+							fetchOperand(inst, 0);  // a (again)
+							fetchOperand(inst, 1);  // b
+							st->program += makeinstr(OP_DIVIDE);
+
+							fetchOperand(inst, 1);  // b (again)
+							st->program += makeinstr(OP_MULTIPLY);
+							st->program += makeinstr(OP_SUBTRACT);
+
+							recordLocalOnStack(st, inst->realOutput);
+							break;
+						}
+
 						case OpKind::Branch_Cond:
 						{
 							iceAssert(inst->operands.size() == 3);
 
 							fetchOperand(inst, 0);  // cond
 
-							// we want to jump if 1, so just do 1 minus that.
-							st->program += makeinstr(CONST_1, OP_SUBTRACT);
+							// we want to jump if 1, so just do that minus 1
+							// (-1 != 0, so if it's 0 it won't jump)
+							st->program += makeinstr({ CONST_1, OP_SUBTRACT });
+
+							dropBlockLocals(1);
 
 							addRelativeRelocation(st, inst->operands[1]);
 							st->program += makeinstr(OP_JMP_REL_IF_ZERO);
 
-							addRelativeRelocation(st, inst->operands[2]);
-							st->program += makeinstr(OP_JMP_REL);
+
+							if(blkIdx + 1 < fn->getBlockList().size() && inst->operands[2]->id == fn->getBlockList()[blkIdx + 1]->id)
+							{
+								// woohoo, skip it
+							}
+							else
+							{
+								addRelativeRelocation(st, inst->operands[2]);
+								st->program += makeinstr(OP_JMP_REL);
+							}
 
 							break;
 						}
@@ -606,8 +916,19 @@ namespace backend
 						{
 							iceAssert(inst->operands.size() == 1);
 
-							addRelativeRelocation(st, inst->operands[0]);
-							st->program += makeinstr(OP_JMP_REL);
+							dropBlockLocals();
+
+							if(blkIdx + 1 < fn->getBlockList().size() && inst->operands[0]->id == fn->getBlockList()[blkIdx + 1]->id)
+							{
+								// woohoo, skip it
+							}
+							else
+							{
+								// sad.
+
+								addRelativeRelocation(st, inst->operands[0]);
+								st->program += makeinstr(OP_JMP_REL);
+							}
 
 							break;
 						}
@@ -630,7 +951,7 @@ namespace backend
 								auto ofs = createNumber(i);
 
 								// write 0s.
-								st->program += makeinstr(CONST_0, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+								st->program += makeinstr({ CONST_0, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM });
 							}
 
 							// throw the thing away
@@ -665,6 +986,7 @@ namespace backend
 							// see how big it is..
 							auto sz = getSizeInWords(inst->operands[0]->getType());
 
+
 							fetchOperand(inst, 0);          // val
 							fetchUndecayedOperand(inst, 1); // ptr
 
@@ -675,7 +997,7 @@ namespace backend
 								// this is the offset of the 'current word' for multi-word values.
 								auto valofs = createNumber(sz - i);
 
-								st->program += makeinstr(valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM);
+								st->program += makeinstr({ valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM });
 							}
 
 							st->program += makeinstr(OP_DROP);
@@ -709,6 +1031,18 @@ namespace backend
 									fetchOperand(inst, 1);  // arg
 									st->program += makeinstr(OP_PRINT_INT);
 								}
+								else if(fn->getName().str() == INTRINSIC_HALT)
+								{
+									st->program += makeinstr(OP_HALT);
+								}
+								else if(fn->getName().str() == INTRINSIC_DUMP_MEMORY)
+								{
+									st->program += makeinstr("!");
+								}
+								else if(fn->getName().str() == INTRINSIC_DUMP_STACK)
+								{
+									st->program += makeinstr("?");
+								}
 								else
 								{
 									error("unknown intrinsic '%s'", fn->getName().str());
@@ -728,7 +1062,7 @@ namespace backend
 								{
 									// problem: the arguments that we pushed are currently behind the return value
 									// solution: use the fetch-and-delete (H) to grab them, then drop them.
-									st->program += makeinstr(createNumber(getSizeInWords(fn->getReturnType())), OP_FETCH_DEL_STACK, OP_DROP);
+									st->program += makeinstr({ createNumber(getSizeInWords(fn->getReturnType())), OP_YANK_STACK, OP_DROP });
 								}
 							}
 
@@ -755,8 +1089,8 @@ namespace backend
 							// similar deal -- in certain cases (eg. `return foo()`), the local value that we 'recorded' is right on top
 							// of the stack. we can't drop it yet, because we need it! so, push a copy first, then yank the locals from
 							// behind using 'H' and drop them.
-							for(size_t i = 0; i < st->numberOfLocalValues; i++)
-								st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK, OP_DROP);
+
+							dropBlockLocals(returnValueSize);
 
 							//* this is the function epilogue
 							{
@@ -765,13 +1099,12 @@ namespace backend
 									// so what we do is just restore the value on the stack, which, barring any suspicious things, should
 									// still be there -- but behind any return values.
 
-									st->program += makeinstr(createNumber(returnValueSize), OP_FETCH_DEL_STACK);
+									st->program += makeinstr({ createNumber(returnValueSize), OP_YANK_STACK });
 
 									// now it's at the top -- we write that to the stack pointer place.
-									st->program += makeinstr(createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM);
+									st->program += makeinstr({ createNumber(STACK_POINTER_IN_MEMORY), OP_WRITE_MEM });
 								}
 							}
-
 
 							st->program += makeinstr(OP_RETURN);
 							break;
@@ -809,7 +1142,7 @@ namespace backend
 
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_0, CONST_1, OP_JMP_REL, CONST_1);
+							st->program += makeinstr({ OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_0, CONST_1, OP_JMP_REL, CONST_1 });
 							recordLocalOnStack(st, inst->realOutput);
 
 							break;
@@ -822,7 +1155,7 @@ namespace backend
 							// similar to icmpeq, but we just swap the 0 and the 1 constant.
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_1, CONST_1, OP_JMP_REL, CONST_0);
+							st->program += makeinstr({ OP_SUBTRACT, CONST_3, OP_JMP_REL_IF_ZERO, CONST_1, CONST_1, OP_JMP_REL, CONST_0 });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -838,9 +1171,9 @@ namespace backend
 
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+							st->program += makeinstr({ CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
 								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1 });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -850,11 +1183,12 @@ namespace backend
 							iceAssert(inst->operands.size() == 2);
 
 							// we just swap the order of operands.
+
 							fetchOperand(inst, 1);  // b
 							fetchOperand(inst, 0);  // a
-							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+							st->program += makeinstr({ CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
 								OP_MULTIPLY, OP_JMP_REL, CONST_0,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1);
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_1 });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -866,9 +1200,9 @@ namespace backend
 							// take the < version, and invert the outputs
 							fetchOperand(inst, 1);  // b
 							fetchOperand(inst, 0);  // a
-							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+							st->program += makeinstr({ CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
 								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0 });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -880,21 +1214,32 @@ namespace backend
 							// take the > version, and invert the outputs
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
+							st->program += makeinstr({ CONST_2, OP_JMP_REL, CONST_4, OP_JMP_REL, OP_COMPARE, CONST_6,
 								OP_MULTIPLY, OP_JMP_REL, CONST_1,  // <<< this changes
-								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0);
+								CONST_4, OP_JMP_REL, CONST_0, CONST_0, CONST_0, CONST_0 });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
 
 
 
+						case OpKind::Unreachable:
+						{
+							st->program += makeinstr(OP_HALT);
+							break;
+						}
+
+						case OpKind::Invalid:
+							error("invalid opcode!");
+							break;
 
 						default:
 							warn("unhandled: '%s'", inst->str());
 							break;
 					}
 				}
+
+				blkIdx++;
 			}
 		}
 
@@ -918,6 +1263,8 @@ namespace backend
 			std::string tmp;
 			for(const auto& mi : st->memoryInitialisers)
 				tmp += mi;
+
+			// tmp += "!";
 
 			st->program = (tmp + st->program);
 			st->relocationOffset = tmp.size();
@@ -943,7 +1290,7 @@ namespace backend
 				loc -= origin;
 				loc += (origin != 0 ? 0 : st->relocationOffset);
 
-				printf("relocation of id %zu from prog %d is %d\n", target, origin, loc);
+				// printf("relocation of id %zu from prog %d is %d\n", target, origin, loc);
 
 
 				auto str = createNumber(loc);
@@ -1064,12 +1411,16 @@ namespace backend
 	// Cast_IntToPointer
 	// Value_Dereference
 	// Value_AddressOf
-	Value_PointerAddition
-	Value_PointerSubtraction
-	Value_GetPointerToStructMember
+	// Value_PointerAddition
+	// Value_PointerSubtraction
+	// Value_GetPointer
+	// Value_GetGEP2
+	// ArraySlice_GetData
+	// ArraySlice_SetData
+	// ArraySlice_GetLength
+	// ArraySlice_SetLength
 	Value_GetStructMember
-	Value_GetPointer
-	Value_GetGEP2
+	Value_GetPointerToStructMember
 	Value_InsertValue
 	Value_ExtractValue
 	Value_Select
@@ -1086,9 +1437,6 @@ namespace backend
 	Cast_Bitcast
 	Cast_IntSize
 	Cast_Signedness
-	Cast_PointerType
-	Cast_PointerToInt
-	Cast_IntToPointer
 	Cast_IntSignedness
 	Integer_ZeroExt
 	Integer_Truncate
@@ -1102,10 +1450,6 @@ namespace backend
 	SAA_SetCapacity
 	SAA_GetRefCountPtr
 	SAA_SetRefCountPtr
-	ArraySlice_GetData
-	ArraySlice_SetData
-	ArraySlice_GetLength
-	ArraySlice_SetLength
 	Any_GetData
 	Any_SetData
 	Any_GetTypeID
@@ -1128,7 +1472,6 @@ namespace backend
 	Union_SetVariantID
 	RawUnion_GEP
 */
-
 
 
 

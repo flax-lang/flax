@@ -10,6 +10,14 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	if(this->isDoVariant && !this->cond)
+	{
+		this->body->codegen(cs);
+		return CGResult(0);
+	}
+
+
+
 	auto loop = cs->irb.addNewBlockAfter("loop-" + this->loc.shortString(), cs->irb.getCurrentBlock());
 	fir::IRBlock* merge = 0;
 

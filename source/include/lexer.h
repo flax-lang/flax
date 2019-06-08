@@ -122,6 +122,7 @@ namespace lexer
 		UnicodeSymbol,
 		Number,
 		StringLiteral,
+		CharacterLiteral,
 		NewLine,
 		Comment,
 		EndOfFile,

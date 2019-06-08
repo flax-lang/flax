@@ -16,6 +16,7 @@ namespace backend
 	struct state_t
 	{
 		size_t pc;
+		size_t cycles;
 
 		std::vector<char> instructions;
 
@@ -31,9 +32,10 @@ namespace backend
 
 	void LSCVMBackend::executeProgram(const std::string& input)
 	{
-		state_t st;
+		state_t st {};
 
 		st.pc = 0;
+		st.cycles = 0;
 		st.memory.fill(0);
 		st.instructions = cleanInput(input);
 
@@ -63,7 +65,7 @@ namespace backend
 	}
 
 
-	static bool debug = false;
+	static bool debug = true;
 
 	static void run(state_t* st)
 	{
@@ -278,10 +280,11 @@ namespace backend
 			}
 
 			st->pc++;
+			st->cycles++;
 
 			if(false && debug)
 			{
-				printf("op: %c | pc: %zu\n", op, st->pc);
+				printf("op: %c | pc: %zu | cyc: %zu\n", op, st->pc, st->cycles);
 				printf("stack: [");
 				for(auto x : st->stack)
 					printf(" %d", x);
@@ -294,6 +297,12 @@ namespace backend
 				printf("\n");
 			}
 		}
+
+		// make sure the stack is empty at the end
+		printf("\n\ncycles: %zu\nstack dump:\n", st->cycles);
+
+		if(st->stack.size() > 0)    hexdump(&st->stack[0], st->stack.size());
+		else                        printf("<empty>");
 	}
 
 

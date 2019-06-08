@@ -8,47 +8,73 @@ export ultratiny
 @platform[integer_type, 32] word
 @platform[intrinsic, "lscvm.P"] fn putchar(c: i32)
 @platform[intrinsic, "lscvm.I"] fn putint(i: i32)
+@platform[intrinsic, "lscvm.B"] fn haltvm()
+@platform[intrinsic, "lscvm.!"] fn dump_memory()
+@platform[intrinsic, "lscvm.?"] fn dump_stack()
 
+@nomangle fn abort() => haltvm()
 
+fn fib(n: int, v: int, prev: int) -> int
+{
+	if n == 0 => return prev
+	if n == 1 => return v
 
-// fn fib(n: int, v: int, prev: int) -> int
-// {
-// 	if n == 0 => return prev
-// 	if n == 1 => return v
+	return fib(n - 1, v + prev, v)
+}
 
-// 	return fib(n - 1, v + prev, v)
-// }
+fn fib(n: int) -> int
+{
+	return fib(n, 1, 0)
+}
 
-// fn fib(n: int) -> int
-// {
-// 	return fib(n, 1, 0)
-// }
-
-// fn dofib(n: int)
-// {
-// 	var i = 1
-// 	while i < n
-// 	{
-// 		putint(fib(i))
-// 		i += 1
-
-// 		if i != n => putchar(44)
-// 	}
-// }
+fn dofib(n: int)
+{
+	var i = 1
+	while i < n
+	{
+		putint(fib(i))
+		i += 1
+		if i != n => putchar(44)
+	}
+}
 
 @entry fn main()
 {
-	// dofib(20)
+	dofib(20)
+	putchar('\n')
 
-	var x = (0x10 as &i32) as mut
-	var y = (0x11 as &i32) as mut
-	var z = (0x12 as &i32) as mut
+	let s = "hello, world! my name is bob! nice to meet you."
 
-	*x = 65
-	*y = 37
-	*z = *x + *y
+	var i = 0
+	while i < s.length
+	{
+		putchar(s[i])
+		i += 1
+	}
+	putchar('\n')
 
-	putchar(*z)
+	putint(30%8)
+
+	// dump_stack()
+	// while i < 1
+	// {
+	// 	dump_stack()
+	// 	putchar(s[0])
+	// 	i += 1
+	// 	dump_stack()
+	// }
+
+	// putchar(10)
+
+	// let q = "world"
+
+	// var x = (0x10 as &i32) as mut
+
+	// *x = 52
+	// x[1] = 45
+	// *(x + 2) = *x + *(x + 1)
+
+	// putchar(x[2])
 }
 
 

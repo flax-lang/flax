@@ -736,6 +736,16 @@ namespace ast
 		std::string num;
 	};
 
+	struct LitChar : Expr
+	{
+		LitChar(const Location& l, uint32_t val) : Expr(l), value(val) { this->readableName = "character literal"; }
+		~LitChar() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		uint32_t value = false;
+	};
+
 	struct LitBool : Expr
 	{
 		LitBool(const Location& l, bool val) : Expr(l), value(val) { this->readableName = "boolean literal"; }
