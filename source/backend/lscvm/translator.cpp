@@ -286,11 +286,6 @@ namespace backend
 		return ss.str();
 	}
 
-	static std::string makeinstr(const std::string& s)
-	{
-		return s;
-	}
-
 
 
 	static int32_t createGlobalString(State* st, const std::string& str, int32_t* _ofs = 0)
@@ -323,7 +318,7 @@ namespace backend
 
 		// then drop it.
 		if(!_ofs)
-			st->memoryInitialisers.push_back(makeinstr(OP_DROP));
+			st->memoryInitialisers.push_back(makeinstr({ OP_DROP }));
 
 		else
 			*_ofs = ofs;
@@ -354,7 +349,7 @@ namespace backend
 
 			// we don't support integers > 32-bits, but just fill in the rest with 0s.
 			for(size_t i = 1; i < getSizeInWords(c->getType()); i++)
-				ret += makeinstr(CONST_0);
+				ret += makeinstr({ CONST_0 });
 
 			st->cachedConstants[c] = ret;
 			return ret;
@@ -473,7 +468,7 @@ namespace backend
 	static void addRelocation(State* st, fir::Value* val, int32_t location = -1)
 	{
 		st->relocations[location == -1 ? st->program.size() : location] = val->id;
-		st->program += makeinstr(EMPTY_RELOCATION);
+		st->program += makeinstr({ EMPTY_RELOCATION });
 	}
 
 	// if you don't provide 'pc', then it assumes the relative jump instruction (G or Z) immediately follows this constant!
@@ -482,7 +477,7 @@ namespace backend
 		st->relativeRelocations[location == -1 ? st->program.size() : location] = {
 			val->id, (int32_t) (pc == -1 ? (st->program.size() + MAX_RELOCATION_SIZE + 1) : pc)
 		};
-		st->program += makeinstr(EMPTY_RELOCATION);
+		st->program += makeinstr({ EMPTY_RELOCATION });
 	}
 
 
@@ -508,7 +503,7 @@ namespace backend
 			}
 
 			// then drop it.
-			st->memoryInitialisers.push_back(makeinstr(OP_DROP));
+			st->memoryInitialisers.push_back(makeinstr({ OP_DROP }));
 		}
 
 
@@ -527,10 +522,10 @@ namespace backend
 
 		// then, call main:
 		addRelocation(st, st->firmod->getEntryFunction());
-		st->program += makeinstr(OP_CALL);
+		st->program += makeinstr({ OP_CALL });
 
 		// then, quit.
-		st->program += makeinstr(OP_HALT);
+		st->program += makeinstr({ OP_HALT });
 
 
 
@@ -756,7 +751,7 @@ namespace backend
 								OP_MULTIPLY });
 
 							fetchOperand(inst, 0);
-							st->program += makeinstr(OP_ADD);
+							st->program += makeinstr({ OP_ADD });
 
 							recordLocalOnStack(st, inst->realOutput);
 							break;
@@ -786,7 +781,7 @@ namespace backend
 
 							// fetch the actual pointer, and just add.
 							fetchOperand(inst, 0);
-							st->program += makeinstr(OP_ADD);
+							st->program += makeinstr({ OP_ADD });
 
 							// done
 							recordLocalOnStack(st, inst->realOutput);
@@ -815,7 +810,7 @@ namespace backend
 							fetchOperand(inst, 0);  // val
 							fetchOperand(inst, 1);  // ptr
 
-							st->program += makeinstr(OP_WRITE_MEM);
+							st->program += makeinstr({ OP_WRITE_MEM });
 							break;
 						}
 
@@ -824,7 +819,7 @@ namespace backend
 							iceAssert(inst->operands.size() == 1);
 							fetchOperand(inst, 0);  // ptr
 
-							st->program += makeinstr(OP_READ_MEM);
+							st->program += makeinstr({ OP_READ_MEM });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -857,7 +852,7 @@ namespace backend
 
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(op);
+							st->program += makeinstr({ op });
 
 							recordLocalOnStack(st, inst->realOutput);
 							break;
@@ -873,11 +868,11 @@ namespace backend
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 0);  // a (again)
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(OP_DIVIDE);
+							st->program += makeinstr({ OP_DIVIDE });
 
 							fetchOperand(inst, 1);  // b (again)
-							st->program += makeinstr(OP_MULTIPLY);
-							st->program += makeinstr(OP_SUBTRACT);
+							st->program += makeinstr({ OP_MULTIPLY });
+							st->program += makeinstr({ OP_SUBTRACT });
 
 							recordLocalOnStack(st, inst->realOutput);
 							break;
@@ -896,7 +891,7 @@ namespace backend
 							dropBlockLocals(1);
 
 							addRelativeRelocation(st, inst->operands[1]);
-							st->program += makeinstr(OP_JMP_REL_IF_ZERO);
+							st->program += makeinstr({ OP_JMP_REL_IF_ZERO });
 
 
 							if(blkIdx + 1 < fn->getBlockList().size() && inst->operands[2]->id == fn->getBlockList()[blkIdx + 1]->id)
@@ -906,7 +901,7 @@ namespace backend
 							else
 							{
 								addRelativeRelocation(st, inst->operands[2]);
-								st->program += makeinstr(OP_JMP_REL);
+								st->program += makeinstr({ OP_JMP_REL });
 							}
 
 							break;
@@ -927,7 +922,7 @@ namespace backend
 								// sad.
 
 								addRelativeRelocation(st, inst->operands[0]);
-								st->program += makeinstr(OP_JMP_REL);
+								st->program += makeinstr({ OP_JMP_REL });
 							}
 
 							break;
@@ -955,7 +950,7 @@ namespace backend
 							}
 
 							// throw the thing away
-							st->program += makeinstr(OP_DROP);
+							st->program += makeinstr({ OP_DROP });
 
 							st->stackFrameValueMap[inst->realOutput->id] = stackaddr;
 							break;
@@ -1000,10 +995,10 @@ namespace backend
 								st->program += makeinstr({ valofs, OP_FETCH_STACK, CONST_1, OP_FETCH_STACK, ofs, OP_ADD, OP_WRITE_MEM });
 							}
 
-							st->program += makeinstr(OP_DROP);
+							st->program += makeinstr({ OP_DROP });
 
 							for(size_t i = 0; i < sz; i++) // drop the value also
-								st->program += makeinstr(OP_DROP);
+								st->program += makeinstr({ OP_DROP });
 
 							break;
 						}
@@ -1022,26 +1017,26 @@ namespace backend
 									iceAssert(inst->operands.size() == 2);
 
 									fetchOperand(inst, 1);  // arg
-									st->program += makeinstr(OP_PRINT_CHAR);
+									st->program += makeinstr({ OP_PRINT_CHAR });
 								}
 								else if(fn->getName().str() == INTRINSIC_PRINT_INT)
 								{
 									iceAssert(inst->operands.size() == 2);
 
 									fetchOperand(inst, 1);  // arg
-									st->program += makeinstr(OP_PRINT_INT);
+									st->program += makeinstr({ OP_PRINT_INT });
 								}
 								else if(fn->getName().str() == INTRINSIC_HALT)
 								{
-									st->program += makeinstr(OP_HALT);
+									st->program += makeinstr({ OP_HALT });
 								}
 								else if(fn->getName().str() == INTRINSIC_DUMP_MEMORY)
 								{
-									st->program += makeinstr("!");
+									st->program += makeinstr({ "!" });
 								}
 								else if(fn->getName().str() == INTRINSIC_DUMP_STACK)
 								{
-									st->program += makeinstr("?");
+									st->program += makeinstr({ "?" });
 								}
 								else
 								{
@@ -1055,7 +1050,7 @@ namespace backend
 									fetchOperand(inst, i);
 
 								addRelocation(st, inst->operands[0]);
-								st->program += makeinstr(OP_CALL);
+								st->program += makeinstr({ OP_CALL });
 
 								// we just pop the arguments here again -- cdecl is caller-cleanup
 								for(size_t i = 1; i < inst->operands.size(); i++)
@@ -1106,7 +1101,7 @@ namespace backend
 								}
 							}
 
-							st->program += makeinstr(OP_RETURN);
+							st->program += makeinstr({ OP_RETURN });
 							break;
 						}
 
@@ -1120,7 +1115,7 @@ namespace backend
 
 							fetchOperand(inst, 0);  // a
 							fetchOperand(inst, 1);  // b
-							st->program += makeinstr(OP_COMPARE);
+							st->program += makeinstr({ OP_COMPARE });
 							recordLocalOnStack(st, inst->realOutput);
 							break;
 						}
@@ -1225,7 +1220,7 @@ namespace backend
 
 						case OpKind::Unreachable:
 						{
-							st->program += makeinstr(OP_HALT);
+							st->program += makeinstr({ OP_HALT });
 							break;
 						}
 
