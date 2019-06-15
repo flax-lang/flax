@@ -58,6 +58,7 @@ struct foo
 
 	do {
 		let k = foo(y: "20", x: 31)
+		let m = true
 	}
 
 

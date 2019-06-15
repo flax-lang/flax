@@ -3,7 +3,6 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "backends/llvm.h"
-#include "backends/lscvm.h"
 
 namespace backend
 {
@@ -19,9 +18,6 @@ namespace backend
 
 			case BackendOption::None:
 				return nullptr;
-
-			case BackendOption::CDDCLSCVM:
-				return new LSCVMBackend(cd, in, out);
 
 			case BackendOption::Invalid:
 			default:
