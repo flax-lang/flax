@@ -131,25 +131,40 @@ namespace interp
 		ret.dataSize = sizeof(T);
 
 		if(auto fsz = getSizeOfType(ty); fsz != sizeof(T))
-			error("packing error of type '%s': predicted %d, actual %d!", ty, fsz, sizeof(T));
+			error("packing error of type '%s': predicted size %d, actual size %d!", ty, fsz, sizeof(T));
 
 		memset(&ret.data[0], 0, 32);
 
 		if(sizeof(T) > LARGE_DATA_SIZE)
 		{
 			ret.ptr = malloc(sizeof(T));
-			memmove(ret.ptr, &T, sizeof(T));
+			memmove(ret.ptr, &val, sizeof(T));
 		}
 		else
 		{
-			memmove(&ret.data[0], &T, sizeof(T));
+			memmove(&ret.data[0], &val, sizeof(T));
 		}
 
 		return ret;
 	}
 
+	static interp::Value makeValue(size_t id, Type* ty)
+	{
+		interp::Value ret;
+		ret.id = id;
+		ret.type = ty;
+		ret.dataSize = getSizeOfType(ty);
+
+		memset(&ret.data[0], 0, 32);
+
+		if(ret.dataSize > LARGE_DATA_SIZE)
+			ret.ptr = calloc(1, ret.dataSize);
+
+		return ret;
+	}
+
 	template <typename T>
-	static T getValue(interp::Value* v)
+	static T getActualValue(interp::Value* v)
 	{
 		if(v->dataSize > LARGE_DATA_SIZE)
 		{
@@ -171,58 +186,124 @@ namespace interp
 	}
 
 
+	static void setValue(InterpState* is, size_t id, const interp::Value& val)
+	{
+		if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
+		{
+			auto& v = it->second;
+			if(v.type != val.type)
+				error("interp: cannot set value, conflicting types '%s' and '%s'", v.type, val.type);
+
+			if(val.dataSize > LARGE_DATA_SIZE)
+				memmove(v.ptr, val.ptr, val.dataSize);
+
+			else
+				memmove(&v.data[0], &val.data[0], val.dataSize);
+		}
+		else
+		{
+			error("interp: no value with id %zu", id);
+		}
+	}
+
+
+
+	static interp::Value runBlock(InterpState* is, const interp::Block* blk)
+	{
+		interp::Value ret;
+		for(const auto& inst : blk->instructions)
+			runInstruction(is, inst);
+
+		return ret;
+	}
+
+	interp::Value InterpState::runFunction(const interp::Function& fn, const std::vector<interp::Value>& args)
+	{
+		auto ffn = fn.origFunction;
+		iceAssert(ffn && ffn->getArgumentCount() == args.size());
+
+		// when we start a function, clear the "stack frame".
+		this->stackFrames.push_back({ });
+
+		for(const auto& arg : args)
+			this->stackFrames.back().values[arg.id] = arg;
+
+		if(fn.blocks.empty())
+		{
+			// wait, what?
+			return interp::Value();
+		}
+
+		auto entry = &fn.blocks[0];
+		this->stackFrames.back().currentFunction = &fn;
+		this->stackFrames.back().currentBlock = entry;
+		this->stackFrames.back().previousBlock = 0;
+
+		auto ret = runBlock(this, entry);
+
+		this->stackFrames.pop_back();
+
+		return ret;
+	}
+
+
+
+
 	// this saves us a lot of copy/paste for the arithmetic ops.
 	template <typename Functor>
 	static interp::Value twoArgumentOp(const interp::Instruction& inst, fir::Type* ty, interp::Value* a, interp::Value* b, Functor op)
 	{
-		if(ty == Type::getInt8())           return makeValue(inst.result, ty, op(getValue<int8_t>(a), getValue<int8_t>(b)));
-		else if(ty == Type::getInt16())     return makeValue(inst.result, ty, op(getValue<int16_t>(a), getValue<int16_t>(b)));
-		else if(ty == Type::getInt32())     return makeValue(inst.result, ty, op(getValue<int32_t>(a), getValue<int32_t>(b)));
-		else if(ty == Type::getInt64())     return makeValue(inst.result, ty, op(getValue<int64_t>(a), getValue<int64_t>(b)));
-		else if(ty == Type::getUint8())     return makeValue(inst.result, ty, op(getValue<uint8_t>(a), getValue<uint8_t>(b)));
-		else if(ty == Type::getUint16())    return makeValue(inst.result, ty, op(getValue<uint16_t>(a), getValue<uint16_t>(b)));
-		else if(ty == Type::getUint32())    return makeValue(inst.result, ty, op(getValue<uint32_t>(a), getValue<uint32_t>(b)));
-		else if(ty == Type::getUint64())    return makeValue(inst.result, ty, op(getValue<uint64_t>(a), getValue<uint64_t>(b)));
-		else if(ty == Type::getFloat32())   return makeValue(inst.result, ty, op(getValue<float>(a), getValue<float>(b)));
-		else if(ty == Type::getFloat64())   return makeValue(inst.result, ty, op(getValue<double>(a), getValue<double>(b)));
-		else if(ty->isPointerType())        return makeValue(inst.result, ty, op(getValue<uintptr_t>(a), getValue<uintptr_t>(b)));
+		if(ty == Type::getInt8())           return makeValue(inst.result, ty, op(getActualValue<int8_t>(a), getActualValue<int8_t>(b)));
+		else if(ty == Type::getInt16())     return makeValue(inst.result, ty, op(getActualValue<int16_t>(a), getActualValue<int16_t>(b)));
+		else if(ty == Type::getInt32())     return makeValue(inst.result, ty, op(getActualValue<int32_t>(a), getActualValue<int32_t>(b)));
+		else if(ty == Type::getInt64())     return makeValue(inst.result, ty, op(getActualValue<int64_t>(a), getActualValue<int64_t>(b)));
+		else if(ty == Type::getUint8())     return makeValue(inst.result, ty, op(getActualValue<uint8_t>(a), getActualValue<uint8_t>(b)));
+		else if(ty == Type::getUint16())    return makeValue(inst.result, ty, op(getActualValue<uint16_t>(a), getActualValue<uint16_t>(b)));
+		else if(ty == Type::getUint32())    return makeValue(inst.result, ty, op(getActualValue<uint32_t>(a), getActualValue<uint32_t>(b)));
+		else if(ty == Type::getUint64())    return makeValue(inst.result, ty, op(getActualValue<uint64_t>(a), getActualValue<uint64_t>(b)));
+		else if(ty == Type::getFloat32())   return makeValue(inst.result, ty, op(getActualValue<float>(a), getActualValue<float>(b)));
+		else if(ty == Type::getFloat64())   return makeValue(inst.result, ty, op(getActualValue<double>(a), getActualValue<double>(b)));
+		else if(ty->isPointerType())        return makeValue(inst.result, ty, op(getActualValue<uintptr_t>(a), getActualValue<uintptr_t>(b)));
 		else                                error("interp: unsupported type '%s' for arithmetic", ty);
 	}
 
 	template <typename Functor>
 	static interp::Value oneArgumentOp(const interp::Instruction& inst, fir::Type* ty, interp::Value* a, Functor op)
 	{
-		if(ty == Type::getInt8())           return makeValue(inst.result, ty, op(getValue<int8_t>(a)));
-		else if(ty == Type::getInt16())     return makeValue(inst.result, ty, op(getValue<int16_t>(a)));
-		else if(ty == Type::getInt32())     return makeValue(inst.result, ty, op(getValue<int32_t>(a)));
-		else if(ty == Type::getInt64())     return makeValue(inst.result, ty, op(getValue<int64_t>(a)));
-		else if(ty == Type::getUint8())     return makeValue(inst.result, ty, op(getValue<uint8_t>(a)));
-		else if(ty == Type::getUint16())    return makeValue(inst.result, ty, op(getValue<uint16_t>(a)));
-		else if(ty == Type::getUint32())    return makeValue(inst.result, ty, op(getValue<uint32_t>(a)));
-		else if(ty == Type::getUint64())    return makeValue(inst.result, ty, op(getValue<uint64_t>(a)));
-		else if(ty == Type::getFloat32())   return makeValue(inst.result, ty, op(getValue<float>(a)));
-		else if(ty == Type::getFloat64())   return makeValue(inst.result, ty, op(getValue<double>(a)));
-		else if(ty->isPointerType())        return makeValue(inst.result, ty, op(getValue<uintptr_t>(a)));
+		if(ty == Type::getInt8())           return makeValue(inst.result, ty, op(getActualValue<int8_t>(a)));
+		else if(ty == Type::getInt16())     return makeValue(inst.result, ty, op(getActualValue<int16_t>(a)));
+		else if(ty == Type::getInt32())     return makeValue(inst.result, ty, op(getActualValue<int32_t>(a)));
+		else if(ty == Type::getInt64())     return makeValue(inst.result, ty, op(getActualValue<int64_t>(a)));
+		else if(ty == Type::getUint8())     return makeValue(inst.result, ty, op(getActualValue<uint8_t>(a)));
+		else if(ty == Type::getUint16())    return makeValue(inst.result, ty, op(getActualValue<uint16_t>(a)));
+		else if(ty == Type::getUint32())    return makeValue(inst.result, ty, op(getActualValue<uint32_t>(a)));
+		else if(ty == Type::getUint64())    return makeValue(inst.result, ty, op(getActualValue<uint64_t>(a)));
+		else if(ty == Type::getFloat32())   return makeValue(inst.result, ty, op(getActualValue<float>(a)));
+		else if(ty == Type::getFloat64())   return makeValue(inst.result, ty, op(getActualValue<double>(a)));
+		else if(ty->isPointerType())        return makeValue(inst.result, ty, op(getActualValue<uintptr_t>(a)));
 		else                                error("interp: unsupported type '%s' for arithmetic", ty);
 	}
 
 
 
-
-	static void runInstruction(InterpState* is, const interp::Instruction& inst)
+	static interp::Value runInstruction(InterpState* is, const interp::Instruction& inst)
 	{
 		auto getArg = [is](const interp::Instruction& inst, size_t i) -> interp::Value* {
-			return &is->values[inst.args[i]];
+			iceAssert(i < inst.args.size());
+			return &is->stackFrames.back().values[inst.args[i]];
+		};
+
+		auto getVal = [is](size_t id) -> interp::Value* {
+			if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
+				return &it->second;
+
+			else
+				error("interp: no value with id %zu", id);
 		};
 
 		auto setRet = [is](const interp::Instruction& inst, const interp::Value& val) -> void {
-			is->values[inst.result] = val;
+			is->stackFrames.back().values[inst.result] = val;
 		};
-
-		const auto boolTy = Type::getBool();
-
-		const auto i64Ty = Type::getInt64();
-
 
 		auto ok = (OpKind) inst.opcode;
 		switch(ok)
@@ -506,10 +587,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a->type == Type::getFloat64() && t == Type::getFloat32())
-					ret = makeValue(inst.result, a->type, (float) getValue<double>(a));
+					ret = makeValue(inst.result, a->type, (float) getActualValue<double>(a));
 
-				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getValue<float>(a));
-				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getValue<double>(a));
+				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getActualValue<float>(a));
+				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getActualValue<double>(a));
 				else                                   error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -524,10 +605,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a->type == Type::getFloat32() && t == Type::getFloat64())
-					ret = makeValue(inst.result, a->type, (double) getValue<float>(a));
+					ret = makeValue(inst.result, a->type, (double) getActualValue<float>(a));
 
-				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getValue<float>(a));
-				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getValue<double>(a));
+				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getActualValue<float>(a));
+				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getActualValue<double>(a));
 				else                                   error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -541,33 +622,34 @@ namespace interp
 				auto a = getArg(inst, 0);
 				auto ot = a->type;
 				auto tt = getArg(inst, 1)->type;
+				auto r = inst.result;
 
 				interp::Value ret;
-				if(ot == tt)                                                ret = cloneValue(inst.result, a);
-				else if(ot == Type::getInt8() && tt == Type::getInt16())    ret = makeValue(inst.result, tt, (int16_t) getValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt32())    ret = makeValue(inst.result, tt, (int32_t) getValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt64())    ret = makeValue(inst.result, tt, (int64_t) getValue<int8_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt32())   ret = makeValue(inst.result, tt, (int32_t) getValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt64())   ret = makeValue(inst.result, tt, (int64_t) getValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt8())    ret = makeValue(inst.result, tt, (int8_t) getValue<int16_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt64())   ret = makeValue(inst.result, tt, (int64_t) getValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt16())   ret = makeValue(inst.result, tt, (int16_t) getValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt8())    ret = makeValue(inst.result, tt, (int8_t) getValue<int32_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt32())   ret = makeValue(inst.result, tt, (int32_t) getValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt16())   ret = makeValue(inst.result, tt, (int16_t) getValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt8())    ret = makeValue(inst.result, tt, (int8_t) getValue<int64_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint16())  ret = makeValue(inst.result, tt, (uint16_t) getValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint32())  ret = makeValue(inst.result, tt, (uint32_t) getValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint64())  ret = makeValue(inst.result, tt, (uint64_t) getValue<uint8_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint32()) ret = makeValue(inst.result, tt, (uint32_t) getValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint64()) ret = makeValue(inst.result, tt, (uint64_t) getValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint8())  ret = makeValue(inst.result, tt, (uint8_t) getValue<uint16_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint64()) ret = makeValue(inst.result, tt, (uint64_t) getValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint16()) ret = makeValue(inst.result, tt, (uint16_t) getValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint8())  ret = makeValue(inst.result, tt, (uint8_t) getValue<uint32_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint32()) ret = makeValue(inst.result, tt, (uint32_t) getValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint16()) ret = makeValue(inst.result, tt, (uint16_t) getValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint8())  ret = makeValue(inst.result, tt, (uint8_t) getValue<uint64_t>(a));
+				if(ot == tt)                                                ret = cloneValue(r, a);
+				else if(ot == Type::getInt8() && tt == Type::getInt16())    ret = makeValue(r, tt, (int16_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt8() && tt == Type::getInt32())    ret = makeValue(r, tt, (int32_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt8() && tt == Type::getInt64())    ret = makeValue(r, tt, (int64_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt32())   ret = makeValue(r, tt, (int32_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt64())   ret = makeValue(r, tt, (int64_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt64())   ret = makeValue(r, tt, (int64_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt16())   ret = makeValue(r, tt, (int16_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt32())   ret = makeValue(r, tt, (int32_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt16())   ret = makeValue(r, tt, (int16_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint16())  ret = makeValue(r, tt, (uint16_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint32())  ret = makeValue(r, tt, (uint32_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint64())  ret = makeValue(r, tt, (uint64_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint32()) ret = makeValue(r, tt, (uint32_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint64()) ret = makeValue(r, tt, (uint64_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint64()) ret = makeValue(r, tt, (uint64_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint16()) ret = makeValue(r, tt, (uint16_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint32()) ret = makeValue(r, tt, (uint32_t) getActualValue<uint64_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint16()) ret = makeValue(r, tt, (uint16_t) getActualValue<uint64_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint64_t>(a));
 				else                                                        error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -585,7 +667,7 @@ namespace interp
 				if(a->type != b->type->getPointerElementType())
 					error("interp: cannot store '%s' into '%s'", a->type, b->type);
 
-				auto ptr = (void*) getValue<uintptr_t>(b);
+				auto ptr = (void*) getActualValue<uintptr_t>(b);
 				if(a->dataSize > LARGE_DATA_SIZE)
 				{
 					// just a memcopy.
@@ -608,7 +690,7 @@ namespace interp
 				auto ty = a->type->getPointerElementType();
 				auto sz = getSizeOfType(ty);
 
-				auto ptr = (void*) getValue<uintptr_t>(a);
+				auto ptr = (void*) getActualValue<uintptr_t>(a);
 
 				interp::Value ret;
 				ret.id = inst.result;
@@ -633,6 +715,44 @@ namespace interp
 			}
 
 
+			case OpKind::Value_StackAlloc:
+			{
+				iceAssert(inst.args.size() == 1);
+				auto ty = getArg(inst, 0)->type;
+
+				auto val = makeValue(inst.result, ty);
+
+				setRet(inst, val);
+				break;
+			}
+
+			case OpKind::Value_CreatePHI:
+			{
+				iceAssert(inst.args.size() == 1);
+				auto ty = getArg(inst, 0)->type;
+
+				auto phi = dcast(fir::PHINode, inst.orig);
+				iceAssert(phi);
+
+				// make the empty thing first
+				auto val = makeValue(inst.result, ty);
+
+				bool found = false;
+				for(auto [ blk, v ] : phi->getValues())
+				{
+					if(blk->id == is->stackFrames.back().previousBlock->id)
+					{
+						setValue(is, val.id, *getVal(v->id));
+						found = true;
+						break;
+					}
+				}
+
+				if(!found) error("interp: predecessor was not listed in the PHI node (id %zu)!", phi->id);
+
+				setRet(inst, val);
+				break;
+			}
 
 
 
@@ -667,155 +787,99 @@ namespace interp
 			*/
 
 
-
-
-			case OpKind::Value_StackAlloc:
-			{
-				iceAssert(inst.args.size() == 1);
-				auto ty = getArg(inst, 0)->type;
-
-
-				break;
-			}
-
-			case OpKind::Value_CreatePHI:
-			{
-				iceAssert(inst.args.size() == 1);
-				llvm::Type* t = typeToLlvm(inst.args[0]->getType(), module);
-
-				auto phi = dcast(PHINode, inst.realOutput);
-				iceAssert(phi);
-
-				llvm::PHINode* ret = builder.CreatePHI(t, (unsigned int) phi->getValues().size());
-
-				for(auto v : phi->getValues())
-					ret->addIncoming(decay(v.second, getValue(v.second)), llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first))));
-
-				addValueToMap(ret, inst.realOutput);
-				break;
-			}
-
 			case OpKind::Value_CallFunction:
 			{
 				iceAssert(inst.args.size() >= 1);
-				Function* fn = dcast(Function, inst.args[0]);
-				iceAssert(fn);
+				auto fnid = inst.args[0];
 
-				llvm::Function* a = llvm::cast<llvm::Function>(getUndecayedOperand(inst, 0));
+				interp::Function* target = 0;
 
-				std::vector<llvm::Value*> args;
-
-				std::vector<Value*> fargs = inst.args;
-
-				for(size_t i = 1; i < fargs.size(); ++i)
+				// we probably only compiled the entry function, so if we haven't compiled the target then please do
+				if(auto it = is->compiledFunctions.find(fnid); it != is->compiledFunctions.end())
 				{
-					args.push_back(decay(fargs[i], getValue(fargs[i])));
-					// args.back()->dump();
+					target = &it->second;
+				}
+				else
+				{
+					for(auto f : is->module->getAllFunctions())
+					{
+						if(f->id == fnid)
+						{
+							target = &is->compileFunction(f);
+							break;
+						}
+					}
+
+					if(!target) error("interp: no function %zu", fnid);
 				}
 
-				// a->dump();
-				llvm::Value* ret = builder.CreateCall(a, args);
-				addValueToMap(ret, inst.realOutput);
+				iceAssert(target);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 1; i < inst.args.size(); i++)
+					args.push_back(*getVal(inst.args[i]));
+
+				setRet(inst, is->runFunction(*target, args));
 				break;
 			}
 
 			case OpKind::Value_CallFunctionPointer:
-			{
-				iceAssert(inst.args.size() >= 1);
-				llvm::Value* fn = getOperand(inst, 0);
-
-				std::vector<llvm::Value*> args;
-
-				std::vector<Value*> fargs = inst.args;
-
-				for(size_t i = 1; i < fargs.size(); ++i)
-					args.push_back(decay(fargs[i], getValue(fargs[i])));
-
-				llvm::Type* lft = typeToLlvm(inst.args.front()->getType(), module);
-
-				iceAssert(lft->isPointerTy());
-				iceAssert(lft->getPointerElementType()->isFunctionTy());
-
-				llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(lft->getPointerElementType());
-				iceAssert(ft);
-
-				llvm::Value* ret = builder.CreateCall(ft, fn, args);
-
-				addValueToMap(ret, inst.realOutput);
-
-				break;
-			}
-
 			case OpKind::Value_CallVirtualMethod:
 			{
-				// args are: 0. class, 1. index, 2. functiontype, 3...N args
-				auto clsty = inst.args[0]->getType()->toClassType();
-				iceAssert(clsty);
-
-				std::vector<llvm::Value*> args;
-				for(size_t i = 3; i < inst.args.size(); i++)
-					args.push_back(decay(inst.args[i], getValue(inst.args[i])));
-
-				llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
-
-				vtable = builder.CreateBitOrPointerCast(vtable,
-					llvm::ArrayType::get(llvm::FunctionType::get(llvm::Type::getVoidTy(gc), false)->getPointerTo(),
-					clsty->getVirtualMethodCount())->getPointerTo());
-
-				auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-					0, (unsigned int) dcast(ConstantInt, inst.args[1])->getUnsignedValue());
-
-				auto ffty = inst.args[2]->getType()->toFunctionType();
-
-				fptr = builder.CreateBitOrPointerCast(builder.CreateLoad(fptr), typeToLlvm(ffty, module));
-
-				llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(typeToLlvm(ffty, module)->getPointerElementType());
-				iceAssert(ft);
-				llvm::Value* ret = builder.CreateCall(ft, fptr, args);
-
-				addValueToMap(ret, inst.realOutput);
-				break;
+				error("interp: not supported atm");
 			}
 
 			case OpKind::Value_Return:
 			{
-				llvm::Value* ret = 0;
-				if(inst.args.size() == 0)
-				{
-					ret = builder.CreateRetVoid();
-				}
+				if(inst.args.empty())
+					return interp::Value();
+
 				else
-				{
-					iceAssert(inst.args.size() == 1);
-					llvm::Value* a = getOperand(inst, 0);
-
-					ret = builder.CreateRet(a);
-				}
-
-				addValueToMap(ret, inst.realOutput);
-				break;
+					return *getVal(inst.args[0]);
 			}
 
 			case OpKind::Branch_UnCond:
 			{
 				iceAssert(inst.args.size() == 1);
-				llvm::Value* a = getOperand(inst, 0);
+				auto blkid = inst.args[0];
 
-				llvm::Value* ret = builder.CreateBr(llvm::cast<llvm::BasicBlock>(a));
-				addValueToMap(ret, inst.realOutput);
-				break;
+				const interp::Block* target = 0;
+				for(const auto& b : is->stackFrames.back().currentFunction->blocks)
+				{
+					if(b.id == blkid)
+						target = &b;
+				}
+
+				if(!target) error("interp: branch to block %zu not in current function", blkid);
+
+				return runBlock(is, target);
 			}
 
 			case OpKind::Branch_Cond:
 			{
 				iceAssert(inst.args.size() == 3);
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
-				llvm::Value* c = getOperand(inst, 2);
+				auto cond = getArg(inst, 0);
+				iceAssert(cond->type->isBoolType());
 
-				llvm::Value* ret = builder.CreateCondBr(a, llvm::cast<llvm::BasicBlock>(b), llvm::cast<llvm::BasicBlock>(c));
-				addValueToMap(ret, inst.realOutput);
-				break;
+				const interp::Block* trueblk = 0;
+				const interp::Block* falseblk = 0;
+				for(const auto& b : is->stackFrames.back().currentFunction->blocks)
+				{
+					if(b.id == inst.args[1])
+						trueblk = &b;
+
+					else if(b.id == inst.args[2])
+						falseblk = &b;
+				}
+
+				if(!trueblk || !falseblk) error("interp: branch to blocks %zu or %zu not in current function", trueblk, falseblk);
+
+
+				if(getActualValue<bool>(cond))
+					return runBlock(is, trueblk);
+
+				else
+					return runBlock(is, falseblk);
 			}
 
 
@@ -1568,14 +1632,8 @@ namespace interp
 				iceAssert("invalid opcode" && 0);
 			}
 		}
-	}
 
-	interp::Value InterpState::runFunction(const std::string& name, const std::vector<interp::Value>& args)
-	{
-		interp::Value ret;
-
-
-		return ret;
+		return interp::Value();
 	}
 }
 }
