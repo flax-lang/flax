@@ -1170,68 +1170,113 @@ namespace interp
 				break;
 			}
 
-
-			#if 0
-
 			case OpKind::Value_InsertValue:
 			{
 				iceAssert(inst.args.size() >= 3);
 
-				llvm::Value* str = getOperand(inst, 0);
-				llvm::Value* elm = getOperand(inst, 1);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				std::vector<unsigned int> inds;
+				std::vector<int64_t> inds;
 				for(size_t i = 2; i < inst.args.size(); i++)
-				{
-					ConstantInt* ci = dcast(ConstantInt, inst.args[i]);
-					iceAssert(ci);
+					inds.push_back(getActualValue<int64_t>(getArg(inst, i)));
 
-					inds.push_back((unsigned int) ci->getUnsignedValue());
-				}
+				iceAssert(inds.size() == 1);
+				iceAssert(str->type->isStructType() || str->type->isArrayType());
 
+				// we clone the value first
+				auto ret = cloneValue(inst.result, str);
 
-				iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
-				if(str->getType()->isStructTy())
+				size_t ofs = 0;
+				auto idx = inds[0];
+
+				if(str->type->isStringType())
 				{
-					iceAssert(elm->getType() == llvm::cast<llvm::StructType>(str->getType())->getElementType(inds[0]));
-				}
-				else if(str->getType()->isArrayTy())
-				{
-					iceAssert(elm->getType() == llvm::cast<llvm::ArrayType>(str->getType())->getElementType());
+					auto strty = str->type->toStructType();
+					iceAssert(idx < strty->getElementCount());
+
+					for(size_t i = 0; i < idx; i++)
+						ofs += getSizeOfType(strty->getElementN(i));
 				}
 				else
 				{
-					iceAssert(0);
+					auto arrty = str->type->toArrayType();
+					iceAssert(idx < arrty->getArraySize());
+
+					ofs = idx * getSizeOfType(arrty->getElementType());
 				}
 
-				llvm::Value* ret = builder.CreateInsertValue(str, elm, inds);
-				addValueToMap(ret, inst.realOutput);
 
+				uintptr_t dst = 0;
+				if(str->dataSize > LARGE_DATA_SIZE) dst = (uintptr_t) ret.ptr;
+				else                                dst = (uintptr_t) &ret.data[0];
+
+				uintptr_t src = 0;
+				if(elm->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) elm->ptr;
+				else                                src = (uintptr_t) &elm->data[0];
+
+				memmove((void*) (dst + ofs), (void*) src, elm->dataSize);
+
+				setRet(inst, ret);
 				break;
 			}
+
 
 			case OpKind::Value_ExtractValue:
 			{
 				iceAssert(inst.args.size() >= 2);
+				auto str = getArg(inst, 0);
 
-				llvm::Value* str = getOperand(inst, 0);
-
-				std::vector<unsigned int> inds;
+				std::vector<int64_t> inds;
 				for(size_t i = 1; i < inst.args.size(); i++)
-				{
-					ConstantInt* ci = dcast(ConstantInt, inst.args[i]);
-					iceAssert(ci);
+					inds.push_back(getActualValue<int64_t>(getArg(inst, i)));
 
-					inds.push_back((unsigned int) ci->getUnsignedValue());
+				iceAssert(inds.size() == 1);
+				iceAssert(str->type->isStructType() || str->type->isArrayType());
+
+				size_t ofs = 0;
+				auto idx = inds[0];
+
+				fir::Type* elm = 0;
+				if(str->type->isStringType())
+				{
+					auto strty = str->type->toStructType();
+					iceAssert(idx < strty->getElementCount());
+
+					for(size_t i = 0; i < idx; i++)
+						ofs += getSizeOfType(strty->getElementN(i));
+
+					elm = strty->getElementN(idx);
+				}
+				else
+				{
+					auto arrty = str->type->toArrayType();
+					iceAssert(idx < arrty->getArraySize());
+
+					ofs = idx * getSizeOfType(arrty->getElementType());
+					elm = arrty->getElementType();
 				}
 
-				iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
+				auto ret = makeValue(inst.result, elm);
 
-				llvm::Value* ret = builder.CreateExtractValue(str, inds);
-				addValueToMap(ret, inst.realOutput);
+				uintptr_t src = 0;
+				if(str->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) str->ptr;
+				else                                src = (uintptr_t) &str->data[0];
 
+				uintptr_t dst = 0;
+				if(ret.dataSize > LARGE_DATA_SIZE)  dst = (uintptr_t) ret.ptr;
+				else                                dst = (uintptr_t) &ret.data[0];
+
+				memmove((void*) dst, (void*) (src + ofs), ret.dataSize);
+
+				setRet(inst, ret);
 				break;
 			}
+
+
+
+
+			#if 0
 
 
 

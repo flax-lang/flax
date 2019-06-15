@@ -1495,6 +1495,9 @@ namespace fir
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
 			error("val is not an aggregate type (have '%s')", t);
 
+		if(inds.size() != 1)
+			error("must have exactly one index!");
+
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
 		else if(t->isClassType())   et = t->toClassType()->getElementN(inds[0]);
@@ -1508,6 +1511,7 @@ namespace fir
 			error("Mismatched types for value and element -- trying to insert '%s' into '%s'",
 				elm->getType(), et);
 		}
+
 
 		int ofs = 0;
 		if(t->isClassType()) ofs = 1;   //! to account for vtable
@@ -1526,6 +1530,9 @@ namespace fir
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
 			error("val is not an aggregate type (have '%s')", t);
+
+		if(inds.size() != 1)
+			error("must have exactly one index!");
 
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
