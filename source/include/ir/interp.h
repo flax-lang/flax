@@ -38,6 +38,7 @@ namespace fir
 		{
 			size_t opcode;
 			size_t result;
+			fir::Value* orig = 0;
 			std::vector<size_t> args;
 		};
 
@@ -51,8 +52,10 @@ namespace fir
 		{
 			size_t id = 0;
 			bool isExternal = false;
+			fir::Function* origFunction = 0;
 
 			std::string extFuncName;
+			interp::Block* entryBlock = 0;
 			std::vector<interp::Block> blocks;
 		};
 
@@ -60,11 +63,20 @@ namespace fir
 		{
 			InterpState(fir::Module* mod);
 
-			void compileFunction(fir::Function* fn);
-			interp::Value runFunction(const std::string& name, const std::vector<interp::Value>& args);
+			interp::Function& compileFunction(fir::Function* fn);
+			interp::Value runFunction(const interp::Function& fn, const std::vector<interp::Value>& args);
 
-			std::vector<size_t> stackFrames;
-			std::vector<interp::Value> values;
+			struct Frame
+			{
+				const interp::Block* currentBlock = 0;
+				const interp::Block* previousBlock = 0;
+				const interp::Function* currentFunction = 0;
+
+				std::unordered_map<size_t, interp::Value> values;
+			};
+
+			// this is the executing state.
+			std::vector<Frame> stackFrames;
 
 
 			std::unordered_map<size_t, interp::Value> globals;
@@ -78,7 +90,6 @@ namespace fir
 
 
 			fir::Module* module = 0;
-			size_t value_count = 0;
 		};
 	}
 }
