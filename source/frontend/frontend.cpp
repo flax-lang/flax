@@ -441,10 +441,6 @@ namespace frontend
 						{
 							frontend::_backendCodegen = BackendOption::None;
 						}
-						else if(str == "lscvm")
-						{
-							frontend::_backendCodegen = BackendOption::CDDCLSCVM;
-						}
 						else
 						{
 							_error_and_exit("error: '%s' is not a valid backend (valid options are 'llvm' and 'x64asm')\n", str);
