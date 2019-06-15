@@ -105,7 +105,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto v = CGResult(cs->irb.ReadPtr(cs->irb.PointerAdd(strdat, fir::ConstantInt::getNative(idx))));
+				auto v = CGResult(cs->irb.ReadPtr(cs->irb.GetPointer(strdat, fir::ConstantInt::getNative(idx))));
 				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
@@ -120,7 +120,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				auto remaining = cs->irb.Subtract(cs->irb.GetSAALength(rhs.value), numbinds);
 
 				auto slice = cs->irb.CreateValue(fir::Type::getCharSlice(shouldSliceBeMutable));
-				slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(strdat, numbinds));
+				slice = cs->irb.SetArraySliceData(slice, cs->irb.GetPointer(strdat, numbinds));
 				slice = cs->irb.SetArraySliceLength(slice, remaining);
 
 				handleDefn(cs, bind.restDefn, CGResult(slice));
@@ -198,7 +198,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getNative(idx));
+				auto ptr = cs->irb.GetPointer(data, fir::ConstantInt::getNative(idx));
 
 				auto v = CGResult(cs->irb.Dereference(ptr));
 				cs->generateDecompositionBindings(b, v, true);
@@ -215,7 +215,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 					auto remaining = cs->irb.Subtract(arrlen, numbinds);
 
 					auto slice = cs->irb.CreateValue(sty);
-					slice = cs->irb.SetArraySliceData(slice, cs->irb.PointerAdd(data, numbinds));
+					slice = cs->irb.SetArraySliceData(slice, cs->irb.GetPointer(data, numbinds));
 					slice = cs->irb.SetArraySliceLength(slice, remaining);
 
 					handleDefn(cs, bind.restDefn, CGResult(slice));

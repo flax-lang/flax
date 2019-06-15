@@ -1426,7 +1426,6 @@ namespace fir
 		if(retType->isArrayType())
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
 
-
 		if(ptr->getType()->isMutablePointer())
 			retType = retType->getMutablePointerVersion();
 
@@ -1487,31 +1486,6 @@ namespace fir
 
 
 
-
-
-	Value* IRBuilder::PointerAdd(Value* ptr, Value* num, const std::string& vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got '%s')", ptr->getType());
-
-		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got '%s')", num->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::PointerSub(Value* ptr, Value* num, const std::string& vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got '%s')", ptr->getType());
-
-		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got '%s')", num->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
-		return this->addInstruction(instr, vname);
-	}
 
 
 
