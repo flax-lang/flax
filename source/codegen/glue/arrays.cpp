@@ -116,7 +116,7 @@ namespace array
 			cs->irb.setCurrentBlock(body);
 			{
 				auto ctr = cs->irb.ReadPtr(ctrptr);
-				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
+				auto ptr = cs->irb.GetPointer(arrdata, ctr);
 
 				cs->constructClassWithArguments(cls, constr, ptr, args, true);
 
@@ -180,7 +180,7 @@ namespace array
 			cs->irb.setCurrentBlock(body);
 			{
 				auto ctr = cs->irb.ReadPtr(ctrptr);
-				auto ptr = cs->irb.PointerAdd(arrdata, ctr);
+				auto ptr = cs->irb.GetPointer(arrdata, ctr);
 
 				cs->autoAssignRefCountedValue(ptr, value, true, true);
 
@@ -368,8 +368,8 @@ namespace array
 
 		cs->irb.setCurrentBlock(body);
 		{
-			fir::Value* v1 = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr1, cs->irb.ReadPtr(counter)));
-			fir::Value* v2 = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr2, cs->irb.ReadPtr(counter)));
+			fir::Value* v1 = cs->irb.ReadPtr(cs->irb.GetPointer(ptr1, cs->irb.ReadPtr(counter)));
+			fir::Value* v2 = cs->irb.ReadPtr(cs->irb.GetPointer(ptr2, cs->irb.ReadPtr(counter)));
 
 			fir::Value* c = cs->performBinaryOperation(cs->loc(), { cs->loc(), v1 }, { cs->loc(), v2 }, "==").value;
 
@@ -571,7 +571,7 @@ namespace array
 							[cs, ctrp, ptr]() {
 
 								auto ctr = cs->irb.ReadPtr(ctrp);
-								auto p = cs->irb.PointerAdd(ptr, ctr);
+								auto p = cs->irb.GetPointer(ptr, ctr);
 
 								cs->decrementRefCount(cs->irb.ReadPtr(p));
 
@@ -734,7 +734,7 @@ namespace array
 				if(isslice)
 				{
 					auto ptr = cs->irb.GetArraySliceData(arr);
-					auto val = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr, newlen));
+					auto val = cs->irb.ReadPtr(cs->irb.GetPointer(ptr, newlen));
 
 					auto newarr = cs->irb.SetArraySliceLength(arr, newlen);
 					ret = cs->irb.CreateValue(retTy);
@@ -744,7 +744,7 @@ namespace array
 				else
 				{
 					auto ptr = cs->irb.GetSAAData(arr);
-					auto val = cs->irb.ReadPtr(cs->irb.PointerAdd(ptr, newlen));
+					auto val = cs->irb.ReadPtr(cs->irb.GetPointer(ptr, newlen));
 
 					auto newarr = cs->irb.SetSAALength(arr, newlen);
 					ret = cs->irb.CreateValue(retTy);

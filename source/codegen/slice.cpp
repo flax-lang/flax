@@ -91,7 +91,7 @@ static CGResult performSliceOperation(cgn::CodegenState* cs, sst::SliceOp* user,
 
 	// FINALLY.
 	// increment ptr
-	fir::Value* newptr = cs->irb.PointerAdd(data, beginIndex, "newptr");
+	fir::Value* newptr = cs->irb.GetPointer(data, beginIndex, "newptr");
 	fir::Value* newlen = cs->irb.Subtract(endIndex, beginIndex, "newlen");
 
 	slice = cs->irb.SetArraySliceData(slice, newptr);

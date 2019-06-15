@@ -118,7 +118,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 				},
 				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
 
-					auto ptr = cs->irb.PointerAdd(arrp, ctrp);
+					auto ptr = cs->irb.GetPointer(arrp, ctrp);
 
 					actuallyStore(ptr);
 

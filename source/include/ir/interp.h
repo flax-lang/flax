@@ -38,7 +38,7 @@ namespace fir
 		{
 			size_t opcode;
 			size_t result;
-			fir::Value* orig = 0;
+			fir::Value* origRes = 0;
 			std::vector<size_t> args;
 		};
 

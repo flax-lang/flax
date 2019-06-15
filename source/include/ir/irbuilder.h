@@ -124,11 +124,6 @@ namespace fir
 
 		Value* BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname = "");
 
-
-		Value* PointerAdd(Value* ptr, Value* num, const std::string& vname = "");
-		Value* PointerSub(Value* ptr, Value* num, const std::string& vname = "");
-
-
 		Value* CreateValue(Type* t, const std::string& vname = "");
 
 		Value* ExtractValue(Value* val, const std::vector<size_t>& inds, const std::string& vname = "");

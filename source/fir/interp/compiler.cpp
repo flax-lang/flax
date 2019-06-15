@@ -18,7 +18,7 @@ namespace interp
 
 		interp::Instruction ret;
 
-		ret.orig = finstr->realOutput;
+		ret.origRes = finstr->realOutput;
 		ret.result = finstr->realOutput->id;
 		ret.opcode = (uint64_t) finstr->opKind;
 

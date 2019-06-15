@@ -71,7 +71,7 @@ namespace saa_common
 			cs->irb.setCurrentBlock(body);
 			{
 				// increment refcount
-				fir::Value* val = cs->irb.ReadPtr(cs->irb.PointerAdd(s2ptr, cs->irb.ReadPtr(ctrPtr)));
+				fir::Value* val = cs->irb.ReadPtr(cs->irb.GetPointer(s2ptr, cs->irb.ReadPtr(ctrPtr)));
 
 				cs->incrementRefCount(val);
 
@@ -149,7 +149,7 @@ namespace saa_common
 		cs->irb.setCurrentBlock(loopbody);
 		{
 			// make clone
-			fir::Value* origElm = cs->irb.PointerAdd(ptr, cs->irb.ReadPtr(counter));
+			fir::Value* origElm = cs->irb.GetPointer(ptr, cs->irb.ReadPtr(counter));
 			fir::Value* clone = 0;
 
 			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
@@ -158,7 +158,7 @@ namespace saa_common
 			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getNative(0));
 
 			// store clone
-			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.ReadPtr(counter));
+			fir::Value* newElm = cs->irb.GetPointer(newptr, cs->irb.ReadPtr(counter));
 			cs->irb.WritePtr(clone, newElm);
 
 			// increment counter
@@ -176,7 +176,7 @@ namespace saa_common
 		{
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.GetPointer(oldptr,
 				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 
 			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
@@ -222,7 +222,7 @@ namespace saa_common
 
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.GetPointer(oldptr,
 				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 		}
 		else
@@ -294,7 +294,7 @@ namespace saa_common
 
 					// null terminator
 					if(!isArray)
-						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, lhsbytecount));
+						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(newbuf, lhsbytecount));
 				}
 
 
@@ -379,7 +379,7 @@ namespace saa_common
 			{
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 				cs->irb.Call(memcpyf, {
-					cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
+					cs->irb.PointerTypeCast(cs->irb.GetPointer(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
 					cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr()), rhsbytecount,
 					fir::ConstantBool::get(false)
 				});
@@ -387,7 +387,7 @@ namespace saa_common
 				// null terminator
 				if(saa->isStringType())
 				{
-					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, cs->irb.Add(lhslen, rhslen)),
+					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerTypeCast(cs->irb.GetPointer(lhsbuf, cs->irb.Add(lhslen, rhslen)),
 						fir::Type::getMutInt8Ptr()));
 				}
 			}
@@ -523,14 +523,14 @@ namespace saa_common
 					lhsbytecount, fir::ConstantBool::get(false)
 				});
 
-				cs->irb.Call(memcpyf, { cs->irb.PointerAdd(rawbuf, lhsbytecount), rawrhsbuf,
+				cs->irb.Call(memcpyf, { cs->irb.GetPointer(rawbuf, lhsbytecount), rawrhsbuf,
 					rhsbytecount, fir::ConstantBool::get(false)
 				});
 
 				// if it's a string, again, null terminator.
 				if(saa->isStringType())
 				{
-					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(rawbuf, cs->irb.Add(lhsbytecount, rhsbytecount)));
+					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(rawbuf, cs->irb.Add(lhsbytecount, rhsbytecount)));
 				}
 				else if(fir::isRefCountedType(getSAAElm(saa)))
 				{
@@ -684,7 +684,7 @@ namespace saa_common
 
 					// null terminator
 					if(saa->isStringType())
-						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
+						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
 
 					auto ret = cs->irb.CreateValue(saa);
 					ret = cs->irb.SetSAAData(ret, newbuf);
