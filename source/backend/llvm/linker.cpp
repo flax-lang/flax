@@ -1,5 +1,5 @@
 // linker.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -17,6 +17,7 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+	#pragma warning(disable: 4267)
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -59,7 +60,7 @@
 #include "frontend.h"
 #include "backends/llvm.h"
 
-#include "tinyprocesslib/process.h"
+#include "tinyprocesslib/tinyprocess.h"
 
 
 static llvm::LLVMContext globalContext;
@@ -278,7 +279,8 @@ namespace backend
 
 				size_t num_extra = 0;
 				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
-				const char** argv = new const char*[s];
+				const char** argv = (const char**) malloc(s * sizeof(const char*));
+
 				memset(argv, 0, s * sizeof(const char*));
 
 				argv[0] = "cc";
@@ -339,7 +341,7 @@ namespace backend
 				});
 
 
-				delete[] argv;
+				free(argv);
 
 				if(status != 0 || output.size() != 0)
 				{
@@ -661,7 +663,7 @@ namespace backend
 		if(!entryfunc)
 		{
 			// keep trying various things.
-			std::vector<std::string> trymains = { "main", "_FFfoo4main_FAv" };
+			std::vector<std::string> trymains = { "main", "_FF" + this->compiledData.module->getModuleName() + "4main_FAv" };
 			for(const auto& m : trymains)
 			{
 				entryfunc = this->linkedModule->getFunction(m);
@@ -739,8 +741,6 @@ namespace backend
 			builder.SetInsertPoint(f);
 			builder.CreateCall(this->linkedModule->getFunction("__global_init_function__"));
 
-			// auto x = builder.CreateAlloca(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), nullptr, "x");
-			// builder.CreateStore(llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 491), x, true);
 			builder.CreateBr(entryblock);
 		}
 	}

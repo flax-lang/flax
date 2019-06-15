@@ -1,5 +1,5 @@
 // identifier.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -17,7 +17,7 @@ sst::Stmt* TCResult::stmt() const
 		case RK::Statement:     return this->_st;
 		case RK::Expression:    return this->_ex;
 		case RK::Definition:    return this->_df;
-		default:                _error_and_exit("not stmt");
+		default:                _error_and_exit("not stmt\n");
 	}
 }
 
@@ -205,7 +205,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else
 	{
-		_error_and_exit("unsupported ir type??? ('%s')", t);
+		_error_and_exit("unsupported ir type??? ('%s')\n", t);
 	}
 }
 
@@ -245,7 +245,7 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 		}
 		else
 		{
-			_error_and_exit("invalid");
+			_error_and_exit("invalid\n");
 		}
 	}
 	else

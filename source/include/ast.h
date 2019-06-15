@@ -1,5 +1,5 @@
 // ast.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -131,7 +131,6 @@ namespace ast
 
 
 
-
 	struct FuncDefn : Parameterisable
 	{
 		FuncDefn(const Location& l) : Parameterisable(l) { this->readableName = "function defintion"; }
@@ -201,6 +200,7 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
+		bool isIntrinsic = false;
 
 		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;
@@ -257,6 +257,43 @@ namespace ast
 		Expr* initialiser = 0;
 		DecompMapping bindings;
 	};
+
+
+	struct PlatformDefn : Stmt
+	{
+		PlatformDefn(const Location& l) : Stmt(l) { this->readableName = "platform-specific definition"; }
+		~PlatformDefn() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		enum class Type
+		{
+			Invalid,
+			Intrinsic,
+			IntegerType
+		};
+
+		Type defnType = Type::Invalid;
+
+		// only valid if defnType == Intrinsic
+		ForeignFuncDefn* intrinsicDefn = 0;
+
+		// only valid if defnType == IntegerType
+		std::string typeName;
+		size_t typeSizeInBits = 0;
+	};
+
+
+
+
+
+
+
+
+
+
+
+
 
 	struct IfStmt : Stmt
 	{
@@ -697,6 +734,16 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string num;
+	};
+
+	struct LitChar : Expr
+	{
+		LitChar(const Location& l, uint32_t val) : Expr(l), value(val) { this->readableName = "character literal"; }
+		~LitChar() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		uint32_t value = false;
 	};
 
 	struct LitBool : Expr

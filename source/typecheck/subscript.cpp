@@ -1,5 +1,5 @@
 // subscript.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -67,7 +67,7 @@ TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* i
 			->add(util::ESpan(arr->loc, "here"))->postAndQuit();
 	}
 
-	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getInt64()));
+	return TCResult(util::pool<sst::SubscriptDollarOp>(this->loc, fir::Type::getNativeWord()));
 }
 
 

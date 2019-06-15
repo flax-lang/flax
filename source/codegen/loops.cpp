@@ -1,5 +1,5 @@
 // loops.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -9,6 +9,14 @@ CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
+
+	if(this->isDoVariant && !this->cond)
+	{
+		this->body->codegen(cs);
+		return CGResult(0);
+	}
+
+
 
 	auto loop = cs->irb.addNewBlockAfter("loop-" + this->loc.shortString(), cs->irb.getCurrentBlock());
 	fir::IRBlock* merge = 0;
@@ -144,8 +152,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	fir::Value* end = 0;
 	fir::Value* step = 0;
 
-	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getInt64());
-	fir::Value* iterptr = cs->irb.StackAlloc(fir::Type::getInt64());
+	fir::Value* idxptr = cs->irb.StackAlloc(fir::Type::getNativeWord());
+	fir::Value* iterptr = cs->irb.StackAlloc(fir::Type::getNativeWord());
 
 	auto [ array, vk ] = this->array->codegen(cs);
 	(void) vk;
@@ -167,13 +175,13 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		//! note: again for negative ranges, we should be subtracting 1 instead.
 
-		end = cs->irb.Add(end, cs->irb.Select(cs->irb.ICmpGEQ(step, fir::ConstantInt::getInt64(0)),
-			fir::ConstantInt::getInt64(1), fir::ConstantInt::getInt64(-1)));
+		end = cs->irb.Add(end, cs->irb.Select(cs->irb.ICmpGEQ(step, fir::ConstantInt::getNative(0)),
+			fir::ConstantInt::getNative(1), fir::ConstantInt::getNative(-1)));
 	}
 	else
 	{
-		cs->irb.WritePtr(fir::ConstantInt::getInt64(0), idxptr);
-		step = fir::ConstantInt::getInt64(1);
+		cs->irb.WritePtr(fir::ConstantInt::getNative(0), idxptr);
+		step = fir::ConstantInt::getNative(1);
 
 		if(array->getType()->isDynamicArrayType())
 		{
@@ -189,7 +197,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		}
 		else if(array->getType()->isArrayType())
 		{
-			end = fir::ConstantInt::getInt64(array->getType()->toArrayType()->getArraySize());
+			end = fir::ConstantInt::getNative(array->getType()->toArrayType()->getArraySize());
 		}
 		else
 		{
@@ -204,7 +212,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	fir::Value* cond = 0;
 	if(array->getType()->isRangeType())
 	{
-		cond = cs->irb.Select(cs->irb.ICmpGT(step, fir::ConstantInt::getInt64(0)),
+		cond = cs->irb.Select(cs->irb.ICmpGT(step, fir::ConstantInt::getNative(0)),
 			cs->irb.ICmpLT(cs->irb.ReadPtr(idxptr), end),		// i < end for step > 0
 			cs->irb.ICmpGT(cs->irb.ReadPtr(idxptr), end));		// i > end for step < 0
 	}
@@ -259,7 +267,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 				if(this->indexVar)
 				{
-					auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getInt64());
+					auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getNativeWord());
 					idx->rawValue = CGResult(cs->irb.ReadPtr(iterptr));
 
 					this->indexVar->init = idx;
@@ -274,7 +282,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 		// increment the index
 		cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(idxptr), step), idxptr);
-		cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(iterptr), fir::ConstantInt::getInt64(1)), iterptr);
+		cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(iterptr), fir::ConstantInt::getNative(1)), iterptr);
 
 		cs->irb.UnCondBranch(check);
 	}

@@ -1,8 +1,7 @@
 // Backend.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-#include "backend.h"
 #include "backends/llvm.h"
 
 namespace backend
@@ -22,7 +21,7 @@ namespace backend
 
 			case BackendOption::Invalid:
 			default:
-				_error_and_exit("Invalid backend");
+				_error_and_exit("invalid backend\n");
 		}
 	}
 

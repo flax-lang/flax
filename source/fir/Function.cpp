@@ -1,5 +1,5 @@
 // Function.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/module.h"
@@ -113,6 +113,25 @@ namespace fir
 		this->blocks.clear();
 	}
 
+	bool Function::isIntrinsicFunction()
+	{
+		return this->fnIsIntrinsicFunction;
+	}
+
+	void Function::setIsIntrinsic()
+	{
+		this->fnIsIntrinsicFunction = true;
+	}
+
+	void Function::addStackAllocation(Type* ty)
+	{
+		this->stackAllocs.push_back(ty);
+	}
+
+	std::vector<Type*> Function::getStackAllocations()
+	{
+		return this->stackAllocs;
+	}
 
 
 	void Function::cullUnusedValues()

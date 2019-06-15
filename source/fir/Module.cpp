@@ -1,5 +1,5 @@
 // Module.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "gluecode.h"
@@ -353,21 +353,21 @@ namespace fir
 		{
 			name = Identifier("memcpy", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
 			name = Identifier("memmove", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
 			name = Identifier("memset", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memcmp")
@@ -377,7 +377,7 @@ namespace fir
 
 			name = Identifier("memcmp", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getInt32());
 		}
 		else if(id == "roundup_pow2")
@@ -388,7 +388,7 @@ namespace fir
 			// 40 -> 64
 
 			name = Identifier("roundup_pow2", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt64());
+			ft = FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getNativeWord());
 		}
 
 		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())

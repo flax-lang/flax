@@ -1,5 +1,5 @@
 // SingleTypes.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -62,6 +62,9 @@ namespace fir
 
 
 
+
+
+
 	std::string ConstantNumberType::encodedStr()                { return "number"; }
 	bool ConstantNumberType::isSigned()                         { return this->_signed; }
 	bool ConstantNumberType::isFloating()                       { return this->_floating; }
@@ -116,9 +119,9 @@ namespace fir
 		}
 		else
 		{
-			if(cnt->getMinBits() <= 63)
+			if(cnt->getMinBits() < fir::Type::getNativeWord()->getBitWidth())
 			{
-				return fir::Type::getInt64();
+				return fir::Type::getNativeWord();
 			}
 			else if(cnt->isSigned())
 			{
@@ -126,10 +129,10 @@ namespace fir
 			}
 			else
 			{
-				if(cnt->getMinBits() > 64)
+				if(cnt->getMinBits() > fir::Type::getNativeUWord()->getBitWidth())
 					error("constant number type '%s' requires too many bits", (Type*) cnt);
 
-				return fir::Type::getUint64();
+				return fir::Type::getNativeUWord();
 			}
 		}
 	}
@@ -190,8 +193,6 @@ namespace fir
 	{
 		return _substitute(subst, this);
 	}
-
-
 }
 
 

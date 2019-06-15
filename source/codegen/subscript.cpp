@@ -1,5 +1,5 @@
 // subscript.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -15,8 +15,6 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lr = this->expr->codegen(cs);
 	auto lt = lr.value->getType();
 
-	fir::Function* boundscheckfn = cgn::glue::saa_common::generateBoundsCheckFunction(cs,
-		/* isString: */ lt->isStringType(), /* isDecomp: */false);;
 
 	fir::Value* datapointer = 0;
 	fir::Value* maxlength = 0;
@@ -36,9 +34,9 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// TODO: LVALUE HOLE
 		if(lr->islorclvalue())
 		{
-			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getInt64(0),
-				fir::ConstantInt::getInt64(0));
-			maxlength = fir::ConstantInt::getInt64(lt->toArrayType()->getArraySize());
+			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getNative(0),
+				fir::ConstantInt::getNative(0));
+			maxlength = fir::ConstantInt::getNative(lt->toArrayType()->getArraySize());
 		}
 		else
 		{
@@ -72,7 +70,11 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	if(maxlength)
-		cs->irb.Call(boundscheckfn, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+	{
+		fir::Function* checkf = cgn::glue::saa_common::generateBoundsCheckFunction(cs, /* isString: */ lt->isStringType(), /* isDecomp: */false);
+		if(checkf)
+			cs->irb.Call(checkf, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+	}
 
 	// ok, do it
 	fir::Value* ptr = cs->irb.GetPointer(datapointer, index);
