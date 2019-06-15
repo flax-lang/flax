@@ -1,5 +1,5 @@
 // Instruction.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/block.h"
@@ -176,7 +176,7 @@ namespace fir
 
 			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
 			case OpKind::Value_Store:                       instrname = "store"; break;
-			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;
+			case OpKind::Value_Dereference:                 instrname = "dereference"; break;
 			case OpKind::Value_CreateLVal:                  instrname = "make_lval"; break;
 
 			case OpKind::Unreachable:                       instrname = "<unreachable>"; break;
@@ -235,7 +235,7 @@ namespace fir
 				}
 				else if(IRBlock* ib = dcast(IRBlock, op))
 				{
-					ops += "$" + ib->getName().str();
+					ops += strprintf("$%zu/%s", ib->id, ib->getName().str());
 				}
 				else
 				{

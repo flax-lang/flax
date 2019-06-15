@@ -1,5 +1,5 @@
 // codegenstate.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -180,9 +180,9 @@ namespace cgn
 
 			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantString::get("")),
 				fir::Type::getMutInt8Ptr()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
 
 			ret = arr;
 		}
@@ -191,9 +191,9 @@ namespace cgn
 			fir::Value* arr = this->irb.CreateValue(type);
 
 			arr = this->irb.SetSAAData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
 
 			ret = arr;
 		}
@@ -201,7 +201,7 @@ namespace cgn
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 			arr = this->irb.SetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
-			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getNative(0));
 
 			ret = arr;
 		}
@@ -275,7 +275,7 @@ namespace cgn
 		if(name == ALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == FREE_MEMORY_FUNC)
 		{
@@ -285,7 +285,8 @@ namespace cgn
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()),
+					fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{
@@ -310,7 +311,7 @@ namespace cgn
 		else if(name == "strlen")
 		{
 			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::External);
 		}
 		else if(name == "fprintf")
 		{

@@ -1,4 +1,4 @@
-#include "process.h"
+#include "tinyprocess.h"
 #include <cstdlib>
 #include <unistd.h>
 #include <signal.h>

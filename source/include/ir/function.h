@@ -1,5 +1,5 @@
 // function.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -65,6 +65,14 @@ namespace fir
 		bool isAlwaysInlined();
 		void setAlwaysInline();
 
+		bool isIntrinsicFunction();
+		void setIsIntrinsic();
+
+		// this is used so the function knows how much space it needs to reserve for
+		// allocas.
+		void addStackAllocation(Type* ty);
+		std::vector<Type*> getStackAllocations();
+
 		void cullUnusedValues();
 
 		// overridden stuff
@@ -78,9 +86,11 @@ namespace fir
 		Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::vector<Argument*> fnArguments;
 		std::vector<IRBlock*> blocks;
+		std::vector<Type*> stackAllocs;
 
 		bool alwaysInlined = false;
 		bool hadBodyElsewhere = false;
+		bool fnIsIntrinsicFunction = false;
 	};
 }
 

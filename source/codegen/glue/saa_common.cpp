@@ -1,11 +1,12 @@
 // saa_common.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
+#include "frontend.h"
 
 // namespace cgn::glue::saa_common
 namespace cgn {
@@ -15,7 +16,7 @@ namespace saa_common
 	static inline bool isSAA(fir::Type* t) { return t->isStringType() || t->isDynamicArrayType(); }
 	static inline fir::Type* getSAAElm(fir::Type* t) { iceAssert(isSAA(t)); return (t->isStringType() ? fir::Type::getInt8() : t->getArrayElementType()); }
 	static inline fir::Type* getSAASlice(fir::Type* t, bool mut = true) { iceAssert(isSAA(t)); return fir::ArraySliceType::get(getSAAElm(t), mut); }
-	static inline fir::ConstantInt* getCI(int64_t i) { return fir::ConstantInt::getInt64(i); }
+	static inline fir::ConstantInt* getCI(int64_t i) { return fir::ConstantInt::getNative(i); }
 
 	static fir::Value* castRawBufToElmPtr(CodegenState* cs, fir::Type* saa, fir::Value* buf)
 	{
@@ -40,7 +41,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ elm->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+				fir::FunctionType::get({ elm->getPointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -51,10 +52,8 @@ namespace saa_common
 			fir::IRBlock* body = cs->irb.addNewBlockInFunction("loopBody", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-			fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getInt64());
+			fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getNativeWord());
 
-			// already set to 0 internally
-			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrPtr);
 
 			fir::Value* s2ptr = func->getArguments()[0];
 			fir::Value* s2len = func->getArguments()[1];
@@ -77,7 +76,7 @@ namespace saa_common
 				cs->incrementRefCount(val);
 
 				// increment counter
-				cs->irb.WritePtr(cs->irb.Add(fir::ConstantInt::getInt64(1), cs->irb.ReadPtr(ctrPtr)), ctrPtr);
+				cs->irb.WritePtr(cs->irb.Add(fir::ConstantInt::getNative(1), cs->irb.ReadPtr(ctrPtr)), ctrPtr);
 				cs->irb.UnCondBranch(cond);
 			}
 
@@ -98,10 +97,10 @@ namespace saa_common
 		iceAssert(rc->getType()->isIntegerType() && "not integer type");
 
 		auto rcp = cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC), getCI(REFCOUNT_SIZE));
-		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getMutInt64Ptr());
+		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getNativeWordPtr()->getMutablePointerVersion());
 
 		cs->irb.WritePtr(rc, rcp);
-		return cs->irb.PointerTypeCast(rcp, fir::Type::getInt64Ptr());
+		return cs->irb.PointerTypeCast(rcp, fir::Type::getNativeWordPtr());
 	}
 
 	fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* saa, fir::Value* rc)
@@ -137,7 +136,7 @@ namespace saa_common
 		fir::IRBlock* loopbody = cs->irb.addNewBlockInFunction("loopbody", curfunc);
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", curfunc);
 
-		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getInt64());
+		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getNativeWord());
 		cs->irb.WritePtr(startIndex, counter);
 
 		cs->irb.UnCondBranch(loopcond);
@@ -156,14 +155,14 @@ namespace saa_common
 			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
 			auto elm = cs->irb.ReadPtr(origElm);
 
-			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getInt64(0));
+			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getNative(0));
 
 			// store clone
 			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.ReadPtr(counter));
 			cs->irb.WritePtr(clone, newElm);
 
 			// increment counter
-			cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(counter), fir::ConstantInt::getInt64(1)), counter);
+			cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(counter), fir::ConstantInt::getNative(1)), counter);
 			cs->irb.UnCondBranch(loopcond);
 		}
 
@@ -256,7 +255,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ slicetype, fir::Type::getInt64() }, outtype), fir::LinkageType::Internal);
+				fir::FunctionType::get({ slicetype, fir::Type::getNativeWord() }, outtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -494,7 +493,7 @@ namespace saa_common
 			ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, getCI(0)));
 			ret = cs->irb.SetSAALength(ret, getCI(0));
 			ret = cs->irb.SetSAACapacity(ret, getCI(0));  //? vv  we count on the 'reserveAtLeast' function to init our refcount
-			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
 
 
 			ret = cs->irb.Call(generateReserveAtLeastFunction(cs, saa), ret, cs->irb.Add(cs->irb.Add(lhslen, rhslen),
@@ -617,7 +616,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, fir::Type::getInt64() }, saa), fir::LinkageType::Internal);
+				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -636,7 +635,7 @@ namespace saa_common
 			fir::IRBlock* mergerc = cs->irb.addNewBlockInFunction("mergerc", func);
 
 			auto oldrcp = cs->irb.GetSAARefCountPointer(s1, "oldrcp");
-			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr())), nullrc, notnullrc);
+			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getNativeWordPtr())), nullrc, notnullrc);
 
 
 			//? these phi nodes are for the refcount pointer of the thing we will eventually return.
@@ -658,7 +657,7 @@ namespace saa_common
 
 			cs->irb.setCurrentBlock(mergerc);
 			{
-				auto rcptr = cs->irb.CreatePHINode(fir::Type::getInt64Ptr());
+				auto rcptr = cs->irb.CreatePHINode(fir::Type::getNativeWordPtr());
 				rcptr->addIncoming(nullphi, nullrc);
 				rcptr->addIncoming(notnullphi, notnullrc);
 
@@ -733,7 +732,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, fir::Type::getInt64() }, saa), fir::LinkageType::Internal);
+				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -760,7 +759,10 @@ namespace saa_common
 
 	fir::Function* generateBoundsCheckFunction(CodegenState* cs, bool isString, bool isDecomp)
 	{
-		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_");
+		if(frontend::getIsNoRuntimeChecks())
+			return 0;
+
+		auto fname = (isDecomp ? "__boundscheck_decomp_" : "__boundscheck_");
 
 		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
 
@@ -769,7 +771,7 @@ namespace saa_common
 			auto restore = cs->irb.getCurrentBlock();
 
 			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getCharSlice(false) },
+				fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getNativeWord(), fir::Type::getCharSlice(false) },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -805,7 +807,7 @@ namespace saa_common
 
 			cs->irb.setCurrentBlock(checkneg);
 			{
-				fir::Value* res = cs->irb.ICmpLT(ind, fir::ConstantInt::getInt64(0));
+				fir::Value* res = cs->irb.ICmpLT(ind, fir::ConstantInt::getNative(0));
 				cs->irb.CondBranch(res, failb, merge);
 			}
 

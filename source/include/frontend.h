@@ -1,5 +1,5 @@
 // frontend.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -49,6 +49,10 @@ namespace frontend
 
 	bool getIsFreestanding();
 	bool getIsPositionIndependent();
+
+	bool getIsNoRuntimeChecks();
+	bool getIsNoRuntimeErrorStrings();
+
 	std::vector<std::string> getFrameworksToLink();
 	std::vector<std::string> getFrameworkSearchPaths();
 	std::vector<std::string> getLibrariesToLink();
@@ -68,6 +72,8 @@ namespace frontend
 		DependencyGraph* graph = 0;
 		std::string fullMainFile;
 		std::vector<std::string> allFiles;
+
+		size_t nativeWordSize = 0;
 	};
 
 	// fir::Module* collectFiles(std::string filename);

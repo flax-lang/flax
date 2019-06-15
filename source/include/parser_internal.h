@@ -1,5 +1,5 @@
 // parser_internal.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -232,6 +232,13 @@ namespace parser
 		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
 		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
+		// flags that determine whether or not 'import' and '@operator' things can still be done.
+		bool importsStillValid = true;
+		bool operatorsStillValid = true;
+		bool nativeWordSizeStillValid = true;
+
+		frontend::CollectorState* cState = 0;
+
 		private:
 			// 1 = inside function
 			// 2 = inside struct
@@ -267,6 +274,9 @@ namespace parser
 
 	DecompMapping parseArrayDecomp(State& st);
 	DecompMapping parseTupleDecomp(State& st);
+
+	std::tuple<ast::FuncDefn*, bool, Location> parseFunctionDecl(State& st);
+	ast::PlatformDefn* parsePlatformDefn(State& st);
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);

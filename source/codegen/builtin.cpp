@@ -1,5 +1,5 @@
 // builtin.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -10,9 +10,9 @@
 
 static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Value* ptr)
 {
-	iceAssert(ptr->getType() == fir::Type::getInt64Ptr());
+	iceAssert(ptr->getType() == fir::Type::getNativeWordPtr());
 
-	auto isnull = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+	auto isnull = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
 
 	auto prevb = cs->irb.getCurrentBlock();
 	auto deref = cs->irb.addNewBlockAfter("deref", prevb);
@@ -25,8 +25,8 @@ static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Valu
 	cs->irb.UnCondBranch(merge);
 
 	cs->irb.setCurrentBlock(merge);
-	auto phi = cs->irb.CreatePHINode(fir::Type::getInt64());
-	phi->addIncoming(fir::ConstantInt::getInt64(0), prevb);
+	auto phi = cs->irb.CreatePHINode(fir::Type::getNativeWord());
+	phi->addIncoming(fir::ConstantInt::getNative(0), prevb);
 	phi->addIncoming(rc, deref);
 
 	return phi;
@@ -50,7 +50,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(arguments.empty());
 			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
 
-			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getNative(0));
 
 			iceAssert(fir::isRefCountedType(ret->getType()));
 			cs->addRefCountedValue(ret);
@@ -141,7 +141,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			if(this->name == BUILTIN_SAA_FIELD_LENGTH)
 			{
-				return CGResult(fir::ConstantInt::getInt64(ty->toArrayType()->getArraySize()));
+				return CGResult(fir::ConstantInt::getNative(ty->toArrayType()->getArraySize()));
 			}
 			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
 			{
@@ -185,7 +185,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());
 
 				auto idx = cs->irb.GetEnumCaseIndex(res.value);
-				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getInt64(0), idx);
+				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getNative(0), idx);
 
 				return CGResult(cs->irb.ReadPtr(n));
 			}

@@ -1,5 +1,5 @@
 // errors.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -95,14 +95,14 @@ std::string __error_gen(const Location& loc, const char* msg, const char* type, 
 }
 
 
-#define ERROR_FUNCTION(name, type, attr, doexit)                                                                                            \
-template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)                                                                    \
-{ fputs(__error_gen(Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }                                  \
-																																			\
-template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)                                                      \
-{ fputs(__error_gen(e ? e->loc : Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }                     \
-																																			\
-template <typename... Ts> [[attr]] void name (const Location& loc, const char* fmt, Ts... ts)                                               \
+#define ERROR_FUNCTION(name, type, attr, doexit)                                                                        \
+template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)                                                \
+{ fputs(__error_gen(Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }              \
+																														\
+template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)                                  \
+{ fputs(__error_gen(e ? e->loc : Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); } \
+																														\
+template <typename... Ts> [[attr]] void name (const Location& loc, const char* fmt, Ts... ts)                           \
 { fputs(__error_gen(loc, fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }
 
 

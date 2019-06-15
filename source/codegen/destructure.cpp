@@ -1,5 +1,5 @@
 // destructure.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -89,13 +89,14 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	if(rt->isStringType())
 	{
 		// do a bounds check.
-		auto numbinds = fir::ConstantInt::getInt64(bind.inner.size());
+		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
 		{
 			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, true);
-			iceAssert(checkf);
-
-			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
+			if(checkf)
+			{
+				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
+			}
 		}
 
 		//* note: special-case this, because 1. we want to return chars
@@ -104,7 +105,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto v = CGResult(cs->irb.ReadPtr(cs->irb.PointerAdd(strdat, fir::ConstantInt::getInt64(idx))));
+				auto v = CGResult(cs->irb.ReadPtr(cs->irb.PointerAdd(strdat, fir::ConstantInt::getNative(idx))));
 				cs->generateDecompositionBindings(b, v, false);
 
 				idx++;
@@ -143,19 +144,20 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		auto array = rhs.value;
 		fir::Value* arrlen = 0;
 
-		auto numbinds = fir::ConstantInt::getInt64(bind.inner.size());
+		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
 		{
 			//* note: 'true' means we're performing a decomposition, so print a more appropriate error message on bounds failure.
 			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
-			iceAssert(checkf);
+			if(checkf)
+			{
+				if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
+				else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
+				else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
+				else                                iceAssert(0);
 
-			if(rt->isArrayType())               arrlen = fir::ConstantInt::getInt64(rt->toArrayType()->getArraySize());
-			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
-			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
-			else                                iceAssert(0);
-
-			auto strloc = fir::ConstantString::get(bind.loc.toString());
-			cs->irb.Call(checkf, arrlen, numbinds, strloc);
+				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				cs->irb.Call(checkf, arrlen, numbinds, strloc);
+			}
 		}
 
 		// # if 0
@@ -196,7 +198,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			size_t idx = 0;
 			for(auto& b : bind.inner)
 			{
-				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getInt64(idx));
+				auto ptr = cs->irb.PointerAdd(data, fir::ConstantInt::getNative(idx));
 
 				auto v = CGResult(cs->irb.Dereference(ptr));
 				cs->generateDecompositionBindings(b, v, true);
@@ -229,7 +231,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 					{
 						clonee = cs->irb.CreateValue(fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable));
 						clonee = cs->irb.SetArraySliceData(clonee, data);
-						clonee = cs->irb.SetArraySliceLength(clonee, fir::ConstantInt::getInt64(rt->toArrayType()->getArraySize()));
+						clonee = cs->irb.SetArraySliceLength(clonee, fir::ConstantInt::getNative(rt->toArrayType()->getArraySize()));
 					}
 					else
 					{

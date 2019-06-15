@@ -1,5 +1,5 @@
 // any.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -19,13 +19,13 @@ namespace any
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 		fir::IRBlock* dorc = cs->irb.addNewBlockInFunction("dorc", func);
 
-		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr())),
+		cs->irb.CondBranch(cs->irb.ICmpEQ(rcp, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr())),
 			merge, dorc);
 
 		cs->irb.setCurrentBlock(dorc);
 		{
 			auto oldrc = cs->irb.ReadPtr(rcp, "oldrc");
-			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getInt64(decrement ? -1 : 1));
+			auto newrc = cs->irb.Add(oldrc, fir::ConstantInt::getNative(decrement ? -1 : 1));
 
 			cs->irb.SetAnyRefCount(any, newrc);
 
@@ -42,12 +42,12 @@ namespace any
 			{
 				fir::IRBlock* dofree = cs->irb.addNewBlockInFunction("dofree", func);
 
-				auto cond = cs->irb.ICmpEQ(newrc, fir::ConstantInt::getInt64(0));
+				auto cond = cs->irb.ICmpEQ(newrc, fir::ConstantInt::getNative(0));
 
 				// this thing checks for the MSB of the typeid; if it's set, means we used heap memory and so we need to free.
 				cond = cs->irb.BitwiseAND(cond,
-					cs->irb.ICmpGT(cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)),
-					fir::ConstantInt::getUint64(0)));
+					cs->irb.ICmpGT(cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUNative(BUILTIN_ANY_FLAG_MASK)),
+					fir::ConstantInt::getUNative(0)));
 
 				cs->irb.CondBranch(cond, dofree, merge);
 
@@ -68,7 +68,7 @@ namespace any
 
 					// 2. 'buf' is a pointer to the array itself -- we cast it to i64*, so the dereference
 					//    gives us the first 8 bytes of the data buffer.
-					buf = cs->irb.PointerTypeCast(buf, fir::Type::getInt64Ptr());
+					buf = cs->irb.PointerTypeCast(buf, fir::Type::getNativeWordPtr());
 
 					// 3. this is the dereference.
 					auto ptr = cs->irb.ReadPtr(buf);
@@ -179,10 +179,10 @@ namespace any
 
 			// make the refcount pointer.
 			auto rcp = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
-				fir::ConstantInt::getInt64(REFCOUNT_SIZE)), fir::Type::getInt64Ptr());
+				fir::ConstantInt::getNative(REFCOUNT_SIZE)), fir::Type::getNativeWordPtr());
 
 			any = cs->irb.SetAnyRefCountPointer(any, rcp);
-			cs->irb.SetAnyRefCount(any, fir::ConstantInt::getInt64(1));
+			cs->irb.SetAnyRefCount(any, fir::ConstantInt::getNative(1));
 
 			size_t tid = type->getID();
 			if(auto typesz = fir::getSizeOfType(type); typesz > BUILTIN_ANY_DATA_BYTECOUNT)
@@ -190,21 +190,21 @@ namespace any
 				tid |= BUILTIN_ANY_FLAG_MASK;
 
 				auto ptr = cs->irb.PointerTypeCast(cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC),
-					fir::ConstantInt::getInt64(typesz)), type->getMutablePointerTo());
+					fir::ConstantInt::getNative(typesz)), type->getMutablePointerTo());
 
 				#if DEBUG_ANY_ALLOCATION
 				{
 					cs->printIRDebugMessage("*    ANY: alloc(): (id: %lu, ptr: %p / rcp: %p)", {
-						fir::ConstantInt::getUint64(tid), ptr, rcp });
+						fir::ConstantInt::getUNative(tid), ptr, rcp });
 				}
 				#endif
 
 				cs->irb.WritePtr(func->getArguments()[0], ptr);
-				ptr = cs->irb.PointerToIntCast(ptr, fir::Type::getInt64());
+				ptr = cs->irb.PointerToIntCast(ptr, fir::Type::getNativeWord());
 
 				// now, we make a fake data, and then store it.
 				auto arrptr = cs->irb.StackAlloc(dataarrty);
-				auto fakeptr = cs->irb.PointerTypeCast(arrptr, fir::Type::getMutInt64Ptr());
+				auto fakeptr = cs->irb.PointerTypeCast(arrptr, fir::Type::getNativeWordPtr()->getMutablePointerVersion());
 				cs->irb.WritePtr(ptr, fakeptr);
 
 				auto arr = cs->irb.ReadPtr(arrptr);
@@ -220,7 +220,7 @@ namespace any
 				any = cs->irb.SetAnyData(any, arr);
 			}
 
-			any = cs->irb.SetAnyTypeID(any, fir::ConstantInt::getUint64(tid));
+			any = cs->irb.SetAnyTypeID(any, fir::ConstantInt::getUNative(tid));
 			cs->irb.Return(any);
 
 			cs->irb.setCurrentBlock(restore);
@@ -251,19 +251,19 @@ namespace any
 			auto any = func->getArguments()[0];
 
 			auto dataarrty = fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT);
-			auto tid = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUint64(~BUILTIN_ANY_FLAG_MASK));
+			auto tid = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(any), fir::ConstantInt::getUNative(~BUILTIN_ANY_FLAG_MASK));
 
 			fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
 
-			auto valid = cs->irb.ICmpEQ(tid, fir::ConstantInt::getUint64(type->getID()));
+			auto valid = cs->irb.ICmpEQ(tid, fir::ConstantInt::getUNative(type->getID()));
 			cs->irb.CondBranch(valid, merge, invalid);
 
 			cs->irb.setCurrentBlock(invalid);
 			{
 				printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
 					"invalid unwrap of 'any' with type id '%ld' into type '%s' (with id '%ld')",
-					{ tid, cs->module->createGlobalString(type->str()), fir::ConstantInt::getUint64(type->getID()) }
+					{ tid, cs->module->createGlobalString(type->str()), fir::ConstantInt::getUNative(type->getID()) }
 				);
 			}
 

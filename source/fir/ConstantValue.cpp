@@ -1,5 +1,5 @@
 // ConstantValue.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/value.h"
@@ -133,6 +133,16 @@ namespace fir
 	ConstantInt* ConstantInt::getUint64(uint64_t value)
 	{
 		return ConstantInt::get(Type::getUint64(), value);
+	}
+
+	ConstantInt* ConstantInt::getNative(int64_t value)
+	{
+		return ConstantInt::get(Type::getNativeWord(), value);
+	}
+
+	ConstantInt* ConstantInt::getUNative(uint64_t value)
+	{
+		return ConstantInt::get(Type::getNativeUWord(), value);
 	}
 
 

@@ -1,5 +1,5 @@
 // lexer.cpp
-// Copyright (c) 2014 - 2015, zhiayang@gmail.com
+// Copyright (c) 2014 - 2015, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "lexer.h"
@@ -386,6 +386,8 @@ namespace lexer
 			unexpected(tok.loc, "'*/'");
 		}
 
+
+
 		// attrs
 		else if(hasPrefix(stream, "@nomangle"))
 		{
@@ -411,7 +413,12 @@ namespace lexer
 			tok.text = "@operator";
 			read = 9;
 		}
-
+		else if(hasPrefix(stream, "@platform"))
+		{
+			tok.type = TokenType::Attr_Platform;
+			tok.text = "@platform";
+			read = 9;
+		}
 
 
 		// unicode stuff
@@ -462,6 +469,37 @@ namespace lexer
 			tok.text = "≥";
 
 			unicodeLength = 1;
+		}
+
+		else if(hasPrefix(stream, "'") && stream.size() > 2)
+		{
+			tok.type = TokenType::CharacterLiteral;
+
+			if(stream[1] == '\\')
+			{
+				switch(stream[2])
+				{
+					case 'n':   tok.text = "\n"; break;
+					case 'b':   tok.text = "\b"; break;
+					case 'a':   tok.text = "\a"; break;
+					case 'r':   tok.text = "\r"; break;
+					case 't':   tok.text = "\t"; break;
+					case '\'':  tok.text = "'"; break;
+
+					default:
+						error(pos, "invalid escape sequence ('\\%c') in character literal", stream[2]);
+				}
+
+				read = 4;
+			}
+			else
+			{
+				tok.text = stream.substr(1, 1);
+				read = 3;
+			}
+
+			if(stream[read - 1] != '\'')
+				error(pos, "expected closing '");
 		}
 
 		// note some special-casing is needed to differentiate between unary +/- and binary +/-

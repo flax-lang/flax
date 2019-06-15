@@ -1,5 +1,5 @@
 // function.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -126,6 +126,9 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	auto fn = cs->module->getOrCreateFunction(realId, ft, fir::LinkageType::External);
+
+	if(this->isIntrinsic)
+		fn->setIsIntrinsic();
 
 	cs->valueMap[this] = CGResult(fn);
 	return CGResult(fn);

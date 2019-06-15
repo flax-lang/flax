@@ -1,5 +1,5 @@
 // dotop.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -92,7 +92,7 @@ static std::vector<search_result_t> searchTransparentFields(sst::TypecheckState*
 		if(df->isTransparentField)
 		{
 			auto ty = df->type;
-			assert(ty->isRawUnionType() || ty->isStructType());
+			iceAssert(ty->isRawUnionType() || ty->isStructType());
 
 			auto defn = fs->typeDefnMap[ty];
 			iceAssert(defn);
@@ -241,7 +241,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			// TODO: Extension support here
 			fir::Type* res = 0;
 			if(util::match(vr->name, BUILTIN_SAA_FIELD_LENGTH, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT, BUILTIN_STRING_FIELD_COUNT))
-				res = fir::Type::getInt64();
+				res = fir::Type::getNativeWord();
 
 			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
 				res = fir::Type::getInt8Ptr();
@@ -306,7 +306,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			if(vr->name == BUILTIN_SAA_FIELD_LENGTH || (type->isDynamicArrayType()
 				&& util::match(vr->name, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT)))
 			{
-				res = fir::Type::getInt64();
+				res = fir::Type::getNativeWord();
 			}
 			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
 			{
@@ -390,7 +390,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				res = fir::Type::getString();
 
 			else if(vr->name == BUILTIN_ENUM_FIELD_INDEX)
-				res = fir::Type::getInt64();
+				res = fir::Type::getNativeWord();
 
 			else if(vr->name == BUILTIN_ENUM_FIELD_VALUE)
 				res = type->toEnumType()->getCaseType();
@@ -415,7 +415,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			// TODO: extension support here
 			fir::Type* res = 0;
 			if(vr->name == BUILTIN_RANGE_FIELD_BEGIN || vr->name == BUILTIN_RANGE_FIELD_END || vr->name == BUILTIN_RANGE_FIELD_STEP)
-				res = fir::Type::getInt64();
+				res = fir::Type::getNativeWord();
 
 			if(res)
 			{
@@ -437,10 +437,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			// TODO: extension support here
 			fir::Type* res = 0;
 			if(vr->name == BUILTIN_ANY_FIELD_TYPEID)
-				res = fir::Type::getUint64();
+				res = fir::Type::getNativeUWord();
 
 			else if(vr->name == BUILTIN_ANY_FIELD_REFCOUNT)
-				res = fir::Type::getInt64();
+				res = fir::Type::getNativeWord();
 
 			if(res)
 			{
@@ -459,7 +459,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	// ok.
 	auto defn = fs->typeDefnMap[type];
-	iceAssert(defn);
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
@@ -689,6 +688,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	}
 	else
 	{
+		// TODO: this error message could be better!!!
+		//* it's because we are pending extension support!
 		error(lhs, "unsupported left-side expression (with type '%s') for dot-operator", lhs->type);
 	}
 
@@ -814,6 +815,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				defer(fs->popGenericContext());
 				{
 					int pses = sst::poly::internal::getNextSessionId();
+
+					iceAssert(typdef->original);
 					for(auto g : typdef->original->generics)
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}

@@ -1,10 +1,10 @@
 #ifndef TINY_PROCESS_LIBRARY_HPP_
 #define TINY_PROCESS_LIBRARY_HPP_
 
+#include <mutex>
 #include <string>
 #include <functional>
 #include <vector>
-#include <mutex>
 #include <thread>
 #include <memory>
 #ifndef _WIN32

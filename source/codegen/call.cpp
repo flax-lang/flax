@@ -1,5 +1,5 @@
 // call.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -125,6 +125,9 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			// int32 can represent you even if you're unsigned
 			else if(val->getType()->isIntegerType() && val->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
 				val = cs->irb.IntSizeCast(val, val->getType()->isSignedIntType() ? fir::Type::getInt32() : fir::Type::getUint32());
+
+			else if(val->getType()->isBoolType())
+				val = cs->irb.IntSizeCast(val, fir::Type::getInt32());
 		}
 
 		ret[i] = val;
@@ -137,7 +140,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 	{
 		auto et = ft->getArgumentTypes().back()->getArrayElementType();
 		ret.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(et),
-			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getInt64(0)));
+			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getNative(0)));
 	}
 
 	return ret;
@@ -297,7 +300,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			auto clonef = cgn::glue::string::getCloneFunction(cs);
 			iceAssert(clonef);
 
-			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getNative(0));
 			cs->addRefCountedValue(ret);
 
 			return CGResult(ret);
@@ -315,7 +318,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			iceAssert(args[1]->type->isIntegerType());
 
 			auto ptr = args[0]->codegen(cs).value;
-			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
+			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 
 			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
 			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
