@@ -111,6 +111,14 @@ static void compile(std::string in, std::string out)
 	// debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
 	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
+
+
+
+
+
+
+
+
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
