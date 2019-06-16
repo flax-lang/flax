@@ -57,6 +57,24 @@ namespace platform
 	std::string getTemporaryFilename(const std::string& name);
 
 	size_t getTerminalWidth();
+
+	void performSelfDlOpen();
+	void performSelfDlClose();
+
+	void* getSymbol(const std::string& name);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

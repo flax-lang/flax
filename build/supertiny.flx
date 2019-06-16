@@ -76,6 +76,7 @@ struct foo
 }
 
 
+// E:\msys2\usr\bin\sh -lc "(cd /d/Projects/lib/src/libffi/build-libffi; ../libffi-3.3-rc0/configure CC='./msvcc.sh' CXX='./msvcc.sh' LD='link' CPP='./cpp.sh' CXXCPP='./cpp.sh' CPPFLAGS='-DFFI_BUILDING_DLL';)"
 
 
 /*

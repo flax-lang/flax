@@ -56,6 +56,7 @@ namespace interp
 		if(ret.blocks.empty())
 			ret.isExternal = true, ret.extFuncName = fn->getName().name;
 
+
 		// add it.
 		this->compiledFunctions[ret.id] = ret;
 		this->functionNameMap[fn->getName().mangled()] = ret.id;
