@@ -13,6 +13,18 @@
 
 #define LARGE_DATA_SIZE 32
 
+#define SLICE_DATA_INDEX            0
+#define SLICE_LENGTH_INDEX          1
+
+#define SAA_DATA_INDEX              0
+#define SAA_LENGTH_INDEX            1
+#define SAA_CAPACITY_INDEX          2
+#define SAA_REFCOUNTPTR_INDEX       3
+
+#define ANY_TYPEID_INDEX            0
+#define ANY_REFCOUNTPTR_INDEX       1
+#define ANY_DATA_ARRAY_INDEX        2
+
 namespace fir {
 namespace interp
 {
@@ -226,6 +238,86 @@ namespace interp
 	}
 
 
+	static interp::Value doInsertValue(interp::InterpState* is, size_t resid, interp::Value* str, interp::Value* elm, int64_t idx)
+	{
+		iceAssert(str->type->isStructType() || str->type->isArrayType());
+
+		// we clone the value first
+		auto ret = cloneValue(resid, str);
+
+		size_t ofs = 0;
+
+		if(str->type->isStructType())
+		{
+			auto strty = str->type->toStructType();
+			iceAssert(idx < strty->getElementCount());
+
+			for(size_t i = 0; i < idx; i++)
+				ofs += getSizeOfType(strty->getElementN(i));
+		}
+		else
+		{
+			auto arrty = str->type->toArrayType();
+			iceAssert(idx < arrty->getArraySize());
+
+			ofs = idx * getSizeOfType(arrty->getElementType());
+		}
+
+
+		uintptr_t dst = 0;
+		if(str->dataSize > LARGE_DATA_SIZE) dst = (uintptr_t) ret.ptr;
+		else                                dst = (uintptr_t) &ret.data[0];
+
+		uintptr_t src = 0;
+		if(elm->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) elm->ptr;
+		else                                src = (uintptr_t) &elm->data[0];
+
+		memmove((void*) (dst + ofs), (void*) src, elm->dataSize);
+
+		return ret;
+	}
+
+
+	static interp::Value doExtractValue(interp::InterpState* is, size_t resid, interp::Value* str, int64_t idx)
+	{
+		iceAssert(str->type->isStructType() || str->type->isArrayType());
+
+		size_t ofs = 0;
+
+		fir::Type* elm = 0;
+		if(str->type->isStructType())
+		{
+			auto strty = str->type->toStructType();
+			iceAssert(idx < strty->getElementCount());
+
+			for(size_t i = 0; i < idx; i++)
+				ofs += getSizeOfType(strty->getElementN(i));
+
+			elm = strty->getElementN(idx);
+		}
+		else
+		{
+			auto arrty = str->type->toArrayType();
+			iceAssert(idx < arrty->getArraySize());
+
+			ofs = idx * getSizeOfType(arrty->getElementType());
+			elm = arrty->getElementType();
+		}
+
+		auto ret = makeValue(resid, elm);
+
+		uintptr_t src = 0;
+		if(str->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) str->ptr;
+		else                                src = (uintptr_t) &str->data[0];
+
+		uintptr_t dst = 0;
+		if(ret.dataSize > LARGE_DATA_SIZE)  dst = (uintptr_t) ret.ptr;
+		else                                dst = (uintptr_t) &ret.data[0];
+
+		memmove((void*) dst, (void*) (src + ofs), ret.dataSize);
+
+		return ret;
+	}
 
 	// this saves us a lot of copy/paste
 
@@ -1071,6 +1163,40 @@ namespace interp
 				break;
 			}
 
+			case OpKind::Value_GetStructMember:
+			{
+				// equivalent to GEP(ptr*, 0, memberIndex)
+				iceAssert(inst.args.size() == 2);
+				auto str = getArg(inst, 0);
+				auto idx = getActualValue<int64_t>(getArg(inst, 1));
+
+				std::vector<fir::Type*> elms;
+
+				if(str->type->isStructType())       elms = str->type->toStructType()->getElements();
+				else if(str->type->isClassType())   elms = str->type->toClassType()->getElements();
+				else                                error("interp: unsupported type '%s'", str->type);
+
+				size_t ofs = 0;
+				for(size_t i = 0; i < idx; i++)
+					ofs += getSizeOfType(elms[i]);
+
+				auto elmty = elms[idx];
+
+				uintptr_t src = 0;
+
+				if(str->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) str->ptr;
+				else                                src = (uintptr_t) &str->data[0];
+
+				src += ofs;
+
+				auto ret = makeValue(inst.result, elmty->getPointerTo());
+				setValueRaw(is, ret.id, &src, sizeof(src));
+
+				setRet(inst, ret);
+				break;
+			}
+
+
 			case OpKind::Value_GetGEP2:
 			{
 				// equivalent to GEP(ptr*, index1, index2)
@@ -1097,6 +1223,13 @@ namespace interp
 				}));
 
 				break;
+			}
+
+
+			case OpKind::Value_GetPointerToStructMember:
+			{
+				// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
+				error("interp: enotsup");
 			}
 
 			case OpKind::Misc_Sizeof:
@@ -1170,54 +1303,32 @@ namespace interp
 				break;
 			}
 
+			case OpKind::Value_Select:
+			{
+				iceAssert(inst.args.size() == 3);
+				auto cond = getArg(inst, 0);
+				iceAssert(cond->type->isBoolType());
+
+				auto trueval = getArg(inst, 1);
+				auto falseval = getArg(inst, 2);
+
+				if(getActualValue<bool>(cond))  setRet(inst, *trueval);
+				else                            setRet(inst, *falseval);
+
+				break;
+			}
+
+
+
 			case OpKind::Value_InsertValue:
 			{
-				iceAssert(inst.args.size() >= 3);
+				iceAssert(inst.args.size() == 3);
 
 				auto str = getArg(inst, 0);
 				auto elm = getArg(inst, 1);
+				auto idx = getActualValue<int64_t>(getArg(inst, 2));
 
-				std::vector<int64_t> inds;
-				for(size_t i = 2; i < inst.args.size(); i++)
-					inds.push_back(getActualValue<int64_t>(getArg(inst, i)));
-
-				iceAssert(inds.size() == 1);
-				iceAssert(str->type->isStructType() || str->type->isArrayType());
-
-				// we clone the value first
-				auto ret = cloneValue(inst.result, str);
-
-				size_t ofs = 0;
-				auto idx = inds[0];
-
-				if(str->type->isStringType())
-				{
-					auto strty = str->type->toStructType();
-					iceAssert(idx < strty->getElementCount());
-
-					for(size_t i = 0; i < idx; i++)
-						ofs += getSizeOfType(strty->getElementN(i));
-				}
-				else
-				{
-					auto arrty = str->type->toArrayType();
-					iceAssert(idx < arrty->getArraySize());
-
-					ofs = idx * getSizeOfType(arrty->getElementType());
-				}
-
-
-				uintptr_t dst = 0;
-				if(str->dataSize > LARGE_DATA_SIZE) dst = (uintptr_t) ret.ptr;
-				else                                dst = (uintptr_t) &ret.data[0];
-
-				uintptr_t src = 0;
-				if(elm->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) elm->ptr;
-				else                                src = (uintptr_t) &elm->data[0];
-
-				memmove((void*) (dst + ofs), (void*) src, elm->dataSize);
-
-				setRet(inst, ret);
+				setRet(inst, doInsertValue(is, inst.result, str, elm, idx));
 				break;
 			}
 
@@ -1225,74 +1336,13 @@ namespace interp
 			case OpKind::Value_ExtractValue:
 			{
 				iceAssert(inst.args.size() >= 2);
+
 				auto str = getArg(inst, 0);
+				auto idx = getActualValue<int64_t>(getArg(inst, 2));
 
-				std::vector<int64_t> inds;
-				for(size_t i = 1; i < inst.args.size(); i++)
-					inds.push_back(getActualValue<int64_t>(getArg(inst, i)));
-
-				iceAssert(inds.size() == 1);
-				iceAssert(str->type->isStructType() || str->type->isArrayType());
-
-				size_t ofs = 0;
-				auto idx = inds[0];
-
-				fir::Type* elm = 0;
-				if(str->type->isStringType())
-				{
-					auto strty = str->type->toStructType();
-					iceAssert(idx < strty->getElementCount());
-
-					for(size_t i = 0; i < idx; i++)
-						ofs += getSizeOfType(strty->getElementN(i));
-
-					elm = strty->getElementN(idx);
-				}
-				else
-				{
-					auto arrty = str->type->toArrayType();
-					iceAssert(idx < arrty->getArraySize());
-
-					ofs = idx * getSizeOfType(arrty->getElementType());
-					elm = arrty->getElementType();
-				}
-
-				auto ret = makeValue(inst.result, elm);
-
-				uintptr_t src = 0;
-				if(str->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) str->ptr;
-				else                                src = (uintptr_t) &str->data[0];
-
-				uintptr_t dst = 0;
-				if(ret.dataSize > LARGE_DATA_SIZE)  dst = (uintptr_t) ret.ptr;
-				else                                dst = (uintptr_t) &ret.data[0];
-
-				memmove((void*) dst, (void*) (src + ofs), ret.dataSize);
-
-				setRet(inst, ret);
+				setRet(inst, doExtractValue(is, inst.result, str, idx));
 				break;
 			}
-
-
-
-
-			#if 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 			case OpKind::SAA_GetData:
@@ -1301,28 +1351,23 @@ namespace interp
 			case OpKind::SAA_GetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 1);
+				auto str = getArg(inst, 0);
 
-				llvm::Value* a = getOperand(inst, 0);
-				iceAssert(a->getType()->isStructTy());
+				interp::Value ret;
 
-				int ind = 0;
-				if(inst.opKind == OpKind::SAA_GetData)
-					ind = SAA_DATA_INDEX;
+				if(ok == OpKind::SAA_GetData)
+					ret = doExtractValue(is, inst.result, str, SAA_DATA_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_GetLength)
-					ind = SAA_LENGTH_INDEX;
+				else if(ok == OpKind::SAA_GetLength)
+					ret = doExtractValue(is, inst.result, str, SAA_LENGTH_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_GetCapacity)
-					ind = SAA_CAPACITY_INDEX;
+				else if(ok == OpKind::SAA_GetCapacity)
+					ret = doExtractValue(is, inst.result, str, SAA_CAPACITY_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_GetRefCountPtr)
-					ind = SAA_REFCOUNTPTR_INDEX;
+				else if(ok == OpKind::SAA_GetRefCountPtr)
+					ret = doExtractValue(is, inst.result, str, SAA_REFCOUNTPTR_INDEX);
 
-				else
-					iceAssert(0 && "invalid");
-
-				llvm::Value* ret = builder.CreateExtractValue(a, ind);
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1332,56 +1377,42 @@ namespace interp
 			case OpKind::SAA_SetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 2);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
+				interp::Value ret;
 
-				iceAssert(a->getType()->isStructTy());
+				if(ok == OpKind::SAA_SetData)
+					ret = doInsertValue(is, inst.result, str, elm, SAA_DATA_INDEX);
 
-				int ind = 0;
-				if(inst.opKind == OpKind::SAA_SetData)
-					ind = SAA_DATA_INDEX;
+				else if(ok == OpKind::SAA_SetLength)
+					ret = doInsertValue(is, inst.result, str, elm, SAA_LENGTH_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_SetLength)
-					ind = SAA_LENGTH_INDEX;
+				else if(ok == OpKind::SAA_SetCapacity)
+					ret = doInsertValue(is, inst.result, str, elm, SAA_CAPACITY_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_SetCapacity)
-					ind = SAA_CAPACITY_INDEX;
+				else if(ok == OpKind::SAA_SetRefCountPtr)
+					ret = doInsertValue(is, inst.result, str, elm, SAA_REFCOUNTPTR_INDEX);
 
-				else if(inst.opKind == OpKind::SAA_SetRefCountPtr)
-					ind = SAA_REFCOUNTPTR_INDEX;
-
-				else
-					iceAssert(0 && "invalid");
-
-				llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, ret);
 				break;
 			}
-
-
-
-
-
-
-
-
 
 			case OpKind::ArraySlice_GetData:
 			case OpKind::ArraySlice_GetLength:
 			{
 				iceAssert(inst.args.size() == 1);
+				auto str = getArg(inst, 0);
 
-				llvm::Value* a = getOperand(inst, 0);
-				iceAssert(a->getType()->isStructTy());
+				interp::Value ret;
 
-				int ind = 0;
-				if(inst.opKind == OpKind::ArraySlice_GetData)         ind = SLICE_DATA_INDEX;
-				else if(inst.opKind == OpKind::ArraySlice_GetLength)  ind = SLICE_LENGTH_INDEX;
-				else                                                        iceAssert(0 && "invalid");
+				if(ok == OpKind::ArraySlice_GetData)
+					ret = doExtractValue(is, inst.result, str, SLICE_DATA_INDEX);
 
-				llvm::Value* ret = builder.CreateExtractValue(a, ind);
-				addValueToMap(ret, inst.realOutput);
+				else if(ok == OpKind::ArraySlice_GetLength)
+					ret = doExtractValue(is, inst.result, str, SLICE_LENGTH_INDEX);
+
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1391,54 +1422,40 @@ namespace interp
 			case OpKind::ArraySlice_SetLength:
 			{
 				iceAssert(inst.args.size() == 2);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
+				interp::Value ret;
 
-				iceAssert(a->getType()->isStructTy());
+				if(ok == OpKind::ArraySlice_SetData)
+					ret = doInsertValue(is, inst.result, str, elm, SLICE_DATA_INDEX);
 
-				int ind = 0;
-				if(inst.opKind == OpKind::ArraySlice_SetData)         ind = SLICE_DATA_INDEX;
-				else if(inst.opKind == OpKind::ArraySlice_SetLength)  ind = SLICE_LENGTH_INDEX;
-				else                                                        iceAssert(0 && "invalid");
+				else if(ok == OpKind::ArraySlice_SetLength)
+					ret = doInsertValue(is, inst.result, str, elm, SLICE_LENGTH_INDEX);
 
-				llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, ret);
 				break;
 			}
-
-
-
-
-
-
-
-
 
 			case OpKind::Any_GetData:
 			case OpKind::Any_GetTypeID:
 			case OpKind::Any_GetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 1);
+				auto str = getArg(inst, 0);
 
-				llvm::Value* a = getOperand(inst, 0);
-				iceAssert(a->getType()->isStructTy());
+				interp::Value ret;
 
-				int ind = 0;
-				if(inst.opKind == OpKind::Any_GetTypeID)
-					ind = ANY_TYPEID_INDEX;
+				if(ok == OpKind::Any_GetTypeID)
+					ret = doExtractValue(is, inst.result, str, ANY_TYPEID_INDEX);
 
-				else if(inst.opKind == OpKind::Any_GetRefCountPtr)
-					ind = ANY_REFCOUNTPTR_INDEX;
+				else if(ok == OpKind::Any_GetRefCountPtr)
+					ret = doExtractValue(is, inst.result, str, ANY_REFCOUNTPTR_INDEX);
 
-				else if(inst.opKind == OpKind::Any_GetData)
-					ind = ANY_DATA_ARRAY_INDEX;
+				else if(ok == OpKind::Any_GetData)
+					ret = doExtractValue(is, inst.result, str, ANY_DATA_ARRAY_INDEX);
 
-				else
-					iceAssert(0 && "invalid");
-
-				llvm::Value* ret = builder.CreateExtractValue(a, ind);
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1447,27 +1464,21 @@ namespace interp
 			case OpKind::Any_SetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 2);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
+				interp::Value ret;
 
-				iceAssert(a->getType()->isStructTy());
+				if(ok == OpKind::Any_SetTypeID)
+					ret = doInsertValue(is, inst.result, str, elm, ANY_TYPEID_INDEX);
 
-				int ind = 0;
-				if(inst.opKind == OpKind::Any_SetTypeID)
-					ind = ANY_TYPEID_INDEX;
+				else if(ok == OpKind::Any_SetRefCountPtr)
+					ret = doInsertValue(is, inst.result, str, elm, ANY_REFCOUNTPTR_INDEX);
 
-				else if(inst.opKind == OpKind::Any_SetRefCountPtr)
-					ind = ANY_REFCOUNTPTR_INDEX;
+				else if(ok == OpKind::Any_SetData)
+					ret = doInsertValue(is, inst.result, str, elm, ANY_DATA_ARRAY_INDEX);
 
-				else if(inst.opKind == OpKind::Any_SetData)
-					ind = ANY_DATA_ARRAY_INDEX;
-
-				else
-					iceAssert(0 && "invalid");
-
-				llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1477,19 +1488,21 @@ namespace interp
 			case OpKind::Range_GetUpper:
 			case OpKind::Range_GetStep:
 			{
-				unsigned int pos = 0;
-				if(inst.opKind == OpKind::Range_GetUpper)
-					pos = 1;
+				iceAssert(inst.args.size() == 1);
+				auto str = getArg(inst, 0);
 
-				else if(inst.opKind == OpKind::Range_GetStep)
-					pos = 2;
+				interp::Value ret;
 
-				llvm::Value* a = getOperand(inst, 0);
-				iceAssert(a->getType()->isStructTy());
+				if(ok == OpKind::Range_GetLower)
+					ret = doExtractValue(is, inst.result, str, 0);
 
-				llvm::Value* val = builder.CreateExtractValue(a, { pos });
-				addValueToMap(val, inst.realOutput);
+				else if(ok == OpKind::Range_GetUpper)
+					ret = doExtractValue(is, inst.result, str, 1);
 
+				else if(ok == OpKind::Range_GetStep)
+					ret = doExtractValue(is, inst.result, str, 2);
+
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1498,22 +1511,22 @@ namespace interp
 			case OpKind::Range_SetUpper:
 			case OpKind::Range_SetStep:
 			{
-				unsigned int pos = 0;
-				if(inst.opKind == OpKind::Range_SetUpper)
-					pos = 1;
+				iceAssert(inst.args.size() == 2);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				else if(inst.opKind == OpKind::Range_SetStep)
-					pos = 2;
+				interp::Value ret;
 
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
+				if(ok == OpKind::Range_GetLower)
+					ret = doInsertValue(is, inst.result, str, elm, 0);
 
-				iceAssert(a->getType()->isStructTy());
-				iceAssert(b->getType()->isIntegerTy());
+				else if(ok == OpKind::Range_GetUpper)
+					ret = doInsertValue(is, inst.result, str, elm, 1);
 
-				llvm::Value* ret = builder.CreateInsertValue(a, b, { pos });
-				addValueToMap(ret, inst.realOutput);
+				else if(ok == OpKind::Range_GetStep)
+					ret = doInsertValue(is, inst.result, str, elm, 2);
 
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1522,16 +1535,18 @@ namespace interp
 			case OpKind::Enum_GetIndex:
 			case OpKind::Enum_GetValue:
 			{
-				unsigned int pos = 0;
-				if(inst.opKind == OpKind::Enum_GetValue)
-					pos = 1;
+				iceAssert(inst.args.size() == 1);
+				auto str = getArg(inst, 0);
 
-				llvm::Value* a = getOperand(inst, 0);
-				iceAssert(a->getType()->isStructTy());
+				interp::Value ret;
 
-				llvm::Value* val = builder.CreateExtractValue(a, { pos });
-				addValueToMap(val, inst.realOutput);
+				if(ok == OpKind::Enum_GetIndex)
+					ret = doExtractValue(is, inst.result, str, 0);
 
+				else if(ok == OpKind::Enum_GetValue)
+					ret = doExtractValue(is, inst.result, str, 1);
+
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1539,92 +1554,50 @@ namespace interp
 			case OpKind::Enum_SetIndex:
 			case OpKind::Enum_SetValue:
 			{
-				unsigned int pos = 0;
-				if(inst.opKind == OpKind::Enum_SetValue)
-					pos = 1;
-
-				llvm::Value* a = getOperand(inst, 0);
-				llvm::Value* b = getOperand(inst, 1);
-
-				iceAssert(a->getType()->isStructTy());
-				if(pos == 0)	iceAssert(b->getType()->isIntegerTy());
-
-				llvm::Value* ret = builder.CreateInsertValue(a, b, { pos });
-				addValueToMap(ret, inst.realOutput);
-
-				break;
-			}
-
-			case OpKind::Value_Select:
-			{
-				llvm::Value* cond = getOperand(inst, 0);
-				llvm::Value* one = getOperand(inst, 1);
-				llvm::Value* two = getOperand(inst, 2);
-
-				iceAssert(cond->getType()->isIntegerTy() && cond->getType()->getIntegerBitWidth() == 1);
-				iceAssert(one->getType() == two->getType());
-
-				llvm::Value* ret = builder.CreateSelect(cond, one, two);
-				addValueToMap(ret, inst.realOutput);
-
-				break;
-			}
-
-
-
-
-
-
-
-			case OpKind::Value_GetPointerToStructMember:
-			{
-				// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
-				error("llvm: enotsup");
-			}
-
-			case OpKind::Value_GetStructMember:
-			{
-				// equivalent to GEP(ptr*, 0, memberIndex)
 				iceAssert(inst.args.size() == 2);
-				llvm::Value* ptr = getUndecayedOperand(inst, 0);
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				ConstantInt* ci = dcast(ConstantInt, inst.args[1]);
-				iceAssert(ci);
+				interp::Value ret;
 
-				// ptr->dump();
-				llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
-					ptr, (unsigned int) ci->getUnsignedValue());
+				if(ok == OpKind::Enum_SetIndex)
+					ret = doInsertValue(is, inst.result, str, elm, 0);
 
-				addValueToMap(ret, inst.realOutput);
+				else if(ok == OpKind::Enum_SetValue)
+					ret = doInsertValue(is, inst.result, str, elm, 1);
+
+				setRet(inst, ret);
 				break;
 			}
 
 
 			case OpKind::Union_GetVariantID:
 			{
-				// fairly straightforward.
 				iceAssert(inst.args.size() == 1);
-				iceAssert(inst.args[0]->getType()->isUnionType());
+				auto str = getArg(inst, 0);
 
-				llvm::Value* uv = getOperand(inst, 0);
-				llvm::Value* ret = builder.CreateExtractValue(uv, { 0 });
-
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, doExtractValue(is, inst.result, str, 0));
 				break;
 			}
 
 			case OpKind::Union_SetVariantID:
 			{
 				iceAssert(inst.args.size() == 2);
-				iceAssert(inst.args[0]->getType()->isUnionType());
+				auto str = getArg(inst, 0);
+				auto elm = getArg(inst, 1);
 
-				llvm::Value* uv = getOperand(inst, 0);
-				llvm::Value* ret = builder.CreateInsertValue(uv, getOperand(inst, 1), { 0 });
-
-				addValueToMap(ret, inst.realOutput);
+				setRet(inst, doInsertValue(is, inst.result, str, elm, 0));
 				break;
 			}
 
+			case OpKind::Union_GetValue:
+			case OpKind::Union_SetValue:
+			{
+				error("interp: not supported atm");
+			}
+
+
+			#if 0
 
 			case OpKind::Union_GetValue:
 			{

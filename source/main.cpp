@@ -24,24 +24,24 @@ struct timer
 };
 
 
-#ifdef _WIN32
-#define DLLEXPORT __declspec(dllexport)
-#else
-#define DLLEXPORT
-#endif
+// #ifdef _WIN32
+// #define DLLEXPORT __declspec(dllexport)
+// #else
+// #define DLLEXPORT
+// #endif
 
-extern "C" DLLEXPORT void lmao()
-{
-	printf("LMAO!\n");
-}
+// extern "C" DLLEXPORT void lmao()
+// {
+// 	printf("LMAO!\n");
+// }
 
-extern "C" DLLEXPORT void haha(int x)
-{
-	for(int i = 0; i < x; i++)
-		printf("HA");
+// extern "C" DLLEXPORT void haha(int x)
+// {
+// 	for(int i = 0; i < x; i++)
+// 		printf("HA");
 
-	printf("!\n");
-}
+// 	printf("!\n");
+// }
 
 
 static void compile(std::string in, std::string out)
@@ -108,17 +108,13 @@ static void compile(std::string in, std::string out)
 
 	// delete all the memory we've allocated.
 	util::clearAllPools();
+
 	// debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
 	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 
 
-
-
-
-
-
-
+	platform::performSelfDlOpen();
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
@@ -149,6 +145,7 @@ static void compile(std::string in, std::string out)
 				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}
+	platform::performSelfDlClose();
 }
 
 
