@@ -53,6 +53,7 @@ namespace sst
 		Identifier id;
 		fir::Type* type = 0;
 		bool global = false;
+		std::string bareName;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 
 		virtual std::string getKind() = 0;

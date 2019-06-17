@@ -37,6 +37,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = util::pool<sst::EnumDefn>(this->loc);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;

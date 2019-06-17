@@ -25,6 +25,14 @@
 #define ANY_REFCOUNTPTR_INDEX       1
 #define ANY_DATA_ARRAY_INDEX        2
 
+
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+	#pragma warning(disable: 4018)
+#endif
+
+
+
 namespace fir {
 namespace interp
 {
@@ -1683,6 +1691,9 @@ namespace interp
 }
 
 
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#endif
 
 
 

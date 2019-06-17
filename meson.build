@@ -24,6 +24,7 @@ mpfr_lib_dir = mpfr_root_dir + '/' + libKind + '/lib/'
 llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
 
 if the_compiler.get_id() == 'msvc'
+	add_project_arguments('/utf-8', language: 'cpp')
 	add_project_arguments('/std:c++17', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')

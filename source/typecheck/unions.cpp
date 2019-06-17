@@ -31,6 +31,8 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	if(this->israw) defn = util::pool<sst::RawUnionDefn>(this->loc);
 	else            defn = util::pool<sst::UnionDefn>(this->loc);
 
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;

@@ -5,6 +5,7 @@
 #include "errors.h"
 #include "codegen.h"
 #include "typecheck.h"
+#include "mpool.h"
 
 CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
@@ -129,7 +130,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 	{
 		iceAssert(this->isInMethodBody() && fd->parentTypeForMethod);
 
-		auto fake = new sst::RawValueExpr(call->loc, fd->parentTypeForMethod->getPointerTo());
+		auto fake = util::pool<sst::RawValueExpr>(call->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(this->getMethodSelf());
 
 		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake, 0));

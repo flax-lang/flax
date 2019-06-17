@@ -709,6 +709,7 @@ namespace parser
 	PolyArgMapping_t parsePAMs(State& st, bool* failed)
 	{
 		iceAssert(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle);
+		auto openLoc = st.loc();
 
 		st.pop();
 		st.pop();
@@ -718,7 +719,7 @@ namespace parser
 		{
 			//* foo!<> is an error regardless of whether we're doing expression parsing or call parsing.
 			if(st.front() == TT::RAngle)
-				error(st.loc(), "at least one type argument is required between angle brackets <>");
+				error(Location::unionOf(openLoc, st.loc()), "type parameter list cannot be empty");
 
 			// step 2A: start parsing.
 			size_t idx = 0;

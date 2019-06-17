@@ -148,7 +148,7 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree, createAnonymously);
+			auto newtree = util::pool<StateTree>(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
 			this->stree = newtree;
 
@@ -285,7 +285,7 @@ namespace sst
 
 			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
 			{
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 			}
 			else
 			{

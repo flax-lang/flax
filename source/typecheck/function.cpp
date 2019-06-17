@@ -57,6 +57,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->parentTypeForMethod = infer;
 
 
+	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
 	defn->id.scope = this->realScope;
 	defn->id.params = ptys;
@@ -195,6 +196,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
 	defn->id = Identifier(this->name, IdKind::Name);
+	defn->bareName = this->name;
 
 	defn->params = ps;
 	defn->returnType = retty;

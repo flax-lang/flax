@@ -199,6 +199,11 @@ namespace frontend
 		return _backendCodegen;
 	}
 
+	bool getPrintProfileStats()
+	{
+		return _doProfiler;
+	}
+
 	bool getIsNoRuntimeChecks()
 	{
 		return _noRuntimeChecks;

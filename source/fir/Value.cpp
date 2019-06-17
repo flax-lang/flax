@@ -40,6 +40,10 @@ namespace fir
 		return this->ident;
 	}
 
+	size_t Value::getValueCount()
+	{
+		return vnames;
+	}
 
 
 

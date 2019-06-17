@@ -32,6 +32,8 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
 	auto defn = util::pool<sst::ClassDefn>(this->loc);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
@@ -278,7 +280,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 				for(auto sub : from->subtrees)
 				{
 					if(to->subtrees.find(sub.first) == to->subtrees.end())
-						to->subtrees[sub.first] = new sst::StateTree(sub.first, sub.second->topLevelFilename, to);
+						to->subtrees[sub.first] = util::pool<sst::StateTree>(sub.first, sub.second->topLevelFilename, to);
 
 					recursivelyImport(sub.second, to->subtrees[sub.first]);
 				}

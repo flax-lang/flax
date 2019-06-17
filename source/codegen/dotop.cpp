@@ -5,7 +5,7 @@
 #include "errors.h"
 #include "codegen.h"
 #include "typecheck.h"
-
+#include "mpool.h"
 
 static bool isAutoDereferencable(fir::Type* t)
 {
@@ -63,7 +63,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 
 		// then we insert it as the first argument
-		auto rv = new sst::RawValueExpr(this->loc, res.value->getType()->getMutablePointerTo());
+		auto rv = util::pool<sst::RawValueExpr>(this->loc, res.value->getType()->getMutablePointerTo());
 		rv->rawValue = CGResult(cs->irb.AddressOf(res.value, true));
 
 		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));

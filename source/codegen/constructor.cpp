@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "mpool.h"
 
 fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args)
 {
@@ -62,7 +63,7 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 	// make a copy
 	auto arguments = args;
 	{
-		auto fake = new sst::RawValueExpr(this->loc(), cls->getPointerTo());
+		auto fake = util::pool<sst::RawValueExpr>(this->loc(), cls->getPointerTo());
 		fake->rawValue = CGResult(selfptr);
 
 		arguments.insert(arguments.begin(), FnCallArgument(this->loc(), "self", fake, 0));

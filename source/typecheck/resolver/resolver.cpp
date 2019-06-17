@@ -66,6 +66,17 @@ namespace resolver
 
 			auto cands = _cands;
 
+
+			auto complainAboutExtraneousPAMs = [&fs](const std::string& kind, Defn* def, const std::string& action, bool printdef) -> ErrorMsg* {
+				auto ret = SimpleError::make(fs->loc(), "%s '%s' cannot be %s with type arguments",
+					kind, def->id.name, action);
+
+				if(printdef)
+					ret->append(SimpleError::make(MsgType::Note, def->loc, "function was defined here:"));
+
+				return ret;
+			};
+
 			for(const auto& [ _cand, _args ] : cands)
 			{
 				int dist = -1;
@@ -131,7 +142,17 @@ namespace resolver
 					}
 					else
 					{
-						std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
+						// if it's not generic but you gave type args, you don't deserve to call it.
+						//? we might change this
+
+						if(!pams.empty())
+						{
+							fails[fn] = complainAboutExtraneousPAMs("non-polymorphic function", fn, "called", /* printdef: */ true);
+						}
+						else
+						{
+							std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
+						}
 					}
 
 					//! SELF HANDLING (REMOVAL) (METHOD CALL)
@@ -142,6 +163,12 @@ namespace resolver
 				{
 					iceAssert(vr->type->isFunctionType());
 					auto ft = vr->type->toFunctionType();
+
+					if(!pams.empty())
+					{
+						fails[vr] = complainAboutExtraneousPAMs("variables", vr, "used", /* printdef: */ false);
+						continue;
+					}
 
 					// check if have any names
 					for(auto p : replacementArgs)
@@ -163,6 +190,24 @@ namespace resolver
 				}
 				else if(auto td = dcast(TypeDefn, curcandidate))
 				{
+					if(!pams.empty())
+					{
+						if(!td->type->containsPlaceholders())
+						{
+							fails[td] = complainAboutExtraneousPAMs("non-polymorphic type", td, "constructed", /* printdef: */ true);
+							continue;
+						}
+						else if(auto uvd = dcast(UnionVariantDefn, curcandidate))
+						{
+							// fails[td] = complainAboutExtraneousPAMs("non-polymorphic type", td, "constructed", /* printdef: */ true);
+							fails[td] = SimpleError::make(fs->loc(), "type arguments should be specified on the union instead of the variant")
+								->append(ExampleMsg::make(strprintf("%s!<%s>::%s(...)", uvd->parentUnion->bareName, pams.print(),
+								uvd->variantName))
+							);
+							continue;
+						}
+					}
+
 					auto res = resolveConstructorCall(fs, td, replacementArgs, pams);
 					if(!res.isDefn())
 					{
@@ -174,6 +219,10 @@ namespace resolver
 						curcandidate = res.defn();
 						std::tie(dist, fails[td]) = std::make_tuple(0, nullptr);
 					}
+				}
+				else
+				{
+					fails[curcandidate] = SimpleError::make(fs->loc(), "unsupported entity '%s'", curcandidate->getKind());
 				}
 
 				if(dist == -1)

@@ -72,6 +72,8 @@ namespace fir
 		const Identifier& getName();
 		bool hasName();
 
+		static size_t getValueCount();
+
 		// protected shit
 		size_t id;
 		protected:
