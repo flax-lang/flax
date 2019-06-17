@@ -8,6 +8,7 @@
 #include "frontend.h"
 
 #ifndef _WIN32
+	#include <dlfcn.h>
 	#include <unistd.h>
 	#include <sys/mman.h>
 	#include <sys/ioctl.h>
@@ -31,9 +32,46 @@ namespace platform
 {
 	#ifdef _WIN32
 		filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
+		HMODULE currentModule = 0;
 	#else
 		filehandle_t InvalidFileHandle = -1;
+		void* currentModule = 0;
 	#endif
+
+
+	void performSelfDlOpen()
+	{
+		#ifdef _WIN32
+			currentModule = GetModuleHandle(nullptr);
+		#else
+			currentModule = dlopen(nullptr, RTLD_LAZY);
+		#endif
+	}
+
+	void performSelfDlClose()
+	{
+		// we can't close ourselves, don't bother doing anything.
+	}
+
+	void* getSymbol(const std::string& name)
+	{
+		if(!currentModule) _error_and_exit("failed to load current module!\n");
+
+		void* ret = 0;
+		#ifdef _WIN32
+			ret = GetProcAddress(currentModule, name.c_str());
+		#else
+			ret = dlsym(currentModule, name.c_str());
+		#endif
+
+		if(!ret) _error_and_exit("failed to find symbol '%s'\n", name);
+
+		return ret;
+	}
+
+
+
+
 
 	size_t getFileSize(const std::string& path)
 	{

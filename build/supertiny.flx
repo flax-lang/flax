@@ -76,8 +76,6 @@ struct foo
 }
 
 
-
-
 /*
 
 import std::opt
@@ -119,11 +117,6 @@ import std::    map
 		c. figure out if/how we should split up errors when there are too many spans in one context.
 			- do we duplicate the context?
 			- if not then???
-	}
-
-	15. builtin way to get a character literal {
-		even just enforcing that we get either a string literal of exactly length 1, or an i8 type, at compile-time.
-		sure, we could just abort when passed a slice != length 1, but then why bother being statically typed??
 	}
 
 	16. operator overload errors {

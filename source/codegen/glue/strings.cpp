@@ -109,8 +109,8 @@ namespace string
 					cs->irb.setCurrentBlock(loopincr);
 					{
 						// increment str1 and str2
-						fir::Value* v1 = cs->irb.PointerAdd(str1, fir::ConstantInt::getNative(1));
-						fir::Value* v2 = cs->irb.PointerAdd(str2, fir::ConstantInt::getNative(1));
+						fir::Value* v1 = cs->irb.GetPointer(str1, fir::ConstantInt::getNative(1));
+						fir::Value* v2 = cs->irb.GetPointer(str2, fir::ConstantInt::getNative(1));
 
 						cs->irb.WritePtr(v1, str1p);
 						cs->irb.WritePtr(v2, str2p);
@@ -349,7 +349,7 @@ namespace string
 
 				cs->irb.setCurrentBlock(skip);
 				{
-					auto newptr = cs->irb.PointerAdd(cs->irb.ReadPtr(ptrp), i1);
+					auto newptr = cs->irb.GetPointer(cs->irb.ReadPtr(ptrp), i1);
 					cs->irb.WritePtr(newptr, ptrp);
 
 					cs->irb.UnCondBranch(cond);

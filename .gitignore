@@ -51,6 +51,9 @@ build/standalone
 *.ll
 *.bc
 
+build/plots.txt
+build/massive.flx
+
 *.ir
 shakefile.hi
 shakefile
