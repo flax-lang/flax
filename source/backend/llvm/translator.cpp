@@ -1884,38 +1884,6 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_PointerAddition:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(b->getType()->isIntegerTy());
-
-							llvm::Value* ret = builder.CreateInBoundsGEP(a, b);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::Value_PointerSubtraction:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(b->getType()->isIntegerTy());
-
-							llvm::Value* negb = builder.CreateNeg(b);
-							llvm::Value* ret = builder.CreateInBoundsGEP(a, negb);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
 
 
 						case fir::OpKind::Value_InsertValue:

@@ -419,7 +419,7 @@ namespace cgn
 				iceAssert(ofs->getType()->isIntegerType());
 
 				auto ptr = (lt->isPointerType() ? lv : rv);
-				ptr = this->irb.PointerAdd(ptr, ofs);
+				ptr = this->irb.GetPointer(ptr, ofs);
 
 				return CGResult(ptr);
 			}

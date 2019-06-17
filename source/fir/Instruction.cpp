@@ -127,8 +127,6 @@ namespace fir
 			case OpKind::Misc_Sizeof:                       instrname = "sizeof"; break;
 			case OpKind::Branch_UnCond:                     instrname = "jump"; break;
 			case OpKind::Branch_Cond:                       instrname = "branch"; break;
-			case OpKind::Value_PointerAddition:             instrname = "ptradd"; break;
-			case OpKind::Value_PointerSubtraction:          instrname = "ptrsub"; break;
 
 			case OpKind::Value_CreatePHI:                   instrname = "phi"; break;
 

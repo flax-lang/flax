@@ -1426,7 +1426,6 @@ namespace fir
 		if(retType->isArrayType())
 			retType = retType->toArrayType()->getElementType()->getPointerTo();
 
-
 		if(ptr->getType()->isMutablePointer())
 			retType = retType->getMutablePointerVersion();
 
@@ -1489,37 +1488,15 @@ namespace fir
 
 
 
-	Value* IRBuilder::PointerAdd(Value* ptr, Value* num, const std::string& vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got '%s')", ptr->getType());
-
-		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got '%s')", num->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_PointerAddition, false, this->currentBlock, ptr->getType(), { ptr, num });
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::PointerSub(Value* ptr, Value* num, const std::string& vname)
-	{
-		if(!ptr->getType()->isPointerType())
-			error("ptr is not a pointer type (got '%s')", ptr->getType());
-
-		if(!num->getType()->isIntegerType())
-			error("num is not an integer type (got '%s')", num->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_PointerSubtraction, false, this->currentBlock, ptr->getType(), { ptr, num });
-		return this->addInstruction(instr, vname);
-	}
-
-
 
 	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
 			error("val is not an aggregate type (have '%s')", t);
+
+		if(inds.size() != 1)
+			error("must have exactly one index!");
 
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
@@ -1534,6 +1511,7 @@ namespace fir
 			error("Mismatched types for value and element -- trying to insert '%s' into '%s'",
 				elm->getType(), et);
 		}
+
 
 		int ofs = 0;
 		if(t->isClassType()) ofs = 1;   //! to account for vtable
@@ -1552,6 +1530,9 @@ namespace fir
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
 			error("val is not an aggregate type (have '%s')", t);
+
+		if(inds.size() != 1)
+			error("must have exactly one index!");
 
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
