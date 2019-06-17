@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
+#include "mpool.h"
 #include "codegen.h"
 #include "gluecode.h"
 
@@ -225,7 +226,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	//! SELF HANDLING (INSERTION) (CODEGEN)
 	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody() && this->isImplicitMethodCall)
 	{
-		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
+		auto fake = util::pool<RawValueExpr>(this->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(cs->irb.AddressOf(cs->getMethodSelf(), true));
 
 		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake, 0));

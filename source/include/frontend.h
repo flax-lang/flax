@@ -45,6 +45,7 @@ namespace frontend
 	bool getPrintFIR();
 	bool getPrintLLVMIR();
 
+	bool getPrintProfileStats();
 	bool getAbortOnError();
 
 	bool getIsFreestanding();

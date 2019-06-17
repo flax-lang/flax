@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
+#include "mpool.h"
 
 namespace pts
 {
@@ -124,7 +125,7 @@ namespace pts
 	InferredType* InferredType::get()
 	{
 		if(it) return it;
-		return (it = new InferredType(Location()));
+		return (it = util::pool<InferredType>(Location()));
 	}
 
 	NamedType* NamedType::create(const Location& l, const std::string& s)
@@ -134,7 +135,7 @@ namespace pts
 
 	NamedType* NamedType::create(const Location& l, const std::string& s, const PolyArgMapping_t& tm)
 	{
-		auto ret = new NamedType(l, s);
+		auto ret = util::pool<NamedType>(l, s);
 		ret->genericMapping = tm;
 
 		return ret;

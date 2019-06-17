@@ -307,7 +307,7 @@ namespace sst
 					if(!begin)
 					{
 						if(allowFail)   return 0;
-						else            error(this->loc(), "no such scope '%s'", scopes.front());
+						else            error(this->loc(), "nonexistent scope '%s'", scopes.front());
 					}
 
 
@@ -334,7 +334,7 @@ namespace sst
 								if(it == begin->subtrees.end())
 								{
 									if(allowFail)   return 0;
-									else            error(this->loc(), "no such entity '%s' in scope '%s'", scopes.front(), prev);
+									else            error(this->loc(), "no entity '%s' in scope '%s'", scopes.front(), prev);
 								}
 
 								begin = it->second;

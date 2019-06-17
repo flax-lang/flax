@@ -4,6 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
+#include "mpool.h"
 
 CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
@@ -267,7 +268,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 				if(this->indexVar)
 				{
-					auto idx = new sst::RawValueExpr(this->indexVar->loc, fir::Type::getNativeWord());
+					auto idx = util::pool<RawValueExpr>(this->indexVar->loc, fir::Type::getNativeWord());
 					idx->rawValue = CGResult(cs->irb.ReadPtr(iterptr));
 
 					this->indexVar->init = idx;

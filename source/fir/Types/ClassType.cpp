@@ -182,7 +182,7 @@ namespace fir
 				return f;
 		}
 
-		error("no such function with type '%s'", ftype);
+		error("no method with type '%s'", ftype);
 	}
 
 
@@ -304,7 +304,7 @@ namespace fir
 		}
 		else
 		{
-			error("no such method named '%s' matching signature '%s' in virtual method table of class '%s'",
+			error("no method named '%s' matching signature '%s' in virtual method table of class '%s'",
 				name, (Type*) ft, this->getTypeName().name);
 		}
 	}

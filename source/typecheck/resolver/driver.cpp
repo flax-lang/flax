@@ -56,7 +56,7 @@ namespace resolver
 		{
 			// unify the handling of generic and non-generic stuff.
 			// if we provided mappings, don't bother searching normal functions.
-			if(gmaps.empty())
+			// if(gmaps.empty())
 			{
 				auto defs = tree->getDefinitionsWithName(name);
 				for(auto d : defs)
@@ -116,7 +116,7 @@ namespace resolver
 		{
 			if(!didGeneric)
 			{
-				errs = SimpleError::make(fs->loc(), "no such function named '%s'", name);
+				errs = SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name);
 			}
 
 			return TCResult(errs);

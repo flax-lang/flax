@@ -5,7 +5,7 @@
 #include "sst.h"
 #include "codegen.h"
 #include "gluecode.h"
-
+#include "mpool.h"
 
 
 CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -40,7 +40,7 @@ static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 
 	if(defn)
 	{
-		auto v = new sst::RawValueExpr(defn->loc, res.value->getType());
+		auto v = util::pool<sst::RawValueExpr>(defn->loc, res.value->getType());
 		v->rawValue = res;
 
 		defn->init = v;

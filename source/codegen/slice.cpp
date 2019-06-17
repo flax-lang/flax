@@ -6,6 +6,7 @@
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
+#include "mpool.h"
 
 static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex,
 	sst::Expr* bexpr, sst::Expr* eexpr)
@@ -240,7 +241,7 @@ CGResult sst::SplatExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		// just do a slice on it.
 		auto target = fir::ArraySliceType::getVariadic(ty->getArrayElementType());
-		auto slice = new sst::SliceOp(this->loc, target);
+		auto slice = util::pool<SliceOp>(this->loc, target);
 
 		slice->expr = this->inside;
 		slice->begin = 0;

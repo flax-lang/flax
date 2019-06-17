@@ -34,10 +34,6 @@ import std::opt
 struct foo
 {
 	x: int
-	_: struct {
-		a: int
-		b: int
-	}
 }
 
 @entry fn main()
@@ -60,10 +56,16 @@ struct foo
 	// }
 
 	do {
-		let q = foo(x: 10)
+		// let q = foo(x: 10)
+		printf("hello, world!\n")
 	}
 
-	let x = std::opt::some!<int>(10)
+	// fn qux() -> int => 30
+
+	// let x = std::opt::some!<int>(10)
+	// let f = foo!<int>(3)
+	// let q = qux!<int>()
+
 
 
 	/* do {
@@ -102,11 +104,6 @@ import std::    map
 /*
 	! bugs !
 	{
-		1. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
-			eg: std::opt::some!<str> works, which is a little strange.
-			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
-			gets treated like a function call (and so finds no functions!)
-
 		2. splatting tuples into a generic function *will not work*
 		3. pass the overall location to the polymorph solver.
 	}

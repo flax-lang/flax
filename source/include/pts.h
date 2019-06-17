@@ -86,7 +86,7 @@ namespace pts
 		static NamedType* create(const Location& l, const std::string& s);
 		static NamedType* create(const Location& l, const std::string& s, const PolyArgMapping_t& genericMapping);
 
-		private:
+		// private:
 		explicit NamedType(const Location& l, const std::string& n) : Type(l), name(n) { }
 	};
 

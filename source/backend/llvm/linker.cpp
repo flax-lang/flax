@@ -68,9 +68,12 @@ static llvm::LLVMContext globalContext;
 template <typename T>
 static void _printTiming(T ts, const std::string& thing)
 {
-	auto dur = std::chrono::high_resolution_clock::now() - ts;
-	auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+	if(frontend::getPrintProfileStats())
+	{
+		auto dur = std::chrono::high_resolution_clock::now() - ts;
+		auto ms = (double) dur.count() / 1000.0 / 1000.0;
+		printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+	}
 }
 
 namespace backend

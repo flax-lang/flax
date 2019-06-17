@@ -18,7 +18,7 @@ namespace sst
 {
 	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, const std::string& filename)
 	{
-		auto clone = new StateTree(clonee->name, filename, surrogateParent);
+		auto clone = util::pool<StateTree>(clonee->name, filename, surrogateParent);
 		for(auto sub : clonee->subtrees)
 			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
 
@@ -186,7 +186,7 @@ namespace sst
 	using frontend::CollectorState;
 	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports)
 	{
-		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
+		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
 		tree->treeDefn = util::pool<TreeDefn>(Location());
 		tree->treeDefn->tree = tree;
 
@@ -219,7 +219,7 @@ namespace sst
 					}
 					else
 					{
-						auto newinspt = new sst::StateTree(impas, file.name, curinspt);
+						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
 						curinspt->subtrees[impas] = newinspt;
 
 						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);

@@ -315,6 +315,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	iceAssert(defn);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(this->name, IdKind::Name);
 	defn->id.scope = fs->getCurrentScope();
 
