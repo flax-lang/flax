@@ -23,7 +23,7 @@ namespace cgn
 
 		fir::Value* left = b->left->codegen(cs, fir::Type::getBool()).value;
 		if(!left->getType()->isBoolType())
-			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType());
+			error(b->left, "non-boolean type '%s' cannot be used as a conditional", left->getType());
 
 		// ok, compare first.
 		fir::Value* cmpres = cs->irb.ICmpEQ(left, fir::ConstantBool::get(true));
@@ -39,7 +39,7 @@ namespace cgn
 			// ok, check the second
 			fir::Value* right = b->right->codegen(cs, fir::Type::getBool()).value;
 			if(!right->getType()->isBoolType())
-				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType());
+				error(b->right, "non-boolean type '%s' cannot be used as a conditional", right->getType());
 
 			fir::Value* cmpres = cs->irb.ICmpEQ(right, fir::ConstantBool::get(true));
 			cs->irb.CondBranch(cmpres, pass, merge);
@@ -71,7 +71,7 @@ namespace cgn
 
 		fir::Value* left = b->left->codegen(cs, fir::Type::getBool()).value;
 		if(!left->getType()->isBoolType())
-			error(b->left, "Non-boolean type '%s' cannot be used as a conditional", left->getType());
+			error(b->left, "non-boolean type '%s' cannot be used as a conditional", left->getType());
 
 		// ok, compare first.
 		fir::Value* cmpres = cs->irb.ICmpEQ(left, fir::ConstantBool::get(true));
@@ -88,7 +88,7 @@ namespace cgn
 			// ok, check the second
 			fir::Value* right = b->right->codegen(cs, fir::Type::getBool()).value;
 			if(!right->getType()->isBoolType())
-				error(b->right, "Non-boolean type '%s' cannot be used as a conditional", right->getType());
+				error(b->right, "non-boolean type '%s' cannot be used as a conditional", right->getType());
 
 			fir::Value* cmpres = cs->irb.ICmpEQ(right, fir::ConstantBool::get(true));
 			cs->irb.CondBranch(cmpres, merge, fail);

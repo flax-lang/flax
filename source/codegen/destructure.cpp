@@ -84,7 +84,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	bool shouldSliceBeMutable = sst::getMutabilityOfSliceOfType(rt);
 
 	if(!rt->isArrayType() && !rt->isDynamicArrayType() && !rt->isArraySliceType() && !rt->isStringType())
-		error(bind.loc, "Expected array type in destructuring declaration; found type '%s' instead", rt);
+		error(bind.loc, "expected array type in destructuring declaration; found type '%s' instead", rt);
 
 	if(rt->isStringType())
 	{
@@ -179,9 +179,9 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 				idx++;
 			}
 
-			warn(bind.loc, "Destructure of array without pointer (shouldn't happen!)");
+			warn(bind.loc, "destructure of array without pointer (shouldn't happen!)");
 			if(!bind.restName.empty())
-				error(bind.loc, "Could not get pointer to array (of type '%s') to create binding for '...'", rt);
+				error(bind.loc, "could not get pointer to array (of type '%s') to create binding for '...'", rt);
 		}
 		else
 		// #endif
@@ -257,7 +257,7 @@ void cgn::CodegenState::generateDecompositionBindings(const DecompMapping& bind,
 	if(!bind.name.empty())
 	{
 		if(bind.ref && !allowref)
-			error(bind.loc, "Cannot bind to value of type '%s' by reference", rt);
+			error(bind.loc, "cannot bind to value of type '%s' by reference", rt);
 
 		if(bind.ref)
 		{

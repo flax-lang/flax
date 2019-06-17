@@ -16,15 +16,9 @@ namespace fir
 
 	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
-		// if(this->globals.find(ident) != this->globals.end())
-		// 	error("Already have a global with name '%s'", ident.str());
-
-		// // this adds itself to the module list.
-		// return new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
-
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
-			error("Already have a global with name '%s'", ident.str());
+			error("already have a global with name '%s'", ident.str());
 
 		this->globals[ident] = gv;
 		return gv;
@@ -51,7 +45,7 @@ namespace fir
 	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
-			error("No such global with name '%s'", id.str());
+			error("no such global with name '%s'", id.str());
 
 		return this->globals[id];
 	}
@@ -115,7 +109,7 @@ namespace fir
 	Type* Module::getNamedType(const Identifier& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
-			error("No such type with name '%s'", id.str());
+			error("no such type with name '%s'", id.str());
 
 		return this->namedTypes[id];
 	}
@@ -123,7 +117,7 @@ namespace fir
 	void Module::addNamedType(const Identifier& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
-			error("Type '%s' exists already", id.str());
+			error("type '%s' exists already", id.str());
 
 		this->namedTypes[id] = type;
 	}
@@ -141,7 +135,7 @@ namespace fir
 	void Module::addFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) != this->functions.end())
-			error("Function '%s' exists already", func->getName().str());
+			error("function '%s' exists already", func->getName().str());
 
 		this->functions[func->getName()] = func;
 	}
@@ -149,7 +143,7 @@ namespace fir
 	void Module::removeFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) == this->functions.end())
-			error("Function '%s' does not exist, cannot remove", func->getName().str());
+			error("function '%s' does not exist, cannot remove", func->getName().str());
 
 		this->functions.erase(func->getName());
 	}
@@ -189,7 +183,7 @@ namespace fir
 		{
 			if(!this->functions[id]->getType()->isTypeEqual(ftype))
 			{
-				error("Function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
+				error("function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
 					this->functions[id]->getType(), ftype);
 			}
 

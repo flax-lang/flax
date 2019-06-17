@@ -795,12 +795,12 @@ namespace saa_common
 			{
 				if(isDecomp)
 				{
-					printRuntimeError(cs, func->getArguments()[2], "Index '%ld' out of bounds for "
+					printRuntimeError(cs, func->getArguments()[2], "index '%ld' out of bounds for "
 						+ std::string(isString ? "string" : "array") + " of length %ld\n", { ind, max });
 				}
 				else
 				{
-					printRuntimeError(cs, func->getArguments()[2], "Binding of '%ld' "
+					printRuntimeError(cs, func->getArguments()[2], "binding of '%ld' "
 						+ std::string(isString ? "chars" : "elements") + " out of bounds for string of length %ld\n", { ind, max });
 				}
 			}

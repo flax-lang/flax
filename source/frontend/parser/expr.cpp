@@ -636,7 +636,11 @@ namespace parser
 		st.skipWS();
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
-			expected(opening.loc, "closing ')' to match opening parenthesis here, or ',' to begin a tuple", st.front().str());
+		{
+			SpanError::make(SimpleError::make(st.loc(), "expected ',' to begin a tuple, or a closing ')'"))->add(
+				util::ESpan(opening.loc, "opening parenthesis was here")
+			)->append(BareError::make(MsgType::Note, "named tuples are not supported"))->postAndQuit();
+		}
 
 		// if we're a tuple, get ready for this shit.
 		if(st.front().type == TT::Comma)
@@ -1210,9 +1214,6 @@ namespace parser
 
 
 				case TT::LBrace:
-					// parse it, but throw it away
-					// warn(parseBracedBlock(st)->loc, "Anonymous blocks are ignored; to run, preface with 'do'");
-					// return 0;
 					unexpected(st, "block; to create a nested scope, use 'do { ... }'");
 
 				default:

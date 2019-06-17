@@ -83,7 +83,7 @@ namespace backend
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 		if(inputs.size() != 1)
-			error("Need exactly 1 input filename, have %zu", inputs.size());
+			error("need exactly 1 input filename, have %zu", inputs.size());
 	}
 
 	std::string LLVMBackend::str()
@@ -232,7 +232,7 @@ namespace backend
 		{
 			if(frontend::getOutputMode() != ProgOutputMode::ObjectFile && !this->compiledData.module->getEntryFunction())
 			{
-				error("No entry function marked, a program cannot be compiled");
+				error("no entry function marked, a program cannot be compiled");
 			}
 
 			auto buffer = this->initialiseLLVMStuff();
@@ -252,7 +252,7 @@ namespace backend
 				if(fd == platform::InvalidFileHandle)
 				{
 					perror("open(2) error");
-					BareError::make("Unable to create temporary file ('%s') for linking", objname)->postAndQuit();
+					BareError::make("unable to create temporary file ('%s') for linking", objname)->postAndQuit();
 				}
 
 				platform::writeFile(fd, buffer.data(), buffer.size_in_bytes());
@@ -410,7 +410,7 @@ namespace backend
 		}
 		else
 		{
-			error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
+			error("invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
 		}
 
 
@@ -568,7 +568,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load library '%s', dlopen failed with error:\n%s", l, err);
+				error("failed to load library '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 
@@ -579,7 +579,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load framework '%s', dlopen failed with error:\n%s", l, err);
+				error("failed to load framework '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 		EntryPoint_t ret = 0;
@@ -612,7 +612,7 @@ namespace backend
 		}
 		else
 		{
-			error("No entry function marked, cannot JIT");
+			error("no entry function marked, cannot JIT");
 		}
 
 
@@ -674,7 +674,7 @@ namespace backend
 				this->entryFunction = entryfunc;
 
 			else
-				error("No entry point marked with '@entry', and no 'main' function; cannot compile program");
+				error("no entry point marked with '@entry', and no 'main' function; cannot compile program");
 		}
 
 		if(entryfunc->getName() != "main")
@@ -682,7 +682,7 @@ namespace backend
 			// well.
 			if(this->linkedModule->getFunction("main") != 0)
 			{
-				error("Conflicting 'main' function; entry function was '%s', but 'main' must be undefined in order to allow trampoline code to work (blame the linker)");
+				error("conflicting 'main' function; entry function was '%s', but 'main' must be undefined in order to allow trampoline code to work (blame the linker)");
 			}
 
 			// ok.
@@ -730,7 +730,7 @@ namespace backend
 		{
 			// insert a call at the beginning of main().
 			if((frontend::getOutputMode() == ProgOutputMode::Program || frontend::getOutputMode() == ProgOutputMode::RunJit) && !entryfunc)
-				error("No entry function defined");
+				error("no entry function defined");
 
 
 			llvm::BasicBlock* entryblock = &entryfunc->getEntryBlock();

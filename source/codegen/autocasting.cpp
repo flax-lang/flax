@@ -44,7 +44,7 @@ namespace cgn
 	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, fir::ConstantNumber* num, fir::Type* target, bool isAutocast)
 	{
 		if(!(target->isIntegerType() || target->isFloatingPointType()))
-			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target);
+			error(cs->loc(), "unable to cast number literal to inferred type '%s'", target);
 
 		auto ty = num->getType()->toConstantNumberType();
 
@@ -52,12 +52,12 @@ namespace cgn
 		if(ty->isFloating() && target->isIntegerType())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting floating-point literal to integer type '%s' will cause a truncation", target);
+			warn(cs->loc(), "casting floating-point literal to integer type '%s' will cause a truncation", target);
 		}
 		else if(target->isIntegerType() && !target->isSignedIntType() && ty->isSigned())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target);
+			warn(cs->loc(), "casting negative literal to an unsigned integer type '%s'", target);
 			signConvert = true;
 		}
 
@@ -65,7 +65,7 @@ namespace cgn
 		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
 		{
 			// TODO: actually do what we say.
-			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
+			warn(cs->loc(), "casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
 				target);
 		}
 

@@ -41,7 +41,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	}
 	else
 	{
-		error(user, "Invalid type '%s' for instance dot op", restype);
+		error(user, "invalid type '%s' for instance dot op", restype);
 	}
 
 	return CGResult(retv);
@@ -204,7 +204,7 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		}
 		else
 		{
-			error(this->loc(), "Type '%s' has no field named '%s'", sty->getTypeName().str(), name);
+			error(this->loc(), "type '%s' has no field named '%s'", sty->getTypeName().str(), name);
 		}
 	};
 
@@ -215,5 +215,5 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		return dothing(ty->toClassType());
 
 	else
-		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty, name);
+		error(this->loc(), "invalid self type '%s' for field named '%s'", ty, name);
 }

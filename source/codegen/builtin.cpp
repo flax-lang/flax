@@ -62,10 +62,10 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(!ty->isStringType());
 
 			if(!res->islvalue())
-				error(this->lhs, "Cannot call 'pop()' on an rvalue");
+				error(this->lhs, "cannot call 'pop()' on an rvalue");
 
 			else if(ty->isArrayType())
-				error(this->lhs, "Cannot call 'pop()' on an array type ('%s')", ty);
+				error(this->lhs, "cannot call 'pop()' on an array type ('%s')", ty);
 
 			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty);
 			auto tupl = cs->irb.Call(popf, res.value, fir::ConstantString::get(this->loc.toString()));
@@ -84,7 +84,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(arguments.size() == 1);
 
 			if(!res->islvalue())
-				error(this->lhs, "Cannot call 'append' on an rvalue");
+				error(this->lhs, "cannot call 'append' on an rvalue");
 
 			auto arg = arguments[0];
 			fir::Function* appendf = cgn::glue::saa_common::generateAppropriateAppendFunction(cs, ty, arg->getType());
@@ -193,7 +193,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 
-	error(this, "No such property or builtin method '%s' on type '%s'", this->name, ty);
+	error(this, "no such property or builtin method '%s' on type '%s'", this->name, ty);
 }
 
 

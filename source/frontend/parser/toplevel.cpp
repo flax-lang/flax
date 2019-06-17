@@ -235,7 +235,7 @@ namespace parser
 					continue;
 
 				case TT::RBrace:
-					if(!hadLBrace) error(st, "Unexpected '}'");
+					if(!hadLBrace) error(st, "unexpected '}'");
 					goto out;
 
 				default: {

@@ -67,7 +67,7 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(v);
 
 		if(dcast(fir::ConstantValue, v) == 0)
-			error(this, "Enumeration case value ('%s' of type '%s') must be constant", this->id.name, v->getType());
+			error(this, "enumeration case value ('%s' of type '%s') must be constant", this->id.name, v->getType());
 	}
 	else
 	{

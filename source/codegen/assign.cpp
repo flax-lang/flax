@@ -20,13 +20,13 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(!lr->islorclvalue())
 	{
-		SpanError::make(SimpleError::make(this->loc, "Cannot assign to non-lvalue (most likely a temporary) expression"))
+		SpanError::make(SimpleError::make(this->loc, "cannot assign to non-lvalue (most likely a temporary) expression"))
 			->add(util::ESpan(this->left->loc, "here"))
 			->postAndQuit();
 	}
 	else if(lr->isclvalue())
 	{
-		SpanError::make(SimpleError::make(this->loc, "Cannot assign to immutable expression"))
+		SpanError::make(SimpleError::make(this->loc, "cannot assign to immutable expression"))
 			->add(util::ESpan(this->left->loc, "here"))
 			->postAndQuit();
 	}
@@ -51,7 +51,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// right then.
 				if(!lr->islvalue())
-					error(this, "Cannot append to an r-value array");
+					error(this, "cannot append to an r-value array");
 
 				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
 
@@ -65,7 +65,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// right then.
 				if(!lr->islvalue())
-					error(this, "Cannot append to an r-value array");
+					error(this, "cannot append to an r-value array");
 
 				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
 
@@ -79,7 +79,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// right then.
 				if(!lr->islvalue())
-					error(this, "Cannot append to an r-value array");
+					error(this, "cannot append to an r-value array");
 
 				auto appendf = cgn::glue::string::getAppendFunction(cs);
 
@@ -93,7 +93,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// right then.
 				if(!lr->islvalue())
-					error(this, "Cannot append to an r-value string");
+					error(this, "cannot append to an r-value string");
 
 				auto appendf = cgn::glue::string::getCharAppendFunction(cs);
 
@@ -117,12 +117,12 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(rr == 0)
 	{
-		error(this, "Invalid assignment from value of type '%s' to expected type '%s'", rr->getType(), lt);
+		error(this, "invalid assignment from value of type '%s' to expected type '%s'", rr->getType(), lt);
 	}
 
 	// ok then
 	if(lt != rr->getType())
-		error(this, "What? left = %s, right = %s", lt, rr->getType());
+		error(this, "what? left = %s, right = %s", lt, rr->getType());
 
 	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false, /* performStore: */ true);
 	return CGResult(0);
@@ -139,7 +139,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto tuple = this->right->codegen(cs).value;
 	if(!tuple->getType()->isTupleType())
-		error(this->right, "Expected tuple type in assignment to tuple on left-hand-side; found type '%s' instead", tuple->getType());
+		error(this->right, "expected tuple type in assignment to tuple on left-hand-side; found type '%s' instead", tuple->getType());
 
 	auto tty = tuple->getType()->toTupleType();
 
@@ -150,7 +150,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		auto res = v->codegen(cs, tty->getElementN(idx));
 		if(!res->islvalue())
-			error(v, "Cannot assign to non-lvalue expression in tuple assignment");
+			error(v, "cannot assign to non-lvalue expression in tuple assignment");
 
 		results.push_back(res);
 		idx++;
@@ -164,7 +164,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto rr = cs->oneWayAutocast(val, lr.value->getType());
 		if(!rr || rr->getType() != lr.value->getType())
 		{
-			error(this->right, "Mismatched types in assignment to tuple element %d; assigning type '%s' to '%s'",
+			error(this->right, "mismatched types in assignment to tuple element %d; assigning type '%s' to '%s'",
 				val->getType(), lr.value->getType());
 		}
 

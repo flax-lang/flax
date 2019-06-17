@@ -70,7 +70,7 @@ namespace cgn
 	void CodegenState::leaveFunction()
 	{
 		if(this->functionStack.empty())
-			error(this->loc(), "Not a in function");
+			error(this->loc(), "not a in function");
 
 		this->functionStack.pop_back();
 	}
@@ -78,7 +78,7 @@ namespace cgn
 	fir::Function* CodegenState::getCurrentFunction()
 	{
 		if(this->functionStack.empty())
-			error(this->loc(), "Not a in function");
+			error(this->loc(), "not a in function");
 
 		return this->functionStack.back();
 	}
@@ -228,8 +228,8 @@ namespace cgn
 
 			if(ifn == 0)
 			{
-				SimpleError::make(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
-					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "Class '%s' was defined here:", clsdef->id.name))
+				SimpleError::make(this->loc(), "class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
+					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "class '%s' was defined here:", clsdef->id.name))
 					->postAndQuit();
 			}
 
@@ -339,7 +339,7 @@ namespace cgn
 		}
 		else if(storage->getType()->getPointerElementType() != value->getType())
 		{
-			error(this->loc(), "Cannot store value of type '%s' into storage of type '%s'", value->getType(),
+			error(this->loc(), "cannot store value of type '%s' into storage of type '%s'", value->getType(),
 				storage->getType());
 		}
 

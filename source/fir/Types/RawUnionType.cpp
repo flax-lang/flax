@@ -22,7 +22,7 @@ namespace fir
 	RawUnionType* RawUnionType::create(const Identifier& name, const util::hash_map<std::string, Type*>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Union with name '%s' already exists", name.str());
+			error("union with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new RawUnionType(name, mems));

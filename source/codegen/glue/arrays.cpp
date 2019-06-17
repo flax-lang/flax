@@ -721,7 +721,7 @@ namespace array
 			cs->irb.CondBranch(cond, fail, merge);
 			cs->irb.setCurrentBlock(fail);
 			{
-				printRuntimeError(cs, loc, "Calling pop() on an empty array\n", { });
+				printRuntimeError(cs, loc, "calling pop() on an empty array\n", { });
 			}
 
 

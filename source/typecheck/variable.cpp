@@ -41,7 +41,7 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 			return TCResult(
 				SimpleError::make(ident->loc, "field '%s' is an instance member of type '%s', and cannot be accessed statically",
 					ident->name, fld->parentType->id.name)
-				->append(SimpleError::make(MsgType::Note, def->loc, "Field '%s' was defined here:", def->id.name))
+				->append(SimpleError::make(MsgType::Note, def->loc, "field '%s' was defined here:", def->id.name))
 			);
 		}
 	}

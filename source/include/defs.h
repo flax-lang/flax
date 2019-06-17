@@ -80,7 +80,7 @@ std::string strprintf(const char* fmt, Ts... ts)
 #ifdef NDEBUG
 #define iceAssert(x)        ((void) (x))
 #else
-#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 #endif
 
 #define TAB_WIDTH	4

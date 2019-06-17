@@ -12,12 +12,12 @@ CGResult sst::TypeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ScopeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	error(this, "Failed to resolve scope '%s'", util::serialiseScope(this->scope));
+	error(this, "failed to resolve scope '%s'", util::serialiseScope(this->scope));
 }
 
 CGResult sst::TreeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	error(this, "Cannot codegen tree definition -- something fucked up somewhere");
+	error(this, "cannot codegen tree definition -- something fucked up somewhere");
 }
 
 CGResult sst::BareTypeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)

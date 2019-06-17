@@ -220,7 +220,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 									err->append(
 										SimpleError::make(MsgType::Note, bf->loc,
 											"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
-												BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name)
+												BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name)
 										)
 									);
 								}

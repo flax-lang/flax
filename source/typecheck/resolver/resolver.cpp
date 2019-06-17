@@ -190,23 +190,33 @@ namespace resolver
 
 			if(finals.empty())
 			{
-				iceAssert(cands.size() == fails.size());
-				std::vector<fir::Type*> tmp = util::map(cands[0].second, [](const FnCallArgument& p) -> auto { return p.value->type; });
+				// if we only had one candidate, there are no 'overloads' -- don't be a c++ and say stupid things.
+				// we just directly post the error message instead.
 
-				auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s(%s)' amongst %zu %s",
-					cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
-
-				for(auto f : fails)
+				if(fails.size() == 1)
 				{
-					// TODO: HACK -- pass the location around more then!!
-					// patch in the location if it's not present!
-					if(auto se = dcast(SimpleError, f.second); se && se->loc == Location())
-						se->loc = f.first->loc;
-
-					errs->addCand(f.first, f.second);
+					return { TCResult(fails.begin()->second), { } };
 				}
+				else
+				{
+					iceAssert(cands.size() == fails.size());
+					std::vector<fir::Type*> tmp = util::map(cands[0].second, [](const FnCallArgument& p) -> auto { return p.value->type; });
 
-				return { TCResult(errs), { } };
+					auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s(%s)' amongst %zu %s",
+						cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
+
+					for(auto f : fails)
+					{
+						// TODO: HACK -- pass the location around more then!!
+						// patch in the location if it's not present!
+						if(auto se = dcast(SimpleError, f.second); se && se->loc == Location())
+							se->loc = f.first->loc;
+
+						errs->addCand(f.first, f.second);
+					}
+
+					return { TCResult(errs), { } };
+				}
 			}
 			else if(finals.size() > 1)
 			{

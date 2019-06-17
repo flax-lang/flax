@@ -252,7 +252,7 @@ namespace sst
 				if(arguments.size() != fieldNames.size() && arguments.size() > 0)
 				{
 					return { { }, SimpleError::make(callLoc,
-						"mismatched number of arguments in constructor call to type '%s'; expected %d arguments, found %d arguments instead",
+						"mismatched number of arguments in constructor call to type '%s'; expected %d, found %d instead",
 						name, fieldNames.size(), arguments.size())->append(
 							BareError::make(MsgType::Note, "all arguments are mandatory when using positional arguments")
 						)

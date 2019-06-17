@@ -370,7 +370,6 @@ namespace sst
 			tree = tree->parent;
 		}
 
-		// warn("No such tree '%s' in scope", name);
 		return 0;
 	}
 
