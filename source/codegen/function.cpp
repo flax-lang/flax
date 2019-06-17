@@ -87,8 +87,8 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if(cs->entryFunction.first != 0)
 		{
-			SimpleError::make(this->loc, "Redefinition of entry function with '@entry'")
-				->append(SimpleError::make(MsgType::Note, cs->entryFunction.second, "Previous entry function marked here:"))
+			SimpleError::make(this->loc, "redefinition of entry function with '@entry'")
+				->append(SimpleError::make(MsgType::Note, cs->entryFunction.second, "previous entry function marked here:"))
 				->postAndQuit();
 		}
 
@@ -121,7 +121,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ef = cs->module->getFunction(realId);
 	if(ef && ef->getType() != ft)
 	{
-		error(this, "Foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
+		error(this, "foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
 			this->id.str(), ef->getType());
 	}
 

@@ -39,7 +39,7 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 
 		cs->irb.setCurrentBlock(failb);
 		{
-			cgn::glue::printRuntimeError(cs, s2, "Tried to allocate a negative ('%ld') amount of memory\n", { s1 });
+			cgn::glue::printRuntimeError(cs, s2, "tried to allocate a negative ('%ld') amount of memory\n", { s1 });
 		}
 
 		cs->irb.setCurrentBlock(merge);
@@ -158,7 +158,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 		if(!count || !count->getType()->isIntegerType())
-			error(ecount, "Expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
+			error(ecount, "expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
 
 		// make sure the length isn't negative
 		auto checkf = getCheckNegativeLengthFunction(cs);
@@ -196,7 +196,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(this->counts.size() > 1)
-		error(this, "Multi-dimensional arrays are not supported yet.");
+		error(this, "multi-dimensional arrays are not supported yet.");
 
 	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->isRaw));
 }

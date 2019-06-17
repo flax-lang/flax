@@ -32,7 +32,7 @@ namespace sst
 
 				if(!res)
 				{
-					error(this, "Case type of '%s' is '%s', cannot cast to type '%s'", vt, vt->toEnumType()->getCaseType(), target);
+					error(this, "case type of '%s' is '%s', cannot cast to type '%s'", vt, vt->toEnumType()->getCaseType(), target);
 				}
 
 				return CGResult(res);
@@ -84,7 +84,7 @@ namespace sst
 
 				if(!res)
 				{
-					error(this, "No appropriate cast from type '%s' to '%s'",
+					error(this, "no appropriate cast from type '%s' to '%s'",
 						vt, target);
 				}
 
@@ -145,17 +145,17 @@ namespace sst
 			if(lv->getType() != func->getArguments()[0]->getType())
 			{
 				SpanError::make(SimpleError::make(this->left->loc,
-					"Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					"mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
 					this->op, func->getArguments()[0]->getType(), lv->getType())
-				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 				->postAndQuit();
 			}
 			else if(rv->getType() != func->getArguments()[1]->getType())
 			{
 				SpanError::make(SimpleError::make(this->right->loc,
-					"Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					"mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
 					this->op, func->getArguments()[1]->getType(), rv->getType())
-				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 				->postAndQuit();
 			}
 
@@ -190,9 +190,9 @@ namespace sst
 
 			if(val->getType() != func->getArguments()[0]->getType())
 			{
-				SpanError::make(SimpleError::make(this->expr->loc, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), val->getType()))
-					->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				SpanError::make(SimpleError::make(this->expr->loc, "mismatched types for overloaded unary operator '%s'; "
+					"expected '%s', found '%s' instead", this->op, func->getArguments()[0]->getType(), val->getType()))
+					->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 					->postAndQuit();
 			}
 
@@ -242,10 +242,10 @@ namespace sst
 		else if(this->op == Operator::AddressOf)
 		{
 			if(!val->islorclvalue())
-				error(this, "Cannot take address of a non-lvalue");
+				error(this, "cannot take address of a non-lvalue");
 
 			else if(val->getType()->isFunctionType())
-				error(this, "Cannot take the address of a function; use it as a value type");
+				error(this, "cannot take the address of a function; use it as a value type");
 
 			return CGResult(cs->irb.AddressOf(val, false));
 		}
@@ -275,7 +275,7 @@ namespace cgn
 	{
 		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
 
-			SpanError::make(SimpleError::make(loc, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b))
+			SpanError::make(SimpleError::make(loc, "unsupported operator '%s' between types '%s' and '%s'", op, a, b))
 				->add(util::ESpan(al, strprintf("type '%s'", a)))
 				->add(util::ESpan(bl, strprintf("type '%s'", b)))
 				->postAndQuit();
@@ -399,7 +399,7 @@ namespace cgn
 			}
 			else
 			{
-				error("Unsupported comparison between types '%s' and '%s'", lt, rt);
+				error("unsupported comparison between types '%s' and '%s'", lt, rt);
 			}
 		}
 		else

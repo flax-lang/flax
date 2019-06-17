@@ -9,7 +9,7 @@
 #include <vector>
 
 
-#define VERSION_STRING	"0.30.0-pre"
+#define VERSION_STRING	"0.34.1-pre"
 
 #define ARG_COMPILE_ONLY                        "-c"
 #define ARG_BACKEND                             "-backend"
@@ -55,40 +55,40 @@
 static std::vector<std::pair<std::string, std::string>> list;
 static void setupMap()
 {
-	list.push_back({ ARG_COMPILE_ONLY, "Output an object file; do not call the linker" });
-	list.push_back({ ARG_BACKEND + std::string(" <backend>"), "Change the backend used for compilation" });
-	list.push_back({ ARG_EMIT_LLVM_IR, "Emit a bitcode (.bc) file instead of a program" });
-	list.push_back({ ARG_LINK_FRAMEWORK + std::string(" <framework>"), "Link to a framework (macOS only)" });
-	list.push_back({ ARG_LINK_FRAMEWORK + std::string(" <path>"), "Link to a framework (macOS only)" });
-	list.push_back({ ARG_HELP, "Print this message" });
-	list.push_back({ ARG_JITPROGRAM, "Use LLVM JIT to run the program, instead of compiling to a file" });
-	list.push_back({ ARG_LINK_LIBRARY + std::string(" <library>"), "Link to a library" });
-	list.push_back({ ARG_LIBRARY_SEARCH_PATH + std::string(" <path>"), "Search for libraries in <path>" });
-	list.push_back({ ARG_MCMODEL + std::string(" <model>"), "Change the mcmodel of the code" });
-	list.push_back({ ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS, "Disable calling constructors before main()" });
-	list.push_back({ ARG_OUTPUT_FILE + std::string(" <file>"), "Set the name of the output file" });
-	list.push_back({ ARG_OPTIMISATION_LEVEL_SELECT + std::string("<level>"), "Change the optimisation level; -O0, -O1, -O2, "
+	list.push_back({ ARG_COMPILE_ONLY, "output an object file; do not call the linker" });
+	list.push_back({ ARG_BACKEND + std::string(" <backend>"), "change the backend used for compilation" });
+	list.push_back({ ARG_EMIT_LLVM_IR, "emit a bitcode (.bc) file instead of a program" });
+	list.push_back({ ARG_LINK_FRAMEWORK + std::string(" <framework>"), "link to a framework (macOS only)" });
+	list.push_back({ ARG_LINK_FRAMEWORK + std::string(" <path>"), "link to a framework (macOS only)" });
+	list.push_back({ ARG_HELP, "print this message" });
+	list.push_back({ ARG_JITPROGRAM, "use LLVM JIT to run the program, instead of compiling to a file" });
+	list.push_back({ ARG_LINK_LIBRARY + std::string(" <library>"), "link to a library" });
+	list.push_back({ ARG_LIBRARY_SEARCH_PATH + std::string(" <path>"), "search for libraries in <path>" });
+	list.push_back({ ARG_MCMODEL + std::string(" <model>"), "change the mcmodel of the code" });
+	list.push_back({ ARG_DISABLE_AUTO_GLOBAL_CONSTRUCTORS, "disable calling constructors before main()" });
+	list.push_back({ ARG_OUTPUT_FILE + std::string(" <file>"), "set the name of the output file" });
+	list.push_back({ ARG_OPTIMISATION_LEVEL_SELECT + std::string("<level>"), "change the optimisation level; -O0, -O1, -O2, "
 		"-O3, and -Ox are valid options" });
 
-	list.push_back({ ARG_POSINDEPENDENT, "Generate position independent code" });
-	list.push_back({ ARG_PRINT_FIR, "Print the FlaxIR before compilation" });
-	list.push_back({ ARG_PRINT_LLVMIR, "Print the LLVM IR before compilation" });
-	list.push_back({ ARG_PROFILE, "Print internal compiler profiling statistics" });
-	list.push_back({ ARG_RUNPROGRAM, "Use LLVM JIT to run the program, instead of compiling to a file" });
-	list.push_back({ ARG_SHOW_CLANG_OUTPUT, "Show the output of calling the final compiler" });
-	list.push_back({ ARG_SYSROOT + std::string(" <dir>"), "Set the directory used as the sysroot" });
-	list.push_back({ ARG_TARGET + std::string(" <target>"), "Change the compilation target" });
+	list.push_back({ ARG_POSINDEPENDENT, "generate position independent code" });
+	list.push_back({ ARG_PRINT_FIR, "print the FlaxIR before compilation" });
+	list.push_back({ ARG_PRINT_LLVMIR, "print the LLVM IR before compilation" });
+	list.push_back({ ARG_PROFILE, "print internal compiler profiling statistics" });
+	list.push_back({ ARG_RUNPROGRAM, "use LLVM JIT to run the program, instead of compiling to a file" });
+	list.push_back({ ARG_SHOW_CLANG_OUTPUT, "show the output of calling the final compiler" });
+	list.push_back({ ARG_SYSROOT + std::string(" <dir>"), "set the directory used as the sysroot" });
+	list.push_back({ ARG_TARGET + std::string(" <target>"), "change the compilation target" });
 
-	list.push_back({ WARNING_DISABLE_ALL, "Disable all warnings" });
-	list.push_back({ WARNINGS_AS_ERRORS, "Treat all warnings as errors" });
+	list.push_back({ WARNING_DISABLE_ALL, "disable all warnings" });
+	list.push_back({ WARNINGS_AS_ERRORS, "treat all warnings as errors" });
 
-	list.push_back({ ARG_NO_RUNTIME_CHECKS, "Disable all runtime checks" });
-	list.push_back({ ARG_NO_RUNTIME_ERROR_STRINGS, "Disable runtime error messages (program will just abort)" });
+	list.push_back({ ARG_NO_RUNTIME_CHECKS, "disable all runtime checks" });
+	list.push_back({ ARG_NO_RUNTIME_ERROR_STRINGS, "disable runtime error messages (program will just abort)" });
 
-	list.push_back({ WARNING_ENABLE_UNUSED_VARIABLE, "Enable warnings for unused variables" });
-	list.push_back({ WARNING_ENABLE_VARIABLE_CHECKER, "Enable warnings from the variable state checker" });
-	list.push_back({ WARNING_DISABLE_UNUSED_VARIABLE, "Disable warnings for unused variables" });
-	list.push_back({ WARNING_DISABLE_VARIABLE_CHECKER, "Disable warnings from the variable state checker" });
+	list.push_back({ WARNING_ENABLE_UNUSED_VARIABLE, "enable warnings for unused variables" });
+	list.push_back({ WARNING_ENABLE_VARIABLE_CHECKER, "enable warnings from the variable state checker" });
+	list.push_back({ WARNING_DISABLE_UNUSED_VARIABLE, "disable warnings for unused variables" });
+	list.push_back({ WARNING_DISABLE_VARIABLE_CHECKER, "disable warnings from the variable state checker" });
 }
 
 static void printHelp()
@@ -97,9 +97,9 @@ static void printHelp()
 		setupMap();
 
 	printf("Flax Compiler - Version %s\n\n", VERSION_STRING);
-	printf("Usage: flaxc [options] <inputs>\n\n");
+	printf("usage: flaxc [options] <inputs>\n\n");
 
-	printf("Options:\n");
+	printf("options:\n");
 
 	size_t maxl = 0;
 	for(auto p : list)

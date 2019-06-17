@@ -37,17 +37,17 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		auto elmty = this->type->toArrayType()->getElementType();
 		if(fir::isRefCountedType(elmty))
-			error(this, "Cannot have refcounted type in array literal");
+			error(this, "cannot have refcounted type in array literal");
 
 		std::vector<fir::ConstantValue*> vals;
 		for(auto v : this->values)
 		{
 			auto cv = dcast(fir::ConstantValue, v->codegen(cs, elmty).value);
 			if(!cv)
-				error(v, "Constant value required in fixed array literal");
+				error(v, "constant value required in fixed array literal");
 
 			if(cv->getType() != elmty)
-				error(v, "Mismatched type for array literal; expected element type '%s', found '%s'", elmty, cv->getType());
+				error(v, "mismatched type for array literal; expected element type '%s', found '%s'", elmty, cv->getType());
 
 			vals.push_back(cv);
 		}
@@ -66,7 +66,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			// if our element type is void, and there is no infer... die.
 			if((elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
-				error(this, "Failed to infer type for empty array literal");
+				error(this, "failed to infer type for empty array literal");
 
 			//! by right, if we have no values, then elmty is *supposed* to be void.
 			iceAssert(elmty->isVoidType() && infer);
@@ -92,7 +92,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else
 			{
-				error(this, "Incorrectly inferred type '%s' for empty array literal", infer);
+				error(this, "incorrectly inferred type '%s' for empty array literal", infer);
 			}
 		}
 
@@ -125,7 +125,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 				if(vl->getType() != elmty)
 				{
-					error(v, "Mismatched type for array literal; expected element type '%s', found '%s'",
+					error(v, "mismatched type for array literal; expected element type '%s', found '%s'",
 						elmty, vl->getType());
 				}
 
@@ -205,7 +205,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(vr->getType() != ty)
 		{
-			error(this->values[i], "Mismatched types in tuple element %zu; expected type '%s', found type '%s'",
+			error(this->values[i], "mismatched types in tuple element %zu; expected type '%s', found type '%s'",
 				i, ty, vr->getType());
 		}
 

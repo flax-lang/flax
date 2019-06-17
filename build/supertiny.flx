@@ -34,7 +34,10 @@ import std::opt
 struct foo
 {
 	x: int
-	y: str
+	_: struct {
+		a: int
+		b: int
+	}
 }
 
 @entry fn main()
@@ -57,9 +60,10 @@ struct foo
 	// }
 
 	do {
-		let k = foo(y: "20", x: 31)
-		let m = true
+		let q = foo(x: 10)
 	}
+
+	let x = std::opt::some!<int>(10)
 
 
 	/* do {
@@ -101,7 +105,7 @@ import std::    map
 		1. we should not be able to pass a mapping to the variant of a union, that's a bit weird.
 			eg: std::opt::some!<str> works, which is a little strange.
 			edit: it only works in certain circumstances??? also if we use a constructor (like this: std::opt::some!<int>(10)), the thing
-			get treated like a function call (and so finds no functions!)
+			gets treated like a function call (and so finds no functions!)
 
 		2. splatting tuples into a generic function *will not work*
 		3. pass the overall location to the polymorph solver.
@@ -161,15 +165,25 @@ import std::    map
 
 	18. figure out how constructors should work with transparent fields {
 
-		i don't really feel like testing it out now, but more than likely it will not work properly, or at all.
+		I think it's currently not worth the effort to support initialising transparent fields in constructors; there's
+		way too much stuff that needs to change. some findings:
 
-		the ideal case is to enforce named arguments if the type has transparency, since we also enforce that you can't have
-		fields with the same name that are accessible at the same "level".
+		to actually allow it to pass typechecking, we just need to pass the "extended set" of field names to
+		`verifyStructConstructorArguments`, which ought to suffice. problem is, we call that from the polymorph
+		engine as well, and that's something i don't really feel like touching at the moment.
 
-		that should be fine I guess, but we have to make provisions for initialising all the intermediate structs/unions
-		etc.
+		^ as a corollary to that, we also need a way to discover all the transparent fields that are accessible at any
+		point. currently in typecheck/dotop, we currently do an ad-hoc kind of thing, where we search for a particular
+		name that's needed. should be not-that-difficult to get a list of all accessible things, i hope.
 
-		also there's currently a massive bug with struct constructors. how nice.
+		^ we might need to duplicate this to work with ast::StructDefn as well, since the polymorph engine also uses
+		the same verifyStructConstructorArguments to instantiate types a-la function calls.
+
+		we also need some way to actually insert the value into the struct when it's being constructed, which might also
+		get complicated.
+
+		TL;DR: too complicated, not worth the time currently.
+
 	}
 */
 

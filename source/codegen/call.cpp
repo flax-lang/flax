@@ -96,11 +96,11 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			if(val->getType() != inf)
 			{
 				auto errs = SpanError::make(SimpleError::make(arg.loc,
-					"Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, val->getType()));
+					"mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, val->getType()));
 
 				if(ft->isVariadicFunc() && i >= numArgs - 1)
 				{
-					errs->add(util::ESpan(arg.loc, strprintf("Argument's type '%s' cannot be cast to the expected variadic element type '%s'",
+					errs->add(util::ESpan(arg.loc, strprintf("argument's type '%s' cannot be cast to the expected variadic element type '%s'",
 						val->getType(), inf)));
 				}
 
@@ -165,7 +165,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(!this->target)
-		error(this, "Failed to find target for function call to '%s'", this->name);
+		error(this, "failed to find target for function call to '%s'", this->name);
 
 	// check this target
 	fir::Value* vf = 0;
@@ -217,7 +217,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		ft = vt->getPointerElementType()->toFunctionType();
 
-		warn(this, "Prefer using functions to function pointers");
+		warn(this, "prefer using functions to function pointers");
 	}
 
 	iceAssert(ft);
@@ -234,13 +234,13 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	size_t numArgs = ft->getArgumentTypes().size();
 	if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
 	{
-		error(this, "Mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
+		error(this, "mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
 			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
 			numArgs == 1 ? "was" : "were");
 	}
 	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs)
 	{
-		error(this, "Need at least %zu arguments to call variadic function '%s', only have %zu",
+		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
 			numArgs, this->name, this->arguments.size());
 	}
 
@@ -287,7 +287,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type).value, type);
 
 		if(type != ret->getType())
-			error(args[0], "Mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
+			error(args[0], "mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
 
 		return CGResult(ret);
 	}
@@ -350,7 +350,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentTypes().size())
 		{
-			error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
+			error(this, "mismatched number of arguments; expected %zu, but %zu were given",
 				ft->getArgumentTypes().size(), this->arguments.size());
 		}
 	}

@@ -14,12 +14,12 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto start = cs->oneWayAutocast(this->start->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 	iceAssert(start);
 	if(!start->getType()->isIntegerType())
-		error(this->start, "Expected integer type in range expression (start), found '%s' instead", start->getType());
+		error(this->start, "expected integer type in range expression (start), found '%s' instead", start->getType());
 
 	auto end = cs->oneWayAutocast(this->end->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 	iceAssert(end);
 	if(!end->getType()->isIntegerType())
-		error(this->end, "Expected integer type in range expression (end), found '%s' instead", end->getType());
+		error(this->end, "expected integer type in range expression (end), found '%s' instead", end->getType());
 
 	// if we're half-open, then we need to subtract 1 from the end value.
 	// TODO: do we need to check for start > end for half open?
@@ -35,7 +35,7 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(step);
 	if(!step->getType()->isIntegerType())
-		error(this->step, "Expected integer type in range expression (step), found '%s' instead", step->getType());
+		error(this->step, "expected integer type in range expression (step), found '%s' instead", step->getType());
 
 	auto ret = cs->irb.CreateValue(fir::RangeType::get());
 	ret = cs->irb.SetRangeLower(ret, start);

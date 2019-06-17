@@ -141,7 +141,7 @@ namespace resolver
 			{
 				return TCResult(
 					SimpleError::make(fs->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type)->append(SimpleError::make(def->loc, "Previously defined here:"))
+						name, def->type)->append(SimpleError::make(def->loc, "previously defined here:"))
 				);
 			}
 		}
@@ -253,11 +253,17 @@ namespace resolver
 
 			return ret;
 		}
+		else if(auto rud = dcast(sst::RawUnionDefn, typedf))
+		{
+			return TCResult(SimpleError::make(fs->loc(), "constructors are not defined for raw unions")
+				->append(SimpleError::make(MsgType::Note, typedf->loc, "type was defined here:"))
+			);
+		}
 		else
 		{
 			return TCResult(
 				SimpleError::make(fs->loc(), "unsupported constructor call on type '%s'", typedf->id.name)
-			    ->append(SimpleError::make(typedf->loc, "type was defined here:"))
+			    ->append(SimpleError::make(MsgType::Note, typedf->loc, "type was defined here:"))
 			);
 		}
 	}

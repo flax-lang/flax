@@ -201,7 +201,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		}
 		else
 		{
-			error(this->array, "Unsupported type '%s' in foreach loop", array->getType());
+			error(this->array, "unsupported type '%s' in foreach loop", array->getType());
 		}
 	}
 

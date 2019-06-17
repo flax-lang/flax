@@ -29,7 +29,7 @@ namespace fir
 	Value* Instruction::getResult()
 	{
 		if(this->realOutput) return this->realOutput;
-		error("Calling getActualValue() when not in function! (no real value)");
+		error("calling getActualValue() when not in function! (no real value)");
 	}
 
 	bool Instruction::hasSideEffects()

@@ -17,7 +17,7 @@ namespace fir
 	{
 		if(this->valueType) return this->valueType;
 
-		error("Value has no type????");
+		error("value has no type????");
 	}
 
 	bool Value::hasName()

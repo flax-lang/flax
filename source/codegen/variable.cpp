@@ -21,7 +21,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(this->init);
 
-			SpanError::make(SimpleError::make(this->loc, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
+			SpanError::make(SimpleError::make(this->loc, "cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
 				->add(util::ESpan(this->init->loc, strprintf("type '%s'", nv->getType())))
 				->postAndQuit();
 		}
@@ -149,8 +149,8 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					SimpleError::make(this->loc, "Failed to codegen variable definition for '%s'", this->name)
-						->append(SimpleError::make(MsgType::Note, this->def->loc, "Offending definition is here:"))
+					SimpleError::make(this->loc, "failed to codegen variable definition for '%s'", this->name)
+						->append(SimpleError::make(MsgType::Note, this->def->loc, "offending definition is here:"))
 						->postAndQuit();
 				}
 
@@ -161,7 +161,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// make sure types match... should we bother?
 	if(value->getType() != this->type)
-		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
+		error(this, "type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
 	return CGResult(value);
 }

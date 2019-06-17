@@ -18,13 +18,13 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 	if(field == strty)
 	{
 		SimpleError::make(floc, "composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
 	else if(seeing.find(field) != seeing.end())
 	{
 		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
 	else if(field->isClassType())

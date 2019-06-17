@@ -71,9 +71,9 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 
 	if(arguments.size() != constrfn->getArgumentCount())
 	{
-		SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
+		SimpleError::make(this->loc(), "mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
 			(fir::Type*) cls, constrfn->getArgumentCount(), arguments.size())
-			->append(SimpleError::make(MsgType::Note, constr->loc, "Constructor was defined here:"))
+			->append(SimpleError::make(MsgType::Note, constr->loc, "constructor was defined here:"))
 			->postAndQuit();
 	}
 
@@ -95,14 +95,14 @@ CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* 
 	this->target->codegen(cs);
 
 	if(!this->target)
-		error(this, "Failed to find target type of constructor call");
+		error(this, "failed to find target type of constructor call");
 
 	//* note: we don't need an explicit thing telling us whether we should use names or not
 	//* if the first argument has no name, then we're not using names; if it has a name, then we are
 	//* and ofc expect consistency, but we should have already typechecked that previously.
 
 	StructDefn* str = dcast(StructDefn, this->target);
-	if(!str) error(this, "Non-struct type '%s' not supported in constructor call", this->target->id.name);
+	if(!str) error(this, "non-struct type '%s' not supported in constructor call", this->target->id.name);
 
 	// great. now we just make the thing.
 	fir::Value* value = cs->getConstructedStructValue(str->type->toStructType(), this->arguments);

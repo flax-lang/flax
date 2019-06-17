@@ -774,7 +774,7 @@ namespace fir
 			double _ = 0;
 
 			if(std::modf(cfp->getValue(), &_) != 0.0)
-				warn("Truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
+				warn("truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
 
 			return ConstantInt::get(targetType, (size_t) cfp->getValue());
 		}
@@ -807,7 +807,7 @@ namespace fir
 			}
 			else
 			{
-				error("Unknown floating point type '%s'", targetType);
+				error("unknown floating point type '%s'", targetType);
 			}
 
 			return ret;
@@ -939,7 +939,7 @@ namespace fir
 	{
 		if(args.size() != fn->getArgumentCount() && !fn->isVariadic() && !fn->isCStyleVarArg())
 		{
-			error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+			error("calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
 				fn->getArgumentCount(), args.size());
 		}
 
@@ -989,7 +989,7 @@ namespace fir
 
 				if(out[i]->getType() != target)
 				{
-					error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+					error("mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
 						fn->getArguments()[i]->getType(), out[i]->getType());
 				}
 			}
@@ -1005,7 +1005,7 @@ namespace fir
 				}
 				else if(args[i]->getType() != elm)
 				{
-					error("Mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+					error("mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
 						elm, args[i]->getType());
 				}
 				else
@@ -1066,7 +1066,7 @@ namespace fir
 		// {
 		// 	// check here, to stop llvm dying
 		// 	if(args.size() != fn->getArgumentCount())
-		// 		error("Calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+		// 		error("calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
 		// 			fn->getArgumentCount(), args.size());
 
 		// 	for(size_t i = 0; i < args.size(); i++)
@@ -1092,7 +1092,7 @@ namespace fir
 		// 		out[i] = args[i];
 		// 		if(out[i]->getType() != target)
 		// 		{
-		// 			error("Mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+		// 			error("mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
 		// 				fn->getArguments()[i]->getType(), out[i]->getType());
 		// 		}
 		// 	}
@@ -1458,7 +1458,7 @@ namespace fir
 			error("cond is not a boolean type (got '%s')", cond->getType());
 
 		if(one->getType() != two->getType())
-			error("Non-identical types for operands (got '%s' and '%s')", one->getType(), two->getType());
+			error("non-identical types for operands (got '%s' and '%s')", one->getType(), two->getType());
 
 		Instruction* instr = make_instr(OpKind::Value_Select, false, this->currentBlock, one->getType(), { cond, one, two });
 		return this->addInstruction(instr, vname);
@@ -1508,7 +1508,7 @@ namespace fir
 
 		if(elm->getType() != et)
 		{
-			error("Mismatched types for value and element -- trying to insert '%s' into '%s'",
+			error("mismatched types for value and element -- trying to insert '%s' into '%s'",
 				elm->getType(), et);
 		}
 
@@ -2063,7 +2063,7 @@ namespace fir
 			error("ptr is not pointer type (got '%s')", ptr->getType());
 
 		if(ptr->getType()->isImmutablePointer())
-			error("Cannot store value to immutable pointer type '%s'", ptr->getType());
+			error("cannot store value to immutable pointer type '%s'", ptr->getType());
 
 		auto vt = v->getType();
 		auto pt = ptr->getType();

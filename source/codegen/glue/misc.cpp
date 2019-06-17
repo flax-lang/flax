@@ -178,17 +178,17 @@ namespace misc
 			{
 				cs->irb.setCurrentBlock(stepzero);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range step had value of zero\n", { });
+					printRuntimeError(cs, func->getArguments()[1], "range step had value of zero\n", { });
 				}
 
 				cs->irb.setCurrentBlock(stepnotpos);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range had negative step value ('%ld'); invalid when start < end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "range had negative step value ('%ld'); invalid when start < end\n", { step });
 				}
 
 				cs->irb.setCurrentBlock(stepnotneg);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range had positive step value ('%ld'); invalid when start > end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "range had positive step value ('%ld'); invalid when start > end\n", { step });
 				}
 			}
 
