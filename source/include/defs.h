@@ -220,7 +220,7 @@ struct Location
 		ret.fileID = a.fileID;
 		ret.line = a.line;
 
-		auto end = __max(a.col + a.len, b.col + b.len);
+		auto end = std::max(a.col + a.len, b.col + b.len);
 		if(a.col <= b.col)
 		{
 			ret.col = a.col;
