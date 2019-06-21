@@ -11,17 +11,21 @@ else
 	libKind = 'Release'
 endif
 
-mpir_root_dir = 'D:/Projects/lib/mpir'
-mpfr_root_dir = 'D:/Projects/lib/mpfr'
-llvm_root_dir = 'D:/Projects/lib/llvm/7.0.1/'
+mpir_root_dir   = 'D:/Projects/lib/mpir'
+mpfr_root_dir   = 'D:/Projects/lib/mpfr'
+llvm_root_dir   = 'D:/Projects/lib/llvm/7.0.1/'
+libffi_root_dir = 'D:/Projects/lib/libffi'
 
-mpir_hdr_dir = mpir_root_dir + '/' + libKind + '/include/'
-mpfr_hdr_dir = mpfr_root_dir + '/' + libKind + '/include/'
-llvm_hdr_dir = llvm_root_dir + '/' + libKind + '/include/'
+mpir_hdr_dir    = mpir_root_dir   + '/' + libKind + '/include/'
+mpfr_hdr_dir    = mpfr_root_dir   + '/' + libKind + '/include/'
+llvm_hdr_dir    = llvm_root_dir   + '/' + libKind + '/include/'
+libffi_hdr_dir  = libffi_root_dir + '/' + libKind + '/include/'
 
-mpir_lib_dir = mpir_root_dir + '/' + libKind + '/lib/'
-mpfr_lib_dir = mpfr_root_dir + '/' + libKind + '/lib/'
-llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
+mpir_lib_dir    = mpir_root_dir   + '/' + libKind + '/lib/'
+mpfr_lib_dir    = mpfr_root_dir   + '/' + libKind + '/lib/'
+llvm_lib_dir    = llvm_root_dir   + '/' + libKind + '/lib/'
+libffi_lib_dir  = libffi_root_dir + '/' + libKind + '/lib/'
+
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/utf-8', language: 'cpp')
@@ -31,15 +35,13 @@ if the_compiler.get_id() == 'msvc'
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
+	add_project_link_arguments('/ignore:4099', language: ['c', 'cpp'])
 	add_project_link_arguments('/machine:X64', language: 'cpp')
 	add_project_link_arguments('/incremental', language: 'cpp')
 	add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
 else
-	# add_project_arguments('--std=c++17', language: 'cpp')
-	# add_project_arguments('--std=c11', language: 'c')
-
 	error('You fool, use the makefile for non-windows builds')
 endif
 
@@ -214,7 +216,6 @@ mpfr_dep = declare_dependency(version: '4.0.0', include_directories: include_dir
 
 llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_directories(llvm_hdr_dir),
 	dependencies: [ mpfr_dep, mpir_dep,
-		# the_compiler.find_library('LLVM_all', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
@@ -242,33 +243,35 @@ llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_dir
 		the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDlltoolDriver', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
 		# the_compiler.find_library('LLVMDebugInfoDWARF', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInstrumentation', dirs: llvm_lib_dir),
 		the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
 	]
 )
 
+libffi_dep = declare_dependency(version: '3.2.1', include_directories: include_directories(libffi_hdr_dir),
+	dependencies: the_compiler.find_library('libffi', dirs: libffi_lib_dir))
 
-include_dirs = include_directories([ 'source/include', 'external', mpir_hdr_dir, mpfr_hdr_dir, llvm_hdr_dir ])
+include_dirs = include_directories([ 'source/include', 'external', mpir_hdr_dir, mpfr_hdr_dir, llvm_hdr_dir, libffi_lib_dir ])
 
 executable('flaxc', source_files,
 	include_directories: include_dirs,
-	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep, mpfr_dep, mpir_dep ]
+	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep, mpfr_dep, mpir_dep, libffi_dep ]
 )
 
-	# cpp_pch: [ 'source/include/precompile.h', 'source/include/precompile.cpp' ]
+
+
+
+
 
 
 
