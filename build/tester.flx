@@ -5,6 +5,7 @@
 export tester
 
 import libc
+import std::io
 import std::limits
 
 import "tests/fizzbuzz.flx"
@@ -49,127 +50,127 @@ fn runTests()
 	let endTitle        = "============ TESTS COMPLETE ============\n"
 
 
-	libc::printf("%s%s", fibTitle, thinLine)
+	std::io::print("%%", fibTitle, thinLine)
 	do {
 		var n = 1
 		while n < 20
 		{
-			libc::printf("%d", test_fib::doRecursiveFib(n))
+			std::io::print("%", test_fib::doRecursiveFib(n))
 			n += 1
 
 			if n != 20
 			{
-				libc::printf(", ")
+				std::io::print(", ")
 			}
 		}
-		libc::printf("\n\n\n")
+		std::io::print("\n\n\n")
 	}
 
 	// fizzbuzz
-	libc::printf("%s%s", fizzbuzzTitle, thinLine)
+	std::io::print("%%", fizzbuzzTitle, thinLine)
 	test_fizz::doFizzBuzz(15)
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// int limits
-	libc::printf("%s%s", intLimitsTitle, thinLine)
+	std::io::print("%%", intLimitsTitle, thinLine)
 	test_limits::printIntegerLimits()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// scopes
-	libc::printf("%s%s", scopeTitle, thinLine)
+	std::io::print("%%", scopeTitle, thinLine)
 	test_scopes::doScopeTest("__llvm_jit__build/test")
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// operators and tuples (vectors type, mainly)
-	libc::printf("%s%s", operatorTitle, thinLine)
+	std::io::print("%%", operatorTitle, thinLine)
 	// doOperatorTupleTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// arrays
-	libc::printf("%s%s", arrayTitle, thinLine)
+	std::io::print("%%", arrayTitle, thinLine)
 	test_arrays::doArrayTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// generics
-	libc::printf("%s%s", genericsTitle, thinLine)
+	std::io::print("%%", genericsTitle, thinLine)
 	test_generics::doGenericsTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// classes
-	libc::printf("%s%s", classTitle, thinLine)
+	std::io::print("%%", classTitle, thinLine)
 	test_classes::doClassTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// first-class-functions
-	libc::printf("%s%s", functionsTitle, thinLine)
+	std::io::print("%%", functionsTitle, thinLine)
 	test_functions::doFunctionTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// defer semantics
-	libc::printf("%s%s", deferTitle, thinLine)
+	std::io::print("%%", deferTitle, thinLine)
 	test_defer::doDeferTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// any
-	libc::printf("%s%s", anyTitle, thinLine)
+	std::io::print("%%", anyTitle, thinLine)
 	test_any::doAnyTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// slices
-	libc::printf("%s%s", slicesTitle, thinLine)
+	std::io::print("%%", slicesTitle, thinLine)
 	test_slices::doSlicesTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// decomposition
-	libc::printf("%s%s", decomposeTitle, thinLine)
+	std::io::print("%%", decomposeTitle, thinLine)
 	test_decomposition::doDecompositionTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// for-loops
-	libc::printf("%s%s", forLoopTitle, thinLine)
+	std::io::print("%%", forLoopTitle, thinLine)
 	test_forloops::doForLoopTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// linked-list (generics)
-	libc::printf("%s%s", linkedListTitle, thinLine)
+	std::io::print("%%", linkedListTitle, thinLine)
 	test_linkedlist::doLinkedListTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// unions (generics)
-	libc::printf("%s%s", unionsTitle, thinLine)
+	std::io::print("%%", unionsTitle, thinLine)
 	test_unions::doUnionsTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// using
-	libc::printf("%s%s", usingTitle, thinLine)
+	std::io::print("%%", usingTitle, thinLine)
 	test_using::doUsingTest()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 	// misc tests
-	libc::printf("%s%s", miscTitle, thinLine)
+	std::io::print("%%", miscTitle, thinLine)
 	// miscellaneousTests()
-	libc::printf("\n\n\n")
+	std::io::print("\n\n\n")
 
 
 
 	// fin.
-	libc::printf("%s\n\n\n\n\n", endTitle)
+	std::io::print("%\n\n\n\n\n", endTitle)
 }
 
 
@@ -185,7 +186,7 @@ fn runTests()
 	runTests()
 
 
-	libc::printf("\n<< done >>\n")
+	std::io::print("\n<< done >>\n")
 	return 0
 }
 

@@ -69,8 +69,6 @@ namespace fir
 		const util::hash_map<Identifier, Function*>& _getFunctions() { return this->functions; }
 		const util::hash_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
 
-		const util::hash_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
-
 
 		private:
 		std::string moduleName;
@@ -80,8 +78,6 @@ namespace fir
 		util::hash_map<Identifier, GlobalVariable*> globals;
 		util::hash_map<Identifier, Function*> functions;
 		util::hash_map<Identifier, Type*> namedTypes;
-
-		util::hash_map<size_t, GlobalValue*> allGlobalValues;
 
 		util::hash_map<Identifier, Function*> intrinsicFunctions;
 

@@ -8,10 +8,6 @@ import libc
 let ASCII_BACKSLASH: i8     = 92
 let ASCII_PERCENT: i8       = 37
 
-// this exists solely for semantic reasons.
-fn char(c: i8) -> i8    => c
-fn char(c: str) -> i8   => c[0]
-
 fn error(msg: str)
 {
 	libc::printf("Invalid format specifier: %s\n", msg)
@@ -66,7 +62,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 	while idx < fmt.length
 	{
 		let ch = fmt[idx]
-		if ch == char("%")
+		if ch == '%'
 		{
 			if argi >= args.length
 			{
@@ -98,7 +94,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 		}
 		else
 		{
-			if ch == char("\\")
+			if ch == '\\'
 			{
 				idx += 1
 				ret.append(fmt[idx])
@@ -121,7 +117,10 @@ public fn println(fmt: str, args: [any: ...])
 	libc::printf("%s\n", format(fmt, ...args).ptr)
 }
 
-
+public fn print(fmt: str, args: [any: ...])
+{
+	libc::printf("%s", format(fmt, ...args).ptr)
+}
 
 
 

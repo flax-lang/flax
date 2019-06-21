@@ -10,6 +10,10 @@
 #include "ir/instruction.h"
 
 #include "gluecode.h"
+#include "platform.h"
+
+#define FFI_BUILDING
+#include <ffi.h>
 
 #define LARGE_DATA_SIZE 32
 
@@ -75,60 +79,91 @@ namespace interp
 
 
 
+	static interp::Value makeValue(size_t id, Type* ty);
 	template <typename T> static interp::Value makeValue(size_t id, Type* ty, const T& val);
+	static void setValueRaw(InterpState* is, interp::Value* target, void* value, size_t sz);
+	static void setValue(InterpState* is, interp::Value* target, const interp::Value& val);
 
-	template <typename T>
+
+	static std::map<ConstantValue*, interp::Value> cachedConstants;
 	static interp::Value makeConstant(ConstantValue* c)
 	{
 		auto ty = c->getType();
 		if(auto ci = dcast(ConstantInt, c))
 		{
-			// TODO: make this more robust, pretty sure it's wrong now.
-			return makeValue(c->id, ty, ci->getSignedValue());
+			return cachedConstants[c] = makeValue(c->id, ty, ci->getSignedValue());
 		}
 		else if(auto cf = dcast(ConstantFP, c))
 		{
-			return makeValue(c->id, ty, cf->getValue());
+			return cachedConstants[c] = makeValue(c->id, ty, cf->getValue());
 		}
 		else if(auto cb = dcast(ConstantBool, c))
 		{
-			return makeValue(c->id, ty, cb->getValue());
+			return cachedConstants[c] = makeValue(c->id, ty, cb->getValue());
 		}
 		else if(auto cs = dcast(ConstantString, c))
 		{
+			error("interp: const string");
 		}
 		else if(auto cbc = dcast(ConstantBitcast, c))
 		{
+			error("interp: const bitcast");
 		}
 		else if(auto ca = dcast(ConstantArray, c))
 		{
+			error("interp: const array");
 		}
 		else if(auto ct = dcast(ConstantTuple, c))
 		{
+			error("interp: const tuple");
 		}
 		else if(auto cec = dcast(ConstantEnumCase, c))
 		{
+			error("interp: const enumcase");
 		}
 		else if(auto cas = dcast(ConstantArraySlice, c))
 		{
+			error("interp: const slice");
 		}
 		else if(auto cda = dcast(ConstantDynamicArray, c))
 		{
+			error("interp: const dynarray");
 		}
 		else if(auto fn = dcast(Function, c))
 		{
+			error("interp: const function?");
 		}
-
-		error("interp: unsupported");
+		else
+		{
+			return cachedConstants[c] = makeValue(c->id, c->getType());
+		}
 	}
 
 	InterpState::InterpState(Module* mod)
 	{
 		this->module = mod;
 
-		for(const auto& g : mod->_getAllGlobals())
+		for(const auto [ id, glob ] : mod->_getGlobals())
 		{
+			auto val = makeValue(glob->id, glob->getType());
+			if(auto init = glob->getInitialValue(); init)
+				setValue(this, &val, makeConstant(init));
 
+			this->globals[glob->id] = val;
+		}
+
+		for(const auto [ str, glob ] : mod->_getGlobalStrings())
+		{
+			auto val = makeValue(glob->id, glob->getType());
+
+			auto s = new char[str.size() + 1];
+			memmove(s, str.c_str(), str.size());
+			s[str.size()] = 0;
+
+			this->strings.push_back(s);
+
+			setValueRaw(this, &val, &s, sizeof(char*));
+			this->globals[glob->id] = val;
 		}
 	}
 
@@ -136,6 +171,114 @@ namespace interp
 
 
 
+
+	static ffi_type* convertTypeToLibFFI(fir::Type* ty)
+	{
+		if(ty->isPointerType())
+		{
+			return &ffi_type_pointer;
+		}
+		else if(ty->isBoolType())
+		{
+			//? HMMM....
+			return &ffi_type_uint8;
+		}
+		else if(ty->isVoidType())
+		{
+			return &ffi_type_void;
+		}
+		else if(ty->isIntegerType())
+		{
+			if(ty == Type::getInt8())       return &ffi_type_sint8;
+			if(ty == Type::getInt16())      return &ffi_type_sint16;
+			if(ty == Type::getInt32())      return &ffi_type_sint32;
+			if(ty == Type::getInt64())      return &ffi_type_sint64;
+
+			if(ty == Type::getUint8())      return &ffi_type_uint8;
+			if(ty == Type::getUint16())     return &ffi_type_uint16;
+			if(ty == Type::getUint32())     return &ffi_type_uint32;
+			if(ty == Type::getUint64())     return &ffi_type_uint64;
+		}
+		else if(ty->isFloatingPointType())
+		{
+			if(ty == Type::getFloat32())    return &ffi_type_float;
+			if(ty == Type::getFloat64())    return &ffi_type_double;
+		}
+		else
+		{
+
+		}
+
+		error("interp: unsupported type '%s' in libffi-translation", ty);
+	}
+
+	static interp::Value runFunctionWithLibFFI(fir::Function* fn, const std::vector<interp::Value>& args)
+	{
+		void* fnptr = platform::getSymbol(fn->getName().str());
+		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
+
+		// we are assuming the values in 'args' are correct!
+		ffi_type** arg_types = new ffi_type*[args.size()];
+		{
+			std::vector<ffi_type*> tmp;
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				tmp.push_back(convertTypeToLibFFI(args[i].type));
+				arg_types[i] = tmp[i];
+			}
+		}
+
+		ffi_cif fn_cif;
+		{
+			auto retty = convertTypeToLibFFI(fn->getReturnType());
+
+			if(args.size() > fn->getArgumentCount())
+			{
+				iceAssert(fn->isCStyleVarArg());
+				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fn->getArgumentCount(), args.size(), retty, arg_types);
+				if(st != FFI_OK)
+					error("interp: ffi_prep_cif_var failed! (%d)", st);
+			}
+			else
+			{
+				auto st = ffi_prep_cif(&fn_cif, FFI_DEFAULT_ABI, args.size(), retty, arg_types);
+				if(st != FFI_OK)
+					error("interp: ffi_prep_cif failed! (%d)", st);
+			}
+		}
+
+		void** arg_pointers = new void*[args.size()];
+		{
+			void** arg_values = new void*[args.size()];
+
+			// because this thing is dumb
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i].dataSize <= LARGE_DATA_SIZE)
+					arg_values[i] = (void*) &args[i].data[0];
+			}
+
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i].dataSize <= LARGE_DATA_SIZE)
+					arg_pointers[i] = (void*) arg_values[i];
+
+				else
+					arg_pointers[i] = (void*) args[i].ptr;
+			}
+
+			delete[] arg_values;
+		}
+
+		int64_t ret = 0;
+		ffi_call(&fn_cif, FFI_FN(fnptr), &ret, arg_pointers);
+
+
+		delete[] arg_types;
+		delete[] arg_pointers;
+
+		return interp::Value();
+	}
 
 
 
@@ -208,41 +351,25 @@ namespace interp
 		return ret;
 	}
 
-	static void setValueRaw(InterpState* is, size_t id, void* value, size_t sz)
+	static void setValueRaw(InterpState* is, interp::Value* target, void* value, size_t sz)
 	{
-		if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
-		{
-			auto& v = it->second;
-			if(v.dataSize != sz)
-				error("interp: cannot set value, size mismatch (%zu vs %zu)", v.dataSize, sz);
+		if(target->dataSize != sz)
+			error("interp: cannot set value, size mismatch (%zu vs %zu)", target->dataSize, sz);
 
-			if(sz > LARGE_DATA_SIZE)    memmove(v.ptr, value, sz);
-			else                        memmove(&v.data[0], value, sz);
-		}
-		else
-		{
-			error("interp: no value with id %zu", id);
-		}
+		if(sz > LARGE_DATA_SIZE)    memmove(target->ptr, value, sz);
+		else                        memmove(&target->data[0], value, sz);
 	}
 
-	static void setValue(InterpState* is, size_t id, const interp::Value& val)
+	static void setValue(InterpState* is, interp::Value* target, const interp::Value& val)
 	{
-		if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
-		{
-			auto& v = it->second;
-			if(v.type != val.type)
-				error("interp: cannot set value, conflicting types '%s' and '%s'", v.type, val.type);
+		if(target->type != val.type)
+			error("interp: cannot set value, conflicting types '%s' and '%s'", target->type, val.type);
 
-			if(val.dataSize > LARGE_DATA_SIZE)
-				memmove(v.ptr, val.ptr, val.dataSize);
+		if(val.dataSize > LARGE_DATA_SIZE)
+			memmove(target->ptr, val.ptr, val.dataSize);
 
-			else
-				memmove(&v.data[0], &val.data[0], val.dataSize);
-		}
 		else
-		{
-			error("interp: no value with id %zu", id);
-		}
+			memmove(&target->data[0], &val.data[0], val.dataSize);
 	}
 
 
@@ -379,9 +506,6 @@ namespace interp
 		using u16tT = uint16_t; auto u16t = Type::getUint16();
 		using u32tT = uint32_t; auto u32t = Type::getUint32();
 		using u64tT = uint64_t; auto u64t = Type::getUint64();
-		using f32tT = float;    auto f32t = Type::getFloat32();
-		using f64tT = double;   auto f64t = Type::getFloat64();
-
 
 		#define mv(x) makeValue(rid, rty, (x))
 		#define gav(t, x) getActualValue<t>(x)
@@ -394,22 +518,22 @@ namespace interp
 		If(i32t, i8t); If(i32t, i16t); If(i32t, i32t); If(i32t, i64t);
 		If(i64t, i8t); If(i64t, i16t); If(i64t, i32t); If(i64t, i64t);
 
-		If(i8t,  u8t); If(i8t,  u16t); If(i8t,  u32t); If(i8t,  u64t);
-		If(i16t, u8t); If(i16t, u16t); If(i16t, u32t); If(i16t, u64t);
-		If(i32t, u8t); If(i32t, u16t); If(i32t, u32t); If(i32t, u64t);
-		If(i64t, u8t); If(i64t, u16t); If(i64t, u32t); If(i64t, u64t);
+		// If(i8t,  u8t); If(i8t,  u16t); If(i8t,  u32t); If(i8t,  u64t);
+		// If(i16t, u8t); If(i16t, u16t); If(i16t, u32t); If(i16t, u64t);
+		// If(i32t, u8t); If(i32t, u16t); If(i32t, u32t); If(i32t, u64t);
+		// If(i64t, u8t); If(i64t, u16t); If(i64t, u32t); If(i64t, u64t);
 
-		If(u8t,  i8t); If(u8t,  i16t); If(u8t,  i32t); If(u8t,  i64t);
-		If(u16t, i8t); If(u16t, i16t); If(u16t, i32t); If(u16t, i64t);
-		If(u32t, i8t); If(u32t, i16t); If(u32t, i32t); If(u32t, i64t);
-		If(u64t, i8t); If(u64t, i16t); If(u64t, i32t); If(u64t, i64t);
+		// If(u8t,  i8t); If(u8t,  i16t); If(u8t,  i32t); If(u8t,  i64t);
+		// If(u16t, i8t); If(u16t, i16t); If(u16t, i32t); If(u16t, i64t);
+		// If(u32t, i8t); If(u32t, i16t); If(u32t, i32t); If(u32t, i64t);
+		// If(u64t, i8t); If(u64t, i16t); If(u64t, i32t); If(u64t, i64t);
 
 		If(u8t,  u8t); If(u8t,  u16t); If(u8t,  u32t); If(u8t,  u64t);
 		If(u16t, u8t); If(u16t, u16t); If(u16t, u32t); If(u16t, u64t);
 		If(u32t, u8t); If(u32t, u16t); If(u32t, u32t); If(u32t, u64t);
 		If(u64t, u8t); If(u64t, u16t); If(u64t, u32t); If(u64t, u64t);
 
-		error("interp: unsupported '%s' for arithmetic", aty);
+		error("interp: unsupported types '%s' and '%s' for arithmetic", aty, bty);
 
 		#undef If
 		#undef mv
@@ -483,33 +607,46 @@ namespace interp
 		return ret;
 	}
 
+
+
+
 	interp::Value InterpState::runFunction(const interp::Function& fn, const std::vector<interp::Value>& args)
 	{
 		auto ffn = fn.origFunction;
 		iceAssert(ffn && ffn->getArgumentCount() == args.size());
 
-		// when we start a function, clear the "stack frame".
-		this->stackFrames.push_back({ });
-
-		for(const auto& arg : args)
-			this->stackFrames.back().values[arg.id] = arg;
 
 		if(fn.blocks.empty())
 		{
-			// wait, what?
-			return interp::Value();
+			// it's probably an extern!
+			// use libffi.
+			return runFunctionWithLibFFI(ffn, args);
 		}
+		else
+		{
+			// when we start a function, clear the "stack frame".
+			this->stackFrames.push_back({ });
 
-		auto entry = &fn.blocks[0];
-		this->stackFrames.back().currentFunction = &fn;
-		this->stackFrames.back().currentBlock = entry;
-		this->stackFrames.back().previousBlock = 0;
+			for(const auto& arg : args)
+				this->stackFrames.back().values[arg.id] = arg;
 
-		auto ret = runBlock(this, entry);
+			if(fn.blocks.empty())
+			{
+				// wait, what?
+				return interp::Value();
+			}
 
-		this->stackFrames.pop_back();
+			auto entry = &fn.blocks[0];
+			this->stackFrames.back().currentFunction = &fn;
+			this->stackFrames.back().currentBlock = entry;
+			this->stackFrames.back().previousBlock = 0;
 
-		return ret;
+			auto ret = runBlock(this, entry);
+
+			this->stackFrames.pop_back();
+
+			return ret;
+		}
 	}
 
 
@@ -524,6 +661,9 @@ namespace interp
 		auto getVal = [is](size_t id) -> interp::Value* {
 			if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
 				return &it->second;
+
+			else if(auto it2 = is->globals.find(id); it2 != is->globals.end())
+				return &it2->second;
 
 			else
 				error("interp: no value with id %zu", id);
@@ -985,7 +1125,7 @@ namespace interp
 				{
 					if(blk->id == is->stackFrames.back().previousBlock->id)
 					{
-						setValue(is, val.id, *getVal(v->id));
+						setValue(is, &val, *getVal(v->id));
 						found = true;
 						break;
 					}
@@ -1198,7 +1338,7 @@ namespace interp
 				src += ofs;
 
 				auto ret = makeValue(inst.result, elmty->getPointerTo());
-				setValueRaw(is, ret.id, &src, sizeof(src));
+				setValueRaw(is, &ret, &src, sizeof(src));
 
 				setRet(inst, ret);
 				break;
@@ -1247,10 +1387,10 @@ namespace interp
 
 				auto ci = fir::ConstantInt::getNative(getSizeOfType(ty));
 
-				if(fir::getNativeWordSizeInBits() == 64) setRet(inst, makeConstant<int64_t>(ci));
-				if(fir::getNativeWordSizeInBits() == 32) setRet(inst, makeConstant<int32_t>(ci));
-				if(fir::getNativeWordSizeInBits() == 16) setRet(inst, makeConstant<int16_t>(ci));
-				if(fir::getNativeWordSizeInBits() == 8)  setRet(inst, makeConstant<int8_t>(ci));
+				if(fir::getNativeWordSizeInBits() == 64) setRet(inst, makeValue(inst.result, ty, (int64_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 32) setRet(inst, makeValue(inst.result, ty, (int32_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 16) setRet(inst, makeValue(inst.result, ty, (int16_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 8)  setRet(inst, makeValue(inst.result, ty, (int8_t)  ci->getSignedValue()));
 
 				break;
 			}
@@ -1279,7 +1419,7 @@ namespace interp
 					error("interp: cannot store '%s' into '%s'", a->type, b->type->getPointerTo());
 
 				// since b is not really a pointer under the hood, we can just store it.
-				setValue(is, b->id, *a);
+				setValue(is, b, *a);
 				break;
 			}
 
@@ -1306,7 +1446,7 @@ namespace interp
 
 				auto ret = makeValue(inst.result, a->type->getPointerElementType());
 
-				setValueRaw(is, ret.id, p, ret.dataSize);
+				setValueRaw(is, &ret, p, ret.dataSize);
 				setRet(inst, ret);
 				break;
 			}
