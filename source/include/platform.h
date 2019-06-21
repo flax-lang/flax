@@ -16,14 +16,14 @@ namespace platform
 
 
 	#ifdef _WIN32
-		#define WIN32_LEAN_AND_MEAN 1
+		// #define WIN32_LEAN_AND_MEAN 1
 
-		#ifndef NOMINMAX
-			#define NOMINMAX
-		#endif
+		// #ifndef NOMINMAX
+		// 	#define NOMINMAX
+		// #endif
 
-		#include <windows.h>
-		using filehandle_t = HANDLE;
+		// #include <windows.h>
+		using filehandle_t = void*;
 
 		#define CRT_FDOPEN			"_fdopen"
 		#define PLATFORM_NEWLINE	"\r\n"

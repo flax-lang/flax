@@ -24,6 +24,14 @@
 		#define EXTRA_MMAP_FLAGS 0
 	#endif
 #else
+	#define WIN32_LEAN_AND_MEAN 1
+
+	#ifndef NOMINMAX
+		#define NOMINMAX
+	#endif
+
+	#include <windows.h>
+
 	#define USE_MMAP false
 #endif
 
@@ -32,7 +40,9 @@ namespace platform
 {
 	#ifdef _WIN32
 		filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
-		HMODULE currentModule = 0;
+
+		static HMODULE currentModule = 0;
+		static std::vector<HMODULE> otherModules;
 	#else
 		filehandle_t InvalidFileHandle = -1;
 		void* currentModule = 0;
@@ -43,6 +53,21 @@ namespace platform
 	{
 		#ifdef _WIN32
 			currentModule = GetModuleHandle(nullptr);
+
+			// load the libc dll.
+			//? the name is "vcruntime140.dll", which is apparently specific to MSVC 14.0+, apparently 140 is the only number that
+			//? appears to be referenced in online sources.
+
+			std::vector<const char*> libsToLoad = {
+				"vcruntime140.dll",
+				"ucrtbase.dll"
+			};
+
+			for(auto name : libsToLoad)
+			{
+				auto lib = LoadLibrary(name);
+				if(lib) otherModules.push_back(lib);
+			}
 		#else
 			currentModule = dlopen(nullptr, RTLD_LAZY);
 		#endif
@@ -50,7 +75,10 @@ namespace platform
 
 	void performSelfDlClose()
 	{
-		// we can't close ourselves, don't bother doing anything.
+		#ifdef _WIN32
+			for(auto mod : otherModules)
+				FreeLibrary(mod);
+		#endif
 	}
 
 	void* getSymbol(const std::string& name)
@@ -60,6 +88,8 @@ namespace platform
 		void* ret = 0;
 		#ifdef _WIN32
 			ret = GetProcAddress(currentModule, name.c_str());
+			for(size_t i = 0; !ret && i < otherModules.size(); i++)
+				ret = GetProcAddress(otherModules[i], name.c_str());
 		#else
 			ret = dlsym(currentModule, name.c_str());
 		#endif
@@ -201,7 +231,7 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didRead = 0;
-			bool success = ReadFile(fd, buf, (platform::DWORD) count, &didRead, 0);
+			bool success = ReadFile(fd, buf, (DWORD) count, &didRead, 0);
 			if(!success)
 				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)\n", count, didRead, GetLastError());
 
@@ -215,7 +245,7 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didWrite = 0;
-			bool success = WriteFile(fd, buf, (platform::DWORD) count, &didWrite, 0);
+			bool success = WriteFile(fd, buf, (DWORD) count, &didWrite, 0);
 			if(!success)
 				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)\n", count, didWrite, GetLastError());
 

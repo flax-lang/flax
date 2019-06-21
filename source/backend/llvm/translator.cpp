@@ -71,7 +71,7 @@ namespace backend
 	static llvm::Type* getNativeWordTy()
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-		return llvm::IntegerType::getIntNTy(gc, fir::getNativeWordSizeInBits());
+		return llvm::IntegerType::getIntNTy(gc, (unsigned int) fir::getNativeWordSizeInBits());
 	}
 
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
@@ -323,8 +323,7 @@ namespace backend
 
 			iceAssert(maxSz > 0);
 			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
-				// llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
-				llvm::IntegerType::getIntNTy(gc, maxSz * CHAR_BIT)
+				llvm::IntegerType::getIntNTy(gc, (unsigned int) (maxSz * CHAR_BIT))
 			}, ut->getTypeName().mangled());
 
 			return createdTypes[ut->getTypeName()];

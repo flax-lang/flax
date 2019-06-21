@@ -81,6 +81,8 @@ namespace fir
 
 			std::unordered_map<size_t, interp::Value> globals;
 
+			std::vector<char*> strings;
+
 			// map from the id to the real function.
 			// we don't want 'inheritance' here
 			std::unordered_map<size_t, interp::Function> compiledFunctions;

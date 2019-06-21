@@ -4,25 +4,13 @@
 
 export ultratiny
 
-import libc as _
+import libc
 
-fn foo(x: int)
-{
-	printf("%d\n", x)
-}
+ffi fn haha(x: i8)
 
 @entry fn main()
 {
-	fn foo(x: str)
-	{
-		printf("%s\n", x)
-	}
-	fn foo(x: string)
-	{
-		printf("%s\n", x)
-	}
-
-	foo(30)
+	libc::puts("hello, world!\n")
 }
 
 

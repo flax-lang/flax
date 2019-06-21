@@ -12,6 +12,7 @@
 #include "mpool.h"
 #include "allocator.h"
 
+#include "ir/interp.h"
 
 struct timer
 {
@@ -109,6 +110,18 @@ static void compile(std::string in, std::string out)
 
 
 	platform::performSelfDlOpen();
+
+	{
+		auto is = fir::interp::InterpState(module);
+		auto fn = is.compileFunction(module->getFunction(Identifier("main", IdKind::Name)));
+		is.runFunction(fn, { });
+
+		return;
+	}
+
+
+
+
 	{
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
@@ -139,6 +152,10 @@ static void compile(std::string in, std::string out)
 				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}
+
+
+
+
 	platform::performSelfDlClose();
 }
 

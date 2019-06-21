@@ -485,6 +485,7 @@ namespace lexer
 					case 'r':   tok.text = "\r"; break;
 					case 't':   tok.text = "\t"; break;
 					case '\'':  tok.text = "'"; break;
+					case '\\':  tok.text = "\\"; break;
 
 					default:
 						error(pos, "invalid escape sequence ('\\%c') in character literal", stream[2]);
