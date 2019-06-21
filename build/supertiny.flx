@@ -55,9 +55,16 @@ struct foo
 	// 	printf("%d, %d\n", x, y)
 	// }
 
+	fn foo<T>(a: T) -> T
+	{
+		return a
+	}
+
 	do {
 		// let q = foo(x: 10)
 		printf("hello, world!\n")
+
+		let q = foo!<G: int>(10)
 	}
 
 	// fn qux() -> int => 30
@@ -85,7 +92,7 @@ struct foo
 /*
 
 import std::opt
-import std::    map
+import std::map
 
 	var map: std::map!<int, str>
 	map.insert(3, "foo")

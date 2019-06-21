@@ -95,17 +95,11 @@ static void compile(std::string in, std::string out)
 
 	if(frontend::getPrintProfileStats())
 	{
+		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
+
 		debuglogln("cleared (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
-	}
-
-	if(frontend::getPrintProfileStats())
-	{
-		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
-		debuglogln("compile took %.1f (lexer: %.1f, parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
-			compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
-			compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
-
+		debuglogln("compile (%.1f ms)\t[l: %.1f, p: %.1f, t: %.1f, c: %.1f]", compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
 		debuglogln("%zu FIR values generated\n", fir::Value::getValueCount());
 	}
 
