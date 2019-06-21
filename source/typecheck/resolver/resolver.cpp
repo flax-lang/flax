@@ -258,8 +258,11 @@ namespace resolver
 					{
 						// TODO: HACK -- pass the location around more then!!
 						// patch in the location if it's not present!
-						if(auto se = dcast(SimpleError, f.second); se && se->loc == Location())
+						if(auto se = dcast(SimpleError, f.second); se)
+						{
 							se->loc = f.first->loc;
+							se->msg = "candidate unsuitable: " + se->msg;
+						}
 
 						errs->addCand(f.first, f.second);
 					}

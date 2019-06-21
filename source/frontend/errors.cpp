@@ -442,6 +442,7 @@ void OverloadError::post()
 	{
 		if(emg->kind != ErrKind::Span)
 		{
+			emg->type = MsgType::Note;
 			emg->post();
 		}
 		else
