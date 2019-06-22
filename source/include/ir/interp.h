@@ -61,6 +61,7 @@ namespace fir
 		struct InterpState
 		{
 			InterpState(fir::Module* mod);
+			~InterpState();
 
 			interp::Function& compileFunction(fir::Function* fn);
 			interp::Value runFunction(const interp::Function& fn, const std::vector<interp::Value>& args);
@@ -79,18 +80,14 @@ namespace fir
 			// this is the executing state.
 			std::vector<Frame> stackFrames;
 
-
 			std::unordered_map<fir::Value*, interp::Value> globals;
+			std::vector<void*> globalAllocs;
 
 			std::vector<char*> strings;
 
 			// map from the id to the real function.
 			// we don't want 'inheritance' here
 			std::unordered_map<fir::Value*, interp::Function> compiledFunctions;
-
-			// map from name to the key of the map above
-			std::unordered_map<std::string, fir::Function*> functionNameMap;
-
 
 			fir::Module* module = 0;
 		};

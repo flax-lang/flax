@@ -114,6 +114,9 @@ static void compile(std::string in, std::string out)
 	{
 		auto is = fir::interp::InterpState(module);
 		auto fn = is.compileFunction(module->getFunction(Identifier("test_entry_point", IdKind::Name)));
+		auto init = is.compileFunction(module->getFunction(Identifier("__global_init_function__", IdKind::Name)));
+
+		is.runFunction(init, { });
 		is.runFunction(fn, { });
 
 		return;

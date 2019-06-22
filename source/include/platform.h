@@ -16,17 +16,12 @@ namespace platform
 
 
 	#ifdef _WIN32
-		// #define WIN32_LEAN_AND_MEAN 1
-
-		// #ifndef NOMINMAX
-		// 	#define NOMINMAX
-		// #endif
-
-		// #include <windows.h>
 		using filehandle_t = void*;
 
 		#define CRT_FDOPEN			"_fdopen"
 		#define PLATFORM_NEWLINE	"\r\n"
+
+		#define PLATFORM_EXPORT_FUNCTION    extern "C" __declspec(dllexport)
 	#else
 		#include <unistd.h>
 		#include <sys/stat.h>
@@ -35,6 +30,7 @@ namespace platform
 
 		#define CRT_FDOPEN			"fdopen"
 		#define PLATFORM_NEWLINE	"\n"
+		#define PLATFORM_EXPORT_FUNCTION    extern "C"
 	#endif
 
 	extern filehandle_t InvalidFileHandle;

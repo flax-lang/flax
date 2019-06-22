@@ -10,9 +10,10 @@ public ffi fn printf(x: &i8, ...) -> i32
 public ffi fn sprintf(x: &i8, y: &i8, ...) -> i32
 public ffi fn snprintf(x: &i8, l: u64, y: &i8, ...) -> i32
 
+public ffi fn fprintf(stream: &void, y: &i8, ...) -> i32
+
 public ffi fn putchar(x: i32) -> i32
 
-public ffi fn fprintf(stream: &void, y: &i8, ...) -> i32
 
 // memcpy/set/move
 public ffi fn memcpy(dest: &i8, source: &i8, length: u64) -> &i8
