@@ -57,8 +57,6 @@ namespace interp
 
 		// add it.
 		this->compiledFunctions[ret.func] = ret;
-		this->functionNameMap[fn->getName().mangled()] = ret.func;
-
 		return this->compiledFunctions[ret.func];
 	}
 }

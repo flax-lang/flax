@@ -154,6 +154,7 @@ source_files = files([
 	'source/codegen/glue/strings.cpp',
 	'source/codegen/glue/saa_common.cpp',
 
+	'source/fir/interp/wrappers.cpp',
 	'source/fir/interp/compiler.cpp',
 	'source/fir/interp/interpreter.cpp',
 

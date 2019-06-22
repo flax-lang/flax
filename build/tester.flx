@@ -10,12 +10,12 @@ import std::limits
 
 import "tests/fizzbuzz.flx"
 import "tests/recursiveFib.flx"
-// import "tests/slices.flx"
-// import "tests/classes.flx"
-// import "tests/scopes.flx"
-// import "tests/defertest.flx"
-// import "tests/anytest.flx"
-// import "tests/decomposition.flx"
+import "tests/slices.flx"
+import "tests/classes.flx"
+import "tests/scopes.flx"
+import "tests/defertest.flx"
+import "tests/anytest.flx"
+import "tests/decomposition.flx"
 import "tests/intlimits.flx"
 // import "tests/generics.flx"
 // import "tests/linkedlist.flx"
@@ -80,7 +80,7 @@ fn runTests()
 
 	// scopes
 	std::io::print("%%", scopeTitle, thinLine)
-	// test_scopes::doScopeTest("__llvm_jit__build/test")
+	test_scopes::doScopeTest("__llvm_jit__build/test")
 	std::io::print("\n\n\n")
 
 
@@ -177,10 +177,10 @@ fn runTests()
 
 
 
-// name idea: mill
-
+ffi fn __global_init_function__() -> void
 @nomangle fn test_entry_point()
 {
+	__global_init_function__()
 	main(0, null)
 }
 

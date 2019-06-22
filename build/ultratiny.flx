@@ -5,26 +5,26 @@
 export ultratiny
 
 import libc
-import std::io
+import "tests/scopes.flx"
 
 @entry fn main()
 {
-	// libc::puts("hello, world!\n")
-
-	// let s = "hello, world!\n"
-	// std::io::println("hello")
-
-	for i in 0...25
-	// var i = 0
-	// while i < 10
-	{
-		let ch = 'a'
-		libc::putchar(ch + i as i8)
-	}
+	test_scopes::doScopeTest("lmaooo")
 }
 
+
+
+
+
+
+
+
+
+
+ffi fn __global_init_function__() -> void
 @nomangle fn test_entry_point()
 {
+	__global_init_function__()
 	main()
 }
 
