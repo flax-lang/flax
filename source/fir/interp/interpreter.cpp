@@ -79,8 +79,9 @@ namespace interp
 
 
 
-	static interp::Value makeValue(size_t id, Type* ty);
-	template <typename T> static interp::Value makeValue(size_t id, Type* ty, const T& val);
+	static interp::Value makeValue(fir::Value* fv);
+	template <typename T> static interp::Value makeValue(fir::Value* fv, const T& val);
+
 	static void setValueRaw(InterpState* is, interp::Value* target, void* value, size_t sz);
 	static void setValue(InterpState* is, interp::Value* target, const interp::Value& val);
 
@@ -88,21 +89,21 @@ namespace interp
 	static std::map<ConstantValue*, interp::Value> cachedConstants;
 	static interp::Value makeConstant(ConstantValue* c)
 	{
-		auto ty = c->getType();
 		if(auto ci = dcast(ConstantInt, c))
 		{
-			return cachedConstants[c] = makeValue(c->id, ty, ci->getSignedValue());
+			return cachedConstants[c] = makeValue(c, ci->getSignedValue());
 		}
 		else if(auto cf = dcast(ConstantFP, c))
 		{
-			return cachedConstants[c] = makeValue(c->id, ty, cf->getValue());
+			return cachedConstants[c] = makeValue(c, cf->getValue());
 		}
 		else if(auto cb = dcast(ConstantBool, c))
 		{
-			return cachedConstants[c] = makeValue(c->id, ty, cb->getValue());
+			return cachedConstants[c] = makeValue(c, cb->getValue());
 		}
 		else if(auto cs = dcast(ConstantString, c))
 		{
+			auto str = cs->getValue();
 			error("interp: const string");
 		}
 		else if(auto cbc = dcast(ConstantBitcast, c))
@@ -135,7 +136,7 @@ namespace interp
 		}
 		else
 		{
-			return cachedConstants[c] = makeValue(c->id, c->getType());
+			return cachedConstants[c] = makeValue(c);
 		}
 	}
 
@@ -145,16 +146,16 @@ namespace interp
 
 		for(const auto [ id, glob ] : mod->_getGlobals())
 		{
-			auto val = makeValue(glob->id, glob->getType());
+			auto val = makeValue(glob);
 			if(auto init = glob->getInitialValue(); init)
 				setValue(this, &val, makeConstant(init));
 
-			this->globals[glob->id] = val;
+			this->globals[glob] = val;
 		}
 
 		for(const auto [ str, glob ] : mod->_getGlobalStrings())
 		{
-			auto val = makeValue(glob->id, glob->getType());
+			auto val = makeValue(glob);
 
 			auto s = new char[str.size() + 1];
 			memmove(s, str.c_str(), str.size());
@@ -163,7 +164,7 @@ namespace interp
 			this->strings.push_back(s);
 
 			setValueRaw(this, &val, &s, sizeof(char*));
-			this->globals[glob->id] = val;
+			this->globals[glob] = val;
 		}
 	}
 
@@ -284,15 +285,15 @@ namespace interp
 
 
 	template <typename T>
-	static interp::Value makeValue(size_t id, Type* ty, const T& val)
+	static interp::Value makeValue(fir::Value* fv, const T& val)
 	{
 		interp::Value ret;
-		ret.id = id;
-		ret.type = ty;
+		ret.val = fv;
+		ret.type = fv->getType();
 		ret.dataSize = sizeof(T);
 
-		if(auto fsz = getSizeOfType(ty); fsz != sizeof(T))
-			error("packing error of type '%s': predicted size %d, actual size %d!", ty, fsz, sizeof(T));
+		if(auto fsz = getSizeOfType(ret.type); fsz != sizeof(T))
+			error("packing error of type '%s': predicted size %d, actual size %d!", ret.type, fsz, sizeof(T));
 
 		memset(&ret.data[0], 0, 32);
 
@@ -309,12 +310,14 @@ namespace interp
 		return ret;
 	}
 
-	static interp::Value makeValue(size_t id, Type* ty)
+
+	// this lets us specify the type, instead of using the one in the Value
+	static interp::Value makeValueOfType(fir::Value* fv, fir::Type* ty)
 	{
 		interp::Value ret;
-		ret.id = id;
+		ret.val = fv;
 		ret.type = ty;
-		ret.dataSize = getSizeOfType(ty);
+		ret.dataSize = getSizeOfType(ret.type);
 
 		memset(&ret.data[0], 0, 32);
 
@@ -322,6 +325,12 @@ namespace interp
 			ret.ptr = calloc(1, ret.dataSize);
 
 		return ret;
+	}
+
+
+	static interp::Value makeValue(fir::Value* fv)
+	{
+		return makeValueOfType(fv, fv->getType());
 	}
 
 	template <typename T>
@@ -338,10 +347,10 @@ namespace interp
 	}
 
 
-	static interp::Value cloneValue(size_t id, interp::Value* v)
+	static interp::Value cloneValue(fir::Value* fv, interp::Value* v)
 	{
 		interp::Value ret = *v;
-		ret.id = id;
+		ret.val = fv;
 
 		if(v->dataSize > LARGE_DATA_SIZE)
 		{
@@ -373,12 +382,12 @@ namespace interp
 	}
 
 
-	static interp::Value doInsertValue(interp::InterpState* is, size_t resid, interp::Value* str, interp::Value* elm, int64_t idx)
+	static interp::Value doInsertValue(interp::InterpState* is, fir::Value* res, interp::Value* str, interp::Value* elm, int64_t idx)
 	{
 		iceAssert(str->type->isStructType() || str->type->isArrayType());
 
 		// we clone the value first
-		auto ret = cloneValue(resid, str);
+		auto ret = cloneValue(res, str);
 
 		size_t ofs = 0;
 
@@ -413,7 +422,7 @@ namespace interp
 	}
 
 
-	static interp::Value doExtractValue(interp::InterpState* is, size_t resid, interp::Value* str, int64_t idx)
+	static interp::Value doExtractValue(interp::InterpState* is, fir::Value* res, interp::Value* str, int64_t idx)
 	{
 		iceAssert(str->type->isStructType() || str->type->isArrayType());
 
@@ -439,7 +448,8 @@ namespace interp
 			elm = arrty->getElementType();
 		}
 
-		auto ret = makeValue(resid, elm);
+		auto ret = makeValue(res);
+		iceAssert(ret.type == elm);
 
 		uintptr_t src = 0;
 		if(str->dataSize > LARGE_DATA_SIZE) src = (uintptr_t) str->ptr;
@@ -459,41 +469,37 @@ namespace interp
 	template <typename Functor>
 	static interp::Value oneArgumentOpIntOnly(const interp::Instruction& inst, interp::Value* a, Functor op)
 	{
-		auto rty = inst.origRes->getType();
-		auto rid = inst.result;
-
+		auto res = inst.result;
 		auto ty = a->type;
 
-		if(ty == Type::getInt8())    return makeValue(rid, rty, op(getActualValue<int8_t>(a)));
-		if(ty == Type::getInt16())   return makeValue(rid, rty, op(getActualValue<int16_t>(a)));
-		if(ty == Type::getInt32())   return makeValue(rid, rty, op(getActualValue<int32_t>(a)));
-		if(ty == Type::getInt64())   return makeValue(rid, rty, op(getActualValue<int64_t>(a)));
-		if(ty == Type::getUint8())   return makeValue(rid, rty, op(getActualValue<uint8_t>(a)));
-		if(ty == Type::getUint16())  return makeValue(rid, rty, op(getActualValue<uint16_t>(a)));
-		if(ty == Type::getUint32())  return makeValue(rid, rty, op(getActualValue<uint32_t>(a)));
-		if(ty == Type::getUint64())  return makeValue(rid, rty, op(getActualValue<uint64_t>(a)));
-		if(ty->isPointerType())      return makeValue(rid, rty, op(getActualValue<uintptr_t>(a)));
+		if(ty == Type::getInt8())    return makeValue(res, op(getActualValue<int8_t>(a)));
+		if(ty == Type::getInt16())   return makeValue(res, op(getActualValue<int16_t>(a)));
+		if(ty == Type::getInt32())   return makeValue(res, op(getActualValue<int32_t>(a)));
+		if(ty == Type::getInt64())   return makeValue(res, op(getActualValue<int64_t>(a)));
+		if(ty == Type::getUint8())   return makeValue(res, op(getActualValue<uint8_t>(a)));
+		if(ty == Type::getUint16())  return makeValue(res, op(getActualValue<uint16_t>(a)));
+		if(ty == Type::getUint32())  return makeValue(res, op(getActualValue<uint32_t>(a)));
+		if(ty == Type::getUint64())  return makeValue(res, op(getActualValue<uint64_t>(a)));
+		if(ty->isPointerType())      return makeValue(res, op(getActualValue<uintptr_t>(a)));
 		else                         error("interp: unsupported type '%s'", ty);
 	}
 
 	template <typename Functor>
 	static interp::Value oneArgumentOp(const interp::Instruction& inst, interp::Value* a, Functor op)
 	{
-		auto rty = inst.origRes->getType();
-		auto rid = inst.result;
-
+		auto res = inst.result;
 		auto ty = a->type;
+
 		if(!ty->isFloatingPointType())  return oneArgumentOpIntOnly(inst, a, op);
-		if(ty == Type::getFloat32())    return makeValue(rid, rty, op(getActualValue<float>(a)));
-		if(ty == Type::getFloat64())    return makeValue(rid, rty, op(getActualValue<double>(a)));
+		if(ty == Type::getFloat32())    return makeValue(res, op(getActualValue<float>(a)));
+		if(ty == Type::getFloat64())    return makeValue(res, op(getActualValue<double>(a)));
 		else                            error("interp: unsupported type '%s'", ty);
 	}
 
 	template <typename Functor>
 	static interp::Value twoArgumentOpIntOnly(const interp::Instruction& inst, interp::Value* a, interp::Value* b, Functor op)
 	{
-		auto rty = inst.origRes->getType();
-		auto rid = inst.result;
+		auto res = inst.result;
 
 		auto aty = a->type;
 		auto bty = b->type;
@@ -507,7 +513,7 @@ namespace interp
 		using u32tT = uint32_t; auto u32t = Type::getUint32();
 		using u64tT = uint64_t; auto u64t = Type::getUint64();
 
-		#define mv(x) makeValue(rid, rty, (x))
+		#define mv(x) makeValue(res, (x))
 		#define gav(t, x) getActualValue<t>(x)
 
 		#define If(at, bt) do { if(aty == (at) && bty == (bt)) return mv(op(gav(at##T, a), gav(bt##T, b))); } while(0)
@@ -547,8 +553,7 @@ namespace interp
 		if(a->type->isIntegerType() && b->type->isIntegerType())
 			return twoArgumentOpIntOnly(inst, a, b, op);
 
-		auto rty = inst.origRes->getType();
-		auto rid = inst.result;
+		auto res = inst.result;
 
 		auto aty = a->type;
 		auto bty = b->type;
@@ -565,7 +570,7 @@ namespace interp
 		using f64tT = double;   auto f64t = Type::getFloat64();
 
 
-		#define mv(x) makeValue(rid, rty, (x))
+		#define mv(x) makeValue(res, (x))
 		#define gav(t, x) getActualValue<t>(x)
 
 		#define If(at, bt) do { if(aty == (at) && bty == (bt)) return mv(op(gav(at##T, a), gav(bt##T, b))); } while(0)
@@ -612,7 +617,7 @@ namespace interp
 
 	interp::Value InterpState::runFunction(const interp::Function& fn, const std::vector<interp::Value>& args)
 	{
-		auto ffn = fn.origFunction;
+		auto ffn = fn.func;
 		iceAssert(ffn && ffn->getArgumentCount() == args.size());
 
 
@@ -628,7 +633,7 @@ namespace interp
 			this->stackFrames.push_back({ });
 
 			for(const auto& arg : args)
-				this->stackFrames.back().values[arg.id] = arg;
+				this->stackFrames.back().values[arg.val] = arg;
 
 			if(fn.blocks.empty())
 			{
@@ -658,15 +663,15 @@ namespace interp
 			return &is->stackFrames.back().values[inst.args[i]];
 		};
 
-		auto getVal = [is](size_t id) -> interp::Value* {
-			if(auto it = is->stackFrames.back().values.find(id); it != is->stackFrames.back().values.end())
+		auto getVal = [is](fir::Value* fv) -> interp::Value* {
+			if(auto it = is->stackFrames.back().values.find(fv); it != is->stackFrames.back().values.end())
 				return &it->second;
 
-			else if(auto it2 = is->globals.find(id); it2 != is->globals.end())
+			else if(auto it2 = is->globals.find(fv); it2 != is->globals.end())
 				return &it2->second;
 
 			else
-				error("interp: no value with id %zu", id);
+				error("interp: no value with id %zu", fv->id);
 		};
 
 		auto setRet = [is](const interp::Instruction& inst, const interp::Value& val) -> void {
@@ -979,10 +984,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a->type == Type::getFloat64() && t == Type::getFloat32())
-					ret = makeValue(inst.result, a->type, (float) getActualValue<double>(a));
+					ret = makeValue(inst.result, (float) getActualValue<double>(a));
 
-				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getActualValue<float>(a));
-				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getActualValue<double>(a));
+				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, (float) getActualValue<float>(a));
+				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, (double) getActualValue<double>(a));
 				else                                   error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -997,10 +1002,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a->type == Type::getFloat32() && t == Type::getFloat64())
-					ret = makeValue(inst.result, a->type, (double) getActualValue<float>(a));
+					ret = makeValue(inst.result, (double) getActualValue<float>(a));
 
-				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, a->type, (float) getActualValue<float>(a));
-				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, a->type, (double) getActualValue<double>(a));
+				else if(a->type == Type::getFloat32()) ret = makeValue(inst.result, (float) getActualValue<float>(a));
+				else if(a->type == Type::getFloat64()) ret = makeValue(inst.result, (double) getActualValue<double>(a));
 				else                                   error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -1019,30 +1024,30 @@ namespace interp
 
 				interp::Value ret;
 				if(ot == tt)                                                ret = cloneValue(r, a);
-				else if(ot == Type::getInt8() && tt == Type::getInt16())    ret = makeValue(r, tt, (int16_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt32())    ret = makeValue(r, tt, (int32_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt64())    ret = makeValue(r, tt, (int64_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt32())   ret = makeValue(r, tt, (int32_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt64())   ret = makeValue(r, tt, (int64_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt64())   ret = makeValue(r, tt, (int64_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt16())   ret = makeValue(r, tt, (int16_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt32())   ret = makeValue(r, tt, (int32_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt16())   ret = makeValue(r, tt, (int16_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt8())    ret = makeValue(r, tt, (int8_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint16())  ret = makeValue(r, tt, (uint16_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint32())  ret = makeValue(r, tt, (uint32_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint64())  ret = makeValue(r, tt, (uint64_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint32()) ret = makeValue(r, tt, (uint32_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint64()) ret = makeValue(r, tt, (uint64_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint64()) ret = makeValue(r, tt, (uint64_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint16()) ret = makeValue(r, tt, (uint16_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint32()) ret = makeValue(r, tt, (uint32_t) getActualValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint16()) ret = makeValue(r, tt, (uint16_t) getActualValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint8())  ret = makeValue(r, tt, (uint8_t) getActualValue<uint64_t>(a));
+				else if(ot == Type::getInt8() && tt == Type::getInt16())    ret = makeValue(r, (int16_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt8() && tt == Type::getInt32())    ret = makeValue(r, (int32_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt8() && tt == Type::getInt64())    ret = makeValue(r, (int64_t) getActualValue<int8_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt32())   ret = makeValue(r, (int32_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt64())   ret = makeValue(r, (int64_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt16() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int16_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt64())   ret = makeValue(r, (int64_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt16())   ret = makeValue(r, (int16_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt32() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int32_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt32())   ret = makeValue(r, (int32_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt16())   ret = makeValue(r, (int16_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getInt64() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int64_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint16())  ret = makeValue(r, (uint16_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint32())  ret = makeValue(r, (uint32_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint8() && tt == Type::getUint64())  ret = makeValue(r, (uint64_t) getActualValue<uint8_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint32()) ret = makeValue(r, (uint32_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint64()) ret = makeValue(r, (uint64_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint16() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint16_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint64()) ret = makeValue(r, (uint64_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint16()) ret = makeValue(r, (uint16_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint32() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint32_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint32()) ret = makeValue(r, (uint32_t) getActualValue<uint64_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint16()) ret = makeValue(r, (uint16_t) getActualValue<uint64_t>(a));
+				else if(ot == Type::getUint64() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint64_t>(a));
 				else                                                        error("interp: unsupported");
 
 				setRet(inst, ret);
@@ -1086,7 +1091,7 @@ namespace interp
 				auto ptr = (void*) getActualValue<uintptr_t>(a);
 
 				interp::Value ret;
-				ret.id = inst.result;
+				ret.val = inst.result;
 				ret.dataSize = sz;
 				ret.type = ty;
 
@@ -1114,18 +1119,18 @@ namespace interp
 				iceAssert(inst.args.size() == 1);
 				auto ty = getArg(inst, 0)->type;
 
-				auto phi = dcast(fir::PHINode, inst.origRes);
+				auto phi = dcast(fir::PHINode, inst.result);
 				iceAssert(phi);
 
 				// make the empty thing first
-				auto val = makeValue(inst.result, ty);
+				auto val = makeValue(inst.result);
 
 				bool found = false;
 				for(auto [ blk, v ] : phi->getValues())
 				{
-					if(blk->id == is->stackFrames.back().previousBlock->id)
+					if(blk == is->stackFrames.back().previousBlock->blk)
 					{
-						setValue(is, &val, *getVal(v->id));
+						setValue(is, &val, *getVal(v));
 						found = true;
 						break;
 					}
@@ -1143,12 +1148,12 @@ namespace interp
 			case OpKind::Value_CallFunction:
 			{
 				iceAssert(inst.args.size() >= 1);
-				auto fnid = inst.args[0];
+				auto fn = inst.args[0];
 
 				interp::Function* target = 0;
 
 				// we probably only compiled the entry function, so if we haven't compiled the target then please do
-				if(auto it = is->compiledFunctions.find(fnid); it != is->compiledFunctions.end())
+				if(auto it = is->compiledFunctions.find(fn); it != is->compiledFunctions.end())
 				{
 					target = &it->second;
 				}
@@ -1156,14 +1161,14 @@ namespace interp
 				{
 					for(auto f : is->module->getAllFunctions())
 					{
-						if(f->id == fnid)
+						if(f == fn)
 						{
 							target = &is->compileFunction(f);
 							break;
 						}
 					}
 
-					if(!target) error("interp: no function %zu", fnid);
+					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
 				}
 
 				iceAssert(target);
@@ -1194,16 +1199,16 @@ namespace interp
 			case OpKind::Branch_UnCond:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto blkid = inst.args[0];
+				auto blk = inst.args[0];
 
 				const interp::Block* target = 0;
 				for(const auto& b : is->stackFrames.back().currentFunction->blocks)
 				{
-					if(b.id == blkid)
+					if(b.blk == blk)
 						target = &b;
 				}
 
-				if(!target) error("interp: branch to block %zu not in current function", blkid);
+				if(!target) error("interp: branch to block %zu not in current function", blk->id);
 
 				return runBlock(is, target);
 			}
@@ -1218,14 +1223,14 @@ namespace interp
 				const interp::Block* falseblk = 0;
 				for(const auto& b : is->stackFrames.back().currentFunction->blocks)
 				{
-					if(b.id == inst.args[1])
+					if(b.blk == inst.args[1])
 						trueblk = &b;
 
-					else if(b.id == inst.args[2])
+					else if(b.blk == inst.args[2])
 						falseblk = &b;
 				}
 
-				if(!trueblk || !falseblk) error("interp: branch to blocks %zu or %zu not in current function", trueblk, falseblk);
+				if(!trueblk || !falseblk) error("interp: branch to blocks %zu or %zu not in current function", trueblk->blk->id, falseblk->blk->id);
 
 
 				if(getActualValue<bool>(cond))
@@ -1337,7 +1342,7 @@ namespace interp
 
 				src += ofs;
 
-				auto ret = makeValue(inst.result, elmty->getPointerTo());
+				auto ret = makeValue(inst.result);
 				setValueRaw(is, &ret, &src, sizeof(src));
 
 				setRet(inst, ret);
@@ -1387,10 +1392,10 @@ namespace interp
 
 				auto ci = fir::ConstantInt::getNative(getSizeOfType(ty));
 
-				if(fir::getNativeWordSizeInBits() == 64) setRet(inst, makeValue(inst.result, ty, (int64_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 32) setRet(inst, makeValue(inst.result, ty, (int32_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 16) setRet(inst, makeValue(inst.result, ty, (int16_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 8)  setRet(inst, makeValue(inst.result, ty, (int8_t)  ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 64) setRet(inst, makeValue(inst.result, (int64_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 32) setRet(inst, makeValue(inst.result, (int32_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 16) setRet(inst, makeValue(inst.result, (int16_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 8)  setRet(inst, makeValue(inst.result, (int8_t)  ci->getSignedValue()));
 
 				break;
 			}
@@ -1402,7 +1407,8 @@ namespace interp
 				iceAssert(inst.args.size() == 1);
 				auto ty = getArg(inst, 0)->type;
 
-				auto val = makeValue(inst.result, ty);
+				// we need to override the type, here.
+				auto val = makeValueOfType(inst.result, ty);
 
 				setRet(inst, val);
 				break;
@@ -1432,7 +1438,7 @@ namespace interp
 				if(a->dataSize > LARGE_DATA_SIZE)   ptr = (uintptr_t) a->ptr;
 				else                                ptr = (uintptr_t) &a->data[0];
 
-				setRet(inst, makeValue(inst.result, fir::Type::getNativeWord(), ptr));
+				setRet(inst, makeValue(inst.result, ptr));
 				break;
 			}
 
@@ -1444,7 +1450,7 @@ namespace interp
 				iceAssert(a->type->isPointerType());
 				auto p = (void*) getActualValue<uintptr_t>(a);
 
-				auto ret = makeValue(inst.result, a->type->getPointerElementType());
+				auto ret = makeValue(inst.result);
 
 				setValueRaw(is, &ret, p, ret.dataSize);
 				setRet(inst, ret);
