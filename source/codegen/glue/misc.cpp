@@ -108,6 +108,9 @@ namespace misc
 
 	fir::Function* getRangeSanityCheckFunction(CodegenState* cs)
 	{
+		if(frontend::getIsNoRuntimeChecks())
+			return 0;
+
 		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME, IdKind::Name));
 
 		if(!fn)

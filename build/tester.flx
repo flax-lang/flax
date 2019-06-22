@@ -10,20 +10,20 @@ import std::limits
 
 import "tests/fizzbuzz.flx"
 import "tests/recursiveFib.flx"
-import "tests/slices.flx"
-import "tests/classes.flx"
-import "tests/scopes.flx"
-import "tests/defertest.flx"
-import "tests/anytest.flx"
-import "tests/decomposition.flx"
+// import "tests/slices.flx"
+// import "tests/classes.flx"
+// import "tests/scopes.flx"
+// import "tests/defertest.flx"
+// import "tests/anytest.flx"
+// import "tests/decomposition.flx"
 import "tests/intlimits.flx"
-import "tests/generics.flx"
-import "tests/linkedlist.flx"
-import "tests/forloops.flx"
-import "tests/arraytest.flx"
-import "tests/functions.flx"
-import "tests/unions.flx"
-import "tests/using.flx"
+// import "tests/generics.flx"
+// import "tests/linkedlist.flx"
+// import "tests/forloops.flx"
+// import "tests/arraytest.flx"
+// import "tests/functions.flx"
+// import "tests/unions.flx"
+// import "tests/using.flx"
 
 fn runTests()
 {
@@ -80,7 +80,7 @@ fn runTests()
 
 	// scopes
 	std::io::print("%%", scopeTitle, thinLine)
-	test_scopes::doScopeTest("__llvm_jit__build/test")
+	// test_scopes::doScopeTest("__llvm_jit__build/test")
 	std::io::print("\n\n\n")
 
 
@@ -92,73 +92,73 @@ fn runTests()
 
 	// arrays
 	std::io::print("%%", arrayTitle, thinLine)
-	test_arrays::doArrayTest()
+	// test_arrays::doArrayTest()
 	std::io::print("\n\n\n")
 
 
 	// generics
 	std::io::print("%%", genericsTitle, thinLine)
-	test_generics::doGenericsTest()
+	// test_generics::doGenericsTest()
 	std::io::print("\n\n\n")
 
 
 	// classes
 	std::io::print("%%", classTitle, thinLine)
-	test_classes::doClassTest()
+	// test_classes::doClassTest()
 	std::io::print("\n\n\n")
 
 
 	// first-class-functions
 	std::io::print("%%", functionsTitle, thinLine)
-	test_functions::doFunctionTest()
+	// test_functions::doFunctionTest()
 	std::io::print("\n\n\n")
 
 
 	// defer semantics
 	std::io::print("%%", deferTitle, thinLine)
-	test_defer::doDeferTest()
+	// test_defer::doDeferTest()
 	std::io::print("\n\n\n")
 
 
 	// any
 	std::io::print("%%", anyTitle, thinLine)
-	test_any::doAnyTest()
+	// test_any::doAnyTest()
 	std::io::print("\n\n\n")
 
 
 	// slices
 	std::io::print("%%", slicesTitle, thinLine)
-	test_slices::doSlicesTest()
+	// test_slices::doSlicesTest()
 	std::io::print("\n\n\n")
 
 
 	// decomposition
 	std::io::print("%%", decomposeTitle, thinLine)
-	test_decomposition::doDecompositionTest()
+	// test_decomposition::doDecompositionTest()
 	std::io::print("\n\n\n")
 
 
 	// for-loops
 	std::io::print("%%", forLoopTitle, thinLine)
-	test_forloops::doForLoopTest()
+	// test_forloops::doForLoopTest()
 	std::io::print("\n\n\n")
 
 
 	// linked-list (generics)
 	std::io::print("%%", linkedListTitle, thinLine)
-	test_linkedlist::doLinkedListTest()
+	// test_linkedlist::doLinkedListTest()
 	std::io::print("\n\n\n")
 
 
 	// unions (generics)
 	std::io::print("%%", unionsTitle, thinLine)
-	test_unions::doUnionsTest()
+	// test_unions::doUnionsTest()
 	std::io::print("\n\n\n")
 
 
 	// using
 	std::io::print("%%", usingTitle, thinLine)
-	test_using::doUsingTest()
+	// test_using::doUsingTest()
 	std::io::print("\n\n\n")
 
 
@@ -179,6 +179,10 @@ fn runTests()
 
 // name idea: mill
 
+@nomangle fn test_entry_point()
+{
+	main(0, null)
+}
 
 
 @entry fn main(argc: i32, argv: &&i8) -> int

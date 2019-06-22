@@ -44,9 +44,8 @@ CGResult sst::RangeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// now that we have all the values, it's time to sanity check these things.
 	auto checkf = cgn::glue::misc::getRangeSanityCheckFunction(cs);
-	iceAssert(checkf);
+	if(checkf) cs->irb.Call(checkf, ret, fir::ConstantString::get(this->loc.toString()));
 
-	cs->irb.Call(checkf, ret, fir::ConstantString::get(this->loc.toString()));
 
 	return CGResult(ret);
 }

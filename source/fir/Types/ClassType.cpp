@@ -147,18 +147,18 @@ namespace fir
 
 
 
-	std::vector<Type*> ClassType::getElements()
+	const std::vector<Type*>& ClassType::getElements()
 	{
 		return this->typeList;
 	}
 
 
-	std::vector<Function*> ClassType::getInitialiserFunctions()
+	const std::vector<Function*>& ClassType::getInitialiserFunctions()
 	{
 		return this->initialiserList;
 	}
 
-	std::vector<Function*> ClassType::getMethods()
+	const std::vector<Function*>& ClassType::getMethods()
 	{
 		return this->methodList;
 	}

@@ -101,7 +101,7 @@ static void compile(std::string in, std::string out)
 		debuglogln("cleared (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
 		debuglogln("compile (%.1f ms)\t[l: %.1f, p: %.1f, t: %.1f, c: %.1f]", compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
-		debuglogln("%zu FIR values generated\n", fir::Value::getValueCount());
+		debuglogln("%zu FIR values generated\n", fir::Value::getCurrentValueId());
 	}
 
 
@@ -113,7 +113,7 @@ static void compile(std::string in, std::string out)
 
 	{
 		auto is = fir::interp::InterpState(module);
-		auto fn = is.compileFunction(module->getFunction(Identifier("main", IdKind::Name)));
+		auto fn = is.compileFunction(module->getFunction(Identifier("test_entry_point", IdKind::Name)));
 		is.runFunction(fn, { });
 
 		return;

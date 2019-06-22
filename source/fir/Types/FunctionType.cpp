@@ -75,7 +75,7 @@ namespace fir
 
 
 	// function stuff
-	std::vector<Type*> FunctionType::getArgumentTypes()
+	const std::vector<Type*>& FunctionType::getArgumentTypes()
 	{
 		return this->functionParams;
 	}

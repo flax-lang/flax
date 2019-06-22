@@ -91,8 +91,8 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 #define UNDERLINE_CHARACTER "\u203e"
 
 
-static std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan>& spans, size_t* adjust, size_t* num_width, size_t* margin,
-	bool underline, bool bottompad, const std::string& underlineColour, const std::string& overrideLineContent)
+static std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan>& spans, size_t* adjust, size_t* num_width,
+	size_t* margin, bool underline, bool bottompad, const std::string& underlineColour, const std::string& overrideLineContent)
 {
 	std::string ret;
 
@@ -125,11 +125,13 @@ static std::string getSpannedContext(const Location& loc, const std::vector<util
 
 		for(auto span : spans)
 		{
+			std::string underliner = (span.loc.len < 3 ? "^" : UNDERLINE_CHARACTER);
+
 			// pad out.
 			auto tmp = strprintf("%s", spaces(1 + span.loc.col - *adjust - cursor)); cursor += tmp.length();
 			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour);
 
-			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len)); cursor += tmp.length();
+			tmp = strprintf("%s", repeat(underliner, span.loc.len)); cursor += span.loc.len;
 			ret += tmp + strprintf("%s", COLOUR_RESET);
 		}
 	}

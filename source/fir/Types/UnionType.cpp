@@ -79,7 +79,7 @@ namespace fir
 			error("no variant with name '%s'", name);
 	}
 
-	util::hash_map<std::string, UnionVariantType*> UnionType::getVariants()
+	const util::hash_map<std::string, UnionVariantType*>& UnionType::getVariants()
 	{
 		return this->variants;
 	}

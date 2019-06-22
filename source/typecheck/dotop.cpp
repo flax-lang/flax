@@ -857,7 +857,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 						"could not infer type parameters for polymorphic union '%s' using variant '%s' ",
 						unn->id.name, name)->append(SimpleError::make(MsgType::Note, unn->variants[name]->loc, "variant was defined here:"))->postAndQuit();
 				}
-				else if(wasfncall && unn->type->toUnionType()->getVariants()[name]->getInteriorType()->isVoidType())
+				else if(wasfncall && unn->type->toUnionType()->getVariants().at(name)->getInteriorType()->isVoidType())
 				{
 					SimpleError::make(dot->right->loc,
 						"variant '%s' of union does not have values, and cannot be constructed via function-call",

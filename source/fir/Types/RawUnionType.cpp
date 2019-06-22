@@ -71,7 +71,7 @@ namespace fir
 		return this->variants.size();
 	}
 
-	util::hash_map<std::string, Type*> RawUnionType::getVariants()
+	const util::hash_map<std::string, Type*>& RawUnionType::getVariants()
 	{
 		return this->variants;
 	}

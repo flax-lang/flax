@@ -5,25 +5,28 @@
 export ultratiny
 
 import libc
-
-ffi fn haha(x: i8)
+import std::io
 
 @entry fn main()
 {
-	libc::puts("hello, world!\n")
+	// libc::puts("hello, world!\n")
+
+	// let s = "hello, world!\n"
+	// std::io::println("hello")
+
+	for i in 0...25
+	// var i = 0
+	// while i < 10
+	{
+		let ch = 'a'
+		libc::putchar(ch + i as i8)
+	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
+@nomangle fn test_entry_point()
+{
+	main()
+}
 
 
 
