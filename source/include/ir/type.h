@@ -516,7 +516,7 @@ namespace fir
 		// methods
 		size_t getElementCount();
 		Type* getElementN(size_t n);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -550,7 +550,7 @@ namespace fir
 
 		size_t getVariantCount();
 		size_t getIdOfVariant(const std::string& name);
-		util::hash_map<std::string, UnionVariantType*> getVariants();
+		const util::hash_map<std::string, UnionVariantType*>& getVariants();
 
 		bool hasVariant(const std::string& name);
 		UnionVariantType* getVariant(const std::string& name);
@@ -612,7 +612,7 @@ namespace fir
 
 		bool hasVariant(const std::string& name);
 		Type* getVariant(const std::string& name);
-		util::hash_map<std::string, Type*> getVariants();
+		const util::hash_map<std::string, Type*>& getVariants();
 
 		void setBody(const util::hash_map<std::string, Type*>& variants);
 
@@ -647,7 +647,7 @@ namespace fir
 		Type* getElement(const std::string& name);
 		bool hasElementWithName(const std::string& name);
 		size_t getElementIndex(const std::string& name);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
 
 		void setBody(const std::vector<std::pair<std::string, Type*>>& members);
 
@@ -693,13 +693,13 @@ namespace fir
 		Type* getElement(const std::string& name);
 		bool hasElementWithName(const std::string& name);
 		size_t getElementIndex(const std::string& name);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
 
-		std::vector<Function*> getMethods();
+		const std::vector<Function*>& getMethods();
 		std::vector<Function*> getMethodsWithName(std::string id);
 		Function* getMethodWithType(FunctionType* ftype);
 
-		std::vector<Function*> getInitialiserFunctions();
+		const std::vector<Function*>& getInitialiserFunctions();
 		void setInitialiserFunctions(const std::vector<Function*>& list);
 
 		Function* getInlineInitialiser();
@@ -918,7 +918,7 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		std::vector<Type*> getArgumentTypes();
+		const std::vector<Type*>& getArgumentTypes();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
 

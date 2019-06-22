@@ -98,7 +98,7 @@ namespace fir
 		return this->indexMap.find(name) != this->indexMap.end();
 	}
 
-	std::vector<Type*> StructType::getElements()
+	const std::vector<Type*>& StructType::getElements()
 	{
 		return this->typeList;
 	}

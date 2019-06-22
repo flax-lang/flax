@@ -156,7 +156,7 @@ namespace cgn
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			result = this->irb.GetSAAData(from);
+			result = this->irb.PointerTypeCast(this->irb.GetSAAData(from), fir::Type::getInt8Ptr());
 		}
 		else if(fromType->isStringType() && target->isCharSliceType())
 		{

@@ -114,12 +114,13 @@ public fn format(fmt: str, args: [any: ...]) -> string
 
 public fn println(fmt: str, args: [any: ...])
 {
-	libc::printf("%s\n", format(fmt, ...args).ptr)
+	libc::puts(format(fmt, ...args))
 }
 
 public fn print(fmt: str, args: [any: ...])
 {
-	libc::printf("%s", format(fmt, ...args).ptr)
+	let s = format(fmt, ...args)
+	libc::write(1, s.ptr, s.length)
 }
 
 

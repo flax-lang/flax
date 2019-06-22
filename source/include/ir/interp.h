@@ -71,6 +71,8 @@ namespace fir
 				const interp::Block* previousBlock = 0;
 				const interp::Function* currentFunction = 0;
 
+				std::vector<void*> stackAllocs;
+
 				std::unordered_map<fir::Value*, interp::Value> values;
 			};
 

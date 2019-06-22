@@ -1541,19 +1541,6 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_StackAlloc:
-						{
-							iceAssert(inst->operands.size() == 1);
-							fir::Type* ft = inst->operands[0]->getType();
-							llvm::Type* t = typeToLlvm(ft, module);
-
-							llvm::Value* ret = builder.CreateAlloca(t);
-							builder.CreateStore(llvm::Constant::getNullValue(t), ret);
-
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
 						case fir::OpKind::Value_CreatePHI:
 						{
 							iceAssert(inst->operands.size() == 1);
@@ -2239,7 +2226,7 @@ namespace backend
 
 
 
-
+						case fir::OpKind::Value_StackAlloc:
 						case fir::OpKind::Value_CreateLVal:
 						{
 							iceAssert(inst->operands.size() == 1);

@@ -23,9 +23,9 @@ namespace fir
 		return this->members[n];
 	}
 
-	std::vector<Type*> TupleType::getElements()
+	const std::vector<Type*>& TupleType::getElements()
 	{
-		return std::vector<Type*>(this->members.begin(), this->members.end());
+		return this->members;
 	}
 
 
