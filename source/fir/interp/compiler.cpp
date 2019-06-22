@@ -18,12 +18,11 @@ namespace interp
 
 		interp::Instruction ret;
 
-		ret.origRes = finstr->realOutput;
-		ret.result = finstr->realOutput->id;
+		ret.result = finstr->realOutput;
 		ret.opcode = (uint64_t) finstr->opKind;
 
 		for(auto a : finstr->operands)
-			ret.args.push_back(a->id);
+			ret.args.push_back(a);
 
 		return ret;
 	}
@@ -33,7 +32,7 @@ namespace interp
 		iceAssert(fib);
 
 		interp::Block ret;
-		ret.id = fib->id;
+		ret.blk = fib;
 		ret.instructions = util::map(fib->getInstructions(), [is, parent](fir::Instruction* i) -> interp::Instruction {
 			return compileInstruction(is, parent, i);
 		});
@@ -46,8 +45,7 @@ namespace interp
 		iceAssert(fn);
 
 		interp::Function ret;
-		ret.id = fn->id;
-		ret.origFunction = fn;
+		ret.func = fn;
 
 		ret.blocks = util::map(fn->getBlockList(), [fn, this](fir::IRBlock* b) -> interp::Block {
 			return compileBlock(this, fn, b);
@@ -58,10 +56,10 @@ namespace interp
 
 
 		// add it.
-		this->compiledFunctions[ret.id] = ret;
-		this->functionNameMap[fn->getName().mangled()] = ret.id;
+		this->compiledFunctions[ret.func] = ret;
+		this->functionNameMap[fn->getName().mangled()] = ret.func;
 
-		return this->compiledFunctions[ret.id];
+		return this->compiledFunctions[ret.func];
 	}
 }
 }

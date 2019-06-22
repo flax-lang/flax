@@ -25,7 +25,8 @@ namespace fir
 
 		struct Value
 		{
-			size_t id = 0;
+			fir::Value* val = 0;
+
 			fir::Type* type = 0;
 			size_t dataSize = 0;
 			union {
@@ -37,22 +38,20 @@ namespace fir
 		struct Instruction
 		{
 			size_t opcode;
-			size_t result;
-			fir::Value* origRes = 0;
-			std::vector<size_t> args;
+			fir::Value* result = 0;
+			std::vector<fir::Value*> args;
 		};
 
 		struct Block
 		{
-			size_t id;
+			fir::IRBlock* blk = 0;
 			std::vector<interp::Instruction> instructions;
 		};
 
 		struct Function
 		{
-			size_t id = 0;
+			fir::Function* func = 0;
 			bool isExternal = false;
-			fir::Function* origFunction = 0;
 
 			std::string extFuncName;
 			interp::Block* entryBlock = 0;
@@ -72,23 +71,23 @@ namespace fir
 				const interp::Block* previousBlock = 0;
 				const interp::Function* currentFunction = 0;
 
-				std::unordered_map<size_t, interp::Value> values;
+				std::unordered_map<fir::Value*, interp::Value> values;
 			};
 
 			// this is the executing state.
 			std::vector<Frame> stackFrames;
 
 
-			std::unordered_map<size_t, interp::Value> globals;
+			std::unordered_map<fir::Value*, interp::Value> globals;
 
 			std::vector<char*> strings;
 
 			// map from the id to the real function.
 			// we don't want 'inheritance' here
-			std::unordered_map<size_t, interp::Function> compiledFunctions;
+			std::unordered_map<fir::Value*, interp::Function> compiledFunctions;
 
 			// map from name to the key of the map above
-			std::unordered_map<std::string, size_t> functionNameMap;
+			std::unordered_map<std::string, fir::Function*> functionNameMap;
 
 
 			fir::Module* module = 0;
