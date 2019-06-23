@@ -30,7 +30,7 @@ namespace platform
 
 		#define CRT_FDOPEN			"fdopen"
 		#define PLATFORM_NEWLINE	"\n"
-		#define PLATFORM_EXPORT_FUNCTION    extern "C"
+		#define PLATFORM_EXPORT_FUNCTION    extern "C" __attribute__((visibility("default")))
 	#endif
 
 	extern filehandle_t InvalidFileHandle;
