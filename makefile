@@ -44,7 +44,7 @@ SANITISE		:=
 CXXFLAGS		+= -std=c++17 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
 CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
-LDFLAGS			+= $(SANITISE) -Wl,--export-dynamic
+LDFLAGS			+= $(SANITISE)
 
 FLXFLAGS		+= -sysroot $(SYSROOT)
 
@@ -67,6 +67,10 @@ ifeq ("$(UNAME_IDENT)","Darwin")
 else
 	LIBFFI_CFLAGS  := $(shell pkg-config --cflags libffi)
 	LIBFFI_LDFLAGS := $(shell pkg-config --libs libffi)
+
+	# on linux, we need to explicitly export our functions
+	# like __declspec(dllexport) except __attribute__((visibility("default")))
+	LDFLAGS += -Wl,--export-dynamic
 endif
 
 MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)

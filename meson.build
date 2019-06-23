@@ -2,6 +2,7 @@ project('flax', version: '0.40.0-pre')
 
 add_languages(['c', 'cpp'])
 
+
 the_compiler = meson.get_compiler('c')
 
 
@@ -26,10 +27,39 @@ if the_compiler.get_id() == 'msvc'
 		libKind = 'Release'
 	endif
 
-	mpir_root_dir   = 'D:/Projects/lib/mpir'
-	mpfr_root_dir   = 'D:/Projects/lib/mpfr'
-	llvm_root_dir   = 'D:/Projects/lib/llvm/7.0.1/'
-	libffi_root_dir = 'D:/Projects/lib/libffi'
+	# ok, so because meson is dumb, and we want to allow configuring the locations *without* editing this file
+	# eg. in CI environments, we run an external command that's just an echo of the environment variable, and
+	# capture the output to use. all because it's apparently "a bad idea" to allow people to read env vars...
+
+	envname_mpir    = '%MPIR_ROOT_DIR%'
+	envname_mpfr    = '%MPFR_ROOT_DIR%'
+	envname_llvm    = '%LLVM_ROOT_DIR%'
+	envname_libffi  = '%LIBFFI_ROOT_DIR%'
+
+	mpir_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpir).stdout().strip()
+	if mpir_root_dir == envname_mpir
+		mpir_root_dir = 'D:/Projects/lib/mpir'
+	endif
+
+	mpfr_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpfr).stdout().strip()
+	if mpfr_root_dir == envname_mpfr
+		mpfr_root_dir = 'D:/Projects/lib/mpfr'
+	endif
+
+	llvm_root_dir = run_command('cmd.exe', '/C', 'echo', envname_llvm).stdout().strip()
+	if llvm_root_dir == envname_llvm
+		llvm_root_dir = 'D:/Projects/lib/llvm/7.0.1'
+	endif
+
+	libffi_root_dir = run_command('cmd.exe', '/C', 'echo', envname_libffi).stdout().strip()
+	if libffi_root_dir == envname_libffi
+		libffi_root_dir = 'D:/Projects/lib/libffi'
+	endif
+
+	message('mpir_root: ' + mpir_root_dir)
+	message('mpfr_root: ' + mpfr_root_dir)
+	message('llvm_root: ' + llvm_root_dir)
+	message('libffi_root: ' + libffi_root_dir)
 
 	mpir_hdr_dir    = mpir_root_dir   + '/' + libKind + '/include/'
 	mpfr_hdr_dir    = mpfr_root_dir   + '/' + libKind + '/include/'

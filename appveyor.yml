@@ -4,8 +4,10 @@ clone_folder: c:\projects\flax
 
 environment:
   global:
-    DEPS_REL_INCLUDES_DIR:  c:\projects\lib\mpir\Release\include;c:\projects\lib\mpfr\Release\include;c:\projects\lib\llvm\Release\include
-    DEPS_REL_LIBS_DIR:      c:\projects\lib\mpir\Release\lib;c:\projects\lib\mpfr\Release\lib;c:\projects\lib\llvm\Release\lib
+    MPIR_ROOT_DIR:    c:\projects\lib\mpir
+    MPFR_ROOT_DIR:    c:\projects\lib\mpfr
+    LLVM_ROOT_DIR:    c:\projects\lib\llvm
+    LIBFFI_ROOT_DIR:  c:\projects\lib\libffi
 
 cache:
   - c:\projects\lib -> appveyor.yml
@@ -20,9 +22,18 @@ install:
         Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
         7z x -y -oc:\projects\lib c:\projects\libs.zip
       }
+  # Download ninja
+  - cmd: mkdir C:\ninja-build
+  - ps: (new-object net.webclient).DownloadFile('https://github.com/mesonbuild/cidata/raw/master/ninja.exe', 'C:\ninja-build\ninja.exe')
+  - cmd: set PYTHON_ROOT=C:\python37-x64
+  # Add neccessary paths to PATH variable
+  - cmd: set PATH=%cd%;C:\ninja-build;%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+  # Install meson
+  - cmd: pip install meson
 
 build_script:
-  - ps: msbuild -maxcpucount -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
+  - ps: meson --buildtype=release build/meson-rel
+  - ps: ninja -C build/meson-rel
 
 test_script:
   - ps: cd c:\projects\flax
