@@ -5,14 +5,14 @@
 export ultratiny
 
 import libc
-import "tests/classes.flx"
+import "tests/unions.flx"
 
 
 
 
 @entry fn main()
 {
-	test_classes::doClassTest()
+	test_unions::doUnionsTest()
 }
 
 

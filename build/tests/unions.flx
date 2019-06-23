@@ -11,6 +11,26 @@ union option<T>
 	none
 }
 
+@raw union ipv4
+{
+	_: struct {
+		_: @raw union {
+			bytes2: [u8: 4]
+			raw3: u32
+		}
+	}
+
+	_: struct {
+		bytes: [u8: 4]
+	}
+
+	_: struct {
+		raw2: u32
+	}
+
+	raw: u32
+}
+
 public fn doUnionsTest()
 {
 	do {
@@ -35,6 +55,17 @@ public fn doUnionsTest()
 
 		printf("q = %s, v = %d\n", q as Bar::some, v as Bar::other)
 	}
+
+	do {
+		var addr: ipv4
+		addr.raw3 = 0xff01a8c0;
+		printf("%d.%d.%d.%d\n", addr.bytes[0], addr.bytes[1], addr.bytes[2], addr.bytes[3]);
+	}
 }
+
+
+
+
+
 
 
