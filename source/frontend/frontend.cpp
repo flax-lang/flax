@@ -8,8 +8,7 @@
 
 #include <vector>
 
-
-#define VERSION_STRING	"0.34.1-pre"
+#define FLAX_VERSION_STRING "0.40.0-pre"
 
 #define ARG_COMPILE_ONLY                        "-c"
 #define ARG_BACKEND                             "-backend"
@@ -96,7 +95,7 @@ static void printHelp()
 	if(list.empty())
 		setupMap();
 
-	printf("Flax Compiler - Version %s\n\n", VERSION_STRING);
+	printf("Flax Compiler - Version %s\n\n", FLAX_VERSION_STRING);
 	printf("usage: flaxc [options] <inputs>\n\n");
 
 	printf("options:\n");
@@ -300,7 +299,7 @@ namespace frontend
 				}
 				else if(!strcmp(argv[i], ARG_VERSION))
 				{
-					printf("Flax Compiler (flaxc), version %s\n", VERSION_STRING);
+					printf("Flax Compiler (flaxc), version %s\n", FLAX_VERSION_STRING);
 					exit(0);
 				}
 				else if(!strcmp(argv[i], ARG_LINK_FRAMEWORK))

@@ -18,25 +18,25 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9FD6A820-341E-44AB-BA7F-A38E05B8E4F1}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <TargetName>flaxc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <TargetName>flaxc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <TargetName>flaxc</TargetName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -54,11 +54,11 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros">
-  	<DEPS_DBG_INCLUDES_DIR Condition="'$(DEPS_DBG_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\DebugNoSyms\include;D:\Projects\lib\mpfr\DebugNoSyms\include;D:\Projects\lib\llvm\7.0.1\DebugNoSyms\include;D:\Projects\lib\libffi\Debug\include
+    <DEPS_DBG_INCLUDES_DIR Condition="'$(DEPS_DBG_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\Debug\include;D:\Projects\lib\mpfr\Debug\include;D:\Projects\lib\llvm\7.0.1\Debug\include;D:\Projects\lib\libffi\Debug\include
     </DEPS_DBG_INCLUDES_DIR>
-    <DEPS_DBG_LIBS_DIR Condition="'$(DEPS_DBG_LIBS_DIR)' == ''">D:\Projects\lib\mpir\DebugNoSyms\lib;D:\Projects\lib\mpfr\DebugNoSyms\lib;D:\Projects\lib\llvm\7.0.1\DebugNoSyms\lib;D:\Projects\lib\libffi\Debug\lib
+    <DEPS_DBG_LIBS_DIR Condition="'$(DEPS_DBG_LIBS_DIR)' == ''">D:\Projects\lib\mpir\Debug\lib;D:\Projects\lib\mpfr\Debug\lib;D:\Projects\lib\llvm\7.0.1\Debug\lib;D:\Projects\lib\libffi\Debug\lib
 		</DEPS_DBG_LIBS_DIR>
-  	<DEPS_REL_INCLUDES_DIR Condition="'$(DEPS_REL_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\Release\include;D:\Projects\lib\mpfr\Release\include;D:\Projects\lib\llvm\7.0.1\Release\include;D:\Projects\lib\libffi\Release\include
+    <DEPS_REL_INCLUDES_DIR Condition="'$(DEPS_REL_INCLUDES_DIR)' == ''">D:\Projects\lib\mpir\Release\include;D:\Projects\lib\mpfr\Release\include;D:\Projects\lib\llvm\7.0.1\Release\include;D:\Projects\lib\libffi\Release\include
     </DEPS_REL_INCLUDES_DIR>
     <DEPS_REL_LIBS_DIR Condition="'$(DEPS_REL_LIBS_DIR)' == ''">D:\Projects\lib\mpir\Release\lib;D:\Projects\lib\mpfr\Release\lib;D:\Projects\lib\llvm\7.0.1\Release\lib;D:\Projects\lib\libffi\Release\lib
 		</DEPS_REL_LIBS_DIR>
@@ -77,7 +77,7 @@
     <IncludePath>$(SolutionDir)source\include;$(SolutionDir)external;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\sysroot\windows\$(Configuration)\</OutDir>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <IntDir>.\build\sysroot\windows\obj\$(IntDir)</IntDir>
@@ -107,10 +107,11 @@
       <AdditionalOptions>/ignore:4099 /nodefaultlib:libcmt</AdditionalOptions>
     </Link>
     <Link>
-      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;libffi.lib</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMTD;LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AssemblyDebug>true</AssemblyDebug>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <Profile>true</Profile>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -150,7 +151,7 @@ rem exit 0</Command>
       <AdditionalOptions>/ignore:4099 /nodefaultlib:libcmt</AdditionalOptions>
     </Link>
     <Link>
-      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;libffi.lib</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMTD;LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AssemblyDebug>false</AssemblyDebug>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
@@ -183,7 +184,7 @@ rem exit 0</Command>
       <CompileAs>CompileAsCpp</CompileAs>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>true</MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalOptions>/utf-8 /we4062 /w14062 %(AdditionalOptions)</AdditionalOptions>
@@ -193,7 +194,7 @@ rem exit 0</Command>
       <AdditionalOptions>/ignore:4099 /nodefaultlib:libcmt</AdditionalOptions>
     </Link>
     <Link>
-      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LLVMCore.lib;LLVMSupport.lib;LLVMTarget.lib;LLVMPasses.lib;LLVMAnalysis.lib;LLVMGlobalISel.lib;LLVMLibDriver.lib;LLVMLinker.lib;LLVMipo.lib;LLVMBinaryFormat.lib;LLVMMC.lib;LLVMMCJIT.lib;LLVMOrcJIT.lib;LLVMMCParser.lib;LLVMMCDisassembler.lib;LLVMObject.lib;LLVMScalarOpts.lib;LLVMVectorize.lib;LLVMCodegen.lib;LLVMTablegen.lib;LLVMBitReader.lib;LLVMBitWriter.lib;LLVMInstrumentation.lib;LLVMRuntimeDyld.lib;LLVMInstCombine.lib;LLVMInterpreter.lib;LLVMExecutionEngine.lib;LLVMSelectionDAG.lib;LLVMTransformUtils.lib;LLVMDebugInfoCodeView.lib;LLVMDebugInfoDWARF.lib;LLVMDebugInfoMSF.lib;LLVMDebugInfoPDB.lib;LLVMAsmPrinter.lib;LLVMX86AsmPrinter.lib;LLVMProfileData.lib;LLVMX86AsmParser.lib;LLVMX86Info.lib;LLVMX86CodeGen.lib;LLVMX86Utils.lib;LLVMX86Desc.lib;LLVMDlltoolDriver.lib;mpfr.lib;mpir.lib;libffi.lib</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>LIBCMTD;LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AssemblyDebug>false</AssemblyDebug>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
