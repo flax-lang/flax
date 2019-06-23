@@ -167,8 +167,6 @@ fn runTests()
 	// miscellaneousTests()
 	std::io::print("\n\n\n")
 
-
-
 	// fin.
 	std::io::print("%\n\n\n\n\n", endTitle)
 }

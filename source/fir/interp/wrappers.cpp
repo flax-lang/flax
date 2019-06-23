@@ -10,31 +10,31 @@
 
 
 PLATFORM_EXPORT_FUNCTION
-void __interp_intrinsic_memset(void* dst, int8_t val, size_t cnt, bool)
+__attribute__((visibility("default"))) void __interp_intrinsic_memset(void* dst, int8_t val, size_t cnt, bool)
 {
 	memset(dst, val, cnt);
 }
 
 PLATFORM_EXPORT_FUNCTION
-void __interp_intrinsic_memcpy(void* dst, void* src, size_t cnt, bool)
+__attribute__((visibility("default"))) void __interp_intrinsic_memcpy(void* dst, void* src, size_t cnt, bool)
 {
 	memcpy(dst, src, cnt);
 }
 
 PLATFORM_EXPORT_FUNCTION
-void __interp_intrinsic_memmove(void* dst, void* src, size_t cnt, bool)
+__attribute__((visibility("default"))) void __interp_intrinsic_memmove(void* dst, void* src, size_t cnt, bool)
 {
 	memmove(dst, src, cnt);
 }
 
 PLATFORM_EXPORT_FUNCTION
-int __interp_intrinsic_memcmp(void* a, void*b, size_t cnt, bool)
+__attribute__((visibility("default"))) int __interp_intrinsic_memcmp(void* a, void*b, size_t cnt, bool)
 {
 	return memcmp(a, b, cnt);
 }
 
 PLATFORM_EXPORT_FUNCTION
-int64_t __interp_intrinsic_roundup_pow2(int64_t x)
+__attribute__((visibility("default"))) int64_t __interp_intrinsic_roundup_pow2(int64_t x)
 {
 	auto num = x;
 	auto ret = 1;
