@@ -17,13 +17,13 @@ import "tests/defertest.flx"
 import "tests/anytest.flx"
 import "tests/decomposition.flx"
 import "tests/intlimits.flx"
-// import "tests/generics.flx"
-// import "tests/linkedlist.flx"
-// import "tests/forloops.flx"
-// import "tests/arraytest.flx"
-// import "tests/functions.flx"
-// import "tests/unions.flx"
-// import "tests/using.flx"
+import "tests/generics.flx"
+import "tests/linkedlist.flx"
+import "tests/forloops.flx"
+import "tests/arraytest.flx"
+import "tests/functions.flx"
+import "tests/unions.flx"
+import "tests/using.flx"
 
 fn runTests()
 {
@@ -92,13 +92,13 @@ fn runTests()
 
 	// arrays
 	std::io::print("%%", arrayTitle, thinLine)
-	// test_arrays::doArrayTest()
+	test_arrays::doArrayTest()
 	std::io::print("\n\n\n")
 
 
 	// generics
 	std::io::print("%%", genericsTitle, thinLine)
-	// test_generics::doGenericsTest()
+	test_generics::doGenericsTest()
 	std::io::print("\n\n\n")
 
 
@@ -110,43 +110,43 @@ fn runTests()
 
 	// first-class-functions
 	std::io::print("%%", functionsTitle, thinLine)
-	// test_functions::doFunctionTest()
+	test_functions::doFunctionTest()
 	std::io::print("\n\n\n")
 
 
 	// defer semantics
 	std::io::print("%%", deferTitle, thinLine)
-	// test_defer::doDeferTest()
+	test_defer::doDeferTest()
 	std::io::print("\n\n\n")
 
 
 	// any
 	std::io::print("%%", anyTitle, thinLine)
-	// test_any::doAnyTest()
+	test_any::doAnyTest()
 	std::io::print("\n\n\n")
 
 
 	// slices
 	std::io::print("%%", slicesTitle, thinLine)
-	// test_slices::doSlicesTest()
+	test_slices::doSlicesTest()
 	std::io::print("\n\n\n")
 
 
 	// decomposition
 	std::io::print("%%", decomposeTitle, thinLine)
-	// test_decomposition::doDecompositionTest()
+	test_decomposition::doDecompositionTest()
 	std::io::print("\n\n\n")
 
 
 	// for-loops
 	std::io::print("%%", forLoopTitle, thinLine)
-	// test_forloops::doForLoopTest()
+	test_forloops::doForLoopTest()
 	std::io::print("\n\n\n")
 
 
 	// linked-list (generics)
 	std::io::print("%%", linkedListTitle, thinLine)
-	// test_linkedlist::doLinkedListTest()
+	test_linkedlist::doLinkedListTest()
 	std::io::print("\n\n\n")
 
 

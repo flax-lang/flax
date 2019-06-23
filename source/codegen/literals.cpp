@@ -65,26 +65,21 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->values.empty())
 		{
 			// if our element type is void, and there is no infer... die.
-			if((elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
+			if(!infer || (elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
 				error(this, "failed to infer type for empty array literal");
 
-			//! by right, if we have no values, then elmty is *supposed* to be void.
-			iceAssert(elmty->isVoidType() && infer);
-
+			auto z = fir::ConstantInt::getNative(0);
 			if(infer->isDynamicArrayType())
 			{
 				// ok.
 				elmty = infer->getArrayElementType();
 
-				auto z = fir::ConstantInt::getNative(0);
 				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
 					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
 			}
 			else if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
-
-				auto z = fir::ConstantInt::getNative(0);
 
 				//* note: it's clearly a null pointer, so it must be immutable.
 				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),

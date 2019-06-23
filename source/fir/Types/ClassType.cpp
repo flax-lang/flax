@@ -152,6 +152,34 @@ namespace fir
 		return this->typeList;
 	}
 
+	std::vector<Type*> ClassType::getAllElementsIncludingBase()
+	{
+		std::vector<Type*> ret;
+
+		std::function<void (ClassType*, std::vector<Type*>*)>
+		addMembers = [&addMembers](ClassType* cls, std::vector<Type*>* mems) -> void {
+
+			if(!cls) return;
+
+			addMembers(cls->getBaseClass(), mems);
+
+			for(auto f : cls->getElements())
+				mems->push_back(f);
+		};
+
+		addMembers(this, &ret);
+
+		return ret;
+	}
+
+
+
+
+
+
+
+
+
 
 	const std::vector<Function*>& ClassType::getInitialiserFunctions()
 	{

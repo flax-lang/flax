@@ -1021,11 +1021,14 @@ namespace fir
 
 		if(type->isVoidType())                                      return 0;
 		else if(type->isBoolType())                                 return 1;
-		else if(type->isPointerType() || type->isFunctionType())    return getSizeOfType(wordty);
 		else if(type->isPrimitiveType())                            return type->getBitWidth() / 8;
 		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, wordty });
 		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, wordty, wordty, ptrt });
 		else if(type->isRangeType())                                return getAggregateSize({ wordty, wordty, wordty });
+		else if(type->isPointerType() || type->isFunctionType() || type->isNullType())
+		{
+			return getSizeOfType(wordty);
+		}
 		else if(type->isArrayType())
 		{
 			return type->toArrayType()->getArraySize() * getSizeOfType(type->getArrayElementType());
@@ -1044,14 +1047,7 @@ namespace fir
 
 			if(type->isClassType())
 			{
-				auto c = type->toClassType();
-				auto base = c;
-				while(base)
-				{
-					tys.insert(tys.begin(), base->getElements().begin(), base->getElements().end());
-					base = base->getBaseClass();
-				}
-
+				tys = type->toClassType()->getAllElementsIncludingBase();
 				tys.insert(tys.begin(), fir::Type::getInt8Ptr());
 			}
 			else if(type->isStructType())

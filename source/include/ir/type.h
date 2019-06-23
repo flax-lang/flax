@@ -694,6 +694,7 @@ namespace fir
 		bool hasElementWithName(const std::string& name);
 		size_t getElementIndex(const std::string& name);
 		const std::vector<Type*>& getElements();
+		std::vector<Type*> getAllElementsIncludingBase();
 
 		const std::vector<Function*>& getMethods();
 		std::vector<Function*> getMethodsWithName(std::string id);

@@ -110,6 +110,18 @@ namespace interp
 	}
 
 
+	static interp::Value cloneValue(const interp::Value& v)
+	{
+		interp::Value ret = v;
+
+		if(v.dataSize > LARGE_DATA_SIZE)
+		{
+			ret.ptr = calloc(1, v.dataSize);
+			memmove(ret.ptr, v.ptr, v.dataSize);
+		}
+		return ret;
+	}
+
 	static interp::Value cloneValue(fir::Value* fv, const interp::Value& v)
 	{
 		interp::Value ret = v;
@@ -160,7 +172,7 @@ namespace interp
 	static std::map<ConstantValue*, interp::Value> cachedConstants;
 	static interp::Value makeConstant(InterpState* is, ConstantValue* c)
 	{
-		auto constructStructThingy = [is](fir::Value* val, size_t datasize, const std::vector<ConstantValue*>& inserts) -> interp::Value {
+		auto constructStructThingy2 = [is](fir::Value* val, size_t datasize, const std::vector<interp::Value>& inserts) -> interp::Value {
 
 			uint8_t* buffer = 0;
 
@@ -175,10 +187,8 @@ namespace interp
 			iceAssert(buffer);
 
 			uint8_t* ofs = buffer;
-			for(const auto& x : inserts)
+			for(const auto& v : inserts)
 			{
-				auto v = makeConstant(is, x);
-
 				if(v.dataSize > LARGE_DATA_SIZE)    memmove(ofs, v.ptr, v.dataSize);
 				else                                memmove(ofs, &v.data[0], v.dataSize);
 
@@ -188,8 +198,18 @@ namespace interp
 			return ret;
 		};
 
+		auto constructStructThingy = [is, &constructStructThingy2](fir::Value* val, size_t datasize,
+			const std::vector<ConstantValue*>& inserts) -> interp::Value
+		{
+			std::vector<interp::Value> vals;
+			for(const auto& x : inserts)
+				vals.push_back(makeConstant(is, x));
 
-		if(auto ci = dcast(ConstantInt, c))
+			return constructStructThingy2(val, datasize, vals);
+		};
+
+
+		if(auto ci = dcast(fir::ConstantInt, c))
 		{
 			interp::Value ret;
 
@@ -205,15 +225,15 @@ namespace interp
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cf = dcast(ConstantFP, c))
+		else if(auto cf = dcast(fir::ConstantFP, c))
 		{
 			return cachedConstants[c] = makeValue(c, cf->getValue());
 		}
-		else if(auto cb = dcast(ConstantBool, c))
+		else if(auto cb = dcast(fir::ConstantBool, c))
 		{
 			return cachedConstants[c] = makeValue(c, cb->getValue());
 		}
-		else if(auto cs = dcast(ConstantString, c))
+		else if(auto cs = dcast(fir::ConstantString, c))
 		{
 			auto str = cs->getValue();
 
@@ -228,21 +248,21 @@ namespace interp
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cbc = dcast(ConstantBitcast, c))
+		else if(auto cbc = dcast(fir::ConstantBitcast, c))
 		{
 			auto thing = makeConstant(is, cbc->getValue());
 			auto ret = cloneValue(cbc, thing);
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto ca = dcast(ConstantArray, c))
+		else if(auto ca = dcast(fir::ConstantArray, c))
 		{
 			auto bytecount = ca->getValues().size() * getSizeOfType(ca->getType()->getArrayElementType());
 
 			auto ret = constructStructThingy(ca, bytecount, ca->getValues());
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto ct = dcast(ConstantTuple, c))
+		else if(auto ct = dcast(fir::ConstantTuple, c))
 		{
 			size_t bytecount = 0;
 			for(auto t : ct->getValues())
@@ -251,14 +271,14 @@ namespace interp
 			auto ret = constructStructThingy(ct, bytecount, ct->getValues());
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cec = dcast(ConstantEnumCase, c))
+		else if(auto cec = dcast(fir::ConstantEnumCase, c))
 		{
 			auto bytecount = getSizeOfType(cec->getIndex()->getType()) + getSizeOfType(cec->getValue()->getType());
 
 			auto ret = constructStructThingy(cec, bytecount, { cec->getIndex(), cec->getValue() });
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cas = dcast(ConstantArraySlice, c))
+		else if(auto cas = dcast(fir::ConstantArraySlice, c))
 		{
 			auto ptr = cas->getData();
 			auto len = cas->getLength();
@@ -268,15 +288,75 @@ namespace interp
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cda = dcast(ConstantDynamicArray, c))
+		else if(auto cda = dcast(fir::ConstantDynamicArray, c))
 		{
-			error("interp: const dynarray");
+			std::vector<interp::Value> mems;
+			auto bytecount = getSizeOfType(cda->getType());
+
+			if(cda->getArray())
+			{
+				auto theArray = cda->getArray();
+				auto constArray = makeConstant(is, cda->getArray());
+
+				auto sz = getSizeOfType(theArray->getType());
+
+				void* buffer = new uint8_t[sz]; memset(buffer, 0, sz);
+				is->globalAllocs.push_back(buffer);
+
+				uint8_t* ofs = (uint8_t*) buffer;
+				for(const auto& x : theArray->getValues())
+				{
+					auto v = makeConstant(is, x);
+
+					if(v.dataSize > LARGE_DATA_SIZE)    memmove(ofs, v.ptr, v.dataSize);
+					else                                memmove(ofs, &v.data[0], v.dataSize);
+
+					ofs += v.dataSize;
+				}
+
+				interp::Value fakeptr;
+				fakeptr.val = 0;
+				fakeptr.type = cda->getType()->getArrayElementType()->getMutablePointerTo();
+				fakeptr.dataSize = sizeof(void*);
+
+				setValueRaw(is, &fakeptr, &buffer, sizeof(void*));
+
+				mems = {
+					fakeptr, makeConstant(is, fir::ConstantInt::getNative(theArray->getValues().size())),
+					makeConstant(is, fir::ConstantInt::getNative(-1)), makeConstant(is, fir::ConstantInt::getNative(0))
+				};
+			}
+			else
+			{
+				mems = {
+					makeConstant(is, cda->getData()), makeConstant(is, cda->getLength()),
+					makeConstant(is, cda->getCapacity()), makeConstant(is, fir::ConstantInt::getNative(0))
+				};
+			}
+
+			auto ret = constructStructThingy2(cda, bytecount, mems);
+			return (cachedConstants[c] = ret);
 		}
-		else if(auto fn = dcast(Function, c))
+		else if(auto fn = dcast(fir::Function, c))
 		{
-			error("interp: const function?");
+			// ok -- when we get a "function" as a constant, what really happened in the source code is that we referred to a function
+			// by name, without calling it. we expect, then, to get a function pointer out of it.
+
+			// the problem is, we can also call function pointers that come from raw pointers that point to *real* CPU instructions
+			// somewhere --- nobody is stopping the program from calling dlsym() or whatever and calling a function using
+			// that pointer.
+
+			// so, in order to support that, we return the fir::Function itself as a pointer. when we do the pointer-call, the
+			// stub function will check the list of functions to see if it was a source-originated function, and if so call it
+			// normally. if not, then we will use libffi to call it.
+
+			// make sure we compile it first, so it gets added to InterpState::compiledFunctions
+			is->compileFunction(fn);
+
+			auto ret = makeValue(fn, (uintptr_t) fn);
+			return (cachedConstants[c] = ret);
 		}
-		else if(auto glob = dcast(GlobalValue, c))
+		else if(auto glob = dcast(fir::GlobalValue, c))
 		{
 			if(auto it = is->globals.find(c); it != is->globals.end())
 				return it->second;
@@ -416,11 +496,9 @@ namespace interp
 		error("interp: unsupported type '%s' in libffi-translation", ty);
 	}
 
-	static interp::Value runFunctionWithLibFFI(InterpState* is, fir::Function* fn, const std::vector<interp::Value>& args)
-	{
-		void* fnptr = platform::getSymbol(fn->getName().str());
-		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
 
+	static interp::Value runFunctionWithLibFFI(InterpState* is, void* fnptr, fir::FunctionType* fnty, const std::vector<interp::Value>& args)
+	{
 		// we are assuming the values in 'args' are correct!
 		ffi_type** arg_types = new ffi_type*[args.size()];
 		{
@@ -435,12 +513,12 @@ namespace interp
 		ffi_type* ffi_retty = 0;
 		ffi_cif fn_cif;
 		{
-			ffi_retty = convertTypeToLibFFI(fn->getReturnType());
+			ffi_retty = convertTypeToLibFFI(fnty->getReturnType());
 
-			if(args.size() > fn->getArgumentCount())
+			if(args.size() > fnty->getArgumentTypes().size())
 			{
-				iceAssert(fn->isCStyleVarArg());
-				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fn->getArgumentCount(), args.size(), ffi_retty, arg_types);
+				iceAssert(fnty->isCStyleVarArg());
+				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fnty->getArgumentTypes().size(), args.size(), ffi_retty, arg_types);
 				if(st != FFI_OK)
 					error("interp: ffi_prep_cif_var failed! (%d)", st);
 			}
@@ -479,7 +557,7 @@ namespace interp
 		ffi_call(&fn_cif, FFI_FN(fnptr), ret_buffer, arg_pointers);
 
 		interp::Value ret;
-		ret.type = fn->getReturnType();
+		ret.type = fnty->getReturnType();
 		ret.dataSize = ffi_retty->size;
 
 		setValueRaw(is, &ret, ret_buffer, ret.dataSize);
@@ -490,6 +568,45 @@ namespace interp
 
 		return ret;
 	}
+
+	static interp::Value runFunctionWithLibFFI(InterpState* is, fir::Function* fn, const std::vector<interp::Value>& args)
+	{
+		void* fnptr = platform::getSymbol(fn->getName().str());
+		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
+
+		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args);
+	}
+
+
+	static interp::Value callFunctionPointer(InterpState* is, const interp::Value& func, const std::vector<interp::Value>& args)
+	{
+		auto ptr = getActualValue<uintptr_t>(func);
+		auto firfn = (fir::Function*) ptr;
+
+		if(auto it = is->compiledFunctions.find(firfn); it != is->compiledFunctions.end())
+		{
+			// ok, we are calling a 'real' function. just do it normally.
+			return is->runFunction(it->second, args);
+		}
+		else
+		{
+			// uwu. use libffi.
+			fir::FunctionType* fnty = 0;
+			if(func.type->isFunctionType())
+				fnty = func.type->toFunctionType();
+
+			else if(func.type->isPointerType() && func.type->getPointerElementType()->isFunctionType())
+				fnty = func.type->getPointerElementType()->toFunctionType();
+
+			else
+				error("interp: call to function pointer with invalid type '%s'", func.type);
+
+			return runFunctionWithLibFFI(is, (void*) ptr, fnty, args);
+		}
+	}
+
+
+
 
 
 
@@ -502,7 +619,7 @@ namespace interp
 		}
 		else if(ty->isClassType())
 		{
-			return ((fir::Type*) fir::Type::getInt8Ptr() + ty->toClassType()->getElements());
+			return ((fir::Type*) fir::Type::getInt8Ptr() + ty->toClassType()->getAllElementsIncludingBase());
 		}
 		else if(ty->isTupleType())
 		{
@@ -636,40 +753,68 @@ namespace interp
 	// this saves us a lot of copy/paste
 
 	template <typename Functor>
-	static interp::Value oneArgumentOpIntOnly(const interp::Instruction& inst, const interp::Value& a, Functor op)
+	static interp::Value oneArgumentOpIntOnly(InterpState* is, fir::Type* resty, const interp::Value& a, Functor op)
 	{
-		auto res = inst.result;
 		auto ty = a.type;
 
-		if(ty == Type::getInt8())    return makeValue(res, op(getActualValue<int8_t>(a)));
-		if(ty == Type::getInt16())   return makeValue(res, op(getActualValue<int16_t>(a)));
-		if(ty == Type::getInt32())   return makeValue(res, op(getActualValue<int32_t>(a)));
-		if(ty == Type::getInt64())   return makeValue(res, op(getActualValue<int64_t>(a)));
-		if(ty == Type::getUint8())   return makeValue(res, op(getActualValue<uint8_t>(a)));
-		if(ty == Type::getUint16())  return makeValue(res, op(getActualValue<uint16_t>(a)));
-		if(ty == Type::getUint32())  return makeValue(res, op(getActualValue<uint32_t>(a)));
-		if(ty == Type::getUint64())  return makeValue(res, op(getActualValue<uint64_t>(a)));
-		if(ty->isPointerType())      return makeValue(res, op(getActualValue<uintptr_t>(a)));
-		else                         error("interp: unsupported type '%s'", ty);
+		interp::Value res;
+		res.dataSize = getSizeOfType(resty);
+		res.type = resty;
+
+		if(ty == Type::getInt8())   { auto tmp = op(getActualValue<int8_t>(a));    setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getInt16())  { auto tmp = op(getActualValue<int16_t>(a));   setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getInt32())  { auto tmp = op(getActualValue<int32_t>(a));   setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getInt64())  { auto tmp = op(getActualValue<int64_t>(a));   setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getUint8())  { auto tmp = op(getActualValue<uint8_t>(a));   setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getUint16()) { auto tmp = op(getActualValue<uint16_t>(a));  setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getUint32()) { auto tmp = op(getActualValue<uint32_t>(a));  setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getUint64()) { auto tmp = op(getActualValue<uint64_t>(a));  setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty->isPointerType())     { auto tmp = op(getActualValue<uintptr_t>(a)); setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty->isBoolType())        { auto tmp = op(getActualValue<bool>(a));      setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		else                        error("interp: unsupported type '%s'", ty);
 	}
 
 	template <typename Functor>
-	static interp::Value oneArgumentOp(const interp::Instruction& inst, const interp::Value& a, Functor op)
+	static interp::Value oneArgumentOpIntOnly(InterpState* is, const interp::Instruction& inst, const interp::Value& a, Functor op)
 	{
-		auto res = inst.result;
+		auto ret = oneArgumentOpIntOnly(is, inst.result->getType(), a, op);
+		ret.val = inst.result;
+
+		return ret;
+	}
+
+	template <typename Functor>
+	static interp::Value oneArgumentOp(InterpState* is, fir::Type* resty, const interp::Value& a, Functor op)
+	{
 		auto ty = a.type;
 
-		if(!ty->isFloatingPointType())  return oneArgumentOpIntOnly(inst, a, op);
-		if(ty == Type::getFloat32())    return makeValue(res, op(getActualValue<float>(a)));
-		if(ty == Type::getFloat64())    return makeValue(res, op(getActualValue<double>(a)));
+		if(!ty->isFloatingPointType())
+			return oneArgumentOpIntOnly(is, resty, a, op);
+
+		interp::Value res;
+		res.dataSize = getSizeOfType(resty);
+		res.type = resty;
+
+		if(ty == Type::getFloat32())    { auto tmp = op(getActualValue<float>(a));  setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
+		if(ty == Type::getFloat64())    { auto tmp = op(getActualValue<double>(a)); setValueRaw(is, &res, &tmp, sizeof(tmp)); return res; }
 		else                            error("interp: unsupported type '%s'", ty);
 	}
 
 	template <typename Functor>
-	static interp::Value twoArgumentOpIntOnly(const interp::Instruction& inst, const interp::Value& a, const interp::Value& b, Functor op)
+	static interp::Value oneArgumentOp(InterpState* is, const interp::Instruction& inst, const interp::Value& a, Functor op)
 	{
-		auto res = inst.result;
+		auto ret = oneArgumentOp(is, inst.result->getType(), a, op);
+		ret.val = inst.result;
 
+		return ret;
+	}
+
+
+
+	template <typename Functor>
+	static interp::Value twoArgumentOpIntOnly(InterpState* is, fir::Type* resty, const interp::Value& a,
+		const interp::Value& b, Functor op)
+	{
 		auto aty = a.type;
 		auto bty = b.type;
 
@@ -682,10 +827,17 @@ namespace interp
 		using u32tT = uint32_t; auto u32t = Type::getUint32();
 		using u64tT = uint64_t; auto u64t = Type::getUint64();
 
-		#define mv(x) makeValue(res, (x))
 		#define gav(t, x) getActualValue<t>(x)
 
-		#define If(at, bt) do { if(aty == (at) && bty == (bt)) return mv(op(gav(at##T, a), gav(bt##T, b))); } while(0)
+		interp::Value res;
+		res.dataSize = getSizeOfType(resty);
+		res.type = resty;
+
+		#define If(at, bt) do { if(aty == (at) && bty == (bt)) {    \
+			auto tmp = op(gav(at##T, a), gav(bt##T, b));            \
+			setValueRaw(is, &res, &tmp, sizeof(tmp));               \
+			return res;                                             \
+		} } while(0)
 
 		// FUCK LAH
 		If(i8t,  i8t); If(i8t,  i16t); If(i8t,  i32t); If(i8t,  i64t);
@@ -699,29 +851,31 @@ namespace interp
 		If(u64t, u8t); If(u64t, u16t); If(u64t, u32t); If(u64t, u64t);
 
 		if(aty->isPointerType() && bty->isPointerType())
-			return mv(op(gav(uintptr_t, a), gav(uintptr_t, b)));
-
+		{
+			auto tmp = op(gav(uintptr_t, a), gav(uintptr_t, b));
+			setValueRaw(is, &res, &tmp, sizeof(tmp));
+			return res;
+		}
 		if(aty->isBoolType() && bty->isBoolType())
-			return mv(op(gav(bool, a), gav(bool, b)));
+		{
+			auto tmp = op(gav(bool, a), gav(bool, b));
+			setValueRaw(is, &res, &tmp, sizeof(tmp));
+			return res;
+		}
 
 		error("interp: unsupported types '%s' and '%s' for arithmetic", aty, bty);
 
 		#undef If
-		#undef mv
 		#undef gav
 	}
 
 
 	template <typename Functor>
-	static interp::Value twoArgumentOp(const interp::Instruction& inst, const interp::Value& a, const interp::Value& b, Functor op)
+	static interp::Value twoArgumentOp(InterpState* is, fir::Type* resty, const interp::Value& a,
+			const interp::Value& b, Functor op)
 	{
-		if((a.type->isIntegerType() || a.type->isPointerType() || a.type->isBoolType())
-			&& (b.type->isIntegerType() || b.type->isPointerType() || b.type->isBoolType()))
-		{
-			return twoArgumentOpIntOnly(inst, a, b, op);
-		}
-
-		auto res = inst.result;
+		if(!(a.type->isFloatingPointType() || b.type->isFloatingPointType()))
+			return twoArgumentOpIntOnly(is, resty, a, b, op);
 
 		auto aty = a.type;
 		auto bty = b.type;
@@ -737,11 +891,17 @@ namespace interp
 		using f32tT = float;    auto f32t = Type::getFloat32();
 		using f64tT = double;   auto f64t = Type::getFloat64();
 
-
-		#define mv(x) makeValue(res, (x))
 		#define gav(t, x) getActualValue<t>(x)
 
-		#define If(at, bt) do { if(aty == (at) && bty == (bt)) return mv(op(gav(at##T, a), gav(bt##T, b))); } while(0)
+		interp::Value res;
+		res.dataSize = getSizeOfType(resty);
+		res.type = resty;
+
+		#define If(at, bt) do { if(aty == (at) && bty == (bt)) {    \
+			auto tmp = op(gav(at##T, a), gav(bt##T, b));            \
+			setValueRaw(is, &res, &tmp, sizeof(tmp));               \
+			return res;                                             \
+		} } while(0)
 
 		// FUCK LAH
 		If(i8t,  f32t); If(i8t,  f64t); If(u8t,  f32t); If(u8t,  f64t);
@@ -757,7 +917,6 @@ namespace interp
 		If(f32t, f32t); If(f32t, f64t); If(f64t, f32t); If(f64t, f64t);
 
 		#undef If
-		#undef mv
 		#undef gav
 
 		error("interp: unsupported types '%s' and '%s'", aty, bty);
@@ -766,6 +925,25 @@ namespace interp
 
 
 
+	template <typename Functor>
+	static interp::Value twoArgumentOpIntOnly(InterpState* is, const interp::Instruction& inst, const interp::Value& a,
+		const interp::Value& b, Functor op)
+	{
+		auto ret = twoArgumentOpIntOnly(is, inst.result->getType(), a, b, op);
+		ret.val = inst.result;
+
+		return ret;
+	}
+
+	template <typename Functor>
+	static interp::Value twoArgumentOp(InterpState* is, const interp::Instruction& inst, const interp::Value& a,
+		const interp::Value& b, Functor op)
+	{
+		auto ret = twoArgumentOp(is, inst.result->getType(), a, b, op);
+		ret.val = inst.result;
+
+		return ret;
+	}
 
 
 
@@ -923,6 +1101,52 @@ namespace interp
 			return ret;
 		};
 
+		auto performGEP2 = [is](fir::Type* resty, const interp::Value& ptr, const interp::Value& i1, const interp::Value& i2) -> interp::Value {
+
+			iceAssert(i1.type == i2.type);
+
+			// so, ptr should be a pointer to an array.
+			iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
+
+			auto arrty = ptr.type->getPointerElementType();
+			auto elmty = arrty->getArrayElementType();
+
+			auto ofs = twoArgumentOp(is, resty, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
+				return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
+			});
+
+			auto realptr = getActualValue<uintptr_t>(ptr);
+			return oneArgumentOp(is, resty, ofs, [realptr](auto b) -> auto {
+				// this is not pointer arithmetic!!
+				return realptr + b;
+			});
+		};
+
+
+		auto performStructGEP = [is](fir::Type* resty, const interp::Value& str, uint64_t idx) -> interp::Value {
+
+			iceAssert(str.type->isPointerType());
+			auto strty = str.type->getPointerElementType();
+
+			if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
+				error("interp: unsupported type '%s' for struct gep", strty);
+
+			std::vector<fir::Type*> elms = getTypeListOfType(strty);
+
+			size_t ofs = 0;
+			for(uint64_t i = 0; i < idx; i++)
+				ofs += getSizeOfType(elms[i]);
+
+			auto elmty = elms[idx];
+
+			uintptr_t src = getActualValue<uintptr_t>(str);
+			src += ofs;
+
+			auto ret = cloneValue(str);
+			setValueRaw(is, &ret, &src, sizeof(src));
+
+			return ret;
+		};
 
 
 
@@ -972,7 +1196,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a + b;
 				}));
 				break;
@@ -987,7 +1211,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a - b;
 				}));
 				break;
@@ -1002,7 +1226,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a * b;
 				}));
 				break;
@@ -1017,7 +1241,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a / b;
 				}));
 				break;
@@ -1031,7 +1255,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a % b;
 				}));
 				break;
@@ -1044,7 +1268,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return fmod(a, b);
 				}));
 				break;
@@ -1060,7 +1284,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a == b;
 				}));
 				break;
@@ -1075,7 +1299,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a != b;
 				}));
 				break;
@@ -1090,7 +1314,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a > b;
 				}));
 				break;
@@ -1105,7 +1329,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a < b;
 				}));
 				break;
@@ -1121,7 +1345,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a >= b;
 				}));
 				break;
@@ -1136,7 +1360,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> bool {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a <= b;
 				}));
 				break;
@@ -1150,7 +1374,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(inst, a, b, [](auto a, auto b) -> int {
+				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> int {
 					if(a == b)  return 0;
 					if(a > b)   return 1;
 					else        return -1;
@@ -1165,7 +1389,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a ^ b;
 				}));
 				break;
@@ -1179,7 +1403,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(a.type->isIntegerType());
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a >> b;
 				}));
 				break;
@@ -1192,7 +1416,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(a.type->isIntegerType());
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a << b;
 				}));
 				break;
@@ -1205,7 +1429,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a & b;
 				}));
 				break;
@@ -1218,7 +1442,7 @@ namespace interp
 				auto b = getArg(inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a | b;
 				}));
 				break;
@@ -1230,7 +1454,7 @@ namespace interp
 				iceAssert(inst.args.size() == 1);
 				auto a = getArg(inst, 0);
 
-				setRet(inst, oneArgumentOp(inst, a, [](auto a) -> auto {
+				setRet(inst, oneArgumentOp(is, inst, a, [](auto a) -> auto {
 					return -1 * a;
 				}));
 				break;
@@ -1241,7 +1465,7 @@ namespace interp
 				iceAssert(inst.args.size() == 1);
 				auto a = getArg(inst, 0);
 
-				setRet(inst, oneArgumentOpIntOnly(inst, a, [](auto a) -> auto {
+				setRet(inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
 					return ~a;
 				}));
 				break;
@@ -1252,7 +1476,7 @@ namespace interp
 				iceAssert(inst.args.size() == 1);
 				auto a = getArg(inst, 0);
 
-				setRet(inst, oneArgumentOpIntOnly(inst, a, [](auto a) -> auto {
+				setRet(inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
 					return !a;
 				}));
 				break;
@@ -1294,47 +1518,6 @@ namespace interp
 				break;
 			}
 
-			case OpKind::Cast_IntSize:
-			case OpKind::Integer_ZeroExt:
-			case OpKind::Integer_Truncate:
-			{
-				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto ot = a.type;
-				auto tt = getArg(inst, 1).type;
-				auto r = inst.result;
-
-				interp::Value ret;
-				if(ot == tt)                                                ret = cloneValue(r, a);
-				else if(ot == Type::getInt8() && tt == Type::getInt16())    ret = makeValue(r, (int16_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt32())    ret = makeValue(r, (int32_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt8() && tt == Type::getInt64())    ret = makeValue(r, (int64_t) getActualValue<int8_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt32())   ret = makeValue(r, (int32_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt64())   ret = makeValue(r, (int64_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt16() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int16_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt64())   ret = makeValue(r, (int64_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt16())   ret = makeValue(r, (int16_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt32() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int32_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt32())   ret = makeValue(r, (int32_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt16())   ret = makeValue(r, (int16_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getInt64() && tt == Type::getInt8())    ret = makeValue(r, (int8_t) getActualValue<int64_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint16())  ret = makeValue(r, (uint16_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint32())  ret = makeValue(r, (uint32_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint8() && tt == Type::getUint64())  ret = makeValue(r, (uint64_t) getActualValue<uint8_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint32()) ret = makeValue(r, (uint32_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint64()) ret = makeValue(r, (uint64_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint16() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint16_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint64()) ret = makeValue(r, (uint64_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint16()) ret = makeValue(r, (uint16_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint32() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint32_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint32()) ret = makeValue(r, (uint32_t) getActualValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint16()) ret = makeValue(r, (uint16_t) getActualValue<uint64_t>(a));
-				else if(ot == Type::getUint64() && tt == Type::getUint8())  ret = makeValue(r, (uint8_t) getActualValue<uint64_t>(a));
-				else                                                        error("interp: unsupported");
-
-				setRet(inst, ret);
-				break;
-			}
 
 
 
@@ -1410,50 +1593,6 @@ namespace interp
 
 
 
-			case OpKind::Value_CallFunction:
-			{
-				iceAssert(inst.args.size() >= 1);
-				auto fn = inst.args[0];
-
-				interp::Function* target = 0;
-
-				// we probably only compiled the entry function, so if we haven't compiled the target then please do
-				if(auto it = is->compiledFunctions.find(fn); it != is->compiledFunctions.end())
-				{
-					target = &it->second;
-				}
-				else
-				{
-					for(auto f : is->module->getAllFunctions())
-					{
-						if(f == fn)
-						{
-							target = &is->compileFunction(f);
-							break;
-						}
-					}
-
-					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
-				}
-
-				iceAssert(target);
-
-				std::vector<interp::Value> args;
-				for(size_t i = 1; i < inst.args.size(); i++)
-					args.push_back(getArg(inst, i));
-
-				auto ret = is->runFunction(*target, args);
-				ret.val = inst.result;
-
-				setRet(inst, ret);
-				break;
-			}
-
-			case OpKind::Value_CallFunctionPointer:
-			case OpKind::Value_CallVirtualMethod:
-			{
-				error("interp: not supported atm");
-			}
 
 			case OpKind::Value_Return:
 			{
@@ -1517,6 +1656,45 @@ namespace interp
 			}
 
 
+			case OpKind::Cast_IntSize:
+			case OpKind::Integer_ZeroExt:
+			case OpKind::Integer_Truncate:
+			{
+				iceAssert(inst.args.size() == 2);
+				auto a = getArg(inst, 0);
+				auto b = getArg(inst, 1);
+
+				interp::Value ret;
+
+				if(a.type->isBoolType())
+				{
+					// since we don't want to add more cases to the thingy, we do a hack --
+					// just get the value as a bool, then cast it to an i64 ourselves, then
+					// pass *that* to the ops.
+
+					auto boolval = (int64_t) getActualValue<bool>(a);
+					ret = oneArgumentOp(is, inst, b, [boolval](auto b) -> auto {
+						return (decltype(b)) boolval;
+					});
+				}
+				else if(b.type->isBoolType())
+				{
+					ret = oneArgumentOp(is, inst, a, [](auto a) -> auto {
+						return (bool) a;
+					});
+				}
+				else
+				{
+					ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
+						return (decltype(b)) a;
+					});
+				}
+
+				setRet(inst, ret);
+				break;
+			}
+
+
 			// TODO: these could be made more robust!!
 			case OpKind::Cast_Bitcast:
 			case OpKind::Cast_Signedness:
@@ -1540,16 +1718,9 @@ namespace interp
 				auto a = getArg(inst, 0);
 				auto b = getArg(inst, 1);
 
-				interp::Value ret;
-				if(b.type == fir::Type::getInt8())          ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (int8_t) a; });
-				else if(b.type == fir::Type::getInt16())    ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (int16_t) a; });
-				else if(b.type == fir::Type::getInt32())    ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (int32_t) a; });
-				else if(b.type == fir::Type::getInt64())    ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (int64_t) a; });
-				else if(b.type == fir::Type::getUint8())    ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (uint8_t) a; });
-				else if(b.type == fir::Type::getUint16())   ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (uint16_t) a; });
-				else if(b.type == fir::Type::getUint32())   ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (uint32_t) a; });
-				else if(b.type == fir::Type::getUint64())   ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (uint64_t) a; });
-				else                                        error("interp: unsupported type '%s'", b.type);
+				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
+					return (decltype(b)) a;
+				});
 
 				setRet(inst, ret);
 				break;
@@ -1561,10 +1732,9 @@ namespace interp
 				auto a = getArg(inst, 0);
 				auto b = getArg(inst, 1);
 
-				interp::Value ret;
-				if(b.type == fir::Type::getFloat32())       ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (float) a; });
-				else if(b.type == fir::Type::getFloat64())  ret = oneArgumentOp(inst, a, [](auto a) -> auto { return (double) a; });
-				else                                        error("interp: unsupported type '%s'", b.type);
+				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
+					return (decltype(b)) a;
+				});
 
 				setRet(inst, ret);
 				break;
@@ -1584,7 +1754,7 @@ namespace interp
 				auto elmty = ptr.type->getPointerElementType();
 
 				auto realptr = getActualValue<uintptr_t>(ptr);
-				setRet(inst, oneArgumentOp(inst, b, [realptr, elmty](auto b) -> auto {
+				setRet(inst, oneArgumentOp(is, inst, b, [realptr, elmty](auto b) -> auto {
 					// this doesn't do pointer arithmetic!! if it's a pointer type, the value we get
 					// will be a uintptr_t.
 					return realptr + (b * getSizeOfType(elmty));
@@ -1601,24 +1771,28 @@ namespace interp
 				auto i1 = getArg(inst, 1);
 				auto i2 = getArg(inst, 2);
 
-				iceAssert(i1.type == i2.type);
+				// iceAssert(i1.type == i2.type);
 
-				// so, ptr should be a pointer to an array.
-				iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
+				// // so, ptr should be a pointer to an array.
+				// iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
 
-				auto arrty = ptr.type->getPointerElementType();
-				auto elmty = arrty->getArrayElementType();
+				// auto arrty = ptr.type->getPointerElementType();
+				// auto elmty = arrty->getArrayElementType();
 
-				auto ofs = twoArgumentOp(inst, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
-					return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
-				});
+				// auto ofs = twoArgumentOp(is, inst, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
+				// 	return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
+				// });
 
-				auto realptr = getActualValue<uintptr_t>(ptr);
-				setRet(inst, oneArgumentOp(inst, ofs, [realptr](auto b) -> auto {
-					// this is not pointer arithmetic!!
-					return realptr + b;
-				}));
+				// auto realptr = getActualValue<uintptr_t>(ptr);
+				// setRet(inst, oneArgumentOp(is, inst, ofs, [realptr](auto b) -> auto {
+				// 	// this is not pointer arithmetic!!
+				// 	return realptr + b;
+				// }));
 
+				auto ret = performGEP2(inst.result->getType(), ptr, i1, i2);
+				ret.val = inst.result;
+
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1627,31 +1801,30 @@ namespace interp
 				// equivalent to GEP(ptr*, 0, memberIndex)
 				iceAssert(inst.args.size() == 2);
 				auto str = getUndecayedArg(inst, 0);
-				auto idx = getActualValue<int64_t>(getArg(inst, 1));
+				auto idx = getActualValue<uint64_t>(getArg(inst, 1));
 
-				iceAssert(str.type->isPointerType());
-				auto strty = str.type->getPointerElementType();
+				// iceAssert(str.type->isPointerType());
+				// auto strty = str.type->getPointerElementType();
 
-				if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
-					error("interp: unsupported type '%s' for struct gep", strty);
+				// if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
+				// 	error("interp: unsupported type '%s' for struct gep", strty);
 
-				std::vector<fir::Type*> elms = getTypeListOfType(strty);
+				// std::vector<fir::Type*> elms = getTypeListOfType(strty);
 
-				size_t ofs = 0;
-				for(size_t i = 0; i < idx; i++)
-					ofs += getSizeOfType(elms[i]);
+				// size_t ofs = 0;
+				// for(size_t i = 0; i < idx; i++)
+				// 	ofs += getSizeOfType(elms[i]);
 
-				auto elmty = elms[idx];
+				// auto elmty = elms[idx];
 
-				uintptr_t src = 0;
+				// uintptr_t src = getActualValue<uintptr_t>(str);
+				// src += ofs;
 
-				if(str.dataSize > LARGE_DATA_SIZE)  src = (uintptr_t) str.ptr;
-				else                                src = (uintptr_t) &str.data[0];
+				// auto ret = cloneValue(inst.result, str);
+				// setValueRaw(is, &ret, &src, sizeof(src));
 
-				src += ofs;
-
-				auto ret = cloneValue(inst.result, str);
-				setValueRaw(is, &ret, &src, sizeof(src));
+				auto ret = performStructGEP(inst.result->getType(), str, idx);
+				ret.val = inst.result;
 
 				setRet(inst, ret);
 				break;
@@ -1664,6 +1837,99 @@ namespace interp
 				// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 				error("interp: enotsup");
 			}
+
+			case OpKind::Value_CallFunction:
+			{
+				iceAssert(inst.args.size() >= 1);
+				auto fn = inst.args[0];
+
+				interp::Function* target = 0;
+
+				// we probably only compiled the entry function, so if we haven't compiled the target then please do
+				if(auto it = is->compiledFunctions.find(fn); it != is->compiledFunctions.end())
+				{
+					target = &it->second;
+				}
+				else
+				{
+					for(auto f : is->module->getAllFunctions())
+					{
+						if(f == fn)
+						{
+							target = &is->compileFunction(f);
+							break;
+						}
+					}
+
+					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
+				}
+
+				iceAssert(target);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 1; i < inst.args.size(); i++)
+					args.push_back(getArg(inst, i));
+
+				auto ret = is->runFunction(*target, args);
+				ret.val = inst.result;
+
+				setRet(inst, ret);
+				break;
+			}
+
+
+
+			case OpKind::Value_CallFunctionPointer:
+			{
+				iceAssert(inst.args.size() >= 1);
+				auto fn = getArg(inst, 0);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 1; i < inst.args.size(); i++)
+					args.push_back(getArg(inst, i));
+
+				auto ret = callFunctionPointer(is, fn, args);
+				ret.val = inst.result;
+
+				setRet(inst, ret);
+				break;
+			}
+
+
+			case OpKind::Value_CallVirtualMethod:
+			{
+				// args are: 0. class, 1. index, 2. functiontype, 3...N args
+				auto clsty = inst.args[0]->getType()->toClassType();
+				iceAssert(clsty);
+
+				// std::vector<interp::Value> args;
+				// for(size_t i = 3; i < inst.args.size(); i++)
+				// 	args.push_back(getArg(inst, i));
+
+				// llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
+
+				// vtable = builder.CreateBitOrPointerCast(vtable,
+				// 	llvm::ArrayType::get(llvm::FunctionType::get(llvm::Type::getVoidTy(gc), false)->getPointerTo(),
+				// 	clsty->getVirtualMethodCount())->getPointerTo());
+
+				// auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
+				// 	0, (unsigned int) dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+
+				// auto ffty = inst->operands[2]->getType()->toFunctionType();
+
+				// fptr = builder.CreateBitOrPointerCast(builder.CreateLoad(fptr), typeToLlvm(ffty, module));
+
+				// llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(typeToLlvm(ffty, module)->getPointerElementType());
+				// iceAssert(ft);
+				// llvm::Value* ret = builder.CreateCall(ft, fptr, args);
+
+				// addValueToMap(ret, inst->realOutput);
+				break;
+			}
+
+
+
+
 
 			case OpKind::Misc_Sizeof:
 			{
