@@ -24,6 +24,7 @@ addons:
         - libmpfr4
     homebrew:
         packages:
+        - mpfr
         - llvm@7
         update: true
 
