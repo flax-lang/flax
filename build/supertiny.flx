@@ -45,27 +45,27 @@ struct foo
 	// 	printf("%d.%d.%d.%d\n", addr.bytes[0], addr.bytes[1], addr.bytes[2], addr.bytes[3]);
 	// }
 
-	// do {
-	// 	var x: int
-	// 	var y: int
+	do {
+		var x: int
+		var y: int
 
-	// 	(x, y) = (30, 40)
-	// 	(x, y) = (y, x)
+		(x, y) = (30, 40)
+		(x, y) = (y, x)
 
-	// 	printf("%d, %d\n", x, y)
+		printf("%d, %d\n", x, y)
+	}
+
+	// fn foo<T>(a: T) -> T
+	// {
+	// 	return a
 	// }
 
-	fn foo<T>(a: T) -> T
-	{
-		return a
-	}
+	// do {
+	// 	// let q = foo(x: 10)
+	// 	printf("hello, world!\n")
 
-	do {
-		// let q = foo(x: 10)
-		printf("hello, world!\n")
-
-		let q = foo!<G: int>(10)
-	}
+	// 	let q = foo!<G: int>(10)
+	// }
 
 	// fn qux() -> int => 30
 

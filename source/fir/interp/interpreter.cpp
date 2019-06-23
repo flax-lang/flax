@@ -33,6 +33,10 @@
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
 	#pragma warning(disable: 4018)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wimplicit-conversion-floating-point-to-bool"
+	#pragma GCC diagnostic ignored "-Wdelete-incomplete"
 #endif
 
 
@@ -172,7 +176,7 @@ namespace interp
 	static std::map<ConstantValue*, interp::Value> cachedConstants;
 	static interp::Value makeConstant(InterpState* is, ConstantValue* c)
 	{
-		auto constructStructThingy2 = [is](fir::Value* val, size_t datasize, const std::vector<interp::Value>& inserts) -> interp::Value {
+		auto constructStructThingy2 = [](fir::Value* val, size_t datasize, const std::vector<interp::Value>& inserts) -> interp::Value {
 
 			uint8_t* buffer = 0;
 
@@ -296,8 +300,6 @@ namespace interp
 			if(cda->getArray())
 			{
 				auto theArray = cda->getArray();
-				auto constArray = makeConstant(is, cda->getArray());
-
 				auto sz = getSizeOfType(theArray->getType());
 
 				void* buffer = new uint8_t[sz]; memset(buffer, 0, sz);
@@ -1087,7 +1089,7 @@ namespace interp
 				error("interp: no value with id %zu", fv->id);
 		};
 
-		auto loadFromPtr = [is](const interp::Value& x, fir::Type* ty) -> interp::Value {
+		auto loadFromPtr = [](const interp::Value& x, fir::Type* ty) -> interp::Value {
 
 			auto ptr = (void*) getActualValue<uintptr_t>(x);
 
@@ -1147,8 +1149,6 @@ namespace interp
 			for(uint64_t i = 0; i < idx; i++)
 				ofs += getSizeOfType(elms[i]);
 
-			auto elmty = elms[idx];
-
 			uintptr_t src = getActualValue<uintptr_t>(str);
 			src += ofs;
 
@@ -1159,7 +1159,7 @@ namespace interp
 			return ret;
 		};
 
-		auto decay = [is, &getVal, &loadFromPtr](const interp::Value& val) -> interp::Value {
+		auto decay = [&loadFromPtr](const interp::Value& val) -> interp::Value {
 			if(val.val->islorclvalue())
 			{
 				auto ret = loadFromPtr(val, val.val->getType());
@@ -1173,7 +1173,7 @@ namespace interp
 			}
 		};
 
-		auto getUndecayedArg = [is, &getVal2](const interp::Instruction& inst, size_t i) -> interp::Value& {
+		auto getUndecayedArg = [&getVal2](const interp::Instruction& inst, size_t i) -> interp::Value& {
 			iceAssert(i < inst.args.size());
 			auto ret = getVal2(inst.args[i]);
 			iceAssert(ret);
@@ -1181,7 +1181,7 @@ namespace interp
 			return *ret;
 		};
 
-		auto getArg = [is, &decay, &getVal](const interp::Instruction& inst, size_t i) -> interp::Value {
+		auto getArg = [&decay, &getVal](const interp::Instruction& inst, size_t i) -> interp::Value {
 			iceAssert(i < inst.args.size());
 			return decay(getVal(inst.args[i]));
 		};
@@ -1564,7 +1564,6 @@ namespace interp
 				auto a = getArg(inst, 0);
 
 				auto ty = a.type->getPointerElementType();
-				auto sz = getSizeOfType(ty);
 
 				auto ret = loadFromPtr(a, ty);
 				ret.val = inst.result;
@@ -1578,8 +1577,6 @@ namespace interp
 			case OpKind::Value_CreatePHI:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto ty = inst.args[0]->getType();
-
 				auto phi = dcast(fir::PHINode, inst.result);
 				iceAssert(phi);
 
@@ -2302,7 +2299,6 @@ namespace interp
 				auto vid = (intptr_t) dcast(fir::ConstantInt, inst.args[1])->getSignedValue();
 
 				iceAssert((size_t) vid < ut->getVariantCount());
-				auto vt = ut->getVariant(vid)->getInteriorType();
 
 				// again, we do this "manually" because we can access the raw bytes, so we don't have to
 				// twist ourselves through hoops like with llvm.
@@ -2378,6 +2374,8 @@ namespace interp
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 
