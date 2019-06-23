@@ -34,7 +34,15 @@
 	#pragma warning(push, 0)
 	#pragma warning(disable: 4018)
 #else
+	/*
+		so msvc doesn't really warn on this. we disable these warnings locally, because of the way we're doing the
+		operations. we can guarantee (because IRBuilder says so) that we won't be doing strange things like
+		bitwise-not-ing a boolean or left-shifting a floating point, but the compiler won't know so we just ignore
+		these things to clean up the output.
+	*/
 	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wbool-operation"
+	#pragma GCC diagnostic ignored "-Wint-in-bool-context"
 	#pragma GCC diagnostic ignored "-Wimplicit-conversion-floating-point-to-bool"
 	#pragma GCC diagnostic ignored "-Wdelete-incomplete"
 #endif
@@ -673,7 +681,7 @@ namespace interp
 		}
 	}
 
-	static interp::Value doInsertValue(interp::InterpState* is, fir::Value* res, const interp::Value& str, const interp::Value& elm, int64_t idx)
+	static interp::Value doInsertValue(interp::InterpState* is, fir::Value* res, const interp::Value& str, const interp::Value& elm, size_t idx)
 	{
 		// we clone the value first
 		auto ret = cloneValue(res, str);
@@ -717,7 +725,7 @@ namespace interp
 	}
 
 
-	static interp::Value doExtractValue(interp::InterpState* is, fir::Value* res, const interp::Value& str, int64_t idx)
+	static interp::Value doExtractValue(interp::InterpState* is, fir::Value* res, const interp::Value& str, size_t idx)
 	{
 		size_t ofs = 0;
 
@@ -1991,7 +1999,7 @@ namespace interp
 
 				auto str = getArg(inst, 0);
 				auto elm = getArg(inst, 1);
-				auto idx = getActualValue<int64_t>(getArg(inst, 2));
+				auto idx = (size_t) getActualValue<int64_t>(getArg(inst, 2));
 
 				setRet(inst, doInsertValue(is, inst.result, str, elm, idx));
 				break;
@@ -2003,7 +2011,7 @@ namespace interp
 				iceAssert(inst.args.size() >= 2);
 
 				auto str = getArg(inst, 0);
-				auto idx = getActualValue<int64_t>(getArg(inst, 1));
+				auto idx = (size_t) getActualValue<int64_t>(getArg(inst, 1));
 
 				setRet(inst, doExtractValue(is, inst.result, str, idx));
 				break;
