@@ -61,17 +61,26 @@ UNAME_IDENT		:= $(shell uname)
 COMPILER_IDENT	:= $(shell $(CC) --version | head -n 1)
 
 
-OSX_HOMEBREW_INCLUDE_FUCKERY :=
-
 ifeq ("$(UNAME_IDENT)","Darwin")
-	OSX_HOMEBREW_INCLUDE_FUCKERY = -I/usr/local/opt/libffi/lib/libffi-3.2.1/include
+	LIBFFI_CFLAGS  := $(shell env PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig pkg-config --cflags libffi)
+	LIBFFI_LDFLAGS := $(shell env PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig pkg-config --libs libffi)
+else
+	LIBFFI_CFLAGS  := $(shell pkg-config --cflags libffi)
+	LIBFFI_LDFLAGS := $(shell pkg-config --libs libffi)
 endif
+
+MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)
+MPFR_LDFLAGS    := $(shell pkg-config --libs mpfr)
+
+CFLAGS   += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
+CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
+LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
 
 ifneq (,$(findstring clang,$(COMPILER_IDENT)))
-	CXXFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-	CFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-	LDFLAGS += -L/usr/local/opt/libffi/lib/
+	CXXFLAGS += -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 endif
+
 
 .DEFAULT_GOAL = jit
 -include $(CXXDEPS)
