@@ -75,7 +75,7 @@ prof.svg
 prof_with_square.svg
 build/cmake-output
 .idea
-CMakeLists.txt
+# CMakeLists.txt
 
 source_old
 
