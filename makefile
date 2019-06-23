@@ -57,13 +57,19 @@ SUPERTINYSRC	:= build/supertiny.flx
 GLTESTSRC		:= build/gltest.flx
 TESTSRC			:= build/tester.flx
 
+UNAME_IDENT		:= $(shell uname)
+COMPILER_IDENT	:= $(shell $(CC) --version | head -n 1)
 
-OSX_HOMEBREW_INCLUDE_FUCKERY := -I/usr/local/opt/libffi/lib/libffi-3.2.1/include
 
-ifneq ($(shell $(CC) --version | grep "clang"), "")
+OSX_HOMEBREW_INCLUDE_FUCKERY :=
+
+ifeq ("$(UNAME_IDENT)","Darwin")
+	OSX_HOMEBREW_INCLUDE_FUCKERY = -I/usr/local/opt/libffi/lib/libffi-3.2.1/include
+endif
+
+ifneq (,$(findstring clang,$(COMPILER_IDENT)))
 	CXXFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 	CFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-
 	LDFLAGS += -L/usr/local/opt/libffi/lib/
 endif
 
