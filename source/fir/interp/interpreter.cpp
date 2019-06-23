@@ -41,6 +41,9 @@
 		these things to clean up the output.
 	*/
 	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wpragmas"
+	#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+
 	#pragma GCC diagnostic ignored "-Wbool-operation"
 	#pragma GCC diagnostic ignored "-Wint-in-bool-context"
 	#pragma GCC diagnostic ignored "-Wimplicit-conversion-floating-point-to-bool"

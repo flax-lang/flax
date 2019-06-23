@@ -1,12 +1,10 @@
-image: Visual Studio 2017
+image: Visual Studio 2019
 
 clone_folder: c:\projects\flax
 
 environment:
   global:
-    DEPS_DBG_INCLUDES_DIR:  c:\projects\lib\mpir\DebugNoSyms\include;c:\projects\lib\mpfr\DebugNoSyms\include;c:\projects\lib\llvm\DebugNoSyms\include
     DEPS_REL_INCLUDES_DIR:  c:\projects\lib\mpir\Release\include;c:\projects\lib\mpfr\Release\include;c:\projects\lib\llvm\Release\include
-    DEPS_DBG_LIBS_DIR:      c:\projects\lib\mpir\DebugNoSyms\lib;c:\projects\lib\mpfr\DebugNoSyms\lib;c:\projects\lib\llvm\DebugNoSyms\lib
     DEPS_REL_LIBS_DIR:      c:\projects\lib\mpir\Release\lib;c:\projects\lib\mpfr\Release\lib;c:\projects\lib\llvm\Release\lib
 
 cache:
@@ -14,7 +12,7 @@ cache:
 
 install:
   # Set up the build environment
-  - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+  - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
   # download our deps.
   - ps: "[Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'"
   - ps: >-
