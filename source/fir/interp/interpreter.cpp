@@ -685,6 +685,12 @@ namespace interp
 
 			ofs = idx * getSizeOfType(arrty->getElementType());
 		}
+		else if(str.type->isUnionType())
+		{
+			// we only support getting the id with insert/extractvalue.
+			iceAssert(idx == 0);
+			ofs = 0;
+		}
 		else
 		{
 			auto typelist = getTypeListOfType(str.type);
@@ -721,6 +727,13 @@ namespace interp
 
 			ofs = idx * getSizeOfType(arrty->getElementType());
 			elm = arrty->getElementType();
+		}
+		else if(str.type->isUnionType())
+		{
+			// we only support getting the id with insert/extractvalue.
+			iceAssert(idx == 0);
+			elm = fir::Type::getNativeWord();
+			ofs = 0;
 		}
 		else
 		{
@@ -1052,29 +1065,26 @@ namespace interp
 	// returns either FLOW_NORMAL, FLOW_BRANCH or FLOW_RETURN.
 	static int runInstruction(InterpState* is, const interp::Instruction& inst, interp::Value* instrOutput, const interp::Block** jmpTargetBlk)
 	{
-		auto getVal = [is](fir::Value* fv) -> interp::Value {
+		auto getVal2 = [is](fir::Value* fv) -> interp::Value* {
 			if(auto it = is->stackFrames.back().values.find(fv); it != is->stackFrames.back().values.end())
-				return it->second;
+				return &it->second;
 
 			else if(auto it2 = is->globals.find(fv); it2 != is->globals.end())
-				return it2->second;
+				return &it2->second;
+
+			else
+				return 0;
+		};
+
+		auto getVal = [is, &getVal2](fir::Value* fv) -> interp::Value {
+			if(auto hmm = getVal2(fv); hmm)
+				return *hmm;
 
 			else if(auto cnst = dcast(fir::ConstantValue, fv); cnst)
 				return makeConstant(is, cnst);
 
 			else
 				error("interp: no value with id %zu", fv->id);
-		};
-
-		auto saveVal = [is](const interp::Value& val) -> void {
-			if(auto it = is->stackFrames.back().values.find(val.val); it != is->stackFrames.back().values.end())
-				it->second = val;
-
-			else if(auto it2 = is->globals.find(val.val); it2 != is->globals.end())
-				it2->second = val;
-
-			else
-				error("interp: could not save value of id %zu", val.val->id);
 		};
 
 		auto loadFromPtr = [is](const interp::Value& x, fir::Type* ty) -> interp::Value {
@@ -1143,12 +1153,11 @@ namespace interp
 			src += ofs;
 
 			auto ret = cloneValue(str);
+			ret.type = resty;
 			setValueRaw(is, &ret, &src, sizeof(src));
 
 			return ret;
 		};
-
-
 
 		auto decay = [is, &getVal, &loadFromPtr](const interp::Value& val) -> interp::Value {
 			if(val.val->islorclvalue())
@@ -1164,13 +1173,17 @@ namespace interp
 			}
 		};
 
-		auto getUndecayedArg = [is, &getVal](const interp::Instruction& inst, size_t i) -> interp::Value {
+		auto getUndecayedArg = [is, &getVal2](const interp::Instruction& inst, size_t i) -> interp::Value& {
 			iceAssert(i < inst.args.size());
-			return getVal(inst.args[i]);
+			auto ret = getVal2(inst.args[i]);
+			iceAssert(ret);
+
+			return *ret;
 		};
 
-		auto getArg = [is, &decay, &getUndecayedArg](const interp::Instruction& inst, size_t i) -> interp::Value {
-			return decay(getUndecayedArg(inst, i));
+		auto getArg = [is, &decay, &getVal](const interp::Instruction& inst, size_t i) -> interp::Value {
+			iceAssert(i < inst.args.size());
+			return decay(getVal(inst.args[i]));
 		};
 
 		auto setRet = [is](const interp::Instruction& inst, const interp::Value& val) -> void {
@@ -1486,7 +1499,7 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 1);
 				auto a = getArg(inst, 0);
-				auto t = getArg(inst, 1).type;
+				auto t = inst.args[1]->getType();
 
 				interp::Value ret;
 				if(a.type == Type::getFloat64() && t == Type::getFloat32())
@@ -1504,7 +1517,7 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 1);
 				auto a = getArg(inst, 0);
-				auto t = getArg(inst, 1).type;
+				auto t = inst.args[1]->getType();
 
 				interp::Value ret;
 				if(a.type == Type::getFloat32() && t == Type::getFloat64())
@@ -1565,7 +1578,7 @@ namespace interp
 			case OpKind::Value_CreatePHI:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto ty = getArg(inst, 0).type;
+				auto ty = inst.args[0]->getType();
 
 				auto phi = dcast(fir::PHINode, inst.result);
 				iceAssert(phi);
@@ -1706,7 +1719,7 @@ namespace interp
 				iceAssert(inst.args.size() == 2);
 
 				auto v = cloneValue(inst.result, getArg(inst, 0));
-				v.type = getArg(inst, 1).type;
+				v.type = inst.args[1]->getType();
 
 				setRet(inst, v);
 				break;
@@ -1771,24 +1784,6 @@ namespace interp
 				auto i1 = getArg(inst, 1);
 				auto i2 = getArg(inst, 2);
 
-				// iceAssert(i1.type == i2.type);
-
-				// // so, ptr should be a pointer to an array.
-				// iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
-
-				// auto arrty = ptr.type->getPointerElementType();
-				// auto elmty = arrty->getArrayElementType();
-
-				// auto ofs = twoArgumentOp(is, inst, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
-				// 	return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
-				// });
-
-				// auto realptr = getActualValue<uintptr_t>(ptr);
-				// setRet(inst, oneArgumentOp(is, inst, ofs, [realptr](auto b) -> auto {
-				// 	// this is not pointer arithmetic!!
-				// 	return realptr + b;
-				// }));
-
 				auto ret = performGEP2(inst.result->getType(), ptr, i1, i2);
 				ret.val = inst.result;
 
@@ -1801,29 +1796,9 @@ namespace interp
 				// equivalent to GEP(ptr*, 0, memberIndex)
 				iceAssert(inst.args.size() == 2);
 				auto str = getUndecayedArg(inst, 0);
-				auto idx = getActualValue<uint64_t>(getArg(inst, 1));
+				auto idx = dcast(fir::ConstantInt, inst.args[1])->getUnsignedValue();
 
-				// iceAssert(str.type->isPointerType());
-				// auto strty = str.type->getPointerElementType();
-
-				// if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
-				// 	error("interp: unsupported type '%s' for struct gep", strty);
-
-				// std::vector<fir::Type*> elms = getTypeListOfType(strty);
-
-				// size_t ofs = 0;
-				// for(size_t i = 0; i < idx; i++)
-				// 	ofs += getSizeOfType(elms[i]);
-
-				// auto elmty = elms[idx];
-
-				// uintptr_t src = getActualValue<uintptr_t>(str);
-				// src += ofs;
-
-				// auto ret = cloneValue(inst.result, str);
-				// setValueRaw(is, &ret, &src, sizeof(src));
-
-				auto ret = performStructGEP(inst.result->getType(), str, idx);
+				auto ret = performStructGEP(inst.result->getType()->getPointerTo(), str, idx);
 				ret.val = inst.result;
 
 				setRet(inst, ret);
@@ -1898,32 +1873,27 @@ namespace interp
 
 			case OpKind::Value_CallVirtualMethod:
 			{
-				// args are: 0. class, 1. index, 2. functiontype, 3...N args
+				// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
 				auto clsty = inst.args[0]->getType()->toClassType();
+				auto fnty = inst.args[2]->getType()->toFunctionType();
 				iceAssert(clsty);
 
-				// std::vector<interp::Value> args;
-				// for(size_t i = 3; i < inst.args.size(); i++)
-				// 	args.push_back(getArg(inst, i));
+				std::vector<interp::Value> args;
+				for(size_t i = 3; i < inst.args.size(); i++)
+					args.push_back(getArg(inst, i));
 
-				// llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
+				//* this is very hacky! we rely on these things not using ::val, because it's null!!
+				auto vtable = loadFromPtr(performStructGEP(fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
+				auto vtablety = fir::ArrayType::get(fir::FunctionType::get({ }, fir::Type::getVoid())->getPointerTo(), clsty->getVirtualMethodCount());
+				vtable.type = vtablety->getPointerTo();
 
-				// vtable = builder.CreateBitOrPointerCast(vtable,
-				// 	llvm::ArrayType::get(llvm::FunctionType::get(llvm::Type::getVoidTy(gc), false)->getPointerTo(),
-				// 	clsty->getVirtualMethodCount())->getPointerTo());
+				vtable = performGEP2(vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(inst, 1));
 
-				// auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-				// 	0, (unsigned int) dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+				auto fnptr = loadFromPtr(vtable, fnty->getPointerTo());
+				auto ret = callFunctionPointer(is, fnptr, args);
+				ret.val = inst.result;
 
-				// auto ffty = inst->operands[2]->getType()->toFunctionType();
-
-				// fptr = builder.CreateBitOrPointerCast(builder.CreateLoad(fptr), typeToLlvm(ffty, module));
-
-				// llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(typeToLlvm(ffty, module)->getPointerElementType());
-				// iceAssert(ft);
-				// llvm::Value* ret = builder.CreateCall(ft, fptr, args);
-
-				// addValueToMap(ret, inst->realOutput);
+				setRet(inst, ret);
 				break;
 			}
 
@@ -1934,7 +1904,7 @@ namespace interp
 			case OpKind::Misc_Sizeof:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto ty = getArg(inst, 0).type;
+				auto ty = inst.args[0]->getType();
 
 				auto ci = fir::ConstantInt::getNative(getSizeOfType(ty));
 
@@ -1952,7 +1922,7 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 1);
 
-				auto ty = getArg(inst, 0).type;
+				auto ty = inst.args[0]->getType();
 				auto sz = getSizeOfType(ty);
 
 				void* buffer = new uint8_t[sz];
@@ -2289,37 +2259,36 @@ namespace interp
 			}
 
 			case OpKind::Union_GetValue:
-			case OpKind::Union_SetValue:
-			{
-				error("interp: not supported atm");
-			}
-
-
-			#if 0
-
-			case OpKind::Union_GetValue:
 			{
 				iceAssert(inst.args.size() == 2);
 				iceAssert(inst.args[0]->getType()->isUnionType());
 
 				auto ut = inst.args[0]->getType()->toUnionType();
-				auto vid = dcast(ConstantInt, inst.args[1])->getSignedValue();
+				auto vid = dcast(fir::ConstantInt, inst.args[1])->getSignedValue();
 
 				iceAssert((size_t) vid < ut->getVariantCount());
 				auto vt = ut->getVariant(vid)->getInteriorType();
 
-				auto lut = typeToLlvm(ut, module);
-				auto lvt = typeToLlvm(vt, module);
+				// because we can operate with the raw memory values, we can probably do this a bit more efficiently
+				// than we can with LLVM, where we needed to create a temporary stack value to store the thing from
+				// the extractvalue so we could cast-to-pointer then load.
 
-				llvm::Value* unionVal = getOperand(inst, 0);
-				llvm::Value* arrp = builder.CreateAlloca(lut->getStructElementType(1));
-				builder.CreateStore(builder.CreateExtractValue(unionVal, { 1 }), arrp);
+				// first we just get the argument:
+				auto theUnion = getArg(inst, 0);
 
-				// cast to the appropriate type.
-				llvm::Value* ret = builder.CreatePointerCast(arrp, lvt->getPointerTo());
-				ret = builder.CreateLoad(ret);
+				// then, get the array:
+				uintptr_t arrayAddr = 0;
+				if(theUnion.dataSize > LARGE_DATA_SIZE) arrayAddr = (uintptr_t) theUnion.ptr;
+				else                                    arrayAddr = (uintptr_t) &theUnion.data[0];
 
-				addValueToMap(ret, inst.realOutput);
+				// offset it appropriately:
+				arrayAddr += getSizeOfType(fir::Type::getNativeWord());
+
+				// ok so now we just do a 'setRaw' to get the value out.
+				auto ret = makeValue(inst.result);
+				setValueRaw(is, &ret, (void*) arrayAddr, getSizeOfType(vt));
+
+				setRet(inst, ret);
 				break;
 			}
 
@@ -2329,36 +2298,61 @@ namespace interp
 				iceAssert(inst.args.size() == 3);
 				iceAssert(inst.args[0]->getType()->isUnionType());
 
-				auto luv = getOperand(inst, 0);
-				auto lut = luv->getType();
+				auto ut = inst.args[0]->getType()->toUnionType();
+				auto vid = (intptr_t) dcast(fir::ConstantInt, inst.args[1])->getSignedValue();
 
-				auto val = getOperand(inst, 2);
+				iceAssert((size_t) vid < ut->getVariantCount());
+				auto vt = ut->getVariant(vid)->getInteriorType();
 
-				// this is not really efficient, but without a significant
-				// re-architecting of how we handle structs and pointers and shit
-				// (to let us use GEP for everything), this will have to do.
+				// again, we do this "manually" because we can access the raw bytes, so we don't have to
+				// twist ourselves through hoops like with llvm.
 
-				llvm::Value* arrp = builder.CreateAlloca(lut->getStructElementType(1));
+				// first we just get the argument:
+				auto theUnion = cloneValue(inst.result, getArg(inst, 0));
 
-				// cast to the correct pointer type
-				auto valp = builder.CreateBitCast(arrp, val->getType()->getPointerTo());
-				builder.CreateStore(val, valp);
+				// then, get the array:
+				uintptr_t baseAddr = 0;
+				if(theUnion.dataSize > LARGE_DATA_SIZE) baseAddr = (uintptr_t) theUnion.ptr;
+				else                                    baseAddr = (uintptr_t) &theUnion.data[0];
 
-				// cast it back, then load it.
-				arrp = builder.CreateBitCast(valp, arrp->getType());
-				auto arr = builder.CreateLoad(arrp);
+				// offset it appropriately:
+				auto arrayAddr = baseAddr + getSizeOfType(fir::Type::getNativeWord());
 
-				// insert it back into the union.
-				luv = builder.CreateInsertValue(luv, arr, { 1 });
+				// ok, now we just do a memcpy into the struct.
+				iceAssert(sizeof(intptr_t) == (fir::getNativeWordSizeInBits() / CHAR_BIT));
+				memmove((void*) baseAddr, &vid, sizeof(intptr_t));
 
-				// then insert the id.
-				luv = builder.CreateInsertValue(luv, getOperand(inst, 1), { 0 });
+				uintptr_t valueAddr = 0;
+				auto theValue = getArg(inst, 2);
+				if(theValue.dataSize > LARGE_DATA_SIZE) valueAddr = (uintptr_t) theValue.ptr;
+				else                                    valueAddr = (uintptr_t) &theValue.data[0];
 
-				addValueToMap(luv, inst.realOutput);
+				memmove((void*) arrayAddr, (void*) valueAddr, theValue.dataSize);
+
+				setRet(inst, theUnion);
 				break;
 			}
 
-			#endif
+
+			case OpKind::RawUnion_GEP:
+			{
+				iceAssert(inst.args.size() == 2);
+				auto targtype = inst.args[1]->getType();
+
+				iceAssert(inst.args[0]->islorclvalue());
+
+				// again. just manipulate the memory.
+				auto unn = getUndecayedArg(inst, 0);
+				auto buffer = getActualValue<uintptr_t>(unn);
+
+				auto ret = makeValueOfType(inst.result, targtype->getPointerTo());
+				setValueRaw(is, &ret, &buffer, sizeof(uintptr_t));
+
+				setRet(inst, ret);
+				break;
+			}
+
+
 
 			case OpKind::Unreachable:
 			{
@@ -2366,6 +2360,7 @@ namespace interp
 			}
 
 			case OpKind::Invalid:
+			default:
 			{
 				// note we don't use "default" to catch
 				// new opkinds that we forget to add.

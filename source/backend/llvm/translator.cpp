@@ -1599,7 +1599,7 @@ namespace backend
 
 						case fir::OpKind::Value_CallVirtualMethod:
 						{
-							// args are: 0. class, 1. index, 2. functiontype, 3...N args
+							// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
 							auto clsty = inst->operands[0]->getType()->toClassType();
 							iceAssert(clsty);
 

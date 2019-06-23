@@ -104,7 +104,7 @@ fn runTests()
 
 	// classes
 	std::io::print("%%", classTitle, thinLine)
-	// test_classes::doClassTest()
+	test_classes::doClassTest()
 	std::io::print("\n\n\n")
 
 
@@ -152,13 +152,13 @@ fn runTests()
 
 	// unions (generics)
 	std::io::print("%%", unionsTitle, thinLine)
-	// test_unions::doUnionsTest()
+	test_unions::doUnionsTest()
 	std::io::print("\n\n\n")
 
 
 	// using
 	std::io::print("%%", usingTitle, thinLine)
-	// test_using::doUsingTest()
+	test_using::doUsingTest()
 	std::io::print("\n\n\n")
 
 

@@ -2212,8 +2212,6 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
-
-
 	Value* IRBuilder::SetUnionVariantID(Value* unn, size_t id, const std::string& vname)
 	{
 		if(!unn->getType()->isUnionType())
