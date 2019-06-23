@@ -863,7 +863,7 @@ namespace fir
 
 	Value* IRBuilder::IntZeroExt(Value* v, Type* targetType, const std::string& vname)
 	{
-		iceAssert(v->getType()->isIntegerType() && "value is not integer type");
+		iceAssert(v->getType()->isIntegerType() || v->getType()->isBoolType() && "value is not integer type");
 		iceAssert(targetType->isIntegerType() && "target is not integer type");
 
 		Instruction* instr = make_instr(OpKind::Integer_ZeroExt, false, this->currentBlock, targetType,

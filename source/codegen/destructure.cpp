@@ -146,15 +146,15 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 
 		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
 		{
+			if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
+			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
+			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
+			else                                iceAssert(0);
+
 			//* note: 'true' means we're performing a decomposition, so print a more appropriate error message on bounds failure.
 			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
 			if(checkf)
 			{
-				if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
-				else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
-				else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
-				else                                iceAssert(0);
-
 				auto strloc = fir::ConstantString::get(bind.loc.toString());
 				cs->irb.Call(checkf, arrlen, numbinds, strloc);
 			}

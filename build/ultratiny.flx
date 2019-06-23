@@ -5,14 +5,15 @@
 export ultratiny
 
 import libc
-import "tests/scopes.flx"
+import "tests/classes.flx"
+
+
+
 
 @entry fn main()
 {
-	test_scopes::doScopeTest("lmaooo")
+	test_classes::doClassTest()
 }
-
-
 
 
 

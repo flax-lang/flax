@@ -134,21 +134,9 @@ namespace backend
 			// to allow recursion, declare the type first.
 			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
-			std::vector<llvm::Type*> lmems;
-
-			std::function<void (fir::ClassType*, std::vector<llvm::Type*>*)> addMembers
-				= [&addMembers, &mod](fir::ClassType* cls, std::vector<llvm::Type*>* mems) -> auto {
-
-				if(!cls)
-					return;
-
-				addMembers(cls->getBaseClass(), mems);
-
-				for(auto f : cls->getElements())
-					mems->push_back(typeToLlvm(f, mod));
-			};
-
-			addMembers(ct, &lmems);
+			std::vector<llvm::Type*> lmems = util::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
+				return typeToLlvm(t, mod);
+			});
 
 			// insert the vtable at the front.
 			lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));

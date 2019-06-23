@@ -128,7 +128,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 				val = cs->irb.IntSizeCast(val, val->getType()->isSignedIntType() ? fir::Type::getInt32() : fir::Type::getUint32());
 
 			else if(val->getType()->isBoolType())
-				val = cs->irb.IntSizeCast(val, fir::Type::getInt32());
+				val = cs->irb.IntZeroExt(val, fir::Type::getInt32());
 		}
 
 		ret[i] = val;
