@@ -91,7 +91,24 @@ if the_compiler.get_id() == 'msvc'
 		]
 	)
 else
-	error('You fool, use the makefile for non-windows builds')
+	add_project_arguments('-std=c11', language: 'c')
+	add_project_arguments('-std=c++17', language: 'cpp')
+	add_project_arguments('-include', 'source/include/precompile.h', language: 'cpp')
+
+	add_project_arguments('-Wall', '-Wno-unused-parameter', '-Wno-sign-conversion', '-Wno-padded', '-Wno-conversion',
+		'-Wno-shadow', '-Wno-missing-noreturn', '-Wno-unused-macros', '-Wno-switch-enum', '-Wno-deprecated', '-Wno-format-nonliteral',
+		'-Wno-trigraphs', '-Wno-unused-const-variable', '-Wno-deprecated-declarations', '-Wno-unused-lambda-capture',
+		'-Wno-unused-variable',
+		language:'cpp')
+
+	# on unix, we use GMP instead of MPIR.
+	mpfr_dep = dependency('mpfr', version: '>= 4.0.0')
+	libffi_dep = dependency('libffi', version: '>= 3.2.1')
+	mpir_dep = dependency('', required: false)
+	llvm_dep = dependency('llvm', static: true, version: '7.0.1', modules: [
+		'core', 'engine', 'native', 'linker', 'bitwriter',
+		'lto', 'vectorize', 'all-targets', 'object', 'orcjit'
+	])
 endif
 
 

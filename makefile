@@ -58,30 +58,28 @@ GLTESTSRC		:= build/gltest.flx
 TESTSRC			:= build/tester.flx
 
 
+OSX_HOMEBREW_INCLUDE_FUCKERY := -I/usr/local/opt/libffi/lib/libffi-3.2.1/include
 
-.DEFAULT_GOAL = osx
+ifneq ($(shell $(CC) --version | grep "clang"), "")
+	CXXFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	CFLAGS += $(OSX_HOMEBREW_INCLUDE_FUCKERY) -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+
+	LDFLAGS += -L/usr/local/opt/libffi/lib/
+endif
+
+.DEFAULT_GOAL = jit
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx linux ci satest tiny osxflags
+.PHONY: copylibs jit compile clean build linux ci satest tiny
 
-osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-
-osxflags:
-
-
-osx: jit osxflags
-
-satest: osxflags build
+satest: build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tester: osxflags build
+tester: build
 	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
 ci: test
-
-linux: jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
@@ -115,7 +113,7 @@ copylibs: $(FLXSRC)
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread -ldl
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread -ldl -lffi
 
 
 %.cpp.o: %.cpp
