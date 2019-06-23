@@ -94,8 +94,6 @@ namespace platform
 			ret = dlsym(currentModule, name.c_str());
 		#endif
 
-		if(!ret) _error_and_exit("failed to find symbol '%s'\n", name);
-
 		return ret;
 	}
 

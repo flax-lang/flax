@@ -111,18 +111,18 @@ static void compile(std::string in, std::string out)
 
 	platform::performSelfDlOpen();
 
-	// {
-	// 	auto interp_ms = t.stop();
+	{
+		auto interp_ms = t.stop();
 
-	// 	auto is = fir::interp::InterpState(module);
-	// 	auto fn = is.compileFunction(module->getFunction(Identifier("test_entry_point", IdKind::Name)));
-	// 	is.runFunction(fn, { });
+		auto is = fir::interp::InterpState(module);
+		auto fn = is.compileFunction(module->getFunction(Identifier("test_entry_point", IdKind::Name)));
+		is.runFunction(fn, { });
 
-	// 	interp_ms = t.stop() - interp_ms;
-	// 	debuglogln("interp took %.1f ms", interp_ms);
+		interp_ms = t.stop() - interp_ms;
+		debuglogln("interp took %.1f ms", interp_ms);
 
-	// 	return;
-	// }
+		return;
+	}
 
 
 

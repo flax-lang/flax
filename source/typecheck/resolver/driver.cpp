@@ -256,7 +256,7 @@ namespace resolver
 		else if(auto rud = dcast(sst::RawUnionDefn, typedf))
 		{
 			return TCResult(SimpleError::make(fs->loc(), "constructors are not defined for raw unions")
-				->append(SimpleError::make(MsgType::Note, typedf->loc, "type was defined here:"))
+				->append(SimpleError::make(MsgType::Note, rud->loc, "type was defined here:"))
 			);
 		}
 		else
