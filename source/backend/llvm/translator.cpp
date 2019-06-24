@@ -202,7 +202,7 @@ namespace backend
 		{
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
 
-			auto id = Identifier("__string", IdKind::Type);
+			auto id = util::obfuscateIdentifier("string", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -235,7 +235,7 @@ namespace backend
 		}
 		else if(type->isRangeType())
 		{
-			auto id = Identifier("__range", IdKind::Type);
+			auto id = util::obfuscateIdentifier("range", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -256,7 +256,7 @@ namespace backend
 		{
 			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
 
-			auto id = Identifier("__any", IdKind::Type);
+			auto id = util::obfuscateIdentifier("any", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -318,11 +318,11 @@ namespace backend
 		}
 		else if(type->isPolyPlaceholderType())
 		{
-			error("llvm: Unfulfilled polymorphic placeholder type '%s'", type);
+			error("llvm: unfulfilled polymorphic placeholder type '%s'", type);
 		}
 		else
 		{
-			error("llvm: Unimplememented type '%s' for LLVM backend", type);
+			error("llvm: unimplememented type '%s' for LLVM backend", type);
 		}
 	}
 
@@ -362,15 +362,8 @@ namespace backend
 
 		size_t i = 0;
 		for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
-		{
 			valueMap[ffn->getArguments()[i]->id] = it;
 
-			// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
-		}
-
-		// sort the blocklist first
-		std::sort(ffn->getBlockList().begin(), ffn->getBlockList().end(), [](fir::IRBlock* a, fir::IRBlock* b) -> bool {
-			return a->id < b->id; });
 
 		for(auto b : ffn->getBlockList())
 		{

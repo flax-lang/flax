@@ -67,6 +67,7 @@ namespace platform
 			{
 				auto lib = LoadLibrary(name);
 				if(lib) otherModules.push_back(lib);
+				else    warn("platform: failed to load library '%s'", name);
 			}
 		#else
 			currentModule = dlopen(nullptr, RTLD_LAZY);

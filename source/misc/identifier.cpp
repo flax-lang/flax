@@ -69,6 +69,39 @@ void PolyArgMapping_t::add(size_t idx, pts::Type* t)
 
 
 
+std::string util::obfuscateName(const std::string& name)
+{
+	return strprintf("__#%s", name);
+}
+std::string util::obfuscateName(const std::string& name, size_t id)
+{
+	return strprintf("__#%s_%zu", name, id);
+}
+std::string util::obfuscateName(const std::string& name, const std::string& extra)
+{
+	return strprintf("__#%s_%s", name, extra);
+}
+Identifier util::obfuscateIdentifier(const std::string& name, IdKind kind)
+{
+	return Identifier(obfuscateName(name), kind);
+}
+Identifier util::obfuscateIdentifier(const std::string& name, size_t id, IdKind kind)
+{
+	return Identifier(obfuscateName(name, id), kind);
+}
+Identifier util::obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind)
+{
+	return Identifier(obfuscateName(name, extra), kind);
+}
+
+
+
+
+
+
+
+
+
 
 bool Identifier::operator == (const Identifier& other) const
 {

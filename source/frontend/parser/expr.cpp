@@ -30,7 +30,7 @@ namespace parser
 		}
 
 		st.pop();
-		auto stmt = parseStmt(st);
+		auto stmt = parseStmt(st, /* allowExprs: */ false);
 		if(auto defn = dcast(FuncDefn, stmt))
 			defn->visibility = vis;
 
@@ -49,7 +49,7 @@ namespace parser
 		return stmt;
 	}
 
-	Stmt* parseStmt(State& st)
+	Stmt* parseStmt(State& st, bool allowExprs)
 	{
 		if(!st.hasTokens())
 			unexpected(st, "end of file");
@@ -196,11 +196,20 @@ namespace parser
 				case TT::Export:
 					error(st, "export declaration must be the first non-comment line in the file");
 
-				default:
+				case TT::Directive_Run:
+					return parseRunDirective(st);
+
+				default: {
 					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
 						return parseInitFunction(st);
 
-					return parseExpr(st);
+					// we want to error on invalid tokens first. so, we parse the expression regardless,
+					// then if they're not allowed we error.
+					auto ret = parseExpr(st);
+
+					if(!allowExprs) error(ret, "expressions are not allowed at top-level");
+					else            return ret;
+				}
 			}
 		}
 

@@ -256,7 +256,7 @@ namespace parser
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
-	ast::Stmt* parseStmt(State& st);
+	ast::Stmt* parseStmt(State& st, bool allowExprs = true);
 
 	ast::DeferredStmt* parseDefer(State& st);
 
@@ -277,6 +277,8 @@ namespace parser
 
 	std::tuple<ast::FuncDefn*, bool, Location> parseFunctionDecl(State& st);
 	ast::PlatformDefn* parsePlatformDefn(State& st);
+
+	ast::RunDirective* parseRunDirective(State& st);
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);

@@ -73,6 +73,8 @@ if the_compiler.get_id() == 'msvc'
 	llvm_lib_dir    = llvm_root_dir   + '/' + libKind + '/lib/'
 	libffi_lib_dir  = libffi_root_dir + '/' + libKind + '/lib/'
 
+	legacy_stdio_dep = declare_dependency(dependencies: the_compiler.find_library('legacy_stdio_definitions'))
+
 	mpir_dep = declare_dependency(version: '3.0.0', include_directories: include_directories(mpir_hdr_dir),
 		dependencies: the_compiler.find_library('mpir', dirs: mpir_lib_dir))
 
@@ -122,6 +124,8 @@ if the_compiler.get_id() == 'msvc'
 			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
 		]
 	)
+
+	all_deps = [ legacy_stdio_dep, mpir_dep, mpfr_dep, libffi_dep, llvm_dep ]
 else
 	add_project_arguments('-std=c11', language: 'c')
 	add_project_arguments('-std=c++17', language: 'cpp')
@@ -136,11 +140,12 @@ else
 	# on unix, we use GMP instead of MPIR.
 	mpfr_dep = dependency('mpfr', version: '>= 4.0.0')
 	libffi_dep = dependency('libffi', version: '>= 3.2.1')
-	mpir_dep = dependency('', required: false)
 	llvm_dep = dependency('llvm', static: true, version: '7.0.1', modules: [
 		'core', 'engine', 'native', 'linker', 'bitwriter',
 		'lto', 'vectorize', 'all-targets', 'object', 'orcjit'
 	])
+
+	all_deps = [ mpfr_dep, libffi_dep, llvm_dep ]
 endif
 
 
@@ -179,6 +184,8 @@ source_files = files([
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
+	'source/backend/interp/driver.cpp',
+
 	'source/typecheck/misc.cpp',
 	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',
@@ -203,6 +210,7 @@ source_files = files([
 	'source/typecheck/subscript.cpp',
 	'source/typecheck/operators.cpp',
 	'source/typecheck/arithmetic.cpp',
+	'source/typecheck/directives.cpp',
 	'source/typecheck/destructure.cpp',
 	'source/typecheck/controlflow.cpp',
 	'source/typecheck/typecheckstate.cpp',
@@ -239,6 +247,7 @@ source_files = files([
 	'source/codegen/operators.cpp',
 	'source/codegen/subscript.cpp',
 	'source/codegen/arithmetic.cpp',
+	'source/codegen/directives.cpp',
 	'source/codegen/destructure.cpp',
 	'source/codegen/refcounting.cpp',
 	'source/codegen/controlflow.cpp',
@@ -308,7 +317,7 @@ tinyproclib_dep = declare_dependency(include_directories: include_directories('e
 
 executable('flaxc', source_files,
 	include_directories: include_directories([ 'source/include', 'external' ]),
-	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep, mpfr_dep, mpir_dep, libffi_dep ]
+	dependencies: all_deps + [ tinyproclib_dep, utf8rewind_dep ]
 )
 
 

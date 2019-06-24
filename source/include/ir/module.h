@@ -62,6 +62,9 @@ namespace fir
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
+
+		void finaliseGlobalConstructors();
+
 		const util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
 		const util::hash_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
 		const util::hash_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }

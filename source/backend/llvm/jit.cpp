@@ -11,7 +11,7 @@ namespace backend
 		targetMachine(tm),
 		symbolResolver(llvm::orc::createLegacyLookupResolver(this->execSession, [&](const std::string& name) -> llvm::JITSymbol {
 			if(auto sym = this->compileLayer.findSymbol(name, false))   return sym;
-			// else if(auto err = sym.takeError())                         return std::move(err);
+			else if(auto err = sym.takeError())                         return std::move(err);
 
 			if(auto symaddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
 				return llvm::JITSymbol(symaddr, llvm::JITSymbolFlags::Exported);
@@ -51,14 +51,20 @@ namespace backend
 		llvm::raw_string_ostream out(mangledName);
 		llvm::Mangler::getNameWithPrefix(out, name, this->dataLayout);
 
-		warn("searching for %s", out.str());
 		return this->compileLayer.findSymbol(out.str(), false);
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
 	{
 		auto addr = this->findSymbol(name).getAddress();
-		if(!addr) error("llvm: failed to find symbol '%s'", name);
+		if(!addr)
+		{
+			std::string err;
+			auto out = llvm::raw_string_ostream(err);
+
+			out << addr.takeError();
+			error("llvm: failed to find symbol '%s' (%s)", name, out.str());
+		}
 
 		return addr.get();
 	}

@@ -50,8 +50,8 @@ public ffi fn fclose(file: &void) -> i32
 // unistd.h
 //! ACHTUNG !
 //* this will fail on non-windows! we need a way to set the extern name depending on platform!!!
-public ffi fn read(fd: i32, buf: &i8, count: i64) as "read"
-public ffi fn write(fd: i32, buf: &i8, count: i64) as "write"
+public ffi fn read(fd: i32, buf: &i8, count: i64) as "_read"
+public ffi fn write(fd: i32, buf: &i8, count: i64) as "_write"
 
 
 

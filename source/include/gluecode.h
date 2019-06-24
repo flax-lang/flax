@@ -53,6 +53,7 @@
 #define BUILTIN_ANY_DATA_BYTECOUNT  32
 #define BUILTIN_ANY_FLAG_MASK       0x8000000000000000
 
+#define BUILTIN_GLOBAL_INIT_FUNCTION_NAME "global_init_function__"
 
 
 namespace fir
@@ -146,6 +147,38 @@ namespace cgn
 		{
 			fir::Function* getMallocWrapperFunction(CodegenState* cs);
 			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
+
+			Identifier getCompare_FName(fir::Type* t);
+			Identifier getSetElements_FName(fir::Type* t);
+			Identifier getSetElementsDefault_FName(fir::Type* t);
+			Identifier getCallClassConstructor_FName(fir::Type* t);
+
+			Identifier getClone_FName(fir::Type* t);
+			Identifier getAppend_FName(fir::Type* t);
+			Identifier getPopBack_FName(fir::Type* t);
+			Identifier getMakeFromTwo_FName(fir::Type* t);
+			Identifier getMakeFromOne_FName(fir::Type* t);
+			Identifier getReserveExtra_FName(fir::Type* t);
+			Identifier getAppendElement_FName(fir::Type* t);
+			Identifier getReserveEnough_FName(fir::Type* t);
+			Identifier getRecursiveRefcount_FName(fir::Type* t, bool incr);
+
+			Identifier getIncrRefcount_FName(fir::Type* t);
+			Identifier getDecrRefcount_FName(fir::Type* t);
+
+			Identifier getLoopIncrRefcount_FName(fir::Type* t);
+			Identifier getLoopDecrRefcount_FName(fir::Type* t);
+
+			Identifier getCreateAnyOf_FName(fir::Type* t);
+			Identifier getGetValueFromAny_FName(fir::Type* t);
+
+			Identifier getBoundsCheck_FName();
+			Identifier getDecompBoundsCheck_FName();
+
+			Identifier getMallocWrapper_FName();
+			Identifier getRangeSanityCheck_FName();
+
+			Identifier getUtf8Length_FName();
 		}
 	}
 }

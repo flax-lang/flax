@@ -5,28 +5,15 @@
 export ultratiny
 
 import libc
-import "tests/unions.flx"
 
 
+let somestr = "this is a string?"
 
+#run libc::puts("hello, world!")
 
 @entry fn main()
 {
-	test_unions::doUnionsTest()
-}
-
-
-
-
-
-
-
-
-ffi fn __global_init_function__() -> void
-@nomangle fn test_entry_point()
-{
-	__global_init_function__()
-	main()
+	libc::printf("s = %s\n", somestr)
 }
 
 

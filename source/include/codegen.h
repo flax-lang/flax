@@ -12,6 +12,11 @@ namespace fir
 {
 	struct Module;
 	struct IRBuilder;
+
+	namespace interp
+	{
+		struct InterpState;
+	}
 }
 
 namespace sst
@@ -71,6 +76,7 @@ namespace cgn
 		sst::StateTree* stree = 0;
 
 		fir::IRBuilder irb;
+		fir::interp::InterpState* runDirectiveSharedState = 0;
 
 		std::pair<fir::Function*, Location> entryFunction = { };
 

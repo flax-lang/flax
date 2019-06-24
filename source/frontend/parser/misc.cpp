@@ -81,6 +81,19 @@ namespace parser
 
 
 
+	RunDirective* parseRunDirective(State& st)
+	{
+		iceAssert(st.front() == TT::Directive_Run);
+
+		auto ret = util::pool<RunDirective>(st.eat().loc);
+		ret->inside = parseExpr(st);
+
+		return ret;
+	}
+
+
+
+
 	PlatformDefn* parsePlatformDefn(State& st)
 	{
 		iceAssert(st.front() == TT::Attr_Platform);
