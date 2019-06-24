@@ -35,10 +35,9 @@ namespace fir
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)
 	{
-		if(constVal && constVal->getType() != this->getType()->getPointerElementType())
+		if(constVal && constVal->getType() != this->getType())
 			error("storing value of '%s' in global var of type '%s'", constVal->getType(), this->getType());
 
-		iceAssert((!constVal || constVal->getType() == this->getType()->getPointerElementType()) && "invalid type");
 		this->initValue = constVal;
 	}
 

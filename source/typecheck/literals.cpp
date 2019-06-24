@@ -22,7 +22,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
 	bool sgn = mpfr::signbit(number);
-	bool flt = !mpfr::isint(number);
+	bool flt = ((this->num.find(".") != std::string::npos) || !mpfr::isint(number));
 
 	size_t bits = 0;
 	if(flt)

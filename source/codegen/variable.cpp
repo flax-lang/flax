@@ -39,18 +39,22 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// else
 		fir::Value* res = 0;
 
-		if(this->init)
-			res = this->init->codegen(cs, this->type).value;
-
-		else
-			res = cs->getDefaultValue(this->type);
-
-		res = checkStore(res);
+		if(this->init)  res = this->init->codegen(cs, this->type).value;
+		else            res = cs->getDefaultValue(this->type);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
-		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
+		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false,
+			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		cs->autoAssignRefCountedValue(alloc, res, true, true);
+		if(auto cv = dcast(fir::ConstantValue, res); cv && cv->getType() == this->type)
+		{
+			alloc->setInitialValue(cv);
+		}
+		else
+		{
+			res = checkStore(res);
+			cs->autoAssignRefCountedValue(alloc, res, true, true);
+		}
 
 		// go and fix the thing.
 		if(this->immutable)
@@ -61,44 +65,41 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		cs->valueMap[this] = CGResult(alloc);
 		return CGResult(alloc);
 	}
-
-
-
-
-
-
-	fir::Value* val = 0;
-	fir::Value* alloc = 0;
-
-	fir::Value* res = 0;
-	if(this->init)
-	{
-		res = this->init->codegen(cs, this->type).value;
-		res = cs->oneWayAutocast(res, this->type);
-
-		val = res;
-	}
-
-	if(!val) val = cs->getDefaultValue(this->type);
-
-
-	val = checkStore(val);
-
-	if(this->immutable)
-	{
-		iceAssert(val);
-		alloc = cs->irb.CreateConstLValue(val, this->id.name);
-	}
 	else
 	{
-		alloc = cs->irb.CreateLValue(this->type, this->id.name);
+		fir::Value* val = 0;
+		fir::Value* alloc = 0;
+
+		fir::Value* res = 0;
+		if(this->init)
+		{
+			res = this->init->codegen(cs, this->type).value;
+			res = cs->oneWayAutocast(res, this->type);
+
+			val = res;
+		}
+
+		if(!val) val = cs->getDefaultValue(this->type);
+
+
+		val = checkStore(val);
+
+		if(this->immutable)
+		{
+			iceAssert(val);
+			alloc = cs->irb.CreateConstLValue(val, this->id.name);
+		}
+		else
+		{
+			alloc = cs->irb.CreateLValue(this->type, this->id.name);
+		}
+
+		iceAssert(alloc);
+
+		cs->addVariableUsingStorage(this, alloc, CGResult(res));
+
+		return CGResult(alloc);
 	}
-
-	iceAssert(alloc);
-
-	cs->addVariableUsingStorage(this, alloc, CGResult(res));
-
-	return CGResult(alloc);
 }
 
 void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc, CGResult val)

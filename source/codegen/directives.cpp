@@ -49,6 +49,7 @@ CGResult sst::RunDirective::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto result = is->runFunction(is->compileFunction(fn), { });
 	auto value = is->unwrapInterpValueIntoConstant(result);
 
+	delete is;
 	return CGResult(value);
 }
 
