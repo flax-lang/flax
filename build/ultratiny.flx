@@ -8,11 +8,12 @@ import libc
 import std::math
 
 
+var value = 401.0
 
 @entry fn main()
 {
-	let x = #run math::sqrt(2)
-	libc::printf("sqrt(2) = %.3f\n", x)
+	let x = #run math::sqrt(value)
+	libc::printf("sqrt(%.1f) = %.3f\n", value, x)
 }
 
 
