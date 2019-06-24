@@ -36,6 +36,8 @@ if the_compiler.get_id() == 'msvc'
 	envname_llvm    = '%LLVM_ROOT_DIR%'
 	envname_libffi  = '%LIBFFI_ROOT_DIR%'
 
+	llvm_version   = '7.1.0'
+
 	mpir_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpir).stdout().strip()
 	if mpir_root_dir == envname_mpir
 		mpir_root_dir = 'D:/Projects/lib/mpir'
@@ -48,7 +50,7 @@ if the_compiler.get_id() == 'msvc'
 
 	llvm_root_dir = run_command('cmd.exe', '/C', 'echo', envname_llvm).stdout().strip()
 	if llvm_root_dir == envname_llvm
-		llvm_root_dir = 'D:/Projects/lib/llvm/7.0.1'
+		llvm_root_dir = 'D:/Projects/lib/llvm/' + llvm_version
 	endif
 
 	libffi_root_dir = run_command('cmd.exe', '/C', 'echo', envname_libffi).stdout().strip()
@@ -80,7 +82,7 @@ if the_compiler.get_id() == 'msvc'
 	libffi_dep = declare_dependency(version: '3.2.1', include_directories: include_directories(libffi_hdr_dir),
 		dependencies: the_compiler.find_library('libffi', dirs: libffi_lib_dir))
 
-	llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_directories(llvm_hdr_dir),
+	llvm_dep = declare_dependency(version: llvm_version, include_directories: include_directories(llvm_hdr_dir),
 		dependencies: [ mpfr_dep, mpir_dep,
 			the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),

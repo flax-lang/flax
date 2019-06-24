@@ -562,7 +562,7 @@ namespace backend
 
 			#if defined(__MACH__)
 				ext = ".dylib";
-			#elif defined(WIN32)
+			#elif defined(_WIN32)
 				ext = ".dll";
 			#else
 				ext = ".so";
@@ -594,6 +594,7 @@ namespace backend
 			this->jitInstance = new LLVMJit(this->targetMachine);
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
+			// this->jitInstance->
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
 			ret = (int (*)(int, const char**)) entryaddr;
 
