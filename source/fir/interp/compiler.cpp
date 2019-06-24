@@ -51,6 +51,9 @@ namespace interp
 			return compileBlock(this, fn, b);
 		});
 
+		if(fn->isCStyleVarArg())
+			iceAssert(ret.blocks.empty());
+
 		if(ret.blocks.empty())
 			ret.isExternal = true, ret.extFuncName = fn->getName().name;
 

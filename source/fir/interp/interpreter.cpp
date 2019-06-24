@@ -511,114 +511,6 @@ namespace interp
 	}
 
 
-	static interp::Value runFunctionWithLibFFI(InterpState* is, void* fnptr, fir::FunctionType* fnty, const std::vector<interp::Value>& args)
-	{
-		// we are assuming the values in 'args' are correct!
-		ffi_type** arg_types = new ffi_type*[args.size()];
-		{
-			std::vector<ffi_type*> tmp;
-			for(size_t i = 0; i < args.size(); i++)
-			{
-				tmp.push_back(convertTypeToLibFFI(args[i].type));
-				arg_types[i] = tmp[i];
-			}
-		}
-
-		ffi_type* ffi_retty = 0;
-		ffi_cif fn_cif;
-		{
-			ffi_retty = convertTypeToLibFFI(fnty->getReturnType());
-
-			if(args.size() > fnty->getArgumentTypes().size())
-			{
-				iceAssert(fnty->isCStyleVarArg());
-				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fnty->getArgumentTypes().size(), args.size(), ffi_retty, arg_types);
-				if(st != FFI_OK)
-					error("interp: ffi_prep_cif_var failed! (%d)", st);
-			}
-			else
-			{
-				auto st = ffi_prep_cif(&fn_cif, FFI_DEFAULT_ABI, args.size(), ffi_retty, arg_types);
-				if(st != FFI_OK)
-					error("interp: ffi_prep_cif failed! (%d)", st);
-			}
-		}
-
-		void** arg_pointers = new void*[args.size()];
-		{
-			void** arg_values = new void*[args.size()];
-
-			// because this thing is dumb
-			for(size_t i = 0; i < args.size(); i++)
-			{
-				if(args[i].dataSize <= LARGE_DATA_SIZE)
-					arg_values[i] = (void*) &args[i].data[0];
-			}
-
-			for(size_t i = 0; i < args.size(); i++)
-			{
-				if(args[i].dataSize <= LARGE_DATA_SIZE)
-					arg_pointers[i] = (void*) arg_values[i];
-
-				else
-					arg_pointers[i] = (void*) args[i].ptr;
-			}
-
-			delete[] arg_values;
-		}
-
-		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, (size_t) 8)];
-		ffi_call(&fn_cif, FFI_FN(fnptr), ret_buffer, arg_pointers);
-
-		interp::Value ret;
-		ret.type = fnty->getReturnType();
-		ret.dataSize = ffi_retty->size;
-
-		setValueRaw(is, &ret, ret_buffer, ret.dataSize);
-		delete[] ret_buffer;
-
-		delete[] arg_types;
-		delete[] arg_pointers;
-
-		return ret;
-	}
-
-	static interp::Value runFunctionWithLibFFI(InterpState* is, fir::Function* fn, const std::vector<interp::Value>& args)
-	{
-		void* fnptr = platform::getSymbol(fn->getName().str());
-		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
-
-		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args);
-	}
-
-
-	static interp::Value callFunctionPointer(InterpState* is, const interp::Value& func, const std::vector<interp::Value>& args)
-	{
-		auto ptr = getActualValue<uintptr_t>(func);
-		auto firfn = (fir::Function*) ptr;
-
-		if(auto it = is->compiledFunctions.find(firfn); it != is->compiledFunctions.end())
-		{
-			// ok, we are calling a 'real' function. just do it normally.
-			return is->runFunction(it->second, args);
-		}
-		else
-		{
-			// uwu. use libffi.
-			fir::FunctionType* fnty = 0;
-			if(func.type->isFunctionType())
-				fnty = func.type->toFunctionType();
-
-			else if(func.type->isPointerType() && func.type->getPointerElementType()->isFunctionType())
-				fnty = func.type->getPointerElementType()->toFunctionType();
-
-			else
-				error("interp: call to function pointer with invalid type '%s'", func.type);
-
-			return runFunctionWithLibFFI(is, (void*) ptr, fnty, args);
-		}
-	}
-
 
 
 
@@ -976,19 +868,174 @@ namespace interp
 
 
 
+
+
+	static interp::Value runFunctionWithLibFFI(InterpState* is, void* fnptr, fir::FunctionType* fnty, const std::vector<interp::Value>& args)
+	{
+		// we are assuming the values in 'args' are correct!
+		ffi_type** arg_types = new ffi_type*[args.size()];
+		{
+			std::vector<ffi_type*> tmp;
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				tmp.push_back(convertTypeToLibFFI(args[i].type));
+				arg_types[i] = tmp[i];
+			}
+		}
+
+		ffi_type* ffi_retty = 0;
+		ffi_cif fn_cif;
+		{
+			ffi_retty = convertTypeToLibFFI(fnty->getReturnType());
+
+			if(args.size() > fnty->getArgumentTypes().size())
+			{
+				iceAssert(fnty->isCStyleVarArg());
+				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fnty->getArgumentTypes().size(), args.size(), ffi_retty, arg_types);
+				if(st != FFI_OK)
+					error("interp: ffi_prep_cif_var failed! (%d)", st);
+			}
+			else
+			{
+				auto st = ffi_prep_cif(&fn_cif, FFI_DEFAULT_ABI, args.size(), ffi_retty, arg_types);
+				if(st != FFI_OK)
+					error("interp: ffi_prep_cif failed! (%d)", st);
+			}
+		}
+
+		void** arg_pointers = new void*[args.size()];
+		{
+			void** arg_values = new void*[args.size()];
+
+			// because this thing is dumb
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i].dataSize <= LARGE_DATA_SIZE)
+					arg_values[i] = (void*) &args[i].data[0];
+			}
+
+			for(size_t i = 0; i < args.size(); i++)
+			{
+				if(args[i].dataSize <= LARGE_DATA_SIZE)
+					arg_pointers[i] = (void*) arg_values[i];
+
+				else
+					arg_pointers[i] = (void*) args[i].ptr;
+			}
+
+			delete[] arg_values;
+		}
+
+		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, (size_t) 8)];
+		ffi_call(&fn_cif, FFI_FN(fnptr), ret_buffer, arg_pointers);
+
+		interp::Value ret;
+		ret.type = fnty->getReturnType();
+		ret.dataSize = ffi_retty->size;
+
+		setValueRaw(is, &ret, ret_buffer, ret.dataSize);
+		delete[] ret_buffer;
+
+		delete[] arg_types;
+		delete[] arg_pointers;
+
+		return ret;
+	}
+
+	static interp::Value runFunctionWithLibFFI(InterpState* is, fir::Function* fn, const std::vector<interp::Value>& args)
+	{
+		void* fnptr = platform::getSymbol(fn->getName().str());
+		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
+
+		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args);
+	}
+
+	static interp::Value runFunctionWithLibFFI(InterpState* is, const interp::Function& fn, const std::vector<interp::Value>& args)
+	{
+		void* fnptr = platform::getSymbol(fn.func->getName().str());
+		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn.func->getName().str());
+
+		return runFunctionWithLibFFI(is, fnptr, fn.func->getType(), args);
+	}
+
+
+
+
+	static interp::Value callFunctionPointer(InterpState* is, const interp::Value& func, const std::vector<interp::Value>& args)
+	{
+	}
+
+
+
+	static const interp::Block* prepareFunctionToRun(InterpState* is, const interp::Function& fn, const std::vector<interp::Value>& args)
+	{
+		iceAssert(args.size() == fn.func->getArgumentCount());
+
+		// when we start a function, clear the "stack frame".
+		is->stackFrames.push_back({ });
+
+		for(size_t i = 0; i < args.size(); i++)
+		{
+			auto farg = fn.func->getArguments()[i];
+			is->stackFrames.back().values[farg] = cloneValue(farg, args[i]);
+		}
+
+		iceAssert(!fn.blocks.empty());
+
+		auto entry = &fn.blocks[0];
+		is->stackFrames.back().currentFunction = &fn;
+		is->stackFrames.back().currentBlock = entry;
+		is->stackFrames.back().previousBlock = 0;
+
+		return entry;
+	}
+
+	static void leaveFunction(InterpState* is)
+	{
+		auto frame = is->stackFrames.back();
+
+		for(void* alloca : frame.stackAllocs)
+			delete[] alloca;
+
+		is->stackFrames.pop_back();
+	}
+
+
+
 	constexpr int FLOW_NORMAL = 0;
 	constexpr int FLOW_RETURN = 1;
 	constexpr int FLOW_BRANCH = 2;
+	constexpr int FLOW_FNCALL = 3;
+	constexpr int FLOW_DYCALL = 4;
 
-	static int runInstruction(InterpState* is, const interp::Instruction& inst, interp::Value* output, const interp::Block** targetBlk);
+
+	struct InstrResult
+	{
+		// for ret
+		interp::Value returnValue;
+
+		// for branches
+		const interp::Block* targetBlk = 0;
+
+		// for calls
+		interp::Function* callTarget = 0;
+		std::vector<interp::Value> callArguments;
+		fir::Value* callResultValue = 0;
+
+		// for virtual calls. the args and resultvalue are shared.
+		interp::Value virtualCallTarget;
+	};
+
+	static int runInstruction(InterpState* is, const interp::Instruction& inst, InstrResult* instrRes);
+
 	static interp::Value runBlock(InterpState* is, const interp::Block* blk)
 	{
-		interp::Value ret;
-
 		for(size_t i = 0; i < blk->instructions.size();)
 		{
-			auto copy = blk;
-			int flow = runInstruction(is, blk->instructions[i], &ret, &copy);
+			is->stackFrames.back().currentInstrIndex = i;
+
+			InstrResult res;
+			int flow = runInstruction(is, blk->instructions[i], &res);
 
 			switch(flow)
 			{
@@ -996,16 +1043,77 @@ namespace interp
 					i += 1;
 				} break;
 
-				case FLOW_RETURN: {
-					return ret;
-				}
-
 				case FLOW_BRANCH: {
-					i = 0;
 					is->stackFrames.back().previousBlock = blk;
-					is->stackFrames.back().currentBlock = copy;
-					blk = copy;
+					is->stackFrames.back().currentBlock = res.targetBlk;
+
+					blk = res.targetBlk; i = 0;
 				} break;
+
+				case FLOW_FNCALL: {
+					if(res.callTarget->isExternal)
+					{
+						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, *res.callTarget, res.callArguments);
+						i += 1;
+					}
+					else
+					{
+						is->stackFrames.back().callResultOutput = res.callResultValue;
+
+						auto newblk = prepareFunctionToRun(is, *res.callTarget, res.callArguments);
+						blk = newblk; i = 0;
+					}
+				} break;
+
+				case FLOW_DYCALL: {
+					auto ptr = getActualValue<uintptr_t>(res.virtualCallTarget);
+					auto firfn = (fir::Function*) ptr;
+
+					if(auto it = is->compiledFunctions.find(firfn); it != is->compiledFunctions.end())
+					{
+						is->stackFrames.back().callResultOutput = res.callResultValue;
+
+						auto newblk = prepareFunctionToRun(is, it->second, res.callArguments);
+						blk = newblk; i = 0;
+					}
+					else
+					{
+						auto targ = res.virtualCallTarget;
+
+						// uwu. use libffi.
+						fir::FunctionType* fnty = 0;
+						if(targ.type->isFunctionType())
+							fnty = targ.type->toFunctionType();
+
+						else if(targ.type->isPointerType() && targ.type->getPointerElementType()->isFunctionType())
+							fnty = targ.type->getPointerElementType()->toFunctionType();
+
+						else
+							error("interp: call to function pointer with invalid type '%s'", targ.type);
+
+						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, (void*) ptr, fnty, res.callArguments);
+						i += 1;
+					}
+				} break;
+
+				case FLOW_RETURN: {
+					if(is->stackFrames.size() > 1)
+					{
+						leaveFunction(is);
+						auto& frm = is->stackFrames.back();
+
+						res.returnValue.val = frm.callResultOutput;
+						frm.values[frm.callResultOutput] = res.returnValue;
+
+						blk = frm.currentBlock;
+						i   = frm.currentInstrIndex + 1;
+						break;
+					}
+					else
+					{
+						return res.returnValue;
+					}
+				}
 
 				default: {
 					error("interp: invalid flow state");
@@ -1013,11 +1121,9 @@ namespace interp
 			}
 		}
 
-		return ret;
+		error("interp: invaild state");
+		return interp::Value();
 	}
-
-
-	// static interp::Value prepareFunctionToRun
 
 
 
@@ -1040,38 +1146,9 @@ namespace interp
 		}
 		else
 		{
-			iceAssert(args.size() == fn.func->getArgumentCount());
-
-			// when we start a function, clear the "stack frame".
-			this->stackFrames.push_back({ });
-
-			for(size_t i = 0; i < args.size(); i++)
-			{
-				auto farg = fn.func->getArguments()[i];
-				this->stackFrames.back().values[farg] = cloneValue(farg, args[i]);
-			}
-
-			if(fn.blocks.empty())
-			{
-				// wait, what?
-				return interp::Value();
-			}
-
-			auto entry = &fn.blocks[0];
-			this->stackFrames.back().currentFunction = &fn;
-			this->stackFrames.back().currentBlock = entry;
-			this->stackFrames.back().previousBlock = 0;
-
+			auto entry = prepareFunctionToRun(this, fn, args);
 			auto ret = runBlock(this, entry);
-
-			{
-				auto frame = this->stackFrames.back();
-
-				for(void* alloca : frame.stackAllocs)
-					delete[] alloca;
-			}
-
-			this->stackFrames.pop_back();
+			leaveFunction(this);
 
 			return ret;
 		}
@@ -1177,7 +1254,7 @@ namespace interp
 
 	static interp::Value decay(const interp::Value& val)
 	{
-		if(val.val->islorclvalue())
+		if(val.val && val.val->islorclvalue())
 		{
 			auto ret = loadFromPtr(val, val.val->getType());
 			ret.val = val.val;
@@ -1217,7 +1294,7 @@ namespace interp
 
 
 	// returns either FLOW_NORMAL, FLOW_BRANCH or FLOW_RETURN.
-	static int runInstruction(InterpState* is, const interp::Instruction& inst, interp::Value* instrOutput, const interp::Block** jmpTargetBlk)
+	static int runInstruction(InterpState* is, const interp::Instruction& inst, InstrResult* instrRes)
 	{
 		auto ok = (OpKind) inst.opcode;
 		switch(ok)
@@ -1629,7 +1706,7 @@ namespace interp
 			case OpKind::Value_Return:
 			{
 				if(!inst.args.empty())
-					*instrOutput = getArg(is, inst, 0);
+					instrRes->returnValue = getArg(is, inst, 0);
 
 				return FLOW_RETURN;
 			}
@@ -1651,7 +1728,7 @@ namespace interp
 
 				if(!target) error("interp: branch to block %zu not in current function", blk->id);
 
-				*jmpTargetBlk = target;
+				instrRes->targetBlk = target;
 				return FLOW_BRANCH;
 			}
 
@@ -1679,13 +1756,102 @@ namespace interp
 
 
 				if(getActualValue<bool>(cond))
-					*jmpTargetBlk = trueblk;
+					instrRes->targetBlk = trueblk;
 
 				else
-					*jmpTargetBlk = falseblk;
+					instrRes->targetBlk = falseblk;
 
 				return FLOW_BRANCH;
 			}
+
+
+			case OpKind::Value_CallFunction:
+			{
+				iceAssert(inst.args.size() >= 1);
+				auto fn = inst.args[0];
+
+				interp::Function* target = 0;
+
+				// we probably only compiled the entry function, so if we haven't compiled the target then please do
+				if(auto it = is->compiledFunctions.find(fn); it != is->compiledFunctions.end())
+				{
+					target = &it->second;
+				}
+				else
+				{
+					for(auto f : is->module->getAllFunctions())
+					{
+						if(f == fn)
+						{
+							target = &is->compileFunction(f);
+							break;
+						}
+					}
+
+					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
+				}
+
+				iceAssert(target);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 1; i < inst.args.size(); i++)
+					args.push_back(getArg(is, inst, i));
+
+				instrRes->callTarget = target;
+				instrRes->callArguments = args;
+				instrRes->callResultValue = inst.result;
+
+				return FLOW_FNCALL;
+			}
+
+
+
+			case OpKind::Value_CallFunctionPointer:
+			{
+				iceAssert(inst.args.size() >= 1);
+				auto fn = getArg(is, inst, 0);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 1; i < inst.args.size(); i++)
+					args.push_back(getArg(is, inst, i));
+
+				instrRes->callArguments = args;
+				instrRes->virtualCallTarget = fn;
+				instrRes->callResultValue = inst.result;
+
+				return FLOW_DYCALL;
+			}
+
+
+			case OpKind::Value_CallVirtualMethod:
+			{
+				// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
+				auto clsty = inst.args[0]->getType()->toClassType();
+				auto fnty = inst.args[2]->getType()->toFunctionType();
+				iceAssert(clsty);
+
+				std::vector<interp::Value> args;
+				for(size_t i = 3; i < inst.args.size(); i++)
+					args.push_back(getArg(is, inst, i));
+
+				//* this is very hacky! we rely on these things not using ::val, because it's null!!
+				auto vtable = loadFromPtr(performStructGEP(is, fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
+				auto vtablety = fir::ArrayType::get(fir::FunctionType::get({ }, fir::Type::getVoid())->getPointerTo(), clsty->getVirtualMethodCount());
+				vtable.type = vtablety->getPointerTo();
+
+				vtable = performGEP2(is, vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(is, inst, 1));
+
+				auto fnptr = loadFromPtr(vtable, fnty->getPointerTo());
+
+				instrRes->callArguments = args;
+				instrRes->virtualCallTarget = fnptr;
+				instrRes->callResultValue = inst.result;
+
+				return FLOW_DYCALL;
+			}
+
+
+
 
 
 			case OpKind::Cast_IntSize:
@@ -1830,90 +1996,6 @@ namespace interp
 			{
 				// equivalent to llvm's GEP(ptr*, ptrIndex, memberIndex)
 				error("interp: enotsup");
-			}
-
-			case OpKind::Value_CallFunction:
-			{
-				iceAssert(inst.args.size() >= 1);
-				auto fn = inst.args[0];
-
-				interp::Function* target = 0;
-
-				// we probably only compiled the entry function, so if we haven't compiled the target then please do
-				if(auto it = is->compiledFunctions.find(fn); it != is->compiledFunctions.end())
-				{
-					target = &it->second;
-				}
-				else
-				{
-					for(auto f : is->module->getAllFunctions())
-					{
-						if(f == fn)
-						{
-							target = &is->compileFunction(f);
-							break;
-						}
-					}
-
-					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
-				}
-
-				iceAssert(target);
-
-				std::vector<interp::Value> args;
-				for(size_t i = 1; i < inst.args.size(); i++)
-					args.push_back(getArg(is, inst, i));
-
-				auto ret = is->runFunction(*target, args);
-				ret.val = inst.result;
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-
-
-			case OpKind::Value_CallFunctionPointer:
-			{
-				iceAssert(inst.args.size() >= 1);
-				auto fn = getArg(is, inst, 0);
-
-				std::vector<interp::Value> args;
-				for(size_t i = 1; i < inst.args.size(); i++)
-					args.push_back(getArg(is, inst, i));
-
-				auto ret = callFunctionPointer(is, fn, args);
-				ret.val = inst.result;
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-
-			case OpKind::Value_CallVirtualMethod:
-			{
-				// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
-				auto clsty = inst.args[0]->getType()->toClassType();
-				auto fnty = inst.args[2]->getType()->toFunctionType();
-				iceAssert(clsty);
-
-				std::vector<interp::Value> args;
-				for(size_t i = 3; i < inst.args.size(); i++)
-					args.push_back(getArg(is, inst, i));
-
-				//* this is very hacky! we rely on these things not using ::val, because it's null!!
-				auto vtable = loadFromPtr(performStructGEP(is, fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
-				auto vtablety = fir::ArrayType::get(fir::FunctionType::get({ }, fir::Type::getVoid())->getPointerTo(), clsty->getVirtualMethodCount());
-				vtable.type = vtablety->getPointerTo();
-
-				vtable = performGEP2(is, vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(is, inst, 1));
-
-				auto fnptr = loadFromPtr(vtable, fnty->getPointerTo());
-				auto ret = callFunctionPointer(is, fnptr, args);
-				ret.val = inst.result;
-
-				setRet(is, inst, ret);
-				break;
 			}
 
 

@@ -74,11 +74,14 @@ namespace fir
 
 			struct Frame
 			{
+				size_t currentInstrIndex = 0;
 				const interp::Block* currentBlock = 0;
 				const interp::Block* previousBlock = 0;
 				const interp::Function* currentFunction = 0;
 
 				std::vector<void*> stackAllocs;
+
+				fir::Value* callResultOutput = 0;
 
 				std::unordered_map<fir::Value*, interp::Value> values;
 			};

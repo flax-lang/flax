@@ -5,17 +5,27 @@
 export ultratiny
 
 import libc
-import std::math
+
+import "tests/arraytest.flx"
+
+fn f(a: int, b: int) -> int
+{
+	return a * b
+}
+
 
 
 @entry fn main()
 {
-	let x = #run math::sqrt(2)
-	libc::printf("sqrt(2) = %f\n", x)
+	// let x = #run math::sqrt(2)
+	let k = f
+	let x = k(10, 20)
+	libc::printf("x = %d\n", x)
 }
 
 
 
 /*
-	before: 2922.84 ms
+	before: 2922.8 ms
+	after:  3027.8 ms
 */
