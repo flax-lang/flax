@@ -2,8 +2,11 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <chrono>
+
 #include "defs.h"
 #include "backend.h"
+#include "frontend.h"
 #include "platform.h"
 
 #include "ir/interp.h"
@@ -14,6 +17,18 @@
 
 namespace backend
 {
+	template <typename T>
+	static void _printTiming(T ts, const std::string& thing)
+	{
+		if(frontend::getPrintProfileStats())
+		{
+			auto dur = std::chrono::high_resolution_clock::now() - ts;
+			auto ms = (double) dur.count() / 1000.0 / 1000.0;
+			printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+		}
+	}
+
+
 	using namespace fir;
 	using namespace fir::interp;
 
@@ -46,6 +61,9 @@ namespace backend
 	{
 		if(auto entryfn = this->compiledData.module->getEntryFunction(); entryfn)
 		{
+			auto ts = std::chrono::high_resolution_clock::now();
+
+
 			auto f = this->is->compiledFunctions[entryfn];
 
 			// add arguments if necessary, i guess.
@@ -55,6 +73,8 @@ namespace backend
 				args.push_back(this->is->makeValue(a));
 
 			this->is->runFunction(f, args);
+
+			_printTiming(ts, "interp");
 		}
 		else
 		{
