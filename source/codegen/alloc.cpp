@@ -7,18 +7,16 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME	"__alloc_checkneg"
-
-
 static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 {
-	fir::Function* checkf = cs->module->getFunction(Identifier(BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME, IdKind::Name));
+	auto fname = util::obfuscateIdentifier("alloc_checkneg");
+	fir::Function* checkf = cs->module->getFunction(fname);
 
 	if(!checkf)
 	{
 		auto restore = cs->irb.getCurrentBlock();
 
-		fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME, IdKind::Name),
+		fir::Function* func = cs->module->getOrCreateFunction(fname,
 			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 		func->setAlwaysInline();

@@ -420,6 +420,20 @@ namespace lexer
 			read = 9;
 		}
 
+		// directives
+		else if(hasPrefix(stream, "#if"))
+		{
+			tok.type = TokenType::Directive_If;
+			tok.text = "#if";
+			read = 3;
+		}
+		else if(hasPrefix(stream, "#run"))
+		{
+			tok.type = TokenType::Directive_Run;
+			tok.text = "#run";
+			read = 4;
+		}
+
 
 		// unicode stuff
 		else if(hasPrefix(stream, "ƒ"))

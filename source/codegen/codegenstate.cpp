@@ -5,6 +5,7 @@
 #include "errors.h"
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 #include "typecheck.h"
 
 namespace cgn
@@ -354,7 +355,7 @@ namespace cgn
 
 		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(Identifier("__global_init_function__", IdKind::Name),
+			fir::Function* func = this->module->getOrCreateFunction(Identifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME, IdKind::Name),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);

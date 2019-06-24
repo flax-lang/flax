@@ -132,6 +132,9 @@ namespace lexer
 		Attr_NoMangle,
 		Attr_Operator,
 		Attr_Platform,
+
+		Directive_Run,
+		Directive_If,
 	};
 
 	struct Token

@@ -9,6 +9,7 @@
 
 #include "ir/type.h"
 #include "ir/module.h"
+#include "ir/interp.h"
 #include "ir/irbuilder.h"
 
 #include "mpool.h"
@@ -23,6 +24,8 @@ namespace cgn
 		auto cs = new CodegenState(builder);
 		cs->stree = dtr->base;
 		cs->module = mod;
+
+		cs->runDirectiveSharedState = new fir::interp::InterpState(mod);
 
 		cs->typeDefnMap = dtr->typeDefnMap;
 

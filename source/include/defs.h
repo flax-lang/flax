@@ -653,6 +653,13 @@ namespace util
 
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
 
+	std::string obfuscateName(const std::string& name);
+	std::string obfuscateName(const std::string& name, size_t id);
+	std::string obfuscateName(const std::string& name, const std::string& extra);
+	Identifier obfuscateIdentifier(const std::string& name, IdKind kind = IdKind::Name);
+	Identifier obfuscateIdentifier(const std::string& name, size_t id, IdKind kind = IdKind::Name);
+	Identifier obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind = IdKind::Name);
+
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)
 	{

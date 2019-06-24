@@ -102,14 +102,14 @@ namespace any
 
 	fir::Function* getRefCountIncrementFunction(CodegenState* cs)
 	{
-		auto fname = "__incr_rc_" + fir::Type::getAny()->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getIncrRefcount_FName(fir::Type::getAny());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getAny() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -129,14 +129,14 @@ namespace any
 
 	fir::Function* getRefCountDecrementFunction(CodegenState* cs)
 	{
-		auto fname = "__decr_rc_" + fir::Type::getAny()->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getDecrRefcount_FName(fir::Type::getAny());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getAny() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -158,14 +158,14 @@ namespace any
 
 	fir::Function* generateCreateAnyWithValueFunction(CodegenState* cs, fir::Type* type)
 	{
-		auto fname = "__create_any_of_" + type->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getCreateAnyOf_FName(type);
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ type }, fir::Type::getAny()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -233,14 +233,14 @@ namespace any
 
 	fir::Function* generateGetValueFromAnyFunction(CodegenState* cs, fir::Type* type)
 	{
-		auto fname = strprintf("__get_value_of_%s_from_any", type->str());
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getGetValueFromAny_FName(type);
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getAny() }, type), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();

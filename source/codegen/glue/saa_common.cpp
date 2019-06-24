@@ -33,14 +33,14 @@ namespace saa_common
 	{
 		iceAssert(fir::isRefCountedType(elm));
 
-		auto fname = "__loop_incr_rc_" + elm->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getLoopIncrRefcount_FName(elm);
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ elm->getPointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -238,7 +238,7 @@ namespace saa_common
 
 	fir::Function* generateCloneFunction(CodegenState* cs, fir::Type* _saa)
 	{
-		auto fname = "__clone_" + _saa->str();
+		auto fname = misc::getClone_FName(_saa);
 
 		iceAssert(isSAA(_saa) || _saa->isArraySliceType());
 		auto slicetype = (isSAA(_saa) ? getSAASlice(_saa, false) : fir::ArraySliceType::get(_saa->getArrayElementType(), false));
@@ -248,13 +248,13 @@ namespace saa_common
 
 		fir::Type* outtype = (isSAA(_saa) ? _saa : fir::DynamicArrayType::get(slicetype->getArrayElementType()));
 
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ slicetype, fir::Type::getNativeWord() }, outtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -345,16 +345,16 @@ namespace saa_common
 
 	fir::Function* generateAppendFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__append_" + saa->str();
+		auto fname = misc::getAppend_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -417,16 +417,16 @@ namespace saa_common
 
 	fir::Function* generateElementAppendFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__append_elm_" + saa->str();
+		auto fname = misc::getAppendElement_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, getSAAElm(saa) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -462,16 +462,16 @@ namespace saa_common
 
 	fir::Function* generateConstructFromTwoFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__construct_fromtwo_" + saa->str();
+		auto fname = misc::getMakeFromTwo_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ getSAASlice(saa, false), getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -558,16 +558,16 @@ namespace saa_common
 
 	fir::Function* generateConstructWithElementFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__construct_withelm_" + saa->str();
+		auto fname = misc::getMakeFromOne_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ getSAASlice(saa), getSAAElm(saa) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -606,16 +606,16 @@ namespace saa_common
 
 	fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__reserve_atleast_" + saa->str();
+		auto fname = misc::getReserveEnough_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -722,16 +722,16 @@ namespace saa_common
 	{
 		// we can just do this in terms of reserveAtLeast.
 
-		auto fname = "__reserve_extra" + saa->str();
+		auto fname = misc::getReserveExtra_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -762,15 +762,14 @@ namespace saa_common
 		if(frontend::getIsNoRuntimeChecks())
 			return 0;
 
-		auto fname = (isDecomp ? "__boundscheck_decomp_" : "__boundscheck_");
-
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = (isDecomp ? misc::getDecompBoundsCheck_FName() : misc::getBoundsCheck_FName());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getNativeWord(), fir::Type::getCharSlice(false) },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 

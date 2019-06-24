@@ -129,7 +129,7 @@ namespace parser
 		StructDefn* defn = util::pool<StructDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_struct_%zu", anon_counter++);
+			defn->name = util::obfuscateName("anon_struct", anon_counter++);
 		}
 		else
 		{
@@ -243,7 +243,7 @@ namespace parser
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_union_%zu", anon_counter++);
+			defn->name = util::obfuscateName("anon_union", anon_counter++);
 		}
 		else
 		{

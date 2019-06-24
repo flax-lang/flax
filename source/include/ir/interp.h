@@ -16,6 +16,7 @@ namespace fir
 	struct Type;
 	struct Value;
 	struct Module;
+	struct IRBlock;
 	struct Function;
 	struct ConstantValue;
 
@@ -63,8 +64,13 @@ namespace fir
 			InterpState(fir::Module* mod);
 			~InterpState();
 
+			void initialise();
 			interp::Function& compileFunction(fir::Function* fn);
 			interp::Value runFunction(const interp::Function& fn, const std::vector<interp::Value>& args);
+
+			interp::Value makeValue(fir::Value* ty);
+
+			fir::ConstantValue* unwrapInterpValueIntoConstant(const interp::Value& val);
 
 			struct Frame
 			{

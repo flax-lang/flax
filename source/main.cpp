@@ -80,7 +80,12 @@ static void compile(std::string in, std::string out)
 
 	timer t(nullptr);
 
+	platform::performSelfDlOpen();
+
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
+	module->finaliseGlobalConstructors();
+
+
 	auto cd = backend::CompiledData { module };
 
 	if(frontend::getPrintProfileStats())
@@ -107,25 +112,6 @@ static void compile(std::string in, std::string out)
 
 	if(frontend::getPrintFIR())
 		fprintf(stderr, "%s\n", module->print().c_str());
-
-
-	platform::performSelfDlOpen();
-
-	{
-		// auto interp_ms = t.stop();
-
-		// auto is = fir::interp::InterpState(module);
-		// auto fn = is.compileFunction(module->getFunction(Identifier("test_entry_point", IdKind::Name)));
-		// is.runFunction(fn, { });
-
-		// interp_ms = t.stop() - interp_ms;
-		// debuglogln("interp took %.1f ms", interp_ms);
-
-		// return;
-	}
-
-
-
 
 	{
 		using namespace backend;
@@ -157,11 +143,6 @@ static void compile(std::string in, std::string out)
 				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}
-
-
-
-
-	platform::performSelfDlClose();
 }
 
 

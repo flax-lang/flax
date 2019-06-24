@@ -44,15 +44,15 @@ namespace string
 
 	fir::Function* getCompareFunction(CodegenState* cs)
 	{
-		auto fname = "__compare_" + fir::Type::getString()->str();
-		fir::Function* cmpf = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getCompare_FName(fir::Type::getString());
+		fir::Function* cmpf = cs->module->getFunction(fname);
 
 		if(!cmpf)
 		{
 			// great.
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getString(), fir::Type::getString() },
 				fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
@@ -204,14 +204,14 @@ namespace string
 
 	fir::Function* getRefCountIncrementFunction(CodegenState* cs)
 	{
-		auto fname = "__incr_rc_" + fir::Type::getString()->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getIncrRefcount_FName(fir::Type::getString());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -231,14 +231,14 @@ namespace string
 
 	fir::Function* getRefCountDecrementFunction(CodegenState* cs)
 	{
-		auto fname = "__decr_rc_" + fir::Type::getString()->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getDecrRefcount_FName(fir::Type::getString());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getString() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -262,14 +262,14 @@ namespace string
 
 	fir::Function* getUnicodeLengthFunction(CodegenState* cs)
 	{
-		auto fname = "__unicode_length_" + fir::Type::getString()->str();
-		fir::Function* lenf = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getUtf8Length_FName();
+		fir::Function* lenf = cs->module->getFunction(fname);
 
 		if(!lenf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();

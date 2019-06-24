@@ -798,6 +798,19 @@ namespace ast
 	};
 
 
+
+	struct RunDirective : Expr
+	{
+		RunDirective(const Location& l) : Expr(l) { this->readableName = "#run directive"; }
+		~RunDirective() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		Expr* inside = 0;
+	};
+
+
+
 	struct TopLevelBlock : Stmt
 	{
 		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { this->readableName = "namespace"; }

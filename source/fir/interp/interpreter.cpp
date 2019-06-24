@@ -105,7 +105,7 @@ namespace interp
 	}
 
 
-	static interp::Value makeValue(fir::Value* fv)
+	interp::Value InterpState::makeValue(fir::Value* fv)
 	{
 		return makeValueOfType(fv, fv->getType());
 	}
@@ -379,18 +379,26 @@ namespace interp
 		}
 		else
 		{
-			auto ret = makeValue(c);
+			auto ret = is->makeValue(c);
 			return (cachedConstants[c] = ret);
 		}
 	}
 
 
 
-	InterpState::InterpState(Module* mod)
+	InterpState::InterpState(Module* mod) : module(mod)
 	{
-		this->module = mod;
+	}
 
-		for(const auto [ id, glob ] : mod->_getGlobals())
+	InterpState::~InterpState()
+	{
+		for(void* p : this->globalAllocs)
+			delete[] p;
+	}
+
+	void InterpState::initialise()
+	{
+		for(const auto [ id, glob ] : this->module->_getGlobals())
 		{
 			auto ty = glob->getType();
 			auto sz = getSizeOfType(ty);
@@ -413,7 +421,7 @@ namespace interp
 			this->globals[glob] = ret;
 		}
 
-		for(const auto [ str, glob ] : mod->_getGlobalStrings())
+		for(const auto [ str, glob ] : this->module->_getGlobalStrings())
 		{
 			auto val = makeValue(glob);
 			auto s = makeGlobalString(this, str);
@@ -422,10 +430,10 @@ namespace interp
 			this->globals[glob] = val;
 		}
 
-		for(auto intr : mod->_getIntrinsicFunctions())
+		for(auto intr : this->module->_getIntrinsicFunctions())
 		{
-			auto name = Identifier("__interp_intrinsic_" + intr.first.str(), IdKind::Name);
-			auto fn = mod->getOrCreateFunction(name, intr.second->getType(), fir::LinkageType::ExternalWeak);
+			auto name = util::obfuscateIdentifier("interp_intrinsic", intr.first.str());
+			auto fn = this->module->getOrCreateFunction(name, intr.second->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
 			// new function here `fn` that doesn't match the intrinsic function `intr`, we need to map that as well.
@@ -433,10 +441,11 @@ namespace interp
 		}
 
 
+		#ifdef _WIN32
+
 		// ok, this is mostly for windows --- printf and friends are not *real* functions, but rather
 		// macros defined in stdio.h, or something like that. so, we make "intrinsic wrappers" that call
 		// it in the interpreter, which we dlopen into the context anyway.
-
 		{
 			std::vector<std::string> names = {
 				"printf",
@@ -447,26 +456,18 @@ namespace interp
 
 			for(const auto& name : names)
 			{
-				auto fn = mod->getFunction(Identifier(name, IdKind::Name));
+				auto fn = this->module->getFunction(Identifier(name, IdKind::Name));
 				if(fn)
 				{
-					auto wrapper = mod->getOrCreateFunction(Identifier("__interp_wrapper_" + name, IdKind::Name),
+					auto wrapper = this->module->getOrCreateFunction(util::obfuscateIdentifier("interp_wrapper", name),
 						fn->getType()->toFunctionType(), fir::LinkageType::ExternalWeak);
 
 					this->compiledFunctions[fn] = this->compileFunction(wrapper);
 				}
 			}
 		}
+		#endif
 	}
-
-
-
-	InterpState::~InterpState()
-	{
-		for(void* p : this->globalAllocs)
-			delete[] p;
-	}
-
 
 
 	static ffi_type* convertTypeToLibFFI(fir::Type* ty)
@@ -760,7 +761,7 @@ namespace interp
 			elm = typelist[idx];
 		}
 
-		auto ret = makeValue(res);
+		auto ret = is->makeValue(res);
 		iceAssert(ret.type == elm);
 
 		uintptr_t src = 0;
@@ -1592,7 +1593,7 @@ namespace interp
 				iceAssert(phi);
 
 				// make the empty thing first
-				auto val = makeValue(inst.result);
+				auto val = is->makeValue(inst.result);
 
 				bool found = false;
 				for(auto [ blk, v ] : phi->getValues())
@@ -2293,7 +2294,7 @@ namespace interp
 				arrayAddr += getSizeOfType(fir::Type::getNativeWord());
 
 				// ok so now we just do a 'setRaw' to get the value out.
-				auto ret = makeValue(inst.result);
+				auto ret = is->makeValue(inst.result);
 				setValueRaw(is, &ret, (void*) arrayAddr, getSizeOfType(vt));
 
 				setRet(inst, ret);
@@ -2379,6 +2380,31 @@ namespace interp
 	}
 
 
+	fir::ConstantValue* InterpState::unwrapInterpValueIntoConstant(const interp::Value& val)
+	{
+		auto ty = val.type;
+
+		#define gav getActualValue
+
+		if(ty->isPrimitiveType() || ty->isBoolType())
+		{
+			if(ty == fir::Type::getBool())          return fir::ConstantBool::get(gav<bool>(val));
+			else if(ty == fir::Type::getInt8())     return fir::ConstantInt::get(ty, gav<int8_t>(val));
+			else if(ty == fir::Type::getInt16())    return fir::ConstantInt::get(ty, gav<int16_t>(val));
+			else if(ty == fir::Type::getInt32())    return fir::ConstantInt::get(ty, gav<int32_t>(val));
+			else if(ty == fir::Type::getInt64())    return fir::ConstantInt::get(ty, gav<int64_t>(val));
+			else if(ty == fir::Type::getUint8())    return fir::ConstantInt::get(ty, gav<uint8_t>(val));
+			else if(ty == fir::Type::getUint16())   return fir::ConstantInt::get(ty, gav<uint16_t>(val));
+			else if(ty == fir::Type::getUint32())   return fir::ConstantInt::get(ty, gav<uint32_t>(val));
+			else if(ty == fir::Type::getUint64())   return fir::ConstantInt::get(ty, gav<uint64_t>(val));
+			else if(ty == fir::Type::getFloat32())  return fir::ConstantFP::get(ty, gav<float>(val));
+			else if(ty == fir::Type::getFloat64())  return fir::ConstantFP::get(ty, gav<double>(val));
+		}
+
+		#undef gav
+
+		error("interp: cannot unwrap type '%s'", ty);
+	}
 }
 }
 

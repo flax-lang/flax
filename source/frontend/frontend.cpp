@@ -437,6 +437,10 @@ namespace frontend
 						{
 							frontend::_backendCodegen = BackendOption::LLVM;
 						}
+						else if(str == "interp")
+						{
+							frontend::_backendCodegen = BackendOption::Interpreter;
+						}
 						else if(str == "x64asm")
 						{
 							frontend::_backendCodegen = BackendOption::Assembly_x64;

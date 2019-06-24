@@ -269,7 +269,7 @@ namespace parser
 					st.operatorsStillValid = false;
 					st.nativeWordSizeStillValid = false;
 
-					root->statements.push_back(parseStmt(st));
+					root->statements.push_back(parseStmt(st, /* allowExprs: */ false));
 				} break;
 			}
 

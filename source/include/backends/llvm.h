@@ -99,7 +99,6 @@ namespace backend
 
 		private:
 		void setupTargetMachine();
-		void finaliseGlobalConstructors();
 		EntryPoint_t getEntryFunctionFromJIT();
 		llvm::SmallVector<char, 0> initialiseLLVMStuff();
 

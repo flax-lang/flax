@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "backends/llvm.h"
+#include "backends/interp.h"
 
 namespace backend
 {
@@ -12,6 +13,9 @@ namespace backend
 		{
 			case BackendOption::LLVM:
 				return new LLVMBackend(cd, in, out);
+
+			case BackendOption::Interpreter:
+				return new FIRInterpBackend(cd, in, out);
 
 			case BackendOption::Assembly_x64:
 				return new x64Backend(cd, in, out);

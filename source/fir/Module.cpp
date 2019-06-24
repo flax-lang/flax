@@ -3,7 +3,9 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "gluecode.h"
+
 #include "ir/module.h"
+#include "ir/irbuilder.h"
 
 #include <sstream>
 
@@ -14,11 +16,66 @@ namespace fir
 		this->moduleName = nm;
 	}
 
+
+	void Module::finaliseGlobalConstructors()
+	{
+		auto builder = IRBuilder(this);
+		auto entryfunc = this->entryFunction;
+
+		if(!entryfunc)
+		{
+			// keep trying various things.
+			std::vector<std::string> trymains = { "main", "_FF" + this->getModuleName() + "4main_FAv" };
+			for(const auto& m : trymains)
+			{
+				entryfunc = this->getFunction(Identifier(m, IdKind::Name));
+				if(entryfunc) break;
+			}
+
+			if(entryfunc)
+				this->entryFunction = entryfunc;
+
+			else
+				error("fir: no entry point marked with '@entry', and no 'main' function; cannot compile program");
+		}
+
+		// it doesn't actually matter what the entry function is named -- we just need to insert some instructions at the beginning.
+		iceAssert(entryfunc);
+		{
+			iceAssert(entryfunc->getBlockList().size() > 0);
+
+			auto oldentry = entryfunc->getBlockList()[0];
+			auto newentry = new IRBlock(entryfunc);
+			newentry->setName("entryblock_entry");
+
+			auto& blklist = entryfunc->getBlockList();
+			blklist.insert(blklist.begin(), newentry);
+
+			builder.setCurrentBlock(newentry);
+
+			auto gif = this->getFunction(Identifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME, IdKind::Name));
+			if(!gif) error("fir: failed to find global init function '%s'", BUILTIN_GLOBAL_INIT_FUNCTION_NAME);
+
+			builder.Call(gif);
+			builder.UnCondBranch(oldentry);
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
 	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
-			error("already have a global with name '%s'", ident.str());
+			error("fir: already have a global with name '%s'", ident.str());
 
 		this->globals[ident] = gv;
 		return gv;
@@ -45,7 +102,7 @@ namespace fir
 	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
-			error("no such global with name '%s'", id.str());
+			error("fir: no such global with name '%s'", id.str());
 
 		return this->globals[id];
 	}
@@ -69,7 +126,7 @@ namespace fir
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangled(), IdKind::Name),
+			auto vtab = this->createGlobalVariable(util::obfuscateIdentifier("vtable", cls->getTypeName().mangled()),
 				table->getType(), table, true, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
@@ -109,7 +166,7 @@ namespace fir
 	Type* Module::getNamedType(const Identifier& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
-			error("no such type with name '%s'", id.str());
+			error("fir: no such type with name '%s'", id.str());
 
 		return this->namedTypes[id];
 	}
@@ -117,7 +174,7 @@ namespace fir
 	void Module::addNamedType(const Identifier& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
-			error("type '%s' exists already", id.str());
+			error("fir: type '%s' exists already", id.str());
 
 		this->namedTypes[id] = type;
 	}
@@ -135,7 +192,7 @@ namespace fir
 	void Module::addFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) != this->functions.end())
-			error("function '%s' exists already", func->getName().str());
+			error("fir: function '%s' exists already", func->getName().str());
 
 		this->functions[func->getName()] = func;
 	}
@@ -143,7 +200,7 @@ namespace fir
 	void Module::removeFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) == this->functions.end())
-			error("function '%s' does not exist, cannot remove", func->getName().str());
+			error("fir: function '%s' does not exist, cannot remove", func->getName().str());
 
 		this->functions.erase(func->getName());
 	}
@@ -183,7 +240,7 @@ namespace fir
 		{
 			if(!this->functions[id]->getType()->isTypeEqual(ftype))
 			{
-				error("function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
+				error("fir: function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
 					this->functions[id]->getType(), ftype);
 			}
 

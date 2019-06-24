@@ -826,6 +826,15 @@ namespace sst
 		std::vector<FnCallArgument> args;
 	};
 
+	struct RunDirective : Expr
+	{
+		RunDirective(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "run directive"; }
+		~RunDirective() { }
+
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		Expr* inside = 0;
+	};
 }
 
 

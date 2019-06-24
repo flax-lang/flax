@@ -6,33 +6,6 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define BUILTIN_ARRAY_BOUNDS_CHECK_FUNC_NAME        "__array_boundscheck"
-#define BUILTIN_ARRAY_DECOMP_BOUNDS_CHECK_FUNC_NAME "__array_boundscheckdecomp"
-
-#define BUILTIN_ARRAY_CMP_FUNC_NAME                 "__array_compare"
-
-#define BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME     "__array_setelementsdefault"
-#define BUILTIN_ARRAY_SET_ELEMENTS_NAME             "__array_setelements"
-#define BUILTIN_ARRAY_CALL_CLASS_CONSTRUCTOR        "__array_callclassinit"
-
-#define BUILTIN_DYNARRAY_CLONE_FUNC_NAME            "__darray_clone"
-#define BUILTIN_DYNARRAY_APPEND_FUNC_NAME           "__darray_append"
-#define BUILTIN_DYNARRAY_APPEND_ELEMENT_FUNC_NAME   "__darray_appendelement"
-#define BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME         "__darray_popback"
-#define BUILTIN_DYNARRAY_MAKE_FROM_TWO_FUNC_NAME    "__darray_combinetwo"
-
-#define BUILTIN_DYNARRAY_RESERVE_ENOUGH_NAME        "__darray_reservesufficient"
-#define BUILTIN_DYNARRAY_RESERVE_EXTRA_NAME         "__darray_reserveextra"
-
-#define BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME    "__darray_recursiverefcount"
-
-#define BUILTIN_SLICE_CLONE_FUNC_NAME               "__slice_clone"
-#define BUILTIN_SLICE_APPEND_FUNC_NAME              "__slice_append"
-#define BUILTIN_SLICE_APPEND_ELEMENT_FUNC_NAME      "__slice_appendelement"
-
-#define BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME        "__loop_incr_refcount"
-#define BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME        "__loop_decr_refcount"
-
 
 namespace cgn {
 namespace glue {
@@ -77,14 +50,14 @@ namespace array
 	{
 		iceAssert(cls);
 
-		auto name = BUILTIN_ARRAY_CALL_CLASS_CONSTRUCTOR + std::string("_") + cls->encodedStr();
-		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getCallClassConstructor_FName(cls);
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ cls->getPointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -143,14 +116,14 @@ namespace array
 	{
 		iceAssert(elmType);
 
-		auto name = BUILTIN_ARRAY_SET_ELEMENTS_NAME + std::string("_") + elmType->encodedStr();
-		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getSetElements_FName(elmType);
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getNativeWord(), elmType }, fir::Type::getVoid()),
 				fir::LinkageType::Internal);
 
@@ -205,14 +178,14 @@ namespace array
 	{
 		iceAssert(elmType);
 
-		auto name = BUILTIN_ARRAY_SET_ELEMENTS_DEFAULT_NAME + std::string("_") + elmType->encodedStr();
-		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getSetElementsDefault_FName(elmType);
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ elmType->getMutablePointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -418,14 +391,14 @@ namespace array
 	{
 		iceAssert(arrtype);
 
-		auto name = BUILTIN_ARRAY_CMP_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getCompare_FName(arrtype);
+		fir::Function* cmpf = cs->module->getFunction(fname);
 
 		if(!cmpf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ arrtype, arrtype }, fir::Type::getNativeWord()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -468,14 +441,14 @@ namespace array
 
 	static fir::Function* makeRecursiveRefCountingFunction(CodegenState* cs, fir::DynamicArrayType* arrtype, bool incr)
 	{
-		auto name = BUITLIN_DYNARRAY_RECURSIVE_REFCOUNT_NAME + std::string(incr ? "_incr_" : "_decr_") + arrtype->encodedStr();
-		fir::Function* retf = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getRecursiveRefcount_FName(arrtype, incr);
+		fir::Function* retf = cs->module->getFunction(fname);
 
 		if(!retf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ arrtype }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -616,16 +589,14 @@ namespace array
 
 	static fir::Function* _getDoRefCountFunctionForDynamicArray(CodegenState* cs, fir::DynamicArrayType* arrtype, bool increment)
 	{
-		auto name = (increment ? BUILTIN_LOOP_INCR_REFCOUNT_FUNC_NAME : BUILTIN_LOOP_DECR_REFCOUNT_FUNC_NAME)
-			+ std::string("_") + arrtype->encodedStr();
-
-		fir::Function* cmpf = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = (increment ? misc::getLoopIncrRefcount_FName(arrtype) : misc::getLoopDecrRefcount_FName(arrtype));
+		fir::Function* cmpf = cs->module->getFunction(fname);
 
 		if(!cmpf)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ arrtype }, arrtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -689,8 +660,8 @@ namespace array
 		iceAssert(arrtype);
 		iceAssert(arrtype->isDynamicArrayType() || arrtype->isArraySliceType());
 
-		auto name = BUILTIN_DYNARRAY_POP_BACK_FUNC_NAME + std::string("_") + arrtype->encodedStr();
-		fir::Function* fn = cs->module->getFunction(Identifier(name, IdKind::Name));
+		auto fname = misc::getPopBack_FName(arrtype);
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
@@ -699,7 +670,7 @@ namespace array
 			auto restore = cs->irb.getCurrentBlock();
 			auto retTy = fir::TupleType::get({ arrtype, arrtype->getArrayElementType() });
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(name, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ arrtype, fir::Type::getCharSlice(false) }, retTy), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();

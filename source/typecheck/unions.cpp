@@ -126,7 +126,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			size_t tfn = 0;
 			for(auto [ loc, pty ] : this->transparentFields)
 			{
-				auto sfd = make_field(strprintf("__transparent_field_%zu", tfn++), loc, pty);
+				auto sfd = make_field(util::obfuscateName("transparent_field", tfn++), loc, pty);
 				iceAssert(sfd);
 
 				sfd->isTransparentField = true;

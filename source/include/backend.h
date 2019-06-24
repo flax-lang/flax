@@ -59,6 +59,7 @@ namespace backend
 
 		None,
 		LLVM,
+		Interpreter,
 		Assembly_x64,
 	};
 
