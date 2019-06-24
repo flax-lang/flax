@@ -1221,6 +1221,8 @@ namespace parser
 					st.pop();
 					return util::pool<LitNull>(tok.loc);
 
+				case TT::Directive_Run:
+					return parseRunDirective(st);
 
 				case TT::LBrace:
 					unexpected(st, "block; to create a nested scope, use 'do { ... }'");

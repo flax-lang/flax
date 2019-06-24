@@ -432,8 +432,8 @@ namespace interp
 
 		for(auto intr : this->module->_getIntrinsicFunctions())
 		{
-			auto name = util::obfuscateIdentifier("interp_intrinsic", intr.first.str());
-			auto fn = this->module->getOrCreateFunction(name, intr.second->getType(), fir::LinkageType::ExternalWeak);
+			auto fname = Identifier("__interp_intrinsic_" + intr.first.str(), IdKind::Name);
+			auto fn = this->module->getOrCreateFunction(fname, intr.second->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
 			// new function here `fn` that doesn't match the intrinsic function `intr`, we need to map that as well.
@@ -459,7 +459,7 @@ namespace interp
 				auto fn = this->module->getFunction(Identifier(name, IdKind::Name));
 				if(fn)
 				{
-					auto wrapper = this->module->getOrCreateFunction(util::obfuscateIdentifier("interp_wrapper", name),
+					auto wrapper = this->module->getOrCreateFunction(Identifier("__interp_wrapper_" + name, IdKind::Name),
 						fn->getType()->toFunctionType(), fir::LinkageType::ExternalWeak);
 
 					this->compiledFunctions[fn] = this->compileFunction(wrapper);
@@ -1017,6 +1017,9 @@ namespace interp
 	}
 
 
+	// static interp::Value prepareFunctionToRun
+
+
 
 
 	interp::Value InterpState::runFunction(const interp::Function& fn, const std::vector<interp::Value>& args)
@@ -1076,139 +1079,146 @@ namespace interp
 
 
 
+	static interp::Value* getVal2(InterpState* is, fir::Value* fv)
+	{
+		if(auto it = is->stackFrames.back().values.find(fv); it != is->stackFrames.back().values.end())
+			return &it->second;
+
+		else if(auto it2 = is->globals.find(fv); it2 != is->globals.end())
+			return &it2->second;
+
+		else
+			return 0;
+	}
+
+	static interp::Value getVal(InterpState* is, fir::Value* fv)
+	{
+		if(auto hmm = getVal2(is, fv); hmm)
+			return *hmm;
+
+		else if(auto cnst = dcast(fir::ConstantValue, fv); cnst)
+			return makeConstant(is, cnst);
+
+		else
+			error("interp: no value with id %zu", fv->id);
+	}
+
+	static interp::Value loadFromPtr(const interp::Value& x, fir::Type* ty)
+	{
+		auto ptr = (void*) getActualValue<uintptr_t>(x);
+
+		interp::Value ret;
+		ret.dataSize = getSizeOfType(ty);
+		ret.type = ty;
+
+		if(ret.dataSize > LARGE_DATA_SIZE)
+		{
+			// clone the memory and store it.
+			auto newmem = malloc(ret.dataSize);
+			memmove(newmem, ptr, ret.dataSize);
+			ret.ptr = newmem;
+		}
+		else
+		{
+			// memcopy.
+			memmove(&ret.data[0], ptr, ret.dataSize);
+		}
+
+		return ret;
+	}
+
+	static interp::Value performGEP2(InterpState* is, fir::Type* resty, const interp::Value& ptr, const interp::Value& i1, const interp::Value& i2)
+	{
+
+		iceAssert(i1.type == i2.type);
+
+		// so, ptr should be a pointer to an array.
+		iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
+
+		auto arrty = ptr.type->getPointerElementType();
+		auto elmty = arrty->getArrayElementType();
+
+		auto ofs = twoArgumentOp(is, resty, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
+			return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
+		});
+
+		auto realptr = getActualValue<uintptr_t>(ptr);
+		return oneArgumentOp(is, resty, ofs, [realptr](auto b) -> auto {
+			// this is not pointer arithmetic!!
+			return realptr + b;
+		});
+	}
+
+
+	static interp::Value performStructGEP(InterpState* is, fir::Type* resty, const interp::Value& str, uint64_t idx)
+	{
+
+		iceAssert(str.type->isPointerType());
+		auto strty = str.type->getPointerElementType();
+
+		if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
+			error("interp: unsupported type '%s' for struct gep", strty);
+
+		std::vector<fir::Type*> elms = getTypeListOfType(strty);
+
+		size_t ofs = 0;
+		for(uint64_t i = 0; i < idx; i++)
+			ofs += getSizeOfType(elms[i]);
+
+		uintptr_t src = getActualValue<uintptr_t>(str);
+		src += ofs;
+
+		auto ret = cloneValue(str);
+		ret.type = resty;
+		setValueRaw(is, &ret, &src, sizeof(src));
+
+		return ret;
+	}
+
+	static interp::Value decay(const interp::Value& val)
+	{
+		if(val.val->islorclvalue())
+		{
+			auto ret = loadFromPtr(val, val.val->getType());
+			ret.val = val.val;
+
+			return ret;
+		}
+		else
+		{
+			return val;
+		}
+	}
+
+	static interp::Value& getUndecayedArg(InterpState* is, const interp::Instruction& inst, size_t i)
+	{
+		iceAssert(i < inst.args.size());
+		auto ret = getVal2(is, inst.args[i]);
+		iceAssert(ret);
+
+		return *ret;
+	}
+
+	static interp::Value getArg(InterpState* is, const interp::Instruction& inst, size_t i)
+	{
+		iceAssert(i < inst.args.size());
+		return decay(getVal(is, inst.args[i]));
+	}
+
+	static void setRet(InterpState* is, const interp::Instruction& inst, const interp::Value& val)
+	{
+		is->stackFrames.back().values[inst.result] = val;
+	}
+
+	static bool areTypesSufficientlyEqual(fir::Type* a, fir::Type* b)
+	{
+		return a == b || (a->isPointerType() && b->isPointerType() && a->getPointerElementType() == b->getPointerElementType());
+	}
+
+
 	// returns either FLOW_NORMAL, FLOW_BRANCH or FLOW_RETURN.
 	static int runInstruction(InterpState* is, const interp::Instruction& inst, interp::Value* instrOutput, const interp::Block** jmpTargetBlk)
 	{
-		auto getVal2 = [is](fir::Value* fv) -> interp::Value* {
-			if(auto it = is->stackFrames.back().values.find(fv); it != is->stackFrames.back().values.end())
-				return &it->second;
-
-			else if(auto it2 = is->globals.find(fv); it2 != is->globals.end())
-				return &it2->second;
-
-			else
-				return 0;
-		};
-
-		auto getVal = [is, &getVal2](fir::Value* fv) -> interp::Value {
-			if(auto hmm = getVal2(fv); hmm)
-				return *hmm;
-
-			else if(auto cnst = dcast(fir::ConstantValue, fv); cnst)
-				return makeConstant(is, cnst);
-
-			else
-				error("interp: no value with id %zu", fv->id);
-		};
-
-		auto loadFromPtr = [](const interp::Value& x, fir::Type* ty) -> interp::Value {
-
-			auto ptr = (void*) getActualValue<uintptr_t>(x);
-
-			interp::Value ret;
-			ret.dataSize = getSizeOfType(ty);
-			ret.type = ty;
-
-			if(ret.dataSize > LARGE_DATA_SIZE)
-			{
-				// clone the memory and store it.
-				auto newmem = malloc(ret.dataSize);
-				memmove(newmem, ptr, ret.dataSize);
-				ret.ptr = newmem;
-			}
-			else
-			{
-				// memcopy.
-				memmove(&ret.data[0], ptr, ret.dataSize);
-			}
-
-			return ret;
-		};
-
-		auto performGEP2 = [is](fir::Type* resty, const interp::Value& ptr, const interp::Value& i1, const interp::Value& i2) -> interp::Value {
-
-			iceAssert(i1.type == i2.type);
-
-			// so, ptr should be a pointer to an array.
-			iceAssert(ptr.type->isPointerType() && ptr.type->getPointerElementType()->isArrayType());
-
-			auto arrty = ptr.type->getPointerElementType();
-			auto elmty = arrty->getArrayElementType();
-
-			auto ofs = twoArgumentOp(is, resty, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
-				return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
-			});
-
-			auto realptr = getActualValue<uintptr_t>(ptr);
-			return oneArgumentOp(is, resty, ofs, [realptr](auto b) -> auto {
-				// this is not pointer arithmetic!!
-				return realptr + b;
-			});
-		};
-
-
-		auto performStructGEP = [is](fir::Type* resty, const interp::Value& str, uint64_t idx) -> interp::Value {
-
-			iceAssert(str.type->isPointerType());
-			auto strty = str.type->getPointerElementType();
-
-			if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
-				error("interp: unsupported type '%s' for struct gep", strty);
-
-			std::vector<fir::Type*> elms = getTypeListOfType(strty);
-
-			size_t ofs = 0;
-			for(uint64_t i = 0; i < idx; i++)
-				ofs += getSizeOfType(elms[i]);
-
-			uintptr_t src = getActualValue<uintptr_t>(str);
-			src += ofs;
-
-			auto ret = cloneValue(str);
-			ret.type = resty;
-			setValueRaw(is, &ret, &src, sizeof(src));
-
-			return ret;
-		};
-
-		auto decay = [&loadFromPtr](const interp::Value& val) -> interp::Value {
-			if(val.val->islorclvalue())
-			{
-				auto ret = loadFromPtr(val, val.val->getType());
-				ret.val = val.val;
-
-				return ret;
-			}
-			else
-			{
-				return val;
-			}
-		};
-
-		auto getUndecayedArg = [&getVal2](const interp::Instruction& inst, size_t i) -> interp::Value& {
-			iceAssert(i < inst.args.size());
-			auto ret = getVal2(inst.args[i]);
-			iceAssert(ret);
-
-			return *ret;
-		};
-
-		auto getArg = [&decay, &getVal](const interp::Instruction& inst, size_t i) -> interp::Value {
-			iceAssert(i < inst.args.size());
-			return decay(getVal(inst.args[i]));
-		};
-
-		auto setRet = [is](const interp::Instruction& inst, const interp::Value& val) -> void {
-			is->stackFrames.back().values[inst.result] = val;
-		};
-
-		auto areTypesSufficientlyEqual = [](fir::Type* a, fir::Type* b) -> bool {
-			return a == b ||
-				(a->isPointerType() && b->isPointerType() && a->getPointerElementType() == b->getPointerElementType());
-		};
-
-
-
 		auto ok = (OpKind) inst.opcode;
 		switch(ok)
 		{
@@ -1217,11 +1227,11 @@ namespace interp
 			case OpKind::Floating_Add:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a + b;
 				}));
 				break;
@@ -1232,11 +1242,11 @@ namespace interp
 			case OpKind::Floating_Sub:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a - b;
 				}));
 				break;
@@ -1247,11 +1257,11 @@ namespace interp
 			case OpKind::Floating_Mul:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a * b;
 				}));
 				break;
@@ -1262,11 +1272,11 @@ namespace interp
 			case OpKind::Floating_Div:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a / b;
 				}));
 				break;
@@ -1276,11 +1286,11 @@ namespace interp
 			case OpKind::Unsigned_Mod:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a % b;
 				}));
 				break;
@@ -1289,11 +1299,11 @@ namespace interp
 			case OpKind::Floating_Mod:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return fmod(a, b);
 				}));
 				break;
@@ -1305,11 +1315,11 @@ namespace interp
 			case OpKind::FCompare_Equal_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a == b;
 				}));
 				break;
@@ -1320,11 +1330,11 @@ namespace interp
 			case OpKind::FCompare_NotEqual_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a != b;
 				}));
 				break;
@@ -1335,11 +1345,11 @@ namespace interp
 			case OpKind::FCompare_Greater_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a > b;
 				}));
 				break;
@@ -1350,11 +1360,11 @@ namespace interp
 			case OpKind::FCompare_Less_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a < b;
 				}));
 				break;
@@ -1366,11 +1376,11 @@ namespace interp
 			case OpKind::FCompare_GreaterEqual_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a >= b;
 				}));
 				break;
@@ -1381,11 +1391,11 @@ namespace interp
 			case OpKind::FCompare_LessEqual_UNORD:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> bool {
 					return a <= b;
 				}));
 				break;
@@ -1395,11 +1405,11 @@ namespace interp
 			case OpKind::FCompare_Multi:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> int {
+				setRet(is, inst, twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> int {
 					if(a == b)  return 0;
 					if(a > b)   return 1;
 					else        return -1;
@@ -1410,11 +1420,11 @@ namespace interp
 			case OpKind::Bitwise_Xor:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a ^ b;
 				}));
 				break;
@@ -1424,11 +1434,11 @@ namespace interp
 			case OpKind::Bitwise_Arithmetic_Shr:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(a.type->isIntegerType());
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a >> b;
 				}));
 				break;
@@ -1437,11 +1447,11 @@ namespace interp
 			case OpKind::Bitwise_Shl:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(a.type->isIntegerType());
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a << b;
 				}));
 				break;
@@ -1450,11 +1460,11 @@ namespace interp
 			case OpKind::Bitwise_And:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a & b;
 				}));
 				break;
@@ -1463,11 +1473,11 @@ namespace interp
 			case OpKind::Bitwise_Or:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(areTypesSufficientlyEqual(a.type, b.type));
-				setRet(inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
+				setRet(is, inst, twoArgumentOpIntOnly(is, inst, a, b, [](auto a, auto b) -> decltype(a) {
 					return a | b;
 				}));
 				break;
@@ -1477,9 +1487,9 @@ namespace interp
 			case OpKind::Floating_Neg:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 
-				setRet(inst, oneArgumentOp(is, inst, a, [](auto a) -> auto {
+				setRet(is, inst, oneArgumentOp(is, inst, a, [](auto a) -> auto {
 					return -1 * a;
 				}));
 				break;
@@ -1488,9 +1498,9 @@ namespace interp
 			case OpKind::Bitwise_Not:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 
-				setRet(inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
+				setRet(is, inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
 					return ~a;
 				}));
 				break;
@@ -1499,9 +1509,9 @@ namespace interp
 			case OpKind::Logical_Not:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 
-				setRet(inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
+				setRet(is, inst, oneArgumentOpIntOnly(is, inst, a, [](auto a) -> auto {
 					return !a;
 				}));
 				break;
@@ -1510,7 +1520,7 @@ namespace interp
 			case OpKind::Floating_Truncate:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 				auto t = inst.args[1]->getType();
 
 				interp::Value ret;
@@ -1521,14 +1531,14 @@ namespace interp
 				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, (double) getActualValue<double>(a));
 				else                                    error("interp: unsupported");
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
 			case OpKind::Floating_Extend:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 				auto t = inst.args[1]->getType();
 
 				interp::Value ret;
@@ -1539,7 +1549,7 @@ namespace interp
 				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, (double) getActualValue<double>(a));
 				else                                    error("interp: unsupported");
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1549,8 +1559,8 @@ namespace interp
 			case OpKind::Value_WritePtr:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				if(a.type != b.type->getPointerElementType())
 					error("interp: cannot write '%s' into '%s'", a.type, b.type);
@@ -1573,14 +1583,14 @@ namespace interp
 			case OpKind::Value_ReadPtr:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 
 				auto ty = a.type->getPointerElementType();
 
 				auto ret = loadFromPtr(a, ty);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1600,7 +1610,7 @@ namespace interp
 				{
 					if(blk == is->stackFrames.back().previousBlock->blk)
 					{
-						setValue(is, &val, decay(getVal(v)));
+						setValue(is, &val, decay(getVal(is, v)));
 						found = true;
 						break;
 					}
@@ -1608,7 +1618,7 @@ namespace interp
 
 				if(!found) error("interp: predecessor was not listed in the PHI node (id %zu)!", phi->id);
 
-				setRet(inst, val);
+				setRet(is, inst, val);
 				break;
 			}
 
@@ -1619,7 +1629,7 @@ namespace interp
 			case OpKind::Value_Return:
 			{
 				if(!inst.args.empty())
-					*instrOutput = getArg(inst, 0);
+					*instrOutput = getArg(is, inst, 0);
 
 				return FLOW_RETURN;
 			}
@@ -1648,7 +1658,7 @@ namespace interp
 			case OpKind::Branch_Cond:
 			{
 				iceAssert(inst.args.size() == 3);
-				auto cond = getArg(inst, 0);
+				auto cond = getArg(is, inst, 0);
 				iceAssert(cond.type->isBoolType());
 
 				const interp::Block* trueblk = 0;
@@ -1683,8 +1693,8 @@ namespace interp
 			case OpKind::Integer_Truncate:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -1712,7 +1722,7 @@ namespace interp
 					});
 				}
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1727,38 +1737,38 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 2);
 
-				auto v = cloneValue(inst.result, getArg(inst, 0));
+				auto v = cloneValue(inst.result, getArg(is, inst, 0));
 				v.type = inst.args[1]->getType();
 
-				setRet(inst, v);
+				setRet(is, inst, v);
 				break;
 			}
 
 			case OpKind::Cast_FloatToInt:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
 					return (decltype(b)) a;
 				});
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
 			case OpKind::Cast_IntToFloat:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
 					return (decltype(b)) a;
 				});
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1767,8 +1777,8 @@ namespace interp
 			{
 				// equivalent to GEP(ptr*, index)
 				iceAssert(inst.args.size() == 2);
-				auto ptr = getArg(inst, 0);
-				auto b = getArg(inst, 1);
+				auto ptr = getArg(is, inst, 0);
+				auto b = getArg(is, inst, 1);
 
 				iceAssert(ptr.type->isPointerType());
 				iceAssert(b.type->isIntegerType());
@@ -1776,7 +1786,7 @@ namespace interp
 				auto elmty = ptr.type->getPointerElementType();
 
 				auto realptr = getActualValue<uintptr_t>(ptr);
-				setRet(inst, oneArgumentOp(is, inst, b, [realptr, elmty](auto b) -> auto {
+				setRet(is, inst, oneArgumentOp(is, inst, b, [realptr, elmty](auto b) -> auto {
 					// this doesn't do pointer arithmetic!! if it's a pointer type, the value we get
 					// will be a uintptr_t.
 					return realptr + (b * getSizeOfType(elmty));
@@ -1789,14 +1799,14 @@ namespace interp
 			{
 				// equivalent to GEP(ptr*, index1, index2)
 				iceAssert(inst.args.size() == 3);
-				auto ptr = getArg(inst, 0);
-				auto i1 = getArg(inst, 1);
-				auto i2 = getArg(inst, 2);
+				auto ptr = getArg(is, inst, 0);
+				auto i1 = getArg(is, inst, 1);
+				auto i2 = getArg(is, inst, 2);
 
-				auto ret = performGEP2(inst.result->getType(), ptr, i1, i2);
+				auto ret = performGEP2(is, inst.result->getType(), ptr, i1, i2);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1804,13 +1814,13 @@ namespace interp
 			{
 				// equivalent to GEP(ptr*, 0, memberIndex)
 				iceAssert(inst.args.size() == 2);
-				auto str = getUndecayedArg(inst, 0);
+				auto str = getUndecayedArg(is, inst, 0);
 				auto idx = dcast(fir::ConstantInt, inst.args[1])->getUnsignedValue();
 
-				auto ret = performStructGEP(inst.result->getType()->getPointerTo(), str, idx);
+				auto ret = performStructGEP(is, inst.result->getType()->getPointerTo(), str, idx);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1852,12 +1862,12 @@ namespace interp
 
 				std::vector<interp::Value> args;
 				for(size_t i = 1; i < inst.args.size(); i++)
-					args.push_back(getArg(inst, i));
+					args.push_back(getArg(is, inst, i));
 
 				auto ret = is->runFunction(*target, args);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1866,16 +1876,16 @@ namespace interp
 			case OpKind::Value_CallFunctionPointer:
 			{
 				iceAssert(inst.args.size() >= 1);
-				auto fn = getArg(inst, 0);
+				auto fn = getArg(is, inst, 0);
 
 				std::vector<interp::Value> args;
 				for(size_t i = 1; i < inst.args.size(); i++)
-					args.push_back(getArg(inst, i));
+					args.push_back(getArg(is, inst, i));
 
 				auto ret = callFunctionPointer(is, fn, args);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1889,20 +1899,20 @@ namespace interp
 
 				std::vector<interp::Value> args;
 				for(size_t i = 3; i < inst.args.size(); i++)
-					args.push_back(getArg(inst, i));
+					args.push_back(getArg(is, inst, i));
 
 				//* this is very hacky! we rely on these things not using ::val, because it's null!!
-				auto vtable = loadFromPtr(performStructGEP(fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
+				auto vtable = loadFromPtr(performStructGEP(is, fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
 				auto vtablety = fir::ArrayType::get(fir::FunctionType::get({ }, fir::Type::getVoid())->getPointerTo(), clsty->getVirtualMethodCount());
 				vtable.type = vtablety->getPointerTo();
 
-				vtable = performGEP2(vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(inst, 1));
+				vtable = performGEP2(is, vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(is, inst, 1));
 
 				auto fnptr = loadFromPtr(vtable, fnty->getPointerTo());
 				auto ret = callFunctionPointer(is, fnptr, args);
 				ret.val = inst.result;
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -1917,10 +1927,10 @@ namespace interp
 
 				auto ci = fir::ConstantInt::getNative(getSizeOfType(ty));
 
-				if(fir::getNativeWordSizeInBits() == 64) setRet(inst, makeValue(inst.result, (int64_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 32) setRet(inst, makeValue(inst.result, (int32_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 16) setRet(inst, makeValue(inst.result, (int16_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 8)  setRet(inst, makeValue(inst.result, (int8_t)  ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 64) setRet(is, inst, makeValue(inst.result, (int64_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 32) setRet(is, inst, makeValue(inst.result, (int32_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 16) setRet(is, inst, makeValue(inst.result, (int16_t) ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 8)  setRet(is, inst, makeValue(inst.result, (int8_t)  ci->getSignedValue()));
 
 				break;
 			}
@@ -1942,15 +1952,15 @@ namespace interp
 				auto ret = makeValueOfType(inst.result, ty->getPointerTo());
 				setValueRaw(is, &ret, &buffer, sizeof(void*));
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
 			case OpKind::Value_Store:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto a = getArg(inst, 0);
-				auto b = getUndecayedArg(inst, 1);
+				auto a = getArg(is, inst, 0);
+				auto b = getUndecayedArg(is, inst, 1);
 
 				iceAssert(inst.args[1]->islorclvalue());
 
@@ -1964,33 +1974,33 @@ namespace interp
 			case OpKind::Value_AddressOf:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto ret = cloneValue(inst.result, getUndecayedArg(inst, 0));
+				auto ret = cloneValue(inst.result, getUndecayedArg(is, inst, 0));
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
 			case OpKind::Value_Dereference:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto a = getArg(inst, 0);
+				auto a = getArg(is, inst, 0);
 				auto ret = cloneValue(inst.result, a);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
 			case OpKind::Value_Select:
 			{
 				iceAssert(inst.args.size() == 3);
-				auto cond = getArg(inst, 0);
+				auto cond = getArg(is, inst, 0);
 				iceAssert(cond.type->isBoolType());
 
-				auto trueval = getArg(inst, 1);
-				auto falseval = getArg(inst, 2);
+				auto trueval = getArg(is, inst, 1);
+				auto falseval = getArg(is, inst, 2);
 
-				if(getActualValue<bool>(cond))  setRet(inst, trueval);
-				else                            setRet(inst, falseval);
+				if(getActualValue<bool>(cond))  setRet(is, inst, trueval);
+				else                            setRet(is, inst, falseval);
 
 				break;
 			}
@@ -2001,11 +2011,11 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 3);
 
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
-				auto idx = (size_t) getActualValue<int64_t>(getArg(inst, 2));
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
+				auto idx = (size_t) getActualValue<int64_t>(getArg(is, inst, 2));
 
-				setRet(inst, doInsertValue(is, inst.result, str, elm, idx));
+				setRet(is, inst, doInsertValue(is, inst.result, str, elm, idx));
 				break;
 			}
 
@@ -2014,10 +2024,10 @@ namespace interp
 			{
 				iceAssert(inst.args.size() >= 2);
 
-				auto str = getArg(inst, 0);
-				auto idx = (size_t) getActualValue<int64_t>(getArg(inst, 1));
+				auto str = getArg(is, inst, 0);
+				auto idx = (size_t) getActualValue<int64_t>(getArg(is, inst, 1));
 
-				setRet(inst, doExtractValue(is, inst.result, str, idx));
+				setRet(is, inst, doExtractValue(is, inst.result, str, idx));
 				break;
 			}
 
@@ -2028,7 +2038,7 @@ namespace interp
 			case OpKind::SAA_GetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
 				interp::Value ret;
 
@@ -2044,7 +2054,7 @@ namespace interp
 				else if(ok == OpKind::SAA_GetRefCountPtr)
 					ret = doExtractValue(is, inst.result, str, SAA_REFCOUNTPTR_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2054,8 +2064,8 @@ namespace interp
 			case OpKind::SAA_SetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -2071,7 +2081,7 @@ namespace interp
 				else if(ok == OpKind::SAA_SetRefCountPtr)
 					ret = doInsertValue(is, inst.result, str, elm, SAA_REFCOUNTPTR_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2079,7 +2089,7 @@ namespace interp
 			case OpKind::ArraySlice_GetLength:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
 				interp::Value ret;
 
@@ -2089,7 +2099,7 @@ namespace interp
 				else if(ok == OpKind::ArraySlice_GetLength)
 					ret = doExtractValue(is, inst.result, str, SLICE_LENGTH_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2099,8 +2109,8 @@ namespace interp
 			case OpKind::ArraySlice_SetLength:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -2110,7 +2120,7 @@ namespace interp
 				else if(ok == OpKind::ArraySlice_SetLength)
 					ret = doInsertValue(is, inst.result, str, elm, SLICE_LENGTH_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2119,7 +2129,7 @@ namespace interp
 			case OpKind::Any_GetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
 				interp::Value ret;
 
@@ -2132,7 +2142,7 @@ namespace interp
 				else if(ok == OpKind::Any_GetData)
 					ret = doExtractValue(is, inst.result, str, ANY_DATA_ARRAY_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2141,8 +2151,8 @@ namespace interp
 			case OpKind::Any_SetRefCountPtr:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -2155,7 +2165,7 @@ namespace interp
 				else if(ok == OpKind::Any_SetData)
 					ret = doInsertValue(is, inst.result, str, elm, ANY_DATA_ARRAY_INDEX);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2166,7 +2176,7 @@ namespace interp
 			case OpKind::Range_GetStep:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
 				interp::Value ret;
 
@@ -2179,7 +2189,7 @@ namespace interp
 				else if(ok == OpKind::Range_GetStep)
 					ret = doExtractValue(is, inst.result, str, 2);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2189,8 +2199,8 @@ namespace interp
 			case OpKind::Range_SetStep:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -2203,7 +2213,7 @@ namespace interp
 				else if(ok == OpKind::Range_SetStep)
 					ret = doInsertValue(is, inst.result, str, elm, 2);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2213,7 +2223,7 @@ namespace interp
 			case OpKind::Enum_GetValue:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
 				interp::Value ret;
 
@@ -2223,7 +2233,7 @@ namespace interp
 				else if(ok == OpKind::Enum_GetValue)
 					ret = doExtractValue(is, inst.result, str, 1);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2232,8 +2242,8 @@ namespace interp
 			case OpKind::Enum_SetValue:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
 				interp::Value ret;
 
@@ -2243,7 +2253,7 @@ namespace interp
 				else if(ok == OpKind::Enum_SetValue)
 					ret = doInsertValue(is, inst.result, str, elm, 1);
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2251,19 +2261,19 @@ namespace interp
 			case OpKind::Union_GetVariantID:
 			{
 				iceAssert(inst.args.size() == 1);
-				auto str = getArg(inst, 0);
+				auto str = getArg(is, inst, 0);
 
-				setRet(inst, doExtractValue(is, inst.result, str, 0));
+				setRet(is, inst, doExtractValue(is, inst.result, str, 0));
 				break;
 			}
 
 			case OpKind::Union_SetVariantID:
 			{
 				iceAssert(inst.args.size() == 2);
-				auto str = getArg(inst, 0);
-				auto elm = getArg(inst, 1);
+				auto str = getArg(is, inst, 0);
+				auto elm = getArg(is, inst, 1);
 
-				setRet(inst, doInsertValue(is, inst.result, str, elm, 0));
+				setRet(is, inst, doInsertValue(is, inst.result, str, elm, 0));
 				break;
 			}
 
@@ -2283,7 +2293,7 @@ namespace interp
 				// the extractvalue so we could cast-to-pointer then load.
 
 				// first we just get the argument:
-				auto theUnion = getArg(inst, 0);
+				auto theUnion = getArg(is, inst, 0);
 
 				// then, get the array:
 				uintptr_t arrayAddr = 0;
@@ -2297,7 +2307,7 @@ namespace interp
 				auto ret = is->makeValue(inst.result);
 				setValueRaw(is, &ret, (void*) arrayAddr, getSizeOfType(vt));
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 
@@ -2316,7 +2326,7 @@ namespace interp
 				// twist ourselves through hoops like with llvm.
 
 				// first we just get the argument:
-				auto theUnion = cloneValue(inst.result, getArg(inst, 0));
+				auto theUnion = cloneValue(inst.result, getArg(is, inst, 0));
 
 				// then, get the array:
 				uintptr_t baseAddr = 0;
@@ -2331,13 +2341,13 @@ namespace interp
 				memmove((void*) baseAddr, &vid, sizeof(intptr_t));
 
 				uintptr_t valueAddr = 0;
-				auto theValue = getArg(inst, 2);
+				auto theValue = getArg(is, inst, 2);
 				if(theValue.dataSize > LARGE_DATA_SIZE) valueAddr = (uintptr_t) theValue.ptr;
 				else                                    valueAddr = (uintptr_t) &theValue.data[0];
 
 				memmove((void*) arrayAddr, (void*) valueAddr, theValue.dataSize);
 
-				setRet(inst, theUnion);
+				setRet(is, inst, theUnion);
 				break;
 			}
 
@@ -2350,13 +2360,13 @@ namespace interp
 				iceAssert(inst.args[0]->islorclvalue());
 
 				// again. just manipulate the memory.
-				auto unn = getUndecayedArg(inst, 0);
+				auto unn = getUndecayedArg(is, inst, 0);
 				auto buffer = getActualValue<uintptr_t>(unn);
 
 				auto ret = makeValueOfType(inst.result, targtype->getPointerTo());
 				setValueRaw(is, &ret, &buffer, sizeof(uintptr_t));
 
-				setRet(inst, ret);
+				setRet(is, inst, ret);
 				break;
 			}
 

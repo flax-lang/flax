@@ -109,9 +109,6 @@ namespace backend
 		this->setupTargetMachine();
 		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
 
-		if(frontend::getPrintLLVMIR())
-			this->linkedModule->print(llvm::outs(), 0);
-
 		_printTiming(ts, "llvm translation");
 	}
 
@@ -179,6 +176,9 @@ namespace backend
 		fpm.run(*this->linkedModule);
 
 		_printTiming(ts, "llvm opt");
+
+		if(frontend::getPrintLLVMIR())
+			this->linkedModule->print(llvm::outs(), 0);
 	}
 
 	void LLVMBackend::writeOutput()

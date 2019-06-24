@@ -5,17 +5,17 @@
 export ultratiny
 
 import libc
+import std::math
 
-
-let somestr = "this is a string?"
-
-#run libc::puts("hello, world!")
 
 @entry fn main()
 {
-	libc::printf("s = %s\n", somestr)
+	let x = #run math::sqrt(2)
+	libc::printf("sqrt(2) = %f\n", x)
 }
 
 
 
-
+/*
+	before: 2922.84 ms
+*/

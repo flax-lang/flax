@@ -53,8 +53,8 @@ namespace fir
 
 			builder.setCurrentBlock(newentry);
 
-			auto gif = this->getFunction(Identifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME, IdKind::Name));
-			if(!gif) error("fir: failed to find global init function '%s'", BUILTIN_GLOBAL_INIT_FUNCTION_NAME);
+			auto gif = this->getFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME));
+			if(!gif) error("fir: failed to find global init function");
 
 			builder.Call(gif);
 			builder.UnCondBranch(oldentry);
