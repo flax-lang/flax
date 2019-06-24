@@ -10,7 +10,7 @@ let ASCII_PERCENT: i8       = 37
 
 fn error(msg: str)
 {
-	libc::printf("Invalid format specifier: %s\n", msg)
+	libc::printf("invalid format string: '%s'\n", msg)
 	libc::abort()
 }
 

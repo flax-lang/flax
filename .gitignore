@@ -68,6 +68,7 @@ bug-repro
 
 .vscode
 *.vcxproj.filters
+*.vcxproj.user
 
 countloc.bat
 
