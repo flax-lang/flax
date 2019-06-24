@@ -72,7 +72,7 @@ namespace interp
 		if(auto fsz = getSizeOfType(ret.type); fsz != sizeof(T))
 			error("packing error of type '%s': predicted size %d, actual size %d!", ret.type, fsz, sizeof(T));
 
-		memset(&ret.data[0], 0, 32);
+		memset(&ret.data[0], 0, LARGE_DATA_SIZE);
 
 		if(sizeof(T) > LARGE_DATA_SIZE)
 		{
@@ -96,7 +96,7 @@ namespace interp
 		ret.type = ty;
 		ret.dataSize = getSizeOfType(ret.type);
 
-		memset(&ret.data[0], 0, 32);
+		memset(&ret.data[0], 0, LARGE_DATA_SIZE);
 
 		if(ret.dataSize > LARGE_DATA_SIZE)
 			ret.ptr = calloc(1, ret.dataSize);
