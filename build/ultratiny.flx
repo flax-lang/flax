@@ -10,14 +10,16 @@ import std::math
 
 var value = 401.0
 
-#if "hello" == "hello"
+#if value > 30.0
 {
-	value = 30
-	libc::printf("true case\n")
+	#run {
+		value = 30
+		libc::printf("true case\n")
+	}
 }
 else
 {
-	libc::printf("false case\n")
+	#run libc::printf("false case\n")
 }
 
 #run {

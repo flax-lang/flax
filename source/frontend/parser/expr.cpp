@@ -98,6 +98,7 @@ namespace parser
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
+			// handle the things that are OK to appear anywhere first:
 			switch(tok.type)
 			{
 				case TT::Var:
@@ -110,35 +111,16 @@ namespace parser
 				case TT::ForeignFunc:
 					return parseForeignFunction(st);
 
-
-
 				case TT::Public:
 				case TT::Private:
 				case TT::Internal:
 					return parseStmtWithAccessSpec(st);
 
-				case TT::If:
 				case TT::Directive_If:
 					return parseIfStmt(st);
 
-				case TT::Else:
-					error(st, "cannot have 'else' without preceeding 'if'");
-
-				case TT::Return:
-					return parseReturn(st);
-
-				case TT::Do:
-				case TT::While:
-					return parseWhileLoop(st);
-
-				case TT::For:
-					return parseForLoop(st);
-
-				case TT::Break:
-					return parseBreak(st);
-
-				case TT::Continue:
-					return parseContinue(st);
+				case TT::Directive_Run:
+					return parseRunDirective(st);
 
 				case TT::Attr_Raw:
 					st.eat();
@@ -162,12 +144,6 @@ namespace parser
 				case TT::Static:
 					return parseStaticDecl(st);
 
-				case TT::Dealloc:
-					return parseDealloc(st);
-
-				case TT::Defer:
-					return parseDefer(st);
-
 				case TT::Operator:
 					return parseOperatorOverload(st);
 
@@ -184,6 +160,9 @@ namespace parser
 				case TT::TypeAlias:
 					error(st, "notsup");
 
+				case TT::Else:
+					error(st, "cannot have 'else' without preceeding 'if'");
+
 				case TT::Namespace:
 					error(st, "namespaces can only be defined at the top-level scope");
 
@@ -195,21 +174,80 @@ namespace parser
 
 				case TT::Export:
 					error(st, "export declaration must be the first non-comment line in the file");
+			}
 
-				case TT::Directive_Run:
-					return parseRunDirective(st);
+
+			// if we got here, then it wasn't any of those things.
+			// we store it first, so we can give better error messages (after knowing what it is)
+			// in the event that it wasn't allowed at top-level.
+
+			Stmt* ret = 0;
+			switch(tok.type)
+			{
+				case TT::If:
+					ret = parseIfStmt(st);
+					break;
+
+				case TT::Else:
+					error(st, "cannot have 'else' without preceeding 'if'");
+
+				case TT::Return:
+					ret = parseReturn(st);
+					break;
+
+				case TT::Do:
+				case TT::While:
+					ret = parseWhileLoop(st);
+					break;
+
+				case TT::For:
+					ret = parseForLoop(st);
+					break;
+
+				case TT::Break:
+					ret = parseBreak(st);
+					break;
+
+				case TT::Continue:
+					ret = parseContinue(st);
+					break;
+
+				case TT::Dealloc:
+					ret = parseDealloc(st);
+					break;
+
+				case TT::Defer:
+					ret = parseDefer(st);
+					break;
 
 				default: {
 					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
-						return parseInitFunction(st);
+					{
+						ret = parseInitFunction(st);
+						break;
+					}
+					else
+					{
+						// we want to error on invalid tokens first. so, we parse the expression regardless,
+						// then if they're not allowed we error.
+						auto expr = parseExpr(st);
 
-					// we want to error on invalid tokens first. so, we parse the expression regardless,
-					// then if they're not allowed we error.
-					auto ret = parseExpr(st);
+						if(!allowExprs) error(expr, "expressions are not allowed at the top-level");
+						else            ret = expr;
 
-					if(!allowExprs) error(ret, "expressions are not allowed at top-level");
-					else            return ret;
+						break;
+					}
 				}
+			}
+
+			iceAssert(ret);
+			if(!st.isInFunctionBody() && !st.isInStructBody())
+			{
+				error(ret, "%s is not allowed at the top-level", ret->readableName);
+			}
+			else
+			{
+				return ret;
 			}
 		}
 

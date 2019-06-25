@@ -20,12 +20,13 @@ namespace sst
 
 		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0)
 		{
-			if(didCodegen)
+			if(didCodegen && cs == this->cachedCS)
 			{
 				return cachedResult;
 			}
 			else
 			{
+				this->cachedCS = cs;
 				this->didCodegen = true;
 				return (this->cachedResult = this->_codegen(cs, inferred));
 			}
@@ -34,6 +35,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) = 0;
 
 		bool didCodegen = false;
+		cgn::CodegenState* cachedCS = 0;
 		CGResult cachedResult = CGResult(0);
 	};
 
