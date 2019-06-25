@@ -182,6 +182,29 @@ namespace interp
 		return s;
 	}
 
+	static interp::Value loadFromPtr(const interp::Value& x, fir::Type* ty)
+	{
+		auto ptr = (void*) getActualValue<uintptr_t>(x);
+
+		interp::Value ret;
+		ret.dataSize = getSizeOfType(ty);
+		ret.type = ty;
+
+		if(ret.dataSize > LARGE_DATA_SIZE)
+		{
+			// clone the memory and store it.
+			auto newmem = malloc(ret.dataSize);
+			memmove(newmem, ptr, ret.dataSize);
+			ret.ptr = newmem;
+		}
+		else
+		{
+			// memcopy.
+			memmove(&ret.data[0], ptr, ret.dataSize);
+		}
+
+		return ret;
+	}
 
 
 	static std::map<ConstantValue*, interp::Value> cachedConstants;
@@ -468,6 +491,48 @@ namespace interp
 		}
 		#endif
 	}
+
+
+	// the purpose of this function is to write-back any changes we made to globals while interpreting,
+	// back to the "value" of the global -- mainly for compile-time execution, so modifications will
+	// propagate to the backend code generation.
+	void InterpState::finalise()
+	{
+		for(const auto [ id, glob ] : this->module->_getGlobals())
+		{
+			auto ty = glob->getType();
+
+			// by right we are not supposed to add (or even change the FIR module at all) between calling
+			// initialise() and finalise(), but be defensive a bit.
+			if(auto it = this->globals.find(glob); it != this->globals.end())
+			{
+				auto val = loadFromPtr(it->second, it->first->getType());
+				glob->setInitialValue(this->unwrapInterpValueIntoConstant(val));
+			}
+
+
+
+			// auto sz = getSizeOfType(ty);
+
+			// void* buffer = new uint8_t[sz];
+			// memset(buffer, 0, sz);
+
+			// this->globalAllocs.push_back(buffer);
+
+			// if(auto init = glob->getInitialValue(); init)
+			// {
+			// 	auto x = makeConstant(this, init);
+			// 	if(x.dataSize > LARGE_DATA_SIZE)    memmove(buffer, x.ptr, x.dataSize);
+			// 	else                                memmove(buffer, &x.data[0], x.dataSize);
+			// }
+
+			// auto ret = makeValueOfType(glob, ty->getPointerTo());
+			// setValueRaw(this, &ret, &buffer, sizeof(void*));
+
+			// this->globals[glob] = ret;
+		}
+	}
+
 
 
 	static ffi_type* convertTypeToLibFFI(fir::Type* ty)
@@ -1180,29 +1245,6 @@ namespace interp
 			error("interp: no value with id %zu", fv->id);
 	}
 
-	static interp::Value loadFromPtr(const interp::Value& x, fir::Type* ty)
-	{
-		auto ptr = (void*) getActualValue<uintptr_t>(x);
-
-		interp::Value ret;
-		ret.dataSize = getSizeOfType(ty);
-		ret.type = ty;
-
-		if(ret.dataSize > LARGE_DATA_SIZE)
-		{
-			// clone the memory and store it.
-			auto newmem = malloc(ret.dataSize);
-			memmove(newmem, ptr, ret.dataSize);
-			ret.ptr = newmem;
-		}
-		else
-		{
-			// memcopy.
-			memmove(&ret.data[0], ptr, ret.dataSize);
-		}
-
-		return ret;
-	}
 
 	static interp::Value performGEP2(InterpState* is, fir::Type* resty, const interp::Value& ptr, const interp::Value& i1, const interp::Value& i2)
 	{

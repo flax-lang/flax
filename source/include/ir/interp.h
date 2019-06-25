@@ -65,6 +65,8 @@ namespace fir
 			~InterpState();
 
 			void initialise();
+			void finalise();
+
 			interp::Function& compileFunction(fir::Function* fn);
 			interp::Value runFunction(const interp::Function& fn, const std::vector<interp::Value>& args);
 

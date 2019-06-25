@@ -833,7 +833,9 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		Expr* inside = 0;
+		// mutually exclusive!
+		Block* block = 0;
+		Expr* insideExpr = 0;
 	};
 }
 

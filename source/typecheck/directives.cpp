@@ -19,9 +19,19 @@ TCResult ast::RunDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	auto expr = this->inside->typecheck(fs, infer).expr();
-	auto rundir = util::pool<sst::RunDirective>(this->loc, expr->type);
-	rundir->inside = expr;
+	auto rundir = util::pool<sst::RunDirective>(this->loc, nullptr);
+	if(this->insideExpr)
+	{
+		rundir->insideExpr = this->insideExpr->typecheck(fs, infer).expr();
+		rundir->type = rundir->insideExpr->type;
+	}
+	else
+	{
+		rundir->block = dcast(sst::Block, this->block->typecheck(fs, infer).stmt());
+		iceAssert(rundir->block);
+
+		rundir->type = fir::Type::getVoid();
+	}
 
 	return TCResult(rundir);
 }

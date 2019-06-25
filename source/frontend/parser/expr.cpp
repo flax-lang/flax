@@ -128,7 +128,6 @@ namespace parser
 
 				case TT::Do:
 				case TT::While:
-				case TT::Loop:
 					return parseWhileLoop(st);
 
 				case TT::For:
@@ -1146,7 +1145,6 @@ namespace parser
 
 				case TT::Do:
 				case TT::While:
-				case TT::Loop:
 				case TT::For:
 					error(st, "loops are not expressions");
 

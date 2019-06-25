@@ -806,7 +806,9 @@ namespace ast
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
-		Expr* inside = 0;
+		// note: these two are mutually exclusive!
+		Block* block = 0;
+		Expr* insideExpr = 0;
 	};
 
 
