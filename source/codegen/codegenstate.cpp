@@ -128,11 +128,14 @@ namespace cgn
 
 
 
-
+	void CodegenState::pushLoc(const Location& l)
+	{
+		this->locationStack.push_back(l);
+	}
 
 	void CodegenState::pushLoc(sst::Stmt* stmt)
 	{
-		this->locationStack.push_back(stmt->loc);
+		this->pushLoc(stmt->loc);
 	}
 
 	void CodegenState::popLoc()

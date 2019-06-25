@@ -301,7 +301,7 @@ namespace parser
 	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::Stmt* parseForLoop(State& st);
-	ast::IfStmt* parseIfStmt(State& st);
+	ast::Stmt* parseIfStmt(State& st);
 	ast::WhileLoop* parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);

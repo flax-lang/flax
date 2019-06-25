@@ -22,23 +22,22 @@ namespace cgn
 		auto builder = fir::IRBuilder(mod);
 
 		auto cs = new CodegenState(builder);
-		cs->stree = dtr->base;
 		cs->module = mod;
-
-		cs->runDirectiveSharedState = new fir::interp::InterpState(mod);
 
 		cs->typeDefnMap = dtr->typeDefnMap;
 
-		cs->pushLoc(dtr->topLevel);
-		defer(cs->popLoc());
+		{
+			cs->pushLoc(dtr->topLevel);
+			defer(cs->popLoc());
 
-		dtr->topLevel->codegen(cs);
-
-		cs->finishGlobalInitFunction();
+			dtr->topLevel->codegen(cs);
+			cs->finishGlobalInitFunction();
+		}
 
 		mod->setEntryFunction(cs->entryFunction.first);
 
-		return cs->module;
+		delete cs;
+		return mod;
 	}
 }
 
@@ -51,9 +50,7 @@ CGResult sst::NamespaceDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	for(auto stmt : this->statements)
-	{
 		stmt->codegen(cs);
-	}
 
 	return CGResult(0);
 }

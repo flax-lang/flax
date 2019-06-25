@@ -10,12 +10,12 @@
 namespace parser
 {
 	using TT = lexer::TokenType;
-	ast::IfStmt* parseIfStmt(State& st)
+	ast::Stmt* parseIfStmt(State& st)
 	{
 		using Case = ast::IfStmt::Case;
 
 		auto tok_if = st.eat();
-		iceAssert(tok_if == TT::If);
+		iceAssert(tok_if == TT::If || tok_if == TT::Directive_If);
 
 		// of this form:
 		// if(var x = 30; var k = 30; x == k) { ... } else if(cond) { ... }
@@ -112,11 +112,24 @@ namespace parser
 			}
 		}
 
-		auto ret = util::pool<ast::IfStmt>(tok_if.loc);
-		ret->cases = cases;
-		ret->elseCase = elseCase;
+		if(tok_if == TT::Directive_If)
+		{
+			// compile-time if
+			auto ret = util::pool<ast::IfDirective>(tok_if.loc);
+			ret->cases = cases;
+			ret->elseCase = elseCase;
 
-		return ret;
+			return ret;
+		}
+		else
+		{
+			// normal runtime if
+			auto ret = util::pool<ast::IfStmt>(tok_if.loc);
+			ret->cases = cases;
+			ret->elseCase = elseCase;
+
+			return ret;
+		}
 	}
 
 	ast::ReturnStmt* parseReturn(State& st)
