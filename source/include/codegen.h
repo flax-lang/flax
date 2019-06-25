@@ -69,14 +69,10 @@ namespace cgn
 			UserDefined
 		};
 
-
-
 		CodegenState(const fir::IRBuilder& i) : irb(i) { }
 		fir::Module* module = 0;
-		sst::StateTree* stree = 0;
 
 		fir::IRBuilder irb;
-		fir::interp::InterpState* runDirectiveSharedState = 0;
 
 		std::pair<fir::Function*, Location> entryFunction = { };
 
@@ -98,6 +94,7 @@ namespace cgn
 		void popIRDebugIndentation();
 
 
+		void pushLoc(const Location& l);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 
@@ -192,7 +189,7 @@ namespace cgn
 		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial, bool performStore);
 	};
 
-	fir::Module* codegen(sst::DefinitionTree* dtr);
+	fir::Module* codegen(sst::DefinitionTree* __std_exception_destroy);
 }
 
 

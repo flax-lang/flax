@@ -10,10 +10,21 @@ import std::math
 
 var value = 401.0
 
+#if "hello" == "hello"
+{
+	value = 30
+	libc::printf("true case\n")
+}
+else
+{
+	libc::printf("false case\n")
+}
+
 #run {
-	value = 2
 	value = math::sqrt(value)
 }
+
+
 
 @entry fn main()
 {

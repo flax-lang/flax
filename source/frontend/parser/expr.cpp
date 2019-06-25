@@ -118,6 +118,7 @@ namespace parser
 					return parseStmtWithAccessSpec(st);
 
 				case TT::If:
+				case TT::Directive_If:
 					return parseIfStmt(st);
 
 				case TT::Else:

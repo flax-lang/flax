@@ -811,6 +811,17 @@ namespace ast
 		Expr* insideExpr = 0;
 	};
 
+	struct IfDirective : Stmt
+	{
+		IfDirective(const Location& l) : Stmt(l) { this->readableName = "#if directive"; }
+		~IfDirective() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		std::vector<IfStmt::Case> cases;
+		Block* elseCase = 0;
+	};
+
 
 
 	struct TopLevelBlock : Stmt

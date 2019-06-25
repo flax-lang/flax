@@ -115,7 +115,7 @@ namespace sst
 		std::string moduleName;
 
 		DefinitionTree* dtree = 0;
-		StateTree*& stree;
+		StateTree* stree = 0;
 
 		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 
