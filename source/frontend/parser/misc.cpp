@@ -87,6 +87,11 @@ namespace parser
 
 		auto ret = util::pool<RunDirective>(st.eat().loc);
 
+		// trick the parser. when we do a #run, we will run it in a function wrapper, so we
+		// are technically "inside" a function.
+		st.enterFunctionBody();
+		defer(st.leaveFunctionBody());
+
 		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st);
 		else                            ret->insideExpr = parseExpr(st);
 

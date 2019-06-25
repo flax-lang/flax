@@ -53,8 +53,12 @@ namespace parser
 		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
 			expected(st, "'{' to begin function body", st.front().str());
 
+		st.enterFunctionBody();
+
 		ret->body = parseBracedBlock(st);
 		ret->name = ret->symbol;
+
+		st.leaveFunctionBody();
 		return ret;
 	}
 

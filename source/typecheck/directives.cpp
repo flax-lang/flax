@@ -84,11 +84,10 @@ TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto b = dcast(fir::ConstantBool, value);
 		iceAssert(b);
 
-		if(b->getValue())
+		if(b->getValue() == true)   // be a bit explicit
 		{
 			execBlock = dcast(sst::Block, c.body->typecheck(fs).stmt());
 			iceAssert(execBlock);
-
 			break;
 		}
 	}
@@ -108,11 +107,7 @@ TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 	else
 	{
-		// ok, make a #run directive to run the inside! lmao
-		auto ret = util::pool<sst::RunDirective>(this->loc, fir::Type::getVoid());
-		ret->block = execBlock;
-
-		return TCResult(ret);
+		return TCResult(execBlock);
 	}
 }
 
