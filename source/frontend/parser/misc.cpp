@@ -86,7 +86,9 @@ namespace parser
 		iceAssert(st.front() == TT::Directive_Run);
 
 		auto ret = util::pool<RunDirective>(st.eat().loc);
-		ret->inside = parseExpr(st);
+
+		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st);
+		else                            ret->insideExpr = parseExpr(st);
 
 		return ret;
 	}

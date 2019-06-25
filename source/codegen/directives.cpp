@@ -22,16 +22,21 @@ CGResult sst::RunDirective::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// then run the interpreter on that function (after compiling it), then get the interp::Value
 	// result, make a constantvalue with it
 
+	fir::Type* retty = 0;
+	if(this->insideExpr)    retty = this->insideExpr->type;
+	else                    retty = fir::Type::getVoid();
+
 	auto fname = util::obfuscateIdentifier("run_directive", runDirectiveId++);
-	auto fn = cs->module->getOrCreateFunction(fname, fir::FunctionType::get({ }, this->inside->type), fir::LinkageType::Internal);
+	auto fn = cs->module->getOrCreateFunction(fname, fir::FunctionType::get({ }, retty), fir::LinkageType::Internal);
 	iceAssert(fn);
 
 	{
 		auto entry = cs->irb.addNewBlockInFunction("entry", fn);
 		cs->irb.setCurrentBlock(entry);
 
-		auto res = this->inside->codegen(cs, infer);
-		auto ret = res.value;
+		fir::Value* ret = 0;
+		if(this->insideExpr)    ret = this->insideExpr->codegen(cs, infer).value;
+		else                    this->block->codegen(cs, infer);
 
 		if(!ret || ret->getType()->isVoidType())
 			cs->irb.ReturnVoid();
@@ -46,11 +51,17 @@ CGResult sst::RunDirective::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto is = new fir::interp::InterpState(cs->module);
 	is->initialise();
 
-	auto result = is->runFunction(is->compileFunction(fn), { });
-	auto value = is->unwrapInterpValueIntoConstant(result);
+	fir::Value* ret = 0;
+	{
+		auto result = is->runFunction(is->compileFunction(fn), { });
+		is->finalise();
+
+		if(!retty->isVoidType())
+			ret = is->unwrapInterpValueIntoConstant(result);
+	}
 
 	delete is;
-	return CGResult(value);
+	return CGResult(ret);
 }
 
 

@@ -43,27 +43,27 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else            res = cs->getDefaultValue(this->type);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
-		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false,
+		auto glob = cs->module->createGlobalVariable(this->id, this->type, false,
 			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		if(auto cv = dcast(fir::ConstantValue, res); cv && cv->getType() == this->type)
 		{
-			alloc->setInitialValue(cv);
+			glob->setInitialValue(cv);
 		}
 		else
 		{
 			res = checkStore(res);
-			cs->autoAssignRefCountedValue(alloc, res, true, true);
+			cs->autoAssignRefCountedValue(glob, res, true, true);
 		}
 
 		// go and fix the thing.
 		if(this->immutable)
-			alloc->makeConst();
+			glob->makeConst();
 
 		cs->leaveGlobalInitFunction(rest);
 
-		cs->valueMap[this] = CGResult(alloc);
-		return CGResult(alloc);
+		cs->valueMap[this] = CGResult(glob);
+		return CGResult(glob);
 	}
 	else
 	{

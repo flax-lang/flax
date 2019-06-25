@@ -10,8 +10,14 @@ import std::math
 
 var value = 401.0
 
+#run {
+	value = 2
+	value = math::sqrt(value)
+}
+
 @entry fn main()
 {
+	let k = 30
 	let x = #run math::sqrt(value)
 	libc::printf("sqrt(%.1f) = %.3f\n", value, x)
 }
