@@ -413,8 +413,6 @@ namespace backend
 		}
 		else if(auto ca = dcast(fir::ConstantArray, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
-
 			auto arrt = llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod));
 
 			std::vector<llvm::Constant*> vals;
@@ -437,8 +435,6 @@ namespace backend
 		}
 		else if(auto ct = dcast(fir::ConstantTuple, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
-
 			std::vector<llvm::Constant*> vals;
 			vals.reserve(ct->getValues().size());
 
@@ -457,7 +453,6 @@ namespace backend
 		}
 		else if(auto cs = dcast(fir::ConstantString, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const string");
 			size_t origLen = cs->getValue().length();
 			std::string str = cs->getValue();
 

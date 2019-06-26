@@ -69,7 +69,9 @@ namespace cgn
 			UserDefined
 		};
 
-		CodegenState(const fir::IRBuilder& i) : irb(i) { }
+		CodegenState(const fir::IRBuilder& i);
+
+		size_t id = 0;
 		fir::Module* module = 0;
 
 		fir::IRBuilder irb;

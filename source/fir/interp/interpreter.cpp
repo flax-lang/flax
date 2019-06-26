@@ -141,6 +141,7 @@ namespace interp
 	{
 		interp::Value ret = v;
 		ret.val = fv;
+		ret.globalValTracker = v.globalValTracker;
 
 		if(v.dataSize > LARGE_DATA_SIZE)
 		{
@@ -395,10 +396,10 @@ namespace interp
 		else if(auto glob = dcast(fir::GlobalValue, c))
 		{
 			if(auto it = is->globals.find(c); it != is->globals.end())
-				return it->second;
+				return it->second.first;
 
 			else
-				error("interp: global value with id %zu was not found", glob->id);
+				error("interp: global value '%s' id %zu was not found", glob->getName().str(), glob->id);
 		}
 		else
 		{
@@ -421,6 +422,17 @@ namespace interp
 
 	void InterpState::initialise()
 	{
+		for(const auto [ str, glob ] : this->module->_getGlobalStrings())
+		{
+			auto val = makeValue(glob);
+			auto s = makeGlobalString(this, str);
+
+			setValueRaw(this, &val, &s, sizeof(char*));
+
+			val.globalValTracker = glob;
+			this->globals[glob] = { val, false };
+		}
+
 		for(const auto [ id, glob ] : this->module->_getGlobals())
 		{
 			auto ty = glob->getType();
@@ -441,16 +453,8 @@ namespace interp
 			auto ret = makeValueOfType(glob, ty->getPointerTo());
 			setValueRaw(this, &ret, &buffer, sizeof(void*));
 
-			this->globals[glob] = ret;
-		}
-
-		for(const auto [ str, glob ] : this->module->_getGlobalStrings())
-		{
-			auto val = makeValue(glob);
-			auto s = makeGlobalString(this, str);
-
-			setValueRaw(this, &val, &s, sizeof(char*));
-			this->globals[glob] = val;
+			ret.globalValTracker = glob;
+			this->globals[glob] = { ret, false };
 		}
 
 		for(auto intr : this->module->_getIntrinsicFunctions())
@@ -506,30 +510,13 @@ namespace interp
 			// initialise() and finalise(), but be defensive a bit.
 			if(auto it = this->globals.find(glob); it != this->globals.end())
 			{
-				auto val = loadFromPtr(it->second, it->first->getType());
-				glob->setInitialValue(this->unwrapInterpValueIntoConstant(val));
+				// only write-back if we modified the global.
+				if(it->second.second)
+				{
+					auto val = loadFromPtr(it->second.first, it->first->getType());
+					glob->setInitialValue(this->unwrapInterpValueIntoConstant(val));
+				}
 			}
-
-
-
-			// auto sz = getSizeOfType(ty);
-
-			// void* buffer = new uint8_t[sz];
-			// memset(buffer, 0, sz);
-
-			// this->globalAllocs.push_back(buffer);
-
-			// if(auto init = glob->getInitialValue(); init)
-			// {
-			// 	auto x = makeConstant(this, init);
-			// 	if(x.dataSize > LARGE_DATA_SIZE)    memmove(buffer, x.ptr, x.dataSize);
-			// 	else                                memmove(buffer, &x.data[0], x.dataSize);
-			// }
-
-			// auto ret = makeValueOfType(glob, ty->getPointerTo());
-			// setValueRaw(this, &ret, &buffer, sizeof(void*));
-
-			// this->globals[glob] = ret;
 		}
 	}
 
@@ -1227,7 +1214,7 @@ namespace interp
 			return &it->second;
 
 		else if(auto it2 = is->globals.find(fv); it2 != is->globals.end())
-			return &it2->second;
+			return &it2->second.first;
 
 		else
 			return 0;
@@ -1262,16 +1249,18 @@ namespace interp
 		});
 
 		auto realptr = getActualValue<uintptr_t>(ptr);
-		return oneArgumentOp(is, resty, ofs, [realptr](auto b) -> auto {
+		auto ret = oneArgumentOp(is, resty, ofs, [realptr](auto b) -> auto {
 			// this is not pointer arithmetic!!
 			return realptr + b;
 		});
+
+		ret.globalValTracker = ptr.globalValTracker;
+		return ret;
 	}
 
 
 	static interp::Value performStructGEP(InterpState* is, fir::Type* resty, const interp::Value& str, uint64_t idx)
 	{
-
 		iceAssert(str.type->isPointerType());
 		auto strty = str.type->getPointerElementType();
 
@@ -1291,6 +1280,7 @@ namespace interp
 		ret.type = resty;
 		setValueRaw(is, &ret, &src, sizeof(src));
 
+		ret.globalValTracker = str.globalValTracker;
 		return ret;
 	}
 
@@ -2092,6 +2082,11 @@ namespace interp
 				if(a.dataSize > LARGE_DATA_SIZE)    memmove(ptr, a.ptr, a.dataSize);
 				else                                memmove(ptr, &a.data[0], a.dataSize);
 
+				if(b.globalValTracker)
+				{
+					// set the modified flag to true!
+					is->globals[b.globalValTracker].second = true;
+				}
 				break;
 			}
 

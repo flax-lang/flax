@@ -8,6 +8,10 @@ import libc
 import std::math
 
 
+#if os::name == "windows" {
+	#run libc::printf("we are on windows!\n")
+}
+
 var value = 401.0
 
 #if value > 30.0
@@ -25,8 +29,6 @@ else
 #run {
 	value = math::sqrt(value)
 }
-
-
 
 @entry fn main()
 {

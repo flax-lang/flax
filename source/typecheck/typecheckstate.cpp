@@ -138,6 +138,7 @@ namespace sst
 
 
 
+
 	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
@@ -150,15 +151,13 @@ namespace sst
 		{
 			auto newtree = util::pool<StateTree>(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
-			this->stree = newtree;
 
 			// make a treedef.
 			newtree->treeDefn = util::pool<TreeDefn>(Location());
 			newtree->treeDefn->tree = newtree;
-		}
 
-		// if(!this->locationStack.empty())
-		// 	info(this->loc(), "enter namespace %s in %s", name, this->stree->parent->name);
+			this->stree = newtree;
+		}
 	}
 
 	StateTree* TypecheckState::popTree()

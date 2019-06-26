@@ -40,18 +40,32 @@ public ffi fn fsync(fd: i32) -> i32
 public ffi fn fflush(fd: &void) -> i32
 public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
 
-public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"
-
-
 public ffi fn fopen(path: &i8, mode: &i8) -> &void
 public ffi fn fread(buf: &i8, sz: u64, cnt: u64, file: &void) -> u64
 public ffi fn fclose(file: &void) -> i32
 
 // unistd.h
-//! ACHTUNG !
-//* this will fail on non-windows! we need a way to set the extern name depending on platform!!!
-public ffi fn read(fd: i32, buf: &i8, count: i64) as "_read"
-public ffi fn write(fd: i32, buf: &i8, count: i64) as "_write"
+
+
+// posix stuff, that windows likes to rename for some reason!!!!!
+#if os::name == "windows"
+{
+	// unistd.h
+	public ffi fn read(fd: i32, buf: &i8, count: i64) as "_read"
+	public ffi fn write(fd: i32, buf: &i8, count: i64) as "_write"
+
+	// stdio.h
+	public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"
+}
+else
+{
+	// unistd.h
+	public ffi fn read(fd: i32, buf: &i8, count: i64)
+	public ffi fn write(fd: i32, buf: &i8, count: i64)
+
+	// stdio.h
+	public ffi fn fdopen(fd: i32, mode: &i8) -> &void
+}
 
 
 

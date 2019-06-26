@@ -85,6 +85,7 @@ namespace frontend
 		else                            fir::setNativeWordSizeInBits(64);
 
 		// typecheck
+		bool isFirst = true;
 		for(const auto& file : state->allFiles)
 		{
 			// note that we're guaranteed (because that's the whole point)
@@ -108,11 +109,10 @@ namespace frontend
 				}
 
 				imports.push_back({ ithing, stree });
-
-				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
-			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports);
+			// i guess we always add prelude definitions?
+			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports, /* addPreludeDefinitions: */ true);
 		}
 
 		return state->dtrees[state->fullMainFile];

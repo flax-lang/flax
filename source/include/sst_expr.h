@@ -18,24 +18,11 @@ namespace sst
 		Stmt(const Location& l) : Locatable(l, "statement") { }
 		virtual ~Stmt() { }
 
-		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0)
-		{
-			if(didCodegen && cs == this->cachedCS)
-			{
-				return cachedResult;
-			}
-			else
-			{
-				this->cachedCS = cs;
-				this->didCodegen = true;
-				return (this->cachedResult = this->_codegen(cs, inferred));
-			}
-		}
-
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0);
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) = 0;
 
+		size_t cachedCSId = 0;
 		bool didCodegen = false;
-		cgn::CodegenState* cachedCS = 0;
 		CGResult cachedResult = CGResult(0);
 	};
 
