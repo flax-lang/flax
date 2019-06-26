@@ -17,6 +17,8 @@ namespace parser
 		auto tok_if = st.eat();
 		iceAssert(tok_if == TT::If || tok_if == TT::Directive_If);
 
+		bool isStaticIf = tok_if == TT::Directive_If;
+
 		// of this form:
 		// if(var x = 30; var k = 30; x == k) { ... } else if(cond) { ... }
 		// braces are compulsory
@@ -98,11 +100,15 @@ namespace parser
 
 				c.body = parseBracedBlock(st);
 				cases.push_back(c);
+
+				if(isStaticIf) c.body->doNotPushNewScope = true;
 			}
 			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)
 			{
 				// ok, parse an else
 				elseCase = parseBracedBlock(st);
+				if(isStaticIf) elseCase->doNotPushNewScope = true;
+
 				break;
 			}
 			else
@@ -112,7 +118,7 @@ namespace parser
 			}
 		}
 
-		if(tok_if == TT::Directive_If)
+		if(isStaticIf)
 		{
 			// compile-time if
 			auto ret = util::pool<ast::IfDirective>(tok_if.loc);
