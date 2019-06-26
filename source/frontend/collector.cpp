@@ -85,7 +85,6 @@ namespace frontend
 		else                            fir::setNativeWordSizeInBits(64);
 
 		// typecheck
-		bool isFirst = true;
 		for(const auto& file : state->allFiles)
 		{
 			// note that we're guaranteed (because that's the whole point)
