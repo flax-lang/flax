@@ -100,15 +100,11 @@ namespace parser
 
 				c.body = parseBracedBlock(st);
 				cases.push_back(c);
-
-				if(isStaticIf) c.body->doNotPushNewScope = true;
 			}
 			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)
 			{
 				// ok, parse an else
 				elseCase = parseBracedBlock(st);
-				if(isStaticIf) elseCase->doNotPushNewScope = true;
-
 				break;
 			}
 			else
@@ -124,6 +120,11 @@ namespace parser
 			auto ret = util::pool<ast::IfDirective>(tok_if.loc);
 			ret->cases = cases;
 			ret->elseCase = elseCase;
+
+			for(auto& c : ret->cases)
+				c.body->doNotPushNewScope = true;
+
+			ret->elseCase->doNotPushNewScope = true;
 
 			return ret;
 		}
