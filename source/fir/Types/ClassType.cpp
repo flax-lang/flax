@@ -1,5 +1,5 @@
 // ClassType.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -147,18 +147,46 @@ namespace fir
 
 
 
-	std::vector<Type*> ClassType::getElements()
+	const std::vector<Type*>& ClassType::getElements()
 	{
 		return this->typeList;
 	}
 
+	std::vector<Type*> ClassType::getAllElementsIncludingBase()
+	{
+		std::vector<Type*> ret;
 
-	std::vector<Function*> ClassType::getInitialiserFunctions()
+		std::function<void (ClassType*, std::vector<Type*>*)>
+		addMembers = [&addMembers](ClassType* cls, std::vector<Type*>* mems) -> void {
+
+			if(!cls) return;
+
+			addMembers(cls->getBaseClass(), mems);
+
+			for(auto f : cls->getElements())
+				mems->push_back(f);
+		};
+
+		addMembers(this, &ret);
+
+		return ret;
+	}
+
+
+
+
+
+
+
+
+
+
+	const std::vector<Function*>& ClassType::getInitialiserFunctions()
 	{
 		return this->initialiserList;
 	}
 
-	std::vector<Function*> ClassType::getMethods()
+	const std::vector<Function*>& ClassType::getMethods()
 	{
 		return this->methodList;
 	}
@@ -182,7 +210,7 @@ namespace fir
 				return f;
 		}
 
-		error("no such function with type '%s'", ftype);
+		error("no method with type '%s'", ftype);
 	}
 
 
@@ -304,7 +332,7 @@ namespace fir
 		}
 		else
 		{
-			error("no such method named '%s' matching signature '%s' in virtual method table of class '%s'",
+			error("no method named '%s' matching signature '%s' in virtual method table of class '%s'",
 				name, (Type*) ft, this->getTypeName().name);
 		}
 	}

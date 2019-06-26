@@ -1,5 +1,5 @@
 // controlflow.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -10,12 +10,14 @@
 namespace parser
 {
 	using TT = lexer::TokenType;
-	ast::IfStmt* parseIfStmt(State& st)
+	ast::Stmt* parseIfStmt(State& st)
 	{
 		using Case = ast::IfStmt::Case;
 
 		auto tok_if = st.eat();
-		iceAssert(tok_if == TT::If);
+		iceAssert(tok_if == TT::If || tok_if == TT::Directive_If);
+
+		bool isStaticIf = tok_if == TT::Directive_If;
 
 		// of this form:
 		// if(var x = 30; var k = 30; x == k) { ... } else if(cond) { ... }
@@ -98,11 +100,15 @@ namespace parser
 
 				c.body = parseBracedBlock(st);
 				cases.push_back(c);
+
+				if(isStaticIf) c.body->doNotPushNewScope = true;
 			}
 			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)
 			{
 				// ok, parse an else
 				elseCase = parseBracedBlock(st);
+				if(isStaticIf) elseCase->doNotPushNewScope = true;
+
 				break;
 			}
 			else
@@ -112,11 +118,24 @@ namespace parser
 			}
 		}
 
-		auto ret = util::pool<ast::IfStmt>(tok_if.loc);
-		ret->cases = cases;
-		ret->elseCase = elseCase;
+		if(isStaticIf)
+		{
+			// compile-time if
+			auto ret = util::pool<ast::IfDirective>(tok_if.loc);
+			ret->cases = cases;
+			ret->elseCase = elseCase;
 
-		return ret;
+			return ret;
+		}
+		else
+		{
+			// normal runtime if
+			auto ret = util::pool<ast::IfStmt>(tok_if.loc);
+			ret->cases = cases;
+			ret->elseCase = elseCase;
+
+			return ret;
+		}
 	}
 
 	ast::ReturnStmt* parseReturn(State& st)

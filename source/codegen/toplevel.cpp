@@ -1,5 +1,5 @@
 // toplevel.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -9,36 +9,41 @@
 
 #include "ir/type.h"
 #include "ir/module.h"
+#include "ir/interp.h"
 #include "ir/irbuilder.h"
+
+#include "mpool.h"
 
 namespace cgn
 {
+	static size_t csid = 0;
+	CodegenState::CodegenState(const fir::IRBuilder& i) : irb(i)
+	{
+		this->id = csid++;
+	}
+
 	fir::Module* codegen(sst::DefinitionTree* dtr)
 	{
-		// debuglog("codegen for %s\n", dtr->base->name.c_str());
-
 		auto mod = new fir::Module(dtr->base->name);
 		auto builder = fir::IRBuilder(mod);
 
 		auto cs = new CodegenState(builder);
-		cs->stree = dtr->base;
 		cs->module = mod;
 
 		cs->typeDefnMap = dtr->typeDefnMap;
 
-		// cs->vtree = new ValueTree(dtr->base->name, 0);
+		{
+			cs->pushLoc(dtr->topLevel);
+			defer(cs->popLoc());
 
-		cs->pushLoc(dtr->topLevel);
-		defer(cs->popLoc());
+			dtr->topLevel->codegen(cs);
+			cs->finishGlobalInitFunction();
+		}
 
-		dtr->topLevel->codegen(cs);
-
-		cs->finishGlobalInitFunction();
-
-		// debuglog("\n\n\n%s\n\n", cs->module->print().c_str());
 		mod->setEntryFunction(cs->entryFunction.first);
 
-		return cs->module;
+		delete cs;
+		return mod;
 	}
 }
 

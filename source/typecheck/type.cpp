@@ -1,5 +1,5 @@
 // type.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -30,14 +30,11 @@ namespace sst
 			}
 			else
 			{
-				if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-					return fir::Type::getInt64();
+				if(ty->getMinBits() <= fir::Type::getNativeWord()->getBitWidth() - 1)
+					return fir::Type::getNativeWord();
 
-				else if(ty->getMinBits() <= fir::Type::getInt128()->getBitWidth() - 1)
-					return fir::Type::getInt128();
-
-				else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint128()->getBitWidth())
-					return fir::Type::getUint128();
+				else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
+					return fir::Type::getNativeUWord();
 
 				else
 					error("int overflow");
@@ -310,7 +307,7 @@ namespace sst
 					if(!begin)
 					{
 						if(allowFail)   return 0;
-						else            error(this->loc(), "no such scope '%s'", scopes.front());
+						else            error(this->loc(), "nonexistent scope '%s'", scopes.front());
 					}
 
 
@@ -337,7 +334,7 @@ namespace sst
 								if(it == begin->subtrees.end())
 								{
 									if(allowFail)   return 0;
-									else            error(this->loc(), "no such entity '%s' in scope '%s'", scopes.front(), prev);
+									else            error(this->loc(), "no entity '%s' in scope '%s'", scopes.front(), prev);
 								}
 
 								begin = it->second;

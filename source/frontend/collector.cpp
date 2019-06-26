@@ -1,5 +1,5 @@
 // collector.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include <sys/stat.h>
@@ -80,6 +80,10 @@ namespace frontend
 
 	sst::DefinitionTree* typecheckFiles(CollectorState* state)
 	{
+		// do a simple thing.
+		if(state->nativeWordSize != 0)  fir::setNativeWordSizeInBits(state->nativeWordSize);
+		else                            fir::setNativeWordSizeInBits(64);
+
 		// typecheck
 		for(const auto& file : state->allFiles)
 		{
@@ -104,11 +108,10 @@ namespace frontend
 				}
 
 				imports.push_back({ ithing, stree });
-
-				// debuglog("%s depends on %s\n", frontend::getFilenameFromPath(file).c_str(), frontend::getFilenameFromPath(d->name).c_str());
 			}
 
-			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports);
+			// i guess we always add prelude definitions?
+			state->dtrees[file] = sst::typecheck(state, state->parsed[file], imports, /* addPreludeDefinitions: */ true);
 		}
 
 		return state->dtrees[state->fullMainFile];

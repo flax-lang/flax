@@ -1,5 +1,5 @@
 // operators.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -53,8 +53,12 @@ namespace parser
 		if(st.front() != TT::LBrace && st.front() != TT::FatRightArrow)
 			expected(st, "'{' to begin function body", st.front().str());
 
+		st.enterFunctionBody();
+
 		ret->body = parseBracedBlock(st);
 		ret->name = ret->symbol;
+
+		st.leaveFunctionBody();
 		return ret;
 	}
 
@@ -168,10 +172,14 @@ namespace parser
 		oper.loc = tok.loc;
 
 		idx++;
+		if(tokens[idx] != TT::LSquare)
+			expectedAfter(tokens[idx].loc, "'['", "'@operator' in custom operator declaration", tokens[idx].str());
+
+		idx++;
 
 		if(tokens[idx].str() != "prefix" && tokens[idx].str() != "postfix" && tokens[idx].str() != "infix")
 		{
-			expectedAfter(tokens[idx].loc, "either 'prefix', 'postfix' or 'infix'", "'operator' in custom operator declaration",
+			expectedAfter(tokens[idx].loc, "either 'prefix', 'postfix' or 'infix'", "'@operator' in custom operator declaration",
 				tokens[idx].str());
 		}
 
@@ -182,14 +190,15 @@ namespace parser
 		else                                    iceAssert(0);
 
 		idx++;
+		if(tokens[idx] != TT::Comma)
+			expected(tokens[idx].loc, "',' in argument list to '@operator'", tokens[idx].str());
+
+		idx++;
 
 		{
-			if(tokens[idx] != TT::Number)
-				expectedAfter(tokens[idx].loc, "integer value", "to specify precedence value", tokens[idx].str());
-
-			// make sure it's an integer.
 			auto num = tokens[idx].str();
-			if(num.find('.') != std::string::npos)
+
+			if(tokens[idx] != TT::Number || num.find('.') != std::string::npos)
 				expected(tokens[idx].loc, "integer value for precedence", num);
 
 			int prec = std::stoi(num);
@@ -200,19 +209,29 @@ namespace parser
 			idx++;
 		}
 
+		if(tokens[idx] != TT::Comma)
+			expected(tokens[idx].loc, "',' in argument list to '@operator'", tokens[idx].str());
+
+		idx++;
+
+
+		if(tokens[idx] != TT::UnicodeSymbol && tokens[idx] != TT::Identifier)
+		{
+			error(tokens[idx].loc, "custom operator symbol must be a unicode symbol or regular identifier, '%s' is invalid",
+				tokens[idx].str());
+		}
 
 		oper.symbol = tokens[idx].str();
 		idx++;
 
+		if(tokens[idx] != TT::RSquare)
+			error(tokens[idx].loc, "expected ']' to terminate operator declaration, found '%s'", tokens[idx].str());
+
+		idx++;
 
 
-		if(tokens[idx] != TT::NewLine && tokens[idx] != TT::Semicolon && tokens[idx] != TT::Comment)
-		{
-			error(tokens[idx].loc, "expected newline or semicolon to terminate operator declaration, found '%s'", tokens[idx].str());
-		}
-
-		if(_kind)	*_kind = kind;
-		if(out)		*out = oper;
+		if(_kind)   *_kind = kind;
+		if(out)     *out = oper;
 
 		return idx;
 	}

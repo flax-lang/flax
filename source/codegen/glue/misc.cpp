@@ -1,14 +1,11 @@
 // misc.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
-
-// generate runtime glue code
-#define BUILTIN_MALLOC_WRAPPER_FUNC_NAME		    "__malloc_wrapper"
-#define BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME		"__range_sanitycheck"
+#include "frontend.h"
 
 
 namespace cgn {
@@ -19,30 +16,32 @@ void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string messa
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
 
-	iceAssert(pos->getType()->isCharSliceType());
-
-	#ifdef _WIN32
+	if(!frontend::getIsNoRuntimeErrorStrings())
 	{
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
-		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
+		iceAssert(pos->getType()->isCharSliceType());
 
-		std::vector<fir::Value*> as = { fmtstr, posstr };
-		as.insert(as.end(), args.begin(), args.end());
+		#ifdef _WIN32
+		{
+			fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
+			fir::Value* posstr = cs->irb.GetArraySliceData(pos);
 
-		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+			std::vector<fir::Value*> as = { fmtstr, posstr };
+			as.insert(as.end(), args.begin(), args.end());
+
+			cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+		}
+		#else
+		{
+			fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
+			fir::Value* posstr = cs->irb.GetArraySliceData(pos);
+
+			std::vector<fir::Value*> as = { fmtstr, posstr };
+			as.insert(as.end(), args.begin(), args.end());
+
+			cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
+		}
+		#endif
 	}
-	#else
-	{
-		fir::Value* fmtstr = cs->module->createGlobalString(("\nRuntime error at %s:\n" + message + "\n").c_str());
-		fir::Value* posstr = cs->irb.GetArraySliceData(pos);
-
-		std::vector<fir::Value*> as = { fmtstr, posstr };
-		as.insert(as.end(), args.begin(), args.end());
-
-		cs->irb.Call(cs->getOrDeclareLibCFunction("printf"), as);
-	}
-	#endif
-
 
 	// cs->irb.Call(cs->getOrDeclareLibCFunction("exit"), fir::ConstantInt::getInt32(1));
 	cs->irb.Call(cs->getOrDeclareLibCFunction("abort"));
@@ -54,14 +53,16 @@ namespace misc
 {
 	fir::Function* getMallocWrapperFunction(CodegenState* cs)
 	{
-		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_MALLOC_WRAPPER_FUNC_NAME, IdKind::Name));
+		auto fname = getMallocWrapper_FName();
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_MALLOC_WRAPPER_FUNC_NAME, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getCharSlice(false) }, fir::Type::getMutInt8Ptr()), fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getMutInt8Ptr()),
+				fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -104,13 +105,17 @@ namespace misc
 
 	fir::Function* getRangeSanityCheckFunction(CodegenState* cs)
 	{
-		fir::Function* fn = cs->module->getFunction(Identifier(BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME, IdKind::Name));
+		if(frontend::getIsNoRuntimeChecks())
+			return 0;
+
+		auto fname = getRangeSanityCheck_FName();
+		fir::Function* fn = cs->module->getFunction(fname);
 
 		if(!fn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_RANGE_SANITY_CHECK_FUNC_NAME, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ fir::Type::getRange(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -140,7 +145,7 @@ namespace misc
 			auto upper = cs->irb.GetRangeUpper(func->getArguments()[0]);
 			auto step = cs->irb.GetRangeStep(func->getArguments()[0]);
 
-			auto zero = fir::ConstantInt::getInt64(0);
+			auto zero = fir::ConstantInt::getNative(0);
 			// first of all check if step is zero.
 			{
 				auto cond = cs->irb.ICmpEQ(step, zero);
@@ -174,17 +179,17 @@ namespace misc
 			{
 				cs->irb.setCurrentBlock(stepzero);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range step had value of zero\n", { });
+					printRuntimeError(cs, func->getArguments()[1], "range step had value of zero\n", { });
 				}
 
 				cs->irb.setCurrentBlock(stepnotpos);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range had negative step value ('%ld'); invalid when start < end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "range had negative step value ('%ld'); invalid when start < end\n", { step });
 				}
 
 				cs->irb.setCurrentBlock(stepnotneg);
 				{
-					printRuntimeError(cs, func->getArguments()[1], "Range had positive step value ('%ld'); invalid when start > end\n", { step });
+					printRuntimeError(cs, func->getArguments()[1], "range had positive step value ('%ld'); invalid when start > end\n", { step });
 				}
 			}
 
@@ -198,6 +203,47 @@ namespace misc
 		iceAssert(fn);
 		return fn;
 	}
+
+
+
+	using Idt = Identifier;
+	Idt getOI(const std::string& name, fir::Type* t = 0)
+	{
+		if(t) return util::obfuscateIdentifier(name, t->encodedStr());
+		else  return util::obfuscateIdentifier(name);
+	}
+
+	Idt getCompare_FName(fir::Type* t)              { return getOI("compare", t); }
+	Idt getSetElements_FName(fir::Type* t)          { return getOI("setelements", t); }
+	Idt getCallClassConstructor_FName(fir::Type* t) { return getOI("callclassinit", t); }
+	Idt getSetElementsDefault_FName(fir::Type* t)   { return getOI("setelementsdefault", t); }
+
+	Idt getClone_FName(fir::Type* t)         { return getOI("clone", t); }
+	Idt getAppend_FName(fir::Type* t)        { return getOI("append", t); }
+	Idt getPopBack_FName(fir::Type* t)       { return getOI("popback", t); }
+	Idt getMakeFromOne_FName(fir::Type* t)   { return getOI("makefromone", t); }
+	Idt getMakeFromTwo_FName(fir::Type* t)   { return getOI("makefromtwo", t); }
+	Idt getReserveExtra_FName(fir::Type* t)  { return getOI("reserveextra", t); }
+	Idt getAppendElement_FName(fir::Type* t) { return getOI("appendelement", t); }
+	Idt getReserveEnough_FName(fir::Type* t) { return getOI("reservesufficient", t); }
+	Idt getRecursiveRefcount_FName(fir::Type* t, bool incr)
+	{
+		return getOI(strprintf("rrc_%s", incr ? "incr" : "decr"), t);
+	}
+
+	Idt getIncrRefcount_FName(fir::Type* t)         { return getOI("incr_rc", t); }
+	Idt getDecrRefcount_FName(fir::Type* t)         { return getOI("decr_rc", t); }
+	Idt getLoopIncrRefcount_FName(fir::Type* t)     { return getOI("loop_incr_rc", t); }
+	Idt getLoopDecrRefcount_FName(fir::Type* t)     { return getOI("loop_decr_rc", t); }
+
+	Idt getCreateAnyOf_FName(fir::Type* t)          { return getOI("create_any_of", t); }
+	Idt getGetValueFromAny_FName(fir::Type* t)      { return getOI("get_value_from_any", t); }
+
+	Idt getUtf8Length_FName()           { return getOI("utf8_length"); }
+	Idt getRangeSanityCheck_FName()     { return getOI("range_sanity"); }
+	Idt getMallocWrapper_FName()        { return getOI("malloc_wrapper"); }
+	Idt getBoundsCheck_FName()          { return getOI("boundscheck"); }
+	Idt getDecompBoundsCheck_FName()    { return getOI("boundscheck_decomp"); }
 
 }
 }

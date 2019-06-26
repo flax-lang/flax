@@ -1,5 +1,5 @@
 // expr.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -30,7 +30,7 @@ namespace parser
 		}
 
 		st.pop();
-		auto stmt = parseStmt(st);
+		auto stmt = parseStmt(st, /* allowExprs: */ false);
 		if(auto defn = dcast(FuncDefn, stmt))
 			defn->visibility = vis;
 
@@ -49,7 +49,7 @@ namespace parser
 		return stmt;
 	}
 
-	Stmt* parseStmt(State& st)
+	Stmt* parseStmt(State& st, bool allowExprs)
 	{
 		if(!st.hasTokens())
 			unexpected(st, "end of file");
@@ -98,6 +98,7 @@ namespace parser
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
+			// handle the things that are OK to appear anywhere first:
 			switch(tok.type)
 			{
 				case TT::Var:
@@ -110,35 +111,16 @@ namespace parser
 				case TT::ForeignFunc:
 					return parseForeignFunction(st);
 
-
-
 				case TT::Public:
 				case TT::Private:
 				case TT::Internal:
 					return parseStmtWithAccessSpec(st);
 
-				case TT::If:
+				case TT::Directive_If:
 					return parseIfStmt(st);
 
-				case TT::Else:
-					error(st, "cannot have 'else' without preceeding 'if'");
-
-				case TT::Return:
-					return parseReturn(st);
-
-				case TT::Do:
-				case TT::While:
-				case TT::Loop:
-					return parseWhileLoop(st);
-
-				case TT::For:
-					return parseForLoop(st);
-
-				case TT::Break:
-					return parseBreak(st);
-
-				case TT::Continue:
-					return parseContinue(st);
+				case TT::Directive_Run:
+					return parseRunDirective(st);
 
 				case TT::Attr_Raw:
 					st.eat();
@@ -162,12 +144,6 @@ namespace parser
 				case TT::Static:
 					return parseStaticDecl(st);
 
-				case TT::Dealloc:
-					return parseDealloc(st);
-
-				case TT::Defer:
-					return parseDefer(st);
-
 				case TT::Operator:
 					return parseOperatorOverload(st);
 
@@ -184,6 +160,9 @@ namespace parser
 				case TT::TypeAlias:
 					error(st, "notsup");
 
+				case TT::Else:
+					error(st, "cannot have 'else' without preceeding 'if'");
+
 				case TT::Namespace:
 					error(st, "namespaces can only be defined at the top-level scope");
 
@@ -197,10 +176,82 @@ namespace parser
 					error(st, "export declaration must be the first non-comment line in the file");
 
 				default:
-					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
-						return parseInitFunction(st);
+					// do nothing.
+					break;
+			}
 
-					return parseExpr(st);
+
+			// if we got here, then it wasn't any of those things.
+			// we store it first, so we can give better error messages (after knowing what it is)
+			// in the event that it wasn't allowed at top-level.
+
+			Stmt* ret = 0;
+			switch(tok.type)
+			{
+				case TT::If:
+					ret = parseIfStmt(st);
+					break;
+
+				case TT::Else:
+					error(st, "cannot have 'else' without preceeding 'if'");
+
+				case TT::Return:
+					ret = parseReturn(st);
+					break;
+
+				case TT::Do:
+				case TT::While:
+					ret = parseWhileLoop(st);
+					break;
+
+				case TT::For:
+					ret = parseForLoop(st);
+					break;
+
+				case TT::Break:
+					ret = parseBreak(st);
+					break;
+
+				case TT::Continue:
+					ret = parseContinue(st);
+					break;
+
+				case TT::Dealloc:
+					ret = parseDealloc(st);
+					break;
+
+				case TT::Defer:
+					ret = parseDefer(st);
+					break;
+
+				default: {
+					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
+					{
+						ret = parseInitFunction(st);
+						break;
+					}
+					else
+					{
+						// we want to error on invalid tokens first. so, we parse the expression regardless,
+						// then if they're not allowed we error.
+						auto expr = parseExpr(st);
+
+						if(!allowExprs) error(expr, "expressions are not allowed at the top-level");
+						else            ret = expr;
+
+						break;
+					}
+				}
+			}
+
+			iceAssert(ret);
+			if(!st.isInFunctionBody() && !st.isInStructBody())
+			{
+				error(ret, "%s is not allowed at the top-level", ret->readableName);
+			}
+			else
+			{
+				return ret;
 			}
 		}
 
@@ -636,7 +687,11 @@ namespace parser
 		st.skipWS();
 
 		if(st.front().type != TT::Comma && st.front().type != TT::RParen)
-			expected(opening.loc, "closing ')' to match opening parenthesis here, or ',' to begin a tuple", st.front().str());
+		{
+			SpanError::make(SimpleError::make(st.loc(), "expected ',' to begin a tuple, or a closing ')'"))->add(
+				util::ESpan(opening.loc, "opening parenthesis was here")
+			)->append(BareError::make(MsgType::Note, "named tuples are not supported"))->postAndQuit();
+		}
 
 		// if we're a tuple, get ready for this shit.
 		if(st.front().type == TT::Comma)
@@ -770,9 +825,9 @@ namespace parser
 		return ret;
 	}
 
-	static FunctionCall* parseFunctionCall(State& st, std::string name)
+	static FunctionCall* parseFunctionCall(State& st, const Location& loc, std::string name)
 	{
-		auto ret = util::pool<FunctionCall>(st.lookahead(-2).loc, name);
+		auto ret = util::pool<FunctionCall>(loc, name);
 
 		st.skipWS();
 		ret->args = parseCallArgumentList(st);
@@ -785,7 +840,7 @@ namespace parser
 	{
 		if(Ident* id = dcast(Ident, lhs))
 		{
-			auto ret = parseFunctionCall(st, id->name);
+			auto ret = parseFunctionCall(st, id->loc, id->name);
 			ret->mappings = id->mappings;
 
 			return ret;
@@ -1133,7 +1188,6 @@ namespace parser
 
 				case TT::Do:
 				case TT::While:
-				case TT::Loop:
 				case TT::For:
 					error(st, "loops are not expressions");
 
@@ -1190,6 +1244,10 @@ namespace parser
 				case TT::LSquare:
 					return parseArray(st, false);
 
+				case TT::CharacterLiteral:
+					st.pop();
+					return util::pool<LitChar>(tok.loc, (uint32_t) tok.text[0]);
+
 				// no point creating separate functions for these
 				case TT::True:
 					st.pop();
@@ -1204,11 +1262,10 @@ namespace parser
 					st.pop();
 					return util::pool<LitNull>(tok.loc);
 
+				case TT::Directive_Run:
+					return parseRunDirective(st);
 
 				case TT::LBrace:
-					// parse it, but throw it away
-					// warn(parseBracedBlock(st)->loc, "Anonymous blocks are ignored; to run, preface with 'do'");
-					// return 0;
 					unexpected(st, "block; to create a nested scope, use 'do { ... }'");
 
 				default:

@@ -1,5 +1,5 @@
 // main.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -12,6 +12,9 @@
 #include "mpool.h"
 #include "allocator.h"
 
+#include "ir/interp.h"
+
+
 
 struct timer
 {
@@ -23,25 +26,6 @@ struct timer
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
 };
 
-
-#ifdef _WIN32
-#define DLLEXPORT __declspec(dllexport)
-#else
-#define DLLEXPORT
-#endif
-
-extern "C" DLLEXPORT void lmao()
-{
-	printf("LMAO!\n");
-}
-
-extern "C" DLLEXPORT void haha(int x)
-{
-	for(int i = 0; i < x; i++)
-		printf("HA");
-
-	printf("!\n");
-}
 
 
 static void compile(std::string in, std::string out)
@@ -60,27 +44,37 @@ static void compile(std::string in, std::string out)
 		{
 			timer t(&lexer_ms);
 			frontend::collectFiles(in, &state);
-			// debuglogln("lexed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
-			// mem::resetStats();
+
+			if(frontend::getPrintProfileStats())
+			{
+				debuglogln("lex     (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
+					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+				// mem::resetStats();
+			}
 		}
 
 		{
 			timer t(&parser_ms);
 			frontend::parseFiles(&state);
-			// debuglogln("parsed (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
-			// mem::resetStats();
+
+			if(frontend::getPrintProfileStats())
+			{
+				debuglogln("parse   (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
+					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+				// mem::resetStats();
+			}
 		}
 
 		{
 			timer t(&typecheck_ms);
-
 			dtree = frontend::typecheckFiles(&state);
-			// debuglogln("typechecked (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-			// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
-			// mem::resetStats();
+			if(frontend::getPrintProfileStats())
+			{
+				debuglogln("typechk (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
+					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+				// mem::resetStats();
+			}
 
 			iceAssert(dtree);
 		}
@@ -88,28 +82,38 @@ static void compile(std::string in, std::string out)
 
 	timer t(nullptr);
 
+	platform::performSelfDlOpen();
+
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
+	module->finaliseGlobalConstructors();
+
+
 	auto cd = backend::CompiledData { module };
 
-	// debuglogln("codegened (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
+	if(frontend::getPrintProfileStats())
+	{
+		debuglogln("codegen (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
+			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+	}
 
 	auto codegen_ms = t.stop();
 
-	auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
-	printf("compile took %.1f (lexer: %.1f, parser: %.1f, typecheck: %.1f, codegen: %.1f) ms%s\n",
-		compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms,
-		compile_ms > 3000 ? strprintf("  (aka %.2f s)", compile_ms / 1000.0).c_str() : "");
+	// delete all the memory we've allocated.
+	util::clearAllPools();
 
-	printf("%zu FIR values generated\n", fir::ConstantBool::get(false)->id);
+	if(frontend::getPrintProfileStats())
+	{
+		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
+
+		debuglogln("cleared (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
+			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+		debuglogln("compile (%.1f ms)\t[l: %.1f, p: %.1f, t: %.1f, c: %.1f]", compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
+		debuglogln("%zu FIR values generated\n", fir::Value::getCurrentValueId());
+	}
+
 
 	if(frontend::getPrintFIR())
 		fprintf(stderr, "%s\n", module->print().c_str());
-
-	// delete all the memory we've allocated.
-	util::clearAllPools();
-	// debuglogln("cleared (%.2f) - (a: %.2fk, f: %.2fk, w: %.2fk)", total.stop(),
-	// 	mem::getAllocatedCount() / 1024.0, mem::getDeallocatedCount() / 1024.0, mem::getWatermark() / 1024.0);
 
 	{
 		using namespace backend;
@@ -130,14 +134,13 @@ static void compile(std::string in, std::string out)
 
 		if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
 			backend->performCompilation();
 			backend->optimiseProgram();
 			backend->writeOutput();
 		}
 		else
 		{
-			error("Selected backend '%s' does not have some required capabilities (missing '%s')\n", backend->str(),
+			error("selected backend '%s' does not have some required capabilities (missing %s)\n", backend->str(),
 				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
 		}
 	}

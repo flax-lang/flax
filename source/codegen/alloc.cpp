@@ -1,5 +1,5 @@
 // alloc.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -7,19 +7,17 @@
 #include "platform.h"
 #include "gluecode.h"
 
-#define BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME	"__alloc_checkneg"
-
-
 static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 {
-	fir::Function* checkf = cs->module->getFunction(Identifier(BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME, IdKind::Name));
+	auto fname = util::obfuscateIdentifier("alloc_checkneg");
+	fir::Function* checkf = cs->module->getFunction(fname);
 
 	if(!checkf)
 	{
 		auto restore = cs->irb.getCurrentBlock();
 
-		fir::Function* func = cs->module->getOrCreateFunction(Identifier(BUILTIN_ALLOC_CHECK_NEGATIVE_LENGTH_NAME, IdKind::Name),
-			fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
+		fir::Function* func = cs->module->getOrCreateFunction(fname,
+			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 		func->setAlwaysInline();
 
@@ -33,13 +31,13 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
 		// make the thing
-		auto isNeg = cs->irb.ICmpLT(s1, fir::ConstantInt::getInt64(0));
+		auto isNeg = cs->irb.ICmpLT(s1, fir::ConstantInt::getNative(0));
 		cs->irb.CondBranch(isNeg, failb, merge);
 
 
 		cs->irb.setCurrentBlock(failb);
 		{
-			cgn::glue::printRuntimeError(cs, s2, "Tried to allocate a negative ('%ld') amount of memory\n", { s1 });
+			cgn::glue::printRuntimeError(cs, s2, "tried to allocate a negative ('%ld') amount of memory\n", { s1 });
 		}
 
 		cs->irb.setCurrentBlock(merge);
@@ -73,7 +71,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 		{
 			auto arrp = ptr;
-			auto ctrp = cs->irb.CreateLValue(fir::Type::getInt64());
+			auto ctrp = cs->irb.CreateLValue(fir::Type::getNativeWord());
 
 			auto actuallyStore = [cs, type, alloc](fir::Value* ptr) -> void {
 
@@ -118,14 +116,14 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 				},
 				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
 
-					auto ptr = cs->irb.PointerAdd(arrp, ctrp);
+					auto ptr = cs->irb.GetPointer(arrp, ctrp);
 
 					actuallyStore(ptr);
 
 					if(alloc->initBlock)
 						callUserCode(cs->irb.Dereference(ptr), ctrp);
 
-					cs->irb.Store(cs->irb.Add(ctrp, fir::ConstantInt::getInt64(1)), ctrp);
+					cs->irb.Store(cs->irb.Add(ctrp, fir::ConstantInt::getNative(1)), ctrp);
 				});
 			}
 		}
@@ -135,8 +133,8 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 
 	if(counts.empty() || isRaw)
 	{
-		fir::Value* cnt = (counts.empty() ? fir::ConstantInt::getInt64(1)
-			: cs->oneWayAutocast(counts[0]->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64()));
+		fir::Value* cnt = (counts.empty() ? fir::ConstantInt::getNative(1)
+			: cs->oneWayAutocast(counts[0]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord()));
 
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
@@ -156,9 +154,9 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 	{
 		auto ecount = counts[0];
 
-		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
+		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 		if(!count || !count->getType()->isIntegerType())
-			error(ecount, "Expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
+			error(ecount, "expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
 
 		// make sure the length isn't negative
 		auto checkf = getCheckNegativeLengthFunction(cs);
@@ -196,7 +194,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(this->counts.size() > 1)
-		error(this, "Multi-dimensional arrays are not supported yet.");
+		error(this, "multi-dimensional arrays are not supported yet.");
 
 	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->isRaw));
 }

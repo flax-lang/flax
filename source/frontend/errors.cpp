@@ -1,5 +1,5 @@
 // errors.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -87,11 +87,12 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 
 
 
-// #define UNDERLINE_CHARACTER " ̅"
-#define UNDERLINE_CHARACTER "^"
+// #define UNDERLINE_CHARACTER "^"
+#define UNDERLINE_CHARACTER "\u203e"
 
-std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan>& spans, size_t* adjust, size_t* num_width, size_t* margin,
-	bool underline, bool bottompad, std::string underlineColour)
+
+static std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan>& spans, size_t* adjust, size_t* num_width,
+	size_t* margin, bool underline, bool bottompad, const std::string& underlineColour, const std::string& overrideLineContent)
 {
 	std::string ret;
 
@@ -99,14 +100,16 @@ std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan
 	iceAssert((underline == bottompad || bottompad) && "cannot underline without bottom pad");
 
 	if(!std::is_sorted(spans.begin(), spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; }))
-		_error_and_exit("spans must be sorted!");
+		_error_and_exit("spans must be sorted!\n");
 
 	*num_width = std::to_string(loc.line + 1).length();
 
 	// one spacing line
 	*margin = *num_width + 2;
 	ret += strprintf("%s |\n", spaces(*num_width));
-	ret += strprintf("%d |%s\n", loc.line + 1, fetchContextLine(loc, adjust));
+
+	if(overrideLineContent.empty()) ret += strprintf("%d |%s\n", loc.line + 1, fetchContextLine(loc, adjust));
+	else                            ret += strprintf("%s |%s%s\n", spaces(*num_width), spaces(LEFT_PADDING), overrideLineContent);
 
 	if(bottompad)
 		ret += strprintf("%s |", spaces(*num_width));
@@ -122,11 +125,13 @@ std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan
 
 		for(auto span : spans)
 		{
+			std::string underliner = (span.loc.len < 3 ? "^" : UNDERLINE_CHARACTER);
+
 			// pad out.
 			auto tmp = strprintf("%s", spaces(1 + span.loc.col - *adjust - cursor)); cursor += tmp.length();
 			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour);
 
-			tmp = strprintf("%s", repeat(UNDERLINE_CHARACTER, span.loc.len)); cursor += tmp.length();
+			tmp = strprintf("%s", repeat(underliner, span.loc.len)); cursor += span.loc.len;
 			ret += tmp + strprintf("%s", COLOUR_RESET);
 		}
 	}
@@ -134,14 +139,15 @@ std::string getSpannedContext(const Location& loc, const std::vector<util::ESpan
 	return ret;
 }
 
-std::string getSingleContext(const Location& loc, bool underline = true, bool bottompad = true)
+static std::string getSingleContext(const Location& loc, const std::string& underlineColour = COLOUR_RED_BOLD,
+	const std::string& overrideLineContent = "", bool underline = true, bool bottompad = true)
 {
-	if(loc.fileID == 0) return "";
+	if(loc.fileID == 0 && overrideLineContent.empty()) return "";
 
 	size_t a = 0;
 	size_t b = 0;
 	size_t c = 0;
-	return getSpannedContext(loc, { util::ESpan(loc, "") }, &a, &b, &c, underline, bottompad, COLOUR_RED_BOLD);
+	return getSpannedContext(loc, { util::ESpan(loc, "") }, &a, &b, &c, underline, bottompad, underlineColour, overrideLineContent);
 }
 
 
@@ -174,13 +180,19 @@ std::string __error_gen_internal(const Location& loc, const std::string& msg, co
 	if(loc.fileID > 0)
 	{
 		auto location = strprintf("%s:%d:%d", filename, loc.line + 1, loc.col + 1);
-		ret += strprintf("%s%sat:%s %s%s", COLOUR_RESET, COLOUR_GREY_BOLD, spaces(strlen(type) - 2), COLOUR_RESET, location);
+		ret += strprintf("%s%sat:%s %s%s\n", COLOUR_RESET, COLOUR_GREY_BOLD, spaces(strlen(type) - 2), COLOUR_RESET, location);
 	}
 
-	ret += "\n";
 
 	if(context && loc.fileID > 0)
-		ret += getSingleContext(loc) + "\n";
+	{
+		auto underlineColour = COLOUR_RED_BOLD;
+
+		if(strcmp(type, "note") == 0)
+			underlineColour = COLOUR_BLUE_BOLD;
+
+		ret += getSingleContext(loc, underlineColour) + "\n";
+	}
 
 	return ret;
 }
@@ -238,8 +250,18 @@ void SimpleError::post()
 	{
 		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str());
 		strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
-			this->printContext ? getSingleContext(this->loc) + "\n\n" : "");
+			this->printContext ? getSingleContext(this->loc, this->type == MsgType::Note ? COLOUR_BLUE_BOLD : COLOUR_RED_BOLD) + "\n\n" : "");
 	}
+
+	for(auto other : this->subs)
+		other->post();
+}
+
+
+void ExampleMsg::post()
+{
+	outputWithoutContext(typestr(this->type).c_str(), Location(), "for example:");
+	strprinterrf("%s\n\n", getSingleContext(Location(), COLOUR_BLUE_BOLD, this->example));
 
 	for(auto other : this->subs)
 		other->post();
@@ -269,6 +291,11 @@ namespace util
 	OverloadError* make_OverloadError(SimpleError* se, MsgType t)
 	{
 		return util::pool<OverloadError>(se, t);
+	}
+
+	ExampleMsg* make_ExampleMsg(const std::string& eg, MsgType t)
+	{
+		return util::pool<ExampleMsg>(eg, t);
 	}
 }
 
@@ -305,7 +332,7 @@ void SpanError::post()
 		std::sort(this->spans.begin(), this->spans.end(), [](auto a, auto b) -> bool { return a.loc.col < b.loc.col; });
 		this->spans.erase(std::unique(this->spans.begin(), this->spans.end()), this->spans.end());
 
-		strprinterrf("%s\n", getSpannedContext(this->top->loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD));
+		strprinterrf("%s\n", getSpannedContext(this->top->loc, this->spans, &adjust, &num_width, &margin, true, true, COLOUR_CYAN_BOLD, ""));
 
 		// ok now remove the extra thing.
 		if(didExtra)
@@ -417,6 +444,7 @@ void OverloadError::post()
 	{
 		if(emg->kind != ErrKind::Span)
 		{
+			emg->type = MsgType::Note;
 			emg->post();
 		}
 		else

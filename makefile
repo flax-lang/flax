@@ -41,7 +41,7 @@ NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
 DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++1z -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
+CXXFLAGS		+= -std=c++17 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
 CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE)
@@ -57,31 +57,48 @@ SUPERTINYSRC	:= build/supertiny.flx
 GLTESTSRC		:= build/gltest.flx
 TESTSRC			:= build/tester.flx
 
+UNAME_IDENT		:= $(shell uname)
+COMPILER_IDENT	:= $(shell $(CC) --version | head -n 1)
 
 
-.DEFAULT_GOAL = osx
+ifeq ("$(UNAME_IDENT)","Darwin")
+	LIBFFI_CFLAGS  := $(shell env PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig pkg-config --cflags libffi)
+	LIBFFI_LDFLAGS := $(shell env PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig pkg-config --libs libffi)
+else
+	LIBFFI_CFLAGS  := $(shell pkg-config --cflags libffi)
+	LIBFFI_LDFLAGS := $(shell pkg-config --libs libffi)
+
+	# on linux, we need to explicitly export our functions
+	# like __declspec(dllexport) except __attribute__((visibility("default")))
+	LDFLAGS += -Wl,--export-dynamic
+endif
+
+MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)
+MPFR_LDFLAGS    := $(shell pkg-config --libs mpfr)
+
+CFLAGS   += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
+CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
+LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
+
+ifneq (,$(findstring clang,$(COMPILER_IDENT)))
+	CXXFLAGS += -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+endif
+
+
+.DEFAULT_GOAL = jit
 -include $(CXXDEPS)
 
 
-.PHONY: copylibs jit compile clean build osx linux ci satest tiny osxflags
+.PHONY: copylibs jit compile clean build linux ci satest tiny
 
-osxflags: CXXFLAGS += -march=native -fmodules -Weverything -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-osxflags: CFLAGS += -fmodules -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-
-osxflags:
-
-
-osx: jit osxflags
-
-satest: osxflags build
+satest: build
 	@$(OUTPUT) $(FLXFLAGS) -run build/standalone.flx
 
-tester: osxflags build
+tester: build
 	@$(OUTPUT) $(FLXFLAGS) -run build/tester.flx
 
 ci: test
-
-linux: jit
 
 jit: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(SUPERTINYBIN) $(SUPERTINYSRC)
@@ -115,7 +132,7 @@ copylibs: $(FLXSRC)
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread -ldl -lffi
 
 
 %.cpp.o: %.cpp

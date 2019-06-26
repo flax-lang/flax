@@ -1,5 +1,5 @@
 // pts.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -86,7 +86,7 @@ namespace pts
 		static NamedType* create(const Location& l, const std::string& s);
 		static NamedType* create(const Location& l, const std::string& s, const PolyArgMapping_t& genericMapping);
 
-		private:
+		// private:
 		explicit NamedType(const Location& l, const std::string& n) : Type(l), name(n) { }
 	};
 

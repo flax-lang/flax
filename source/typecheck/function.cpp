@@ -1,5 +1,5 @@
 // function.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -57,6 +57,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->parentTypeForMethod = infer;
 
 
+	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
 	defn->id.scope = this->realScope;
 	defn->id.params = ptys;
@@ -195,6 +196,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	auto retty = fs->convertParserTypeToFIR(this->returnType);
 
 	defn->id = Identifier(this->name, IdKind::Name);
+	defn->bareName = this->name;
 
 	defn->params = ps;
 	defn->returnType = retty;
@@ -203,6 +205,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	// the realname is the actual name of the function.
 	defn->realName = this->realName;
+	defn->isIntrinsic = this->isIntrinsic;
 
 	if(this->isVarArg)
 		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
@@ -252,10 +255,10 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(!this->isFunctionBody)
+	if(!this->isFunctionBody && !this->doNotPushNewScope)
 		fs->pushAnonymousTree();
 
-	defer(!this->isFunctionBody ? fs->popTree() : (sst::StateTree*) nullptr);
+	defer((!this->isFunctionBody && !this->doNotPushNewScope) ? fs->popTree() : (sst::StateTree*) nullptr);
 
 	auto ret = util::pool<sst::Block>(this->loc);
 
@@ -274,11 +277,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			{
 				if(inferred->isVoidType())
 				{
-					// no issues.
-					auto rst = util::pool<sst::ReturnStmt>(s->loc);
-					rst->expectedType = fir::Type::getVoid();
-
-					ret->statements = { ex, rst };
+					ret->statements = { ex };
 				}
 				else
 				{
@@ -287,11 +286,18 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 			}
 			else
 			{
-				auto rst = util::pool<sst::ReturnStmt>(s->loc);
-				rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
-				rst->value = ex;
+				if(!fs->getCurrentFunction()->returnType->isVoidType())
+				{
+					auto rst = util::pool<sst::ReturnStmt>(s->loc);
+					rst->expectedType = (inferred ? inferred : fs->getCurrentFunction()->returnType);
+					rst->value = ex;
 
-				ret->statements = { rst };
+					ret->statements = { rst };
+				}
+				else
+				{
+					ret->statements = { ex };
+				}
 			}
 		}
 		else

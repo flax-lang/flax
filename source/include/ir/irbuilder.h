@@ -1,5 +1,5 @@
 // irbuilder.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -123,11 +123,6 @@ namespace fir
 		Value* Select(Value* cond, Value* one, Value* two, const std::string& vname = "");
 
 		Value* BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname = "");
-
-
-		Value* PointerAdd(Value* ptr, Value* num, const std::string& vname = "");
-		Value* PointerSub(Value* ptr, Value* num, const std::string& vname = "");
-
 
 		Value* CreateValue(Type* t, const std::string& vname = "");
 

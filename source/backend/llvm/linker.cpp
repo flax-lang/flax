@@ -1,5 +1,5 @@
 // linker.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -17,6 +17,7 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+	#pragma warning(disable: 4267)
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -59,7 +60,7 @@
 #include "frontend.h"
 #include "backends/llvm.h"
 
-#include "tinyprocesslib/process.h"
+#include "tinyprocesslib/tinyprocess.h"
 
 
 static llvm::LLVMContext globalContext;
@@ -67,9 +68,12 @@ static llvm::LLVMContext globalContext;
 template <typename T>
 static void _printTiming(T ts, const std::string& thing)
 {
-	auto dur = std::chrono::high_resolution_clock::now() - ts;
-	auto ms = (double) dur.count() / 1000.0 / 1000.0;
-	printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+	if(frontend::getPrintProfileStats())
+	{
+		auto dur = std::chrono::high_resolution_clock::now() - ts;
+		auto ms = (double) dur.count() / 1000.0 / 1000.0;
+		printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
+	}
 }
 
 namespace backend
@@ -81,8 +85,6 @@ namespace backend
 
 	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
-		if(inputs.size() != 1)
-			error("Need exactly 1 input filename, have %zu", inputs.size());
 	}
 
 	std::string LLVMBackend::str()
@@ -96,26 +98,18 @@ namespace backend
 
 		llvm::InitializeNativeTarget();
 
-		// fprintf(stderr, "%s\n\n\n", this->compiledData.module->print().c_str());
-
 		auto mainModule = this->translateFIRtoLLVM(this->compiledData.module);
-		auto s = frontend::getFilenameFromPath(this->inputFilenames[0]);
 
 		if(this->compiledData.module->getEntryFunction())
 			this->entryFunction = mainModule->getFunction(this->compiledData.module->getEntryFunction()->getName().mangled());
 
-
 		this->linkedModule = std::unique_ptr<llvm::Module>(mainModule);
-		this->finaliseGlobalConstructors();
 
 		// ok, move some shit into here because llvm is fucking retarded
 		this->setupTargetMachine();
 		this->linkedModule->setDataLayout(this->targetMachine->createDataLayout());
 
-		if(frontend::getPrintLLVMIR())
-			this->linkedModule->print(llvm::outs(), 0);
-
-		_printTiming(ts, "translation to llvm");
+		_printTiming(ts, "llvm translation");
 	}
 
 
@@ -129,7 +123,7 @@ namespace backend
 			fprintf(stderr, "\n\n");
 			this->linkedModule->print(llvm::errs(), 0);
 
-			BareError::make("\nLLVM Module verification failed\n")->postAndQuit();
+			BareError::make("llvm: module verification failed")->postAndQuit();
 		}
 
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
@@ -182,6 +176,9 @@ namespace backend
 		fpm.run(*this->linkedModule);
 
 		_printTiming(ts, "llvm opt");
+
+		if(frontend::getPrintLLVMIR())
+			this->linkedModule->print(llvm::outs(), 0);
 	}
 
 	void LLVMBackend::writeOutput()
@@ -191,7 +188,7 @@ namespace backend
 		// verify the module.
 		{
 			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-				error("\n\nLLVM Module verification failed");
+				error("llvm: module verification failed");
 		}
 
 		std::string foldername;
@@ -205,7 +202,7 @@ namespace backend
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
-			const char* argv = ("__JIT-" + this->linkedModule->getModuleIdentifier()).c_str();
+			const char* argv = ("llvm-jit-" + this->linkedModule->getModuleIdentifier()).c_str();
 			auto entry = this->getEntryFunctionFromJIT();
 
 			_printTiming(ts, "llvm jit");
@@ -231,7 +228,7 @@ namespace backend
 		{
 			if(frontend::getOutputMode() != ProgOutputMode::ObjectFile && !this->compiledData.module->getEntryFunction())
 			{
-				error("No entry function marked, a program cannot be compiled");
+				error("llvm: no entry function marked, a program cannot be compiled");
 			}
 
 			auto buffer = this->initialiseLLVMStuff();
@@ -250,8 +247,8 @@ namespace backend
 				auto fd = platform::openFile(objname.c_str(), O_RDWR | O_CREAT, 0);
 				if(fd == platform::InvalidFileHandle)
 				{
-					perror("open(2) error");
-					BareError::make("Unable to create temporary file ('%s') for linking", objname)->postAndQuit();
+					perror("llvm: open(2) error");
+					BareError::make("llvm: unable to create temporary file ('%s') for linking", objname)->postAndQuit();
 				}
 
 				platform::writeFile(fd, buffer.data(), buffer.size_in_bytes());
@@ -278,7 +275,8 @@ namespace backend
 
 				size_t num_extra = 0;
 				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
-				const char** argv = new const char*[s];
+				const char** argv = (const char**) malloc(s * sizeof(const char*));
+
 				memset(argv, 0, s * sizeof(const char*));
 
 				argv[0] = "cc";
@@ -339,7 +337,7 @@ namespace backend
 				});
 
 
-				delete[] argv;
+				free(argv);
 
 				if(status != 0 || output.size() != 0)
 				{
@@ -380,7 +378,7 @@ namespace backend
 		const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
 		if(!theTarget)
 		{
-			error("failed in creating target: (wanted: '%s'); llvm error: %s\n", targetTriple.str(), err_str);
+			error("llvm: failed in creating target: (wanted: '%s'); llvm error: %s\n", targetTriple.str(), err_str);
 		}
 
 
@@ -408,7 +406,7 @@ namespace backend
 		}
 		else
 		{
-			error("Invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
+			error("llvm: invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
 		}
 
 
@@ -440,7 +438,6 @@ namespace backend
 		llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_emit_object");
 			llvm::legacy::PassManager pm = llvm::legacy::PassManager();
 			targetMachine->addPassesToEmitFile(pm, *rawStream, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
 			pm.run(*this->linkedModule);
@@ -471,10 +468,6 @@ namespace backend
 
 	EntryPoint_t LLVMBackend::getEntryFunctionFromJIT()
 	{
-		// all linked already.
-		// dump here, before the output.
-
-
 		// if JIT-ing, we need to load all the framework shit.
 		// note(compat): i think -L -l ordering matters when resolving libraries
 		// we don't support that right now.
@@ -557,7 +550,7 @@ namespace backend
 
 			#if defined(__MACH__)
 				ext = ".dylib";
-			#elif defined(WIN32)
+			#elif defined(_WIN32)
 				ext = ".dll";
 			#else
 				ext = ".so";
@@ -566,7 +559,7 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load library '%s', dlopen failed with error:\n%s", l, err);
+				error("llvm: failed to load library '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 
@@ -577,40 +570,26 @@ namespace backend
 			std::string err;
 			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				error("Failed to load framework '%s', dlopen failed with error:\n%s", l, err);
+				error("llvm: failed to load framework '%s', dlopen failed with error:\n%s", l, err);
 		}
 
 		EntryPoint_t ret = 0;
 		if(this->entryFunction)
 		{
-			#if 1
 			auto name = this->entryFunction->getName().str();
 
 			this->jitInstance = new LLVMJit(this->targetMachine);
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
+			// this->jitInstance->
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
 			ret = (int (*)(int, const char**)) entryaddr;
 
 			iceAssert(ret && "failed to resolve entry function address");
-
-			#else
-			llvm::ExecutionEngine* execEngine = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(this->linkedModule.get()))
-				.create(this->targetMachine);
-
-			// finalise the object, which does something.
-			iceAssert(execEngine);
-			execEngine->finalizeObject();
-
-			void* func = execEngine->getPointerToFunction(this->entryFunction);
-			iceAssert(func != 0);
-
-			ret = (int (*)(int, const char**)) func;
-			#endif
 		}
 		else
 		{
-			error("No entry function marked, cannot JIT");
+			error("llvm: no entry function marked, cannot JIT");
 		}
 
 
@@ -628,121 +607,7 @@ namespace backend
 		}
 		#endif
 
-		// ret(1, (const char**) &"JIT");
 		return ret;
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	void LLVMBackend::finaliseGlobalConstructors()
-	{
-		// first, if our entry function is named 'main', then all is well
-		// if not, then we need to make our own main (checking for conflicts) and call the real entry
-		// function there.
-
-		// this->linkedModule->print(llvm::errs(), 0);
-
-
-		llvm::IRBuilder<> builder(LLVMBackend::getLLVMContext());
-
-		auto entryfunc = this->entryFunction;
-		if(!entryfunc)
-		{
-			// keep trying various things.
-			std::vector<std::string> trymains = { "main", "_FFfoo4main_FAv" };
-			for(const auto& m : trymains)
-			{
-				entryfunc = this->linkedModule->getFunction(m);
-				if(entryfunc) break;
-			}
-
-			if(entryfunc)
-				this->entryFunction = entryfunc;
-
-			else
-				error("No entry point marked with '@entry', and no 'main' function; cannot compile program");
-		}
-
-		if(entryfunc->getName() != "main")
-		{
-			// well.
-			if(this->linkedModule->getFunction("main") != 0)
-			{
-				error("Conflicting 'main' function; entry function was '%s', but 'main' must be undefined in order to allow trampoline code to work (blame the linker)");
-			}
-
-			// ok.
-
-			auto& c = LLVMBackend::getLLVMContext();
-			llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(c),
-				{ llvm::Type::getInt32Ty(c), llvm::Type::getInt8Ty(c)->getPointerTo()->getPointerTo() }, false);
-
-			llvm::Function* mainf = llvm::Function::Create(ft, llvm::GlobalValue::ExternalLinkage, "main", this->linkedModule.get());
-			llvm::BasicBlock* entry = llvm::BasicBlock::Create(c, "main_entry", mainf);
-			builder.SetInsertPoint(entry);
-
-			auto argc = mainf->arg_begin();
-			auto argv = mainf->arg_begin() + 1;
-
-			builder.SetInsertPoint(entry);
-			llvm::Value* returnVal = 0;
-			if(entryfunc->getFunctionType()->params() == ft->params())
-			{
-				// ok, can pass arguments
-				returnVal = builder.CreateCall(entryfunc->getFunctionType(), entryfunc, { argc, argv });
-			}
-			else
-			{
-				returnVal = builder.CreateCall(entryfunc->getFunctionType(), entryfunc, { });
-			}
-
-
-			// ok, check return type
-			iceAssert(returnVal);
-			{
-				if(entryfunc->getReturnType()->isIntegerTy())
-				{
-					returnVal = builder.CreateIntCast(returnVal, llvm::Type::getInt32Ty(c), true);
-					builder.CreateRet(returnVal);
-				}
-				else
-				{
-					builder.CreateRet(llvm::ConstantInt::getSigned(llvm::Type::getInt32Ty(c), 0));
-				}
-			}
-		}
-
-		// return;
-		{
-			// insert a call at the beginning of main().
-			if((frontend::getOutputMode() == ProgOutputMode::Program || frontend::getOutputMode() == ProgOutputMode::RunJit) && !entryfunc)
-				error("No entry function defined");
-
-
-			llvm::BasicBlock* entryblock = &entryfunc->getEntryBlock();
-			llvm::BasicBlock* f = llvm::BasicBlock::Create(LLVMBackend::getLLVMContext(), "__entry_entry", entryfunc);
-
-			f->moveBefore(entryblock);
-
-			builder.SetInsertPoint(f);
-			builder.CreateCall(this->linkedModule->getFunction("__global_init_function__"));
-
-			// auto x = builder.CreateAlloca(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), nullptr, "x");
-			// builder.CreateStore(llvm::ConstantInt::getSigned(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 491), x, true);
-			builder.CreateBr(entryblock);
-		}
 	}
 }
 

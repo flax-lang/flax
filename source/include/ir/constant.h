@@ -1,5 +1,5 @@
 // constant.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -84,6 +84,8 @@ namespace fir
 		static ConstantInt* getUint32(uint32_t value);
 		static ConstantInt* getUint64(uint64_t value);
 
+		static ConstantInt* getNative(int64_t value);
+		static ConstantInt* getUNative(uint64_t value);
 
 		int64_t getSignedValue();
 		uint64_t getUnsignedValue();

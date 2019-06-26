@@ -1,5 +1,5 @@
 // module.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -62,14 +62,15 @@ namespace fir
 		Function* getEntryFunction();
 		void setEntryFunction(Function* fn);
 
+
+		void finaliseGlobalConstructors();
+
 		const util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
 		const util::hash_map<Identifier, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
 		const util::hash_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
 		const util::hash_map<Identifier, GlobalVariable*>& _getGlobals() { return this->globals; }
 		const util::hash_map<Identifier, Function*>& _getFunctions() { return this->functions; }
 		const util::hash_map<Identifier, Type*>& _getNamedTypes() { return this->namedTypes; }
-
-		const util::hash_map<size_t, GlobalValue*>& _getAllGlobals() { return this->allGlobalValues; }
 
 
 		private:
@@ -80,8 +81,6 @@ namespace fir
 		util::hash_map<Identifier, GlobalVariable*> globals;
 		util::hash_map<Identifier, Function*> functions;
 		util::hash_map<Identifier, Type*> namedTypes;
-
-		util::hash_map<size_t, GlobalValue*> allGlobalValues;
 
 		util::hash_map<Identifier, Function*> intrinsicFunctions;
 

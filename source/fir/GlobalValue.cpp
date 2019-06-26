@@ -1,5 +1,5 @@
 // GlobalValue.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -35,10 +35,9 @@ namespace fir
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)
 	{
-		if(constVal && constVal->getType() != this->getType()->getPointerElementType())
+		if(constVal && constVal->getType() != this->getType())
 			error("storing value of '%s' in global var of type '%s'", constVal->getType(), this->getType());
 
-		iceAssert((!constVal || constVal->getType() == this->getType()->getPointerElementType()) && "invalid type");
 		this->initValue = constVal;
 	}
 

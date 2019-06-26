@@ -1,5 +1,5 @@
 // ConstantValue.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/value.h"
@@ -135,6 +135,16 @@ namespace fir
 		return ConstantInt::get(Type::getUint64(), value);
 	}
 
+	ConstantInt* ConstantInt::getNative(int64_t value)
+	{
+		return ConstantInt::get(Type::getNativeWord(), value);
+	}
+
+	ConstantInt* ConstantInt::getUNative(uint64_t value)
+	{
+		return ConstantInt::get(Type::getNativeUWord(), value);
+	}
+
 
 
 
@@ -213,13 +223,13 @@ namespace fir
 	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
-			error("Mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
+			error("mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
 
 		for(size_t i = 0; i < st->getElementCount(); i++)
 		{
 			if(st->getElementN(i) != members[i]->getType())
 			{
-				error("Mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
+				error("mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
 			}
 		}
 

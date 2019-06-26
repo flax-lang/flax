@@ -1,5 +1,5 @@
 // Value.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/value.h"
@@ -17,7 +17,7 @@ namespace fir
 	{
 		if(this->valueType) return this->valueType;
 
-		error("Value has no type????");
+		error("value has no type????");
 	}
 
 	bool Value::hasName()
@@ -40,6 +40,10 @@ namespace fir
 		return this->ident;
 	}
 
+	size_t Value::getCurrentValueId()
+	{
+		return vnames;
+	}
 
 
 

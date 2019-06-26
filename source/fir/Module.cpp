@@ -1,9 +1,11 @@
 // Module.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "gluecode.h"
+
 #include "ir/module.h"
+#include "ir/irbuilder.h"
 
 #include <sstream>
 
@@ -14,17 +16,66 @@ namespace fir
 		this->moduleName = nm;
 	}
 
+
+	void Module::finaliseGlobalConstructors()
+	{
+		auto builder = IRBuilder(this);
+		auto entryfunc = this->entryFunction;
+
+		if(!entryfunc)
+		{
+			// keep trying various things.
+			std::vector<std::string> trymains = { "main", "_FF" + this->getModuleName() + "4main_FAv" };
+			for(const auto& m : trymains)
+			{
+				entryfunc = this->getFunction(Identifier(m, IdKind::Name));
+				if(entryfunc) break;
+			}
+
+			if(entryfunc)
+				this->entryFunction = entryfunc;
+
+			else
+				error("fir: no entry point marked with '@entry', and no 'main' function; cannot compile program");
+		}
+
+		// it doesn't actually matter what the entry function is named -- we just need to insert some instructions at the beginning.
+		iceAssert(entryfunc);
+		{
+			iceAssert(entryfunc->getBlockList().size() > 0);
+
+			auto oldentry = entryfunc->getBlockList()[0];
+			auto newentry = new IRBlock(entryfunc);
+			newentry->setName("entryblock_entry");
+
+			auto& blklist = entryfunc->getBlockList();
+			blklist.insert(blklist.begin(), newentry);
+
+			builder.setCurrentBlock(newentry);
+
+			auto gif = this->getFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME));
+			if(!gif) error("fir: failed to find global init function");
+
+			builder.Call(gif);
+			builder.UnCondBranch(oldentry);
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
 	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
-		// if(this->globals.find(ident) != this->globals.end())
-		// 	error("Already have a global with name '%s'", ident.str());
-
-		// // this adds itself to the module list.
-		// return new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
-
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
-			error("Already have a global with name '%s'", ident.str());
+			error("fir: already have a global with name '%s'", ident.str());
 
 		this->globals[ident] = gv;
 		return gv;
@@ -51,7 +102,7 @@ namespace fir
 	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
-			error("No such global with name '%s'", id.str());
+			error("fir: no such global with name '%s'", id.str());
 
 		return this->globals[id];
 	}
@@ -75,7 +126,7 @@ namespace fir
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(Identifier("__vtable_" + cls->getTypeName().mangled(), IdKind::Name),
+			auto vtab = this->createGlobalVariable(util::obfuscateIdentifier("vtable", cls->getTypeName().mangled()),
 				table->getType(), table, true, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
@@ -115,7 +166,7 @@ namespace fir
 	Type* Module::getNamedType(const Identifier& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
-			error("No such type with name '%s'", id.str());
+			error("fir: no such type with name '%s'", id.str());
 
 		return this->namedTypes[id];
 	}
@@ -123,7 +174,7 @@ namespace fir
 	void Module::addNamedType(const Identifier& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
-			error("Type '%s' exists already", id.str());
+			error("fir: type '%s' exists already", id.str());
 
 		this->namedTypes[id] = type;
 	}
@@ -141,7 +192,7 @@ namespace fir
 	void Module::addFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) != this->functions.end())
-			error("Function '%s' exists already", func->getName().str());
+			error("fir: function '%s' exists already", func->getName().str());
 
 		this->functions[func->getName()] = func;
 	}
@@ -149,7 +200,7 @@ namespace fir
 	void Module::removeFunction(Function* func)
 	{
 		if(this->functions.find(func->getName()) == this->functions.end())
-			error("Function '%s' does not exist, cannot remove", func->getName().str());
+			error("fir: function '%s' does not exist, cannot remove", func->getName().str());
 
 		this->functions.erase(func->getName());
 	}
@@ -189,7 +240,7 @@ namespace fir
 		{
 			if(!this->functions[id]->getType()->isTypeEqual(ftype))
 			{
-				error("Function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
+				error("fir: function '%s' redeclared with different type (have '%s', new '%s')", id.str(),
 					this->functions[id]->getType(), ftype);
 			}
 
@@ -353,21 +404,21 @@ namespace fir
 		{
 			name = Identifier("memcpy", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
 			name = Identifier("memmove", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
 			name = Identifier("memset", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memcmp")
@@ -377,7 +428,7 @@ namespace fir
 
 			name = Identifier("memcmp", IdKind::Name);
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
-				fir::Type::getInt64(), fir::Type::getBool() },
+				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getInt32());
 		}
 		else if(id == "roundup_pow2")
@@ -388,7 +439,7 @@ namespace fir
 			// 40 -> 64
 
 			name = Identifier("roundup_pow2", IdKind::Name);
-			ft = FunctionType::get({ fir::Type::getInt64() }, fir::Type::getInt64());
+			ft = FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getNativeWord());
 		}
 
 		if(this->intrinsicFunctions.find(name) != this->intrinsicFunctions.end())

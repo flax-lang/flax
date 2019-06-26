@@ -1,5 +1,5 @@
 // variable.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -21,7 +21,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			iceAssert(this->init);
 
-			SpanError::make(SimpleError::make(this->loc, "Cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
+			SpanError::make(SimpleError::make(this->loc, "cannot initialise variable of type '%s' with a value of type '%s'", this->type, nv->getType()))
 				->add(util::ESpan(this->init->loc, strprintf("type '%s'", nv->getType())))
 				->postAndQuit();
 		}
@@ -39,66 +39,67 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// else
 		fir::Value* res = 0;
 
-		if(this->init)
-			res = this->init->codegen(cs, this->type).value;
-
-		else
-			res = cs->getDefaultValue(this->type);
-
-		res = checkStore(res);
+		if(this->init)  res = this->init->codegen(cs, this->type).value;
+		else            res = cs->getDefaultValue(this->type);
 
 		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
-		auto alloc = cs->module->createGlobalVariable(this->id, this->type, false, this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
+		auto glob = cs->module->createGlobalVariable(this->id, this->type, false,
+			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		cs->autoAssignRefCountedValue(alloc, res, true, true);
+		if(auto cv = dcast(fir::ConstantValue, res); cv && cv->getType() == this->type)
+		{
+			glob->setInitialValue(cv);
+		}
+		else
+		{
+			res = checkStore(res);
+			cs->autoAssignRefCountedValue(glob, res, true, true);
+		}
 
 		// go and fix the thing.
 		if(this->immutable)
-			alloc->makeConst();
+			glob->makeConst();
 
 		cs->leaveGlobalInitFunction(rest);
 
-		cs->valueMap[this] = CGResult(alloc);
-		return CGResult(alloc);
-	}
-
-
-
-
-
-
-	fir::Value* val = 0;
-	fir::Value* alloc = 0;
-
-	fir::Value* res = 0;
-	if(this->init)
-	{
-		res = this->init->codegen(cs, this->type).value;
-		res = cs->oneWayAutocast(res, this->type);
-
-		val = res;
-	}
-
-	if(!val) val = cs->getDefaultValue(this->type);
-
-
-	val = checkStore(val);
-
-	if(this->immutable)
-	{
-		iceAssert(val);
-		alloc = cs->irb.CreateConstLValue(val, this->id.name);
+		cs->valueMap[this] = CGResult(glob);
+		return CGResult(glob);
 	}
 	else
 	{
-		alloc = cs->irb.CreateLValue(this->type, this->id.name);
+		fir::Value* val = 0;
+		fir::Value* alloc = 0;
+
+		fir::Value* res = 0;
+		if(this->init)
+		{
+			res = this->init->codegen(cs, this->type).value;
+			res = cs->oneWayAutocast(res, this->type);
+
+			val = res;
+		}
+
+		if(!val) val = cs->getDefaultValue(this->type);
+
+
+		val = checkStore(val);
+
+		if(this->immutable)
+		{
+			iceAssert(val);
+			alloc = cs->irb.CreateConstLValue(val, this->id.name);
+		}
+		else
+		{
+			alloc = cs->irb.CreateLValue(this->type, this->id.name);
+		}
+
+		iceAssert(alloc);
+
+		cs->addVariableUsingStorage(this, alloc, CGResult(res));
+
+		return CGResult(alloc);
 	}
-
-	iceAssert(alloc);
-
-	cs->addVariableUsingStorage(this, alloc, CGResult(res));
-
-	return CGResult(alloc);
 }
 
 void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc, CGResult val)
@@ -149,8 +150,8 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				it = cs->valueMap.find(this->def);
 				if(it == cs->valueMap.end())
 				{
-					SimpleError::make(this->loc, "Failed to codegen variable definition for '%s'", this->name)
-						->append(SimpleError::make(MsgType::Note, this->def->loc, "Offending definition is here:"))
+					SimpleError::make(this->loc, "failed to codegen variable definition for '%s'", this->name)
+						->append(SimpleError::make(MsgType::Note, this->def->loc, "offending definition is here:"))
 						->postAndQuit();
 				}
 
@@ -161,7 +162,7 @@ CGResult sst::VarRef::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// make sure types match... should we bother?
 	if(value->getType() != this->type)
-		error(this, "Type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
+		error(this, "type mismatch; typechecking found type '%s', codegen gave type '%s'", this->type, value->getType());
 
 	return CGResult(value);
 }

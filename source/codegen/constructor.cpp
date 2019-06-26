@@ -1,9 +1,10 @@
 // constructor.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
 #include "codegen.h"
+#include "mpool.h"
 
 fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args)
 {
@@ -62,7 +63,7 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 	// make a copy
 	auto arguments = args;
 	{
-		auto fake = new sst::RawValueExpr(this->loc(), cls->getPointerTo());
+		auto fake = util::pool<sst::RawValueExpr>(this->loc(), cls->getPointerTo());
 		fake->rawValue = CGResult(selfptr);
 
 		arguments.insert(arguments.begin(), FnCallArgument(this->loc(), "self", fake, 0));
@@ -71,9 +72,9 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 
 	if(arguments.size() != constrfn->getArgumentCount())
 	{
-		SimpleError::make(this->loc(), "Mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
+		SimpleError::make(this->loc(), "mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
 			(fir::Type*) cls, constrfn->getArgumentCount(), arguments.size())
-			->append(SimpleError::make(MsgType::Note, constr->loc, "Constructor was defined here:"))
+			->append(SimpleError::make(MsgType::Note, constr->loc, "constructor was defined here:"))
 			->postAndQuit();
 	}
 
@@ -95,14 +96,14 @@ CGResult sst::StructConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* 
 	this->target->codegen(cs);
 
 	if(!this->target)
-		error(this, "Failed to find target type of constructor call");
+		error(this, "failed to find target type of constructor call");
 
 	//* note: we don't need an explicit thing telling us whether we should use names or not
 	//* if the first argument has no name, then we're not using names; if it has a name, then we are
 	//* and ofc expect consistency, but we should have already typechecked that previously.
 
 	StructDefn* str = dcast(StructDefn, this->target);
-	if(!str) error(this, "Non-struct type '%s' not supported in constructor call", this->target->id.name);
+	if(!str) error(this, "non-struct type '%s' not supported in constructor call", this->target->id.name);
 
 	// great. now we just make the thing.
 	fir::Value* value = cs->getConstructedStructValue(str->type->toStructType(), this->arguments);

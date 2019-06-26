@@ -1,5 +1,5 @@
 // Instruction.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/block.h"
@@ -11,7 +11,7 @@
 
 namespace fir
 {
-	static util::MemoryPool<Value> value_pool(2048);
+	static util::MemoryPool<Value> value_pool(65536);
 
 
 	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, const std::vector<Value*>& vals)
@@ -29,7 +29,7 @@ namespace fir
 	Value* Instruction::getResult()
 	{
 		if(this->realOutput) return this->realOutput;
-		error("Calling getActualValue() when not in function! (no real value)");
+		error("calling getActualValue() when not in function! (no real value)");
 	}
 
 	bool Instruction::hasSideEffects()
@@ -127,8 +127,6 @@ namespace fir
 			case OpKind::Misc_Sizeof:                       instrname = "sizeof"; break;
 			case OpKind::Branch_UnCond:                     instrname = "jump"; break;
 			case OpKind::Branch_Cond:                       instrname = "branch"; break;
-			case OpKind::Value_PointerAddition:             instrname = "ptradd"; break;
-			case OpKind::Value_PointerSubtraction:          instrname = "ptrsub"; break;
 
 			case OpKind::Value_CreatePHI:                   instrname = "phi"; break;
 
@@ -176,7 +174,7 @@ namespace fir
 
 			case OpKind::Value_AddressOf:                   instrname = "addrof"; break;
 			case OpKind::Value_Store:                       instrname = "store"; break;
-			case OpKind::Value_Dereference:                 instrname = "dereferece"; break;
+			case OpKind::Value_Dereference:                 instrname = "dereference"; break;
 			case OpKind::Value_CreateLVal:                  instrname = "make_lval"; break;
 
 			case OpKind::Unreachable:                       instrname = "<unreachable>"; break;
@@ -235,7 +233,7 @@ namespace fir
 				}
 				else if(IRBlock* ib = dcast(IRBlock, op))
 				{
-					ops += "$" + ib->getName().str();
+					ops += strprintf("$%zu/%s", ib->id, ib->getName().str());
 				}
 				else
 				{

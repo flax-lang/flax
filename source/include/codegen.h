@@ -1,5 +1,5 @@
 // codegen.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -12,6 +12,11 @@ namespace fir
 {
 	struct Module;
 	struct IRBuilder;
+
+	namespace interp
+	{
+		struct InterpState;
+	}
 }
 
 namespace sst
@@ -64,11 +69,10 @@ namespace cgn
 			UserDefined
 		};
 
+		CodegenState(const fir::IRBuilder& i);
 
-
-		CodegenState(const fir::IRBuilder& i) : irb(i) { }
+		size_t id = 0;
 		fir::Module* module = 0;
-		sst::StateTree* stree = 0;
 
 		fir::IRBuilder irb;
 
@@ -92,6 +96,7 @@ namespace cgn
 		void popIRDebugIndentation();
 
 
+		void pushLoc(const Location& l);
 		void pushLoc(sst::Stmt* stmt);
 		void popLoc();
 
@@ -186,7 +191,7 @@ namespace cgn
 		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial, bool performStore);
 	};
 
-	fir::Module* codegen(sst::DefinitionTree* dtr);
+	fir::Module* codegen(sst::DefinitionTree* __std_exception_destroy);
 }
 
 

@@ -1,5 +1,5 @@
 // structs.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -18,13 +18,13 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 	if(field == strty)
 	{
 		SimpleError::make(floc, "composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
 	else if(seeing.find(field) != seeing.end())
 	{
 		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "Type '%s' was defined here:", strty))
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
 			->postAndQuit();
 	}
 	else if(field->isClassType())
@@ -133,6 +133,8 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = util::pool<sst::StructDefn>(this->loc);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;

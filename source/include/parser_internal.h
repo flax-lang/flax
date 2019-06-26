@@ -1,5 +1,5 @@
 // parser_internal.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -232,6 +232,13 @@ namespace parser
 		util::hash_map<std::string, parser::CustomOperatorDecl> prefixOps;
 		util::hash_map<std::string, parser::CustomOperatorDecl> postfixOps;
 
+		// flags that determine whether or not 'import' and '@operator' things can still be done.
+		bool importsStillValid = true;
+		bool operatorsStillValid = true;
+		bool nativeWordSizeStillValid = true;
+
+		frontend::CollectorState* cState = 0;
+
 		private:
 			// 1 = inside function
 			// 2 = inside struct
@@ -249,7 +256,7 @@ namespace parser
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
-	ast::Stmt* parseStmt(State& st);
+	ast::Stmt* parseStmt(State& st, bool allowExprs = true);
 
 	ast::DeferredStmt* parseDefer(State& st);
 
@@ -267,6 +274,11 @@ namespace parser
 
 	DecompMapping parseArrayDecomp(State& st);
 	DecompMapping parseTupleDecomp(State& st);
+
+	std::tuple<ast::FuncDefn*, bool, Location> parseFunctionDecl(State& st);
+	ast::PlatformDefn* parsePlatformDefn(State& st);
+
+	ast::RunDirective* parseRunDirective(State& st);
 
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
@@ -289,7 +301,7 @@ namespace parser
 	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::Stmt* parseForLoop(State& st);
-	ast::IfStmt* parseIfStmt(State& st);
+	ast::Stmt* parseIfStmt(State& st);
 	ast::WhileLoop* parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);

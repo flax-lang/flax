@@ -1,5 +1,5 @@
 // enums.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -67,18 +67,18 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(v);
 
 		if(dcast(fir::ConstantValue, v) == 0)
-			error(this, "Enumeration case value ('%s' of type '%s') must be constant", this->id.name, v->getType());
+			error(this, "enumeration case value ('%s' of type '%s') must be constant", this->id.name, v->getType());
 	}
 	else
 	{
-		v = fir::ConstantInt::getInt64(this->index);
+		v = fir::ConstantInt::getNative(this->index);
 	}
 
 	this->value = dcast(fir::ConstantValue, v);
 
 	{
 		auto ty = this->parentEnum->type;
-		auto ret = fir::ConstantEnumCase::get(ty->toEnumType(), fir::ConstantInt::getInt64(this->index), this->value);
+		auto ret = fir::ConstantEnumCase::get(ty->toEnumType(), fir::ConstantInt::getNative(this->index), this->value);
 
 		cs->valueMap[this] = CGResult(ret);
 	}
@@ -90,24 +90,6 @@ CGResult sst::EnumCaseDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 CGResult sst::EnumDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	error("unsupported");
-	// cs->pushLoc(this);
-	// defer(cs->popLoc());
-
-	// auto enr = this->enumeration;
-	// iceAssert(enr);
-
-	// auto ecd = enr->cases[this->caseName];
-	// iceAssert(ecd);
-
-	// // ok, return the thing
-	// auto ty = enr->type;
-	// // info(this, "type = %s", ty);
-
-	// auto ret = cs->irb.CreateValue(ty);
-	// ret = cs->irb.SetEnumCaseIndex(ret, fir::ConstantInt::getInt64(ecd->index));
-	// ret = cs->irb.SetEnumCaseValue(ret, ecd->value);
-
-	// return CGResult(ret);
 }
 
 

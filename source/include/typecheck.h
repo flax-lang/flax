@@ -1,5 +1,5 @@
 // typecheck.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -115,7 +115,7 @@ namespace sst
 		std::string moduleName;
 
 		DefinitionTree* dtree = 0;
-		StateTree*& stree;
+		StateTree* stree = 0;
 
 		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
 
@@ -207,7 +207,7 @@ namespace sst
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
-		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports);
+		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports, bool addPreludeDefinitions);
 
 
 	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);

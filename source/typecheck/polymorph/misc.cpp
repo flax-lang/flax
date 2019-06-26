@@ -1,5 +1,5 @@
 // misc.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -223,6 +223,36 @@ std::pair<bool, sst::Defn*> ast::Parameterisable::checkForExistingDeclaration(ss
 		}
 	}
 }
+
+
+std::string PolyArgMapping_t::print() const
+{
+	std::string ret;
+	for(const auto& m : this->maps)
+	{
+		ret += ", ";
+		if(!m.name.empty())
+			ret += strprintf("%s: ", m.name);
+
+		ret += m.type->str();
+	}
+
+	if(!ret.empty())
+		ret = ret.erase(0, 2);
+
+	return ret;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

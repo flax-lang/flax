@@ -1,5 +1,5 @@
 // Type.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -19,6 +19,24 @@ namespace fir
 	{
 		return tc;
 	}
+
+
+	static size_t nativeWordSize = 64;
+	void setNativeWordSizeInBits(size_t sz)
+	{
+		if(sz < 8 || sz > 64)
+			error("native word size must be >= 8 and < 64, %zu invalid", sz);
+
+		// we're not gonna check any further, anything becomes your problem once you change this.
+		nativeWordSize = sz;
+	}
+
+	size_t getNativeWordSizeInBits()
+	{
+		return nativeWordSize;
+	}
+
+
 
 	int getCastDistance(Type* from, Type* to)
 	{
@@ -157,6 +175,21 @@ namespace fir
 
 
 
+
+	PrimitiveType* Type::getNativeWord()
+	{
+		return PrimitiveType::getIntN(nativeWordSize);
+	}
+
+	PrimitiveType* Type::getNativeUWord()
+	{
+		return PrimitiveType::getUintN(nativeWordSize);
+	}
+
+	PointerType* Type::getNativeWordPtr()
+	{
+		return Type::getNativeWord()->getPointerTo()->toPointerType();
+	}
 
 	std::string Type::typeListToString(const std::initializer_list<Type*>& types, bool includeBraces)
 	{
@@ -304,8 +337,8 @@ namespace fir
 		else if(copy == VOID_TYPE_STRING)               real = Type::getVoid();
 
 		// unspecified things
-		else if(copy == INTUNSPEC_TYPE_STRING)          real = Type::getInt64();
-		else if(copy == UINTUNSPEC_TYPE_STRING)         real = Type::getUint64();
+		else if(copy == INTUNSPEC_TYPE_STRING)          real = Type::getNativeWord();
+		else if(copy == UINTUNSPEC_TYPE_STRING)         real = Type::getNativeUWord();
 
 		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32();
 		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64();
@@ -555,6 +588,11 @@ namespace fir
 		return static_cast<UnionVariantType*>(this);
 	}
 
+	OpaqueType* Type::toOpaqueType()
+	{
+		if(this->kind != TypeKind::Opaque) error("not opaque type");
+		return static_cast<OpaqueType*>(this);
+	}
 
 
 
@@ -716,6 +754,11 @@ namespace fir
 	bool Type::isUnionVariantType()
 	{
 		return this->kind == TypeKind::UnionVariant;
+	}
+
+	bool Type::isOpaqueType()
+	{
+		return this->kind == TypeKind::Opaque;
 	}
 
 
@@ -974,26 +1017,29 @@ namespace fir
 	size_t getSizeOfType(Type* type)
 	{
 		auto ptrt = fir::Type::getInt8Ptr();
-		auto i64t = fir::Type::getInt64();
+		auto wordty = fir::Type::getNativeWord();
 
 		if(type->isVoidType())                                      return 0;
 		else if(type->isBoolType())                                 return 1;
-		else if(type->isPointerType() || type->isFunctionType())    return sizeof(void*);
 		else if(type->isPrimitiveType())                            return type->getBitWidth() / 8;
-		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, i64t });
-		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, i64t, i64t, ptrt });
-		else if(type->isRangeType())                                return getAggregateSize({ i64t, i64t, i64t });
+		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, wordty });
+		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, wordty, wordty, ptrt });
+		else if(type->isRangeType())                                return getAggregateSize({ wordty, wordty, wordty });
+		else if(type->isPointerType() || type->isFunctionType() || type->isNullType())
+		{
+			return getSizeOfType(wordty);
+		}
 		else if(type->isArrayType())
 		{
 			return type->toArrayType()->getArraySize() * getSizeOfType(type->getArrayElementType());
 		}
 		else if(type->isEnumType())
 		{
-			return getAggregateSize({ i64t, type->toEnumType()->getCaseType() });
+			return getAggregateSize({ wordty, type->toEnumType()->getCaseType() });
 		}
 		else if(type->isAnyType())
 		{
-			return getAggregateSize({ i64t, ptrt, fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT) });
+			return getAggregateSize({ wordty, ptrt, fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT) });
 		}
 		else if(type->isClassType() || type->isStructType() || type->isTupleType())
 		{
@@ -1001,14 +1047,7 @@ namespace fir
 
 			if(type->isClassType())
 			{
-				auto c = type->toClassType();
-				auto base = c;
-				while(base)
-				{
-					tys.insert(tys.begin(), base->getElements().begin(), base->getElements().end());
-					base = base->getBaseClass();
-				}
-
+				tys = type->toClassType()->getAllElementsIncludingBase();
 				tys.insert(tys.begin(), fir::Type::getInt8Ptr());
 			}
 			else if(type->isStructType())
@@ -1035,11 +1074,11 @@ namespace fir
 
 			if(maxSz > 0)
 			{
-				return getAggregateSize({ Type::getInt64(), ArrayType::get(Type::getInt8(), maxSz) });
+				return getAggregateSize({ wordty, ArrayType::get(Type::getInt8(), maxSz) });
 			}
 			else
 			{
-				return getAggregateSize({ Type::getInt64() });
+				return getAggregateSize({ wordty });
 			}
 		}
 		else if(type->isRawUnionType())
@@ -1056,6 +1095,10 @@ namespace fir
 		else if(type->isUnionVariantType())
 		{
 			return getSizeOfType(type->toUnionVariantType()->getInteriorType());
+		}
+		else if(type->isOpaqueType())
+		{
+			return type->toOpaqueType()->getTypeSizeInBits() / 8;
 		}
 		else
 		{

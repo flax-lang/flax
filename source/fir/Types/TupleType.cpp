@@ -1,5 +1,5 @@
 // TupleType.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -23,9 +23,9 @@ namespace fir
 		return this->members[n];
 	}
 
-	std::vector<Type*> TupleType::getElements()
+	const std::vector<Type*>& TupleType::getElements()
 	{
-		return std::vector<Type*>(this->members.begin(), this->members.end());
+		return this->members;
 	}
 
 

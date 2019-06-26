@@ -1,5 +1,5 @@
 // resolver.h
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -38,7 +38,7 @@ namespace sst
 
 
 		std::pair<util::hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
-			const std::string& name, const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
+			const std::string& name, const std::vector<std::string>& fieldNames, const std::vector<FnCallArgument>& arguments);
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
 			fir::Type* return_infer, bool isFnCall);
