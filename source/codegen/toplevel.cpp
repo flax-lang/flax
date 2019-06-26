@@ -16,6 +16,12 @@
 
 namespace cgn
 {
+	static size_t csid = 0;
+	CodegenState::CodegenState(const fir::IRBuilder& i) : irb(i)
+	{
+		this->id = csid++;
+	}
+
 	fir::Module* codegen(sst::DefinitionTree* dtr)
 	{
 		auto mod = new fir::Module(dtr->base->name);

@@ -134,7 +134,6 @@ static void compile(std::string in, std::string out)
 
 		if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_total");
 			backend->performCompilation();
 			backend->optimiseProgram();
 			backend->writeOutput();

@@ -18,6 +18,7 @@ namespace fir
 	struct Module;
 	struct IRBlock;
 	struct Function;
+	struct GlobalValue;
 	struct ConstantValue;
 
 	namespace interp
@@ -34,6 +35,11 @@ namespace fir
 				void* ptr;
 				uint8_t data[32];
 			};
+
+			// kinda a dirty hack, we need to know whether or not to write-back the global after the interpreter
+			// is done, cases where we modify stuff during compile-time execution. of course, the real value could
+			// be *derived* from a global, eg. a GEP on a struct, or something. so, we persistently tag it.
+			fir::GlobalValue* globalValTracker = 0;
 		};
 
 		struct Instruction
@@ -91,7 +97,7 @@ namespace fir
 			// this is the executing state.
 			std::vector<Frame> stackFrames;
 
-			std::unordered_map<fir::Value*, interp::Value> globals;
+			std::unordered_map<fir::Value*, std::pair<interp::Value, bool>> globals;
 			std::vector<void*> globalAllocs;
 
 			std::vector<char*> strings;

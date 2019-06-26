@@ -30,11 +30,19 @@ CGResult sst::BareTypeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(0);
 }
 
-
-
-
-
-
+CGResult sst::Stmt::codegen(cgn::CodegenState* cs, fir::Type* inferred)
+{
+	if(didCodegen && this->cachedCSId == cs->id)
+	{
+		return cachedResult;
+	}
+	else
+	{
+		this->didCodegen = true;
+		this->cachedCSId = cs->id;
+		return (this->cachedResult = this->_codegen(cs, inferred));
+	}
+}
 
 
 

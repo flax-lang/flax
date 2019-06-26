@@ -438,7 +438,6 @@ namespace backend
 		llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "llvm_emit_object");
 			llvm::legacy::PassManager pm = llvm::legacy::PassManager();
 			targetMachine->addPassesToEmitFile(pm, *rawStream, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
 			pm.run(*this->linkedModule);

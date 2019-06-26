@@ -207,7 +207,7 @@ namespace sst
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
-		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports);
+		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports, bool addPreludeDefinitions);
 
 
 	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);
