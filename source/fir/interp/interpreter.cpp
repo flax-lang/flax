@@ -504,8 +504,6 @@ namespace interp
 	{
 		for(const auto [ id, glob ] : this->module->_getGlobals())
 		{
-			auto ty = glob->getType();
-
 			// by right we are not supposed to add (or even change the FIR module at all) between calling
 			// initialise() and finalise(), but be defensive a bit.
 			if(auto it = this->globals.find(glob); it != this->globals.end())
@@ -1009,14 +1007,6 @@ namespace interp
 
 		return runFunctionWithLibFFI(is, fnptr, fn.func->getType(), args);
 	}
-
-
-
-
-	static interp::Value callFunctionPointer(InterpState* is, const interp::Value& func, const std::vector<interp::Value>& args)
-	{
-	}
-
 
 
 	static const interp::Block* prepareFunctionToRun(InterpState* is, const interp::Function& fn, const std::vector<interp::Value>& args)

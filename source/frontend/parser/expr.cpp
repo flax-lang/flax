@@ -174,6 +174,10 @@ namespace parser
 
 				case TT::Export:
 					error(st, "export declaration must be the first non-comment line in the file");
+
+				default:
+					// do nothing.
+					break;
 			}
 
 
