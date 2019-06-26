@@ -100,9 +100,7 @@ TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(!execBlock)
 	{
-		// ok we need to return a fake value.
-		auto ret = util::pool<sst::RawValueExpr>(this->loc, fir::Type::getVoid());
-		return TCResult(ret);
+		return TCResult::getDummy();
 	}
 	else
 	{
