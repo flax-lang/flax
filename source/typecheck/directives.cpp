@@ -98,7 +98,6 @@ TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		iceAssert(execBlock);
 	}
 
-
 	if(!execBlock)
 	{
 		// ok we need to return a fake value.

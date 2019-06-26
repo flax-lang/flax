@@ -123,6 +123,8 @@ namespace ast
 
 		Location closingBrace;
 
+		bool doNotPushNewScope = false;
+
 		bool isArrow = false;
 		bool isFunctionBody = false;
 		std::vector<Stmt*> statements;

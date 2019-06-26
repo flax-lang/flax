@@ -255,10 +255,10 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	if(!this->isFunctionBody)
+	if(!this->isFunctionBody && !this->doNotPushNewScope)
 		fs->pushAnonymousTree();
 
-	defer(!this->isFunctionBody ? fs->popTree() : (sst::StateTree*) nullptr);
+	defer((!this->isFunctionBody && !this->doNotPushNewScope) ? fs->popTree() : (sst::StateTree*) nullptr);
 
 	auto ret = util::pool<sst::Block>(this->loc);
 

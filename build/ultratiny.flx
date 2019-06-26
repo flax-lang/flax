@@ -8,10 +8,6 @@ import libc
 import std::math
 
 
-#if os::name == "windows" {
-	#run libc::printf("we are on windows!\n")
-}
-
 var value = 401.0
 
 #if value > 30.0
@@ -39,7 +35,17 @@ else
 
 
 
-/*
-	before: 2922.8 ms
-	after:  3027.8 ms
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
