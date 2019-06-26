@@ -1,11 +1,11 @@
 // dotops.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
 #include "codegen.h"
 #include "typecheck.h"
-
+#include "mpool.h"
 
 static bool isAutoDereferencable(fir::Type* t)
 {
@@ -41,7 +41,7 @@ static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* use
 	}
 	else
 	{
-		error(user, "Invalid type '%s' for instance dot op", restype);
+		error(user, "invalid type '%s' for instance dot op", restype);
 	}
 
 	return CGResult(retv);
@@ -63,7 +63,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 
 		// then we insert it as the first argument
-		auto rv = new sst::RawValueExpr(this->loc, res.value->getType()->getMutablePointerTo());
+		auto rv = util::pool<sst::RawValueExpr>(this->loc, res.value->getType()->getMutablePointerTo());
 		rv->rawValue = CGResult(cs->irb.AddressOf(res.value, true));
 
 		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));
@@ -204,7 +204,7 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		}
 		else
 		{
-			error(this->loc(), "Type '%s' has no field named '%s'", sty->getTypeName().str(), name);
+			error(this->loc(), "type '%s' has no field named '%s'", sty->getTypeName().str(), name);
 		}
 	};
 
@@ -215,5 +215,5 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 		return dothing(ty->toClassType());
 
 	else
-		error(this->loc(), "Invalid self type '%s' for field named '%s'", ty, name);
+		error(this->loc(), "invalid self type '%s' for field named '%s'", ty, name);
 }

@@ -1,4 +1,4 @@
-#include "process.h"
+#include "tinyprocess.h"
 
 namespace tinyproclib {
 Process::Process(const string_type &command, const string_type &path,

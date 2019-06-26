@@ -1,5 +1,5 @@
 // driver.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -119,7 +119,7 @@ namespace poly
 					}
 				}
 
-				std::set<std::string> fieldset;
+				std::vector<std::string> fields;
 				util::hash_map<std::string, size_t> fieldNames;
 				{
 					size_t i = 0;
@@ -127,13 +127,13 @@ namespace poly
 					{
 						auto nm = std::get<0>(f);
 
-						fieldset.insert(nm);
+						fields.push_back(nm);
 						fieldNames[nm] = i++;
 					}
 				}
 
 
-				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fieldset, input);
+				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fields, input);
 				if(err) return { soln, err };
 
 

@@ -1,9 +1,9 @@
 // Backend.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-#include "backend.h"
 #include "backends/llvm.h"
+#include "backends/interp.h"
 
 namespace backend
 {
@@ -14,6 +14,9 @@ namespace backend
 			case BackendOption::LLVM:
 				return new LLVMBackend(cd, in, out);
 
+			case BackendOption::Interpreter:
+				return new FIRInterpBackend(cd, in, out);
+
 			case BackendOption::Assembly_x64:
 				return new x64Backend(cd, in, out);
 
@@ -22,7 +25,7 @@ namespace backend
 
 			case BackendOption::Invalid:
 			default:
-				_error_and_exit("Invalid backend");
+				_error_and_exit("invalid backend\n");
 		}
 	}
 

@@ -1,5 +1,5 @@
 // loops.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -29,7 +29,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 		elmty = ret->array->type->getArrayElementType();
 
 	else if(ret->array->type->isRangeType())
-		elmty = fir::Type::getInt64();
+		elmty = fir::Type::getNativeWord();
 
 	else if(ret->array->type->isStringType())
 		elmty = fir::Type::getInt8();
@@ -44,7 +44,7 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	{
 		auto fake = util::pool<ast::VarDefn>(this->loc);
 		fake->name = this->indexVar;
-		fake->type = pts::NamedType::create(this->loc, INT64_TYPE_STRING);
+		fake->type = pts::NamedType::create(this->loc, INTUNSPEC_TYPE_STRING);
 
 		ret->indexVar = dcast(sst::VarDefn, fake->typecheck(fs).defn());
 		iceAssert(ret->indexVar);

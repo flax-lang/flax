@@ -1,8 +1,9 @@
 // call.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
+#include "mpool.h"
 #include "codegen.h"
 #include "gluecode.h"
 
@@ -90,22 +91,22 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 			// cs syntax feels a little dirty.
 			val = cs->oneWayAutocast(vr.value, inf);
-			vr.value = val;
-
 
 			if(val->getType() != inf)
 			{
 				auto errs = SpanError::make(SimpleError::make(arg.loc,
-					"Mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, val->getType()));
+					"mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, vr.value->getType()));
 
 				if(ft->isVariadicFunc() && i >= numArgs - 1)
 				{
-					errs->add(util::ESpan(arg.loc, strprintf("Argument's type '%s' cannot be cast to the expected variadic element type '%s'",
-						val->getType(), inf)));
+					errs->add(util::ESpan(arg.loc, strprintf("argument's type '%s' cannot be cast to the expected variadic element type '%s'",
+						vr.value->getType(), inf)));
 				}
 
 				errs->postAndQuit();
 			}
+
+			vr.value = val;
 		}
 		else if(ft->isCStyleVarArg())
 		{
@@ -125,6 +126,9 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			// int32 can represent you even if you're unsigned
 			else if(val->getType()->isIntegerType() && val->getType()->toPrimitiveType()->getIntegerBitWidth() < 32)
 				val = cs->irb.IntSizeCast(val, val->getType()->isSignedIntType() ? fir::Type::getInt32() : fir::Type::getUint32());
+
+			else if(val->getType()->isBoolType())
+				val = cs->irb.IntZeroExt(val, fir::Type::getInt32());
 		}
 
 		ret[i] = val;
@@ -137,7 +141,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 	{
 		auto et = ft->getArgumentTypes().back()->getArrayElementType();
 		ret.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(et),
-			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getInt64(0)));
+			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getNative(0)));
 	}
 
 	return ret;
@@ -162,7 +166,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	if(!this->target)
-		error(this, "Failed to find target for function call to '%s'", this->name);
+		error(this, "failed to find target for function call to '%s'", this->name);
 
 	// check this target
 	fir::Value* vf = 0;
@@ -214,7 +218,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		ft = vt->getPointerElementType()->toFunctionType();
 
-		warn(this, "Prefer using functions to function pointers");
+		warn(this, "prefer using functions to function pointers");
 	}
 
 	iceAssert(ft);
@@ -222,7 +226,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	//! SELF HANDLING (INSERTION) (CODEGEN)
 	if(auto fd = dcast(FunctionDefn, this->target); fd && fd->parentTypeForMethod && cs->isInMethodBody() && this->isImplicitMethodCall)
 	{
-		auto fake = new RawValueExpr(this->loc, fd->parentTypeForMethod->getPointerTo());
+		auto fake = util::pool<RawValueExpr>(this->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(cs->irb.AddressOf(cs->getMethodSelf(), true));
 
 		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake, 0));
@@ -231,13 +235,13 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	size_t numArgs = ft->getArgumentTypes().size();
 	if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
 	{
-		error(this, "Mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
+		error(this, "mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
 			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
 			numArgs == 1 ? "was" : "were");
 	}
 	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs)
 	{
-		error(this, "Need at least %zu arguments to call variadic function '%s', only have %zu",
+		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
 			numArgs, this->name, this->arguments.size());
 	}
 
@@ -284,7 +288,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type).value, type);
 
 		if(type != ret->getType())
-			error(args[0], "Mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
+			error(args[0], "mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
 
 		return CGResult(ret);
 	}
@@ -297,7 +301,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			auto clonef = cgn::glue::string::getCloneFunction(cs);
 			iceAssert(clonef);
 
-			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getInt64(0));
+			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getNative(0));
 			cs->addRefCountedValue(ret);
 
 			return CGResult(ret);
@@ -315,7 +319,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			iceAssert(args[1]->type->isIntegerType());
 
 			auto ptr = args[0]->codegen(cs).value;
-			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getInt64()).value, fir::Type::getInt64());
+			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 
 			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
 			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
@@ -347,7 +351,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentTypes().size())
 		{
-			error(this, "Mismatched number of arguments; expected %zu, but %zu were given",
+			error(this, "mismatched number of arguments; expected %zu, but %zu were given",
 				ft->getArgumentTypes().size(), this->arguments.size());
 		}
 	}

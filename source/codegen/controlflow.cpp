@@ -1,5 +1,5 @@
 // controlflow.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -43,7 +43,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(firstCond);
 
 	if(!firstCond->getType()->isBoolType())
-		error(this->cases.front().cond, "Non-boolean type '%s' cannot be used as a conditional", firstCond->getType());
+		error(this->cases.front().cond, "non-boolean type '%s' cannot be used as a conditional", firstCond->getType());
 
 
 	// do a comparison
@@ -86,7 +86,7 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			iceAssert(cond);
 
 			if(!cond->getType()->isBoolType())
-				error(elif.cond, "Non-boolean type '%s' cannot be used as a conditional", cond->getType());
+				error(elif.cond, "non-boolean type '%s' cannot be used as a conditional", cond->getType());
 
 			// ok
 			auto trueblk = cs->irb.addNewBlockAfter("trueCase-" + elif.body->loc.shortString(), cs->irb.getCurrentBlock());

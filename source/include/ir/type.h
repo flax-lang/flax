@@ -1,5 +1,5 @@
 // type.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -27,6 +27,7 @@ namespace fir
 	struct UnionType;
 	struct StructType;
 	struct StringType;
+	struct OpaqueType;
 	struct PointerType;
 	struct FunctionType;
 	struct RawUnionType;
@@ -47,6 +48,9 @@ namespace fir
 	int getCastDistance(Type* from, Type* to);
 	bool isRefCountedType(Type* ty);
 
+	void setNativeWordSizeInBits(size_t sz);
+	size_t getNativeWordSizeInBits();
+
 	enum class TypeKind
 	{
 		Invalid,
@@ -63,6 +67,7 @@ namespace fir
 		Union,
 		Struct,
 		String,
+		Opaque,
 		Pointer,
 		Function,
 		RawUnion,
@@ -114,6 +119,7 @@ namespace fir
 		RawUnionType* toRawUnionType();
 		FunctionType* toFunctionType();
 		PointerType* toPointerType();
+		OpaqueType* toOpaqueType();
 		StructType* toStructType();
 		StringType* toStringType();
 		RangeType* toRangeType();
@@ -141,6 +147,8 @@ namespace fir
 
 		bool isCharType();
 		bool isStringType();
+
+		bool isOpaqueType();
 
 		bool isAnyType();
 		bool isEnumType();
@@ -231,6 +239,11 @@ namespace fir
 		static RangeType* getRange();
 
 		static AnyType* getAny();
+
+		static PrimitiveType* getNativeWord();
+		static PrimitiveType* getNativeUWord();
+
+		static PointerType* getNativeWordPtr();
 
 
 		virtual ~Type() { }
@@ -503,7 +516,7 @@ namespace fir
 		// methods
 		size_t getElementCount();
 		Type* getElementN(size_t n);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -537,7 +550,7 @@ namespace fir
 
 		size_t getVariantCount();
 		size_t getIdOfVariant(const std::string& name);
-		util::hash_map<std::string, UnionVariantType*> getVariants();
+		const util::hash_map<std::string, UnionVariantType*>& getVariants();
 
 		bool hasVariant(const std::string& name);
 		UnionVariantType* getVariant(const std::string& name);
@@ -599,7 +612,7 @@ namespace fir
 
 		bool hasVariant(const std::string& name);
 		Type* getVariant(const std::string& name);
-		util::hash_map<std::string, Type*> getVariants();
+		const util::hash_map<std::string, Type*>& getVariants();
 
 		void setBody(const util::hash_map<std::string, Type*>& variants);
 
@@ -634,7 +647,7 @@ namespace fir
 		Type* getElement(const std::string& name);
 		bool hasElementWithName(const std::string& name);
 		size_t getElementIndex(const std::string& name);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
 
 		void setBody(const std::vector<std::pair<std::string, Type*>>& members);
 
@@ -680,13 +693,14 @@ namespace fir
 		Type* getElement(const std::string& name);
 		bool hasElementWithName(const std::string& name);
 		size_t getElementIndex(const std::string& name);
-		std::vector<Type*> getElements();
+		const std::vector<Type*>& getElements();
+		std::vector<Type*> getAllElementsIncludingBase();
 
-		std::vector<Function*> getMethods();
+		const std::vector<Function*>& getMethods();
 		std::vector<Function*> getMethodsWithName(std::string id);
 		Function* getMethodWithType(FunctionType* ftype);
 
-		std::vector<Function*> getInitialiserFunctions();
+		const std::vector<Function*>& getInitialiserFunctions();
 		void setInitialiserFunctions(const std::vector<Function*>& list);
 
 		Function* getInlineInitialiser();
@@ -905,7 +919,7 @@ namespace fir
 		friend struct Type;
 
 		// methods
-		std::vector<Type*> getArgumentTypes();
+		const std::vector<Type*>& getArgumentTypes();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
 
@@ -999,6 +1013,29 @@ namespace fir
 	};
 
 
+	struct OpaqueType : Type
+	{
+		friend struct Type;
+
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+
+		size_t getTypeSizeInBits() { return this->typeSizeInBits; }
+
+		// protected constructor
+		virtual ~OpaqueType() override { }
+		protected:
+		OpaqueType(const std::string& name, size_t sizeInBits);
+
+		std::string typeName;
+		size_t typeSizeInBits;
+
+		public:
+		static OpaqueType* get(const std::string& name, size_t sizeInBits);
+	};
 
 
 
@@ -1008,7 +1045,7 @@ namespace fir
 	struct LocatedType
 	{
 		LocatedType() { }
-		LocatedType(fir::Type* t) : type(t) { }
+		explicit LocatedType(fir::Type* t) : type(t) { }
 		LocatedType(fir::Type* t, const Location& l) : type(t), loc(l) { }
 
 		operator fir::Type* () const { return this->type; }

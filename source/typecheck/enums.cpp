@@ -1,5 +1,5 @@
 // enums.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -37,6 +37,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 	auto defn = util::pool<sst::EnumDefn>(this->loc);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
@@ -69,7 +71,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	fs->pushTree(defn->id.name);
 
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
-	else					defn->memberType = fir::Type::getInt64();
+	else					defn->memberType = fir::Type::getNativeWord();
 
 	auto ety = fir::EnumType::get(defn->id, defn->memberType);
 

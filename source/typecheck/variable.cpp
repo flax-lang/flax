@@ -1,5 +1,5 @@
 // variable.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -41,7 +41,7 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 			return TCResult(
 				SimpleError::make(ident->loc, "field '%s' is an instance member of type '%s', and cannot be accessed statically",
 					ident->name, fld->parentType->id.name)
-				->append(SimpleError::make(MsgType::Note, def->loc, "Field '%s' was defined here:", def->id.name))
+				->append(SimpleError::make(MsgType::Note, def->loc, "field '%s' was defined here:", def->id.name))
 			);
 		}
 	}
@@ -315,6 +315,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	iceAssert(defn);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(this->name, IdKind::Name);
 	defn->id.scope = fs->getCurrentScope();
 

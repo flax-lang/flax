@@ -1,20 +1,20 @@
-image: Visual Studio 2017
+image: Visual Studio 2019
 
 clone_folder: c:\projects\flax
 
 environment:
   global:
-    DEPS_DBG_INCLUDES_DIR:  c:\projects\lib\mpir\DebugNoSyms\include;c:\projects\lib\mpfr\DebugNoSyms\include;c:\projects\lib\llvm\DebugNoSyms\include
-    DEPS_REL_INCLUDES_DIR:  c:\projects\lib\mpir\Release\include;c:\projects\lib\mpfr\Release\include;c:\projects\lib\llvm\Release\include
-    DEPS_DBG_LIBS_DIR:      c:\projects\lib\mpir\DebugNoSyms\lib;c:\projects\lib\mpfr\DebugNoSyms\lib;c:\projects\lib\llvm\DebugNoSyms\lib
-    DEPS_REL_LIBS_DIR:      c:\projects\lib\mpir\Release\lib;c:\projects\lib\mpfr\Release\lib;c:\projects\lib\llvm\Release\lib
+    MPIR_ROOT_DIR:    c:\projects\lib\mpir
+    MPFR_ROOT_DIR:    c:\projects\lib\mpfr
+    LLVM_ROOT_DIR:    c:\projects\lib\llvm
+    LIBFFI_ROOT_DIR:  c:\projects\lib\libffi
 
 cache:
   - c:\projects\lib -> appveyor.yml
 
 install:
   # Set up the build environment
-  - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+  - cmd: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
   # download our deps.
   - ps: "[Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'"
   - ps: >-
@@ -22,12 +22,22 @@ install:
         Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'c:\projects\libs.zip'
         7z x -y -oc:\projects\lib c:\projects\libs.zip
       }
+  # Download ninja
+  - cmd: mkdir C:\ninja-build
+  - ps: (new-object net.webclient).DownloadFile('https://github.com/mesonbuild/cidata/raw/master/ninja.exe', 'C:\ninja-build\ninja.exe')
+  - cmd: set PYTHON_ROOT=C:\python37-x64
+  # Add neccessary paths to PATH variable
+  - cmd: set PATH=%cd%;C:\ninja-build;%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
+  # Install meson
+  - cmd: pip install meson
 
 build_script:
-  - ps: msbuild -maxcpucount -verbosity:minimal -nologo -p:Configuration=Release c:\projects\flax\flax.vcxproj
+  - ps: meson --buildtype=release build/meson-rel
+  - ps: ninja -C build/meson-rel
 
 test_script:
   - ps: cd c:\projects\flax
   - ps: New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
   - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
-  - ps: cmd /c build\sysroot\windows\Release\flaxc.exe -sysroot build\sysroot -run build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run build\tester.flx > output.txt
+  - ps: cat output.txt

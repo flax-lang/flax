@@ -1,5 +1,5 @@
 // platform.h
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 // platform-specific things
@@ -16,17 +16,12 @@ namespace platform
 
 
 	#ifdef _WIN32
-		#define WIN32_LEAN_AND_MEAN 1
-
-		#ifndef NOMINMAX
-			#define NOMINMAX
-		#endif
-
-		#include <windows.h>
-		using filehandle_t = HANDLE;
+		using filehandle_t = void*;
 
 		#define CRT_FDOPEN			"_fdopen"
 		#define PLATFORM_NEWLINE	"\r\n"
+
+		#define PLATFORM_EXPORT_FUNCTION    extern "C" __declspec(dllexport)
 	#else
 		#include <unistd.h>
 		#include <sys/stat.h>
@@ -35,6 +30,7 @@ namespace platform
 
 		#define CRT_FDOPEN			"fdopen"
 		#define PLATFORM_NEWLINE	"\n"
+		#define PLATFORM_EXPORT_FUNCTION    extern "C" __attribute__((visibility("default")))
 	#endif
 
 	extern filehandle_t InvalidFileHandle;
@@ -57,6 +53,24 @@ namespace platform
 	std::string getTemporaryFilename(const std::string& name);
 
 	size_t getTerminalWidth();
+
+	void performSelfDlOpen();
+	void performSelfDlClose();
+
+	void* getSymbol(const std::string& name);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -1,7 +1,8 @@
 // jit.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "errors.h"
 #include "backends/llvm.h"
 
 namespace backend
@@ -55,9 +56,18 @@ namespace backend
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
 	{
-		return llvm::cantFail(this->findSymbol(name).getAddress());
-	}
+		auto addr = this->findSymbol(name).getAddress();
+		if(!addr)
+		{
+			std::string err;
+			auto out = llvm::raw_string_ostream(err);
 
+			out << addr.takeError();
+			error("llvm: failed to find symbol '%s' (%s)", name, out.str());
+		}
+
+		return addr.get();
+	}
 }
 
 

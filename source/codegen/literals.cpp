@@ -1,5 +1,5 @@
 // literals.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -24,7 +24,7 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			return CGResult(fir::ConstantFP::get(this->type, this->num.toDouble()));
 
 		else
-			return CGResult(fir::ConstantInt::get(this->type, this->num.toLLong()));
+			return CGResult(fir::ConstantInt::get(this->type, this->type->isSignedIntType() ? this->num.toLLong() : this->num.toULLong()));
 	}
 }
 
@@ -37,17 +37,17 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		auto elmty = this->type->toArrayType()->getElementType();
 		if(fir::isRefCountedType(elmty))
-			error(this, "Cannot have refcounted type in array literal");
+			error(this, "cannot have refcounted type in array literal");
 
 		std::vector<fir::ConstantValue*> vals;
 		for(auto v : this->values)
 		{
 			auto cv = dcast(fir::ConstantValue, v->codegen(cs, elmty).value);
 			if(!cv)
-				error(v, "Constant value required in fixed array literal");
+				error(v, "constant value required in fixed array literal");
 
 			if(cv->getType() != elmty)
-				error(v, "Mismatched type for array literal; expected element type '%s', found '%s'", elmty, cv->getType());
+				error(v, "mismatched type for array literal; expected element type '%s', found '%s'", elmty, cv->getType());
 
 			vals.push_back(cv);
 		}
@@ -65,27 +65,21 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->values.empty())
 		{
 			// if our element type is void, and there is no infer... die.
-			if((elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
-				error(this, "Failed to infer type for empty array literal");
+			if(!infer || (elmty->isVoidType() && infer == 0) || (infer && infer->getArrayElementType()->isVoidType()))
+				error(this, "failed to infer type for empty array literal");
 
-			//! by right, if we have no values, then elmty is *supposed* to be void.
-			iceAssert(elmty->isVoidType() && infer);
-
+			auto z = fir::ConstantInt::getNative(0);
 			if(infer->isDynamicArrayType())
 			{
 				// ok.
 				elmty = infer->getArrayElementType();
-				// error(this, "elmty = %s", elmty);
 
-				auto z = fir::ConstantInt::getInt64(0);
-				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty), fir::ConstantValue::getZeroValue(elmty->getPointerTo()),
-					z, z));
+				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
 			}
 			else if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
-
-				auto z = fir::ConstantInt::getInt64(0);
 
 				//* note: it's clearly a null pointer, so it must be immutable.
 				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
@@ -93,7 +87,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else
 			{
-				error(this, "Incorrectly inferred type '%s' for empty array literal", infer);
+				error(this, "incorrectly inferred type '%s' for empty array literal", infer);
 			}
 		}
 
@@ -109,7 +103,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier("__init_array_" + std::to_string(_id - 1), IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(util::obfuscateIdentifier("init_array", _id - 1),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -126,7 +120,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 				if(vl->getType() != elmty)
 				{
-					error(v, "Mismatched type for array literal; expected element type '%s', found '%s'",
+					error(v, "mismatched type for array literal; expected element type '%s', found '%s'",
 						elmty, vl->getType());
 				}
 
@@ -158,9 +152,9 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
 
 			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
-			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getInt64(this->values.size()));
-			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getInt64(-1));
-			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
+			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
+			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
 
 			return CGResult(aa);
 		}
@@ -171,7 +165,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
 
 			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));
-			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getInt64(this->values.size()));
+			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getNative(this->values.size()));
 
 			return CGResult(aa);
 		}
@@ -206,7 +200,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(vr->getType() != ty)
 		{
-			error(this->values[i], "Mismatched types in tuple element %zu; expected type '%s', found type '%s'",
+			error(this->values[i], "mismatched types in tuple element %zu; expected type '%s', found type '%s'",
 				i, ty, vr->getType());
 		}
 
@@ -253,13 +247,21 @@ CGResult sst::LiteralBool::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	return CGResult(fir::ConstantBool::get(this->value));
 }
 
+CGResult sst::LiteralChar::_codegen(cgn::CodegenState* cs, fir::Type* infer)
+{
+	cs->pushLoc(this);
+	defer(cs->popLoc());
+
+	return CGResult(fir::ConstantInt::getInt8((int8_t) this->value));
+}
+
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
 	// allow automatic coercion of string literals into i8*
-	if(this->isCString || (infer && infer == fir::Type::getInt8Ptr()))
+	if(this->isCString || infer == fir::Type::getInt8Ptr())
 	{
 		// good old i8*
 		fir::Value* stringVal = cs->module->createGlobalString(this->str);
@@ -268,7 +270,7 @@ CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		auto str = cs->module->createGlobalString(this->str);
-		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getInt64(this->str.length()));
+		auto slc = fir::ConstantArraySlice::get(fir::Type::getCharSlice(false), str, fir::ConstantInt::getNative(this->str.length()));
 
 		return CGResult(slc);
 	}

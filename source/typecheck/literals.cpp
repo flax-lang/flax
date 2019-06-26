@@ -1,5 +1,5 @@
 // literals.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -22,7 +22,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
 	bool sgn = mpfr::signbit(number);
-	bool flt = !mpfr::isint(number);
+	bool flt = ((this->num.find(".") != std::string::npos) || !mpfr::isint(number));
 
 	size_t bits = 0;
 	if(flt)
@@ -50,10 +50,12 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			bits = sizeof(uintmax_t) * CHAR_BIT;
 
 		else    // lmao
-			bits = SIZE_MAX;
+			bits = sizeof(uintmax_t) * CHAR_BIT;
 	}
 
-	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer : fir::ConstantNumberType::get(sgn, flt, bits));
+	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer
+		: fir::ConstantNumberType::get(sgn, flt, bits));
+
 	ret->num = number;
 
 	return TCResult(ret);
@@ -74,6 +76,17 @@ TCResult ast::LitBool::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	auto ret = util::pool<sst::LiteralBool>(this->loc, fir::Type::getBool());
+	ret->value = this->value;
+
+	return TCResult(ret);
+}
+
+TCResult ast::LitChar::typecheck(sst::TypecheckState* fs, fir::Type* infer)
+{
+	fs->pushLoc(this);
+	defer(fs->popLoc());
+
+	auto ret = util::pool<sst::LiteralChar>(this->loc, fir::Type::getInt8());
 	ret->value = this->value;
 
 	return TCResult(ret);

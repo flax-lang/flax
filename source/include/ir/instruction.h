@@ -1,5 +1,5 @@
 // instruction.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -101,8 +101,6 @@ namespace fir
 		Value_CallFunctionPointer,
 		Value_CallVirtualMethod,
 		Value_Return,
-		Value_PointerAddition,
-		Value_PointerSubtraction,
 		Value_GetPointerToStructMember,		// equivalent to GEP(ptr*, ptrIndex, memberIndex) -- for structs.
 		Value_GetStructMember,				// equivalent to GEP(ptr*, 0, memberIndex)
 		Value_GetPointer,					// equivalent to GEP(ptr*, index)

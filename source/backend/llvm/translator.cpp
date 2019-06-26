@@ -1,5 +1,5 @@
 // Translator.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -68,6 +68,11 @@ namespace backend
 		return str;
 	}
 
+	static llvm::Type* getNativeWordTy()
+	{
+		auto& gc = LLVMBackend::getLLVMContext();
+		return llvm::IntegerType::getIntNTy(gc, (unsigned int) fir::getNativeWordSizeInBits());
+	}
 
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
 	{
@@ -129,21 +134,9 @@ namespace backend
 			// to allow recursion, declare the type first.
 			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
-			std::vector<llvm::Type*> lmems;
-
-			std::function<void (fir::ClassType*, std::vector<llvm::Type*>*)> addMembers
-				= [&addMembers, &mod](fir::ClassType* cls, std::vector<llvm::Type*>* mems) -> auto {
-
-				if(!cls)
-					return;
-
-				addMembers(cls->getBaseClass(), mems);
-
-				for(auto f : cls->getElements())
-					mems->push_back(typeToLlvm(f, mod));
-			};
-
-			addMembers(ct, &lmems);
+			std::vector<llvm::Type*> lmems = util::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
+				return typeToLlvm(t, mod);
+			});
 
 			// insert the vtable at the front.
 			lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));
@@ -199,18 +192,17 @@ namespace backend
 			std::vector<llvm::Type*> mems(4);
 
 			mems[SAA_DATA_INDEX]        = typeToLlvm(llat->getElementType()->getPointerTo(), mod);
-			mems[SAA_LENGTH_INDEX]      = llvm::IntegerType::getInt64Ty(gc);
-			mems[SAA_CAPACITY_INDEX]    = llvm::IntegerType::getInt64Ty(gc);
-			mems[SAA_REFCOUNTPTR_INDEX] = llvm::IntegerType::getInt64PtrTy(gc);
+			mems[SAA_LENGTH_INDEX]      = getNativeWordTy();
+			mems[SAA_CAPACITY_INDEX]    = getNativeWordTy();
+			mems[SAA_REFCOUNTPTR_INDEX] = getNativeWordTy()->getPointerTo();
 
 			return llvm::StructType::get(gc, mems, false);
 		}
 		else if(type->isStringType())
 		{
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
-			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 
-			auto id = Identifier("__string", IdKind::Type);
+			auto id = util::obfuscateIdentifier("string", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -218,9 +210,9 @@ namespace backend
 			std::vector<llvm::Type*> mems(4);
 
 			mems[SAA_DATA_INDEX]        = i8ptrtype;
-			mems[SAA_LENGTH_INDEX]      = i64type;
-			mems[SAA_CAPACITY_INDEX]    = i64type;
-			mems[SAA_REFCOUNTPTR_INDEX] = i64type->getPointerTo();
+			mems[SAA_LENGTH_INDEX]      = getNativeWordTy();
+			mems[SAA_CAPACITY_INDEX]    = getNativeWordTy();
+			mems[SAA_REFCOUNTPTR_INDEX] = getNativeWordTy()->getPointerTo();
 
 			auto str = llvm::StructType::create(gc, id.mangled());
 			str->setBody(mems);
@@ -233,7 +225,7 @@ namespace backend
 			std::vector<llvm::Type*> mems(2);
 
 			mems[SLICE_DATA_INDEX]          = typeToLlvm(slct->getElementType()->getPointerTo(), mod);
-			mems[SLICE_LENGTH_INDEX]        = llvm::IntegerType::getInt64Ty(gc);
+			mems[SLICE_LENGTH_INDEX]        = getNativeWordTy();
 
 			return llvm::StructType::get(gc, mems, false);
 		}
@@ -243,38 +235,35 @@ namespace backend
 		}
 		else if(type->isRangeType())
 		{
-			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
-
-			auto id = Identifier("__range", IdKind::Type);
+			auto id = util::obfuscateIdentifier("range", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
 			auto str = llvm::StructType::create(gc, id.mangled());
-			str->setBody({ i64type, i64type, i64type });
+			str->setBody({ getNativeWordTy(), getNativeWordTy(), getNativeWordTy() });
 
 			return createdTypes[id] = str;
 		}
 		else if(type->isEnumType())
 		{
 			std::vector<llvm::Type*> mems;
-			mems.push_back(llvm::IntegerType::getInt64Ty(gc));
+			mems.push_back(getNativeWordTy());
 			mems.push_back(typeToLlvm(type->toEnumType()->getCaseType(), mod));
 
 			return llvm::StructType::get(gc, mems, false);
 		}
 		else if(type->isAnyType())
 		{
-			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
 
-			auto id = Identifier("__any", IdKind::Type);
+			auto id = util::obfuscateIdentifier("any", IdKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
 			auto str = llvm::StructType::create(gc, id.mangled());
 
 			// typeid (+ highest-bit-mask), refcount, data.
-			str->setBody({ i64type, i64type->getPointerTo(), arrtype });
+			str->setBody({ getNativeWordTy(), getNativeWordTy()->getPointerTo(), arrtype });
 
 			return createdTypes[id] = str;
 		}
@@ -285,8 +274,6 @@ namespace backend
 			if(createdTypes.find(ut->getTypeName()) != createdTypes.end())
 				return createdTypes[ut->getTypeName()];
 
-
-			llvm::Type* i64type = llvm::Type::getInt64Ty(gc);
 			auto dl = llvm::DataLayout(mod);
 
 			size_t maxSz = 0;
@@ -299,12 +286,12 @@ namespace backend
 			if(maxSz > 0)
 			{
 				createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
-					i64type, llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
+					getNativeWordTy(), llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
 				}, ut->getTypeName().mangled());
 			}
 			else
 			{
-				createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, { i64type }, ut->getTypeName().mangled());
+				createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, { getNativeWordTy() }, ut->getTypeName().mangled());
 			}
 
 			return createdTypes[ut->getTypeName()];
@@ -324,19 +311,18 @@ namespace backend
 
 			iceAssert(maxSz > 0);
 			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
-				// llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), maxSz)
-				llvm::IntegerType::getIntNTy(gc, maxSz * CHAR_BIT)
+				llvm::IntegerType::getIntNTy(gc, (unsigned int) (maxSz * CHAR_BIT))
 			}, ut->getTypeName().mangled());
 
 			return createdTypes[ut->getTypeName()];
 		}
 		else if(type->isPolyPlaceholderType())
 		{
-			error("llvm: Unfulfilled polymorphic placeholder type '%s'", type);
+			error("llvm: unfulfilled polymorphic placeholder type '%s'", type);
 		}
 		else
 		{
-			error("llvm: Unimplememented type '%s' for LLVM backend", type);
+			error("llvm: unimplememented type '%s' for LLVM backend", type);
 		}
 	}
 
@@ -376,15 +362,8 @@ namespace backend
 
 		size_t i = 0;
 		for(auto it = func->arg_begin(); it != func->arg_end(); it++, i++)
-		{
 			valueMap[ffn->getArguments()[i]->id] = it;
 
-			// fprintf(stderr, "adding func arg %zu\n", ffn->getArguments()[i]->id);
-		}
-
-		// sort the blocklist first
-		std::sort(ffn->getBlockList().begin(), ffn->getBlockList().end(), [](fir::IRBlock* a, fir::IRBlock* b) -> bool {
-			return a->id < b->id; });
 
 		for(auto b : ffn->getBlockList())
 		{
@@ -434,8 +413,6 @@ namespace backend
 		}
 		else if(auto ca = dcast(fir::ConstantArray, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const array");
-
 			auto arrt = llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod));
 
 			std::vector<llvm::Constant*> vals;
@@ -458,8 +435,6 @@ namespace backend
 		}
 		else if(auto ct = dcast(fir::ConstantTuple, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const tuple");
-
 			std::vector<llvm::Constant*> vals;
 			vals.reserve(ct->getValues().size());
 
@@ -478,7 +453,6 @@ namespace backend
 		}
 		else if(auto cs = dcast(fir::ConstantString, c))
 		{
-			// auto p = prof::Profile(PROFGROUP_LLVM, "const string");
 			size_t origLen = cs->getValue().length();
 			std::string str = cs->getValue();
 
@@ -486,23 +460,14 @@ namespace backend
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(cs->id));
 
-			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0);
+			auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
 			std::vector<llvm::Constant*> indices = { zconst, zconst };
 			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
 
-			//! ACHTUNG !
-			//????? WTF IS THIS???
-			// seems like a relic from when we were doing the refcount-behind-string-data thing
-			// surprised we never hit a bug due to this, but i'm 99.99999% sure this is wrong.
-			/*
-				auto eightconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 8);
-				gepd = llvm::ConstantExpr::getInBoundsGetElementPtr(gepd->getType()->getPointerElementType(), gepd, eightconst);
-			*/
-
-			auto len = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), origLen);
+			auto len = llvm::ConstantInt::get(getNativeWordTy(), origLen);
 
 			iceAssert(gepd->getType() == llvm::Type::getInt8PtrTy(LLVMBackend::getLLVMContext()));
-			iceAssert(len->getType() == llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()));
+			iceAssert(len->getType() == getNativeWordTy());
 
 			std::vector<llvm::Constant*> mems = { gepd, len };
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(fir::Type::getCharSlice(false), mod)), mems);
@@ -537,12 +502,12 @@ namespace backend
 				llvm::GlobalVariable* tmpglob = new llvm::GlobalVariable(*mod, constArray->getType(), false,
 					llvm::GlobalValue::LinkageTypes::InternalLinkage, constArray, "_FV_ARR_" + std::to_string(cda->id));
 
-				auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0);
+				auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
 				std::vector<llvm::Constant*> indices = { zconst, zconst };
 				llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(tmpglob->getType()->getPointerElementType(), tmpglob, indices);
 
-				auto flen = fir::ConstantInt::getInt64(cda->getArray()->getType()->toArrayType()->getArraySize());
-				auto fcap = fir::ConstantInt::getInt64(-1);
+				auto flen = fir::ConstantInt::getNative(cda->getArray()->getType()->toArrayType()->getArraySize());
+				auto fcap = fir::ConstantInt::getNative(-1);
 				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod), zconst };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
@@ -551,7 +516,7 @@ namespace backend
 			else
 			{
 				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), valueMap, mod), constToLlvm(cda->getLength(), valueMap, mod),
-					constToLlvm(cda->getCapacity(), valueMap, mod), llvm::ConstantInt::get(llvm::Type::getInt64Ty(LLVMBackend::getLLVMContext()), 0) };
+					constToLlvm(cda->getCapacity(), valueMap, mod), llvm::ConstantInt::get(getNativeWordTy(), 0) };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
 				return cachedConstants[c] = ret;
@@ -563,7 +528,7 @@ namespace backend
 		}
 		else if(dcast(fir::ConstantStruct, c))
 		{
-			_error_and_exit("notsup const struct");
+			_error_and_exit("notsup const struct\n");
 		}
 		else if(auto it = valueMap.find(c->id); it != valueMap.end() && llvm::isa<llvm::Constant>(it->second))
 		{
@@ -583,7 +548,6 @@ namespace backend
 	llvm::Module* LLVMBackend::translateFIRtoLLVM(fir::Module* firmod)
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-		// fprintf(stderr, "\n%s\n", firmod->print().c_str());
 
 		llvm::Module* module = new llvm::Module(firmod->getModuleName(), LLVMBackend::getLLVMContext());
 		llvm::IRBuilder<> builder(gc);
@@ -679,7 +643,7 @@ namespace backend
 			llvm::Constant* gv = new llvm::GlobalVariable(*module, cstr->getType(), true,
 				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, id);
 
-			auto zconst = llvm::ConstantInt::get(llvm::Type::getInt64Ty(gc), 0);
+			auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
 
 			std::vector<llvm::Constant*> ix { zconst, zconst };
 			gv = llvm::ConstantExpr::getInBoundsGetElementPtr(gv->getType()->getPointerElementType(), gv, ix);
@@ -721,27 +685,27 @@ namespace backend
 			if(intr.first.str() == "memcpy")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction("llvm.memcpy.p0i8.p0i8.i64", ft);
+					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction(strprintf("llvm.memcpy.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
 			}
 			else if(intr.first.str() == "memmove")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction("llvm.memmove.p0i8.p0i8.i64", ft);
+					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction(strprintf("llvm.memmove.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8Ty(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction("llvm.memset.p0i8.i64", ft);
+					llvm::Type::getInt8Ty(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
+				fn = module->getOrInsertFunction(strprintf("llvm.memset.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
 			}
 			else if(intr.first.str() == "memcmp")
 			{
 				// in line with the rest, take 4 arguments. (this is our own "intrinsic")
 
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(gc), { llvm::Type::getInt8PtrTy(gc),
-					llvm::Type::getInt8PtrTy(gc), llvm::Type::getInt64Ty(gc), llvm::Type::getInt1Ty(gc) }, false);
+					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
 
 				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.memcmp", module);
 				llvm::Function* func = llvm::cast<llvm::Function>(fn);
@@ -789,7 +753,7 @@ namespace backend
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
 					auto zeroconst8 = llvm::ConstantInt::get(gc, llvm::APInt(8, 0, true));
 
-					llvm::Value* ctr = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					llvm::Value* ctr = builder.CreateAlloca(getNativeWordTy());
 					builder.CreateStore(zeroconst, ctr);
 
 					llvm::BasicBlock* loopcond = llvm::BasicBlock::Create(gc, "loopcond", func);
@@ -830,7 +794,7 @@ namespace backend
 			}
 			else if(intr.first.name == "roundup_pow2")
 			{
-				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getInt64Ty(gc), { llvm::Type::getInt64Ty(gc) }, false);
+				llvm::FunctionType* ft = llvm::FunctionType::get(getNativeWordTy(), { getNativeWordTy() }, false);
 				fn = llvm::Function::Create(ft, llvm::GlobalValue::LinkageTypes::InternalLinkage, "fir.intrinsic.roundup_pow2", module);
 
 				llvm::Function* func = llvm::cast<llvm::Function>(fn);
@@ -859,8 +823,8 @@ namespace backend
 						return ret;
 					*/
 
-					llvm::Value* num = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
-					llvm::Value* retval = builder.CreateAlloca(llvm::Type::getInt64Ty(gc));
+					llvm::Value* num = builder.CreateAlloca(getNativeWordTy());
+					llvm::Value* retval = builder.CreateAlloca(getNativeWordTy());
 
 					auto oneconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 1, true));
 					auto zeroconst = llvm::ConstantInt::get(gc, llvm::APInt(64, 0, true));
@@ -1411,8 +1375,8 @@ namespace backend
 							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
 							else	r2 = builder.CreateICmpULE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(gc), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(gc), false);
+							r1 = builder.CreateIntCast(r1, getNativeWordTy(), false);
+							r2 = builder.CreateIntCast(r2, getNativeWordTy(), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1429,8 +1393,8 @@ namespace backend
 							llvm::Value* r1 = builder.CreateFCmpOGE(a, b);
 							llvm::Value* r2 = builder.CreateFCmpOLE(a, b);
 
-							r1 = builder.CreateIntCast(r1, llvm::Type::getInt64Ty(gc), false);
-							r2 = builder.CreateIntCast(r2, llvm::Type::getInt64Ty(gc), false);
+							r1 = builder.CreateIntCast(r1, getNativeWordTy(), false);
+							r2 = builder.CreateIntCast(r2, getNativeWordTy(), false);
 
 							llvm::Value* ret = builder.CreateSub(r1, r2);
 							addValueToMap(ret, inst->realOutput);
@@ -1553,19 +1517,6 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_StackAlloc:
-						{
-							iceAssert(inst->operands.size() == 1);
-							fir::Type* ft = inst->operands[0]->getType();
-							llvm::Type* t = typeToLlvm(ft, module);
-
-							llvm::Value* ret = builder.CreateAlloca(t);
-							builder.CreateStore(llvm::Constant::getNullValue(t), ret);
-
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
 						case fir::OpKind::Value_CreatePHI:
 						{
 							iceAssert(inst->operands.size() == 1);
@@ -1636,7 +1587,7 @@ namespace backend
 
 						case fir::OpKind::Value_CallVirtualMethod:
 						{
-							// args are: 0. class, 1. index, 2. functiontype, 3...N args
+							// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
 							auto clsty = inst->operands[0]->getType()->toClassType();
 							iceAssert(clsty);
 
@@ -1870,7 +1821,7 @@ namespace backend
 							iceAssert(t);
 
 							llvm::Value* gep = builder.CreateConstGEP1_64(llvm::ConstantPointerNull::get(t->getPointerTo()), 1);
-							gep = builder.CreatePtrToInt(gep, llvm::Type::getInt64Ty(gc));
+							gep = builder.CreatePtrToInt(gep, getNativeWordTy());
 
 							addValueToMap(gep, inst->realOutput);
 							break;
@@ -1894,38 +1845,6 @@ namespace backend
 							addValueToMap(ret, inst->realOutput);
 							break;
 						}
-
-						case fir::OpKind::Value_PointerAddition:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(b->getType()->isIntegerTy());
-
-							llvm::Value* ret = builder.CreateInBoundsGEP(a, b);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::Value_PointerSubtraction:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isPointerTy());
-							iceAssert(b->getType()->isIntegerTy());
-
-							llvm::Value* negb = builder.CreateNeg(b);
-							llvm::Value* ret = builder.CreateInBoundsGEP(a, negb);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
 
 
 
@@ -2283,7 +2202,7 @@ namespace backend
 
 
 
-
+						case fir::OpKind::Value_StackAlloc:
 						case fir::OpKind::Value_CreateLVal:
 						{
 							iceAssert(inst->operands.size() == 1);

@@ -1,5 +1,5 @@
 // Function.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ir/module.h"
@@ -23,7 +23,7 @@ namespace fir
 	Value* Argument::getActualValue()
 	{
 		if(this->realValue) return this->realValue;
-		error("Calling getActualValue() when not in function! (no real value)");
+		error("calling getActualValue() when not in function! (no real value)");
 	}
 
 	Function* Argument::getParentFunction()
@@ -89,7 +89,7 @@ namespace fir
 				return a;
 		}
 
-		error("No argument named '%s' in function '%s'", name, this->getName().name);
+		error("no argument named '%s' in function '%s'", name, this->getName().name);
 	}
 
 	bool Function::isCStyleVarArg()
@@ -113,6 +113,25 @@ namespace fir
 		this->blocks.clear();
 	}
 
+	bool Function::isIntrinsicFunction()
+	{
+		return this->fnIsIntrinsicFunction;
+	}
+
+	void Function::setIsIntrinsic()
+	{
+		this->fnIsIntrinsicFunction = true;
+	}
+
+	void Function::addStackAllocation(Type* ty)
+	{
+		this->stackAllocs.push_back(ty);
+	}
+
+	std::vector<Type*> Function::getStackAllocations()
+	{
+		return this->stackAllocs;
+	}
 
 
 	void Function::cullUnusedValues()
@@ -168,7 +187,7 @@ namespace fir
 	FunctionType* Function::getType()
 	{
 		FunctionType* ft = dcast(FunctionType, this->valueType);
-		iceAssert(ft && "Function is impostor (not valid function type)");
+		iceAssert(ft && "function is impostor (not valid function type)");
 
 		return ft;
 	}

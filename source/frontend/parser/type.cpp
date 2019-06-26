@@ -1,5 +1,5 @@
 // type.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -129,7 +129,7 @@ namespace parser
 		StructDefn* defn = util::pool<StructDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_struct_%zu", anon_counter++);
+			defn->name = util::obfuscateName("anon_struct", anon_counter++);
 		}
 		else
 		{
@@ -243,7 +243,7 @@ namespace parser
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = strprintf("__anon_union_%zu", anon_counter++);
+			defn->name = util::obfuscateName("anon_union", anon_counter++);
 		}
 		else
 		{
@@ -709,6 +709,7 @@ namespace parser
 	PolyArgMapping_t parsePAMs(State& st, bool* failed)
 	{
 		iceAssert(st.front() == TT::Exclamation && st.lookahead(1) == TT::LAngle);
+		auto openLoc = st.loc();
 
 		st.pop();
 		st.pop();
@@ -718,7 +719,7 @@ namespace parser
 		{
 			//* foo!<> is an error regardless of whether we're doing expression parsing or call parsing.
 			if(st.front() == TT::RAngle)
-				error(st.loc(), "at least one type argument is required between angle brackets <>");
+				error(Location::unionOf(openLoc, st.loc()), "type parameter list cannot be empty");
 
 			// step 2A: start parsing.
 			size_t idx = 0;

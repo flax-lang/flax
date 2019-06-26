@@ -1,5 +1,5 @@
 // UnionType.cpp
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
@@ -79,7 +79,7 @@ namespace fir
 			error("no variant with name '%s'", name);
 	}
 
-	util::hash_map<std::string, UnionVariantType*> UnionType::getVariants()
+	const util::hash_map<std::string, UnionVariantType*>& UnionType::getVariants()
 	{
 		return this->variants;
 	}

@@ -3,7 +3,7 @@
 Note: this is just a personal log of outstanding issues, shorter rants/ramblings, and a changelog that doesn't need me to scroll through git.
 
 
-### FEATURES TO IMPLEMENT
+## FEATURES TO IMPLEMENT
 
 1. Number literals still suck
 
@@ -42,49 +42,21 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 -----
 
 
-### THINGS TO FIX
+## THINGS TO FIX
 
 2. There are still some instances where we explicitly 'initialise' a class equivalent to `memset(0)` -- see *THINGS TO NOTE* below.
-
-
------
-
-
-### POLYMORPHIC PIPELINE DOCUMENTATION
-
-So, this thing serves as the shitty documentation for how the generic pipeline works for future implementations.
-
-1. When AST nodes are typechecked at the top level, if they are polymorphic things they will refuse to be checked,
-	and won't return a result (`ast::Block` does the same check), but instead add themselves to a list of pending,
-	uninstantiated generic types in the `sst::StateTree`.
-
-2. When resolving a reference (function call or identifier), we check the pending generic list if we can't find any
-	normal things that match (or if we already have some explicit mappings). If there is a match, we call into
-	`attemptToDisambiguateGenericReference()` with whatever information we have (eg. partial solutions)
-
-3. We call `inferTypesForGenericEntity` which is the main solver function that infers types for the type arguments
-	that are missing. This just acts like a black box for the most part.
-
-4. If we find that we're actually a reference to a function (ie. we act like a function pointer instead of a call) then
-	we do a thing called `fillGenericTypeWithPlaceholders` which puts in fake 'solutions' for each type argument (aka
-	`fir::PolyPlaceholderType`), and proceeds to return it.
-
-5. We will then allow that to typecheck. For now, only functions can have placeholder types, so we special-case that in
-	function typechecking by just skipping the body typecheck when we have placeholders.
-
-6. Once we manage to solve everything -- ie. get rid of all the placeholder types, we need to re-typecheck the original definition
-	with proper filled in types. This happens in `resolveFunctionCall`.
-
 
 
 
 ------
 
 
-### THINGS TO INVESTIGATE
+## THINGS TO INVESTIGATE
+
+* ### Possibly allow struct-constructors to init transparent fields
 
 
-0. Errors need to propagate better
+* ### Errors need to propagate better
 	Right now with the newly-implemented `PrettyError` system, we can propagate a lot more information upwards, and with the new thing of throwing an
 	error when we unwrap a `TCResult`, there's less need to be explicit when handling errors during typechecking.
 
@@ -111,7 +83,7 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 
 
 
-1. Certain cases we still allow a zeroinitialised class to exist:
+* ### Certain cases we still allow a zeroinitialised class to exist:
 	A. When growing a dynamic array, the new elements are zeroinitialised instead of having a value set (for non-class types, they get their default value)
 	B. When initialising a field in a struct, if not explicitly assigned to it is left as it is -- which should be the zeroinitialiser
 	C. When initialising a field in a class without an inline initialiser, we explicitly set it to 0.
@@ -126,11 +98,11 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	`var foo: SomeStruct` without an initialiser...
 
 
-3. Foreach loops where you take more than one thing at a time, like this, maybe:
+* ### Foreach loops where you take more than one thing at a time, like this, maybe:
 	`for [ first, middle, last, ... ] in list { ... }`
 
 
-4. Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
+* ### Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
 	then have the compiler enforce that your variable is immutable after that point, eg:
 
 	```
@@ -146,7 +118,7 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	```
 
 
-5. Type inference for single-expr functions? It's a little weird to have two arrows like this:
+* ### Type inference for single-expr functions? It's a little weird to have two arrows like this:
 	`fn foo(a: T) -> T => a * a`
 
 	The type inference would require some re-working though, because to generate the declaration of the function we need the return type, but to
@@ -159,7 +131,8 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	It's not really a high-priority thing anyway.
 
 
-6. wrt. optional arguments, you *must* refer to it by name to specify a value. For example:
+* ### wrt. optional arguments
+	you *must* refer to it by name to specify a value. For example:
 
 	`fn foo(a: int, b: int = 3) => ...`
 
@@ -177,21 +150,21 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 	```
 
 
-8. https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
+* https://proandroiddev.com/understanding-generics-and-variance-in-kotlin-714c14564c47
 	https://en.wikipedia.org/wiki/Covariance_and_contravariance_(computer_science)
 
 
 
-10. Arguments-after-varargs (see https://youtu.be/mGe5d6dPHAU?t=1379)
+* Arguments-after-varargs (see https://youtu.be/mGe5d6dPHAU?t=1379)
 	Basically, allow passing named parameters after var-args.
 
 
-11. Optimisation: use interned strings for comparison (and for use as keys in all the hashmaps we have), hopefully allowing a large-ish speedup since
+* Optimisation: use interned strings for comparison (and for use as keys in all the hashmaps we have), hopefully allowing a large-ish speedup since
 	(according to historical profiles) `std::string`-related things are the cause of a lot of slowdowns.
 
 
 
-12. Right now we design the `any` type to not handle refcounted types at all -- meaning it doesn't touch the refcount of those, and thus
+* Right now we design the `any` type to not handle refcounted types at all -- meaning it doesn't touch the refcount of those, and thus
 	the `any` can outlive the referred-to value.
 
 	To change this, `any` itself would need to be refcounted, but then we'd need to be able to check whether something was refcounted
@@ -201,7 +174,7 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 
 
 
-13. A similar issue with refcounting for casting, though i'm not entirely sure if this is a real issue or just something that i'm imagining.
+* A similar issue with refcounting for casting, though i'm not entirely sure if this is a real issue or just something that i'm imagining.
 
 	So, when we assign something `x = y`, then it is necessary that the types of `x` and `y` are the same. Then, if the type in question is a
 	reference counted type, we do some `autoAssignRefCountedValue()`, that does separate things for lvalues and rvalues. If the right-hand side
@@ -236,6 +209,33 @@ So, this thing serves as the shitty documentation for how the generic pipeline w
 -----
 
 
+
+
+
+## POLYMORPHIC PIPELINE DOCUMENTATION
+
+So, this thing serves as the shitty documentation for how the generic pipeline works for future implementations.
+
+1. When AST nodes are typechecked at the top level, if they are polymorphic things they will refuse to be checked,
+	and won't return a result (`ast::Block` does the same check), but instead add themselves to a list of pending,
+	uninstantiated generic types in the `sst::StateTree`.
+
+2. When resolving a reference (function call or identifier), we check the pending generic list if we can't find any
+	normal things that match (or if we already have some explicit mappings). If there is a match, we call into
+	`attemptToDisambiguateGenericReference()` with whatever information we have (eg. partial solutions)
+
+3. We call `inferTypesForGenericEntity` which is the main solver function that infers types for the type arguments
+	that are missing. This just acts like a black box for the most part.
+
+4. If we find that we're actually a reference to a function (ie. we act like a function pointer instead of a call) then
+	we do a thing called `fillGenericTypeWithPlaceholders` which puts in fake 'solutions' for each type argument (aka
+	`fir::PolyPlaceholderType`), and proceeds to return it.
+
+5. We will then allow that to typecheck. For now, only functions can have placeholder types, so we special-case that in
+	function typechecking by just skipping the body typecheck when we have placeholders.
+
+6. Once we manage to solve everything -- ie. get rid of all the placeholder types, we need to re-typecheck the original definition
+	with proper filled in types. This happens in `resolveFunctionCall`.
 
 
 

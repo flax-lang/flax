@@ -1,5 +1,5 @@
 // literal.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
@@ -32,7 +32,7 @@ namespace parser
 		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
-	static std::string parseHexEscapes(const Location& loc, std::string_view sv, size_t* ofs)
+	static std::string parseHexEscapes(const Location& loc, util::string_view sv, size_t* ofs)
 	{
 		if(sv[0] == 'x')
 		{
@@ -44,7 +44,7 @@ namespace parser
 
 			// ok then.
 			char s[2] = { sv[1], sv[2] };
-			char val = std::stol(s, /* pos: */ 0, /* base: */ 16);
+			char val = (char) std::stol(s, /* pos: */ 0, /* base: */ 16);
 
 			*ofs = 3;
 			return std::string(&val, 1);
@@ -92,6 +92,7 @@ namespace parser
 		else
 		{
 			iceAssert("wtf yo" && 0);
+			return "";
 		}
 	}
 
@@ -116,7 +117,7 @@ namespace parser
 					case 'x':   // fallthrough
 					case 'u': {
 						size_t ofs = 0;
-						ss << parseHexEscapes(loc, std::string_view(str.c_str() + i, str.size() - i), &ofs);
+						ss << parseHexEscapes(loc, util::string_view(str.c_str() + i, str.size() - i), &ofs);
 						i += ofs - 1;
 						break;
 					}

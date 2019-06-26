@@ -1,5 +1,5 @@
 // ast.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -123,12 +123,13 @@ namespace ast
 
 		Location closingBrace;
 
+		bool doNotPushNewScope = false;
+
 		bool isArrow = false;
 		bool isFunctionBody = false;
 		std::vector<Stmt*> statements;
 		std::vector<Stmt*> deferredStatements;
 	};
-
 
 
 
@@ -201,6 +202,7 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
+		bool isIntrinsic = false;
 
 		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;
@@ -257,6 +259,43 @@ namespace ast
 		Expr* initialiser = 0;
 		DecompMapping bindings;
 	};
+
+
+	struct PlatformDefn : Stmt
+	{
+		PlatformDefn(const Location& l) : Stmt(l) { this->readableName = "platform-specific definition"; }
+		~PlatformDefn() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		enum class Type
+		{
+			Invalid,
+			Intrinsic,
+			IntegerType
+		};
+
+		Type defnType = Type::Invalid;
+
+		// only valid if defnType == Intrinsic
+		ForeignFuncDefn* intrinsicDefn = 0;
+
+		// only valid if defnType == IntegerType
+		std::string typeName;
+		size_t typeSizeInBits = 0;
+	};
+
+
+
+
+
+
+
+
+
+
+
+
 
 	struct IfStmt : Stmt
 	{
@@ -699,6 +738,16 @@ namespace ast
 		std::string num;
 	};
 
+	struct LitChar : Expr
+	{
+		LitChar(const Location& l, uint32_t val) : Expr(l), value(val) { this->readableName = "character literal"; }
+		~LitChar() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		uint32_t value = false;
+	};
+
 	struct LitBool : Expr
 	{
 		LitBool(const Location& l, bool val) : Expr(l), value(val) { this->readableName = "boolean literal"; }
@@ -749,6 +798,32 @@ namespace ast
 		pts::Type* explicitType = 0;
 		std::vector<Expr*> values;
 	};
+
+
+
+	struct RunDirective : Expr
+	{
+		RunDirective(const Location& l) : Expr(l) { this->readableName = "#run directive"; }
+		~RunDirective() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		// note: these two are mutually exclusive!
+		Block* block = 0;
+		Expr* insideExpr = 0;
+	};
+
+	struct IfDirective : Stmt
+	{
+		IfDirective(const Location& l) : Stmt(l) { this->readableName = "#if directive"; }
+		~IfDirective() { }
+
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
+
+		std::vector<IfStmt::Case> cases;
+		Block* elseCase = 0;
+	};
+
 
 
 	struct TopLevelBlock : Stmt

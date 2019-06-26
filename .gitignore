@@ -51,6 +51,9 @@ build/standalone
 *.ll
 *.bc
 
+build/plots.txt
+build/massive.flx
+
 *.ir
 shakefile.hi
 shakefile
@@ -65,6 +68,7 @@ bug-repro
 
 .vscode
 *.vcxproj.filters
+*.vcxproj.user
 
 countloc.bat
 
@@ -72,7 +76,7 @@ prof.svg
 prof_with_square.svg
 build/cmake-output
 .idea
-CMakeLists.txt
+# CMakeLists.txt
 
 source_old
 

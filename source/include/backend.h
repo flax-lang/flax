@@ -1,5 +1,5 @@
 // backend.h
-// Copyright (c) 2014 - 2016, zhiayang@gmail.com
+// Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -59,6 +59,7 @@ namespace backend
 
 		None,
 		LLVM,
+		Interpreter,
 		Assembly_x64,
 	};
 

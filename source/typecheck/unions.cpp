@@ -1,5 +1,5 @@
 // unions.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -30,6 +30,8 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	sst::TypeDefn* defn = 0;
 	if(this->israw) defn = util::pool<sst::RawUnionDefn>(this->loc);
 	else            defn = util::pool<sst::UnionDefn>(this->loc);
+
+	defn->bareName = this->name;
 
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
@@ -124,7 +126,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			size_t tfn = 0;
 			for(auto [ loc, pty ] : this->transparentFields)
 			{
-				auto sfd = make_field(strprintf("__transparent_field_%zu", tfn++), loc, pty);
+				auto sfd = make_field(util::obfuscateName("transparent_field", tfn++), loc, pty);
 				iceAssert(sfd);
 
 				sfd->isTransparentField = true;

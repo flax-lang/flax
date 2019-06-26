@@ -1,0 +1,51 @@
+// ultratiny.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+export ultratiny
+
+import libc
+import std::math
+
+
+var value = 401.0
+
+#if value > 30.0
+{
+	#run {
+		value = 30
+		libc::printf("true case\n")
+	}
+}
+else
+{
+	#run libc::printf("false case\n")
+}
+
+#run {
+	value = math::sqrt(value)
+}
+
+@entry fn main()
+{
+	let k = 30
+	let x = #run math::sqrt(value)
+	libc::printf("sqrt(%.1f) = %.3f\n", value, x)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

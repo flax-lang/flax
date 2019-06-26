@@ -1,5 +1,5 @@
 // classes.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -32,6 +32,8 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
 	auto defn = util::pool<sst::ClassDefn>(this->loc);
+	defn->bareName = this->name;
+
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
@@ -220,7 +222,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 									err->append(
 										SimpleError::make(MsgType::Note, bf->loc,
 											"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
-												BareError::make(MsgType::Note, "To override it, define '%s' as a virtual method", bf->id.name)
+												BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name)
 										)
 									);
 								}
@@ -278,7 +280,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 				for(auto sub : from->subtrees)
 				{
 					if(to->subtrees.find(sub.first) == to->subtrees.end())
-						to->subtrees[sub.first] = new sst::StateTree(sub.first, sub.second->topLevelFilename, to);
+						to->subtrees[sub.first] = util::pool<sst::StateTree>(sub.first, sub.second->topLevelFilename, to);
 
 					recursivelyImport(sub.second, to->subtrees[sub.first]);
 				}

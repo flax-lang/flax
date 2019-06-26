@@ -1,4 +1,4 @@
-#include "process.h"
+#include "tinyprocess.h"
 #include <windows.h>
 #include <cstring>
 #include <TlHelp32.h>

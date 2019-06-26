@@ -1,44 +1,151 @@
-project('flax', ['c', 'cpp'])
+project('flax', version: '0.40.0-pre')
+
+add_languages(['c', 'cpp'])
+
 
 the_compiler = meson.get_compiler('c')
 
-# buildKind = get_option('buildtype')
-# message('build type is ' + buildKind)
-
-if get_option('buildtype') == 'debug'
-	libKind = 'Debug'
-else
-	libKind = 'Release'
-endif
-
-mpir_root_dir = 'D:/Projects/lib/mpir'
-mpfr_root_dir = 'D:/Projects/lib/mpfr'
-llvm_root_dir = 'D:/Projects/lib/llvm/7.0.1/'
-
-mpir_hdr_dir = mpir_root_dir + '/' + libKind + '/include/'
-mpfr_hdr_dir = mpfr_root_dir + '/' + libKind + '/include/'
-llvm_hdr_dir = llvm_root_dir + '/' + libKind + '/include/'
-
-mpir_lib_dir = mpir_root_dir + '/' + libKind + '/lib/'
-mpfr_lib_dir = mpfr_root_dir + '/' + libKind + '/lib/'
-llvm_lib_dir = llvm_root_dir + '/' + libKind + '/lib/'
 
 if the_compiler.get_id() == 'msvc'
+	add_project_arguments('/utf-8', language: 'cpp')
 	add_project_arguments('/std:c++17', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
+	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
  	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
+	add_project_link_arguments('/ignore:4099', language: ['c', 'cpp'])
 	add_project_link_arguments('/machine:X64', language: 'cpp')
 	add_project_link_arguments('/incremental', language: 'cpp')
 	add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
-else
-	# add_project_arguments('--std=c++17', language: 'cpp')
-	# add_project_arguments('--std=c11', language: 'c')
 
-	error('You fool, use the makefile for non-windows builds')
+	if get_option('buildtype') == 'debug'
+		libKind = 'Debug'
+	else
+		libKind = 'Release'
+	endif
+
+	# ok, so because meson is dumb, and we want to allow configuring the locations *without* editing this file
+	# eg. in CI environments, we run an external command that's just an echo of the environment variable, and
+	# capture the output to use. all because it's apparently "a bad idea" to allow people to read env vars...
+
+	envname_mpir    = '%MPIR_ROOT_DIR%'
+	envname_mpfr    = '%MPFR_ROOT_DIR%'
+	envname_llvm    = '%LLVM_ROOT_DIR%'
+	envname_libffi  = '%LIBFFI_ROOT_DIR%'
+
+	llvm_version   = '7.1.0'
+
+	mpir_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpir).stdout().strip()
+	if mpir_root_dir == envname_mpir
+		mpir_root_dir = 'D:/Projects/lib/mpir'
+	endif
+
+	mpfr_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpfr).stdout().strip()
+	if mpfr_root_dir == envname_mpfr
+		mpfr_root_dir = 'D:/Projects/lib/mpfr'
+	endif
+
+	llvm_root_dir = run_command('cmd.exe', '/C', 'echo', envname_llvm).stdout().strip()
+	if llvm_root_dir == envname_llvm
+		llvm_root_dir = 'D:/Projects/lib/llvm/' + llvm_version
+	endif
+
+	libffi_root_dir = run_command('cmd.exe', '/C', 'echo', envname_libffi).stdout().strip()
+	if libffi_root_dir == envname_libffi
+		libffi_root_dir = 'D:/Projects/lib/libffi'
+	endif
+
+	message('mpir_root: ' + mpir_root_dir)
+	message('mpfr_root: ' + mpfr_root_dir)
+	message('llvm_root: ' + llvm_root_dir)
+	message('libffi_root: ' + libffi_root_dir)
+
+	mpir_hdr_dir    = mpir_root_dir   + '/' + libKind + '/include/'
+	mpfr_hdr_dir    = mpfr_root_dir   + '/' + libKind + '/include/'
+	llvm_hdr_dir    = llvm_root_dir   + '/' + libKind + '/include/'
+	libffi_hdr_dir  = libffi_root_dir + '/' + libKind + '/include/'
+
+	mpir_lib_dir    = mpir_root_dir   + '/' + libKind + '/lib/'
+	mpfr_lib_dir    = mpfr_root_dir   + '/' + libKind + '/lib/'
+	llvm_lib_dir    = llvm_root_dir   + '/' + libKind + '/lib/'
+	libffi_lib_dir  = libffi_root_dir + '/' + libKind + '/lib/'
+
+	legacy_stdio_dep = declare_dependency(dependencies: the_compiler.find_library('legacy_stdio_definitions'))
+
+	mpir_dep = declare_dependency(version: '3.0.0', include_directories: include_directories(mpir_hdr_dir),
+		dependencies: the_compiler.find_library('mpir', dirs: mpir_lib_dir))
+
+	mpfr_dep = declare_dependency(version: '4.0.0', include_directories: include_directories(mpfr_hdr_dir),
+		dependencies: the_compiler.find_library('mpfr', dirs: mpfr_lib_dir))
+
+	libffi_dep = declare_dependency(version: '3.2.1', include_directories: include_directories(libffi_hdr_dir),
+		dependencies: the_compiler.find_library('libffi', dirs: libffi_lib_dir))
+
+	llvm_dep = declare_dependency(version: llvm_version, include_directories: include_directories(llvm_hdr_dir),
+		dependencies: [ mpfr_dep, mpir_dep,
+			the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMAsmPrinter', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
+		]
+	)
+
+	all_deps = [ legacy_stdio_dep, mpir_dep, mpfr_dep, libffi_dep, llvm_dep ]
+else
+	add_project_arguments('-std=c11', language: 'c')
+	add_project_arguments('-std=c++17', language: 'cpp')
+	add_project_arguments('-include', 'source/include/precompile.h', language: 'cpp')
+
+	add_project_arguments('-Wall', '-Wno-unused-parameter', '-Wno-sign-conversion', '-Wno-padded', '-Wno-conversion',
+		'-Wno-shadow', '-Wno-missing-noreturn', '-Wno-unused-macros', '-Wno-switch-enum', '-Wno-deprecated', '-Wno-format-nonliteral',
+		'-Wno-trigraphs', '-Wno-unused-const-variable', '-Wno-deprecated-declarations', '-Wno-unused-lambda-capture',
+		'-Wno-unused-variable',
+		language:'cpp')
+
+	# on unix, we use GMP instead of MPIR.
+	mpfr_dep = dependency('mpfr', version: '>= 4.0.0')
+	libffi_dep = dependency('libffi', version: '>= 3.2.1')
+	llvm_dep = dependency('llvm', static: true, version: '7.0.1', modules: [
+		'core', 'engine', 'native', 'linker', 'bitwriter',
+		'lto', 'vectorize', 'all-targets', 'object', 'orcjit'
+	])
+
+	all_deps = [ mpfr_dep, libffi_dep, llvm_dep ]
 endif
 
 
@@ -77,6 +184,9 @@ source_files = files([
 	'source/backend/llvm/linker.cpp',
 	'source/backend/llvm/translator.cpp',
 
+	'source/backend/interp/driver.cpp',
+
+	'source/typecheck/misc.cpp',
 	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',
 	'source/typecheck/using.cpp',
@@ -100,6 +210,7 @@ source_files = files([
 	'source/typecheck/subscript.cpp',
 	'source/typecheck/operators.cpp',
 	'source/typecheck/arithmetic.cpp',
+	'source/typecheck/directives.cpp',
 	'source/typecheck/destructure.cpp',
 	'source/typecheck/controlflow.cpp',
 	'source/typecheck/typecheckstate.cpp',
@@ -136,6 +247,7 @@ source_files = files([
 	'source/codegen/operators.cpp',
 	'source/codegen/subscript.cpp',
 	'source/codegen/arithmetic.cpp',
+	'source/codegen/directives.cpp',
 	'source/codegen/destructure.cpp',
 	'source/codegen/refcounting.cpp',
 	'source/codegen/controlflow.cpp',
@@ -148,6 +260,10 @@ source_files = files([
 	'source/codegen/glue/arrays.cpp',
 	'source/codegen/glue/strings.cpp',
 	'source/codegen/glue/saa_common.cpp',
+
+	'source/fir/interp/wrappers.cpp',
+	'source/fir/interp/compiler.cpp',
+	'source/fir/interp/interpreter.cpp',
 
 	'source/fir/ConstantValue.cpp',
 	'source/fir/GlobalValue.cpp',
@@ -165,6 +281,7 @@ source_files = files([
 	'source/fir/Types/RawUnionType.cpp',
 	'source/fir/Types/PointerType.cpp',
 	'source/fir/Types/SingleTypes.cpp',
+	'source/fir/Types/OpaqueType.cpp',
 	'source/fir/Types/StructType.cpp',
 	'source/fir/Types/ArrayType.cpp',
 	'source/fir/Types/ClassType.cpp',
@@ -189,7 +306,6 @@ utf8rewind_dep = declare_dependency(include_directories: include_directories('ex
 			]
 )
 
-
 tinyproclib_dep = declare_dependency(include_directories: include_directories('external/tinyprocesslib'),
 	sources: [
 				'external/tinyprocesslib/process.cpp',
@@ -199,69 +315,15 @@ tinyproclib_dep = declare_dependency(include_directories: include_directories('e
 
 
 
-mpir_dep = declare_dependency(version: '3.0.0', include_directories: include_directories(mpir_hdr_dir),
-	dependencies: the_compiler.find_library('mpir', dirs: mpir_lib_dir))
-
-mpfr_dep = declare_dependency(version: '4.0.0', include_directories: include_directories(mpfr_hdr_dir),
-	dependencies: the_compiler.find_library('mpfr', dirs: mpfr_lib_dir))
-
-llvm_dep = declare_dependency(version: '7.0.1', include_directories: include_directories(llvm_hdr_dir),
-	dependencies: [ mpfr_dep, mpir_dep,
-		# the_compiler.find_library('LLVM_all', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMAsmPrinter', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInterpreter', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDlltoolDriver', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMDebugInfoDWARF', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
-		# the_compiler.find_library('LLVMInstrumentation', dirs: llvm_lib_dir),
-		the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
-	]
-)
-
-
-include_dirs = include_directories([ 'source/include', 'external', mpir_hdr_dir, mpfr_hdr_dir, llvm_hdr_dir ])
-
 executable('flaxc', source_files,
-	include_directories: include_dirs,
-	dependencies: [ llvm_dep, tinyproclib_dep, utf8rewind_dep, mpfr_dep, mpir_dep ]
+	include_directories: include_directories([ 'source/include', 'external' ]),
+	dependencies: all_deps + [ tinyproclib_dep, utf8rewind_dep ]
 )
 
-	# cpp_pch: [ 'source/include/precompile.h', 'source/include/precompile.cpp' ]
+
+
+
+
 
 
 

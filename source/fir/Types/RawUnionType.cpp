@@ -1,5 +1,5 @@
 // RawUnionType.cpp
-// Copyright (c) 2019, zhiayang@gmail.com
+// Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
@@ -22,7 +22,7 @@ namespace fir
 	RawUnionType* RawUnionType::create(const Identifier& name, const util::hash_map<std::string, Type*>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
-			error("Union with name '%s' already exists", name.str());
+			error("union with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new RawUnionType(name, mems));
@@ -71,7 +71,7 @@ namespace fir
 		return this->variants.size();
 	}
 
-	util::hash_map<std::string, Type*> RawUnionType::getVariants()
+	const util::hash_map<std::string, Type*>& RawUnionType::getVariants()
 	{
 		return this->variants;
 	}

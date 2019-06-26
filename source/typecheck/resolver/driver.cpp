@@ -1,5 +1,5 @@
 // call.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -56,7 +56,7 @@ namespace resolver
 		{
 			// unify the handling of generic and non-generic stuff.
 			// if we provided mappings, don't bother searching normal functions.
-			if(gmaps.empty())
+			// if(gmaps.empty())
 			{
 				auto defs = tree->getDefinitionsWithName(name);
 				for(auto d : defs)
@@ -116,7 +116,7 @@ namespace resolver
 		{
 			if(!didGeneric)
 			{
-				errs = SimpleError::make(fs->loc(), "no such function named '%s'", name);
+				errs = SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name);
 			}
 
 			return TCResult(errs);
@@ -141,7 +141,7 @@ namespace resolver
 			{
 				return TCResult(
 					SimpleError::make(fs->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type)->append(SimpleError::make(def->loc, "Previously defined here:"))
+						name, def->type)->append(SimpleError::make(def->loc, "previously defined here:"))
 				);
 			}
 		}
@@ -205,17 +205,38 @@ namespace resolver
 		}
 		else if(auto str = dcast(StructDefn, typedf))
 		{
-			std::set<std::string> fieldNames;
+			std::vector<std::string> fieldNames;
+
 			for(auto f : str->fields)
-				fieldNames.insert(f->id.name);
+				fieldNames.push_back(f->id.name);
 
-			auto err = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
+			auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->id.name, fieldNames, arguments);
 
-			if(err.second != nullptr)
-				return TCResult(err.second);
+			if(err != nullptr)
+			{
+				return TCResult(err);
+			}
+			else
+			{
+				auto seencopy = seen;
+				std::vector<FnParam> target = util::filterMap(str->fields, [&seencopy](sst::StructFieldDefn* f) -> bool {
+					return seencopy.find(f->id.name) != seencopy.end();
+				}, [](sst::StructFieldDefn* f) -> FnParam {
+					return FnParam(f->loc, f->id.name, f->type);
+				});
 
-			// in actual fact we just return the thing here. sigh.
-			return TCResult(str);
+				ErrorMsg* _err = 0;
+				auto args = resolver::misc::canonicaliseCallArguments(fs->loc(), target, arguments, &_err);
+				if(_err != 0) return TCResult(_err);
+
+				auto [ soln, err ] = poly::solveTypeList(util::map(target, [](const FnParam& f) -> fir::LocatedType {
+					return fir::LocatedType(f.type, f.loc);
+				}), args, poly::Solution_t(), /* isFnCall: */ true);
+
+				// in actual fact we just return the thing here. sigh.
+				if(err != nullptr)  return TCResult(err);
+				else                return TCResult(str);
+			}
 		}
 		else if(auto uvd = dcast(sst::UnionVariantDefn, typedf))
 		{
@@ -232,11 +253,17 @@ namespace resolver
 
 			return ret;
 		}
+		else if(auto rud = dcast(sst::RawUnionDefn, typedf))
+		{
+			return TCResult(SimpleError::make(fs->loc(), "constructors are not defined for raw unions")
+				->append(SimpleError::make(MsgType::Note, rud->loc, "type was defined here:"))
+			);
+		}
 		else
 		{
 			return TCResult(
 				SimpleError::make(fs->loc(), "unsupported constructor call on type '%s'", typedf->id.name)
-			    ->append(SimpleError::make(typedf->loc, "type was defined here:"))
+			    ->append(SimpleError::make(MsgType::Note, typedf->loc, "type was defined here:"))
 			);
 		}
 	}
@@ -292,10 +319,10 @@ namespace resolver
 							error(arguments[0].loc, "first argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
 								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
 						}
-						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getInt64()) < 0)
+						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getNativeWord()) < 0)
 						{
 							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								(fir::Type*) fir::Type::getInt64(), t2);
+								(fir::Type*) fir::Type::getNativeWord(), t2);
 						}
 						else
 						{

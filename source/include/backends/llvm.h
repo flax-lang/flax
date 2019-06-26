@@ -1,5 +1,5 @@
 // llvm.h
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -99,7 +99,6 @@ namespace backend
 
 		private:
 		void setupTargetMachine();
-		void finaliseGlobalConstructors();
 		EntryPoint_t getEntryFunctionFromJIT();
 		llvm::SmallVector<char, 0> initialiseLLVMStuff();
 

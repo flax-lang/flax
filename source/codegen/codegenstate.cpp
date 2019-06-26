@@ -1,10 +1,11 @@
 // codegenstate.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "errors.h"
 #include "codegen.h"
 #include "platform.h"
+#include "gluecode.h"
 #include "typecheck.h"
 
 namespace cgn
@@ -70,7 +71,7 @@ namespace cgn
 	void CodegenState::leaveFunction()
 	{
 		if(this->functionStack.empty())
-			error(this->loc(), "Not a in function");
+			error(this->loc(), "not a in function");
 
 		this->functionStack.pop_back();
 	}
@@ -78,7 +79,7 @@ namespace cgn
 	fir::Function* CodegenState::getCurrentFunction()
 	{
 		if(this->functionStack.empty())
-			error(this->loc(), "Not a in function");
+			error(this->loc(), "not a in function");
 
 		return this->functionStack.back();
 	}
@@ -127,11 +128,14 @@ namespace cgn
 
 
 
-
+	void CodegenState::pushLoc(const Location& l)
+	{
+		this->locationStack.push_back(l);
+	}
 
 	void CodegenState::pushLoc(sst::Stmt* stmt)
 	{
-		this->locationStack.push_back(stmt->loc);
+		this->pushLoc(stmt->loc);
 	}
 
 	void CodegenState::popLoc()
@@ -180,9 +184,9 @@ namespace cgn
 
 			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantString::get("")),
 				fir::Type::getMutInt8Ptr()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
 
 			ret = arr;
 		}
@@ -191,9 +195,9 @@ namespace cgn
 			fir::Value* arr = this->irb.CreateValue(type);
 
 			arr = this->irb.SetSAAData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getInt64(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
+			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
 
 			ret = arr;
 		}
@@ -201,7 +205,7 @@ namespace cgn
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 			arr = this->irb.SetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
-			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getInt64(0));
+			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getNative(0));
 
 			ret = arr;
 		}
@@ -228,8 +232,8 @@ namespace cgn
 
 			if(ifn == 0)
 			{
-				SimpleError::make(this->loc(), "Class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
-					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "Class '%s' was defined here:", clsdef->id.name))
+				SimpleError::make(this->loc(), "class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
+					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "class '%s' was defined here:", clsdef->id.name))
 					->postAndQuit();
 			}
 
@@ -275,7 +279,7 @@ namespace cgn
 		if(name == ALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == FREE_MEMORY_FUNC)
 		{
@@ -285,7 +289,8 @@ namespace cgn
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
 			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt64() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()),
+					fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{
@@ -310,7 +315,7 @@ namespace cgn
 		else if(name == "strlen")
 		{
 			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getInt64()), fir::LinkageType::External);
+				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::External);
 		}
 		else if(name == "fprintf")
 		{
@@ -338,7 +343,7 @@ namespace cgn
 		}
 		else if(storage->getType()->getPointerElementType() != value->getType())
 		{
-			error(this->loc(), "Cannot store value of type '%s' into storage of type '%s'", value->getType(),
+			error(this->loc(), "cannot store value of type '%s' into storage of type '%s'", value->getType(),
 				storage->getType());
 		}
 
@@ -353,7 +358,7 @@ namespace cgn
 
 		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(Identifier("__global_init_function__", IdKind::Name),
+			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);

@@ -1,5 +1,5 @@
 // arithmetic.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -32,7 +32,7 @@ namespace sst
 
 				if(!res)
 				{
-					error(this, "Case type of '%s' is '%s', cannot cast to type '%s'", vt, vt->toEnumType()->getCaseType(), target);
+					error(this, "case type of '%s' is '%s', cannot cast to type '%s'", vt, vt->toEnumType()->getCaseType(), target);
 				}
 
 				return CGResult(res);
@@ -56,7 +56,7 @@ namespace sst
 					fir::IRBlock* invalid = cs->irb.addNewBlockInFunction("invalid", cs->irb.getCurrentFunction());
 					fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", cs->irb.getCurrentFunction());
 
-					auto targetId = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+					auto targetId = fir::ConstantInt::getNative(target->toUnionVariantType()->getVariantId());
 					auto variantId = cs->irb.GetUnionVariantID(value);
 
 					auto valid = cs->irb.ICmpEQ(targetId, variantId);
@@ -84,7 +84,7 @@ namespace sst
 
 				if(!res)
 				{
-					error(this, "No appropriate cast from type '%s' to '%s'",
+					error(this, "no appropriate cast from type '%s' to '%s'",
 						vt, target);
 				}
 
@@ -100,22 +100,22 @@ namespace sst
 			{
 				// get the type out.
 				auto res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value),
-					cs->irb.BitwiseNOT(fir::ConstantInt::getUint64(BUILTIN_ANY_FLAG_MASK)));
+					cs->irb.BitwiseNOT(fir::ConstantInt::getUNative(BUILTIN_ANY_FLAG_MASK)));
 
-				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
+				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUNative(target->getID())));
 			}
 			else if(value->getType()->isUnionType() && target->isUnionVariantType())
 			{
 				// it's slightly more complicated.
 				auto vid1 = cs->irb.GetUnionVariantID(value);
-				auto vid2 = fir::ConstantInt::getInt64(target->toUnionVariantType()->getVariantId());
+				auto vid2 = fir::ConstantInt::getNative(target->toUnionVariantType()->getVariantId());
 
 				return CGResult(cs->irb.ICmpEQ(vid1, vid2));
 			}
 			else
 			{
-				auto res = fir::ConstantInt::getUint64(value->getType()->getID());
-				return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUint64(target->getID())));
+				auto res = fir::ConstantInt::getUNative(value->getType()->getID());
+				return CGResult(cs->irb.ICmpEQ(res, fir::ConstantInt::getUNative(target->getID())));
 			}
 		}
 
@@ -145,17 +145,17 @@ namespace sst
 			if(lv->getType() != func->getArguments()[0]->getType())
 			{
 				SpanError::make(SimpleError::make(this->left->loc,
-					"Mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					"mismatched types for left side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
 					this->op, func->getArguments()[0]->getType(), lv->getType())
-				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 				->postAndQuit();
 			}
 			else if(rv->getType() != func->getArguments()[1]->getType())
 			{
 				SpanError::make(SimpleError::make(this->right->loc,
-					"Mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
+					"mismatched types for right side of overloaded binary operator '%s'; expected '%s', found '%s' instead",
 					this->op, func->getArguments()[1]->getType(), rv->getType())
-				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				)->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 				->postAndQuit();
 			}
 
@@ -190,9 +190,9 @@ namespace sst
 
 			if(val->getType() != func->getArguments()[0]->getType())
 			{
-				SpanError::make(SimpleError::make(this->expr->loc, "Mismatched types for overloaded unary operator '%s'; expected '%s', found '%s' instead",
-					this->op, func->getArguments()[0]->getType(), val->getType()))
-					->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "Operator was overloaded here:"))
+				SpanError::make(SimpleError::make(this->expr->loc, "mismatched types for overloaded unary operator '%s'; "
+					"expected '%s', found '%s' instead", this->op, func->getArguments()[0]->getType(), val->getType()))
+					->append(SimpleError::make(MsgType::Note, this->overloadedOpFunction->loc, "operator was overloaded here:"))
 					->postAndQuit();
 			}
 
@@ -242,10 +242,10 @@ namespace sst
 		else if(this->op == Operator::AddressOf)
 		{
 			if(!val->islorclvalue())
-				error(this, "Cannot take address of a non-lvalue");
+				error(this, "cannot take address of a non-lvalue");
 
 			else if(val->getType()->isFunctionType())
-				error(this, "Cannot take the address of a function; use it as a value type");
+				error(this, "cannot take the address of a function; use it as a value type");
 
 			return CGResult(cs->irb.AddressOf(val, false));
 		}
@@ -275,7 +275,7 @@ namespace cgn
 	{
 		auto unsupportedError = [loc, op](const Location& al, fir::Type* a, const Location& bl, fir::Type* b) {
 
-			SpanError::make(SimpleError::make(loc, "Unsupported operator '%s' between types '%s' and '%s'", op, a, b))
+			SpanError::make(SimpleError::make(loc, "unsupported operator '%s' between types '%s' and '%s'", op, a, b))
 				->add(util::ESpan(al, strprintf("type '%s'", a)))
 				->add(util::ESpan(bl, strprintf("type '%s'", b)))
 				->postAndQuit();
@@ -355,7 +355,7 @@ namespace cgn
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
 				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
-				fir::Value* zero = fir::ConstantInt::getInt64(0);
+				fir::Value* zero = fir::ConstantInt::getNative(0);
 
 				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
@@ -386,7 +386,7 @@ namespace cgn
 				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt, 0);
 				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
 
-				fir::Value* zero = fir::ConstantInt::getInt64(0);
+				fir::Value* zero = fir::ConstantInt::getNative(0);
 
 				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
 				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
@@ -399,7 +399,7 @@ namespace cgn
 			}
 			else
 			{
-				error("Unsupported comparison between types '%s' and '%s'", lt, rt);
+				error("unsupported comparison between types '%s' and '%s'", lt, rt);
 			}
 		}
 		else
@@ -414,12 +414,12 @@ namespace cgn
 				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
 			{
 				auto ofsv = (lt->isPointerType() ? rv : lv);
-				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getInt64());
+				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getNativeWord());
 
 				iceAssert(ofs->getType()->isIntegerType());
 
 				auto ptr = (lt->isPointerType() ? lv : rv);
-				ptr = this->irb.PointerAdd(ptr, ofs);
+				ptr = this->irb.GetPointer(ptr, ofs);
 
 				return CGResult(ptr);
 			}

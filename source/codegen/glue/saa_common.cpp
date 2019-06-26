@@ -1,11 +1,12 @@
 // saa_common.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
+#include "frontend.h"
 
 // namespace cgn::glue::saa_common
 namespace cgn {
@@ -15,7 +16,7 @@ namespace saa_common
 	static inline bool isSAA(fir::Type* t) { return t->isStringType() || t->isDynamicArrayType(); }
 	static inline fir::Type* getSAAElm(fir::Type* t) { iceAssert(isSAA(t)); return (t->isStringType() ? fir::Type::getInt8() : t->getArrayElementType()); }
 	static inline fir::Type* getSAASlice(fir::Type* t, bool mut = true) { iceAssert(isSAA(t)); return fir::ArraySliceType::get(getSAAElm(t), mut); }
-	static inline fir::ConstantInt* getCI(int64_t i) { return fir::ConstantInt::getInt64(i); }
+	static inline fir::ConstantInt* getCI(int64_t i) { return fir::ConstantInt::getNative(i); }
 
 	static fir::Value* castRawBufToElmPtr(CodegenState* cs, fir::Type* saa, fir::Value* buf)
 	{
@@ -32,15 +33,15 @@ namespace saa_common
 	{
 		iceAssert(fir::isRefCountedType(elm));
 
-		auto fname = "__loop_incr_rc_" + elm->str();
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = misc::getLoopIncrRefcount_FName(elm);
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ elm->getPointerTo(), fir::Type::getInt64() }, fir::Type::getVoid()), fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ elm->getPointerTo(), fir::Type::getNativeWord() }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -51,10 +52,8 @@ namespace saa_common
 			fir::IRBlock* body = cs->irb.addNewBlockInFunction("loopBody", func);
 			fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", func);
 
-			fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getInt64());
+			fir::Value* ctrPtr = cs->irb.StackAlloc(fir::Type::getNativeWord());
 
-			// already set to 0 internally
-			// cs->irb.WritePtr(fir::ConstantInt::getInt64(0), ctrPtr);
 
 			fir::Value* s2ptr = func->getArguments()[0];
 			fir::Value* s2len = func->getArguments()[1];
@@ -72,12 +71,12 @@ namespace saa_common
 			cs->irb.setCurrentBlock(body);
 			{
 				// increment refcount
-				fir::Value* val = cs->irb.ReadPtr(cs->irb.PointerAdd(s2ptr, cs->irb.ReadPtr(ctrPtr)));
+				fir::Value* val = cs->irb.ReadPtr(cs->irb.GetPointer(s2ptr, cs->irb.ReadPtr(ctrPtr)));
 
 				cs->incrementRefCount(val);
 
 				// increment counter
-				cs->irb.WritePtr(cs->irb.Add(fir::ConstantInt::getInt64(1), cs->irb.ReadPtr(ctrPtr)), ctrPtr);
+				cs->irb.WritePtr(cs->irb.Add(fir::ConstantInt::getNative(1), cs->irb.ReadPtr(ctrPtr)), ctrPtr);
 				cs->irb.UnCondBranch(cond);
 			}
 
@@ -98,10 +97,10 @@ namespace saa_common
 		iceAssert(rc->getType()->isIntegerType() && "not integer type");
 
 		auto rcp = cs->irb.Call(cs->getOrDeclareLibCFunction(ALLOCATE_MEMORY_FUNC), getCI(REFCOUNT_SIZE));
-		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getMutInt64Ptr());
+		rcp = cs->irb.PointerTypeCast(rcp, fir::Type::getNativeWordPtr()->getMutablePointerVersion());
 
 		cs->irb.WritePtr(rc, rcp);
-		return cs->irb.PointerTypeCast(rcp, fir::Type::getInt64Ptr());
+		return cs->irb.PointerTypeCast(rcp, fir::Type::getNativeWordPtr());
 	}
 
 	fir::Value* initSAAWithRefCount(CodegenState* cs, fir::Value* saa, fir::Value* rc)
@@ -137,7 +136,7 @@ namespace saa_common
 		fir::IRBlock* loopbody = cs->irb.addNewBlockInFunction("loopbody", curfunc);
 		fir::IRBlock* merge = cs->irb.addNewBlockInFunction("merge", curfunc);
 
-		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getInt64());
+		fir::Value* counter = cs->irb.StackAlloc(fir::Type::getNativeWord());
 		cs->irb.WritePtr(startIndex, counter);
 
 		cs->irb.UnCondBranch(loopcond);
@@ -150,20 +149,20 @@ namespace saa_common
 		cs->irb.setCurrentBlock(loopbody);
 		{
 			// make clone
-			fir::Value* origElm = cs->irb.PointerAdd(ptr, cs->irb.ReadPtr(counter));
+			fir::Value* origElm = cs->irb.GetPointer(ptr, cs->irb.ReadPtr(counter));
 			fir::Value* clone = 0;
 
 			//* note: the '0' argument specifies the offset to clone from -- since want the whole thing, the offset is 0.
 			auto elm = cs->irb.ReadPtr(origElm);
 
-			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getInt64(0));
+			clone = cs->irb.Call(fn, isSAA(elm->getType()) ? cs->irb.CreateSliceFromSAA(elm, false) : elm, fir::ConstantInt::getNative(0));
 
 			// store clone
-			fir::Value* newElm = cs->irb.PointerAdd(newptr, cs->irb.ReadPtr(counter));
+			fir::Value* newElm = cs->irb.GetPointer(newptr, cs->irb.ReadPtr(counter));
 			cs->irb.WritePtr(clone, newElm);
 
 			// increment counter
-			cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(counter), fir::ConstantInt::getInt64(1)), counter);
+			cs->irb.WritePtr(cs->irb.Add(cs->irb.ReadPtr(counter), fir::ConstantInt::getNative(1)), counter);
 			cs->irb.UnCondBranch(loopcond);
 		}
 
@@ -177,7 +176,7 @@ namespace saa_common
 		{
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.GetPointer(oldptr,
 				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 
 			#if DEBUG_ARRAY_ALLOCATION | DEBUG_STRING_ALLOCATION
@@ -223,7 +222,7 @@ namespace saa_common
 
 			fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 
-			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.PointerAdd(oldptr,
+			cs->irb.Call(memcpyf, { newptr, cs->irb.PointerTypeCast(cs->irb.GetPointer(oldptr,
 				startIndex), fir::Type::getMutInt8Ptr()), bytecount, fir::ConstantBool::get(false) });
 		}
 		else
@@ -239,7 +238,7 @@ namespace saa_common
 
 	fir::Function* generateCloneFunction(CodegenState* cs, fir::Type* _saa)
 	{
-		auto fname = "__clone_" + _saa->str();
+		auto fname = misc::getClone_FName(_saa);
 
 		iceAssert(isSAA(_saa) || _saa->isArraySliceType());
 		auto slicetype = (isSAA(_saa) ? getSAASlice(_saa, false) : fir::ArraySliceType::get(_saa->getArrayElementType(), false));
@@ -249,14 +248,14 @@ namespace saa_common
 
 		fir::Type* outtype = (isSAA(_saa) ? _saa : fir::DynamicArrayType::get(slicetype->getArrayElementType()));
 
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ slicetype, fir::Type::getInt64() }, outtype), fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ slicetype, fir::Type::getNativeWord() }, outtype), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -295,7 +294,7 @@ namespace saa_common
 
 					// null terminator
 					if(!isArray)
-						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, lhsbytecount));
+						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(newbuf, lhsbytecount));
 				}
 
 
@@ -346,16 +345,16 @@ namespace saa_common
 
 	fir::Function* generateAppendFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__append_" + saa->str();
+		auto fname = misc::getAppend_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -380,7 +379,7 @@ namespace saa_common
 			{
 				fir::Function* memcpyf = cs->module->getIntrinsicFunction("memmove");
 				cs->irb.Call(memcpyf, {
-					cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
+					cs->irb.PointerTypeCast(cs->irb.GetPointer(lhsbuf, lhslen), fir::Type::getMutInt8Ptr()),
 					cs->irb.PointerTypeCast(rhsbuf, fir::Type::getMutInt8Ptr()), rhsbytecount,
 					fir::ConstantBool::get(false)
 				});
@@ -388,7 +387,7 @@ namespace saa_common
 				// null terminator
 				if(saa->isStringType())
 				{
-					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerTypeCast(cs->irb.PointerAdd(lhsbuf, cs->irb.Add(lhslen, rhslen)),
+					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerTypeCast(cs->irb.GetPointer(lhsbuf, cs->irb.Add(lhslen, rhslen)),
 						fir::Type::getMutInt8Ptr()));
 				}
 			}
@@ -418,16 +417,16 @@ namespace saa_common
 
 	fir::Function* generateElementAppendFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__append_elm_" + saa->str();
+		auto fname = misc::getAppendElement_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ saa, getSAAElm(saa) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -463,16 +462,16 @@ namespace saa_common
 
 	fir::Function* generateConstructFromTwoFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__construct_fromtwo_" + saa->str();
+		auto fname = misc::getMakeFromTwo_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ getSAASlice(saa, false), getSAASlice(saa, false) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -494,7 +493,7 @@ namespace saa_common
 			ret = cs->irb.SetSAAData(ret, castRawBufToElmPtr(cs, saa, getCI(0)));
 			ret = cs->irb.SetSAALength(ret, getCI(0));
 			ret = cs->irb.SetSAACapacity(ret, getCI(0));  //? vv  we count on the 'reserveAtLeast' function to init our refcount
-			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getInt64Ptr()));
+			ret = cs->irb.SetSAARefCountPointer(ret, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
 
 
 			ret = cs->irb.Call(generateReserveAtLeastFunction(cs, saa), ret, cs->irb.Add(cs->irb.Add(lhslen, rhslen),
@@ -524,14 +523,14 @@ namespace saa_common
 					lhsbytecount, fir::ConstantBool::get(false)
 				});
 
-				cs->irb.Call(memcpyf, { cs->irb.PointerAdd(rawbuf, lhsbytecount), rawrhsbuf,
+				cs->irb.Call(memcpyf, { cs->irb.GetPointer(rawbuf, lhsbytecount), rawrhsbuf,
 					rhsbytecount, fir::ConstantBool::get(false)
 				});
 
 				// if it's a string, again, null terminator.
 				if(saa->isStringType())
 				{
-					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(rawbuf, cs->irb.Add(lhsbytecount, rhsbytecount)));
+					cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(rawbuf, cs->irb.Add(lhsbytecount, rhsbytecount)));
 				}
 				else if(fir::isRefCountedType(getSAAElm(saa)))
 				{
@@ -559,16 +558,16 @@ namespace saa_common
 
 	fir::Function* generateConstructWithElementFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__construct_withelm_" + saa->str();
+		auto fname = misc::getMakeFromOne_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
 				fir::FunctionType::get({ getSAASlice(saa), getSAAElm(saa) }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
@@ -607,17 +606,17 @@ namespace saa_common
 
 	fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa)
 	{
-		auto fname = "__reserve_atleast_" + saa->str();
+		auto fname = misc::getReserveEnough_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, fir::Type::getInt64() }, saa), fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -636,7 +635,7 @@ namespace saa_common
 			fir::IRBlock* mergerc = cs->irb.addNewBlockInFunction("mergerc", func);
 
 			auto oldrcp = cs->irb.GetSAARefCountPointer(s1, "oldrcp");
-			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getInt64Ptr())), nullrc, notnullrc);
+			cs->irb.CondBranch(cs->irb.ICmpEQ(oldrcp, cs->irb.IntToPointerCast(getCI(0), fir::Type::getNativeWordPtr())), nullrc, notnullrc);
 
 
 			//? these phi nodes are for the refcount pointer of the thing we will eventually return.
@@ -658,7 +657,7 @@ namespace saa_common
 
 			cs->irb.setCurrentBlock(mergerc);
 			{
-				auto rcptr = cs->irb.CreatePHINode(fir::Type::getInt64Ptr());
+				auto rcptr = cs->irb.CreatePHINode(fir::Type::getNativeWordPtr());
 				rcptr->addIncoming(nullphi, nullrc);
 				rcptr->addIncoming(notnullphi, notnullrc);
 
@@ -685,7 +684,7 @@ namespace saa_common
 
 					// null terminator
 					if(saa->isStringType())
-						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.PointerAdd(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
+						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
 
 					auto ret = cs->irb.CreateValue(saa);
 					ret = cs->irb.SetSAAData(ret, newbuf);
@@ -723,17 +722,17 @@ namespace saa_common
 	{
 		// we can just do this in terms of reserveAtLeast.
 
-		auto fname = "__reserve_extra" + saa->str();
+		auto fname = misc::getReserveExtra_FName(saa);
 
 		iceAssert(isSAA(saa));
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ saa, fir::Type::getInt64() }, saa), fir::LinkageType::Internal);
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ saa, fir::Type::getNativeWord() }, saa), fir::LinkageType::Internal);
 
 			func->setAlwaysInline();
 
@@ -760,16 +759,18 @@ namespace saa_common
 
 	fir::Function* generateBoundsCheckFunction(CodegenState* cs, bool isString, bool isDecomp)
 	{
-		auto fname = (isDecomp ? "__boundscheck_" : "__boundscheck_decomp_");
+		if(frontend::getIsNoRuntimeChecks())
+			return 0;
 
-		fir::Function* retfn = cs->module->getFunction(Identifier(fname, IdKind::Name));
+		auto fname = (isDecomp ? misc::getDecompBoundsCheck_FName() : misc::getBoundsCheck_FName());
+		fir::Function* retfn = cs->module->getFunction(fname);
 
 		if(!retfn)
 		{
 			auto restore = cs->irb.getCurrentBlock();
 
-			fir::Function* func = cs->module->getOrCreateFunction(Identifier(fname, IdKind::Name),
-				fir::FunctionType::get({ fir::Type::getInt64(), fir::Type::getInt64(), fir::Type::getCharSlice(false) },
+			fir::Function* func = cs->module->getOrCreateFunction(fname,
+				fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getNativeWord(), fir::Type::getCharSlice(false) },
 					fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
@@ -793,19 +794,19 @@ namespace saa_common
 			{
 				if(isDecomp)
 				{
-					printRuntimeError(cs, func->getArguments()[2], "Index '%ld' out of bounds for "
+					printRuntimeError(cs, func->getArguments()[2], "index '%ld' out of bounds for "
 						+ std::string(isString ? "string" : "array") + " of length %ld\n", { ind, max });
 				}
 				else
 				{
-					printRuntimeError(cs, func->getArguments()[2], "Binding of '%ld' "
+					printRuntimeError(cs, func->getArguments()[2], "binding of '%ld' "
 						+ std::string(isString ? "chars" : "elements") + " out of bounds for string of length %ld\n", { ind, max });
 				}
 			}
 
 			cs->irb.setCurrentBlock(checkneg);
 			{
-				fir::Value* res = cs->irb.ICmpLT(ind, fir::ConstantInt::getInt64(0));
+				fir::Value* res = cs->irb.ICmpLT(ind, fir::ConstantInt::getNative(0));
 				cs->irb.CondBranch(res, failb, merge);
 			}
 

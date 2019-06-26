@@ -1,5 +1,5 @@
 // transforms.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "pts.h"
@@ -36,7 +36,7 @@ namespace poly
 	fir::LocatedType Solution_t::getSolution(const std::string& n) const
 	{
 		if(auto it = this->solutions.find(n); it != this->solutions.end())
-			return it->second;
+			return fir::LocatedType(it->second);
 
 		else
 			return fir::LocatedType(0);

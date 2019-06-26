@@ -1,5 +1,5 @@
 // platform.cpp
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include <fcntl.h>
@@ -8,6 +8,7 @@
 #include "frontend.h"
 
 #ifndef _WIN32
+	#include <dlfcn.h>
 	#include <unistd.h>
 	#include <sys/mman.h>
 	#include <sys/ioctl.h>
@@ -23,6 +24,14 @@
 		#define EXTRA_MMAP_FLAGS 0
 	#endif
 #else
+	#define WIN32_LEAN_AND_MEAN 1
+
+	#ifndef NOMINMAX
+		#define NOMINMAX
+	#endif
+
+	#include <windows.h>
+
 	#define USE_MMAP false
 #endif
 
@@ -31,9 +40,67 @@ namespace platform
 {
 	#ifdef _WIN32
 		filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
+
+		static HMODULE currentModule = 0;
+		static std::vector<HMODULE> otherModules;
 	#else
 		filehandle_t InvalidFileHandle = -1;
+		void* currentModule = 0;
 	#endif
+
+
+	void performSelfDlOpen()
+	{
+		#ifdef _WIN32
+			currentModule = GetModuleHandle(nullptr);
+
+			// load the libc dll.
+			//? the name is "vcruntime140.dll", which is apparently specific to MSVC 14.0+, apparently 140 is the only number that
+			//? appears to be referenced in online sources.
+
+			std::vector<const char*> libsToLoad = {
+				"vcruntime140.dll",
+				"ucrtbase.dll"
+			};
+
+			for(auto name : libsToLoad)
+			{
+				auto lib = LoadLibrary(name);
+				if(lib) otherModules.push_back(lib);
+				else    warn("platform: failed to load library '%s'", name);
+			}
+		#else
+			currentModule = dlopen(nullptr, RTLD_LAZY);
+		#endif
+	}
+
+	void performSelfDlClose()
+	{
+		#ifdef _WIN32
+			for(auto mod : otherModules)
+				FreeLibrary(mod);
+		#endif
+	}
+
+	void* getSymbol(const std::string& name)
+	{
+		if(!currentModule) _error_and_exit("failed to load current module!\n");
+
+		void* ret = 0;
+		#ifdef _WIN32
+			ret = GetProcAddress(currentModule, name.c_str());
+			for(size_t i = 0; !ret && i < otherModules.size(); i++)
+				ret = GetProcAddress(otherModules[i], name.c_str());
+		#else
+			ret = dlsym(currentModule, name.c_str());
+		#endif
+
+		return ret;
+	}
+
+
+
+
 
 	size_t getFileSize(const std::string& path)
 	{
@@ -43,13 +110,13 @@ namespace platform
 
 			HANDLE hd = CreateFile((LPCSTR) path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
 
 			// ok, presumably it exists. so, get the size
 			LARGE_INTEGER sz;
 			bool success = GetFileSizeEx(hd, &sz);
 			if(!success)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)", path, GetLastError());
+				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
 
 			CloseHandle(hd);
 
@@ -59,7 +126,7 @@ namespace platform
 
 			struct stat st;
 			if(stat(path.c_str(), &st) != 0)
-				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
+				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)\n", path, errno, strerror(errno));
 
 			return st.st_size;
 
@@ -139,7 +206,6 @@ namespace platform
 
 			if(hd == INVALID_HANDLE_VALUE)
 				return platform::InvalidFileHandle;
-				// _error_and_exit("Failed to open file '%s' (error code %d)", name, GetLastError());
 
 			return hd;
 		#else
@@ -164,9 +230,9 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didRead = 0;
-			bool success = ReadFile(fd, buf, (platform::DWORD) count, &didRead, 0);
+			bool success = ReadFile(fd, buf, (DWORD) count, &didRead, 0);
 			if(!success)
-				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
+				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)\n", count, didRead, GetLastError());
 
 			return (size_t) didRead;
 		#else
@@ -178,9 +244,9 @@ namespace platform
 	{
 		#ifdef _WIN32
 			DWORD didWrite = 0;
-			bool success = WriteFile(fd, buf, (platform::DWORD) count, &didWrite, 0);
+			bool success = WriteFile(fd, buf, (DWORD) count, &didWrite, 0);
 			if(!success)
-				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
+				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)\n", count, didWrite, GetLastError());
 
 			return (size_t) didWrite;
 		#else
@@ -225,7 +291,6 @@ namespace platform
 			HANDLE hd = CreateFile((LPCSTR) p.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
 				return "";
-				// _error_and_exit("Failed to open file '%s' (error code %d)", partial, GetLastError());
 
 			// ok, presumably it exists.
 			defer(CloseHandle(hd));
@@ -242,7 +307,6 @@ namespace platform
 			}
 			else
 			{
-				// _error_and_exit("Failed to open file '%s' (error code %d)", partial, GetLastError());
 				return "";
 			}
 		}

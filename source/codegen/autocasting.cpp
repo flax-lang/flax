@@ -1,5 +1,5 @@
 // autocasting.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -29,11 +29,11 @@ namespace cgn
 		}
 		else
 		{
-			if(ty->getMinBits() <= fir::Type::getInt64()->getBitWidth() - 1)
-				return fir::ConstantInt::getInt64(cn->getInt64());
+			if(ty->getMinBits() < fir::Type::getNativeWord()->getBitWidth() - 1)
+				return fir::ConstantInt::getNative(cn->getInt64());
 
-			else if(ty->isSigned() && ty->getMinBits() <= fir::Type::getUint64()->getBitWidth())
-				return fir::ConstantInt::getUint64(cn->getUint64());
+			else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
+				return fir::ConstantInt::getUNative(cn->getUint64());
 
 			else
 				error("int overflow");
@@ -44,7 +44,7 @@ namespace cgn
 	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, fir::ConstantNumber* num, fir::Type* target, bool isAutocast)
 	{
 		if(!(target->isIntegerType() || target->isFloatingPointType()))
-			error(cs->loc(), "Unable to cast number literal to inferred type '%s'", target);
+			error(cs->loc(), "unable to cast number literal to inferred type '%s'", target);
 
 		auto ty = num->getType()->toConstantNumberType();
 
@@ -52,12 +52,12 @@ namespace cgn
 		if(ty->isFloating() && target->isIntegerType())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting floating-point literal to integer type '%s' will cause a truncation", target);
+			warn(cs->loc(), "casting floating-point literal to integer type '%s' will cause a truncation", target);
 		}
 		else if(target->isIntegerType() && !target->isSignedIntType() && ty->isSigned())
 		{
 			if(isAutocast) return 0;
-			warn(cs->loc(), "Casting negative literal to an unsigned integer type '%s'", target);
+			warn(cs->loc(), "casting negative literal to an unsigned integer type '%s'", target);
 			signConvert = true;
 		}
 
@@ -65,7 +65,7 @@ namespace cgn
 		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
 		{
 			// TODO: actually do what we say.
-			warn(cs->loc(), "Casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
+			warn(cs->loc(), "casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
 				target);
 		}
 
@@ -101,7 +101,10 @@ namespace cgn
 		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getUint16());
 		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getUint32());
 		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getUint64());
-		else										error("unsupported type '%s'", target);
+
+		else if(target == fir::Type::getNativeWord())   return fir::ConstantInt::get(target, num->getInt64());
+		else if(target == fir::Type::getNativeUWord())  return fir::ConstantInt::get(target, num->getUint64());
+		else										    error("unsupported type '%s'", target);
 	}
 
 
@@ -153,7 +156,7 @@ namespace cgn
 		}
 		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
 		{
-			result = this->irb.GetSAAData(from);
+			result = this->irb.PointerTypeCast(this->irb.GetSAAData(from), fir::Type::getInt8Ptr());
 		}
 		else if(fromType->isStringType() && target->isCharSliceType())
 		{

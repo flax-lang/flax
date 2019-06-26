@@ -1,5 +1,5 @@
 // operators.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
@@ -44,7 +44,7 @@ namespace cgn
 		}
 		else
 		{
-			error(this->loc(), "Unsupported operator function '%s' on types '%s' and '%s'", op, a, b);
+			error(this->loc(), "unsupported operator function '%s' on types '%s' and '%s'", op, a, b);
 		}
 	}
 }

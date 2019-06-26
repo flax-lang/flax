@@ -1,5 +1,5 @@
 // typecheckstate.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
@@ -138,6 +138,7 @@ namespace sst
 
 
 
+
 	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
@@ -148,17 +149,15 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = new StateTree(name, this->stree->topLevelFilename, this->stree, createAnonymously);
+			auto newtree = util::pool<StateTree>(name, this->stree->topLevelFilename, this->stree, createAnonymously);
 			this->stree->subtrees[name] = newtree;
-			this->stree = newtree;
 
 			// make a treedef.
 			newtree->treeDefn = util::pool<TreeDefn>(Location());
 			newtree->treeDefn->tree = newtree;
-		}
 
-		// if(!this->locationStack.empty())
-		// 	info(this->loc(), "enter namespace %s in %s", name, this->stree->parent->name);
+			this->stree = newtree;
+		}
 	}
 
 	StateTree* TypecheckState::popTree()
@@ -285,7 +284,7 @@ namespace sst
 
 			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
 			{
-				error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
 			}
 			else
 			{
@@ -370,7 +369,6 @@ namespace sst
 			tree = tree->parent;
 		}
 
-		// warn("No such tree '%s' in scope", name);
 		return 0;
 	}
 

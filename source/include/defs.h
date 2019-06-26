@@ -1,5 +1,5 @@
 // defs.h
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
@@ -80,7 +80,7 @@ std::string strprintf(const char* fmt, Ts... ts)
 #ifdef NDEBUG
 #define iceAssert(x)        ((void) (x))
 #else
-#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("Compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 #endif
 
 #define TAB_WIDTH	4
@@ -211,6 +211,30 @@ struct Location
 		return !(*this == other);
 	}
 
+	static Location unionOf(const Location& a, const Location& b)
+	{
+		if(a.fileID != b.fileID || a.line != b.line)
+			return a;
+
+		Location ret;
+		ret.fileID = a.fileID;
+		ret.line = a.line;
+
+		auto end = std::max(a.col + a.len, b.col + b.len);
+		if(a.col <= b.col)
+		{
+			ret.col = a.col;
+		}
+		else if(b.col < a.col)
+		{
+			ret.col = b.col;
+		}
+
+		ret.len = (end - ret.col);
+
+		return ret;
+	}
+
 	std::string toString() const;
 	std::string shortString() const;
 };
@@ -229,7 +253,7 @@ struct BareError;
 struct SpanError;
 struct SimpleError;
 struct OverloadError;
-
+struct ExampleMsg;
 
 //? in order of complexity, i guess?
 enum class ErrKind
@@ -239,6 +263,8 @@ enum class ErrKind
 
 	Span,           // error with context, but with squiggles within those (general case of
 	Overload,       // most complex one; built specifically to handle multiple candidates and such
+
+	Example,        // same as a SimpleError, but we give the "context" as a string.
 };
 
 enum class MsgType
@@ -267,6 +293,7 @@ namespace util
 	SpanError* make_SpanError(SimpleError* se, const std::vector<ESpan>& s = { }, MsgType t = MsgType::Error);
 	SimpleError* make_SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error);
 	OverloadError* make_OverloadError(SimpleError* se, MsgType t = MsgType::Error);
+	ExampleMsg* make_ExampleMsg(const std::string& eg, MsgType t = MsgType::Note);
 }
 
 
@@ -304,10 +331,6 @@ struct BareError : ErrorMsg
 
 	template <typename... Ts>
 	static BareError* make(MsgType t, const char* fmt, Ts... ts) { return util::make_BareError(strprintf(fmt, ts...), t); }
-
-
-
-
 
 	virtual void post() override;
 	virtual BareError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
@@ -352,6 +375,27 @@ struct SimpleError : ErrorMsg
 	friend struct util::MemoryPool<SimpleError>;
 	friend struct util::FastInsertVector<SimpleError>;
 };
+
+struct ExampleMsg : ErrorMsg
+{
+	static ExampleMsg* make(const std::string& eg) { return util::make_ExampleMsg(eg); }
+
+	virtual void post() override;
+	virtual ExampleMsg* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
+	virtual ExampleMsg* prepend(ErrorMsg* e) override { this->subs.insert(this->subs.begin(), e); return this; }
+
+	std::string example;
+
+	protected:
+	ExampleMsg() : ErrorMsg(ErrKind::Example, MsgType::Note) { }
+	ExampleMsg(const std::string& eg, MsgType t) : ErrorMsg(ErrKind::Example, t), example(eg) { }
+
+	friend struct util::MemoryPool<ExampleMsg>;
+	friend struct util::FastInsertVector<ExampleMsg>;
+};
+
+
+
 
 struct SpanError : ErrorMsg
 {
@@ -594,6 +638,8 @@ struct PolyArgMapping_t
 	void add(const std::string& name, pts::Type* t);
 	void add(size_t idx, pts::Type* t);
 
+	std::string print() const;
+
 	static inline PolyArgMapping_t none() { return PolyArgMapping_t(); }
 };
 
@@ -606,6 +652,13 @@ namespace util
 	}
 
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
+
+	std::string obfuscateName(const std::string& name);
+	std::string obfuscateName(const std::string& name, size_t id);
+	std::string obfuscateName(const std::string& name, const std::string& extra);
+	Identifier obfuscateIdentifier(const std::string& name, IdKind kind = IdKind::Name);
+	Identifier obfuscateIdentifier(const std::string& name, size_t id, IdKind kind = IdKind::Name);
+	Identifier obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind = IdKind::Name);
 
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)

@@ -1,5 +1,5 @@
 // stdio.flx
-// Copyright (c) 2017, zhiayang@gmail.com
+// Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 export std::io
@@ -8,13 +8,9 @@ import libc
 let ASCII_BACKSLASH: i8     = 92
 let ASCII_PERCENT: i8       = 37
 
-// this exists solely for semantic reasons.
-fn char(c: i8) -> i8    => c
-fn char(c: str) -> i8   => c[0]
-
 fn error(msg: str)
 {
-	libc::printf("Invalid format specifier: %s\n", msg)
+	libc::printf("invalid format string: '%s'\n", msg)
 	libc::abort()
 }
 
@@ -66,7 +62,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 	while idx < fmt.length
 	{
 		let ch = fmt[idx]
-		if ch == char("%")
+		if ch == '%'
 		{
 			if argi >= args.length
 			{
@@ -98,7 +94,7 @@ public fn format(fmt: str, args: [any: ...]) -> string
 		}
 		else
 		{
-			if ch == char("\\")
+			if ch == '\\'
 			{
 				idx += 1
 				ret.append(fmt[idx])
@@ -118,10 +114,14 @@ public fn format(fmt: str, args: [any: ...]) -> string
 
 public fn println(fmt: str, args: [any: ...])
 {
-	libc::printf("%s\n", format(fmt, ...args).ptr)
+	libc::puts(format(fmt, ...args))
 }
 
-
+public fn print(fmt: str, args: [any: ...])
+{
+	let s = format(fmt, ...args)
+	libc::write(1, s.ptr, s.length)
+}
 
 
 

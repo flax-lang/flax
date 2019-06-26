@@ -1,9 +1,10 @@
 // toplevel.cpp
-// Copyright (c) 2014 - 2017, zhiayang@gmail.com
+// Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
 #include "sst.h"
 #include "ast.h"
+#include "pts.h"
 #include "errors.h"
 #include "parser.h"
 #include "frontend.h"
@@ -18,7 +19,10 @@ namespace sst
 {
 	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, const std::string& filename)
 	{
-		auto clone = new StateTree(clonee->name, filename, surrogateParent);
+		auto clone = util::pool<StateTree>(clonee->name, filename, surrogateParent);
+		clone->treeDefn = util::pool<TreeDefn>(Location());
+		clone->treeDefn->tree = clone;
+
 		for(auto sub : clonee->subtrees)
 			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
 
@@ -183,10 +187,119 @@ namespace sst
 
 
 
-	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports)
+	struct OsStrings
 	{
-		StateTree* tree = new sst::StateTree(file.moduleName, file.name, 0);
+		std::string name;
+		std::string vendor;
+	};
+
+	static OsStrings getOsStrings()
+	{
+		// TODO: handle cygwin/msys/mingw???
+		// like how do we want to expose these? at the end of the day the os is still windows...
+
+		OsStrings ret;
+
+		#if defined(_WIN32)
+			ret.name = "windows";
+			ret.vendor = "microsoft";
+		#elif __MINGW__
+			ret.name = "mingw";
+		#elif __CYGWIN__
+			ret.name = "cygwin";
+		#elif __APPLE__
+			ret.vendor = "apple";
+			#include "TargetConditionals.h"
+			#if TARGET_IPHONE_SIMULATOR
+				ret.name = "iossimulator";
+			#elif TARGET_OS_IOS
+				ret.name = "ios";
+			#elif TARGET_OS_WATCH
+				ret.name = "watchos";
+			#elif TARGET_OS_TV
+				ret.name = "tvos";
+			#elif TARGET_OS_OSX
+				ret.name = "macos";
+			#else
+				#error "unknown apple operating system"
+			#endif
+		#elif __ANDROID__
+			ret.vendor = "google";
+			ret.name = "android";
+		#elif __linux__ || __linux || linux
+			ret.name = "linux";
+		#elif __FreeBSD__
+			ret.name = "freebsd";
+		#elif __OpenBSD__
+			ret.name = "openbsd";
+		#elif __NetBSD__
+			ret.name = "netbsd";
+		#elif __DragonFly__
+			ret.name = "dragonflybsd";
+		#elif __unix__
+			ret.name = "unix";
+		#elif defined(_POSIX_VERSION)
+			ret.name = "posix";
+		#endif
+
+		return ret;
+	}
+
+	static void generatePreludeDefinitions(TypecheckState* fs)
+	{
+		auto loc = Location();
+		auto strings = getOsStrings();
+
+		fs->pushTree("os");
+		defer(fs->popTree());
+
+		// manually add the definition, because we didn't typecheck a namespace or anything.
+		fs->stree->parent->addDefinition(fs->stree->name, fs->stree->treeDefn);
+
+		auto strty = fir::Type::getCharSlice(false);
+
+		{
+			// add the name
+			auto name_def = util::pool<sst::VarDefn>(loc);
+			name_def->id = Identifier("name", IdKind::Name);
+			name_def->type = strty;
+			name_def->global = true;
+			name_def->immutable = true;
+
+			auto s = util::pool<sst::LiteralString>(loc, strty);
+			s->str = strings.name;
+
+			name_def->init = s;
+			fs->stree->addDefinition("name", name_def);
+		}
+		{
+			// add the name
+			auto vendor_def = util::pool<sst::VarDefn>(loc);
+			vendor_def->id = Identifier("vendor", IdKind::Name);
+			vendor_def->type = strty;
+			vendor_def->global = true;
+			vendor_def->immutable = true;
+
+			auto s = util::pool<sst::LiteralString>(loc, strty);
+			s->str = strings.vendor;
+
+			vendor_def->init = s;
+			fs->stree->addDefinition("vendor", vendor_def);
+		}
+	}
+
+
+
+
+
+
+
+
+	using frontend::CollectorState;
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports,
+		bool addPreludeDefinitions)
+	{
+		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
 		tree->treeDefn = util::pool<TreeDefn>(Location());
 		tree->treeDefn->tree = tree;
 
@@ -207,6 +320,11 @@ namespace sst
 			else
 			{
 				StateTree* curinspt = insertPoint;
+
+				// iterate through the import-as list, which is a list of nested scopes to import into
+				// eg we can `import foo as some::nested::namespace`, which means we need to create
+				// the intermediate trees.
+
 				for(const auto& impas : ias)
 				{
 					if(impas == curinspt->name)
@@ -219,7 +337,7 @@ namespace sst
 					}
 					else
 					{
-						auto newinspt = new sst::StateTree(impas, file.name, curinspt);
+						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
 						curinspt->subtrees[impas] = newinspt;
 
 						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
@@ -244,6 +362,9 @@ namespace sst
 
 			fs->dtree->thingsImported.insert(ithing.name);
 		}
+
+		if(addPreludeDefinitions)
+			generatePreludeDefinitions(fs);
 
 		auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
 		iceAssert(tns);
