@@ -229,7 +229,7 @@ namespace resolver
 				auto args = resolver::misc::canonicaliseCallArguments(fs->loc(), target, arguments, &_err);
 				if(_err != 0) return TCResult(_err);
 
-				auto [ soln, err ] = poly::solveTypeList(util::map(target, [](const FnParam& f) -> fir::LocatedType {
+				auto [ soln, err ] = poly::solveTypeList(fs->loc(), util::map(target, [](const FnParam& f) -> fir::LocatedType {
 					return fir::LocatedType(f.type, f.loc);
 				}), args, poly::Solution_t(), /* isFnCall: */ true);
 

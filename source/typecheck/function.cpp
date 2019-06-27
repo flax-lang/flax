@@ -38,6 +38,16 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	for(auto t : this->args)
 	{
 		auto p = FnParam(t.loc, t.name, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
+		if(auto dv = t.defaultValue; dv)
+		{
+			p.defaultVal = dv->typecheck(fs, p.type).expr();
+			if(p.defaultVal->type != p.type)
+			{
+				error(p.defaultVal, "type mismatch for default value of argument '%s': expected '%s', received '%s' intead",
+					p.name, p.type, p.defaultVal->type);
+			}
+		}
+
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}

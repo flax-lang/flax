@@ -189,7 +189,7 @@ namespace sst
 
 				auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(*arguments, [](const FnCallArgument& fca) -> auto {
 					return fir::LocatedType(fca.value->type, fca.loc);
-				}), false);
+				}), /* isCVarArg: */ false, fs->loc());
 
 				if(errs != nullptr || dist == -1)
 				{
@@ -280,7 +280,7 @@ namespace sst
 			return fir::LocatedType(t, Location());
 		}), util::map(b, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
-		}), false).first;
+		}), /* isCVarArg: */ false, this->loc()).first;
 	}
 
 	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
