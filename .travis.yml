@@ -9,6 +9,13 @@ matrix:
     - os: osx
       osx_image: xcode9.4
 
+cache:
+    directories:
+    - $HOME/Library/Caches/Homebrew
+
+before_cache:
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew cleanup; fi
+
 addons:
     apt:
         sources:
