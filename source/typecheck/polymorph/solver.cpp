@@ -16,7 +16,10 @@ namespace sst
 {
 	namespace poly
 	{
-		ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
+		static ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& given, bool isFnCall, size_t firstOptionalArgument);
+
+		static ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
 		{
 			auto tgt = target.type;
 			auto gvn = given.type;
@@ -43,14 +46,7 @@ namespace sst
 				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
 				// if(ttrfs != gtrfs)
-				// {
-				// 	return SpanError::make(
-				// 		SimpleError::make(given.loc, "incompatible transforms between argument type '%s' and parameter type '%s'",
-				// 			gvn, tgt), { util::ESpan(given.loc, strprintf("type: '%s'", gvn)) }
-				// 	)->append(SpanError::make(SimpleError::make(MsgType::Note, target.loc, "target parameter was here:"),
-				// 		{ util::ESpan(target.loc, strprintf("type: '%s'", tgt)) }
-				// 	));
-				// }
+				// hmm???
 
 				// substitute if possible.
 				if(auto _gt = soln->substitute(gt); _gt != gt)
@@ -135,7 +131,8 @@ namespace sst
 					}
 
 					// for recursive solving, we're never a function call.
-					return solveSingleTypeList(soln, problem, input, /* isFnCall: */ false);
+					// related: so, firstOptionalArgument is always -1 in these cases.
+					return solveSingleTypeList(soln, given.loc, problem, input, /* isFnCall: */ false, /* firstOptionalArgument: */ -1);
 				}
 				else
 				{
@@ -148,20 +145,26 @@ namespace sst
 
 
 
-
-		ErrorMsg* solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
-			bool isFnCall)
+		static ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& given, bool isFnCall, size_t firstOptionalArgument)
 		{
 			bool fvararg = (isFnCall && target.size() > 0 && target.back()->isVariadicArrayType());
 
-			// for now just do this.
-			if(target.size() != given.size() && !fvararg)
+			// early out if you just plainly called it wrongly.
+			if(target.size() != given.size() && !fvararg && firstOptionalArgument == -1)
 			{
-				return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d %s provided", target.size(), given.size(),
+				return SimpleError::make(callLoc, "mismatched argument count; expected %d, but %d %s provided", target.size(), given.size(),
 					given.size() == 1 ? "was" : "were");
 			}
 
-			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0), given.size());
+			// TODO: see how this works (if at all) in the presence of varaidic functions
+			// solve the normal arguments first. here's how we handle optional arguments: `firstOptionalArgument` should contain the index
+			// of the first optional argument (everything after that should also be optional!)
+			// this entire function is name-agnostic, so we expect `given` to be in the same order as `target`
+
+			// so, we just modify last_arg accordingly to stop before getting to the unfilled optional arguments.
+			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0),
+				std::max(given.size(), (firstOptionalArgument == -1 ? 0 : firstOptionalArgument - 1)));
 
 			for(size_t i = 0; i < last_arg; i++)
 			{
@@ -216,8 +219,11 @@ namespace sst
 
 
 
-		std::pair<Solution_t, ErrorMsg*> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
-			const Solution_t& partial, bool isFnCall)
+
+
+
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const Location& callLoc, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& given, const Solution_t& partial, bool isFnCall, size_t firstOptionalArgument)
 		{
 			Solution_t prevSoln = partial;
 
@@ -241,7 +247,7 @@ namespace sst
 				//* if we didn't reset the distance, it would just keep increasing to infinity (and overflow)
 				auto soln = prevSoln; soln.distance = 0;
 
-				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
+				auto errs = solveSingleTypeList(&soln, callLoc, target, given, isFnCall, firstOptionalArgument);
 				if(errs) return { soln, errs };
 
 				if(soln == prevSoln)            { break; }

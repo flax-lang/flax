@@ -151,7 +151,7 @@ namespace poly
 				}
 
 				*origParamOrder = fieldNames;
-				return solveTypeList(target, given, soln, isFnCall);
+				return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 			}
 			else if(auto unn = dcast(ast::UnionDefn, td))
 			{
@@ -196,7 +196,7 @@ namespace poly
 					return fir::LocatedType(fca.value->type, fca.loc);
 				});
 
-				return solveTypeList(target, given, soln, isFnCall);
+				return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 			}
 			else
 			{
@@ -288,7 +288,7 @@ namespace poly
 				}) + fir::LocatedType(type_infer->toFunctionType()->getReturnType(), thing->loc);
 			}
 
-			return solveTypeList(target, given, soln, isFnCall);
+			return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 		}
 
 

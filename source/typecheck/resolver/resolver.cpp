@@ -14,13 +14,13 @@ namespace sst {
 namespace resolver
 {
 	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
-		const std::vector<fir::LocatedType>& _args, bool cvararg)
+		const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc)
 	{
 		std::vector<fir::LocatedType> input;
 		if(cvararg) input = util::take(_args, target.size());
 		else        input = _args;
 
-		auto [ soln, err ] = poly::solveTypeList(target, input, poly::Solution_t(), /* isFnCall: */ true);
+		auto [ soln, err ] = poly::solveTypeList(callLoc, target, input, poly::Solution_t(), /* isFnCall: */ true);
 
 		if(err != nullptr)  return { -1, err };
 		else                return { soln.distance, nullptr };
@@ -29,7 +29,7 @@ namespace resolver
 
 
 	std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
-		const std::vector<FnCallArgument>& _args, bool cvararg)
+		const std::vector<FnCallArgument>& _args, bool cvararg, const Location& callLoc)
 	{
 		std::vector<FnCallArgument> input;
 		if(cvararg) input = util::take(_args, target.size());
@@ -39,9 +39,32 @@ namespace resolver
 		auto arguments = resolver::misc::canonicaliseCallArguments(fnLoc, target, input, &err);
 		if(err != nullptr) return { -1, err };
 
-		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FnParam& p) -> fir::LocatedType {
+		// ok, in this case we should figure out where the first optional argument lives, and pass that to
+		// the type-list solver. it doesn't need to know what the actual value is --- when we typechecked the function, we should
+		// have already verified the default value fits the type, and it doesn't actually change the type of the receiver.
+
+		size_t firstOptArg = -1;
+		for(size_t i = 0; i < target.size(); i++)
+		{
+			if(target[i].defaultVal)
+			{
+				firstOptArg = i;
+				break;
+			}
+		}
+
+		// check that we call the optional args with names!
+		if(firstOptArg != -1)
+		{
+			util::foreachIdx(target, [firstOptArg, &arguments, &_args, &target](const FnParam& p, size_t i) {
+				if(i >= firstOptArg && _args[i].name.empty())
+					error(arguments[i].loc, "optional argument '%s' must be passed with a name", target[i].name);
+			});
+		}
+
+		auto [ soln, err1 ] = poly::solveTypeList(callLoc, util::map(target, [](const FnParam& p) -> fir::LocatedType {
 			return fir::LocatedType(p.type, p.loc);
-		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
+		}), arguments, poly::Solution_t(), /* isFnCall: */ true, firstOptArg);
 
 
 		if(err1 != nullptr) return { -1, err1 };
@@ -151,7 +174,7 @@ namespace resolver
 						}
 						else
 						{
-							std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
+							std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg, callLoc);
 						}
 					}
 
@@ -186,7 +209,7 @@ namespace resolver
 						return fir::LocatedType(t, Location());
 					}), util::map(replacementArgs, [](const FnCallArgument& p) -> fir::LocatedType {
 						return fir::LocatedType(p.value->type, Location());
-					}), false);
+					}), /* isCVarArg: */ false, callLoc);
 				}
 				else if(auto td = dcast(TypeDefn, curcandidate))
 				{
@@ -244,7 +267,20 @@ namespace resolver
 
 				if(fails.size() == 1)
 				{
-					return { TCResult(fails.begin()->second), { } };
+					auto fail = fails.begin();
+
+					auto ret = fail->second;
+					if(auto f = dcast(FunctionDefn, fail->first); f)
+					{
+						ret->append(SimpleError::make(MsgType::Note, f->loc, "function '%s' was defined here:", f->id.name));
+					}
+					else if(auto v = dcast(VarDefn, fail->first); v)
+					{
+						ret->append(SimpleError::make(MsgType::Note, v->loc, "'%s' was defined here with type '%s':", v->id.name,
+							v->type));
+					}
+
+					return { TCResult(ret), { } };
 				}
 				else
 				{

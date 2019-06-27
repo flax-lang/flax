@@ -920,6 +920,7 @@ namespace fir
 
 		// methods
 		const std::vector<Type*>& getArgumentTypes();
+		size_t getArgumentCount();
 		Type* getArgumentN(size_t n);
 		Type* getReturnType();
 

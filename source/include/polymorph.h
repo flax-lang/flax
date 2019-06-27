@@ -55,13 +55,14 @@ namespace sst
 		};
 
 
-		ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
+		// ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
 
-		std::pair<Solution_t, ErrorMsg*> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
-			const Solution_t& partial, bool isFnCall);
+		// ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<fir::LocatedType>& target,
+		// 	const std::vector<fir::LocatedType>& given, bool isFnCall);
 
-		ErrorMsg* solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target,
-			const std::vector<fir::LocatedType>& given, bool isFnCall);
+
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const Location& callLoc, const std::vector<fir::LocatedType>& target,
+			const std::vector<fir::LocatedType>& given, const Solution_t& partial, bool isFnCall, size_t firstOptionalArgument = -1);
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
 

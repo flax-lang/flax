@@ -22,10 +22,10 @@ namespace sst
 	namespace resolver
 	{
 		std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
-			const std::vector<FnCallArgument>& _args, bool cvararg);
+			const std::vector<FnCallArgument>& _args, bool cvararg, const Location& callLoc);
 
 		std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
-			const std::vector<fir::LocatedType>& _args, bool cvararg);
+			const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc);
 
 
 		TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments,

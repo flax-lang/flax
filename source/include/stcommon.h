@@ -58,7 +58,8 @@ struct FnParam
 
 	Location loc;
 	std::string name;
-	fir::Type* type;
+	fir::Type* type = 0;
+	sst::Expr* defaultVal = 0;
 };
 
 

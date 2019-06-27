@@ -36,8 +36,10 @@ namespace parser
 			expectedAfter(st, "'('", "function declaration to begin argument list", st.front().str());
 
 		st.eat();
-		bool isvar = false;
 		Location varloc;
+
+		bool isvar = false;
+		bool startedOptional = false;
 		while(st.front() != TT::RParen)
 		{
 			if(isvar)
@@ -66,7 +68,19 @@ namespace parser
 			st.eat();
 			auto type = parseType(st);
 
-			args.push_back(FuncDefn::Arg { name, loc, type });
+			Expr* defaultVal = 0;
+			if(st.front() == TT::Equal)
+			{
+				st.pop();
+				startedOptional = true;
+				defaultVal = parseExpr(st);
+			}
+			else if(startedOptional)
+			{
+				error(loc, "mandatory arguments must be declared before any optional arguments");
+			}
+
+			args.push_back(FuncDefn::Arg { name, loc, type, defaultVal });
 
 			if(st.front() == TT::Comma)
 				st.eat();
@@ -164,6 +178,12 @@ namespace parser
 		ffn->name = defn->name;
 		ffn->visibility = defn->visibility;
 		ffn->returnType = defn->returnType;
+
+		// make sure we don't have optional arguments here
+		util::foreach(ffn->args, [](auto a) {
+			if(a.defaultValue)
+				error(a.loc, "foreign functions cannot have optional arguments");
+		});
 
 		// check for 'as'
 		if(st.front() == TT::As)

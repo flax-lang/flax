@@ -2,6 +2,8 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <set>
+
 #include "sst.h"
 #include "mpool.h"
 #include "codegen.h"
@@ -23,14 +25,25 @@ util::hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::Func
 
 
 static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::CodegenState* cs, fir::FunctionType* ft,
-	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap)
+	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap,
+	const util::hash_map<size_t, fir::Value*>& defaultArgumentValues)
 {
 	// do this so we can index directly.
-	auto numArgs = ft->getArgumentTypes().size();
-	auto ret = std::vector<fir::Value*>(arguments.size());
+	auto numArgs = ft->getArgumentCount();
+	auto ret = std::vector<fir::Value*>(std::max(ft->getArgumentCount(), arguments.size()));
+
+	std::set<size_t> unfilledArguments;
+	{
+		util::foreachIdx(ft->getArgumentTypes(), [&ft, &unfilledArguments](auto, size_t idx) {
+
+			// if this is variadic, skip the last arg
+			if(!(idx == ft->getArgumentCount() - 1 && ft->isVariadicFunc()))
+				unfilledArguments.insert(idx);
+		});
+	}
 
 	size_t counter = 0;
-	for(auto arg : arguments)
+	for(const auto& arg : arguments)
 	{
 		size_t i = (arg.name == "" ? counter : idxmap.find(arg.name)->second);
 
@@ -133,7 +146,31 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 		ret[i] = val;
 		counter++;
+
+		unfilledArguments.erase(i);
 	}
+
+	// if we still have stuff that isn't unfilled, see if we can use the default argument values to fill it in.
+	if(unfilledArguments.size() > 0)
+	{
+		for(auto i : unfilledArguments)
+		{
+			if(auto it = defaultArgumentValues.find(i); it != defaultArgumentValues.end())
+			{
+				ret[i] = it->second;
+			}
+			else
+			{
+				util::hash_map<size_t, std::string> revIdxMap;
+				util::foreach(util::pairs(idxmap), [&revIdxMap](const auto& p) {
+					revIdxMap[p.second] = p.first;
+				});
+
+				error(cs->loc(), "missing value for argument '%s' (%zu) in function call", revIdxMap[i], i);
+			}
+		}
+	}
+
 
 
 	// if we're calling a variadic function without any extra args, insert the slice at the back.
@@ -152,10 +189,19 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	const std::vector<FnCallArgument>& arguments)
 {
 	util::hash_map<std::string, size_t> idxmap;
+	util::hash_map<size_t, fir::Value*> defaultArgs;
+
 	if(auto fd = dcast(sst::FunctionDefn, target))
+	{
 		idxmap = this->getNameIndexMap(fd);
 
-	return _codegenAndArrangeFunctionCallArguments(this, ft, arguments, idxmap);
+		util::foreachIdx(fd->params, [this, &defaultArgs](const FnParam& arg, size_t idx) {
+			if(arg.defaultVal)
+				defaultArgs[idx] = arg.defaultVal->codegen(this, arg.type).value;
+		});
+	}
+
+	return _codegenAndArrangeFunctionCallArguments(this, ft, arguments, idxmap, defaultArgs);
 }
 
 
@@ -232,14 +278,15 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake, 0));
 	}
 
-	size_t numArgs = ft->getArgumentTypes().size();
-	if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
+	size_t numArgs = ft->getArgumentCount();
+	/* if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
 	{
 		error(this, "mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
 			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
 			numArgs == 1 ? "was" : "were");
 	}
-	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs)
+	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs) */
+	if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
 		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
 			numArgs, this->name, this->arguments.size());
@@ -347,12 +394,12 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto ft = fn->getType()->toFunctionType();
 
-	if(ft->getArgumentTypes().size() != this->arguments.size())
+	if(ft->getArgumentCount() != this->arguments.size())
 	{
-		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentTypes().size())
+		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentCount())
 		{
 			error(this, "mismatched number of arguments; expected %zu, but %zu were given",
-				ft->getArgumentTypes().size(), this->arguments.size());
+				ft->getArgumentCount(), this->arguments.size());
 		}
 	}
 

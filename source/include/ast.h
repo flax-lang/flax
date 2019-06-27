@@ -147,6 +147,8 @@ namespace ast
 			std::string name;
 			Location loc;
 			pts::Type* type = 0;
+
+			Expr* defaultValue = 0;
 		};
 
 
