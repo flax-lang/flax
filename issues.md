@@ -98,11 +98,9 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	`var foo: SomeStruct` without an initialiser...
 
 
-* ### Foreach loops where you take more than one thing at a time, like this, maybe:
-	`for [ first, middle, last, ... ] in list { ... }`
 
-
-* ### Some kind of construct to make a variable immutable beyond a certain point; thus you could have arbitrarily complex initialisation code,
+* ### Some kind of construct to make a variable immutable beyond a certain point
+	thus you could have arbitrarily complex initialisation code,
 	then have the compiler enforce that your variable is immutable after that point, eg:
 
 	```

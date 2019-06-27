@@ -30,8 +30,8 @@ addons:
 
 script:
     - if [ "$TRAVIS_OS_NAME" == "osx" ];
-        then PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make tester;
-      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make ci;
+        then PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make -j2 tester;
+      else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make -j2 ci;
       fi
 
 notifications:

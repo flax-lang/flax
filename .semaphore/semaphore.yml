@@ -31,5 +31,5 @@ blocks:
       - name: build
         commands:
           - checkout
-          - brew install llvm@7 mpfr
-          - PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make tester
+          - HOMEBREW_NO_INSTALL_CLEANUP=1 brew install llvm@7 mpfr libffi
+          - PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make -j4 tester

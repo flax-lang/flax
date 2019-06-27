@@ -1242,7 +1242,7 @@ namespace parser
 					return parseNumber(st);
 
 				case TT::LSquare:
-					return parseArray(st, false);
+					return parseArray(st, /* isRaw: */ false);
 
 				case TT::CharacterLiteral:
 					st.pop();
