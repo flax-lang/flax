@@ -28,9 +28,11 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap,
 	const util::hash_map<size_t, fir::Value*>& defaultArgumentValues)
 {
+	bool isvar = ft->isVariadicFunc();
+
 	// do this so we can index directly.
 	auto numArgs = ft->getArgumentCount();
-	auto ret = std::vector<fir::Value*>(std::max(ft->getArgumentCount(), arguments.size()));
+	auto ret = std::vector<fir::Value*>(std::max(ft->getArgumentCount() + (isvar ? -1 : 0), arguments.size()));
 
 	std::set<size_t> unfilledArguments;
 	{
@@ -48,7 +50,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		size_t i = (arg.name == "" ? counter : idxmap.find(arg.name)->second);
 
 		fir::Type* inf = 0;
-		if(ft->isVariadicFunc())
+		if(isvar)
 		{
 			//? the reason for this discrepancy is that for va_arg functions, the '...' isn't really counted
 			//? as an 'argument', whereas for flax-varargs we have a variadic slice thingy that is an actual argument.
@@ -97,7 +99,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			val = cs->unwrapConstantNumber(cv);
 		}
 
-		if(ft->isVariadicFunc() || i < numArgs)
+		if(isvar || i < numArgs)
 		{
 			// the inferred type should always be present, and should always be correct.
 			iceAssert(inf);
@@ -110,7 +112,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 				auto errs = SpanError::make(SimpleError::make(arg.loc,
 					"mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, vr.value->getType()));
 
-				if(ft->isVariadicFunc() && i >= numArgs - 1)
+				if(isvar && i >= numArgs - 1)
 				{
 					errs->add(util::ESpan(arg.loc, strprintf("argument's type '%s' cannot be cast to the expected variadic element type '%s'",
 						vr.value->getType(), inf)));
@@ -174,7 +176,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 
 	// if we're calling a variadic function without any extra args, insert the slice at the back.
-	if(ft->isVariadicFunc() && arguments.size() == numArgs - 1)
+	if(isvar && arguments.size() == numArgs - 1)
 	{
 		auto et = ft->getArgumentTypes().back()->getArrayElementType();
 		ret.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(et),
