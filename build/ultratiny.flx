@@ -5,14 +5,26 @@
 export ultratiny
 import libc as _
 
+import std::io
+
 fn foo(a: int, b: int = 3)
 {
-	printf("a*b is %d\n", a*b)
+	// printf("a*b is %d\n", a*b)
+}
+
+fn bar(x: str, args: [str: ...])
+{
+	printf("x = %s\n", x)
+	for a in args
+	{
+		printf("a: %s\n", a)
+	}
 }
 
 @entry fn main()
 {
-	foo(7, b: 3)
+	// foo(7, b: 3)
+	bar("hello, world!\n", "uwu");
 }
 
 
