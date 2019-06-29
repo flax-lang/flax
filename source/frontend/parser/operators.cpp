@@ -80,13 +80,13 @@ namespace parser
 				{
 					// < < is <<
 					st.eat();
-					return "<<";
+					return Operator::BitwiseShiftLeft;
 				}
 				else if(st.front() == TT::LessThanEquals)
 				{
 					// < <= is <<=
 					st.eat();
-					return "<<=";
+					return Operator::BitwiseShiftLeftEquals;
 				}
 			}
 			else if(tok_op == TT::RAngle)
@@ -95,13 +95,13 @@ namespace parser
 				{
 					// > > is >>
 					st.eat();
-					return ">>";
+					return Operator::BitwiseShiftRight;
 				}
 				else if(st.front() == TT::GreaterEquals)
 				{
 					// > >= is >>=
 					st.eat();
-					return ">>=";
+					return Operator::BitwiseShiftRightEquals;
 				}
 			}
 		}
@@ -114,8 +114,6 @@ namespace parser
 			case TT::Asterisk:          return Operator::Multiply;
 			case TT::Divide:            return Operator::Divide;
 			case TT::Percent:           return Operator::Modulo;
-			case TT::ShiftLeft:         return Operator::BitwiseShiftLeft;
-			case TT::ShiftRight:        return Operator::BitwiseShiftRight;
 			case TT::Equal:             return Operator::Assign;
 
 			case TT::LAngle:            return Operator::CompareLT;
@@ -136,8 +134,6 @@ namespace parser
 			case TT::MultiplyEq:        return Operator::MultiplyEquals;
 			case TT::DivideEq:          return Operator::DivideEquals;
 			case TT::ModEq:             return Operator::ModuloEquals;
-			case TT::ShiftLeftEq:       return Operator::BitwiseShiftLeftEquals;
-			case TT::ShiftRightEq:      return Operator::BitwiseShiftRightEquals;
 			case TT::AmpersandEq:       return Operator::BitwiseAndEquals;
 			case TT::PipeEq:            return Operator::BitwiseOrEquals;
 			case TT::CaretEq:           return Operator::BitwiseXorEquals;
