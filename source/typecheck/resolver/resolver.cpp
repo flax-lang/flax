@@ -13,12 +13,20 @@
 namespace sst {
 namespace resolver
 {
-	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
+	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& _target,
 		const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc)
 	{
-		std::vector<fir::LocatedType> input;
-		if(cvararg) input = util::take(_args, target.size());
-		else        input = _args;
+		std::vector<fir::LocatedType> _input;
+		if(cvararg) _input = util::take(_args, _target.size());
+		else        _input = _args;
+
+		auto input = util::map(_input, [](auto t) -> poly::ArgType {
+			return poly::ArgType("", t.type, t.loc);
+		});
+
+		auto target = util::map(_target, [](auto t) -> poly::ArgType {
+			return poly::ArgType("", t.type, t.loc);
+		});
 
 		auto [ soln, err ] = poly::solveTypeList(callLoc, target, input, poly::Solution_t(), /* isFnCall: */ true);
 
@@ -35,36 +43,17 @@ namespace resolver
 		if(cvararg) input = util::take(_args, target.size());
 		else        input = _args;
 
-		ErrorMsg* err = 0;
-		auto arguments = resolver::misc::canonicaliseCallArguments(fnLoc, target, input, &err);
-		if(err != nullptr) return { -1, err };
+		auto arguments = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
+			return poly::ArgType(a.ignoreName ? "" : a.name, a.value->type, a.loc);
+		});
 
 		// ok, in this case we should figure out where the first optional argument lives, and pass that to
 		// the type-list solver. it doesn't need to know what the actual value is --- when we typechecked the function, we should
 		// have already verified the default value fits the type, and it doesn't actually change the type of the receiver.
 
-		size_t firstOptArg = -1;
-		for(size_t i = 0; i < target.size(); i++)
-		{
-			if(target[i].defaultVal)
-			{
-				firstOptArg = i;
-				break;
-			}
-		}
-
-		// check that we call the optional args with names!
-		if(firstOptArg != -1)
-		{
-			util::foreachIdx(target, [firstOptArg, &arguments, &_args, &target](const FnParam& p, size_t i) {
-				if(i >= firstOptArg && _args[i].name.empty())
-					error(arguments[i].loc, "optional argument '%s' must be passed with a name", target[i].name);
-			});
-		}
-
-		auto [ soln, err1 ] = poly::solveTypeList(callLoc, util::map(target, [](const FnParam& p) -> fir::LocatedType {
-			return fir::LocatedType(p.type, p.loc);
-		}), arguments, poly::Solution_t(), /* isFnCall: */ true, firstOptArg);
+		auto [ soln, err1 ] = poly::solveTypeList(callLoc, util::map(target, [](const FnParam& p) -> poly::ArgType {
+			return poly::ArgType(p.name, p.type, p.loc, p.defaultVal != 0);
+		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
 
 		if(err1 != nullptr) return { -1, err1 };
@@ -118,10 +107,12 @@ namespace resolver
 					bool insertedSelf = false;
 					if(fn->parentTypeForMethod && (replacementArgs.size() == fn->params.size() - 1))
 					{
-						// add the thing... i guess??
 						insertedSelf = true;
+
+						// ignoreName records the fact that we are not actually passing 'self' with a name; it
+						// is there so we do not "pass positional arguments after named arguments".
 						replacementArgs.insert(replacementArgs.begin(), FnCallArgument::make(fn->loc, "self",
-							fn->parentTypeForMethod->getMutablePointerTo()));
+							fn->parentTypeForMethod->getMutablePointerTo(), /* ignoreName: */ true));
 					}
 
 
@@ -129,7 +120,7 @@ namespace resolver
 					{
 						if(auto fd = dcast(FunctionDefn, fn); !fd)
 						{
-							error("invalid non-definition of a function with placeholder types");
+							error(fd, "invalid non-definition of a function with placeholder types");
 						}
 						else
 						{

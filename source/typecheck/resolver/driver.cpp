@@ -181,7 +181,9 @@ namespace resolver
 			auto copy = arguments;
 
 			//! SELF HANDLING (INSERTION) (CONSTRUCTOR)
-			copy.push_back(FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo()));
+			copy.insert(copy.begin(), FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo(),
+				/* ignoreName: */ true));
+
 			auto copy1 = copy;
 
 			auto cand = resolveFunctionCallFromCandidates(fs, util::map(cls->initialisers, [](auto e) -> auto {
@@ -192,14 +194,14 @@ namespace resolver
 			// TODO: support re-eval of constructor args!
 			// TODO: support re-eval of constructor args!
 
-			if(copy1 != copy)
-				error(fs->loc(), "args changed for constructor call -- fixme!!!");
-
 			if(cand.isError())
 			{
 				cand.error()->prepend(SimpleError::make(fs->loc(), "failed to find matching initialiser for class '%s':", cls->id.name));
 				return TCResult(cand.error());
 			}
+
+			if(copy1 != copy)
+				error(fs->loc(), "args changed for constructor call -- fixme!!!");
 
 			return TCResult(cand);
 		}
@@ -225,12 +227,12 @@ namespace resolver
 					return FnParam(f->loc, f->id.name, f->type);
 				});
 
-				ErrorMsg* _err = 0;
-				auto args = resolver::misc::canonicaliseCallArguments(fs->loc(), target, arguments, &_err);
-				if(_err != 0) return TCResult(_err);
+				auto args = util::map(arguments, [](const FnCallArgument& a) -> poly::ArgType {
+					return poly::ArgType(a.name, a.value->type, a.loc);
+				});
 
-				auto [ soln, err ] = poly::solveTypeList(fs->loc(), util::map(target, [](const FnParam& f) -> fir::LocatedType {
-					return fir::LocatedType(f.type, f.loc);
+				auto [ soln, err ] = poly::solveTypeList(fs->loc(), util::map(target, [](const FnParam& f) -> poly::ArgType {
+					return poly::ArgType(f.name, f.type, f.loc, f.defaultVal != 0);
 				}), args, poly::Solution_t(), /* isFnCall: */ true);
 
 				// in actual fact we just return the thing here. sigh.

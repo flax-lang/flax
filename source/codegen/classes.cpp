@@ -133,6 +133,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 		auto fake = util::pool<sst::RawValueExpr>(call->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(this->getMethodSelf());
 
+		//! SELF HANDLING (INSERTION) (CODEGEN)
 		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake, 0));
 	}
 
