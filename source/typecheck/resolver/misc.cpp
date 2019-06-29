@@ -15,62 +15,6 @@ namespace sst
 	{
 		namespace misc
 		{
-			static std::vector<fir::LocatedType> _canonicaliseCallArguments(const Location& target,
-				const util::hash_map<std::string, size_t>& nameToIndex, const std::vector<FnCallArgument>& args, ErrorMsg** err)
-			{
-				std::vector<fir::LocatedType> ret(args.size());
-
-				// strip out the name information, and do purely positional things.
-				{
-					int counter = 0;
-					for(const auto& i : args)
-					{
-						if(!i.name.empty())
-						{
-							if(nameToIndex.find(i.name) == nameToIndex.end())
-							{
-								iceAssert(err);
-								*err = SimpleError::make(MsgType::Note, i.loc, "function does not have a parameter named '%s'", i.name)->append(
-									SimpleError::make(MsgType::Note, target, "function was defined here:")
-								);
-
-								return { };
-							}
-							else if(ret[nameToIndex.find(i.name)->second].type != 0)
-							{
-								iceAssert(err);
-								*err = SimpleError::make(MsgType::Note, i.loc, "argument '%s' was already provided", i.name)->append(
-									SimpleError::make(MsgType::Note, ret[nameToIndex.find(i.name)->second].loc, "here:")
-								);
-
-								return { };
-							}
-						}
-
-						ret[i.name.empty() ? counter : nameToIndex.find(i.name)->second] = fir::LocatedType(i.value->type, i.loc);
-						counter++;
-					}
-				}
-
-				return ret;
-			}
-
-
-
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
-				const std::vector<FnCallArgument>& args, ErrorMsg** err)
-			{
-				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
-			}
-
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<FnCallArgument>& args, ErrorMsg** err)
-			{
-				return _canonicaliseCallArguments(target, getNameIndexMap(params), args, err);
-			}
-
-
-
 			std::pair<TypeParamMap_t, ErrorMsg*> canonicalisePolyArguments(TypecheckState* fs, ast::Parameterisable* thing, const PolyArgMapping_t& pams)
 			{
 				if(thing->generics.empty())
@@ -189,7 +133,7 @@ namespace sst
 
 				auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(*arguments, [](const FnCallArgument& fca) -> auto {
 					return fir::LocatedType(fca.value->type, fca.loc);
-				}), false);
+				}), /* isCVarArg: */ false, fs->loc());
 
 				if(errs != nullptr || dist == -1)
 				{
@@ -280,7 +224,7 @@ namespace sst
 			return fir::LocatedType(t, Location());
 		}), util::map(b, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
-		}), false).first;
+		}), /* isCVarArg: */ false, this->loc()).first;
 	}
 
 	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)

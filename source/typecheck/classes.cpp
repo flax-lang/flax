@@ -411,8 +411,8 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn = util::pool<ast::FuncDefn>(this->loc);
 
 	this->actualDefn->name = "init";
-	this->actualDefn->args = this->args;
 	this->actualDefn->body = this->body;
+	this->actualDefn->params = this->params;
 	this->actualDefn->parentType = this->parentType;
 	this->actualDefn->returnType = pts::NamedType::create(this->loc, VOID_TYPE_STRING);
 

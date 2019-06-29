@@ -126,7 +126,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 		return fir::LocatedType(t, Location());
 	}), util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
 		return fir::LocatedType(fca.value->type, fca.loc);
-	}), target->type->toFunctionType()->isCStyleVarArg());
+	}), target->type->toFunctionType()->isCStyleVarArg(), this->loc);
 
 	if(errs != nullptr || dist == -1)
 	{

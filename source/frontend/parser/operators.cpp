@@ -42,7 +42,7 @@ namespace parser
 
 
 		bool isvar = false;
-		std::tie(ret->args, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
+		std::tie(ret->params, ret->generics, ret->returnType, isvar, std::ignore) = parseFunctionLookingDecl(st);
 
 		if(ret->returnType == 0)
 			ret->returnType = pts::NamedType::create(ret->loc, VOID_TYPE_STRING);
