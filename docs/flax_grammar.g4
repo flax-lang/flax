@@ -4,10 +4,20 @@
 
 // parser rules
 
+grammar flax_grammar;
+
+asdf: IDENTIFIER;
+
+
+
+
+
+
+
+
+
 
 // lexer rules
-lexer grammar flax_grammar;
-
 
 // keywords
 DO:         'do';
@@ -107,38 +117,37 @@ CARET_EQ:           '^=';
 ELLIPSIS:           '...';
 HALF_OPEN_ELLIPSIS: '..<';
 DOUBLE_COLON:       '::';
-NUMBER:             '';
 
-/*
-		DoublePlus,
-		DoubleMinus,
-		PlusEq,
-		MinusEq,
-		MultiplyEq,
-		DivideEq,
-		ModEq,
-		ShiftLeftEq,
-		ShiftRightEq,
-		AmpersandEq,
-		PipeEq,
-		CaretEq,
-		Ellipsis,
-		HalfOpenEllipsis,
-		DoubleColon,
-		Identifier,
-		UnicodeSymbol,
-		Number,
-		StringLiteral,
-		CharacterLiteral,
-		NewLine,
-		Comment,
-		EndOfFile,
+STRING_LITERAL:     '"' .*? '"';
+CHARACTER_LITERAL:  '\'' ('\\' ('\\'|'\''|'n'|'b'|'a'|'r'|'t') | .) '\'';
+NEWLINE:            '\n';
+COMMENT
+	:   '//' .*? NEWLINE
+	|   '/*' (COMMENT|.*?) '*/'
+	;
 
-		Attr_Raw,
-		Attr_EntryFn,
-		Attr_NoMangle,
-		Attr_Operator,
-		Attr_Platform,
+NUMBER
+	:   ('0b'|'0B') [0-1]+
+	|   ('0x'|'0X') [0-9a-fA-F]+
+	|   [0-9]*('.'?)[0-9]+ (('e'|'E')[0-9]+)?
+	;
 
-		Directive_Run,
-		Directive_If, */
+ATTR_RAW:           '@raw';
+ATTR_ENTRY:         '@entry';
+ATTR_NOMANGLE:      '@nomangle';
+ATTR_OPERATOR:      '@operator';
+ATTR_PLATFORM:      '@platform';
+
+DIRECTIVE_RUN:      '#run';
+DIRECTIVE_IF:       '#if';
+
+
+
+
+
+
+
+
+
+
+
