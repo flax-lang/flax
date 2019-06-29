@@ -1005,8 +1005,8 @@ namespace fir
 				}
 				else if(args[i]->getType() != elm)
 				{
-					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
-						elm, args[i]->getType());
+					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')",
+						i, fn->getName().str(), elm, args[i]->getType());
 				}
 				else
 				{
@@ -1059,44 +1059,13 @@ namespace fir
 			// ok, this is the last argument.
 			out.push_back(slc);
 		}
-
-
-
-		// if(!fn->isCStyleVarArg())
-		// {
-		// 	// check here, to stop llvm dying
-		// 	if(args.size() != fn->getArgumentCount())
-		// 		error("irbuilder: calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
-		// 			fn->getArgumentCount(), args.size());
-
-		// 	for(size_t i = 0; i < args.size(); i++)
-		// 	{
-		// 		auto at = args[i]->getType();
-		// 		auto target = fn->getArguments()[i]->getType();
-
-		// 		// special case
-		// 		if(at->isArraySliceType() && target->isArraySliceType() &&
-		// 			target->toArraySliceType()->isVariadicType() != at->toArraySliceType()->isVariadicType())
-		// 		{
-		// 			// silently cast, because they're the same thing
-		// 			// the distinction is solely for the type system's benefit
-		// 			out[i] = this->Bitcast(args[i], target);
-		// 		}
-		// 		else if(at->isPointerType() && target->isPointerType() && at->getPointerElementType() == target->getPointerElementType() &&
-		// 			at->isMutablePointer() && target->isImmutablePointer())
-		// 		{
-		// 			// this is ok. at the llvm level the cast should reduce to a no-op.
-		// 			out[i] = this->PointerTypeCast(args[i], target);
-		// 		}
-
-		// 		out[i] = args[i];
-		// 		if(out[i]->getType() != target)
-		// 		{
-		// 			error("irbuilder: mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
-		// 				fn->getArguments()[i]->getType(), out[i]->getType());
-		// 		}
-		// 	}
-		// }
+		else if(fn->isVariadic() && variadicArgs.empty() && !forwarded)
+		{
+			// ok, insert the empty slice here.
+			auto elm = fn->getArguments().back()->getType()->getArrayElementType();
+			out.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(elm),
+				fir::ConstantValue::getZeroValue(elm->getPointerTo()), fir::ConstantInt::getNative(0)));
+		}
 
 		out.insert(out.begin(), fn);
 

@@ -109,10 +109,22 @@ import std::map
 
 
 /*
-	! bugs !
+	! important stuff to fix !
 	{
 		2. splatting tuples into a generic function *will not work*
 		3. pass the overall location to the polymorph solver.
+
+		4. how does named-argument calling interact with varaidic arguments/functions? also, how do
+			optional arguments fit into that picure????
+
+		5. for optional arguments on virtual functions, we need to reach a decision --- do we ban it entirely,
+			or follow what c++ does, which is to use the default values specified on the static type of the pointer?
+			note: we are definitely *not* going to handle it at runtime.
+
+		6. see the error message when we pass a [T1:] to a [T2:...] without splatting; we should probably give a better
+			diagnostic, and eg. recommend splatting it, if the internal types match (ie. T1 == T2).
+
+			at the very least, the current message complains about casting [T1:] to T2, which isn't really correct.
 	}
 
 

@@ -14,11 +14,11 @@ using namespace lexer;
 using TT = lexer::TokenType;
 namespace parser
 {
-	std::tuple<std::vector<FuncDefn::Arg>, std::vector<std::pair<std::string, TypeConstraints_t>>, pts::Type*, bool, Location>
+	std::tuple<std::vector<FuncDefn::Param>, std::vector<std::pair<std::string, TypeConstraints_t>>, pts::Type*, bool, Location>
 	parseFunctionLookingDecl(State& st)
 	{
 		pts::Type* returnType = 0;
-		std::vector<FuncDefn::Arg> args;
+		std::vector<FuncDefn::Param> params;
 		std::vector<std::pair<std::string, TypeConstraints_t>> generics;
 
 		// check for generic function
@@ -36,16 +36,19 @@ namespace parser
 			expectedAfter(st, "'('", "function declaration to begin argument list", st.front().str());
 
 		st.eat();
-		bool isvar = false;
 		Location varloc;
+
+		bool isfvar = false;    // flax-variadic
+		bool iscvar = false;    // c-variadic
+		bool startedOptional = false;
 		while(st.front() != TT::RParen)
 		{
-			if(isvar)
-				error(st, "variadic arguments must be the last in the function parameter list");
+			if(iscvar || isfvar)
+				error(st, "variadic parameter list must be the last function parameter");
 
 			if(st.front() == TT::Ellipsis)
 			{
-				isvar = true;
+				iscvar = true;
 				varloc = st.loc();
 				st.pop();
 
@@ -65,8 +68,26 @@ namespace parser
 
 			st.eat();
 			auto type = parseType(st);
+			if(type->isVariadicArrayType())
+				isfvar = true;
 
-			args.push_back(FuncDefn::Arg { name, loc, type });
+			Expr* defaultVal = 0;
+			if(st.front() == TT::Equal)
+			{
+				if(type->isVariadicArrayType())
+					error(st, "variadic parameter list cannot have a default value");
+
+				st.pop();
+				startedOptional = true;
+				defaultVal = parseExpr(st);
+			}
+			// we can have a variadic list after optional arguments
+			else if(startedOptional && !isfvar)
+			{
+				error(loc, "mandatory arguments must be declared before any optional arguments");
+			}
+
+			params.push_back(FuncDefn::Param { name, loc, type, defaultVal });
 
 			if(st.front() == TT::Comma)
 				st.eat();
@@ -90,7 +111,7 @@ namespace parser
 			returnType = 0;
 		}
 
-		return std::make_tuple(args, generics, returnType, isvar, varloc);
+		return std::make_tuple(params, generics, returnType, iscvar, varloc);
 	}
 
 
@@ -107,7 +128,7 @@ namespace parser
 
 		Location loc;
 		bool isvar = false;
-		std::tie(defn->args, defn->generics, defn->returnType, isvar, loc) = parseFunctionLookingDecl(st);
+		std::tie(defn->params, defn->generics, defn->returnType, isvar, loc) = parseFunctionLookingDecl(st);
 
 		if(defn->returnType == 0)
 			defn->returnType = pts::NamedType::create(defn->loc, VOID_TYPE_STRING);
@@ -160,10 +181,16 @@ namespace parser
 
 		ffn->loc = defn->loc;
 		ffn->isVarArg = isvar;
-		ffn->args = defn->args;
 		ffn->name = defn->name;
+		ffn->params = defn->params;
 		ffn->visibility = defn->visibility;
 		ffn->returnType = defn->returnType;
+
+		// make sure we don't have optional arguments here
+		util::foreach(ffn->params, [](auto a) {
+			if(a.defaultValue)
+				error(a.loc, "foreign functions cannot have optional arguments");
+		});
 
 		// check for 'as'
 		if(st.front() == TT::As)
@@ -188,7 +215,7 @@ namespace parser
 		Token tok = st.pop();
 		iceAssert(tok.str() == "init");
 
-		auto [ args, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
+		auto [ params, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
 		if(generics.size() > 0)
 			error(st.ploc(), "class initialiser functions cannot be generic");
 
@@ -200,7 +227,7 @@ namespace parser
 
 		// ok loh
 		InitFunctionDefn* ret = util::pool<InitFunctionDefn>(tok.loc);
-		ret->args = args;
+		ret->params = params;
 
 		// check for super-class args.
 		if(st.front() == TT::Colon)

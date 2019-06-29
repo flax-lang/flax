@@ -42,8 +42,9 @@ struct FnCallArgument
 	sst::Expr* value = 0;
 
 	ast::Expr* orig = 0;
+	bool ignoreName = false;
 
-	static FnCallArgument make(const Location& l, const std::string& n, fir::Type* t);
+	static FnCallArgument make(const Location& l, const std::string& n, fir::Type* t, bool ignoreName = false);
 
 	bool operator == (const FnCallArgument& other) const
 	{
@@ -58,7 +59,8 @@ struct FnParam
 
 	Location loc;
 	std::string name;
-	fir::Type* type;
+	fir::Type* type = 0;
+	sst::Expr* defaultVal = 0;
 };
 
 

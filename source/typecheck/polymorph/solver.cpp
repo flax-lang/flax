@@ -16,7 +16,10 @@ namespace sst
 {
 	namespace poly
 	{
-		ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
+		static ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<ArgType>& target,
+			const std::vector<ArgType>& given, bool isFnCall);
+
+		static ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given)
 		{
 			auto tgt = target.type;
 			auto gvn = given.type;
@@ -43,14 +46,7 @@ namespace sst
 				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
 				// if(ttrfs != gtrfs)
-				// {
-				// 	return SpanError::make(
-				// 		SimpleError::make(given.loc, "incompatible transforms between argument type '%s' and parameter type '%s'",
-				// 			gvn, tgt), { util::ESpan(given.loc, strprintf("type: '%s'", gvn)) }
-				// 	)->append(SpanError::make(SimpleError::make(MsgType::Note, target.loc, "target parameter was here:"),
-				// 		{ util::ESpan(target.loc, strprintf("type: '%s'", tgt)) }
-				// 	));
-				// }
+				// hmm???
 
 				// substitute if possible.
 				if(auto _gt = soln->substitute(gt); _gt != gt)
@@ -110,32 +106,33 @@ namespace sst
 					if(tt->isFunctionType() != gt->isFunctionType() || tt->isTupleType() != gt->isTupleType())
 						return SimpleError::make(given.loc, "no valid conversion from given type '%s' to target type '%s'", gt, tt);
 
-					std::vector<fir::LocatedType> problem;
-					std::vector<fir::LocatedType> input;
+					std::vector<ArgType> problem;
+					std::vector<ArgType> input;
 					if(gt->isFunctionType())
 					{
-						input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> fir::LocatedType {
-							return fir::LocatedType(t, given.loc);
-						}) + fir::LocatedType(gt->toFunctionType()->getReturnType(), given.loc);
+						input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> ArgType {
+							return ArgType("", t, given.loc);
+						}) + ArgType("", gt->toFunctionType()->getReturnType(), given.loc);
 
-						problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> fir::LocatedType {
-							return fir::LocatedType(t, target.loc);
-						}) + fir::LocatedType(tt->toFunctionType()->getReturnType(), target.loc);
+						problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> ArgType {
+							return ArgType("", t, target.loc);
+						}) + ArgType("", tt->toFunctionType()->getReturnType(), target.loc);
 					}
 					else
 					{
 						iceAssert(gt->isTupleType());
-						input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> fir::LocatedType {
-							return fir::LocatedType(t, given.loc);
+						input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> ArgType {
+							return ArgType("", t, given.loc);
 						});
 
-						problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> fir::LocatedType {
-							return fir::LocatedType(t, target.loc);
+						problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> ArgType {
+							return ArgType("", t, target.loc);
 						});
 					}
 
 					// for recursive solving, we're never a function call.
-					return solveSingleTypeList(soln, problem, input, /* isFnCall: */ false);
+					// related: so, firstOptionalArgument is always -1 in these cases.
+					return solveSingleTypeList(soln, given.loc, problem, input, /* isFnCall: */ false);
 				}
 				else
 				{
@@ -148,29 +145,117 @@ namespace sst
 
 
 
-
-		ErrorMsg* solveSingleTypeList(Solution_t* soln, const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
-			bool isFnCall)
+		static ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<ArgType>& target,
+			const std::vector<ArgType>& given, bool isFnCall)
 		{
 			bool fvararg = (isFnCall && target.size() > 0 && target.back()->isVariadicArrayType());
 
-			// for now just do this.
-			if(target.size() != given.size() && !fvararg)
+			util::hash_map<std::string, size_t> targetnames;
+
+			// either we have all names or no names for the target!
+			if(target.size() > 0 && target[0].name != "")
 			{
-				return SimpleError::make(Location(), "mismatched argument count; expected %d, but %d %s provided", target.size(), given.size(),
-					given.size() == 1 ? "was" : "were");
+				util::foreachIdx(target, [&targetnames](const ArgType& t, size_t i) {
+					targetnames[t.name] = i;
+				});
 			}
+
+			std::set<size_t> unsolvedtargets;
+			util::foreachIdx(target, [&unsolvedtargets, &target, fvararg](const ArgType& a, size_t i) {
+				// if it's optional, we don't mark it as 'unsolved'.
+				if((!fvararg || i + 1 != target.size()) && !a.optional)
+					unsolvedtargets.insert(i);
+			});
+
 
 			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0), given.size());
 
+
+			// we used to do this check in the parser, but to support more edge cases (like passing varargs)
+			// we moved it here so we can actually check stuff.
+			bool didNames = false;
+
+			size_t positionalCounter = 0;
 			for(size_t i = 0; i < last_arg; i++)
 			{
-				auto err = solveSingleType(soln, target[i], given[i]);
+				const ArgType* targ = 0;
+
+				// note that when we call std::set::erase(), if the key did not exist (because it was optional),
+				// nothing will happen, which is fine.
+				if(targetnames.size() > 0 && given[i].name != "")
+				{
+					if(auto it = targetnames.find(given[i].name); it != targetnames.end())
+					{
+						targ = &target[it->second];
+						unsolvedtargets.erase(it->second);
+					}
+					else
+					{
+						return SimpleError::make(given[i].loc, "function has no parameter named '%s'", given[i].name);
+					}
+
+					/*
+						optional arguments "don't count" as passing by name. this means that you can do this, for example:
+
+						foo(x: 30, "blabla")
+
+						where 'x' is an optional argument. this should be fine in terms of the rest of the compiler, because when
+						we *declare* the function, all optional arguments must come last. this gives us a good compromise because
+						optional arguments must still be passed by name, but we can actually have optional arguments together with
+						variadic functions without needing to name all the arguments.
+					*/
+
+					if(!targ->optional)
+					{
+						didNames = true;
+						positionalCounter++;
+					}
+				}
+				else
+				{
+					targ = &target[positionalCounter];
+					unsolvedtargets.erase(positionalCounter);
+
+					positionalCounter++;
+				}
+
+				if(given[i].name.empty())
+				{
+					if(didNames)
+						return SimpleError::make(given[i].loc, "positional arguments cannot appear after named arguments");
+
+					else if(targ->optional)
+						return SimpleError::make(given[i].loc, "optional argument '%s' must be passed by name", targ->name);
+				}
+
+
+				iceAssert(targ);
+				auto err = solveSingleType(soln, targ->toFLT(), given[i].toFLT());
 				if(err != nullptr) return err;
 
 				// possibly increase solution completion by re-substituting with new information
 				soln->resubstituteIntoSolutions();
 			}
+
+			if(unsolvedtargets.size() > 0 || (!fvararg && given.size() > target.size()))
+			{
+				if(targetnames.empty() || given.size() > target.size())
+				{
+					return SimpleError::make(callLoc, "mismatched argument count: expected %d, but %d %s provided",
+						target.size(), given.size(), given.size() == 1 ? "was" : "were");
+				}
+				else
+				{
+					std::vector<std::string> missings;
+					for(const auto& us : unsolvedtargets)
+						missings.push_back(target[us].name);
+
+					auto s = util::listToEnglish(missings, /* quote: */ true);
+					return SimpleError::make(callLoc, "mismatched arguments: missing arguments for parameters %s", s);
+				}
+			}
+
+
 
 			// solve the variadic part.
 			if(fvararg)
@@ -181,7 +266,7 @@ namespace sst
 					auto copy = *soln;
 
 					// ok, if we fulfil all the conditions to forward, then we forward.
-					auto err = solveSingleType(&copy, target.back(), given.back());
+					auto err = solveSingleType(&copy, target.back().toFLT(), given.back().toFLT());
 					if(err == nullptr)
 					{
 						iceAssert(copy.distance >= 0);
@@ -201,7 +286,7 @@ namespace sst
 
 				for(size_t i = last_arg; i < given.size(); i++)
 				{
-					auto err = solveSingleType(soln, ltvarty, given[i]);
+					auto err = solveSingleType(soln, ltvarty, given[i].toFLT());
 					if(err) return err->append(SimpleError::make(MsgType::Note, target.back().loc, "in argument of variadic parameter"));
 				}
 
@@ -216,8 +301,11 @@ namespace sst
 
 
 
-		std::pair<Solution_t, ErrorMsg*> solveTypeList(const std::vector<fir::LocatedType>& target, const std::vector<fir::LocatedType>& given,
-			const Solution_t& partial, bool isFnCall)
+
+
+
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const Location& callLoc, const std::vector<ArgType>& target,
+			const std::vector<ArgType>& given, const Solution_t& partial, bool isFnCall)
 		{
 			Solution_t prevSoln = partial;
 
@@ -241,7 +329,7 @@ namespace sst
 				//* if we didn't reset the distance, it would just keep increasing to infinity (and overflow)
 				auto soln = prevSoln; soln.distance = 0;
 
-				auto errs = solveSingleTypeList(&soln, target, given, isFnCall);
+				auto errs = solveSingleTypeList(&soln, callLoc, target, given, isFnCall);
 				if(errs) return { soln, errs };
 
 				if(soln == prevSoln)            { break; }

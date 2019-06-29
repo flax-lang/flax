@@ -11,7 +11,8 @@ bugfixes that are necessary.
 2. Extensions
 3. Cleanup and modernise operator overloading
 4. Standard library
-
+5. Proper documentation for the entire language and all features
+6. Proper introduction to language features (eg. for a README)
 
 
 ### Cleanup/modernise Operator Overloading

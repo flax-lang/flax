@@ -3,33 +3,29 @@
 // Licensed under the Apache License Version 2.0.
 
 export ultratiny
+import libc as _
 
-import libc
-import std::math
 
-var value = 401.0
 
-#if value > 30.0
+fn qux(x: str, y: int = 3, args: [str: ...])
 {
-	#run {
-		value = 30
-		libc::printf("true case\n")
+	printf("x = %s, y = %d\n", x, y)
+	for a in args
+	{
+		printf("a: %s\n", a)
 	}
 }
-else
-{
-	#run libc::printf("false case\n")
-}
 
-#run {
-	value = math::sqrt(value)
+fn foo(a: int, b: int, c: int, x: int = 9, y: int = 8, z: int = 7)
+{
+	printf("a = %d, b = %d, c = %d\n", a, b, c)
+	printf("x = %d, y = %d, z = %d\n", x, y, z)
 }
 
 @entry fn main()
 {
-	let k = 30
-	let x = #run math::sqrt(value)
-	libc::printf("sqrt(%.1f) = %.3f\n", value, x)
+	foo(x: 4, 1, 2, y: 5, z: 6, 3)
+	qux(y: 17, "hello, world!", "hi", "my", "name", "is", "bob", "ross")
 }
 
 

@@ -19,13 +19,18 @@ namespace sst
 {
 	struct TypecheckState;
 
+	namespace poly
+	{
+		struct ArgType;
+	}
+
 	namespace resolver
 	{
 		std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
-			const std::vector<FnCallArgument>& _args, bool cvararg);
+			const std::vector<FnCallArgument>& _args, bool cvararg, const Location& callLoc);
 
 		std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
-			const std::vector<fir::LocatedType>& _args, bool cvararg);
+			const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc);
 
 
 		TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments,
@@ -46,12 +51,6 @@ namespace sst
 
 		namespace misc
 		{
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<FnParam>& params,
-				const std::vector<FnCallArgument>& args, ErrorMsg** err);
-
-			std::vector<fir::LocatedType> canonicaliseCallArguments(const Location& target, const std::vector<ast::FuncDefn::Arg>& params,
-				const std::vector<FnCallArgument>& args, ErrorMsg** err);
-
 			std::pair<TypeParamMap_t, ErrorMsg*> canonicalisePolyArguments(TypecheckState* fs, ast::Parameterisable* thing, const PolyArgMapping_t& pams);
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args);

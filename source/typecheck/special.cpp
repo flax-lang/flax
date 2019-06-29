@@ -60,10 +60,13 @@ sst::TypeExpr* sst::TypeExpr::make(const Location& l, fir::Type* t)
 	return (cache[t] = util::pool<sst::TypeExpr>(l, t));
 }
 
-FnCallArgument FnCallArgument::make(const Location& l, const std::string& n, fir::Type* t)
+FnCallArgument FnCallArgument::make(const Location& l, const std::string& n, fir::Type* t, bool ignoreName)
 {
 	auto te = sst::TypeExpr::make(l, t);
-	return FnCallArgument(l, n, te, nullptr);
+	auto ret = FnCallArgument(l, n, te, nullptr);
+	ret.ignoreName = ignoreName;
+
+	return ret;
 }
 
 
