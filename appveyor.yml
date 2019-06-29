@@ -42,14 +42,14 @@ test_script:
   - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run build\tester.flx > output.txt
   - ps: cat output.txt
 
-artifacts:
-  - path: windows-x64.zip
-
-before_deploy:
+after_test:
   - cmd: 7z a windows-x64.zip %APPVEYOR_BUILD_FOLDER%\build\meson-rel\flaxc.exe
   - cmd: 7z a windows-x64.zip %APPVEYOR_BUILD_FOLDER%\build\sysroot\usr\local\lib
   - cmd: 7z rn windows-x64.zip flaxc.exe sysroot\usr\local\bin\flaxc.exe
   - cmd: 7z rn windows-x64.zip lib sysroot\usr\local\lib
+
+artifacts:
+  - path: windows-x64.zip
 
 deploy:
   - provider: GitHub
