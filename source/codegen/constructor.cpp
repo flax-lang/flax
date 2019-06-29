@@ -66,6 +66,7 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 		auto fake = util::pool<sst::RawValueExpr>(this->loc(), cls->getPointerTo());
 		fake->rawValue = CGResult(selfptr);
 
+		//! SELF HANDLING (INSERTION) (CODEGEN)
 		arguments.insert(arguments.begin(), FnCallArgument(this->loc(), "self", fake, 0));
 	}
 

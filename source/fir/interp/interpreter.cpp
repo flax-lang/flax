@@ -938,10 +938,10 @@ namespace interp
 		{
 			ffi_retty = convertTypeToLibFFI(fnty->getReturnType());
 
-			if(args.size() > fnty->getArgumentTypes().size())
+			if(args.size() > fnty->getArgumentCount())
 			{
 				iceAssert(fnty->isCStyleVarArg());
-				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fnty->getArgumentTypes().size(), args.size(), ffi_retty, arg_types);
+				auto st = ffi_prep_cif_var(&fn_cif, FFI_DEFAULT_ABI, fnty->getArgumentCount(), args.size(), ffi_retty, arg_types);
 				if(st != FFI_OK)
 					error("interp: ffi_prep_cif_var failed! (%d)", st);
 			}

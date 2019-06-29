@@ -108,10 +108,10 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 
 	if(this->kind == Kind::Infix)
 	{
-		if(ft->getArgumentTypes().size() != 2)
+		if(ft->getArgumentCount() != 2)
 		{
 			error(this, "operator overload for binary operator '%s' must have exactly 2 parameters, but %d %s found",
-				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
+				this->symbol, ft->getArgumentCount(), ft->getArgumentCount() == 1 ? "was" : "were");
 		}
 		else if(!Operator::isAssignment(this->symbol) && isBuiltinType(ft->getArgumentN(0)) && isBuiltinType(ft->getArgumentN(1))
 			 && isBuiltinOperator(this->symbol))
@@ -124,10 +124,10 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 	}
 	else if(this->kind == Kind::Postfix || this->kind == Kind::Prefix)
 	{
-		if(ft->getArgumentTypes().size() != 1)
+		if(ft->getArgumentCount() != 1)
 		{
 			error(this, "operator overload for unary operator '%s' must have exactly 1 parameter, but %d %s found",
-				this->symbol, ft->getArgumentTypes().size(), ft->getArgumentTypes().size() == 1 ? "was" : "were");
+				this->symbol, ft->getArgumentCount(), ft->getArgumentCount() == 1 ? "was" : "were");
 		}
 		else if(isBuiltinType(ft->getArgumentN(0)) && isBuiltinOperator(this->symbol))
 		{

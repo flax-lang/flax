@@ -132,26 +132,25 @@ namespace poly
 					}
 				}
 
-
 				auto [ seen, err ] = resolver::verifyStructConstructorArguments(fs->loc(), str->name, fields, input);
 				if(err) return { soln, err };
 
-
 				int session = getNextSessionId();
-				std::vector<fir::LocatedType> given(seen.size());
-				std::vector<fir::LocatedType> target(seen.size());
+				std::vector<ArgType> given(seen.size());
+				std::vector<ArgType> target(seen.size());
 
 				for(const auto& s : seen)
 				{
 					auto idx = fieldNames[s.first];
 
-					target[idx] = fir::LocatedType(convertPtsType(fs, str->generics, std::get<2>(str->fields[idx]), session),
+					target[idx] = ArgType(std::get<0>(str->fields[idx]), convertPtsType(fs, str->generics, std::get<2>(str->fields[idx]), session),
 						std::get<1>(str->fields[idx]));
-					given[idx] = fir::LocatedType(input[s.second].value->type, input[s.second].loc);
+
+					given[idx] = ArgType(input[s.second].name, input[s.second].value->type, input[s.second].loc);
 				}
 
 				*origParamOrder = fieldNames;
-				return solveTypeList(target, given, soln, isFnCall);
+				return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 			}
 			else if(auto unn = dcast(ast::UnionDefn, td))
 			{
@@ -181,22 +180,22 @@ namespace poly
 				fir::Type* vty = convertPtsType(fs, unn->generics, std::get<2>(unn->cases[name]), session);
 
 				// ok, then. check the type + arguments.
-				std::vector<fir::LocatedType> target;
+				std::vector<ArgType> target;
 				if(vty->isTupleType())
 				{
 					for(auto t : vty->toTupleType()->getElements())
-						target.push_back(fir::LocatedType(t, uvloc));
+						target.push_back(ArgType("", t, uvloc));
 				}
 				else if(!vty->isVoidType())
 				{
-					target.push_back(fir::LocatedType(vty, uvloc));
+					target.push_back(ArgType("", vty, uvloc));
 				}
 
-				auto given = util::map(input, [](const FnCallArgument& fca) -> fir::LocatedType {
-					return fir::LocatedType(fca.value->type, fca.loc);
+				auto given = util::map(input, [](const FnCallArgument& fca) -> ArgType {
+					return ArgType(fca.name, fca.value->type, fca.loc);
 				});
 
-				return solveTypeList(target, given, soln, isFnCall);
+				return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 			}
 			else
 			{
@@ -217,61 +216,59 @@ namespace poly
 			bool isinit = dcast(ast::InitFunctionDefn, thing) != nullptr;
 			iceAssert(dcast(ast::FuncDefn, thing) || isinit);
 
-			std::vector<fir::LocatedType> given;
-			std::vector<fir::LocatedType> target;
+			std::vector<ArgType> given;
+			std::vector<ArgType> target;
 
 			pts::Type* retty = 0;
-			std::vector<ast::FuncDefn::Arg> args;
+			std::vector<ast::FuncDefn::Param> params;
 
 			if(isinit)
 			{
 				auto i = dcast(ast::InitFunctionDefn, thing);
-				args = i->args;
+				params = i->params;
 			}
 			else
 			{
 				auto i = dcast(ast::FuncDefn, thing);
 				retty = i->returnType;
-				args = i->args;
+				params = i->params;
 			}
 
 			int session = getNextSessionId();
 
-			// if(!type_infer)
 			if(!problem_infer)
 			{
-				target = internal::unwrapFunctionParameters(fs, problems, args, session);
+				target = internal::unwrapFunctionParameters(fs, problems, params, session);
 
 				if(!isinit && (!isFnCall || return_infer))
 				{
-					// add the return type to the fray
-					target.push_back(fir::LocatedType(convertPtsType(fs, thing->generics, retty, session), thing->loc));
+					// add the return type to the fray. it doesn't have a name tho
+					target.push_back(ArgType("<return_type>", convertPtsType(fs, thing->generics, retty, session), thing->loc));
 				}
 			}
 			else
 			{
 				auto ift = problem_infer->toFunctionType();
 
-				for(auto a : ift->getArgumentTypes())
-					target.push_back(fir::LocatedType(a));
+				util::foreachIdx(ift->getArgumentTypes(), [&target, &params](fir::Type* ty, size_t i) {
+					target.push_back(ArgType(params[i].name, ty, params[i].loc));
+				});
 
 				if(!isFnCall || return_infer)
-					target.push_back(fir::LocatedType(ift->getReturnType()));
+					target.push_back(ArgType("<return_type>", ift->getReturnType(), Location()));
 			}
 
 
 			if(isFnCall)
 			{
-				ErrorMsg* err = 0;
+				given = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
+					return poly::ArgType(a.name, a.value->type, a.loc);
+				});
 
-				auto gvn = resolver::misc::canonicaliseCallArguments(thing->loc, args, input, &err);
-				if(err) return { soln, err };
-
-				given = gvn;
 				if(return_infer)
-					given.push_back(fir::LocatedType(return_infer));
+					given.push_back(ArgType("<return_type>", return_infer, Location()));
 
-				*origParamOrder = resolver::misc::getNameIndexMap(args);
+				*origParamOrder = resolver::misc::getNameIndexMap(params);
 			}
 			else
 			{
@@ -283,12 +280,12 @@ namespace poly
 
 				// ok, we should have it.
 				iceAssert(type_infer->isFunctionType());
-				given = util::mapidx(type_infer->toFunctionType()->getArgumentTypes(), [&args](fir::Type* t, size_t i) -> fir::LocatedType {
-					return fir::LocatedType(t, args[i].loc);
-				}) + fir::LocatedType(type_infer->toFunctionType()->getReturnType(), thing->loc);
+				given = util::mapidx(type_infer->toFunctionType()->getArgumentTypes(), [&params](fir::Type* t, size_t i) -> ArgType {
+					return ArgType(params[i].name, t, params[i].loc);
+				}) + ArgType("<return_type>", type_infer->toFunctionType()->getReturnType(), thing->loc);
 			}
 
-			return solveTypeList(target, given, soln, isFnCall);
+			return solveTypeList(fs->loc(), target, given, soln, isFnCall);
 		}
 
 

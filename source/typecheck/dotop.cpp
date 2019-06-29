@@ -473,7 +473,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			//! SELF HANDLING (INSERTION) (DOT-METHOD-CALL)
 			//* note: how we handle this is that we insert the self argument to interface with our resolver,
 			//* then remove it below since our codegen will handle the actual insertion.
-			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "self", str->type->getMutablePointerTo()));
+			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "self", str->type->getMutablePointerTo(),
+				/* ignoreName: */ true));
 
 			auto search = [fs, fc](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
 

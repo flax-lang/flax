@@ -189,7 +189,7 @@ static std::string mangleType(fir::Type* t)
 	}
 	else if(t->isFunctionType())
 	{
-		std::string ret = "FN" + std::to_string(t->toFunctionType()->getArgumentTypes().size()) + "FA";
+		std::string ret = "FN" + std::to_string(t->toFunctionType()->getArgumentCount()) + "FA";
 		for(auto a : t->toFunctionType()->getArgumentTypes())
 		{
 			ret += lentypestr(mangleType(a));
