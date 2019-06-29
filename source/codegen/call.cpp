@@ -33,9 +33,11 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 	util::hash_map<size_t, sst::Expr*> argExprs;
 
+	// this thing below operates similarly to the list solver in typecheck/polymorph/solver.cpp
 	size_t last_arg = std::min(numNormalArgs, arguments.size());
 
 	size_t positionalCounter = 0;
+	size_t varArgStart = numNormalArgs;
 	for(size_t i = 0; i < last_arg; i++)
 	{
 		const auto& arg = arguments[i];
@@ -52,6 +54,17 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		}
 		else
 		{
+			// so, `positionalCounter` counts the paramters on the declaration-side. thus, once we encounter a default value,
+			// it must mean that the rest of the parameters will be optional as well.
+			//* ie. we've passed all the positional arguments already, leaving the optional ones, which means every argument from
+			//* here onwards (including this one) must be named. since this is *not* named, we just skip straight to the varargs if
+			//* it was present.
+			if(fvararg && defaultArgumentValues.find(positionalCounter) != defaultArgumentValues.end())
+			{
+				varArgStart = i;
+				break;
+			}
+
 			argExprs[positionalCounter] = arg.value;
 			positionalCounter++;
 		}
@@ -130,8 +143,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 	// check the variadic arguments. note that IRBuilder will handle actually wrapping the values up into a slice
 	// and/or creating an empty slice and/or forwarding an existing slice. we just need to supply the values.
-	// TODO: i'm still a bit suspicious if we are counting things correctly here, wrt. varargs and optional args.
-	for(size_t i = numNormalArgs; i < arguments.size(); i++)
+	for(size_t i = varArgStart; i < arguments.size(); i++)
 	{
 		auto arg = arguments[i].value;
 		fir::Type* infer = 0;
