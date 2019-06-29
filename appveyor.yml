@@ -1,5 +1,5 @@
 image: Visual Studio 2019
-
+clone_depth: 50
 clone_folder: c:\projects\flax
 
 environment:
@@ -41,3 +41,25 @@ test_script:
   - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
   - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run build\tester.flx > output.txt
   - ps: cat output.txt
+
+artifacts:
+  - path: windows-x64.zip
+
+before_deploy:
+  - ps: 7z a windows-x64.zip %APPVEYOR_BUILD_FOLDER%\build\meson-rel\flaxc.exe
+  - ps: 7z a windows-x64.zip %APPVEYOR_BUILD_FOLDER%\build\sysroot\usr\local\lib
+  - ps: 7z rn windows-x64.zip flaxc.exe sysroot\usr\local\bin\flaxc.exe
+  - ps: 7z rn windows-x64.zip lib sysroot\usr\local\lib
+
+deploy:
+  - provider: GitHub
+    description: ''
+    artifact: windows-x64.zip
+    auth_token:
+      secure: Sk3O32lE4SgtirIRqI2PWP2tkfCg2Iurz+eFrLN7C9s/nIUCDbxV0T5hjjZqMIw5
+    on:
+      APPVEYOR_REPO_TAG: true
+
+
+
+
