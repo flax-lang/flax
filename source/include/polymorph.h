@@ -8,6 +8,8 @@
 #include "ast.h"
 #include "stcommon.h"
 
+#include "ir/type.h"
+
 namespace pts
 {
 	struct Type;
@@ -32,6 +34,23 @@ namespace sst
 	{
 		using ProblemSpace_t = std::vector<std::pair<std::string, TypeConstraints_t>>;
 
+		struct ArgType
+		{
+			ArgType() { }
+			explicit ArgType(fir::Type* t) : type(t) { }
+			ArgType(const std::string& n, fir::Type* t, const Location& l) : name(n), type(t), loc(l) { }
+			ArgType(const std::string& n, fir::Type* t, const Location& l, bool opt) : name(n), type(t), loc(l), optional(opt) { }
+
+			operator fir::Type* () const { return this->type; }
+			fir::Type* operator -> () const { return this->type; }
+			fir::LocatedType toFLT() const { return fir::LocatedType(this->type, this->loc); }
+
+			std::string name;
+			fir::Type* type = 0;
+			Location loc;
+			bool optional = false;
+		};
+
 		struct Solution_t
 		{
 			Solution_t() { }
@@ -55,18 +74,10 @@ namespace sst
 		};
 
 
-		// ErrorMsg* solveSingleType(Solution_t* soln, const fir::LocatedType& target, const fir::LocatedType& given);
-
-		// ErrorMsg* solveSingleTypeList(Solution_t* soln, const Location& callLoc, const std::vector<fir::LocatedType>& target,
-		// 	const std::vector<fir::LocatedType>& given, bool isFnCall);
-
-
-		std::pair<Solution_t, ErrorMsg*> solveTypeList(const Location& callLoc, const std::vector<fir::LocatedType>& target,
-			const std::vector<fir::LocatedType>& given, const Solution_t& partial, bool isFnCall, size_t firstOptionalArgument = -1);
+		std::pair<Solution_t, ErrorMsg*> solveTypeList(const Location& callLoc, const std::vector<ArgType>& target,
+			const std::vector<ArgType>& given, const Solution_t& partial, bool isFnCall);
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
-
-
 
 
 		std::vector<std::pair<TCResult, Solution_t>> findPolymorphReferences(TypecheckState* fs, const std::string& name,
@@ -117,8 +128,8 @@ namespace sst
 			fir::Type* convertPtsType(TypecheckState* fs, const ProblemSpace_t& problems,
 				pts::Type* input, int polysession);
 
-			std::vector<fir::LocatedType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
-				const std::vector<ast::FuncDefn::Arg>& args, int polysession);
+			std::vector<ArgType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
+				const std::vector<ast::FuncDefn::Param>& args, int polysession);
 
 
 

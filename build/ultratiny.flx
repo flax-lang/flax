@@ -5,16 +5,20 @@
 export ultratiny
 import libc as _
 
-import std::io
 
-fn foo(a: int, b: int = 3)
+fn foo(a: int = 1, b: int = 3)
 {
-	// printf("a*b is %d\n", a*b)
+	printf("%d * %d is %d\n", a, b, a * b)
 }
 
-fn bar(x: str, args: [str: ...])
+fn bar(x: str, y: int)
 {
-	printf("x = %s\n", x)
+	printf("x = %s, y = %d\n", x, y)
+}
+
+fn qux(x: str, y: int = 3, args: [str: ...])
+{
+	printf("x = %s, y = %d\n", x, y)
 	for a in args
 	{
 		printf("a: %s\n", a)
@@ -23,8 +27,21 @@ fn bar(x: str, args: [str: ...])
 
 @entry fn main()
 {
-	// foo(7, b: 3)
-	bar("hello, world!\n", "uwu");
+	// foo(b: 13, a: 3)
+	// bar(y: 17, x: "hello")
+	qux("hello, world!", y: 3, "hi", "my", "name", "is", "bob", "ross")
+
+	// todo: instead of manually handling the empty case for variadic lists, just have them contain
+	// todo: an default value of [], and let the optional-argument-handler take care of that case.
+
+	// this should simplify a bit of code and make it play nicer with optionals? we might also want
+	// to special-case it, because we probably still want to be able to pass varargs after named arguments
+	// without explicitly making an array, splatting it, and naming it!
+
+	// eg. foo(a: "foo", 1, 2, 3, 4) should work when calling foo(a: str = "", xs: [int:...])
+	// probably.
+
+	//* also the code above currently crashes, which is probably something we should fix.
 }
 
 

@@ -26,70 +26,44 @@ util::hash_map<std::string, size_t> cgn::CodegenState::getNameIndexMap(sst::Func
 
 static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::CodegenState* cs, fir::FunctionType* ft,
 	const std::vector<FnCallArgument>& arguments, const util::hash_map<std::string, size_t>& idxmap,
-	const util::hash_map<size_t, fir::Value*>& defaultArgumentValues)
+	const util::hash_map<size_t, sst::Expr*>& defaultArgumentValues)
 {
-	bool isvar = ft->isVariadicFunc();
+	bool fvararg = ft->isVariadicFunc();
+	size_t numNormalArgs = ft->getArgumentCount() + (fvararg ? -1 : 0);
 
-	// do this so we can index directly.
-	auto numArgs = ft->getArgumentCount();
-	auto ret = std::vector<fir::Value*>(std::max(ft->getArgumentCount() + (isvar ? -1 : 0), arguments.size()));
+	util::hash_map<size_t, sst::Expr*> argExprs;
 
-	std::set<size_t> unfilledArguments;
+	size_t last_arg = std::min(numNormalArgs, arguments.size());
+
+	for(size_t i = 0; i < last_arg; i++)
 	{
-		util::foreachIdx(ft->getArgumentTypes(), [&ft, &unfilledArguments](auto, size_t idx) {
+		const auto& arg = arguments[i];
 
-			// if this is variadic, skip the last arg
-			if(!(idx == ft->getArgumentCount() - 1 && ft->isVariadicFunc()))
-				unfilledArguments.insert(idx);
-		});
+		if(!arg.name.empty())
+		{
+			auto it = idxmap.find(arg.name);
+			iceAssert(it != idxmap.end());
+
+			argExprs[it->second] = arg.value;
+		}
+		else
+		{
+			argExprs[i] = arg.value;
+		}
 	}
 
-	size_t counter = 0;
-	for(const auto& arg : arguments)
+	for(size_t i = 0; i < numNormalArgs; i++)
 	{
-		size_t i = (arg.name == "" ? counter : idxmap.find(arg.name)->second);
-
-		fir::Type* inf = 0;
-		if(isvar)
+		if(argExprs.find(i) == argExprs.end())
 		{
-			//? the reason for this discrepancy is that for va_arg functions, the '...' isn't really counted
-			//? as an 'argument', whereas for flax-varargs we have a variadic slice thingy that is an actual argument.
-			iceAssert(numArgs > 0);
+			auto it = defaultArgumentValues.find(i);
+			iceAssert(it != defaultArgumentValues.end());
 
-			auto at = arg.value->type;
-
-			if(i < numArgs - 1)
-			{
-				inf = ft->getArgumentN(i);
-			}
-			else if(i == numArgs - 1 && at->isArraySliceType() && at->getArrayElementType() == ft->getArgumentTypes().back()->getArrayElementType())
-			{
-				// perfect forwarding.
-				inf = ft->getArgumentTypes().back();
-			}
-			else
-			{
-				iceAssert(ft->getArgumentTypes().back()->isVariadicArrayType());
-				inf = ft->getArgumentTypes().back()->getArrayElementType();
-			}
+			argExprs[i] = it->second;
 		}
-		else if(i < numArgs)
-		{
-			inf = ft->getArgumentN(i);
-		}
+	}
 
-
-
-		auto vr = arg.value->codegen(cs, inf);
-		auto val = vr.value;
-
-		//* arguments are added to the refcounting list in the function,
-		//* so we need to "pre-increment" the refcount here, so it does not
-		//* get freed when the function returns.
-		if(fir::isRefCountedType(val->getType()))
-			cs->incrementRefCount(val);
-
-
+	auto doCastIfNecessary = [cs](const Location& loc, fir::Value* val, fir::Type* infer) -> fir::Value* {
 
 		if(val->getType()->isConstantNumberType())
 		{
@@ -99,31 +73,89 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			val = cs->unwrapConstantNumber(cv);
 		}
 
-		if(isvar || i < numArgs)
+		if(!infer)
+			return val;
+
+		if(val->getType() != infer)
 		{
-			// the inferred type should always be present, and should always be correct.
-			iceAssert(inf);
+			val = cs->oneWayAutocast(val, infer);
 
-			// cs syntax feels a little dirty.
-			val = cs->oneWayAutocast(vr.value, inf);
-
-			if(val->getType() != inf)
+			if(val->getType() != infer)
 			{
-				auto errs = SpanError::make(SimpleError::make(arg.loc,
-					"mismatched type in function call; parameter %d has type '%s', but given argument has type '%s'", i, inf, vr.value->getType()));
-
-				if(isvar && i >= numArgs - 1)
-				{
-					errs->add(util::ESpan(arg.loc, strprintf("argument's type '%s' cannot be cast to the expected variadic element type '%s'",
-						vr.value->getType(), inf)));
-				}
+				auto errs = SpanError::make(SimpleError::make(loc, "mismatched type in function call; parameter has type '%s', "
+					"but given argument has type '%s'", infer, val->getType()));
 
 				errs->postAndQuit();
 			}
-
-			vr.value = val;
 		}
-		else if(ft->isCStyleVarArg())
+
+		return val;
+	};
+
+
+
+
+
+	std::vector<fir::Value*> values;
+	for(size_t i = 0; i < argExprs.size(); i++)
+	{
+		auto arg = argExprs[i];
+		auto infer = ft->getArgumentN(i);
+
+		auto val = arg->codegen(cs, infer).value;
+
+		//* arguments are added to the refcounting list in the function,
+		//* so we need to "pre-increment" the refcount here, so it does not
+		//* get freed when the function returns.
+		if(fir::isRefCountedType(val->getType()))
+			cs->incrementRefCount(val);
+
+		if(val->getType()->isConstantNumberType())
+		{
+			auto cv = dcast(fir::ConstantValue, val);
+			iceAssert(cv);
+
+			val = cs->unwrapConstantNumber(cv);
+		}
+
+		val = doCastIfNecessary(arg->loc, val, infer);
+		values.push_back(val);
+	}
+
+
+	// check the variadic arguments. note that IRBuilder will handle actually wrapping the values up into a slice
+	// and/or creating an empty slice and/or forwarding an existing slice. we just need to supply the values.
+	// TODO: i'm still a bit suspicious if we are counting things correctly here, wrt. varargs and optional args.
+	for(size_t i = numNormalArgs; i < arguments.size(); i++)
+	{
+		auto arg = arguments[i].value;
+		fir::Type* infer = 0;
+
+		if(fvararg)
+		{
+			auto vararrty = ft->getArgumentN(ft->getArgumentCount() - 1);
+
+			// if forwarding perfectly, then infer as the slice type, instead of the element type.
+			if(i == arguments.size() - 1 && arg->type->isVariadicArrayType())
+			{
+				// perfect forwarding.
+				infer = vararrty;
+			}
+			else
+			{
+				iceAssert(vararrty->isVariadicArrayType());
+				infer = vararrty->getArrayElementType();
+			}
+		}
+
+		auto val = arg->codegen(cs, infer).value;
+		if(fir::isRefCountedType(val->getType()))
+			cs->incrementRefCount(val);
+
+		val = doCastIfNecessary(arg->loc, val, infer);
+
+
+		if(ft->isCStyleVarArg())
 		{
 			// auto-convert strings and char slices into char* when passing to va_args
 			if(val->getType()->isStringType())
@@ -146,44 +178,10 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 				val = cs->irb.IntZeroExt(val, fir::Type::getInt32());
 		}
 
-		ret[i] = val;
-		counter++;
-
-		unfilledArguments.erase(i);
+		values.push_back(val);
 	}
 
-	// if we still have stuff that isn't unfilled, see if we can use the default argument values to fill it in.
-	if(unfilledArguments.size() > 0)
-	{
-		for(auto i : unfilledArguments)
-		{
-			if(auto it = defaultArgumentValues.find(i); it != defaultArgumentValues.end())
-			{
-				ret[i] = it->second;
-			}
-			else
-			{
-				util::hash_map<size_t, std::string> revIdxMap;
-				util::foreach(util::pairs(idxmap), [&revIdxMap](const auto& p) {
-					revIdxMap[p.second] = p.first;
-				});
-
-				error(cs->loc(), "missing value for argument '%s' (%zu) in function call", revIdxMap[i], i);
-			}
-		}
-	}
-
-
-
-	// if we're calling a variadic function without any extra args, insert the slice at the back.
-	if(isvar && arguments.size() == numArgs - 1)
-	{
-		auto et = ft->getArgumentTypes().back()->getArrayElementType();
-		ret.push_back(fir::ConstantArraySlice::get(fir::ArraySliceType::getVariadic(et),
-			fir::ConstantValue::getZeroValue(et->getPointerTo()), fir::ConstantInt::getNative(0)));
-	}
-
-	return ret;
+	return values;
 }
 
 
@@ -191,7 +189,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	const std::vector<FnCallArgument>& arguments)
 {
 	util::hash_map<std::string, size_t> idxmap;
-	util::hash_map<size_t, fir::Value*> defaultArgs;
+	util::hash_map<size_t, sst::Expr*> defaultArgs;
 
 	if(auto fd = dcast(sst::FunctionDefn, target))
 	{
@@ -199,7 +197,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 
 		util::foreachIdx(fd->params, [this, &defaultArgs](const FnParam& arg, size_t idx) {
 			if(arg.defaultVal)
-				defaultArgs[idx] = arg.defaultVal->codegen(this, arg.type).value;
+				defaultArgs[idx] = arg.defaultVal;
 		});
 	}
 

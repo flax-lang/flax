@@ -315,7 +315,7 @@ namespace parser
 
 	PolyArgMapping_t parsePAMs(State& st, bool* failed);
 
-	std::tuple<std::vector<ast::FuncDefn::Arg>, std::vector<std::pair<std::string, TypeConstraints_t>>,
+	std::tuple<std::vector<ast::FuncDefn::Param>, std::vector<std::pair<std::string, TypeConstraints_t>>,
 		pts::Type*, bool, Location> parseFunctionLookingDecl(State& st);
 
 	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx);

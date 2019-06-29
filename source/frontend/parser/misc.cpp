@@ -144,8 +144,8 @@ namespace parser
 
 			ffn->loc = defn->loc;
 			ffn->isVarArg = isvar;
-			ffn->args = defn->args;
 			ffn->name = defn->name;
+			ffn->params = defn->params;
 			ffn->visibility = defn->visibility;
 			ffn->returnType = defn->returnType;
 

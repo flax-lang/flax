@@ -142,7 +142,7 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
-		struct Arg
+		struct Param
 		{
 			std::string name;
 			Location loc;
@@ -152,7 +152,7 @@ namespace ast
 		};
 
 
-		std::vector<Arg> args;
+		std::vector<Param> params;
 		pts::Type* returnType = 0;
 
 		Block* body = 0;
@@ -175,9 +175,9 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
-		using Arg = FuncDefn::Arg;
+		using Param = FuncDefn::Param;
 
-		std::vector<Arg> args;
+		std::vector<Param> params;
 
 		bool didCallSuper = false;
 		std::vector<std::pair<std::string, Expr*>> superArgs;
@@ -195,12 +195,12 @@ namespace ast
 		sst::FunctionDecl* generatedDecl = 0;
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
-		using Arg = FuncDefn::Arg;
+		using Param = FuncDefn::Param;
 
 		std::string name;
 		std::string realName;
 
-		std::vector<Arg> args;
+		std::vector<Param> params;
 		pts::Type* returnType = 0;
 
 		bool isVarArg = false;
