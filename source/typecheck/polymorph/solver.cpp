@@ -175,6 +175,7 @@ namespace sst
 			// we moved it here so we can actually check stuff.
 			bool didNames = false;
 
+			size_t positionalCounter = 0;
 			for(size_t i = 0; i < last_arg; i++)
 			{
 				const ArgType* targ = 0;
@@ -193,12 +194,29 @@ namespace sst
 						return SimpleError::make(given[i].loc, "function has no parameter named '%s'", given[i].name);
 					}
 
-					didNames = true;
+					/*
+						optional arguments "don't count" as passing by name. this means that you can do this, for example:
+
+						foo(x: 30, "blabla")
+
+						where 'x' is an optional argument. this should be fine in terms of the rest of the compiler, because when
+						we *declare* the function, all optional arguments must come last. this gives us a good compromise because
+						optional arguments must still be passed by name, but we can actually have optional arguments together with
+						variadic functions without needing to name all the arguments.
+					*/
+
+					if(!targ->optional)
+					{
+						didNames = true;
+						positionalCounter++;
+					}
 				}
 				else
 				{
-					targ = &target[i];
-					unsolvedtargets.erase(i);
+					targ = &target[positionalCounter];
+					unsolvedtargets.erase(positionalCounter);
+
+					positionalCounter++;
 				}
 
 				if(given[i].name.empty())
