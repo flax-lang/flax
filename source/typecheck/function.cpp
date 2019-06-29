@@ -35,9 +35,23 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	}
 
 	int polyses = sst::poly::internal::getNextSessionId();
-	for(auto t : this->args)
+	for(auto t : this->params)
 	{
 		auto p = FnParam(t.loc, t.name, sst::poly::internal::convertPtsType(fs, this->generics, t.type, polyses));
+		if(auto dv = t.defaultValue; dv)
+		{
+			p.defaultVal = dv->typecheck(fs, p.type).expr();
+			if(p.defaultVal->type != p.type)
+			{
+				error(p.defaultVal, "type mismatch for default value of argument '%s': expected '%s', received '%s' intead",
+					p.name, p.type, p.defaultVal->type);
+			}
+		}
+		else if(p.type->isVariadicArrayType())
+		{
+			p.defaultVal = util::pool<ast::LitArray>(p.loc, std::vector<Expr*>())->typecheck(fs, p.type).expr();
+		}
+
 		ps.push_back(p);
 		ptys.push_back(p.type);
 	}
@@ -190,7 +204,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	auto defn = util::pool<sst::ForeignFuncDefn>(this->loc);
 	std::vector<FnParam> ps;
 
-	for(auto t : this->args)
+	for(auto t : this->params)
 		ps.push_back(FnParam(t.loc, t.name, fs->convertParserTypeToFIR(t.type)));
 
 	auto retty = fs->convertParserTypeToFIR(this->returnType);

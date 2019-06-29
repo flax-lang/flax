@@ -93,15 +93,15 @@ namespace sst
 
 
 
-			std::vector<fir::LocatedType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
-				const std::vector<ast::FuncDefn::Arg>& args, int polysession)
+			std::vector<ArgType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
+				const std::vector<ast::FuncDefn::Param>& args, int polysession)
 			{
 				return util::mapidx(convertPtsTypeList(fs, problems, util::map(args,
-					[](const ast::FuncDefn::Arg& a) -> pts::Type* {
+					[](const ast::FuncDefn::Param& a) -> pts::Type* {
 						return a.type;
 					}
-				), polysession), [args](fir::Type* t, size_t idx) -> fir::LocatedType {
-					return fir::LocatedType(t, args[idx].loc);
+				), polysession), [args](fir::Type* t, size_t idx) -> ArgType {
+					return ArgType(args[idx].name, t, args[idx].loc);
 				});
 			}
 		}

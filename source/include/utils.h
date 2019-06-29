@@ -74,10 +74,24 @@ namespace util
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
 	{
 		std::vector<K> ret;
-		for(auto i : input)
+		for(const auto& i : input)
 			ret.push_back(fn(i));
 
 		return ret;
+	}
+
+	template <typename T, class UnaryOp>
+	void foreach(const std::vector<T>& input, UnaryOp fn)
+	{
+		for(const auto& i : input)
+			fn(i);
+	}
+
+	template <typename T, class UnaryOp>
+	void foreachIdx(const std::vector<T>& input, UnaryOp fn)
+	{
+		for(size_t i = 0; i < input.size(); i++)
+			fn(input[i], i);
 	}
 
 
@@ -97,7 +111,7 @@ namespace util
 	std::vector<K> filterMap(const std::vector<T>& input, Predicate cond, UnaryOp fn)
 	{
 		std::vector<K> ret;
-		for(auto i : input)
+		for(const auto& i : input)
 		{
 			if(cond(i))
 				ret.push_back(fn(i));
@@ -110,7 +124,7 @@ namespace util
 	std::vector<K> mapFilter(const std::vector<T>& input, UnaryOp fn, Predicate cond)
 	{
 		std::vector<K> ret;
-		for(auto i : input)
+		for(const auto& i : input)
 		{
 			auto k = fn(i);
 			if(cond(k)) ret.push_back(k);

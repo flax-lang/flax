@@ -13,14 +13,22 @@
 namespace sst {
 namespace resolver
 {
-	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& target,
-		const std::vector<fir::LocatedType>& _args, bool cvararg)
+	std::pair<int, ErrorMsg*> computeOverloadDistance(const Location& fnLoc, const std::vector<fir::LocatedType>& _target,
+		const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc)
 	{
-		std::vector<fir::LocatedType> input;
-		if(cvararg) input = util::take(_args, target.size());
-		else        input = _args;
+		std::vector<fir::LocatedType> _input;
+		if(cvararg) _input = util::take(_args, _target.size());
+		else        _input = _args;
 
-		auto [ soln, err ] = poly::solveTypeList(target, input, poly::Solution_t(), /* isFnCall: */ true);
+		auto input = util::map(_input, [](auto t) -> poly::ArgType {
+			return poly::ArgType("", t.type, t.loc);
+		});
+
+		auto target = util::map(_target, [](auto t) -> poly::ArgType {
+			return poly::ArgType("", t.type, t.loc);
+		});
+
+		auto [ soln, err ] = poly::solveTypeList(callLoc, target, input, poly::Solution_t(), /* isFnCall: */ true);
 
 		if(err != nullptr)  return { -1, err };
 		else                return { soln.distance, nullptr };
@@ -29,18 +37,22 @@ namespace resolver
 
 
 	std::pair<int, ErrorMsg*> computeNamedOverloadDistance(const Location& fnLoc, const std::vector<FnParam>& target,
-		const std::vector<FnCallArgument>& _args, bool cvararg)
+		const std::vector<FnCallArgument>& _args, bool cvararg, const Location& callLoc)
 	{
 		std::vector<FnCallArgument> input;
 		if(cvararg) input = util::take(_args, target.size());
 		else        input = _args;
 
-		ErrorMsg* err = 0;
-		auto arguments = resolver::misc::canonicaliseCallArguments(fnLoc, target, input, &err);
-		if(err != nullptr) return { -1, err };
+		auto arguments = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
+			return poly::ArgType(a.ignoreName ? "" : a.name, a.value->type, a.loc);
+		});
 
-		auto [ soln, err1 ] = poly::solveTypeList(util::map(target, [](const FnParam& p) -> fir::LocatedType {
-			return fir::LocatedType(p.type, p.loc);
+		// ok, in this case we should figure out where the first optional argument lives, and pass that to
+		// the type-list solver. it doesn't need to know what the actual value is --- when we typechecked the function, we should
+		// have already verified the default value fits the type, and it doesn't actually change the type of the receiver.
+
+		auto [ soln, err1 ] = poly::solveTypeList(callLoc, util::map(target, [](const FnParam& p) -> poly::ArgType {
+			return poly::ArgType(p.name, p.type, p.loc, p.defaultVal != 0);
 		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
 
@@ -95,10 +107,12 @@ namespace resolver
 					bool insertedSelf = false;
 					if(fn->parentTypeForMethod && (replacementArgs.size() == fn->params.size() - 1))
 					{
-						// add the thing... i guess??
 						insertedSelf = true;
+
+						// ignoreName records the fact that we are not actually passing 'self' with a name; it
+						// is there so we do not "pass positional arguments after named arguments".
 						replacementArgs.insert(replacementArgs.begin(), FnCallArgument::make(fn->loc, "self",
-							fn->parentTypeForMethod->getMutablePointerTo()));
+							fn->parentTypeForMethod->getMutablePointerTo(), /* ignoreName: */ true));
 					}
 
 
@@ -106,7 +120,7 @@ namespace resolver
 					{
 						if(auto fd = dcast(FunctionDefn, fn); !fd)
 						{
-							error("invalid non-definition of a function with placeholder types");
+							error(fd, "invalid non-definition of a function with placeholder types");
 						}
 						else
 						{
@@ -151,7 +165,7 @@ namespace resolver
 						}
 						else
 						{
-							std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg);
+							std::tie(dist, fails[fn]) = computeNamedOverloadDistance(fn->loc, fn->params, replacementArgs, fn->isVarArg, callLoc);
 						}
 					}
 
@@ -186,7 +200,7 @@ namespace resolver
 						return fir::LocatedType(t, Location());
 					}), util::map(replacementArgs, [](const FnCallArgument& p) -> fir::LocatedType {
 						return fir::LocatedType(p.value->type, Location());
-					}), false);
+					}), /* isCVarArg: */ false, callLoc);
 				}
 				else if(auto td = dcast(TypeDefn, curcandidate))
 				{
@@ -244,7 +258,20 @@ namespace resolver
 
 				if(fails.size() == 1)
 				{
-					return { TCResult(fails.begin()->second), { } };
+					auto fail = fails.begin();
+
+					auto ret = fail->second;
+					if(auto f = dcast(FunctionDefn, fail->first); f)
+					{
+						ret->append(SimpleError::make(MsgType::Note, f->loc, "function '%s' was defined here:", f->id.name));
+					}
+					else if(auto v = dcast(VarDefn, fail->first); v)
+					{
+						ret->append(SimpleError::make(MsgType::Note, v->loc, "'%s' was defined here with type '%s':", v->id.name,
+							v->type));
+					}
+
+					return { TCResult(ret), { } };
 				}
 				else
 				{

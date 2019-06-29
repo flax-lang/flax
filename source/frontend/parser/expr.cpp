@@ -804,10 +804,6 @@ namespace parser
 
 				named = true;
 			}
-			else if(named)
-			{
-				error(st, "positional arguments cannot appear after named arguments in a function call");
-			}
 
 			ret.push_back({ argname, ex });
 			st.skipWS();
@@ -1242,7 +1238,7 @@ namespace parser
 					return parseNumber(st);
 
 				case TT::LSquare:
-					return parseArray(st, false);
+					return parseArray(st, /* isRaw: */ false);
 
 				case TT::CharacterLiteral:
 					st.pop();

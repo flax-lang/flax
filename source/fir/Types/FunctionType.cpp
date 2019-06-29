@@ -80,6 +80,11 @@ namespace fir
 		return this->functionParams;
 	}
 
+	size_t FunctionType::getArgumentCount()
+	{
+		return this->functionParams.size();
+	}
+
 	Type* FunctionType::getArgumentN(size_t n)
 	{
 		return this->functionParams[n];
