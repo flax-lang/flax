@@ -47,10 +47,6 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 					p.name, p.type, p.defaultVal->type);
 			}
 		}
-		else if(p.type->isVariadicArrayType())
-		{
-			p.defaultVal = util::pool<ast::LitArray>(p.loc, std::vector<Expr*>())->typecheck(fs, p.type).expr();
-		}
 
 		ps.push_back(p);
 		ptys.push_back(p.type);

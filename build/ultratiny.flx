@@ -7,7 +7,7 @@ import libc as _
 
 
 
-fn qux(x: str, y: int = 3, args: [str: ...])
+fn qux(x: str, y: int = 4, args: [str: ...])
 {
 	printf("x = %s, y = %d\n", x, y)
 	for a in args
@@ -24,8 +24,8 @@ fn foo(a: int, b: int, c: int, x: int = 9, y: int = 8, z: int = 7)
 
 @entry fn main()
 {
-	foo(x: 4, 1, 2, y: 5, z: 6, 3)
-	qux(y: 17, "hello, world!", "hi", "my", "name", "is", "bob", "ross")
+	foo(x: 4, 1, y: 2, 5, z: 6, 3, 2)
+	qux("hello, world!", 33, "hi", "my", "name", "is", "bob", "ross")
 }
 
 

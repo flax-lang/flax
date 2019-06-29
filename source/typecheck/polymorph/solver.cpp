@@ -167,15 +167,18 @@ namespace sst
 					unsolvedtargets.insert(i);
 			});
 
+			// record which optionals we passed, for a better error message.
+			std::set<std::string> providedOptionals;
+
 
 			size_t last_arg = std::min(target.size() + (fvararg ? -1 : 0), given.size());
-
 
 			// we used to do this check in the parser, but to support more edge cases (like passing varargs)
 			// we moved it here so we can actually check stuff.
 			bool didNames = false;
 
 			size_t positionalCounter = 0;
+			size_t varArgStart = last_arg;
 			for(size_t i = 0; i < last_arg; i++)
 			{
 				const ArgType* targ = 0;
@@ -210,14 +213,51 @@ namespace sst
 						didNames = true;
 						positionalCounter++;
 					}
+					else
+					{
+						providedOptionals.insert(given[i].name);
+					}
 				}
 				else
 				{
-					targ = &target[positionalCounter];
-					unsolvedtargets.erase(positionalCounter);
+					/*
+						we didn't pass a name. if the function is variadic, we might have wanted to pass the following argument(s)
+						variadically. so, instead of assuming we made a mistake (like not passing the optional by name), assume we
+						wanted to pass it to the vararg.
 
+						so, `positionalCounter` counts the paramters on the declaration-side. thus, once we encounter a default value,
+						it must mean that the rest of the parameters will be optional as well.
+
+						* ie. we've passed all the positional arguments already, leaving the optional ones, which means every argument from
+						* here onwards (including this one) must be named. since this is *not* named, we just skip straight to the varargs if
+						* it was present.
+					*/
+
+					targ = &target[positionalCounter];
+
+					if(fvararg && targ->optional)
+					{
+						varArgStart = i;
+						break;
+					}
+
+					unsolvedtargets.erase(positionalCounter);
 					positionalCounter++;
 				}
+
+				/*
+					TODO: not sure if there's a way to get around this, but if we have a function like this:
+
+					fn foo(a: int, b: int, c: int, x: int = 9, y: int = 8, z: int = 7) { ... }
+
+					then calling it wrongly like this: foo(x: 4, 1, 2, 5, z: 6, 3)
+
+					results in an error at the last argument ('3') saying taht optional argument 'x' must be passed by name.
+					the problem is that we can't really tell what argument you wanted to pass; after seeing '1', '2', and '5',
+					the positionalCounter now points to the 4th argument, 'x'.
+
+					even though you already passed x prior, we don't really know that? and we assume you wanted to pass x (again)
+				*/
 
 				if(given[i].name.empty())
 				{
@@ -225,9 +265,33 @@ namespace sst
 						return SimpleError::make(given[i].loc, "positional arguments cannot appear after named arguments");
 
 					else if(targ->optional)
-						return SimpleError::make(given[i].loc, "optional argument '%s' must be passed by name", targ->name);
-				}
+					{
+						std::string probablyIntendedArgumentName;
+						for(const auto& a : target)
+						{
+							if(!a.optional)
+								continue;
 
+							if(auto it = providedOptionals.find(a.name); it == providedOptionals.end())
+							{
+								probablyIntendedArgumentName = a.name;
+								break;
+							}
+						};
+
+						if(probablyIntendedArgumentName.empty())
+						{
+							//* this shouldn't happen, because we only get here if we're not variadic, but if we weren't
+							//* variadic, then we would've errored out if the argument count was wrong to begin with.
+							return SimpleError::make(given[i].loc, "extraneous argument without corresponding parameter");
+						}
+						else
+						{
+							return SimpleError::make(given[i].loc, "optional argument '%s' must be passed by name",
+								probablyIntendedArgumentName);
+						}
+					}
+				}
 
 				iceAssert(targ);
 				auto err = solveSingleType(soln, targ->toFLT(), given[i].toFLT());
@@ -284,7 +348,7 @@ namespace sst
 				auto varty = target.back()->toArraySliceType()->getArrayElementType();
 				auto ltvarty = fir::LocatedType(varty, target.back().loc);
 
-				for(size_t i = last_arg; i < given.size(); i++)
+				for(size_t i = varArgStart; i < given.size(); i++)
 				{
 					auto err = solveSingleType(soln, ltvarty, given[i].toFLT());
 					if(err) return err->append(SimpleError::make(MsgType::Note, target.back().loc, "in argument of variadic parameter"));
