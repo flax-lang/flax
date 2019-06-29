@@ -78,8 +78,8 @@ build/cmake-output
 .idea
 # CMakeLists.txt
 
-source_old
 
+docs/.antlr
 
 codealike.json
 
