@@ -35,6 +35,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 	size_t last_arg = std::min(numNormalArgs, arguments.size());
 
+	size_t positionalCounter = 0;
 	for(size_t i = 0; i < last_arg; i++)
 	{
 		const auto& arg = arguments[i];
@@ -45,10 +46,14 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			iceAssert(it != idxmap.end());
 
 			argExprs[it->second] = arg.value;
+
+			if(defaultArgumentValues.find(it->second) == defaultArgumentValues.end())
+				positionalCounter++;
 		}
 		else
 		{
-			argExprs[i] = arg.value;
+			argExprs[positionalCounter] = arg.value;
+			positionalCounter++;
 		}
 	}
 
