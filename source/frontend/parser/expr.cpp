@@ -429,14 +429,6 @@ namespace parser
 			case TT::CaretEq:
 				return 100;
 
-
-			case TT::ShiftLeftEq:
-			case TT::ShiftRightEq:
-			case TT::ShiftLeft:
-			case TT::ShiftRight:
-				error("no");
-				break;
-
 			default:
 				if(auto it = st.binaryOps.find(st.front().str()); it != st.binaryOps.end())
 					return it->second.precedence;
