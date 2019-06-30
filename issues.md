@@ -8,7 +8,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 1. Number literals still suck
 
 
-3. Optional arguments.
+2. Destructors for classes
 
 
 5. String operators
@@ -36,8 +36,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 18. Some way of handling both types and expressions in `sizeof`/`typeid`/`typeof`. Might work if we just check for identifiers, but then
 	what about polymorphic types? Those won't even parse as expressions.
 
-
-19. Do we want to re-typecheck arguments for each function target?? this can help things infer better, but would also probably slow shit down a lot...
 
 -----
 

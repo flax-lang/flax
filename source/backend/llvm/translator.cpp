@@ -139,7 +139,8 @@ namespace backend
 			});
 
 			// insert the vtable at the front.
-			lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));
+			if(ct->getVirtualMethodCount() > 0)
+				lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));
 
 			createdTypes[ct->getTypeName()]->setBody(lmems);
 			return createdTypes[ct->getTypeName()];
@@ -1590,6 +1591,7 @@ namespace backend
 							// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
 							auto clsty = inst->operands[0]->getType()->toClassType();
 							iceAssert(clsty);
+							iceAssert(clsty->getVirtualMethodCount() > 0);
 
 							std::vector<llvm::Value*> args;
 							for(size_t i = 3; i < inst->operands.size(); i++)
@@ -2279,7 +2281,6 @@ namespace backend
 							fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[1]);
 							iceAssert(ci);
 
-							// ptr->dump();
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
 								ptr, (unsigned int) ci->getUnsignedValue());
 

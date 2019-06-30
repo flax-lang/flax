@@ -38,19 +38,22 @@ static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Locati
 	}
 	else
 	{
-		// check static ones for a better error message.
-		sst::Defn* found = 0;
-		for(auto sm : str->staticMethods)
-			if(sm->id.name == name) { found = sm; break; }
-
-		if(!found)
+		if(auto cls = dcast(sst::ClassDefn, str))
 		{
-			for(auto sf : str->staticFields)
-				if(sf->id.name == name) { found = sf; break; }
+			// check static ones for a better error message.
+			sst::Defn* found = 0;
+			for(auto sm : cls->staticMethods)
+				if(sm->id.name == name) { found = sm; break; }
+
+			if(!found)
+			{
+				for(auto sf : cls->staticFields)
+					if(sf->id.name == name) { found = sf; break; }
+			}
+
+
+			if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '::' to refer to the static member '%s'", name));
 		}
-
-
-		if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '::' to refer to the static member '%s'", name));
 
 		return e;
 	}
@@ -485,53 +488,40 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fc->mappings, false).defn();
 			};
 
-			std::vector<sst::Defn*> mcands;
+			auto restore = fs->getCurrentScope();
+			fs->teleportToScope(str->id.scope + str->id.name);
+			defer(fs->teleportToScope(restore));
+
+			sst::Defn* resolved = 0;
+			while(!resolved)
 			{
-				auto base = str;
-				while(base)
+				auto arg_copy = arguments;
+				auto res = sst::resolver::resolveFunctionCall(fs, fc->name, &arg_copy, fc->mappings,
+					/* traverseUp: */ false, infer);
+
+				if(res.isDefn())
 				{
-					auto cds = util::filter(util::map(base->methods, [](sst::FunctionDefn* fd) -> sst::Defn* { return fd; }),
-						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name; });
-
-					mcands.insert(mcands.end(), cds.begin(), cds.end());
-
-					if(auto cls = dcast(sst::ClassDefn, base))
-						base = cls->baseClass;
-
-					else
-						base = 0;
+					resolved = res.defn();
+					break;
 				}
-			}
 
-			std::vector<sst::Defn*> vcands;
-			{
-				auto base = str;
-				while(base)
-				{
-					auto cds = util::filter(util::map(str->fields, [](sst::VarDefn* fd) -> sst::Defn* { return fd; }),
-						[fc](const sst::Defn* d) -> bool { return d->id.name == fc->name && d->type->isFunctionType(); });
+				if(auto cls = dcast(sst::ClassDefn, str); cls && cls->baseClass)
+					fs->teleportToScope(cls->baseClass->id.scope + cls->baseClass->id.name);
 
-					vcands.insert(vcands.end(), cds.begin(), cds.end());
-
-					if(auto cls = dcast(sst::ClassDefn, base))
-						base = cls->baseClass;
-
-					else
-						base = 0;
-				}
+				else
+					break;
 			}
 
 
-			if(mcands.empty() && vcands.empty())
+			if(!resolved)
 			{
 				wrongDotOpError(SimpleError::make(fc->loc, "no method named '%s' in type '%s'", fc->name, str->id.name),
 					str, fc->loc, fc->name, false)->postAndQuit();
 			}
 
 
-			sst::Defn* resolved = search(mcands, &arguments, true);
 			sst::Expr* finalCall = 0;
-			if(resolved)
+			if(auto fndef = dcast(sst::FunctionDefn, resolved); fndef)
 			{
 				auto c = util::pool<sst::FunctionCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = arguments;
@@ -545,11 +535,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			}
 			else
 			{
-				resolved = search(vcands, &arguments, false);
-
-				// else
-				iceAssert(resolved);
-
 				auto c = util::pool<sst::ExprCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
 				c->arguments = util::map(arguments, [](FnCallArgument e) -> sst::Expr* { return e.value; });
 
@@ -563,7 +548,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				c->arguments.erase(c->arguments.begin(), c->arguments.begin() + 1);
 				finalCall = c;
 			}
-
 
 
 			auto ret = util::pool<sst::MethodDotOp>(fc->loc, resolved->type->toFunctionType()->getReturnType());

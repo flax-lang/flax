@@ -1334,9 +1334,13 @@ namespace fir
 			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
 			auto memt = ct->getElement(memberName);
 
-			//! '+1' is for vtable.
+			//! VTABLE HANDLING
+			size_t vTableOfs = 0;
+			if(ct->getVirtualMethodCount() > 0)
+				vTableOfs = 1;
+
 			Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, this->currentBlock,
-				memt, { ptr, ConstantInt::getUNative(ct->getElementIndex(memberName) + 1) }, Value::Kind::lvalue);
+				memt, { ptr, ConstantInt::getUNative(ct->getElementIndex(memberName) + vTableOfs) }, Value::Kind::lvalue);
 
 			return this->addInstruction(instr, memberName);
 		}
@@ -1481,9 +1485,10 @@ namespace fir
 				elm->getType(), et);
 		}
 
-
 		int ofs = 0;
-		if(t->isClassType()) ofs = 1;   //! to account for vtable
+		//! VTABLE HANDLING
+		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
+			ofs = 1;
 
 		std::vector<Value*> args = { val, elm };
 		for(auto id : inds)
@@ -1512,7 +1517,9 @@ namespace fir
 		iceAssert(et);
 
 		int ofs = 0;
-		if(t->isClassType()) ofs = 1;   //! to account for vtable
+		//! VTABLE HANDLING
+		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
+			ofs = 1;
 
 		std::vector<Value*> args = { val };
 		for(auto id : inds)
