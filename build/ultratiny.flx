@@ -13,6 +13,13 @@ struct foo
 
 	fn method(x: int) -> int
 	{
+		if x > 0
+		{
+			var g: &self = &this
+			printf(".")
+			g.method(x - 1)
+		}
+
 		return a + x
 	}
 
@@ -39,8 +46,8 @@ class qux : bar
 
 @entry fn main()
 {
-	let f = foo(a: 30)
-	let s = f.method(132)
+	let f = foo(a: 17)
+	let s = f.method(5)
 
 	printf("s = %d\n", s)
 
