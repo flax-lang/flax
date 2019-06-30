@@ -292,7 +292,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto fake = util::pool<RawValueExpr>(this->loc, fd->parentTypeForMethod->getPointerTo());
 		fake->rawValue = CGResult(cs->irb.AddressOf(cs->getMethodSelf(), true));
 
-		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "self", fake, 0));
+		this->arguments.insert(this->arguments.begin(), FnCallArgument(this->loc, "this", fake, 0));
 	}
 
 	size_t numArgs = ft->getArgumentCount();

@@ -188,7 +188,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(infer && infer->containsPlaceholders())
 		infer = 0;
 
-	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
+	if(this->name == "this" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
 		return TCResult(util::pool<sst::SelfVarRef>(this->loc, fs->getCurrentFunction()->parentTypeForMethod));
 
 	// hm.
@@ -309,8 +309,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// check for people being stupid.
-	if(this->name == "self" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
-		return TCResult(SimpleError::make(this->loc, "invalid redefinition of 'self' inside method body"));
+	if(this->name == "this" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
+		return TCResult(SimpleError::make(this->loc, "invalid redefinition of 'this' inside method body"));
 
 
 

@@ -391,7 +391,7 @@ namespace sst
 
 	struct SelfVarRef : Expr
 	{
-		SelfVarRef(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "self"; }
+		SelfVarRef(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "this"; }
 		~SelfVarRef() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;

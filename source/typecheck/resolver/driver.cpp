@@ -181,7 +181,7 @@ namespace resolver
 			auto copy = arguments;
 
 			//! SELF HANDLING (INSERTION) (CONSTRUCTOR)
-			copy.insert(copy.begin(), FnCallArgument::make(cls->loc, "self", cls->type->getMutablePointerTo(),
+			copy.insert(copy.begin(), FnCallArgument::make(cls->loc, "this", cls->type->getMutablePointerTo(),
 				/* ignoreName: */ true));
 
 			auto copy1 = copy;
