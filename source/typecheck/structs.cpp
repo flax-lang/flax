@@ -213,7 +213,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		{
 			auto res = m->generateDeclaration(fs, str, { });
 			if(res.isParametric())
-				error(m, "methods of a type cannot be polymorphic (for now???)");
+				continue;
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);

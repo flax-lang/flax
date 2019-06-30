@@ -7,25 +7,45 @@ import libc as _
 
 
 
-fn qux(x: str, y: int = 4, args: [str: ...])
+struct foo
 {
-	printf("x = %s, y = %d\n", x, y)
-	for a in args
+	a: int
+
+	fn method(x: int) -> int
 	{
-		printf("a: %s\n", a)
+		return a + x
+	}
+
+	fn method2<T>(x: T) -> T
+	{
+		return x + x
 	}
 }
 
-fn foo(a: int, b: int, c: int, x: int = 9, y: int = 8, z: int = 7)
+class bar
 {
-	printf("a = %d, b = %d, c = %d\n", a, b, c)
-	printf("x = %d, y = %d, z = %d\n", x, y, z)
+	init() { }
+
+	fn base()
+	{
+		printf("i am the base method\n")
+	}
+}
+
+class qux : bar
+{
+	init() : super() { }
 }
 
 @entry fn main()
 {
-	foo(x: 4, 1, y: 2, 5, z: 6, 3, 2)
-	qux("hello, world!", 33, "hi", "my", "name", "is", "bob", "ross")
+	let f = foo(a: 30)
+	let s = f.method(132)
+
+	printf("s = %d\n", s)
+
+	let k = qux()
+	k.base()
 }
 
 

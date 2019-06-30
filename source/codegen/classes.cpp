@@ -82,6 +82,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 
 		// set our vtable
+		if(clsty->getVirtualMethodCount() > 0)
 		{
 			auto vtable = cs->irb.PointerTypeCast(cs->irb.AddressOf(cs->module->getOrCreateVirtualTableForClass(clsty), false), fir::Type::getInt8Ptr());
 			cs->irb.SetVtable(self, vtable);

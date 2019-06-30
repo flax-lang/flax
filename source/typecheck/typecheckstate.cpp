@@ -328,7 +328,11 @@ namespace sst
 
 	std::vector<ast::Parameterisable*> StateTree::getUnresolvedGenericDefnsWithName(const std::string& name)
 	{
-		return this->unresolvedGenericDefs[name];
+		if(auto it = this->unresolvedGenericDefs.find(name); it != this->unresolvedGenericDefs.end())
+			return it->second;
+
+		else
+			return { };
 	}
 
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)

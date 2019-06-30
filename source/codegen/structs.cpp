@@ -13,17 +13,8 @@ CGResult sst::StructDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	iceAssert(this->type && this->type->isStructType());
 
-	for(auto nt : this->nestedTypes)
-		nt->codegen(cs);
-
 	for(auto method : this->methods)
 		method->codegen(cs);
-
-	for(auto sm : this->staticFields)
-		sm->codegen(cs);
-
-	for(auto sm : this->staticMethods)
-		sm->codegen(cs);
 
 	return CGResult(0);
 }
