@@ -144,6 +144,7 @@ namespace sst
 		std::vector<TypeDefn*> structBodyStack;
 		TypeDefn* getCurrentStructBody();
 		bool isInStructBody();
+		bool isInMethodBody();
 		void enterStructBody(TypeDefn* str);
 		void leaveStructBody();
 

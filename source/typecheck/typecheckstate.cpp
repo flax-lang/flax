@@ -88,6 +88,11 @@ namespace sst
 		return this->structBodyStack.size() > 0 && this->bodyStack.back() == BODY_STRUCT;
 	}
 
+	bool TypecheckState::isInMethodBody()
+	{
+		return this->structBodyStack.size() > 0 && this->bodyStack.back() == BODY_FUNC;
+	}
+
 	void TypecheckState::enterStructBody(TypeDefn* str)
 	{
 		this->structBodyStack.push_back(str);

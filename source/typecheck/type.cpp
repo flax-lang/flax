@@ -100,6 +100,15 @@ namespace sst
 			else
 			{
 				auto name = pt->toNamedType()->name;
+				if(name == "self")
+				{
+					if(!this->isInMethodBody())
+						error(this->loc(), "invalid use of 'self' type while not in method body");
+
+					else
+						return this->getCurrentStructBody()->type;
+				}
+
 
 				auto returnTheThing = [this, pt](StateTree* tree, const std::string& name, bool scoped, bool allowFail) -> fir::Type* {
 
