@@ -111,7 +111,7 @@ namespace resolver
 
 						// ignoreName records the fact that we are not actually passing 'self' with a name; it
 						// is there so we do not "pass positional arguments after named arguments".
-						replacementArgs.insert(replacementArgs.begin(), FnCallArgument::make(fn->loc, "self",
+						replacementArgs.insert(replacementArgs.begin(), FnCallArgument::make(fn->loc, "this",
 							fn->parentTypeForMethod->getMutablePointerTo(), /* ignoreName: */ true));
 					}
 

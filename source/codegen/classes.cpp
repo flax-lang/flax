@@ -70,7 +70,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
 		cs->irb.setCurrentBlock(entry);
 
-		auto self = cs->irb.Dereference(func->getArguments()[0], "self");
+		auto self = cs->irb.Dereference(func->getArguments()[0], "this");
 
 		// make sure we call the base init first.
 		if(clsty->getBaseClass())
@@ -135,7 +135,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 		fake->rawValue = CGResult(this->getMethodSelf());
 
 		//! SELF HANDLING (INSERTION) (CODEGEN)
-		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "self", fake, 0));
+		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "this", fake, 0));
 	}
 
 	iceAssert(fd->type->isFunctionType());

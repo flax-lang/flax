@@ -67,7 +67,7 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		rv->rawValue = CGResult(cs->irb.AddressOf(res.value, true));
 
 		//! SELF HANDLING (INSERTION) (CODEGEN)
-		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "self", rv, 0));
+		fc->arguments.insert(fc->arguments.begin(), FnCallArgument(this->loc, "this", rv, 0));
 		return fc->codegen(cs);
 	}
 	else if(auto ec = dcast(sst::ExprCall, this->call))
