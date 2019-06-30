@@ -32,6 +32,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 	size_t numNormalArgs = ft->getArgumentCount() + (fvararg ? -1 : 0);
 
 	util::hash_map<size_t, sst::Expr*> argExprs;
+	util::hash_map<sst::Expr*, size_t> revArgExprs;
 
 	// this thing below operates similarly to the list solver in typecheck/polymorph/solver.cpp
 	size_t last_arg = std::min(numNormalArgs, arguments.size());
@@ -48,6 +49,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			iceAssert(it != idxmap.end());
 
 			argExprs[it->second] = arg.value;
+			revArgExprs[arg.value] = it->second;
 
 			if(defaultArgumentValues.find(it->second) == defaultArgumentValues.end())
 				positionalCounter++;
@@ -66,6 +68,8 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			}
 
 			argExprs[positionalCounter] = arg.value;
+			revArgExprs[arg.value] = positionalCounter;
+
 			positionalCounter++;
 		}
 	}
@@ -78,6 +82,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			iceAssert(it != defaultArgumentValues.end());
 
 			argExprs[i] = it->second;
+			revArgExprs[it->second] = i;
 		}
 	}
 
@@ -114,30 +119,34 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 
 
-	std::vector<fir::Value*> values;
-	for(size_t i = 0; i < argExprs.size(); i++)
+	std::vector<fir::Value*> values(argExprs.size());
 	{
-		auto arg = argExprs[i];
-		auto infer = ft->getArgumentN(i);
-
-		auto val = arg->codegen(cs, infer).value;
-
-		//* arguments are added to the refcounting list in the function,
-		//* so we need to "pre-increment" the refcount here, so it does not
-		//* get freed when the function returns.
-		if(fir::isRefCountedType(val->getType()))
-			cs->incrementRefCount(val);
-
-		if(val->getType()->isConstantNumberType())
+		for(size_t i = 0; i < argExprs.size(); i++)
 		{
-			auto cv = dcast(fir::ConstantValue, val);
-			iceAssert(cv);
+			// this extra complexity is to ensure we codegen arguments from left-to-right!
+			auto arg = arguments[i].value;
+			auto k = revArgExprs[arg];
 
-			val = cs->unwrapConstantNumber(cv);
+			auto infer = ft->getArgumentN(k);
+			auto val = arg->codegen(cs, infer).value;
+
+			//* arguments are added to the refcounting list in the function,
+			//* so we need to "pre-increment" the refcount here, so it does not
+			//* get freed when the function returns.
+			if(fir::isRefCountedType(val->getType()))
+				cs->incrementRefCount(val);
+
+			if(val->getType()->isConstantNumberType())
+			{
+				auto cv = dcast(fir::ConstantValue, val);
+				iceAssert(cv);
+
+				val = cs->unwrapConstantNumber(cv);
+			}
+
+			val = doCastIfNecessary(arg->loc, val, infer);
+			values[k] = val;
 		}
-
-		val = doCastIfNecessary(arg->loc, val, infer);
-		values.push_back(val);
 	}
 
 

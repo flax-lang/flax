@@ -44,6 +44,15 @@ class qux : bar
 	init() : super() { }
 }
 
+
+fn f1() -> int => printf("f1\n")
+fn f2() -> int => printf("f2\n")
+fn f3() -> int => printf("f3\n")
+
+fn swizzle(a: int, b: int, c: int)
+{
+}
+
 @entry fn main()
 {
 	let f = foo(a: 17)
@@ -53,6 +62,8 @@ class qux : bar
 
 	let k = qux()
 	k.base()
+
+	swizzle(c: f1(), b: f2(), a: f3())
 }
 
 
