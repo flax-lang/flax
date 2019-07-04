@@ -150,6 +150,8 @@ static void compile(std::string in, std::string out)
 
 int main(int argc, char** argv)
 {
+	platform::setupTerminalIfNecessary();
+
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
 	compile(input_file, output_file);
 	return 0;

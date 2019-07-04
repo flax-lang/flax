@@ -339,7 +339,55 @@ namespace platform
 		}
 		#endif
 	}
+
+	void setupTerminalIfNecessary()
+	{
+		#ifdef _WIN32
+
+			// first, enable ansi colours
+			std::vector<DWORD> handles = {
+				STD_OUTPUT_HANDLE,
+				STD_ERROR_HANDLE
+			};
+
+			for(auto x : handles)
+			{
+				auto h = GetStdHandle(x);
+				SetConsoleMode(h, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+			}
+
+			// then, change the codepage to utf-8:
+			SetConsoleOutputCP(CP_UTF8);
+
+		#else
+
+		#endif
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
