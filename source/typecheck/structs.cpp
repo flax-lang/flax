@@ -186,7 +186,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
-	fs->enterStructBody(defn);
+	fs->pushSelfContext(str);
 	{
 		for(auto f : this->fields)
 		{
@@ -195,6 +195,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 			vdef->name = std::get<0>(f);
 			vdef->initialiser = nullptr;
 			vdef->type = std::get<2>(f);
+			vdef->isField = true;
 
 			auto v = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(v);
@@ -228,7 +229,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	checkTransparentFieldRedefinition(fs, defn, defn->fields);
 
 
-	fs->leaveStructBody();
+	fs->popSelfContext();
 
 
 

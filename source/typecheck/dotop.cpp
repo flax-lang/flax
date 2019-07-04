@@ -468,6 +468,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		// right.
 		if(auto fc = dcast(ast::FunctionCall, dotop->right))
 		{
+			fs->pushSelfContext(str->type);
+			defer(fs->popSelfContext());
+
+
 			// check methods first
 			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
@@ -479,19 +483,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "this", str->type->getMutablePointerTo(),
 				/* ignoreName: */ true));
 
-			auto search = [fs, fc](std::vector<sst::Defn*> cands, std::vector<FnCallArgument>* ts, bool meths) -> sst::Defn* {
-
-				//! note: here we always presume it's mutable, since:
-				//* 1. we right now cannot overload based on the mutating aspect of the method
-				//* 2. mutable pointers can implicitly convert to immutable ones, but not vice versa.
-
-				return sst::resolver::resolveFunctionCallFromCandidates(fs, cands, ts, fc->mappings, false).defn();
-			};
-
 			auto restore = fs->getCurrentScope();
 			fs->teleportToScope(str->id.scope + str->id.name);
 			defer(fs->teleportToScope(restore));
 
+			ErrorMsg* err = 0;
 			sst::Defn* resolved = 0;
 			while(!resolved)
 			{
@@ -506,17 +502,22 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				}
 
 				if(auto cls = dcast(sst::ClassDefn, str); cls && cls->baseClass)
+				{
 					fs->teleportToScope(cls->baseClass->id.scope + cls->baseClass->id.name);
+					continue;
+				}
 
-				else
-					break;
+				// sighs
+				err = res.error();
+				break;
 			}
 
 
 			if(!resolved)
 			{
+				iceAssert(err);
 				wrongDotOpError(SimpleError::make(fc->loc, "no method named '%s' in type '%s'", fc->name, str->id.name),
-					str, fc->loc, fc->name, false)->postAndQuit();
+					str, fc->loc, fc->name, false)->append(err)->postAndQuit();
 			}
 
 

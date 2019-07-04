@@ -243,6 +243,8 @@ namespace ast
 		bool immut = false;
 		Expr* initialiser = 0;
 
+		bool isField = false;
+
 		//* note: foriegn functions are not Parameterisable, so they don't have the 'visibility' -- so we add it.
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 

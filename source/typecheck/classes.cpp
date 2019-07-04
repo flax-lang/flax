@@ -135,7 +135,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 
-	fs->enterStructBody(defn);
+	fs->pushSelfContext(cls);
 	{
 		for(auto f : this->fields)
 		{
@@ -289,7 +289,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			recursivelyImport(tree, fs->stree);
 		}
 	}
-	fs->leaveStructBody();
+	fs->popSelfContext();
 
 
 	//* do all the static stuff together

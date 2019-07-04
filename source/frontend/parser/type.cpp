@@ -14,6 +14,33 @@ namespace parser
 {
 	using TT = lexer::TokenType;
 
+	static void addSelfToMethod(FuncDefn* method)
+	{
+		// insert the self argument in the front.
+		FuncDefn::Param self;
+		self.name = "this";
+		self.loc = method->loc;
+		self.type = util::pool<pts::PointerType>(self.loc, pts::NamedType::create(self.loc, "self"), method->isMutating);
+
+		method->params.insert(method->params.begin(), self);
+	}
+
+	static void addSelfToMethod(InitFunctionDefn* init)
+	{
+		// insert the self argument in the front.
+		FuncDefn::Param self;
+		self.name = "this";
+		self.loc = init->loc;
+		self.type = util::pool<pts::PointerType>(self.loc, pts::NamedType::create(self.loc, "self"), /* mutable: */ true);
+
+		init->params.insert(init->params.begin(), self);
+	}
+
+
+
+
+
+
 	ClassDefn* parseClass(State& st)
 	{
 		iceAssert(st.front() == TT::Class);
@@ -71,10 +98,12 @@ namespace parser
 				if(v->type == pts::InferredType::get())
 					error(v, "class fields must have types explicitly specified");
 
+				v->isField = true;
 				defn->fields.push_back(v);
 			}
 			else if(auto f = dcast(FuncDefn, s))
 			{
+				addSelfToMethod(f);
 				defn->methods.push_back(f);
 			}
 			else if(auto t = dcast(TypeDefn, s))
@@ -94,6 +123,7 @@ namespace parser
 			}
 			else if(auto init = dcast(InitFunctionDefn, s))
 			{
+				addSelfToMethod(init);
 				defn->initialisers.push_back(init);
 			}
 			else
@@ -200,7 +230,10 @@ namespace parser
 			else if(st.front() == TT::Func)
 			{
 				// ok parse a func as usual
-				defn->methods.push_back(parseFunction(st));
+				auto method = parseFunction(st);
+				addSelfToMethod(method);
+
+				defn->methods.push_back(method);
 			}
 			else if(st.front() == TT::Var || st.front() == TT::Val)
 			{

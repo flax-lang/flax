@@ -44,7 +44,7 @@ namespace resolver
 		else        input = _args;
 
 		auto arguments = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
-			return poly::ArgType(a.ignoreName ? "" : a.name, a.value->type, a.loc);
+			return poly::ArgType(a.name, a.value->type, a.loc, /* opt: */ false, /* ignoreName: */ a.ignoreName);
 		});
 
 		// ok, in this case we should figure out where the first optional argument lives, and pass that to

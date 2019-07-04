@@ -10,9 +10,10 @@
 #include "errors.h"
 #include "typecheck.h"
 
+#include "resolver.h"
 #include "polymorph.h"
 
-#include "resolver.h"
+#include "mpool.h"
 
 #include <set>
 
@@ -76,10 +77,20 @@ namespace poly
 			{
 				util::hash_map<std::string, size_t> paramOrder;
 
+				auto inputcopy = input;
+				auto selfty = fir::PolyPlaceholderType::get(util::obfuscateName("self_infer"), getNextSessionId());
+				inputcopy.insert(inputcopy.begin(), FnCallArgument(fs->loc(), "", util::pool<sst::RawValueExpr>(fs->loc(),
+					selfty->getMutablePointerTo()), 0));
+
+				fs->pushSelfContext(selfty);
+				defer(fs->popSelfContext());
+
+
+
 				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
 				for(auto init : cls->initialisers)
 				{
-					rets.push_back(inferTypesForPolymorph(fs, init, name, cls->generics, input, partial, return_infer, type_infer, isFnCall,
+					rets.push_back(inferTypesForPolymorph(fs, init, name, cls->generics, inputcopy, partial, return_infer, type_infer, isFnCall,
 						problem_infer, &paramOrder));
 				}
 
@@ -262,7 +273,7 @@ namespace poly
 			if(isFnCall)
 			{
 				given = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
-					return poly::ArgType(a.name, a.value->type, a.loc);
+					return ArgType(a.name, a.value->type, a.loc, /* opt: */ false, /* ignoreName: */ a.ignoreName);
 				});
 
 				if(return_infer)

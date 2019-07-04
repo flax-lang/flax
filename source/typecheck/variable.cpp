@@ -296,10 +296,11 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	// ok, then.
 	sst::VarDefn* defn = 0;
-	if(fs->isInStructBody() && !fs->isInFunctionBody())
+	if(this->isField)
 	{
 		auto fld = util::pool<sst::StructFieldDefn>(this->loc);
-		fld->parentType = fs->getCurrentStructBody();
+		fld->parentType = fs->typeDefnMap[fs->getCurrentSelfContext()];
+		iceAssert(fld->parentType);
 
 		defn = fld;
 	}

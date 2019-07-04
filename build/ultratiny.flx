@@ -39,31 +39,21 @@ class bar
 	}
 }
 
-class qux : bar
+class qux<T> : bar
 {
-	init() : super() { }
+	init(x: T) : super() { }
 }
 
-
-fn f1() -> int => printf("f1\n")
-fn f2() -> int => printf("f2\n")
-fn f3() -> int => printf("f3\n")
-
-fn swizzle(a: int, b: int, c: int)
-{
-}
 
 @entry fn main()
 {
 	let f = foo(a: 17)
-	let s = f.method(5)
+	let s = f.method2(5)
 
 	printf("s = %d\n", s)
 
-	let k = qux()
+	let k = qux(x: 3)
 	k.base()
-
-	swizzle(c: f1(), b: f2(), a: f3())
 }
 
 

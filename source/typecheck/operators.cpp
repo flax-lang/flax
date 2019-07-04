@@ -75,7 +75,7 @@ TCResult ast::OperatorOverloadDefn::typecheck(sst::TypecheckState* fs, fir::Type
 	if(this->kind == Kind::Invalid)
 		error(this, "invalid operator kind; must be one of 'infix', 'postfix', or 'prefix'");
 
-	if(fs->isInStructBody())
+	if(fs->hasSelfContext())
 		error(this, "operator overloads cannot be methods of a type.");
 
 	this->generateDeclaration(fs, infer, { });
