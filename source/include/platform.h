@@ -53,6 +53,7 @@ namespace platform
 	std::string getTemporaryFilename(const std::string& name);
 
 	size_t getTerminalWidth();
+	void setupTerminalIfNecessary();
 
 	void performSelfDlOpen();
 	void performSelfDlClose();
