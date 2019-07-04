@@ -80,8 +80,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		//* and since we are using sst::StructFieldDefn for the variants, we will need
 		//* to enter the struct body.
 
-		fs->enterStructBody(defn);
 		auto unionTy = defn->type->toRawUnionType();
+		fs->pushSelfContext(unionTy);
 
 		util::hash_map<std::string, fir::Type*> types;
 		util::hash_map<std::string, sst::StructFieldDefn*> fields;
@@ -95,6 +95,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			vdef->name = name;
 			vdef->initialiser = nullptr;
 			vdef->type = ty;
+			vdef->isField = true;
 
 			auto sfd = dcast(sst::StructFieldDefn, vdef->typecheck(fs).defn());
 			iceAssert(sfd);
@@ -149,7 +150,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 		unionTy->setBody(types);
 
-		fs->leaveStructBody();
+		fs->popSelfContext();
 		ret = defn;
 	}
 	else

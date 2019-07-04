@@ -75,36 +75,31 @@ namespace sst
 
 
 
-	TypeDefn* TypecheckState::getCurrentStructBody()
+	fir::Type* TypecheckState::getCurrentSelfContext()
 	{
-		if(this->structBodyStack.empty())
+		if(this->selfContextStack.empty())
 			error(this->loc(), "not inside struct body");
 
-		return this->structBodyStack.back();
+		return this->selfContextStack.back();
 	}
 
-	bool TypecheckState::isInStructBody()
+	bool TypecheckState::hasSelfContext()
 	{
-		return this->structBodyStack.size() > 0 && this->bodyStack.back() == BODY_STRUCT;
+		return this->selfContextStack.size() > 0;
 	}
 
-	bool TypecheckState::isInMethodBody()
+	void TypecheckState::pushSelfContext(fir::Type* str)
 	{
-		return this->structBodyStack.size() > 0 && this->bodyStack.back() == BODY_FUNC;
-	}
-
-	void TypecheckState::enterStructBody(TypeDefn* str)
-	{
-		this->structBodyStack.push_back(str);
+		this->selfContextStack.push_back(str);
 		this->bodyStack.push_back(BODY_STRUCT);
 	}
 
-	void TypecheckState::leaveStructBody()
+	void TypecheckState::popSelfContext()
 	{
-		if(this->structBodyStack.empty())
+		if(this->selfContextStack.empty())
 			error(this->loc(), "not inside struct body");
 
-		this->structBodyStack.pop_back();
+		this->selfContextStack.pop_back();
 
 		iceAssert(this->bodyStack.back() == BODY_STRUCT);
 		this->bodyStack.pop_back();

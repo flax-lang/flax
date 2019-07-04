@@ -102,11 +102,11 @@ namespace sst
 				auto name = pt->toNamedType()->name;
 				if(name == "self")
 				{
-					if(!this->isInMethodBody())
+					if(!this->hasSelfContext())
 						error(this->loc(), "invalid use of 'self' type while not in method body");
 
 					else
-						return this->getCurrentStructBody()->type;
+						return this->getCurrentSelfContext();
 				}
 
 

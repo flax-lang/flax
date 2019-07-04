@@ -210,7 +210,9 @@ namespace sst
 
 					if(!targ->optional)
 					{
-						didNames = true;
+						if(!given[i].ignoreName)
+							didNames = true;
+
 						positionalCounter++;
 					}
 					else

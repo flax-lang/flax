@@ -40,6 +40,8 @@ namespace sst
 			explicit ArgType(fir::Type* t) : type(t) { }
 			ArgType(const std::string& n, fir::Type* t, const Location& l) : name(n), type(t), loc(l) { }
 			ArgType(const std::string& n, fir::Type* t, const Location& l, bool opt) : name(n), type(t), loc(l), optional(opt) { }
+			ArgType(const std::string& n, fir::Type* t, const Location& l, bool opt, bool ignore) : name(n), type(t), loc(l), optional(opt),
+				ignoreName(ignore) { }
 
 			operator fir::Type* () const { return this->type; }
 			fir::Type* operator -> () const { return this->type; }
@@ -49,6 +51,7 @@ namespace sst
 			fir::Type* type = 0;
 			Location loc;
 			bool optional = false;
+			bool ignoreName = false;
 		};
 
 		struct Solution_t

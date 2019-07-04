@@ -141,12 +141,11 @@ namespace sst
 		bool isInSubscript();
 
 
-		std::vector<TypeDefn*> structBodyStack;
-		TypeDefn* getCurrentStructBody();
-		bool isInStructBody();
-		bool isInMethodBody();
-		void enterStructBody(TypeDefn* str);
-		void leaveStructBody();
+		std::vector<fir::Type*> selfContextStack;
+		fir::Type* getCurrentSelfContext();
+		void pushSelfContext(fir::Type* str);
+		void popSelfContext();
+		bool hasSelfContext();
 
 
 		std::vector<TypeParamMap_t> genericContextStack;
