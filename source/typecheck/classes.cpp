@@ -118,7 +118,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		error(this, "class must have at least one initialiser");
 
 
-	std::vector<std::pair<std::string, fir::Type*>> tys;
 
 
 	for(auto t : this->nestedTypes)
@@ -137,6 +136,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	fs->pushSelfContext(cls);
 	{
+		std::vector<std::pair<std::string, fir::Type*>> tys;
 		for(auto f : this->fields)
 		{
 			auto v = dcast(sst::StructFieldDefn, f->typecheck(fs).defn());
@@ -167,7 +167,10 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			};
 
 			checkDupe(defn->baseClass, v);
+
+			cls->setMembers(tys);
 		}
+
 
 		for(auto m : this->methods)
 		{
@@ -176,13 +179,12 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			auto res = m->generateDeclaration(fs, cls, { });
 			if(res.isParametric())
-				error(m, "methods of a type cannot be polymorphic (for now???)");
+				continue;
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
 
 			defn->methods.push_back(decl);
-
 
 			//* check for what would be called 'method hiding' in c++ -- ie. methods in the derived class with exactly the same type signature as
 			//* the base class method.
@@ -288,12 +290,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			recursivelyImport(tree, fs->stree);
 		}
-	}
-	fs->popSelfContext();
 
-
-	//* do all the static stuff together
-	{
 		for(auto f : this->staticFields)
 		{
 			auto v = dcast(sst::VarDefn, f->typecheck(fs).defn());
@@ -307,7 +304,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			// infer is 0 because this is a static thing
 			auto res = m->generateDeclaration(fs, 0, { });
 			if(res.isParametric())
-				error(m, "functions of a type cannot be polymorphic (for now???)");
+				continue;
 
 			auto decl = dcast(sst::FunctionDefn, res.defn());
 			iceAssert(decl);
@@ -315,25 +312,26 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			defn->staticMethods.push_back(decl);
 		}
 
-		for(auto m : this->staticMethods)
+
+
+
+		// once we get all the proper declarations and such, create the function bodies.
+		if(!cls->containsPlaceholders())
 		{
-			m->typecheck(fs, 0, { });
+			for(auto m : this->methods)
+				m->typecheck(fs, cls, { });
+
+			for(auto m : this->initialisers)
+				m->typecheck(fs, cls, { });
+
+			for(auto m : this->staticMethods)
+				m->typecheck(fs, 0, { });
 		}
 	}
-
-
-	// once we get all the proper declarations and such, create the function bodies.
-	{
-		for(auto m : this->methods)
-			m->typecheck(fs, cls, { });
-
-		for(auto m : this->initialisers)
-			m->typecheck(fs, cls, { });
-	}
+	fs->popSelfContext();
 
 
 
-	cls->setMembers(tys);
 
 	fs->popTree();
 	fs->teleportToScope(oldscope);
@@ -360,6 +358,10 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 	auto ret = dcast(sst::FunctionDefn, this->actualDefn->typecheck(fs, cls, gmaps).defn());
 
+	// if the initialiser was polymorphic, then don't generate bodies!
+	if(ret->type->containsPlaceholders())
+		return TCResult::getParametric();
+
 	if(cls->getBaseClass() && !this->didCallSuper)
 	{
 		error(this, "initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
@@ -380,7 +382,7 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 
 		auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
 
-		auto constr = sst::resolver::resolveConstructorCall(fs, call->classty, baseargs, PolyArgMapping_t::none());
+		auto constr = sst::resolver::resolveConstructorCall(fs, this->loc, call->classty, baseargs, PolyArgMapping_t::none());
 
 		call->arguments = baseargs;
 		call->target = dcast(sst::FunctionDefn, constr.defn());

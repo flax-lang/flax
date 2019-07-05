@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
+#include <map>
 #include <vector>
 #include <unordered_map>
 
@@ -220,6 +221,13 @@ namespace util
 
 	template <typename K, typename V>
 	std::vector<std::pair<K, V>> pairs(const std::unordered_map<K, V>& map)
+	{
+		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
+		return ret;
+	}
+
+	template <typename K, typename V>
+	std::vector<std::pair<K, V>> pairs(const std::map<K, V>& map)
 	{
 		auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
 		return ret;

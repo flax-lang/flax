@@ -260,18 +260,18 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			{
 				auto err = SimpleError::make(this->loc, "ambiguous reference to '%s', potential candidates:", this->name);
 				for(const auto& p : pots)
-					err->append(SimpleError::make(p.first.defn()->loc, ""));
+					err->append(SimpleError::make(p.res.defn()->loc, ""));
 
 				return TCResult(err);
 			}
 			else
 			{
 				iceAssert(pots.size() == 1);
-				if(pots[0].first.isDefn())
-					return getResult(this, pots[0].first.defn());
+				if(pots[0].res.isDefn())
+					return getResult(this, pots[0].res.defn());
 
 				else
-					return pots[0].first;
+					return pots[0].res;
 			}
 		}
 

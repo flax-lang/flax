@@ -7,11 +7,11 @@ import libc as _
 
 
 
-struct foo
+struct foo<T>
 {
-	a: int
+	a: T
 
-	fn method(x: int) -> int
+	fn method(x: T) -> T
 	{
 		if x > 0
 		{
@@ -42,19 +42,72 @@ class bar
 class qux<T> : bar
 {
 	init(x: T) : super() { }
+
+	static fn foozle<T>(x: T)
+	{
+		printf("this is foozle %s\n", x)
+	}
+
+	// var lmao: T
 }
 
+fn lmao<T>(x: T)
+{
+
+}
+
+fn lmao<T>(x: T, y: T)
+{
+
+}
+
+fn rofl(x: int)
+{
+
+}
+
+fn rofl(x: int, y: int)
+{
+
+}
 
 @entry fn main()
 {
-	let f = foo(a: 17)
-	let s = f.method2(5)
+	// let f = foo(a: 17)
+	// let s = f.method2(5)
 
-	printf("s = %d\n", s)
+	// printf("s = %d\n", s)
 
-	let k = qux(x: 3)
-	k.base()
+	// let k = qux(x: 3)
+	// k.base()
+
+	lmao()
+	// rofl()
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

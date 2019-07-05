@@ -492,7 +492,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			while(!resolved)
 			{
 				auto arg_copy = arguments;
-				auto res = sst::resolver::resolveFunctionCall(fs, fc->name, &arg_copy, fc->mappings,
+				auto res = sst::resolver::resolveFunctionCall(fs, fc->loc, fc->name, &arg_copy, fc->mappings,
 					/* traverseUp: */ false, infer);
 
 				if(res.isDefn())
@@ -793,6 +793,9 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		{
 			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
 			{
+				fs->pushSelfContext(def->type);
+				defer(fs->popSelfContext());
+
 				auto oldscope = fs->getCurrentScope();
 				auto newscope = typdef->id.scope;
 				newscope.push_back(typdef->id.name);
@@ -806,6 +809,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 					for(auto g : typdef->original->generics)
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}
+
 				return checkRhs(fs, dot, oldscope, newscope, infer);
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))

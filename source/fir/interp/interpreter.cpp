@@ -575,7 +575,11 @@ namespace interp
 		}
 		else if(ty->isClassType())
 		{
-			return ((fir::Type*) fir::Type::getInt8Ptr() + ty->toClassType()->getAllElementsIncludingBase());
+			auto ret = ty->toClassType()->getAllElementsIncludingBase();
+			if(ty->toClassType()->getVirtualMethodCount() > 0)
+				ret.insert(ret.begin(), fir::Type::getInt8Ptr());
+
+			return ret;
 		}
 		else if(ty->isTupleType())
 		{

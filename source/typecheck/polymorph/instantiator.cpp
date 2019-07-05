@@ -195,7 +195,7 @@ namespace poly
 		if(thing->parentType)
 		{
 			// instantiate that as well, I guess.
-			auto res = fullyInstantiatePolymorph(fs, thing->parentType, mappings);
+			auto res = fullyInstantiatePolymorph(fs, thing->parentType, /* mappings */ {});
 			if(res.isError()) return TCResult(res);
 
 			self_infer = res.defn()->type;

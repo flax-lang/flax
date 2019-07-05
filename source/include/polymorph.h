@@ -82,8 +82,17 @@ namespace sst
 
 		TCResult fullyInstantiatePolymorph(TypecheckState* fs, ast::Parameterisable* thing, const TypeParamMap_t& mappings);
 
+		struct PolyRefResult
+		{
+			PolyRefResult(const TCResult& r, const Solution_t& s, ast::Parameterisable* t) :
+				res(r), soln(s), thing(t) { }
 
-		std::vector<std::pair<TCResult, Solution_t>> findPolymorphReferences(TypecheckState* fs, const std::string& name,
+			TCResult res;
+			Solution_t soln;
+			ast::Parameterisable* thing;
+		};
+
+		std::vector<PolyRefResult> findPolymorphReferences(TypecheckState* fs, const std::string& name,
 			const std::vector<ast::Parameterisable*>& gdefs, const PolyArgMapping_t& _gmaps, fir::Type* return_infer,
 			fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args);
 
