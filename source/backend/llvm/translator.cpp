@@ -50,7 +50,7 @@ namespace backend
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
 
-	inline std::string llvmToString(llvm::Type* t)
+	inline std::string llvmTyToString(llvm::Type* t)
 	{
 		std::string str;
 		llvm::raw_string_ostream rso(str);
@@ -425,7 +425,7 @@ namespace backend
 				if(c->getType() != arrt->getArrayElementType())
 				{
 					error("llvm: expected type '%s' in const array (%d), found '%s'",
-						llvmToString(arrt->getArrayElementType()), ca->id, llvmToString(c));
+						llvmTyToString(arrt->getArrayElementType()), ca->id, llvmToString(c));
 					// c = llvm::ConstantExpr::getBitCast(c, arrt->getArrayElementType());
 				}
 
