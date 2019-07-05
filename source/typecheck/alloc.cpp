@@ -49,7 +49,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		iceAssert(cdf);
 
 		auto arguments = sst::resolver::misc::typecheckCallArguments(fs, this->args);
-		auto constructor = sst::resolver::resolveConstructorCall(fs, cdf,  arguments, PolyArgMapping_t::none());
+		auto constructor = sst::resolver::resolveConstructorCall(fs, this->loc, cdf, arguments, PolyArgMapping_t::none());
 
 		ret->constructor = constructor.defn();
 		ret->arguments = arguments;

@@ -307,8 +307,8 @@ namespace sst
 			{
 				if(targetnames.empty() || given.size() > target.size())
 				{
-					return SimpleError::make(callLoc, "mismatched argument count: expected %d, but %d %s provided",
-						target.size(), given.size(), given.size() == 1 ? "was" : "were");
+					return SimpleError::make(callLoc, "expected %d %s, but %d %s provided",
+						target.size(), util::plural("argument", target.size()), given.size(), given.size() == 1 ? "was" : "were");
 				}
 				else
 				{
@@ -317,7 +317,8 @@ namespace sst
 						missings.push_back(target[us].name);
 
 					auto s = util::listToEnglish(missings, /* quote: */ true);
-					return SimpleError::make(callLoc, "mismatched arguments: missing arguments for parameters %s", s);
+					return SimpleError::make(callLoc, "missing %s for %s %s", util::plural("argument", missings.size()),
+						util::plural("parameter", missings.size()), s);
 				}
 			}
 

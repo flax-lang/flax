@@ -20,9 +20,8 @@
 namespace sst {
 namespace poly
 {
-	std::vector<std::pair<TCResult, Solution_t>> findPolymorphReferences(TypecheckState* fs, const std::string& name,
-		const std::vector<ast::Parameterisable*>& gdefs, const PolyArgMapping_t& pams, fir::Type* return_infer, fir::Type* type_infer,
-		bool isFnCall, std::vector<FnCallArgument>* args)
+	std::vector<PolyRefResult> findPolymorphReferences(TypecheckState* fs, const std::string& name, const std::vector<ast::Parameterisable*>& gdefs,
+		const PolyArgMapping_t& pams, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, std::vector<FnCallArgument>* args)
 	{
 		iceAssert(gdefs.size() > 0);
 
@@ -30,19 +29,21 @@ namespace poly
 		//? unfortunately I see no better way to do this.
 		// TODO: find a better way to do this??
 
-		std::vector<std::pair<TCResult, Solution_t>> pots;
+		std::vector<PolyRefResult> pots;
 
 		for(const auto& gdef : gdefs)
 		{
 			auto [ gmaps, err ] = resolver::misc::canonicalisePolyArguments(fs, gdef, pams);
 			if(err != nullptr)
 			{
-				pots.push_back({ TCResult(err), Solution_t() });
+				pots.push_back(PolyRefResult(TCResult(err), Solution_t(), gdef));
 			}
 			else
 			{
-				pots.push_back(attemptToInstantiatePolymorph(fs, gdef, name, gmaps, return_infer, type_infer, isFnCall, args,
-					/* fillplaceholders: */ true));
+				auto [ r, s ] = attemptToInstantiatePolymorph(fs, gdef, name, gmaps, return_infer, type_infer, isFnCall,
+					args, /* fillplaceholders: */ true);
+
+				pots.push_back(PolyRefResult(r, s, gdef));
 			}
 		}
 

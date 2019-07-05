@@ -17,8 +17,8 @@
 namespace sst {
 namespace resolver
 {
-	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cands, std::vector<FnCallArgument>* args,
-		const PolyArgMapping_t& gmaps, bool allowImplicitSelf)
+	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<Defn*>& cands,
+		std::vector<FnCallArgument>* args, const PolyArgMapping_t& gmaps, bool allowImplicitSelf)
 	{
 		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
 		auto [ ret, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cds, gmaps, allowImplicitSelf, nullptr);
@@ -27,8 +27,8 @@ namespace resolver
 		return ret;
 	}
 
-	TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments, const PolyArgMapping_t& gmaps,
-		bool travUp, fir::Type* return_infer)
+	TCResult resolveFunctionCall(TypecheckState* fs, const Location& callLoc, const std::string& name, std::vector<FnCallArgument>* arguments,
+		const PolyArgMapping_t& gmaps, bool travUp, fir::Type* return_infer)
 	{
 		StateTree* tree = fs->stree;
 
@@ -50,13 +50,11 @@ namespace resolver
 
 		bool didGeneric = false;
 
-		auto errs = SimpleError::make(Location(), "");
+		std::vector<std::pair<Locatable*, ErrorMsg*>> fails;
 		std::vector<std::tuple<Defn*, std::vector<FnCallArgument>, poly::Solution_t>> fns;
+
 		while(tree)
 		{
-			// unify the handling of generic and non-generic stuff.
-			// if we provided mappings, don't bother searching normal functions.
-			// if(gmaps.empty())
 			{
 				auto defs = tree->getDefinitionsWithName(name);
 				for(auto d : defs)
@@ -73,14 +71,14 @@ namespace resolver
 
 				for(const auto& pot : pots)
 				{
-					if(!pot.first.isDefn())
+					if(!pot.res.isDefn())
 					{
-						iceAssert(pot.first.isError());
-						errs->append(pot.first.error());
+						iceAssert(pot.res.isError());
+						fails.push_back({ pot.thing, pot.res.error() });
 					}
 					else
 					{
-						auto def = pot.first.defn();
+						auto def = pot.res.defn();
 						if(def->type->containsPlaceholders())
 							error("wtf??? '%s'", def->type);
 
@@ -93,7 +91,7 @@ namespace resolver
 							continue;
 						}
 
-						auto sln = pot.second;
+						auto sln = pot.soln;
 						// ! ACHTUNG !
 						// insert a hefty penalty for using a polymorphic function!
 						// this doesn't disallow polymorphic functions from participating in
@@ -116,10 +114,13 @@ namespace resolver
 		{
 			if(!didGeneric)
 			{
-				errs = SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name);
+				return TCResult(SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name));
 			}
-
-			return TCResult(errs);
+			else
+			{
+				auto err = createErrorFromFailedCandidates(fs, callLoc, name, *arguments, fails);
+				return TCResult(err);
+			}
 		}
 
 
@@ -140,29 +141,24 @@ namespace resolver
 			else
 			{
 				return TCResult(
-					SimpleError::make(fs->loc(), "'%s' cannot be called as a function; it was defined with type '%s' in the current scope",
-						name, def->type)->append(SimpleError::make(def->loc, "previously defined here:"))
+					SimpleError::make(fs->loc(), "'%s' cannot be called as a function; it was defined with type '%s'",
+						name, def->type)->append(SimpleError::make(def->loc, "the definition was here:"))
 				);
 			}
 		}
 
 		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
 		if(res.isDefn())
-		{
 			*arguments = new_args;
 
-			return res;
-		}
-		else
-		{
-			return TCResult(errs->append(res.error()));
-		}
+		return res;
 	}
 
 
 
 
-	TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments, const PolyArgMapping_t& pams)
+	TCResult resolveConstructorCall(TypecheckState* fs, const Location& callLoc, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments,
+		const PolyArgMapping_t& pams)
 	{
 		//! ACHTUNG: DO NOT REARRANGE !
 		//* NOTE: ClassDefn inherits from StructDefn *
@@ -186,7 +182,7 @@ namespace resolver
 
 			auto copy1 = copy;
 
-			auto cand = resolveFunctionCallFromCandidates(fs, util::map(cls->initialisers, [](auto e) -> auto {
+			auto cand = resolveFunctionCallFromCandidates(fs, callLoc, util::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
 			}), &copy, pams, true);
 

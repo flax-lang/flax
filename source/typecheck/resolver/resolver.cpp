@@ -62,6 +62,54 @@ namespace resolver
 
 
 
+	ErrorMsg* createErrorFromFailedCandidates(TypecheckState* fs, const Location& callLoc, const std::string& name,
+		const std::vector<FnCallArgument>& args, const std::vector<std::pair<Locatable*, ErrorMsg*>>& fails)
+	{
+		// if we only had one candidate, there are no 'overloads' -- don't be a c++ and say stupid things.
+		// we just directly post the error message instead.
+
+		if(fails.size() == 1)
+		{
+			auto fail = fails.begin();
+
+			auto ret = fail->second;
+			if(auto f = dcast(FunctionDefn, fail->first); f)
+			{
+				ret->append(SimpleError::make(MsgType::Note, f->loc, "function '%s' was defined here:", f->id.name));
+			}
+			else if(auto v = dcast(VarDefn, fail->first); v)
+			{
+				ret->append(SimpleError::make(MsgType::Note, v->loc, "'%s' was defined here with type '%s':", v->id.name,
+					v->type));
+			}
+
+			return ret;
+		}
+		else
+		{
+			std::vector<fir::Type*> tmp = util::map(args, [](const FnCallArgument& p) -> auto { return p.value->type; });
+
+			auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s' with arguments (%s) amongst %d %s",
+				name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
+
+			for(auto f : fails)
+			{
+				// TODO: HACK -- pass the location around more then!!
+				// patch in the location if it's not present!
+				if(auto se = dcast(SimpleError, f.second); se)
+				{
+					se->loc = f.first->loc;
+					se->msg = "candidate unsuitable: " + se->msg;
+				}
+
+				errs->addCand(f.first, f.second);
+			}
+
+			return errs;
+		}
+	}
+
+
 
 	namespace internal
 	{
@@ -222,7 +270,7 @@ namespace resolver
 						}
 					}
 
-					auto res = resolveConstructorCall(fs, td, replacementArgs, pams);
+					auto res = resolveConstructorCall(fs, callLoc, td, replacementArgs, pams);
 					if(!res.isDefn())
 					{
 						fails[td] = res.error();
@@ -253,49 +301,12 @@ namespace resolver
 
 			if(finals.empty())
 			{
-				// if we only had one candidate, there are no 'overloads' -- don't be a c++ and say stupid things.
-				// we just directly post the error message instead.
+				auto err = createErrorFromFailedCandidates(fs, callLoc, cands[0].first->id.name, cands[0].second,
+					util::map(util::pairs(fails), [](auto p) -> std::pair<Locatable*, ErrorMsg*> {
+						return std::make_pair(p.first, p.second);
+					}));
 
-				if(fails.size() == 1)
-				{
-					auto fail = fails.begin();
-
-					auto ret = fail->second;
-					if(auto f = dcast(FunctionDefn, fail->first); f)
-					{
-						ret->append(SimpleError::make(MsgType::Note, f->loc, "function '%s' was defined here:", f->id.name));
-					}
-					else if(auto v = dcast(VarDefn, fail->first); v)
-					{
-						ret->append(SimpleError::make(MsgType::Note, v->loc, "'%s' was defined here with type '%s':", v->id.name,
-							v->type));
-					}
-
-					return { TCResult(ret), { } };
-				}
-				else
-				{
-					iceAssert(cands.size() == fails.size());
-					std::vector<fir::Type*> tmp = util::map(cands[0].second, [](const FnCallArgument& p) -> auto { return p.value->type; });
-
-					auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s(%s)' amongst %zu %s",
-						cands[0].first->id.name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
-
-					for(auto f : fails)
-					{
-						// TODO: HACK -- pass the location around more then!!
-						// patch in the location if it's not present!
-						if(auto se = dcast(SimpleError, f.second); se)
-						{
-							se->loc = f.first->loc;
-							se->msg = "candidate unsuitable: " + se->msg;
-						}
-
-						errs->addCand(f.first, f.second);
-					}
-
-					return { TCResult(errs), { } };
-				}
+				return { TCResult(err), { } };
 			}
 			else if(finals.size() > 1)
 			{

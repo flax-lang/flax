@@ -30,7 +30,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	// resolve the function call here
 	std::vector<FnCallArgument> ts = _arguments;
 
-	auto res = sst::resolver::resolveFunctionCall(fs, this->name, &ts, this->mappings, this->traverseUpwards, infer);
+	auto res = sst::resolver::resolveFunctionCall(fs, this->loc, this->name, &ts, this->mappings, this->traverseUpwards, infer);
 
 	auto target = res.defn();
 	iceAssert(target);

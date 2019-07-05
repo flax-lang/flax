@@ -33,13 +33,14 @@ namespace sst
 			const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc);
 
 
-		TCResult resolveFunctionCall(TypecheckState* fs, const std::string& name, std::vector<FnCallArgument>* arguments,
+		TCResult resolveFunctionCall(TypecheckState* fs, const Location& callLoc, const std::string& name, std::vector<FnCallArgument>* arguments,
 			const PolyArgMapping_t& gmaps, bool traverseUp, fir::Type* inferredRetType);
 
-		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const std::vector<Defn*>& cs, std::vector<FnCallArgument>* arguments,
-			const PolyArgMapping_t& gmaps, bool allowImplicitSelf);
+		TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<Defn*>& cs,
+			std::vector<FnCallArgument>* arguments, const PolyArgMapping_t& gmaps, bool allowImplicitSelf);
 
-		TCResult resolveConstructorCall(TypecheckState* fs, TypeDefn* defn, const std::vector<FnCallArgument>& arguments, const PolyArgMapping_t& gmaps);
+		TCResult resolveConstructorCall(TypecheckState* fs, const Location& callLoc, TypeDefn* defn, const std::vector<FnCallArgument>& arguments,
+			const PolyArgMapping_t& gmaps);
 
 
 		std::pair<util::hash_map<std::string, size_t>, ErrorMsg*> verifyStructConstructorArguments(const Location& callLoc,
@@ -47,6 +48,10 @@ namespace sst
 
 		TCResult resolveAndInstantiatePolymorphicUnion(TypecheckState* fs, sst::UnionVariantDefn* uvd, std::vector<FnCallArgument>* arguments,
 			fir::Type* return_infer, bool isFnCall);
+
+
+		ErrorMsg* createErrorFromFailedCandidates(TypecheckState* fs, const Location& callLoc, const std::string& name,
+			const std::vector<FnCallArgument>& args, const std::vector<std::pair<Locatable*, ErrorMsg*>>& fails);
 
 
 		namespace misc
