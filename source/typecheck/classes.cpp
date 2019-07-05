@@ -167,9 +167,8 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			};
 
 			checkDupe(defn->baseClass, v);
-
-			cls->setMembers(tys);
 		}
+		cls->setMembers(tys);
 
 
 		for(auto m : this->methods)

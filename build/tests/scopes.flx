@@ -135,14 +135,11 @@ public fn doScopeTest(argv: str)
 
 
 	n1::n2::m.foo.oor = 968
+	printf("oor = %d\n", n1::n2::m.foo.oor)
 
 	let t1 = n1::n2::m.foo.somefoo().bar
 	let t2 = n1::n2::nest().0.length
 
-	//! hello morning me
-	//* this thing below crashes the ffi-printf
-	//* we're not setting the string properly, somehow.
-	//* investigate!!!!
 	n1::n2::tup.0 = "HELLO, WORLD!" //string("HELLO, WORLD") + "!"
 	printf("tup: %s\n", n1::n2::tup.0)
 
