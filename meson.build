@@ -163,9 +163,11 @@ source_files = files([
 	'source/frontend/errors.cpp',
 	'source/frontend/import.cpp',
 	'source/frontend/frontend.cpp',
-	'source/frontend/platform.cpp',
 	'source/frontend/collector.cpp',
 	'source/frontend/dependencies.cpp',
+
+	'source/platform/compiler.cpp',
+	'source/platform/platform.cpp',
 
 	'source/frontend/parser/misc.cpp',
 	'source/frontend/parser/expr.cpp',

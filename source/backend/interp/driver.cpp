@@ -35,7 +35,7 @@ namespace backend
 	FIRInterpBackend::FIRInterpBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output)
 		: Backend(BackendCaps::JIT, dat, inputs, output)
 	{
-		platform::performSelfDlOpen();
+		platform::compiler::performSelfDlOpen();
 	}
 
 	std::string FIRInterpBackend::str()

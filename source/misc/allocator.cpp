@@ -7,7 +7,14 @@
 #include "defs.h"
 #include "allocator.h"
 
-#ifdef _WIN32
+#include "platform.h"
+
+#if OS_WINDOWS
+	#define WIN32_LEAN_AND_MEAN 1
+
+	#ifndef NOMINMAX
+		#define NOMINMAX
+	#endif
 	#include <windows.h>
 #else
 	#include <unistd.h>
@@ -19,7 +26,7 @@ namespace mem
 {
 	static void* _alloc(size_t bytes)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			auto ret = VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 			if(ret == nullptr) _error_and_exit("failed to allocate %d bytes of memory (large page min: %d)\n", bytes, GetLargePageMinimum());
 
@@ -35,7 +42,7 @@ namespace mem
 
 	static void _dealloc(void* ptr, size_t bytes)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			VirtualFree(ptr, 0, MEM_RELEASE);
 		#else
 			munmap(ptr, bytes);

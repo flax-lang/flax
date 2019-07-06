@@ -6,8 +6,19 @@
 
 #include "errors.h"
 #include "frontend.h"
+#include "platform.h"
 
-#ifndef _WIN32
+#if OS_WINDOWS
+	#define WIN32_LEAN_AND_MEAN 1
+
+	#ifndef NOMINMAX
+		#define NOMINMAX
+	#endif
+
+	#include <windows.h>
+
+	#define USE_MMAP false
+#else
 	#include <dlfcn.h>
 	#include <unistd.h>
 	#include <sys/mman.h>
@@ -23,100 +34,98 @@
 	#else
 		#define EXTRA_MMAP_FLAGS 0
 	#endif
-#else
-	#define WIN32_LEAN_AND_MEAN 1
-
-	#ifndef NOMINMAX
-		#define NOMINMAX
-	#endif
-
-	#include <windows.h>
-
-	#define USE_MMAP false
 #endif
 
 
 namespace platform
 {
-	#ifdef _WIN32
+	#if OS_WINDOWS
 		filehandle_t InvalidFileHandle = INVALID_HANDLE_VALUE;
-
-		static HMODULE currentModule = 0;
-		static std::vector<HMODULE> otherModules;
 	#else
 		filehandle_t InvalidFileHandle = -1;
-		void* currentModule = 0;
 	#endif
 
 
-	void performSelfDlOpen()
+	static util::hash_map<std::string, std::vector<std::string>> environmentStack;
+
+	std::string getEnvironmentVar(const std::string& name)
 	{
-		#ifdef _WIN32
-			currentModule = GetModuleHandle(nullptr);
+		auto ret = std::getenv(name.c_str());
+		if(ret) return std::string(ret);
+		else    return "";
+	}
 
-			// load the libc dll.
-			//? the name is "vcruntime140.dll", which is apparently specific to MSVC 14.0+, apparently 140 is the only number that
-			//? appears to be referenced in online sources.
+	void pushEnvironmentVar(const std::string& name, const std::string& value)
+	{
+		environmentStack[name].push_back(value);
 
-			std::vector<const char*> libsToLoad = {
-				"vcruntime140.dll",
-				"ucrtbase.dll"
-			};
-
-			for(auto name : libsToLoad)
-			{
-				auto lib = LoadLibrary(name);
-				if(lib) otherModules.push_back(lib);
-				else    warn("platform: failed to load library '%s'", name);
-			}
+		#if OS_WINDOWS
+			_putenv_s(name.c_str(), value.c_str());
 		#else
-			currentModule = dlopen(nullptr, RTLD_LAZY);
+			setenv(name.c_str(), value.c_str(), /* overwrite: */ 1);
 		#endif
 	}
 
-	void performSelfDlClose()
+	void popEnvironmentVar(const std::string& name)
 	{
-		#ifdef _WIN32
-			for(auto mod : otherModules)
-				FreeLibrary(mod);
-		#endif
-	}
+		auto it = environmentStack.find(name);
+		if(it == environmentStack.end() || it->second.empty())
+			error("did not push '%s'", name.c_str());
 
-	void* getSymbol(const std::string& name)
-	{
-		if(!currentModule) _error_and_exit("failed to load current module!\n");
+		it->second.pop_back();
 
-		void* ret = 0;
-		#ifdef _WIN32
-			ret = GetProcAddress(currentModule, name.c_str());
-			for(size_t i = 0; !ret && i < otherModules.size(); i++)
-				ret = GetProcAddress(otherModules[i], name.c_str());
+		auto restore = it->second.empty() ? "" : it->second.back();
+
+		#if OS_WINDOWS
+			_putenv_s(name.c_str(), restore.c_str());
 		#else
-			ret = dlsym(currentModule, name.c_str());
+			setenv(name.c_str(), restore.c_str(), /* overwrite: */ 1);
 		#endif
-
-		return ret;
 	}
 
+	#if OS_WINDOWS
+
+	void* convertStringToWChar(const std::string& s)
+	{
+		if(s.empty())
+			return nullptr;
+
+		if(s.size() > INT_MAX)
+			error("string length %d is too large", s.size());
+
+		int required = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.c_str(), (int) s.size(), NULL, 0);
+		if(required == 0)
+			error("cannot convert string '%s'", s);
 
 
+		auto buf = (LPWSTR) malloc(sizeof(WCHAR) * (required + 1));
+		if(!buf)
+			error("failed to allocate buffer");
+
+		auto ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.c_str(), (int) s.size(), buf, required);
+		iceAssert(ret > 0);
+
+		return (void*) buf;
+	}
+
+	#endif
 
 
 	size_t getFileSize(const std::string& path)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 
 			// note: jesus christ this thing is horrendous
 
 			HANDLE hd = CreateFile((LPCSTR) path.c_str(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 			if(hd == INVALID_HANDLE_VALUE)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
+				error("failed to get filesize for '%s' (error code %d)", path, GetLastError());
 
 			// ok, presumably it exists. so, get the size
 			LARGE_INTEGER sz;
 			bool success = GetFileSizeEx(hd, &sz);
 			if(!success)
-				_error_and_exit("failed to get filesize for '%s' (error code %d)\n", path, GetLastError());
+				error("failed to get filesize for '%s' (error code %d)", path, GetLastError());
 
 			CloseHandle(hd);
 
@@ -126,7 +135,7 @@ namespace platform
 
 			struct stat st;
 			if(stat(path.c_str(), &st) != 0)
-				_error_and_exit("failed to get filesize for '%s' (error code %d / %s)\n", path, errno, strerror(errno));
+				error("failed to get filesize for '%s' (error code %d / %s)", path, errno, strerror(errno));
 
 			return st.st_size;
 
@@ -184,7 +193,7 @@ namespace platform
 			if(didRead != fileLength)
 			{
 				perror("there was an error reading the file");
-				_error_and_exit("expected %d bytes, but read only %d\n", fileLength, didRead);
+				error("expected %d bytes, but read only %d", fileLength, didRead);
 				exit(-1);
 			}
 		}
@@ -197,7 +206,7 @@ namespace platform
 
 	filehandle_t openFile(const char* name, int mode, int flags)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			bool writing = (mode & O_WRONLY) || (mode & O_RDWR);
 			bool create = (mode & O_CREAT);
 
@@ -215,7 +224,7 @@ namespace platform
 
 	void closeFile(filehandle_t fd)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			CloseHandle(fd);
 		#else
 			close(fd);
@@ -228,11 +237,11 @@ namespace platform
 
 	size_t readFile(filehandle_t fd, void* buf, size_t count)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			DWORD didRead = 0;
 			bool success = ReadFile(fd, buf, (DWORD) count, &didRead, 0);
 			if(!success)
-				_error_and_exit("failed to read file (wanted %d bytes, read %d bytes); (error code %d)\n", count, didRead, GetLastError());
+				error("failed to read file (wanted %d bytes, read %d bytes); (error code %d)", count, didRead, GetLastError());
 
 			return (size_t) didRead;
 		#else
@@ -242,11 +251,11 @@ namespace platform
 
 	size_t writeFile(filehandle_t fd, void* buf, size_t count)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			DWORD didWrite = 0;
 			bool success = WriteFile(fd, buf, (DWORD) count, &didWrite, 0);
 			if(!success)
-				_error_and_exit("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)\n", count, didWrite, GetLastError());
+				error("failed to write file (wanted %d bytes, wrote %d bytes); (error code %d)", count, didWrite, GetLastError());
 
 			return (size_t) didWrite;
 		#else
@@ -258,7 +267,7 @@ namespace platform
 
 	bool checkFileExists(const std::string& path)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			TCHAR* p = (TCHAR*) path.c_str();
 			DWORD dwAttrib = GetFileAttributes(p);
 			return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
@@ -271,7 +280,7 @@ namespace platform
 
 	std::string getNameWithExeExtension(const std::string& name)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			return strprintf("%s.exe", name);
 		#else
 			return name;
@@ -280,7 +289,7 @@ namespace platform
 
 	std::string getNameWithObjExtension(const std::string& name)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 			return strprintf("%s.obj", name);
 		#else
 			return strprintf("%s.o", name);
@@ -291,7 +300,7 @@ namespace platform
 
 	std::string getFullPath(const std::string& partial)
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 		{
 			// auto checkFileExists = [](const TCHAR* szPath) -> bool {
 			// 	DWORD dwAttrib = GetFileAttributes(szPath);
@@ -339,7 +348,7 @@ namespace platform
 
 	size_t getTerminalWidth()
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 		{
 			CONSOLE_SCREEN_BUFFER_INFO csbi;
 			GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -356,7 +365,7 @@ namespace platform
 
 	void setupTerminalIfNecessary()
 	{
-		#ifdef _WIN32
+		#if OS_WINDOWS
 
 			// first, enable ansi colours
 			std::vector<DWORD> handles = {

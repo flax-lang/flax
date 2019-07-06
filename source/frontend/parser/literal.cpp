@@ -15,11 +15,6 @@
 using namespace ast;
 using namespace lexer;
 
-// #ifdef _WIN32
-// 	#define PLATFORM_NEWLINE "\r\n"
-// #else
-// 	#define PLATFORM_NEWLINE "\n"
-// #endif
 
 using TT = lexer::TokenType;
 namespace parser
