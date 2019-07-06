@@ -74,6 +74,9 @@ namespace compiler
 			for(const auto& f : frontend::getFrameworksToLink())
 				cmdline += strprintf(" -framework %s", f);
 
+			if(!frontend::getIsFreestanding() && !frontend::getIsNoStandardLibraries())
+				cmdline += strprintf(" -lm -lc");
+
 		#endif
 
 		return cmdline;

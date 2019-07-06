@@ -40,9 +40,9 @@ script:
         then PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make -j2 build;
       else CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make -j2 build;
       fi
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend llvm build/tester.flx
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend interp build/tester.flx
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot build/tester.flx && ./tester
+    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
+    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend interp build/tester.flx
+    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
 
 notifications:
     email: false
