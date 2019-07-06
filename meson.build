@@ -162,12 +162,13 @@ source_files = files([
 	'source/frontend/lexer.cpp',
 	'source/frontend/errors.cpp',
 	'source/frontend/import.cpp',
-	'source/frontend/frontend.cpp',
+	'source/frontend/arguments.cpp',
 	'source/frontend/collector.cpp',
 	'source/frontend/dependencies.cpp',
 
 	'source/platform/compiler.cpp',
 	'source/platform/platform.cpp',
+	'source/platform/msvcfinder.cpp',
 
 	'source/frontend/parser/misc.cpp',
 	'source/frontend/parser/expr.cpp',

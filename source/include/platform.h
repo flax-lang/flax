@@ -39,7 +39,8 @@ namespace platform
 
 		#define PLATFORM_EXPORT_FUNCTION    extern "C" __declspec(dllexport)
 
-		void* convertStringToWChar(const std::string& s);
+		std::wstring convertStringToWChar(const std::string& s);
+		std::string convertWCharToString(const std::wstring& s);
 	#else
 		#include <unistd.h>
 		#include <sys/stat.h>
@@ -67,8 +68,6 @@ namespace platform
 	util::string_view readEntireFile(const std::string& path);
 
 	std::string getFullPath(const std::string& partial);
-	std::string getNameWithExeExtension(const std::string& name);
-	std::string getNameWithObjExtension(const std::string& name);
 
 	size_t getTerminalWidth();
 	void setupTerminalIfNecessary();
@@ -87,12 +86,22 @@ namespace platform
 		void* getSymbol(const std::string& name);
 
 		// call these as a pair
-		void addLibrarySearchPaths(const std::vector<std::string>& libPaths, const std::vector<std::string>& frameworkPaths);
+		void addLibrarySearchPaths();
 		void restoreLibrarySearchPaths();
 
-		std::vector<std::string> getDefaultLibraries();
+		std::vector<std::string> getDefaultSharedLibraries();
 
+		std::string getExecutableName(const std::string& name);
+		std::string getObjectFileName(const std::string& name);
 		std::string getSharedLibraryName(const std::string& name);
+
+		std::string getPathToLinker();
+
+		std::string getCompilerCommandLine(const std::vector<std::string>& inputObjects, const std::string& outputFilename);
+
+		#if OS_WINDOWS
+			std::string getWindowsSDKLocation();
+		#endif
 	}
 }
 
