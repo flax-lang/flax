@@ -221,7 +221,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	{
 		idxmap = this->getNameIndexMap(fd);
 
-		util::foreachIdx(fd->params, [this, &defaultArgs](const FnParam& arg, size_t idx) {
+		util::foreachIdx(fd->params, [&defaultArgs](const FnParam& arg, size_t idx) {
 			if(arg.defaultVal)
 				defaultArgs[idx] = arg.defaultVal;
 		});

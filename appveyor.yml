@@ -39,8 +39,8 @@ test_script:
   - ps: cd c:\projects\flax
   - ps: New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
   - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
-  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run build\tester.flx > output.txt
-  - ps: cat output.txt
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp build\tester.flx
 
 after_test:
   - cmd: 7z a windows-x64.zip %APPVEYOR_BUILD_FOLDER%\build\meson-rel\flaxc.exe
