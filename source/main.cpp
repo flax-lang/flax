@@ -80,7 +80,6 @@ static void compile(std::string in, std::string out)
 
 	timer t;
 
-	platform::compiler::performSelfDlOpen();
 
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	module->finaliseGlobalConstructors();
@@ -157,6 +156,7 @@ static void compile(std::string in, std::string out)
 int main(int argc, char** argv)
 {
 	platform::setupTerminalIfNecessary();
+	platform::compiler::performSelfDlOpen();
 
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
 	compile(input_file, output_file);

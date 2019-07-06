@@ -251,6 +251,9 @@ namespace compiler
 	{
 		#if OS_WINDOWS
 			currentModule = GetModuleHandle(nullptr);
+
+			otherModules.push_back(LoadLibrary("ucrtbase.dll"));
+			otherModules.push_back(LoadLibrary("vcruntime140.dll"));
 		#else
 			currentModule = dlopen(nullptr, RTLD_LAZY);
 		#endif
