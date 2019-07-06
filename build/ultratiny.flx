@@ -13,9 +13,10 @@ class Foo
 		this.value = x
 	}
 
-	copy(other: &self) => this.value = other.value
+	// copy(other: &self) { this.value = other.value; printf("copying foo\n") }
+	// move(other: &mut self) { printf("moving foo\n") }
 
-	deinit => printf("delete foo\n")
+	// deinit => printf("delete foo\n")
 
 	var value: int
 }

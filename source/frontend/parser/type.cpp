@@ -121,6 +121,9 @@ namespace parser
 				else if(init->name == "copy")
 					defn->copyInitialiser = init;
 
+				else if(init->name == "move")
+					defn->moveInitialiser = init;
+
 				else
 					error(s, "wtf? '%s'", init->name);
 			}

@@ -117,15 +117,6 @@ namespace backend
 	{
 		auto ts = std::chrono::high_resolution_clock::now();
 
-
-		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-		{
-			fprintf(stderr, "\n\n");
-			this->linkedModule->print(llvm::errs(), 0);
-
-			BareError::make("llvm: module verification failed")->postAndQuit();
-		}
-
 		llvm::legacy::PassManager fpm = llvm::legacy::PassManager();
 
 		fpm.add(llvm::createDeadInstEliminationPass());
@@ -185,10 +176,12 @@ namespace backend
 	{
 		auto ts = std::chrono::high_resolution_clock::now();
 
-		// verify the module.
+		if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
 		{
-			if(llvm::verifyModule(*this->linkedModule, &llvm::errs()))
-				error("llvm: module verification failed");
+			fprintf(stderr, "\n\n");
+			this->linkedModule->print(llvm::errs(), 0);
+
+			BareError::make("llvm: module verification failed")->postAndQuit();
 		}
 
 		std::string oname;
@@ -259,15 +252,9 @@ namespace backend
 			{
 				std::string objname = platform::getNameWithObjExtension(this->linkedModule->getModuleIdentifier());
 
-				auto fd = platform::openFile(objname.c_str(), O_RDWR | O_CREAT, 0);
-				if(fd == platform::InvalidFileHandle)
-				{
-					perror("llvm: open(2) error");
-					BareError::make("llvm: unable to create temporary file ('%s') for linking", objname)->postAndQuit();
-				}
-
-				platform::writeFile(fd, buffer.data(), buffer.size_in_bytes());
-				platform::closeFile(fd);
+				std::ofstream objectOutput(oname, std::ios::binary | std::ios::out);
+				objectOutput.write(buffer.data(), buffer.size_in_bytes());
+				objectOutput.close();
 
 
 				auto libs = frontend::getLibrariesToLink();
@@ -383,16 +370,19 @@ namespace backend
 
 	void LLVMBackend::setupTargetMachine()
 	{
-		#if 1
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmParser();
 		llvm::InitializeNativeTargetAsmPrinter();
 
 		llvm::Triple targetTriple;
-		targetTriple.setTriple(frontend::getParameter("targetarch").empty() ? llvm::sys::getProcessTriple()
-			: frontend::getParameter("targetarch"));
-
-
+		if(frontend::getOutputMode() == ProgOutputMode::RunJit || frontend::getParameter("targetarch").empty())
+		{
+			targetTriple.setTriple(llvm::sys::getProcessTriple());
+		}
+		else
+		{
+			targetTriple.setTriple(frontend::getParameter("targetarch"));
+		}
 
 		std::string err_str;
 		const llvm::Target* theTarget = llvm::TargetRegistry::lookupTarget("", targetTriple, err_str);
@@ -404,30 +394,28 @@ namespace backend
 
 		// get the mcmodel
 		llvm::CodeModel::Model codeModel;
-		if(frontend::getParameter("mcmodel") == "kernel")
-		{
-			codeModel = llvm::CodeModel::Kernel;
-		}
-		else if(frontend::getParameter("mcmodel") == "small")
-		{
-			codeModel = llvm::CodeModel::Small;
-		}
-		else if(frontend::getParameter("mcmodel") == "medium")
-		{
-			codeModel = llvm::CodeModel::Medium;
-		}
-		else if(frontend::getParameter("mcmodel") == "large")
-		{
-			codeModel = llvm::CodeModel::Large;
-		}
-		else if(frontend::getParameter("mcmodel").empty())
-		{
-			codeModel = llvm::CodeModel::Large;
-		}
+
+		auto getMcModelOfString = [](const std::string& s) -> llvm::CodeModel::Model {
+			if(s == "kernel")   return llvm::CodeModel::Kernel;
+			if(s == "small")    return llvm::CodeModel::Small;
+			if(s == "medium")   return llvm::CodeModel::Medium;
+			if(s == "large")    return llvm::CodeModel::Large;
+			else                error("llvm: invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", s);
+		};
+
+		auto getDefaultCodeModelForTarget = [](const llvm::Triple& triple) -> llvm::CodeModel::Model {
+			if(triple.isArch64Bit() && !triple.isOSDarwin() && !triple.isAndroid() && !(triple.isAArch64() && triple.isOSLinux()))
+				return llvm::CodeModel::Large;
+
+			else
+				return llvm::CodeModel::Small;
+		};
+
+		if(auto mcm = frontend::getParameter("mcmodel"); !mcm.empty())
+			codeModel = getMcModelOfString(mcm);
+
 		else
-		{
-			error("llvm: invalid mcmodel '%s' (valid options: kernel, small, medium, or large)", frontend::getParameter("mcmodel"));
-		}
+			codeModel = getDefaultCodeModelForTarget(targetTriple);
 
 
 		llvm::TargetOptions targetOptions;
@@ -439,12 +427,6 @@ namespace backend
 
 		this->targetMachine = theTarget->createTargetMachine(targetTriple.getTriple(), "", "",
 			targetOptions, relocModel, codeModel, llvm::CodeGenOpt::Default);
-
-		#else
-
-		this->targetMachine = llvm::EngineBuilder().selectTarget();
-
-		#endif
 	}
 
 

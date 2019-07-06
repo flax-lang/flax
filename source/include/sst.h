@@ -749,6 +749,7 @@ namespace sst
 
 		FunctionDefn* deinitialiser = 0;
 		FunctionDefn* copyInitialiser = 0;
+		FunctionDefn* moveInitialiser = 0;
 	};
 
 
