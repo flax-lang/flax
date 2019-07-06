@@ -50,7 +50,8 @@ namespace platform
 	util::string_view readEntireFile(const std::string& path);
 
 	std::string getFullPath(const std::string& partial);
-	std::string getTemporaryFilename(const std::string& name);
+	std::string getNameWithExeExtension(const std::string& name);
+	std::string getNameWithObjExtension(const std::string& name);
 
 	size_t getTerminalWidth();
 	void setupTerminalIfNecessary();

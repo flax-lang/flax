@@ -98,3 +98,5 @@ flax.includes
 .vs/
 build/__pycache__
 *.vspx
+
+compile_flags.txt

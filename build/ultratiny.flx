@@ -5,93 +5,31 @@
 export ultratiny
 import libc as _
 
-import "tests/scopes.flx"
+class Foo
+{
+	init(x: int)
+	{
+		printf("create foo %d\n", x)
+		this.value = x
+	}
+
+	copy(other: &self) => this.value = other.value
+
+	deinit => printf("delete foo\n")
+
+	var value: int
+}
+
+fn bar() -> Foo
+{
+	return Foo(x: 7)
+}
 
 @entry fn main()
 {
-	test_scopes::doScopeTest("asdf")
+	bar()
+	// let x = Foo(x: 3)
 }
-
-
-
-
-// struct foo<T>
-// {
-// 	a: T
-
-// 	fn method(x: T) -> T
-// 	{
-// 		if x > 0
-// 		{
-// 			var g: &self = &this
-// 			printf(".")
-// 			g.method(x - 1)
-// 		}
-
-// 		return a + x
-// 	}
-
-// 	fn method2<T>(x: T) -> T
-// 	{
-// 		return x + x
-// 	}
-// }
-
-// class bar
-// {
-// 	init() { }
-
-// 	fn base()
-// 	{
-// 		printf("i am the base method\n")
-// 	}
-// }
-
-// class qux<T> : bar
-// {
-// 	init(x: T) : super() { }
-
-// 	static fn foozle<T>(x: T)
-// 	{
-// 		printf("this is foozle %s\n", x)
-// 	}
-
-// 	// var lmao: T
-// }
-
-// fn lmao<T>(x: T)
-// {
-
-// }
-
-// fn lmao<T>(x: T, y: T)
-// {
-
-// }
-
-// fn rofl(x: int)
-// {
-
-// }
-
-// fn rofl(x: int, y: int)
-// {
-
-// }
-
-// @entry fn main()
-// {
-// 	// let f = foo(a: 17)
-// 	// let s = f.method2(5)
-
-// 	// printf("s = %d\n", s)
-
-// 	// let k = qux(x: 3)
-// 	// k.base()
-
-// 	lmao()
-// 	// rofl()
-// }
 
 
 

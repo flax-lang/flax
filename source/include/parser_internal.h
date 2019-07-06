@@ -290,6 +290,8 @@ namespace parser
 	ast::Expr* parseDollarExpr(State& st);
 
 	ast::InitFunctionDefn* parseInitFunction(State& st);
+	ast::InitFunctionDefn* parseDeinitFunction(State& st);
+	ast::InitFunctionDefn* parseCopyInitFunction(State& st);
 
 	ast::DeallocOp* parseDealloc(State& st);
 	ast::SizeofOp* parseSizeof(State& st);

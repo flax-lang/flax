@@ -225,22 +225,33 @@ namespace parser
 					break;
 
 				default: {
-					if(st.isInStructBody() && tok.type == TT::Identifier && tok.str() == "init")
+					if(st.isInStructBody() && tok.type == TT::Identifier)
 					{
-						ret = parseInitFunction(st);
-						break;
+						if(tok.str() == "init")
+						{
+							ret = parseInitFunction(st);
+							break;
+						}
+						else if(tok.str() == "deinit")
+						{
+							ret = parseDeinitFunction(st);
+							break;
+						}
+						else if(tok.str() == "copy")
+						{
+							ret = parseCopyInitFunction(st);
+							break;
+						}
 					}
-					else
-					{
-						// we want to error on invalid tokens first. so, we parse the expression regardless,
-						// then if they're not allowed we error.
-						auto expr = parseExpr(st);
 
-						if(!allowExprs) error(expr, "expressions are not allowed at the top-level");
-						else            ret = expr;
+					// we want to error on invalid tokens first. so, we parse the expression regardless,
+					// then if they're not allowed we error.
+					auto expr = parseExpr(st);
 
-						break;
-					}
+					if(!allowExprs) error(expr, "expressions are not allowed at the top-level");
+					else            ret = expr;
+
+					break;
 				}
 			}
 
@@ -776,7 +787,6 @@ namespace parser
 		std::unordered_set<std::string> seenNames;
 		std::vector<std::pair<std::string, Expr*>> ret;
 
-		bool named = false;
 		while(st.front() != TT::RParen)
 		{
 			std::string argname;
@@ -793,8 +803,6 @@ namespace parser
 				// eat the colon, get the actual argument.
 				st.eat();
 				ex = parseExpr(st);
-
-				named = true;
 			}
 
 			ret.push_back({ argname, ex });

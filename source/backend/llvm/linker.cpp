@@ -191,14 +191,12 @@ namespace backend
 				error("llvm: module verification failed");
 		}
 
-		std::string foldername;
-		size_t sep = this->inputFilenames[0].find_last_of("\\/");
-		if(sep != std::string::npos)
-			foldername = this->inputFilenames[0].substr(0, sep);
+		std::string oname;
+		if(this->outputFilename.empty())
+			oname = platform::getNameWithObjExtension(this->linkedModule->getModuleIdentifier());
 
-		bool wasEmpty = this->outputFilename.empty();
-		std::string oname = this->outputFilename.empty() ? (foldername + "/" + this->linkedModule->getModuleIdentifier())
-			: this->outputFilename;
+		else
+			oname = this->outputFilename;
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
@@ -231,18 +229,35 @@ namespace backend
 				error("llvm: no entry function marked, a program cannot be compiled");
 			}
 
-			auto buffer = this->initialiseLLVMStuff();
+			llvm::SmallVector<char, 0> buffer;
+			{
+				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(buffer);
+				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
+
+				{
+					llvm::legacy::PassManager pm = llvm::legacy::PassManager();
+
+					using CodeGenFileType = llvm::TargetMachine::CodeGenFileType;
+					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr, CodeGenFileType::CGFT_ObjectFile);
+
+					pm.run(*this->linkedModule);
+				}
+
+				// flush and kill it.
+				rawStream->flush();
+			}
+
 
 			if(frontend::getOutputMode() == ProgOutputMode::ObjectFile)
 			{
 				// now memoryBuffer should contain the .object file
-				std::ofstream objectOutput(oname + (wasEmpty ? ".o" : ""), std::ios::binary | std::ios::out);
+				std::ofstream objectOutput(oname, std::ios::binary | std::ios::out);
 				objectOutput.write(buffer.data(), buffer.size_in_bytes());
 				objectOutput.close();
 			}
 			else
 			{
-				std::string objname = platform::getTemporaryFilename(this->linkedModule->getModuleIdentifier());
+				std::string objname = platform::getNameWithObjExtension(this->linkedModule->getModuleIdentifier());
 
 				auto fd = platform::openFile(objname.c_str(), O_RDWR | O_CREAT, 0);
 				if(fd == platform::InvalidFileHandle)
@@ -319,9 +334,6 @@ namespace backend
 
 				argv[s - 1] = 0;
 
-				std::string output;
-				int status = 0;
-
 
 				std::string cmdline;
 				for(size_t i = 0; i < s - 1; i++)
@@ -332,16 +344,24 @@ namespace backend
 						cmdline += " ";
 				}
 
-				tinyproclib::Process proc(cmdline, "", [&output](const char* bytes, size_t n) {
-					output = std::string(bytes, n);
+				std::string sout;
+				std::string serr;
+
+				tinyproclib::Process proc(cmdline, "", [&sout](const char* bytes, size_t n) {
+					sout = std::string(bytes, n);
+				}, [&serr](const char* bytes, size_t n) {
+					serr = std::string(bytes, n);
 				});
 
+				int status = proc.get_exit_status();
 
 				free(argv);
 
-				if(status != 0 || output.size() != 0)
+				if(status != 0)
 				{
-					fprintf(stderr, "%s\n", output.c_str());
+					if(!sout.empty()) fprintf(stderr, "%s\n", sout.c_str());
+					if(!serr.empty()) fprintf(stderr, "%s\n", serr.c_str());
+
 					fprintf(stderr, "linker returned non-zero (status = %d), exiting\n", status);
 					fprintf(stderr, "cmdline was: %s\n", cmdline.c_str());
 					exit(status);
@@ -430,24 +450,6 @@ namespace backend
 
 
 
-
-	llvm::SmallVector<char, 0> LLVMBackend::initialiseLLVMStuff()
-	{
-		llvm::SmallVector<char, 0> memoryBuffer;
-		auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(memoryBuffer);
-		llvm::raw_pwrite_stream* rawStream = bufferStream.get();
-
-		{
-			llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-			targetMachine->addPassesToEmitFile(pm, *rawStream, rawStream, llvm::TargetMachine::CodeGenFileType::CGFT_ObjectFile);
-			pm.run(*this->linkedModule);
-		}
-
-		// flush and kill it.
-		rawStream->flush();
-
-		return memoryBuffer;
-	}
 
 
 

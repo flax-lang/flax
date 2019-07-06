@@ -14,6 +14,8 @@
 #include "mpool.h"
 
 
+
+
 static TCResult getResult(ast::Ident* ident, sst::Defn* def, bool implicit = false)
 {
 	auto ret = util::pool<sst::VarRef>(ident->loc, def->type);

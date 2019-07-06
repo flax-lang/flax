@@ -18,7 +18,8 @@
 
 struct timer
 {
-	timer(double* t) : out(t)   { start = std::chrono::high_resolution_clock::now(); }
+	timer() : out(nullptr)              { start = std::chrono::high_resolution_clock::now(); }
+	explicit timer(double* t) : out(t)  { start = std::chrono::high_resolution_clock::now(); }
 	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
 	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
 
@@ -30,13 +31,13 @@ struct timer
 
 static void compile(std::string in, std::string out)
 {
-	auto ts = std::chrono::high_resolution_clock::now();
+	auto start_time = std::chrono::high_resolution_clock::now();
 
 	double lexer_ms = 0;
 	double parser_ms = 0;
 	double typecheck_ms = 0;
 
-	timer total(nullptr);
+	timer total;
 
 	frontend::CollectorState state;
 	sst::DefinitionTree* dtree = 0;
@@ -49,7 +50,6 @@ static void compile(std::string in, std::string out)
 			{
 				debuglogln("lex     (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
-				// mem::resetStats();
 			}
 		}
 
@@ -61,7 +61,6 @@ static void compile(std::string in, std::string out)
 			{
 				debuglogln("parse   (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
-				// mem::resetStats();
 			}
 		}
 
@@ -73,14 +72,13 @@ static void compile(std::string in, std::string out)
 			{
 				debuglogln("typechk (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 					mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
-				// mem::resetStats();
 			}
 
 			iceAssert(dtree);
 		}
 	}
 
-	timer t(nullptr);
+	timer t;
 
 	platform::performSelfDlOpen();
 
@@ -103,12 +101,14 @@ static void compile(std::string in, std::string out)
 
 	if(frontend::getPrintProfileStats())
 	{
-		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - ts).count() / 1000.0 / 1000.0;
+		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - start_time).count() / 1000.0 / 1000.0;
 
 		debuglogln("cleared (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
-		debuglogln("compile (%.1f ms)\t[l: %.1f, p: %.1f, t: %.1f, c: %.1f]", compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
-		debuglogln("%zu FIR values generated\n", fir::Value::getCurrentValueId());
+		debuglogln("compile (%.1f ms)\t[lex: %.1f, parse: %.1f, typechk: %.1f, codegen: %.1f]",
+			compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
+		debuglogln("%d lines, %.2f loc/s, %d fir values\n", state.totalLinesOfCode, (double) state.totalLinesOfCode / (compile_ms / 1000.0),
+			fir::Value::getCurrentValueId());
 	}
 
 

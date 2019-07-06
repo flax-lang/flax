@@ -746,6 +746,9 @@ namespace sst
 
 		fir::Function* inlineInitFunction = 0;
 		std::vector<FunctionDefn*> initialisers;
+
+		FunctionDefn* deinitialiser = 0;
+		FunctionDefn* copyInitialiser = 0;
 	};
 
 

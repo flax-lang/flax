@@ -226,7 +226,8 @@ namespace parser
 			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
 
 		// ok loh
-		InitFunctionDefn* ret = util::pool<InitFunctionDefn>(tok.loc);
+		auto ret = util::pool<InitFunctionDefn>(tok.loc);
+		ret->name = "init";
 		ret->params = params;
 
 		// check for super-class args.
@@ -253,7 +254,52 @@ namespace parser
 	}
 
 
+	InitFunctionDefn* parseCopyInitFunction(State& st)
+	{
+		Token tok = st.pop();
+		iceAssert(tok.str() == "copy");
 
+		auto [ params, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
+		if(generics.size() > 0)
+			error(st.ploc(), "class initialiser functions cannot be generic");
+
+		else if(retty != 0)
+			error(st.ploc(), "class initialisers cannot have a return type");
+
+		else if(isvar)
+			error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
+
+		// ok loh
+		auto ret = util::pool<InitFunctionDefn>(tok.loc);
+		ret->name = "copy";
+		ret->params = params;
+
+		st.enterFunctionBody();
+		{
+			ret->body = parseBracedBlock(st);
+		}
+		st.leaveFunctionBody();
+
+		return ret;
+	}
+
+
+	InitFunctionDefn* parseDeinitFunction(State& st)
+	{
+		Token tok = st.pop();
+		iceAssert(tok.str() == "deinit");
+
+		auto ret = util::pool<InitFunctionDefn>(tok.loc);
+		ret->name = "deinit";
+
+		st.enterFunctionBody();
+		{
+			ret->body = parseBracedBlock(st);
+		}
+		st.leaveFunctionBody();
+
+		return ret;
+	}
 
 
 
