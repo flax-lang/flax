@@ -14,30 +14,17 @@ namespace parser
 {
 	using TT = lexer::TokenType;
 
-	static void addSelfToMethod(FuncDefn* method)
+	template <typename T>
+	static void addSelfToMethod(T* thing, bool mutating)
 	{
 		// insert the self argument in the front.
 		FuncDefn::Param self;
 		self.name = "this";
-		self.loc = method->loc;
-		self.type = util::pool<pts::PointerType>(self.loc, pts::NamedType::create(self.loc, "self"), method->isMutating);
+		self.loc = thing->loc;
+		self.type = util::pool<pts::PointerType>(self.loc, pts::NamedType::create(self.loc, "self"), mutating);
 
-		method->params.insert(method->params.begin(), self);
+		thing->params.insert(thing->params.begin(), self);
 	}
-
-	static void addSelfToMethod(InitFunctionDefn* init)
-	{
-		// insert the self argument in the front.
-		FuncDefn::Param self;
-		self.name = "this";
-		self.loc = init->loc;
-		self.type = util::pool<pts::PointerType>(self.loc, pts::NamedType::create(self.loc, "self"), /* mutable: */ true);
-
-		init->params.insert(init->params.begin(), self);
-	}
-
-
-
 
 
 
@@ -103,7 +90,7 @@ namespace parser
 			}
 			else if(auto f = dcast(FuncDefn, s))
 			{
-				addSelfToMethod(f);
+				addSelfToMethod(f, f->isMutating);
 				defn->methods.push_back(f);
 			}
 			else if(auto t = dcast(TypeDefn, s))
@@ -123,8 +110,19 @@ namespace parser
 			}
 			else if(auto init = dcast(InitFunctionDefn, s))
 			{
-				addSelfToMethod(init);
-				defn->initialisers.push_back(init);
+				addSelfToMethod(init, /* mutating: */ true);
+
+				if(init->name == "init")
+					defn->initialisers.push_back(init);
+
+				else if(init->name == "deinit")
+					defn->deinitialiser = init;
+
+				else if(init->name == "copy")
+					defn->copyInitialiser = init;
+
+				else
+					error(s, "wtf? '%s'", init->name);
 			}
 			else
 			{
@@ -231,7 +229,7 @@ namespace parser
 			{
 				// ok parse a func as usual
 				auto method = parseFunction(st);
-				addSelfToMethod(method);
+				addSelfToMethod(method, method->isMutating);
 
 				defn->methods.push_back(method);
 			}

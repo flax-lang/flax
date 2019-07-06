@@ -183,9 +183,9 @@ namespace ast
 		std::vector<std::pair<std::string, Expr*>> superArgs;
 
 		Block* body = 0;
-
 		FuncDefn* actualDefn = 0;
 	};
+
 
 	struct ForeignFuncDefn : Stmt
 	{
@@ -450,6 +450,8 @@ namespace ast
 		std::vector<pts::Type*> bases;
 
 		std::vector<InitFunctionDefn*> initialisers;
+		InitFunctionDefn* deinitialiser = 0;
+		InitFunctionDefn* copyInitialiser = 0;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;

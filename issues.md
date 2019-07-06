@@ -5,9 +5,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 ## FEATURES TO IMPLEMENT
 
-1. Number literals still suck
-
-
 2. Destructors for classes
 
 
@@ -21,9 +18,6 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 
 
 8. Operator overloading for assignment and subscript/slice
-
-
-9. Figure out how to reconcile generic functions/methods with structs/classes.
 
 
 14. Multi-dimensional arrays, as opposed to our current 'array-of-arrays' approach

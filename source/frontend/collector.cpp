@@ -29,7 +29,10 @@ namespace frontend
 
 		// pre-lex everything.
 		for(const auto& f : state->allFiles)
+		{
 			frontend::getFileTokens(f);
+			state->totalLinesOfCode += frontend::getFileLines(frontend::getFileIDFromFilename(f)).size();
+		}
 	}
 
 

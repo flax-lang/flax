@@ -269,10 +269,24 @@ namespace platform
 	}
 
 
-	std::string getTemporaryFilename(const std::string& name)
+	std::string getNameWithExeExtension(const std::string& name)
 	{
-		return "." + name + ".o";
+		#ifdef _WIN32
+			return strprintf("%s.exe", name);
+		#else
+			return name;
+		#endif
 	}
+
+	std::string getNameWithObjExtension(const std::string& name)
+	{
+		#ifdef _WIN32
+			return strprintf("%s.obj", name);
+		#else
+			return strprintf("%s.o", name);
+		#endif
+	}
+
 
 
 	std::string getFullPath(const std::string& partial)

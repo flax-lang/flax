@@ -248,14 +248,38 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			checkDupe(defn->baseClass, decl);
 		}
 
-		for(auto it : this->initialisers)
 		{
-			auto decl = dcast(sst::FunctionDefn, it->generateDeclaration(fs, cls, { }).defn());
-			iceAssert(decl);
+			// make the constructors
+			for(auto it : this->initialisers)
+			{
+				auto decl = dcast(sst::FunctionDefn, it->generateDeclaration(fs, cls, { }).defn());
+				iceAssert(decl);
 
-			defn->methods.push_back(decl);
-			defn->initialisers.push_back(decl);
+				defn->methods.push_back(decl);
+				defn->initialisers.push_back(decl);
+			}
+
+			// and the destructor
+			if(this->deinitialiser)
+			{
+				auto decl = dcast(sst::FunctionDefn, this->deinitialiser->generateDeclaration(fs, cls, { }).defn());
+				iceAssert(decl);
+
+				defn->methods.push_back(decl);
+				defn->deinitialiser = decl;
+			}
+
+			// and the destructor
+			if(this->copyInitialiser)
+			{
+				auto decl = dcast(sst::FunctionDefn, this->copyInitialiser->generateDeclaration(fs, cls, { }).defn());
+				iceAssert(decl);
+
+				defn->methods.push_back(decl);
+				defn->copyInitialiser = decl;
+			}
 		}
+
 
 
 		// copy all the things from the superclass into ourselves.
@@ -325,11 +349,12 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			for(auto m : this->staticMethods)
 				m->typecheck(fs, 0, { });
+
+			if(this->deinitialiser)     this->deinitialiser->typecheck(fs, cls, { });
+			if(this->copyInitialiser)   this->copyInitialiser->typecheck(fs, cls, { });
 		}
 	}
 	fs->popSelfContext();
-
-
 
 
 	fs->popTree();
@@ -361,34 +386,38 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 	if(ret->type->containsPlaceholders())
 		return TCResult::getParametric();
 
-	if(cls->getBaseClass() && !this->didCallSuper)
+	// only check this stuff for the real constructor.
+	if(this->name == "init")
 	{
-		error(this, "initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
-			cls->getBaseClass()->getTypeName().name);
-	}
-	else if(!cls->getBaseClass() && this->didCallSuper)
-	{
-		error(this, "cannot call base class initialiser for class '%s' when it does not inherit from a base class",
-			cls->getTypeName().name);
-	}
-	else if(cls->getBaseClass() && this->didCallSuper)
-	{
-		auto base = cls->getBaseClass();
-		auto call = util::pool<sst::BaseClassConstructorCall>(this->loc, base);
+		if(cls->getBaseClass() && !this->didCallSuper)
+		{
+			error(this, "initialiser for class '%s' must explicitly call an initialiser of the base class '%s'", cls->getTypeName().name,
+				cls->getBaseClass()->getTypeName().name);
+		}
+		else if(!cls->getBaseClass() && this->didCallSuper)
+		{
+			error(this, "cannot call base class initialiser for class '%s' when it does not inherit from a base class",
+				cls->getTypeName().name);
+		}
+		else if(cls->getBaseClass() && this->didCallSuper)
+		{
+			auto base = cls->getBaseClass();
+			auto call = util::pool<sst::BaseClassConstructorCall>(this->loc, base);
 
-		call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
-		iceAssert(call->classty);
+			call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
+			iceAssert(call->classty);
 
-		auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
+			auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
 
-		auto constr = sst::resolver::resolveConstructorCall(fs, this->loc, call->classty, baseargs, PolyArgMapping_t::none());
+			auto constr = sst::resolver::resolveConstructorCall(fs, this->loc, call->classty, baseargs, PolyArgMapping_t::none());
 
-		call->arguments = baseargs;
-		call->target = dcast(sst::FunctionDefn, constr.defn());
-		iceAssert(call->target);
+			call->arguments = baseargs;
+			call->target = dcast(sst::FunctionDefn, constr.defn());
+			iceAssert(call->target);
 
-		// insert it as the first thing.
-		ret->body->statements.insert(ret->body->statements.begin(), call);
+			// insert it as the first thing.
+			ret->body->statements.insert(ret->body->statements.begin(), call);
+		}
 	}
 
 	return TCResult(ret);
@@ -411,7 +440,7 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 
 	this->actualDefn = util::pool<ast::FuncDefn>(this->loc);
 
-	this->actualDefn->name = "init";
+	this->actualDefn->name = this->name;
 	this->actualDefn->body = this->body;
 	this->actualDefn->params = this->params;
 	this->actualDefn->parentType = this->parentType;
@@ -422,8 +451,39 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	//* note: constructors will always mutate, definitely.
 	this->actualDefn->isMutating = true;
 
-	return this->actualDefn->generateDeclaration(fs, infer, gmaps);
+	auto ret = this->actualDefn->generateDeclaration(fs, infer, gmaps);
+	if(ret.isDefn())
+	{
+		auto def = dcast(sst::FunctionDefn, ret.defn());
+		iceAssert(def);
+
+		// do some checks.
+		if(this->name == "copy")
+		{
+			if(def->params.size() != 2)
+			{
+				error(def, "copy initialiser must take exactly one argument, %d were found", def->params.size() - 1);
+			}
+			else if(auto ty = def->params[1].type; !ty->isImmutablePointer() || ty->getPointerElementType() != def->parentTypeForMethod)
+			{
+				error(def->params[1].loc, "parameter of copy initialiser must have type '&self' (aka '%s'), found '%s' instead",
+					def->parentTypeForMethod->getPointerTo(), ty);
+			}
+		}
+	}
+
+	return ret;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

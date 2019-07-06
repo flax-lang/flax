@@ -100,7 +100,6 @@ namespace backend
 		private:
 		void setupTargetMachine();
 		EntryPoint_t getEntryFunctionFromJIT();
-		llvm::SmallVector<char, 0> initialiseLLVMStuff();
 
 		llvm::Function* entryFunction = 0;
 		llvm::TargetMachine* targetMachine = 0;

@@ -134,10 +134,19 @@ do {
 
 -----------------------------------------------
 
+### Contributors
+
+Special thanks to the Unofficial Official Language Consultants:
+[darkf](https://github.com/darkf), [adrian17](https://github.com/adrian17),
+[sim642](https://github.com/sim642), and [ryu0](https://github.com/ryu0).
+
+
+
 
 ### Contributing
 
-- Any and all issues and pull requests are welcome!
+Feel free to open an issue if you feel that there's any missing feature, or if you found a bug in the compiler. Pull requests are also
+welcome.
 
 
 

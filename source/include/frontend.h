@@ -75,6 +75,9 @@ namespace frontend
 		std::vector<std::string> allFiles;
 
 		size_t nativeWordSize = 0;
+
+		// for statistics i guess
+		size_t totalLinesOfCode = 0;
 	};
 
 	// fir::Module* collectFiles(std::string filename);
