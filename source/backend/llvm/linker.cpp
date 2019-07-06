@@ -343,10 +343,21 @@ namespace backend
 
 		auto getDefaultCodeModelForTarget = [](const llvm::Triple& triple) -> llvm::CodeModel::Model {
 			if(triple.isArch64Bit() && !triple.isOSDarwin() && !triple.isAndroid() && !(triple.isAArch64() && triple.isOSLinux()))
+			{
 				return llvm::CodeModel::Large;
-
+			}
+			else if(triple.isOSDarwin() && (frontend::getOutputMode() == ProgOutputMode::RunJit))
+			{
+				// apparently, when we JIT on osx we need mcmodel=large
+				// but when we are compiling, we need mcmodel=small!!
+				// WTF? nobody on the internet seems to know, but this was determined experimentally.
+				// if we use mcmodel=small when JIT-ing, we crash when running...
+				return llvm::CodeModel::Large;
+			}
 			else
+			{
 				return llvm::CodeModel::Small;
+			}
 		};
 
 		if(auto mcm = frontend::getParameter("mcmodel"); !mcm.empty())
