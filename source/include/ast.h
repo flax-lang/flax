@@ -452,6 +452,7 @@ namespace ast
 		std::vector<InitFunctionDefn*> initialisers;
 		InitFunctionDefn* deinitialiser = 0;
 		InitFunctionDefn* copyInitialiser = 0;
+		InitFunctionDefn* moveInitialiser = 0;
 
 		std::vector<VarDefn*> fields;
 		std::vector<FuncDefn*> methods;

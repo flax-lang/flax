@@ -254,10 +254,10 @@ namespace parser
 	}
 
 
-	InitFunctionDefn* parseCopyInitFunction(State& st)
+	InitFunctionDefn* parseCopyOrMoveInitFunction(State& st, const std::string& name)
 	{
 		Token tok = st.pop();
-		iceAssert(tok.str() == "copy");
+		iceAssert(tok.str() == name);
 
 		auto [ params, generics, retty, isvar, varloc ] = parseFunctionLookingDecl(st);
 		if(generics.size() > 0)
@@ -271,7 +271,7 @@ namespace parser
 
 		// ok loh
 		auto ret = util::pool<InitFunctionDefn>(tok.loc);
-		ret->name = "copy";
+		ret->name = name;
 		ret->params = params;
 
 		st.enterFunctionBody();

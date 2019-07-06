@@ -268,8 +268,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 				defn->methods.push_back(decl);
 				defn->deinitialiser = decl;
 			}
-
-			// and the destructor
 			if(this->copyInitialiser)
 			{
 				auto decl = dcast(sst::FunctionDefn, this->copyInitialiser->generateDeclaration(fs, cls, { }).defn());
@@ -277,6 +275,14 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 				defn->methods.push_back(decl);
 				defn->copyInitialiser = decl;
+			}
+			if(this->moveInitialiser)
+			{
+				auto decl = dcast(sst::FunctionDefn, this->moveInitialiser->generateDeclaration(fs, cls, { }).defn());
+				iceAssert(decl);
+
+				defn->methods.push_back(decl);
+				defn->moveInitialiser = decl;
 			}
 		}
 
@@ -352,6 +358,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			if(this->deinitialiser)     this->deinitialiser->typecheck(fs, cls, { });
 			if(this->copyInitialiser)   this->copyInitialiser->typecheck(fs, cls, { });
+			if(this->moveInitialiser)   this->moveInitialiser->typecheck(fs, cls, { });
 		}
 	}
 	fs->popSelfContext();
@@ -468,6 +475,18 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 			{
 				error(def->params[1].loc, "parameter of copy initialiser must have type '&self' (aka '%s'), found '%s' instead",
 					def->parentTypeForMethod->getPointerTo(), ty);
+			}
+		}
+		else if(this->name == "move")
+		{
+			if(def->params.size() != 2)
+			{
+				error(def, "move initialiser must take exactly one argument, %d were found", def->params.size() - 1);
+			}
+			else if(auto ty = def->params[1].type; !ty->isMutablePointer() || ty->getPointerElementType() != def->parentTypeForMethod)
+			{
+				error(def->params[1].loc, "parameter of move initialiser must have type '&mut self' (aka '%s'), found '%s' instead",
+					def->parentTypeForMethod->getMutablePointerTo(), ty);
 			}
 		}
 	}

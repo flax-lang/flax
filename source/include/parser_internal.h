@@ -291,7 +291,7 @@ namespace parser
 
 	ast::InitFunctionDefn* parseInitFunction(State& st);
 	ast::InitFunctionDefn* parseDeinitFunction(State& st);
-	ast::InitFunctionDefn* parseCopyInitFunction(State& st);
+	ast::InitFunctionDefn* parseCopyOrMoveInitFunction(State& st, const std::string& name);
 
 	ast::DeallocOp* parseDealloc(State& st);
 	ast::SizeofOp* parseSizeof(State& st);

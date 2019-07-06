@@ -237,9 +237,9 @@ namespace parser
 							ret = parseDeinitFunction(st);
 							break;
 						}
-						else if(tok.str() == "copy")
+						else if(tok.str() == "copy" || tok.str() == "move")
 						{
-							ret = parseCopyInitFunction(st);
+							ret = parseCopyOrMoveInitFunction(st, tok.str());
 							break;
 						}
 					}
