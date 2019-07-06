@@ -452,113 +452,36 @@ namespace backend
 
 	EntryPoint_t LLVMBackend::getEntryFunctionFromJIT()
 	{
-		// if JIT-ing, we need to load all the framework shit.
-		// note(compat): i think -L -l ordering matters when resolving libraries
-		// we don't support that right now.
-		// now, just add all the paths immediately.
+		using namespace llvm::sys;
 
-		std::string penv;
-		std::string pfenv;
+		platform::compiler::addLibrarySearchPaths(frontend::getLibrarySearchPaths(),
+			frontend::getFrameworkSearchPaths());
 
-		char* e = std::getenv("LD_LIBRARY_PATH");
+		auto tolink = platform::compiler::getDefaultLibraries() + frontend::getLibrariesToLink();
 
-		std::string env;
-		if(e) env = std::string(e);
-
-		penv = env;
-
-		if(!env.empty() && env.back() != ':')
-			env += ":";
-
-		// add all the paths.
+		for(auto lib : tolink)
 		{
-			for(auto L : frontend::getLibrarySearchPaths())
-				env += L + ":";
-
-			if(!env.empty() && env.back() == ':')
-				env.pop_back();
-		}
-
-
-
-		std::string fenv;
-
-		char* fe = std::getenv("DYLD_FRAMEWORK_PATH");
-		if(fe) fenv = std::string(fe);
-
-		pfenv = fenv;
-
-		if(!fenv.empty() && fenv.back() != ':')
-			fenv += ":";
-
-		// add framework paths
-		{
-			for(auto F : frontend::getFrameworkSearchPaths())
-				fenv += F + ":";
-
-			if(!fenv.empty() && fenv.back() == ':')
-				fenv.pop_back();
-		}
-
-
-		// set the things
-
-		#ifndef _WIN32
-		{
-			setenv("LD_LIBRARY_PATH", env.c_str(), 1);
-			setenv("DYLD_FRAMEWORK_PATH", fenv.c_str(), 1);
-		}
-		#else
-		{
-			_putenv_s("LD_LIBRARY_PATH", env.c_str());
-			_putenv_s("DYLD_FRAMEWORK_PATH", fenv.c_str());
-		}
-		#endif
-
-
-
-
-		auto tolink = frontend::getLibrariesToLink();
-
-		// note: linux is stupid. to be safe, explicitly link libc and libm
-		// note: will not affect freestanding implementations, since this is JIT mode
-		// note2: the stupidity of linux extends further than i thought
-		// apparently we cannot dlopen "libc.so", because that's not even a fucking ELF library.
-		// note3: wow, this applies to libm as well.
-		// fuck you torvalds
-		// so basically just do nothing.
-
-		for(auto l : tolink)
-		{
-			std::string ext;
-
-			#if defined(__MACH__)
-				ext = ".dylib";
-			#elif defined(_WIN32)
-				ext = ".dll";
-			#else
-				ext = ".so";
-			#endif
+			auto name = platform::compiler::getSharedLibraryName(lib);
 
 			std::string err;
-			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(("lib" + l + ext).c_str(), &err);
+			auto dl = DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				error("llvm: failed to load library '%s', dlopen failed with error:\n%s", l, err);
+				error("llvm: failed to load library '%s', dlopen failed with error:\n%s", lib, err);
 		}
 
-
-		for(auto l : frontend::getFrameworksToLink())
+		for(auto fw : frontend::getFrameworksToLink())
 		{
-			std::string name = l + ".framework/" + l;
+			auto name = strprintf("%s.framework/%s", fw, fw);
 
 			std::string err;
-			llvm::sys::DynamicLibrary dl = llvm::sys::DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
+			auto dl = DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
 			if(!dl.isValid())
-				error("llvm: failed to load framework '%s', dlopen failed with error:\n%s", l, err);
+				error("llvm: failed to load framework '%s', dlopen failed with error:\n%s", fw, err);
 		}
+
 
 		EntryPoint_t ret = 0;
-		if(this->entryFunction)
+		iceAssert(this->entryFunction);
 		{
 			auto name = this->entryFunction->getName().str();
 
@@ -567,30 +490,12 @@ namespace backend
 
 			// this->jitInstance->
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
-			ret = (int (*)(int, const char**)) entryaddr;
+			ret = (EntryPoint_t) entryaddr;
 
 			iceAssert(ret && "failed to resolve entry function address");
 		}
-		else
-		{
-			error("llvm: no entry function marked, cannot JIT");
-		}
 
-
-		// restore
-
-		#ifndef _WIN32
-		{
-			setenv("LD_LIBRARY_PATH", penv.c_str(), 1);
-			setenv("DYLD_FRAMEWORK_PATH", pfenv.c_str(), 1);
-		}
-		#else
-		{
-			_putenv_s("LD_LIBRARY_PATH", penv.c_str());
-			_putenv_s("DYLD_FRAMEWORK_PATH", pfenv.c_str());
-		}
-		#endif
-
+		platform::compiler::restoreLibrarySearchPaths();
 		return ret;
 	}
 }

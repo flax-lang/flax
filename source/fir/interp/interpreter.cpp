@@ -468,7 +468,7 @@ namespace interp
 		}
 
 
-		#ifdef _WIN32
+		#if OS_WINDOWS
 
 		// ok, this is mostly for windows --- printf and friends are not *real* functions, but rather
 		// macros defined in stdio.h, or something like that. so, we make "intrinsic wrappers" that call
@@ -998,7 +998,7 @@ namespace interp
 
 	static interp::Value runFunctionWithLibFFI(InterpState* is, fir::Function* fn, const std::vector<interp::Value>& args)
 	{
-		void* fnptr = platform::getSymbol(fn->getName().str());
+		void* fnptr = platform::compiler::getSymbol(fn->getName().str());
 		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
 
 		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args);
@@ -1006,7 +1006,7 @@ namespace interp
 
 	static interp::Value runFunctionWithLibFFI(InterpState* is, const interp::Function& fn, const std::vector<interp::Value>& args)
 	{
-		void* fnptr = platform::getSymbol(fn.func->getName().str());
+		void* fnptr = platform::compiler::getSymbol(fn.func->getName().str());
 		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn.func->getName().str());
 
 		return runFunctionWithLibFFI(is, fnptr, fn.func->getType(), args);

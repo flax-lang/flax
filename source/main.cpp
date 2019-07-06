@@ -80,7 +80,7 @@ static void compile(std::string in, std::string out)
 
 	timer t;
 
-	platform::performSelfDlOpen();
+	platform::compiler::performSelfDlOpen();
 
 	fir::Module* module = frontend::generateFIRModule(&state, dtree);
 	module->finaliseGlobalConstructors();
@@ -116,6 +116,12 @@ static void compile(std::string in, std::string out)
 		fprintf(stderr, "%s\n", module->print().c_str());
 
 	{
+		#if !OS_DARWIN
+			if(frontend::getFrameworksToLink().size() > 0 || frontend::getFrameworkSearchPaths().size() > 0)
+				error("backend: frameworks are only supported on Darwin");
+		#endif
+
+
 		using namespace backend;
 		Backend* backend = Backend::getBackendFromOption(frontend::getBackendOption(), cd, { in }, out);
 		if(backend == 0) return;
