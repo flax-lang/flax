@@ -59,11 +59,13 @@ namespace compiler
 			pushEnvironmentVar("LD_LIBRARY_PATH", env);
 
 			#if OS_DARWIN
+			{
 				auto env = getEnvironmentVar("DYLD_FRAMEWORK_PATH");
 				for(auto L : frameworkPaths)
 					env += strprintf(":%s", L);
 
 				pushEnvironmentVar("DYLD_FRAMEWORK_PATH", env);
+			}
 			#endif
 		#endif
 	}
