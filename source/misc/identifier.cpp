@@ -3,8 +3,10 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
-#include "ir/type.h"
 #include "sst.h"
+#include "frontend.h"
+
+#include "ir/type.h"
 
 
 sst::Stmt* TCResult::stmt() const
@@ -317,6 +319,17 @@ std::string Identifier::mangled() const
 std::string Identifier::mangledName() const
 {
 	return _doMangle(*this, false);
+}
+
+std::string Location::toString() const
+{
+	return strprintf("(%s:%d:%d)", frontend::getFilenameFromID(this->fileID), this->line + 1, this->col + 1);
+}
+
+std::string Location::shortString() const
+{
+	return strprintf("(%s:%d:%d)", frontend::getFilenameFromPath(frontend::getFilenameFromID(this->fileID)),
+		this->line + 1, this->col + 1);
 }
 
 

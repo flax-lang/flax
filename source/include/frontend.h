@@ -49,6 +49,7 @@ namespace frontend
 	bool getAbortOnError();
 
 	bool getIsFreestanding();
+	bool getIsNoStandardLibraries();
 	bool getIsPositionIndependent();
 
 	bool getIsNoRuntimeChecks();

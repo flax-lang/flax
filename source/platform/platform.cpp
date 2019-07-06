@@ -85,30 +85,56 @@ namespace platform
 
 	#if OS_WINDOWS
 
-	void* convertStringToWChar(const std::string& s)
+	std::wstring convertStringToWChar(const std::string& s)
 	{
 		if(s.empty())
-			return nullptr;
+			return L"";
 
 		if(s.size() > INT_MAX)
 			error("string length %d is too large", s.size());
 
 		int required = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.c_str(), (int) s.size(), NULL, 0);
-		if(required == 0)
-			error("cannot convert string '%s'", s);
+		if(required == 0) error("failed to convert string");
 
 
 		auto buf = (LPWSTR) malloc(sizeof(WCHAR) * (required + 1));
-		if(!buf)
-			error("failed to allocate buffer");
+		if(!buf) error("failed to allocate buffer");
 
 		auto ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.c_str(), (int) s.size(), buf, required);
 		iceAssert(ret > 0);
 
-		return (void*) buf;
+		auto wstr = std::wstring(buf, ret);
+		free(buf);
+
+		return wstr;
+	}
+
+	std::string convertWCharToString(const std::wstring& s)
+	{
+		if(s.empty())
+			return "";
+
+		if(s.size() > INT_MAX)
+			error("string length %d is too large", s.size());
+
+		int required = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, s.c_str(), -1, NULL, 0, NULL, NULL);
+		if(required == 0) error("failed to convert wstring");
+
+		auto buf = (char*) malloc(sizeof(char) * (required + 1));
+		if(!buf) error("failed to allocate buffer");
+
+		auto ret = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, s.c_str(), -1, buf, required, NULL, NULL);
+		iceAssert(ret > 0);
+
+		auto str = std::string(buf, ret - 1);
+		free(buf);
+
+		return str;
 	}
 
 	#endif
+
+
 
 
 	size_t getFileSize(const std::string& path)
@@ -277,24 +303,6 @@ namespace platform
 		#endif
 	}
 
-
-	std::string getNameWithExeExtension(const std::string& name)
-	{
-		#if OS_WINDOWS
-			return strprintf("%s.exe", name);
-		#else
-			return name;
-		#endif
-	}
-
-	std::string getNameWithObjExtension(const std::string& name)
-	{
-		#if OS_WINDOWS
-			return strprintf("%s.obj", name);
-		#else
-			return strprintf("%s.o", name);
-		#endif
-	}
 
 
 

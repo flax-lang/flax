@@ -23,6 +23,7 @@ blocks:
           - CXX=g++-8 CC=gcc-8 LLVM_CONFIG=llvm-config-7 make -j2 build
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend llvm build/tester.flx
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend interp build/tester.flx
+          - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot build/tester.flx && ./tester
   - name: "macos-build"
     task:
       agent:
@@ -37,3 +38,4 @@ blocks:
           - PATH="/usr/local/opt/llvm@7/bin:$PATH" LLVM_CONFIG=llvm-config make -j4 build
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend llvm build/tester.flx
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend interp build/tester.flx
+          - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot build/tester.flx && ./tester

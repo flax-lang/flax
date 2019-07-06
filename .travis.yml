@@ -42,6 +42,7 @@ script:
       fi
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend llvm build/tester.flx
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -run -backend interp build/tester.flx
+    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot build/tester.flx && ./tester
 
 notifications:
     email: false

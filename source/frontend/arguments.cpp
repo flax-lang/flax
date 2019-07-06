@@ -33,6 +33,7 @@
 #define ARG_SYSROOT                             "-sysroot"
 #define ARG_TARGET                              "-target"
 #define ARG_FREESTANDING                        "-ffreestanding"
+#define ARG_NOSTDLIB                            "-nostdlib"
 #define ARG_NO_RUNTIME_CHECKS                   "-no-runtime-checks"
 #define ARG_NO_RUNTIME_ERROR_STRINGS            "-no-runtime-error-strings"
 
@@ -68,6 +69,9 @@ static void setupMap()
 	list.push_back({ ARG_OUTPUT_FILE + std::string(" <file>"), "set the name of the output file" });
 	list.push_back({ ARG_OPTIMISATION_LEVEL_SELECT + std::string("<level>"), "change the optimisation level; -O0, -O1, -O2, "
 		"-O3, and -Ox are valid options" });
+
+	list.push_back({ ARG_FREESTANDING, "generate a freestanding executable or object file" });
+	list.push_back({ ARG_NOSTDLIB, "do not link with default libraries (libc/libm/msvcrt)" });
 
 	list.push_back({ ARG_POSINDEPENDENT, "generate position independent code" });
 	list.push_back({ ARG_PRINT_FIR, "print the FlaxIR before compilation" });
@@ -164,6 +168,7 @@ namespace frontend
 	bool _printLLVMIR = false;
 	bool _isFreestanding = false;
 	bool _printClangOutput = false;
+	bool _noStandardLibraries = false;
 	bool _noAutoGlobalConstructor = false;
 	bool _abortOnError = false;
 
@@ -252,6 +257,11 @@ namespace frontend
 	bool getIsFreestanding()
 	{
 		return _isFreestanding;
+	}
+
+	bool getIsNoStandardLibraries()
+	{
+		return _noStandardLibraries;
 	}
 
 	bool getIsPositionIndependent()
@@ -636,18 +646,6 @@ namespace frontend
 
 		return { filenames[0], outname };
 	}
-}
-
-
-std::string Location::toString() const
-{
-	return strprintf("(%s:%d:%d)", frontend::getFilenameFromID(this->fileID), this->line + 1, this->col + 1);
-}
-
-std::string Location::shortString() const
-{
-	return strprintf("(%s:%d:%d)", frontend::getFilenameFromPath(frontend::getFilenameFromID(this->fileID)),
-		this->line + 1, this->col + 1);
 }
 
 

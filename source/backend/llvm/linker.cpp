@@ -186,10 +186,20 @@ namespace backend
 
 		std::string oname;
 		if(this->outputFilename.empty())
-			oname = platform::getNameWithObjExtension(this->linkedModule->getModuleIdentifier());
+		{
+			auto base = this->linkedModule->getModuleIdentifier();
 
+			if(frontend::getOutputMode() == ProgOutputMode::ObjectFile)
+				oname = platform::compiler::getObjectFileName(base);
+
+			else
+				oname = platform::compiler::getExecutableName(base);
+		}
 		else
+		{
 			oname = this->outputFilename;
+		}
+
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
@@ -250,86 +260,15 @@ namespace backend
 			}
 			else
 			{
-				std::string objname = platform::getNameWithObjExtension(this->linkedModule->getModuleIdentifier());
+				std::string objname = platform::compiler::getObjectFileName(this->linkedModule->getModuleIdentifier());
 
-				std::ofstream objectOutput(oname, std::ios::binary | std::ios::out);
+				std::ofstream objectOutput(objname, std::ios::binary | std::ios::out);
 				objectOutput.write(buffer.data(), buffer.size_in_bytes());
 				objectOutput.close();
 
+				auto cmdline = platform::compiler::getCompilerCommandLine({ objname }, oname);
 
-				auto libs = frontend::getLibrariesToLink();
-				auto libdirs = frontend::getLibrarySearchPaths();
-
-				auto frames = frontend::getFrameworksToLink();
-				auto framedirs = frontend::getFrameworkSearchPaths();
-
-
-				// here, if we're doing a link, and we're not in freestanding mode, then we're going to add -lc and -lm
-				if(!frontend::getIsFreestanding())
-				{
-					if(std::find(libs.begin(), libs.end(), "m") == libs.end())
-						libs.push_back("m");
-
-					if(std::find(libs.begin(), libs.end(), "c") == libs.end())
-						libs.push_back("c");
-				}
-
-
-				size_t num_extra = 0;
-				size_t s = 5 + num_extra + (2 * libs.size()) + (2 * libdirs.size()) + (2 * frames.size()) + (2 * framedirs.size());
-				const char** argv = (const char**) malloc(s * sizeof(const char*));
-
-				memset(argv, 0, s * sizeof(const char*));
-
-				argv[0] = "cc";
-				argv[1] = "-o";
-				argv[2] = oname.c_str();
-				argv[3] = objname.c_str();
-
-				size_t i = 4 + num_extra;
-
-
-				// note: these need to be references
-				// if they're not, then the std::string (along with its buffer) is destructed at the end of the loop body
-				// so the pointer in argv[i] becomes invalid
-				// thus we need to make sure the pointed thing is valid until we call execvp; the frames/libs/blabla deques up there
-				// will live for the required duration, so we use a reference.
-
-				for(auto& F : framedirs)
-				{
-					argv[i] = "-F";			i++;
-					argv[i] = F.c_str();	i++;
-				}
-
-				for(auto& f : frames)
-				{
-					argv[i] = "-framework";	i++;
-					argv[i] = f.c_str();	i++;
-				}
-
-				for(auto& L : libdirs)
-				{
-					argv[i] = "-L";			i++;
-					argv[i] = L.c_str();	i++;
-				}
-
-				for(auto& l : libs)
-				{
-					argv[i] = "-l";			i++;
-					argv[i] = l.c_str();	i++;
-				}
-
-				argv[s - 1] = 0;
-
-
-				std::string cmdline;
-				for(size_t i = 0; i < s - 1; i++)
-				{
-					cmdline += argv[i];
-
-					if(strcmp(argv[i], "-l") != 0 && strcmp(argv[i], "-L") != 0)
-						cmdline += " ";
-				}
+				// debuglogln("link cmdline:\n%s", cmdline);
 
 				std::string sout;
 				std::string serr;
@@ -340,9 +279,8 @@ namespace backend
 					serr = std::string(bytes, n);
 				});
 
+				// note: this waits for the process to finish.
 				int status = proc.get_exit_status();
-
-				free(argv);
 
 				if(status != 0)
 				{
@@ -454,17 +392,17 @@ namespace backend
 	{
 		using namespace llvm::sys;
 
-		platform::compiler::addLibrarySearchPaths(frontend::getLibrarySearchPaths(),
-			frontend::getFrameworkSearchPaths());
+		platform::compiler::addLibrarySearchPaths();
 
-		auto tolink = platform::compiler::getDefaultLibraries() + frontend::getLibrariesToLink();
+		// default libraries come with the correct prefix/extension for the platform already, but user ones do not.
+		auto tolink = util::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
+			return platform::compiler::getSharedLibraryName(lib);
+		}) + platform::compiler::getDefaultSharedLibraries();
 
 		for(auto lib : tolink)
 		{
-			auto name = platform::compiler::getSharedLibraryName(lib);
-
 			std::string err;
-			auto dl = DynamicLibrary::getPermanentLibrary(name.c_str(), &err);
+			auto dl = DynamicLibrary::getPermanentLibrary(lib.c_str(), &err);
 			if(!dl.isValid())
 				error("llvm: failed to load library '%s', dlopen failed with error:\n%s", lib, err);
 		}

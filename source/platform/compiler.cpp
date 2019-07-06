@@ -17,10 +17,6 @@
 
 	#include <windows.h>
 #else
-	#include <dlfcn.h>
-	#include <unistd.h>
-	#include <sys/mman.h>
-	#include <sys/ioctl.h>
 #endif
 
 
@@ -35,21 +31,90 @@ namespace compiler
 		void* currentModule = 0;
 	#endif
 
-	void addLibrarySearchPaths(const std::vector<std::string>& libPaths, const std::vector<std::string>& frameworkPaths)
+
+	std::string getCompilerCommandLine(const std::vector<std::string>& inputObjects, const std::string& outputFilename)
 	{
+		std::string cmdline;
+		#if OS_WINDOWS
+
+			// TODO: get set the target properly!!
+			cmdline = strprintf("%s /nologo /incremental:no /out:%s /nodefaultlib", getPathToLinker(), outputFilename);
+			cmdline += strprintf(" /machine:AMD64");
+
+			for(const auto& i : inputObjects)
+				cmdline += strprintf(" %s", i);
+
+			if(!frontend::getIsFreestanding() && !frontend::getIsNoStandardLibraries())
+			{
+				cmdline += strprintf(" kernel32.lib libcmt.lib libucrt.lib libvcruntime.lib");
+				cmdline += strprintf(" legacy_stdio_definitions.lib legacy_stdio_wide_specifiers.lib");
+			}
+
+		#else
+
+			// cc -o <output>
+			cmdline = strprintf("%s -o %s", getPathToLinker(), outputFilename);
+
+			for(const auto& i : inputObjects)
+				cmdline += strprintf(" %s", i);
+
+			for(const auto& p : frontend::getLibrarySearchPaths())
+				cmdline += strprintf(" -L%s", p);
+
+			for(const auto& p : frontend::getFrameworkSearchPaths())
+				cmdline += strprintf(" -F%s", p);
+
+			for(const auto& l : frontend::getLibrariesToLink())
+				cmdline += strprintf(" -l%s", l);
+
+			for(const auto& f : frontend::getFrameworksToLink())
+				cmdline += strprintf(" -framework %s", f);
+
+		#endif
+
+		return cmdline;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	void addLibrarySearchPaths()
+	{
+		auto libPaths = frontend::getLibrarySearchPaths();
+		auto frameworkPaths = frontend::getFrameworkSearchPaths();
+
 		#if OS_WINDOWS
 			for(const auto& path : libPaths)
 			{
 				if(path.empty()) continue;
 
 				auto wpath = convertStringToWChar(path);
-				iceAssert(wpath);
+				auto cookie = AddDllDirectory(wpath.c_str());
 
-				auto cookie = AddDllDirectory((LPWSTR) wpath);
 				if(cookie)
 					loadedDllDirs.push_back(cookie);
 
-				free(wpath);
 			}
 		#else
 			auto env = getEnvironmentVar("LD_LIBRARY_PATH");
@@ -84,19 +149,22 @@ namespace compiler
 		#endif
 	}
 
-	std::vector<std::string> getDefaultLibraries()
+	std::vector<std::string> getDefaultSharedLibraries()
 	{
+		if(frontend::getIsFreestanding() || frontend::getIsNoStandardLibraries())
+			return { };
+
 		#if OS_WINDOWS
 
 			//? the name is "vcruntime140.dll", which is apparently specific to MSVC 14.0+, apparently 140 is the only number that
 			//? appears to be referenced in online sources.
 			return {
-				"ucrtbase",
-				"vcruntime140"
+				"ucrtbase.dll",
+				"vcruntime140.dll"
 			};
 		#elif OS_DARWIN
 			return {
-				"c", "m"
+				"libc.dylib", "libm.dylib"
 			};
 		#elif OS_UNIX
 			// note: we do not (and cannot) link libc and libm explicitly under linux.
@@ -114,6 +182,24 @@ namespace compiler
 			return strprintf("lib%s.dylib", name);
 		#elif OS_UNIX
 			return strprintf("lib%s.so", name);
+		#endif
+	}
+
+	std::string getExecutableName(const std::string& name)
+	{
+		#if OS_WINDOWS
+			return strprintf("%s.exe", name);
+		#else
+			return name;
+		#endif
+	}
+
+	std::string getObjectFileName(const std::string& name)
+	{
+		#if OS_WINDOWS
+			return strprintf("%s.obj", name);
+		#else
+			return strprintf("%s.o", name);
 		#endif
 	}
 
