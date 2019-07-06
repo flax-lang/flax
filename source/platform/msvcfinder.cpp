@@ -10,14 +10,12 @@
 #include <fstream>
 
 #if OS_WINDOWS
-	#ifndef NOMINMAX
-		#define NOMINMAX
-	#endif
 
-	#include <windows.h>
+#ifndef NOMINMAX
+	#define NOMINMAX
 #endif
 
-
+#include <windows.h>
 
 namespace platform {
 namespace compiler
@@ -429,6 +427,7 @@ namespace compiler
 }
 }
 
+#endif
 
 
 
