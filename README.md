@@ -127,10 +127,11 @@ do {
 
 ### Building Flax Programs
 
-- Some form of compiler (`cc` is called via `execvp()`) should be in the `$PATH` to produce object/executable files; not necessary if using JIT
-- Since nobody in their right mind is *actually* using this, please pass `-sysroot build/sysroot` to invocations of the compiler -- else the compiler will default to looking somewhere in `/usr/local/lib` for libraries.
-- Speaking of which, standard libraries are looked for in `<sysroot>/<prefix>/lib/flaxlibs/`. Prefix is set to `/usr/local/` by default.
+Since nobody in their right mind is *actually* using this, please pass `-sysroot build/sysroot` to invocations of the compiler -- else the compiler will default to looking somewhere in `/usr/local/lib` for libraries. Speaking of which, standard libraries are looked for in `<sysroot>/<prefix>/lib/flaxlibs/`. Prefix is set to `/usr/local/` by default.
 
+Since version 0.41.2, executables can be generated on all 3 of our supported platforms! For Linux and macOS, all that is required is a working C compiler in the `$PATH`; we call `cc` to link object files.
+
+For Windows, even if you are not building the compiler from source (eg. you are using a released binary), Visual Studio 2017 or newer must still be installed, with the "Desktop development with C++", "MSVC v142 (or whatever)", and "Windows 10 SDK" components. However, we currently find the toolchain through established means, so that `link.exe` does not have to be in the `%PATH%`, ie. you do not have to call `vcvarsall.bat` before running the compiler.
 
 -----------------------------------------------
 
