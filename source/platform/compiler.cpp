@@ -42,7 +42,12 @@ namespace compiler
 		#if OS_WINDOWS
 
 			// TODO: get set the target properly!!
-			cmdline = strprintf("%s /nologo /incremental:no /out:%s /nodefaultlib", getPathToLinker(), outputFilename);
+			// TODO: get set the target properly!!
+			// TODO: get set the target properly!!
+
+			cmdline = strprintf("%s\\x64\\link.exe /nologo /incremental:no /out:%s /nodefaultlib",
+				getVSToolchainBinLocation(), outputFilename);
+
 			cmdline += strprintf(" /machine:AMD64");
 
 			for(const auto& i : inputObjects)
@@ -50,14 +55,32 @@ namespace compiler
 
 			if(!frontend::getIsFreestanding() && !frontend::getIsNoStandardLibraries())
 			{
-				cmdline += strprintf(" kernel32.lib libcmt.lib libucrt.lib libvcruntime.lib");
-				cmdline += strprintf(" legacy_stdio_definitions.lib legacy_stdio_wide_specifiers.lib");
+				// these dumb paths have spaces in them, so we need to quote it.
+				// link.exe handles its own de-quoting, not cmd.exe or whatever shell.
+				auto sdkRoot = strprintf("\"%s\"", getWindowsSDKLocation());
+				auto vsLibRoot = strprintf("\"%s\"", getVSToolchainLibLocation());
+
+				std::vector<std::string> umLibs     = { "kernel32.lib" };
+				std::vector<std::string> ucrtLibs   = { "libucrt.lib" };
+				std::vector<std::string> msvcLibs   = {
+					"libcmt.lib", "libvcruntime.lib",
+					"legacy_stdio_definitions.lib", "legacy_stdio_wide_specifiers.lib"
+				};
+
+				for(const auto& l : umLibs)
+					cmdline += strprintf(" %s\\um\\x64\\%s", sdkRoot, l);
+
+				for(const auto& l : ucrtLibs)
+					cmdline += strprintf(" %s\\ucrt\\x64\\%s", sdkRoot, l);
+
+				for(const auto& l : msvcLibs)
+					cmdline += strprintf(" %s\\x64\\%s", vsLibRoot, l);
 			}
 
 		#else
 
 			// cc -o <output>
-			cmdline = strprintf("%s -o %s", getPathToLinker(), outputFilename);
+			cmdline = strprintf("cc -o %s", outputFilename);
 
 			for(const auto& i : inputObjects)
 				cmdline += strprintf(" %s", i);
