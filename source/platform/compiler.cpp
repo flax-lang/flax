@@ -17,6 +17,10 @@
 
 	#include <windows.h>
 #else
+	#include <dlfcn.h>
+	#include <unistd.h>
+	#include <sys/mman.h>
+	#include <sys/ioctl.h>
 #endif
 
 
