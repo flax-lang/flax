@@ -22,14 +22,6 @@
 namespace platform {
 namespace compiler
 {
-#if !OS_WINDOWS
-	std::string getPathToLinker()
-	{
-		// fucking ezpz on unix.
-		return "cc";
-	}
-#else
-
 	// the techniques used here are with reference to Jon Blow's "microsoft_craziness.h" file.
 	// it was released under the MIT license.
 
@@ -137,7 +129,7 @@ namespace compiler
 		while(true)
 		{
 			length = required + 2;
-			value = (wchar_t*) malloc(length = 2);
+			value = (wchar_t*) malloc(length + 2);
 			if(!value)
 				return L"";
 
@@ -391,8 +383,8 @@ namespace compiler
 		if(checkDirectoryExists(convertStringToWChar(toolchainPath)))
 		{
 			// TODO: check the target arch!!!
-			result->vsBinDirectory = strprintf("%s\\bin\\Hostx64\\x64", toolchainPath);
-			result->vsLibDirectory = strprintf("%s\\lib\\x64", toolchainPath);
+			result->vsBinDirectory = strprintf("%s\\bin\\Hostx64", toolchainPath);
+			result->vsLibDirectory = strprintf("%s\\lib", toolchainPath);
 
 			return true;
 		}
@@ -403,31 +395,37 @@ namespace compiler
 	}
 
 
-
-
-	std::string getPathToLinker()
+	static FindResult* getResult()
 	{
-		FindResult result;
+		static bool cached = false;
+		static FindResult cachedResult;
 
-		auto found = findVSToolchain(&result);
-		if(!found) error("backend: failed to find installed Visual Studio location!");
+		if(!cached)
+		{
+			findWindowsKitRoot(&cachedResult);
+			auto found = findVSToolchain(&cachedResult);
+			if(!found) error("backend: failed to find installed Visual Studio location!");
 
-		return strprintf("%s\\link.exe", result.vsBinDirectory);
+			cached = true;
+		}
+
+		return &cachedResult;
 	}
-
 
 	std::string getWindowsSDKLocation()
 	{
-		FindResult result;
-		findWindowsKitRoot(&result);
-
-		return result.windowsSDKRoot;
+		return getResult()->windowsSDKRoot;
 	}
 
+	std::string getVSToolchainLibLocation()
+	{
+		return getResult()->vsLibDirectory;
+	}
 
-
-
-#endif
+	std::string getVSToolchainBinLocation()
+	{
+		return getResult()->vsBinDirectory;
+	}
 }
 }
 

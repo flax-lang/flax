@@ -95,12 +95,12 @@ namespace platform
 		std::string getObjectFileName(const std::string& name);
 		std::string getSharedLibraryName(const std::string& name);
 
-		std::string getPathToLinker();
-
 		std::string getCompilerCommandLine(const std::vector<std::string>& inputObjects, const std::string& outputFilename);
 
 		#if OS_WINDOWS
 			std::string getWindowsSDKLocation();
+			std::string getVSToolchainLibLocation();
+			std::string getVSToolchainBinLocation();
 		#endif
 	}
 }
