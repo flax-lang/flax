@@ -17,7 +17,7 @@ namespace fir
 		//* not a typo; only variables deserve to be 'lvalue', global values (eg. functions)
 		//* should just be rvalues.
 		if(mut) this->kind = Kind::lvalue;
-		else    this->kind = Kind::rvalue;
+		else    this->kind = Kind::prvalue;
 	}
 
 
@@ -27,10 +27,8 @@ namespace fir
 		this->ident = name;
 		this->initValue = initValue;
 
-		if(!immutable)  this->kind = Kind::lvalue;
-		else            this->kind = Kind::clvalue;
-
-		// module->globals[this->ident] = this;
+		this->kind = Kind::lvalue;
+		this->isconst = immutable;
 	}
 
 	void GlobalVariable::setInitialValue(ConstantValue* constVal)

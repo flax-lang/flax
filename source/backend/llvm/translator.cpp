@@ -562,7 +562,7 @@ namespace backend
 
 
 		auto decay = [&builder](fir::Value* fv, llvm::Value* lv) -> llvm::Value* {
-			if(fv->islorclvalue())
+			if(fv->islvalue())
 				return builder.CreateLoad(lv);
 
 			else

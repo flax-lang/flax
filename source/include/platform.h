@@ -30,6 +30,16 @@ namespace platform
 		#error "invalid host os!"
 	#endif
 
+	#if defined(__x86_64__) || defined(__aarch64__) || defined(_M_X64)
+		#define ARCH_64 1
+		#define ARCH_32 0
+	#else
+		#define ARCH_32 1
+		#define ARCH_64 0
+	#endif
+
+
+
 
 	#if OS_WINDOWS
 		using filehandle_t = void*;

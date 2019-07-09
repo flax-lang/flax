@@ -76,7 +76,7 @@ namespace fir
 		return this->fnArguments.size();
 	}
 
-	std::vector<Argument*> Function::getArguments()
+	const std::vector<Argument*>& Function::getArguments()
 	{
 		return this->fnArguments;
 	}
@@ -128,7 +128,7 @@ namespace fir
 		this->stackAllocs.push_back(ty);
 	}
 
-	std::vector<Type*> Function::getStackAllocations()
+	const std::vector<Type*>& Function::getStackAllocations()
 	{
 		return this->stackAllocs;
 	}

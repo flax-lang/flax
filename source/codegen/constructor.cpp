@@ -36,8 +36,6 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 
 			i++;
 		}
-
-		// if(names) iceAssert(i == str->getElementCount());
 	}
 
 	if(fir::isRefCountedType(str))
@@ -48,8 +46,7 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 
 
 
-void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr,
-	fir::Value* selfptr, const std::vector<FnCallArgument>& args, bool callInlineInit)
+fir::Value* cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, const std::vector<FnCallArgument>& args)
 {
 	if(auto c = this->typeDefnMap[cls])
 		c->codegen(this);
@@ -60,31 +57,76 @@ void cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, sst::Fu
 	auto constrfn = dcast(fir::Function, constr->codegen(this, cls).value);
 	iceAssert(constrfn);
 
-	// make a copy
-	auto arguments = args;
+	// this is dirty, very fucking dirty!!!
+	std::vector<fir::Value*> vargs;
 	{
-		auto fake = util::pool<sst::RawValueExpr>(this->loc(), cls->getPointerTo());
-		fake->rawValue = CGResult(selfptr);
+		auto copy = args;
+		auto fake = util::pool<sst::RawValueExpr>(this->loc(), cls->getMutablePointerTo());
+		fake->rawValue = CGResult(fir::ConstantValue::getZeroValue(cls->getMutablePointerTo()));
 
-		//! SELF HANDLING (INSERTION) (CODEGEN)
-		arguments.insert(arguments.begin(), FnCallArgument(this->loc(), "this", fake, 0));
+		//? what we are doing here is inserting a fake argument to placate `codegenAndArrangeFunctionCallArguments`, so that
+		//? it does not error. this just allows us to get *THE REST* of the values in the correct order and generated appropriately,
+		//? so that we can use their values and get their types below.
+
+		copy.insert(copy.begin(), FnCallArgument(this->loc(), "this", fake, 0));
+		vargs = this->codegenAndArrangeFunctionCallArguments(constr, constrfn->getType(), copy);
+
+		// for sanity, assert that it did not change. We should not have to cast anything, and "this" is always the first
+		// argument in a constructor anyway!
+		iceAssert(vargs[0] == fake->rawValue.value);
+
+		// after we are done with that shennanigans, erase the first thing, which is the 'this', which doesn't really
+		// exist here!
+		vargs.erase(vargs.begin());
 	}
 
 
-	if(arguments.size() != constrfn->getArgumentCount())
+	// make a wrapper...
+	auto fname = util::obfuscateIdentifier("init_wrapper", constr->id.str());
+	fir::Function* wrapper_func = this->module->getFunction(fname);
+
+	if(!wrapper_func)
+	{
+		auto restore = this->irb.getCurrentBlock();
+
+		auto arglist = util::map(vargs, [](fir::Value* v) -> auto {
+			return v->getType();
+		});
+
+		wrapper_func = this->module->getOrCreateFunction(fname, fir::FunctionType::get(arglist, cls), fir::LinkageType::Internal);
+
+		fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", wrapper_func);
+		this->irb.setCurrentBlock(entry);
+
+		// make the self:
+		auto selfptr = this->irb.StackAlloc(cls, "self");
+
+		std::vector<fir::Value*> argvals = util::map(wrapper_func->getArguments(), [](auto a) -> fir::Value* {
+			return a;
+		});
+
+		argvals.insert(argvals.begin(), selfptr);
+
+		this->irb.Call(initfn, selfptr);
+
+		this->irb.Call(constrfn, argvals);
+		this->irb.Return(this->irb.ReadPtr(selfptr));
+
+		this->irb.setCurrentBlock(restore);
+	}
+
+	if(vargs.size() != wrapper_func->getArgumentCount())
 	{
 		SimpleError::make(this->loc(), "mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
-			(fir::Type*) cls, constrfn->getArgumentCount(), arguments.size())
+			(fir::Type*) cls, constrfn->getArgumentCount(), vargs.size())
 			->append(SimpleError::make(MsgType::Note, constr->loc, "constructor was defined here:"))
 			->postAndQuit();
 	}
 
-	std::vector<fir::Value*> vargs = this->codegenAndArrangeFunctionCallArguments(constr, constrfn->getType(), arguments);
+	auto ret = this->irb.Call(wrapper_func, vargs);
+	this->addRAIIValue(ret);
 
-	if(callInlineInit)
-		this->irb.Call(initfn, selfptr);
-
-	this->irb.Call(constrfn, vargs);
+	return ret;
 }
 
 
@@ -124,16 +166,13 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 
 	this->classty->codegen(cs);
 
-	auto cls = this->classty->type;
-	auto self = cs->irb.CreateLValue(cls);
+	auto cls = this->classty->type->toClassType();
+	auto ret = cs->constructClassWithArguments(cls, this->target, this->arguments);
 
-	cs->constructClassWithArguments(cls->toClassType(), this->target, cs->irb.AddressOf(self, true), this->arguments, true);
-
-	// auto value = cs->irb.Dereference(self);
 	if(fir::isRefCountedType(cls))
-		cs->addRefCountedValue(self);
+		cs->addRefCountedValue(ret);
 
-	return CGResult(self);
+	return CGResult(ret);
 }
 
 
@@ -146,20 +185,60 @@ CGResult sst::BaseClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Typ
 	this->classty->codegen(cs);
 
 	auto cls = this->classty->type;
-	auto self = cs->irb.AddressOf(cs->getMethodSelf(), true);
+	auto self = cs->getMethodSelf();
 
-	iceAssert(self->getType()->isPointerType() && self->getType()->getPointerElementType()->isClassType());
+	iceAssert(self->getType()->isClassType());
 
-	auto selfty = self->getType()->getPointerElementType()->toClassType();
+	auto selfty = self->getType()->toClassType();
 	iceAssert(selfty->getBaseClass());
 
-	selfty = selfty->getBaseClass();
-	self = cs->irb.PointerTypeCast(self, selfty->getPointerTo());
+	auto basety = selfty->getBaseClass();
 
-	//* note: we don't call the inline initialiser of the base class, because the inline initialiser of our own class would've already called it.
-	cs->constructClassWithArguments(cls->toClassType(), this->target, self, this->arguments, false);
-	return CGResult(self);
+	// just do it manually here: since we already have a self pointer, we can call the base class constructor function
+	// directly. plus, we are not calling the inline initialiser also.
+	{
+		auto constrfn = dcast(fir::Function, this->target->codegen(cs, cls).value);
+		iceAssert(constrfn);
+
+		auto copy = this->arguments;
+		auto selfptr = util::pool<RawValueExpr>(this->loc, selfty->getMutablePointerTo());
+		selfptr->rawValue = CGResult(cs->irb.PointerTypeCast(cs->irb.AddressOf(cs->getMethodSelf(), /* mutable: */ true),
+			basety->getMutablePointerTo()));
+
+		copy.insert(copy.begin(), FnCallArgument(this->loc, "this", selfptr, 0));
+
+		std::vector<fir::Value*> vargs = cs->codegenAndArrangeFunctionCallArguments(this->target, constrfn->getType(), copy);
+
+		cs->irb.Call(constrfn, vargs);
+	}
+
+	return CGResult(0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -204,7 +204,6 @@ namespace fir
 
 		void Store(Value* val, Value* lval);
 		Value* CreateLValue(Type* t, const std::string& vname = "");
-		Value* CreateConstLValue(Value* v, const std::string& vname = "");
 
 		Value* Dereference(Value* val, const std::string& vname = "");
 		Value* AddressOf(Value* lval, bool mut, const std::string& vname = "");

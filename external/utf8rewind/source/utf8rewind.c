@@ -432,7 +432,7 @@ size_t utf8toutf16(const char* input, size_t inputSize, utf16_t* target, size_t 
 				/* Encoded value is always beyond BMP */
 
 				decoded -= (MAX_BASIC_MULTILINGUAL_PLANE + 1);
-				*dst++ = SURROGATE_HIGH_START + (decoded >> 10);
+				*dst++ = SURROGATE_HIGH_START + (utf16_t) (decoded >> 10);
 				*dst++ = SURROGATE_LOW_START + (decoded & 0x03FF);
 
 				dst_size -= 2 * sizeof(utf16_t);
@@ -804,7 +804,7 @@ size_t utf8casefold(const char* input, size_t inputSize, char* target, size_t ta
 
 			/* Read next code point */
 
-			if (!(state.last_code_point_size = codepoint_read(state.src, state.src_size, &state.last_code_point)))
+			if (state.last_code_point_size = codepoint_read(state.src, state.src_size, &state.last_code_point), state.last_code_point_size)
 			{
 				goto invaliddata;
 			}
@@ -865,7 +865,7 @@ size_t utf8casefold(const char* input, size_t inputSize, char* target, size_t ta
 			{
 				/* Write code point unchanged to output */
 
-				if (!(bytes_needed = codepoint_write(state.last_code_point, &state.dst, &state.dst_size)))
+				if (bytes_needed = codepoint_write(state.last_code_point, &state.dst, &state.dst_size), !bytes_needed)
 				{
 					goto outofspace;
 				}
@@ -885,7 +885,7 @@ size_t utf8casefold(const char* input, size_t inputSize, char* target, size_t ta
 
 			/* Read next code point */
 
-			if (!(state.last_code_point_size = codepoint_read(state.src, state.src_size, &state.last_code_point)))
+			if (state.last_code_point_size = codepoint_read(state.src, state.src_size, &state.last_code_point), state.last_code_point_size)
 			{
 				goto invaliddata;
 			}
@@ -930,7 +930,7 @@ size_t utf8casefold(const char* input, size_t inputSize, char* target, size_t ta
 			{
 				/* Write code point unchanged to output */
 
-				if (!(bytes_needed = codepoint_write(state.last_code_point, &state.dst, &state.dst_size)))
+				if (bytes_needed = codepoint_write(state.last_code_point, &state.dst, &state.dst_size), bytes_needed)
 				{
 					goto outofspace;
 				}
@@ -1074,7 +1074,7 @@ size_t utf8normalize(const char* input, size_t inputSize, char* target, size_t t
 	size_t dst_size = targetSize;
 	StreamState stream[4];
 	DecomposeState decompose_state;
-	ComposeState compose_state;
+	ComposeState compose_state = { 0 };
 	uint8_t compatibility = (flags & UTF8_NORMALIZE_COMPATIBILITY) != 0;
 	StreamState* stream_output;
 	uint8_t finished = 0;

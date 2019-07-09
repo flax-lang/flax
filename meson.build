@@ -1,4 +1,4 @@
-project('flax', version: '0.40.0-pre')
+project('flax', version: '0.40.0-pre', default_options: [ 'warning_level=3' ])
 
 add_languages(['c', 'cpp'])
 
@@ -12,20 +12,44 @@ if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
- 	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
+	add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'cpp')
+	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
+
+	add_project_arguments('/W4', language: ['c', 'cpp'])
+
+	# disable some useless warnings:
+	add_project_arguments('/wd4100', language: ['c', 'cpp'])    # unused function parameter
+	add_project_arguments('/wd4127', language: ['c', 'cpp'])    # if expression is constant (msvc apparently doesn't understand &&)
+	add_project_arguments('/wd4456', language: ['c', 'cpp'])    # local variable shadowing
+	add_project_arguments('/wd4457', language: ['c', 'cpp'])    # function parameter shadowing
+	add_project_arguments('/wd4458', language: ['c', 'cpp'])    # class member shadowing
+
+	# enable some useful warnings (set them to fire at level 1):
+	add_project_arguments('/w14062', language: ['c', 'cpp'])    # enum value not handled in switch-case
+	add_project_arguments('/w14263', language: ['c', 'cpp'])    # member method hides base method
+	add_project_arguments('/w14265', language: ['c', 'cpp'])    # non-virtual destructor when class has virtual methods
+	add_project_arguments('/w14548', language: ['c', 'cpp'])    # first part of comma-expression has no side-effects
+
+
 
 	add_project_link_arguments('/ignore:4099', language: ['c', 'cpp'])
 	add_project_link_arguments('/machine:X64', language: 'cpp')
+
+	add_project_link_arguments('/opt:noref', language: 'cpp')
 	add_project_link_arguments('/incremental', language: 'cpp')
-	add_project_link_arguments('/debug:fastlink', language: ['c', 'cpp'])
+
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
 
 	if get_option('buildtype') == 'debug'
 		libKind = 'Debug'
+		debug_kind = 'fastlink'
 	else
 		libKind = 'Release'
+		debug_kind = 'none'
 	endif
+
+	add_project_link_arguments('/debug:' + debug_kind, language: ['c', 'cpp'])
 
 	# ok, so because meson is dumb, and we want to allow configuring the locations *without* editing this file
 	# eg. in CI environments, we run an external command that's just an echo of the environment variable, and
@@ -126,6 +150,7 @@ if the_compiler.get_id() == 'msvc'
 	)
 
 	all_deps = [ legacy_stdio_dep, mpir_dep, mpfr_dep, libffi_dep, llvm_dep ]
+
 else
 	add_project_arguments('-std=c11', language: 'c')
 	add_project_arguments('-std=c++17', language: 'cpp')
@@ -146,6 +171,7 @@ else
 	])
 
 	all_deps = [ mpfr_dep, libffi_dep, llvm_dep ]
+
 endif
 
 
@@ -228,6 +254,7 @@ source_files = files([
 	'source/typecheck/resolver/driver.cpp',
 	'source/typecheck/resolver/resolver.cpp',
 
+	'source/codegen/raii.cpp',
 	'source/codegen/misc.cpp',
 	'source/codegen/call.cpp',
 	'source/codegen/loops.cpp',
@@ -320,7 +347,8 @@ tinyproclib_dep = declare_dependency(include_directories: include_directories('e
 
 executable('flaxc', source_files,
 	include_directories: include_directories([ 'source/include', 'external' ]),
-	dependencies: all_deps + [ tinyproclib_dep, utf8rewind_dep ]
+	dependencies: all_deps + [ tinyproclib_dep, utf8rewind_dep ],
+	cpp_pch: 'source/include/precompile.h'
 )
 
 

@@ -74,12 +74,10 @@ namespace compiler
 		std::string vsLibDirectory;
 	};
 
-	static bool checkDirectoryExists(const std::wstring& name)
+	static bool checkFileExists(const std::wstring& name)
 	{
 		auto attrib = GetFileAttributesW(name.c_str());
-		if(attrib == INVALID_FILE_ATTRIBUTES)   return false;
-
-		return (attrib & FILE_ATTRIBUTE_DIRECTORY);
+		return attrib != INVALID_FILE_ATTRIBUTES;
 	}
 
 	static bool visitFiles(const std::wstring& dir, VersionData* vd, std::function<void (const std::wstring& shortName,
@@ -170,31 +168,14 @@ namespace compiler
 		auto gots = swscanf_s(shortName.c_str(), L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
 		if(gots < 4) return;
 
-		if(i0 < vd->bestVersion[0])
-		{
+		auto b0 = vd->bestVersion[0];
+		auto b1 = vd->bestVersion[1];
+		auto b2 = vd->bestVersion[2];
+		auto b3 = vd->bestVersion[3];
+
+		// short-circuiting ftw.
+		if((b0 > i0) || (b1 > i1) || (b2 > i2) || (b3 > i3))
 			return;
-		}
-		else if(i0 == vd->bestVersion[0])
-		{
-			if(i1 < vd->bestVersion[1])
-			{
-				return;
-			}
-			else if(i1 == vd->bestVersion[1])
-			{
-				if(i2 < vd->bestVersion[2])
-				{
-					return;
-				}
-				else if(i2 == vd->bestVersion[2])
-				{
-					if(i3 < vd->bestVersion[3])
-					{
-						return;
-					}
-				}
-			}
-		}
 
 		vd->bestName = fullName;
 		vd->bestVersion[0] = i0;
@@ -213,17 +194,12 @@ namespace compiler
 		if(gots < 2)
 			return;
 
-		if(i0 < vd->bestVersion[0])
-		{
+		auto b0 = vd->bestVersion[0];
+		auto b1 = vd->bestVersion[1];
+
+		// short-circuiting ftw.
+		if((b0 > i0) || (b1 > i1))
 			return;
-		}
-		else if(i0 == vd->bestVersion[0])
-		{
-			if(i1 < vd->bestVersion[1])
-			{
-				return;
-			}
-		}
 
 		vd->bestName = fullName;
 		vd->bestVersion[0] = i0;
@@ -250,6 +226,8 @@ namespace compiler
 			auto win10lib = win10root + L"Lib";
 
 			VersionData vd;
+			memset(&vd, 0, sizeof(VersionData));
+
 			visitFiles(win10lib, &vd, &getBestWin10Version);
 
 			if(!vd.bestName.empty())
@@ -267,6 +245,8 @@ namespace compiler
 			auto win10lib = win10root + L"Lib";
 
 			VersionData vd;
+			memset(&vd, 0, sizeof(VersionData));
+
 			visitFiles(win10lib, &vd, &getBestWin8Version);
 
 			if(!vd.bestName.empty())
@@ -324,6 +304,7 @@ namespace compiler
 		ISetupInstance* inst = 0;
 		uint64_t newestVersionNum = 0;
 
+		// we look for the newest version that's installed, as opposed to the first.
 		while(true)
 		{
 			ISetupInstance* instance = NULL;
@@ -356,7 +337,6 @@ namespace compiler
 		if(!inst)
 			return false;
 
-
 		std::string vsRoot;
 		{
 			BSTR tmp;
@@ -365,6 +345,8 @@ namespace compiler
 
 			vsRoot = convertWCharToString(std::wstring(tmp));
 			SysFreeString(tmp);
+
+			inst->Release();
 		}
 
 		std::string toolchainVersion;
@@ -378,10 +360,10 @@ namespace compiler
 		}
 
 		std::string toolchainPath = strprintf("%s\\Tools\\MSVC\\%s", vsRoot, toolchainVersion);
-		if(checkDirectoryExists(convertStringToWChar(toolchainPath)))
+		if(checkFileExists(convertStringToWChar(toolchainPath)))
 		{
-			// TODO: check the target arch!!!
-			result->vsBinDirectory = strprintf("%s\\bin\\Hostx64", toolchainPath);
+			//* this is *HOST* architecture, so we can just use our defines.
+			result->vsBinDirectory = strprintf("%s\\bin\\Host%s", toolchainPath, ARCH_64 ? "x64" : "x86");
 			result->vsLibDirectory = strprintf("%s\\lib", toolchainPath);
 
 			return true;
@@ -400,6 +382,8 @@ namespace compiler
 
 		if(!cached)
 		{
+			memset(&cachedResult, 0, sizeof(FindResult));
+
 			findWindowsKitRoot(&cachedResult);
 			auto found = findVSToolchain(&cachedResult);
 			if(!found) error("backend: failed to find installed Visual Studio location!");

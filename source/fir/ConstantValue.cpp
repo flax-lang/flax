@@ -13,7 +13,7 @@ namespace fir
 {
 	ConstantValue::ConstantValue(Type* t) : Value(t)
 	{
-		this->kind = Kind::literal;
+		this->kind = Kind::prvalue;
 	}
 
 	ConstantValue* ConstantValue::getZeroValue(Type* type)
@@ -187,12 +187,12 @@ namespace fir
 
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = (long double) val;
+		this->value = (double) val;
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)
 	{
-		this->value = (long double) val;
+		this->value = val;
 	}
 
 	double ConstantFP::getValue()

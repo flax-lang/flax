@@ -14,8 +14,6 @@ namespace cgn
 	{
 		this->methodSelfStack.push_back(self);
 
-		iceAssert(self->islorclvalue());
-
 		auto ty = self->getType();
 		iceAssert(ty->isClassType() || ty->isStructType());
 
@@ -211,7 +209,10 @@ namespace cgn
 		}
 		else if(type->isClassType())
 		{
-			auto clsdef = this->typeDefnMap[type];
+			// TODO
+			//! use constructClassWithArguments!!!
+
+			auto clsdef = dcast(sst::ClassDefn, this->typeDefnMap[type]);
 			iceAssert(clsdef);
 
 			clsdef->codegen(this);
@@ -219,11 +220,11 @@ namespace cgn
 			// first need to check if we have any initialisers with 0 parameters.
 			auto cls = type->toClassType();
 
-			fir::Function* ifn = 0;
-			for(auto init : cls->getInitialiserFunctions())
+			sst::FunctionDefn* ifn = 0;
+			for(auto init : clsdef->initialisers)
 			{
 				//* note: count == 1 because of 'self'
-				if(init->getArgumentCount() == 1)
+				if(init->arguments.size() == 1)
 				{
 					ifn = init;
 					break;
@@ -237,20 +238,17 @@ namespace cgn
 					->postAndQuit();
 			}
 
-			// ok, we call it.
-			auto self = this->irb.StackAlloc(cls);
-
-			this->irb.Call(cls->getInlineInitialiser(), self);
-			this->irb.Call(ifn, self);
-
-			ret = this->irb.ReadPtr(self);
+			ret = this->constructClassWithArguments(cls, ifn, { });
 		}
 		else
 		{
 			ret = fir::ConstantValue::getZeroValue(type);
 		}
 
-		ret->setKind(fir::Value::Kind::literal);
+		if(fir::isRefCountedType(type))
+			this->addRefCountedValue(ret);
+
+		ret->setKind(fir::Value::Kind::prvalue);
 		return ret;
 	}
 

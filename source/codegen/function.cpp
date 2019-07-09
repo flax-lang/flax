@@ -145,9 +145,15 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto fn = cs->getCurrentFunction();
 
-	auto arg = cs->irb.CreateConstLValue(fn->getArgumentWithName(this->id.name), this->id.name);
+	auto arg = cs->irb.CreateLValue(this->type, this->id.name);
+	cs->irb.Store(fn->getArgumentWithName(this->id.name), arg);
+	arg->makeConst();
+
 	if(fir::isRefCountedType(arg->getType()))
 		cs->addRefCountedValue(arg);
+
+	if(arg->getType()->isClassType())
+		cs->addRAIIValue(arg);
 
 	// ok...
 	cs->valueMap[this] = CGResult(arg);

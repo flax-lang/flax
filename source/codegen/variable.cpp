@@ -53,7 +53,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else
 		{
 			res = checkStore(res);
-			cs->autoAssignRefCountedValue(glob, res, true, true);
+			cs->autoAssignRefCountedValue(glob, res, true);
 		}
 
 		// go and fix the thing.
@@ -68,50 +68,40 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else
 	{
 		fir::Value* val = 0;
-		fir::Value* alloc = 0;
 
-		fir::Value* res = 0;
 		if(this->init)
 		{
-			res = this->init->codegen(cs, this->type).value;
-			res = cs->oneWayAutocast(res, this->type);
-
-			val = res;
-		}
-
-		if(!val) val = cs->getDefaultValue(this->type);
-
-
-		val = checkStore(val);
-
-		if(this->immutable)
-		{
-			iceAssert(val);
-			alloc = cs->irb.CreateConstLValue(val, this->id.name);
+			val = this->init->codegen(cs, this->type).value;
+			val = cs->oneWayAutocast(val, this->type);
 		}
 		else
 		{
-			alloc = cs->irb.CreateLValue(this->type, this->id.name);
+			val = cs->getDefaultValue(this->type);
+			val = checkStore(val);
 		}
 
-		iceAssert(alloc);
+		auto alloc = cs->irb.CreateLValue(this->type, this->id.name);
+		cs->autoAssignRefCountedValue(alloc, val, /* isInitial: */ true);
 
-		cs->addVariableUsingStorage(this, alloc, CGResult(res));
+		if(this->immutable)
+			alloc->makeConst();
+
+		cs->addVariableUsingStorage(this, alloc);
 
 		return CGResult(alloc);
 	}
 }
 
-void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc, CGResult val)
+void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* alloc)
 {
 	iceAssert(alloc);
 	this->valueMap[var] = CGResult(alloc);
 
-	if(val.value)
-		this->autoAssignRefCountedValue(alloc, val.value, /* isInitial: */ true, /* performStore: */ !var->immutable);
-
 	if(fir::isRefCountedType(var->type))
 		this->addRefCountedValue(alloc);
+
+	if(var->type->isClassType())
+		this->addRAIIValue(alloc);
 }
 
 

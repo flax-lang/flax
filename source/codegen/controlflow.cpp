@@ -183,12 +183,11 @@ static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint&
 	for(auto stmt : cfp.block->deferred)
 		stmt->codegen(cs);
 
+	for(auto c : bp.raiiValues)
+		cs->callDestructor(c);
+
 	for(auto v : bp.refCountedValues)
 		cs->decrementRefCount(v);
-
-	for(auto p : bp.refCountedPointers)
-		cs->decrementRefCount(cs->irb.ReadPtr(p));
-
 
 	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
 	{
@@ -241,10 +240,15 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(fir::isRefCountedType(v->getType()))
 			cs->incrementRefCount(v);
 
-		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
-
 		if(v->getType() != this->expectedType)
 			v = cs->oneWayAutocast(v, this->expectedType);
+
+		//! RAII: COPY CONSTRUCTOR CALL
+		//? the copy constructor is called when a function returns an object by value
+		if(v->getType()->isClassType())
+			v = cs->copyRAIIValue(v);
+
+		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
 
 		cs->irb.Return(v);
 	}
@@ -289,7 +293,6 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->postBodyCode)
 		this->postBodyCode();
 
-
 	if(!broke)
 	{
 		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
@@ -299,16 +302,15 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		#endif
 
+		//* this duplicates stuff from doBlockEndThings!!
 		for(auto it = this->deferred.rbegin(); it != this->deferred.rend(); it++)
 			(*it)->codegen(cs);
 
-		// then decrement all the refcounts
+		for(auto c : cs->getCurrentBlockPoint().raiiValues)
+			cs->callDestructor(c);
+
 		for(auto v : cs->getRefCountedValues())
 			cs->decrementRefCount(v);
-
-		for(auto p : cs->getRefCountedPointers())
-			cs->decrementRefCount(cs->irb.ReadPtr(p));
-
 
 		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
 		{

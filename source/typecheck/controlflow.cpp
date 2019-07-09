@@ -124,8 +124,6 @@ static bool checkBlockPathsReturn(sst::TypecheckState* fs, sst::Block* block, fi
 				SimpleError::make(block->statements[i + 1]->loc, "unreachable code after return statement")
 					->append(SimpleError::make(MsgType::Note, retstmt->loc, "return statement was here:"))
 					->postAndQuit();;
-
-				doTheExit();
 			}
 		}
 		else /* if(i == block->statements.size() - 1) */

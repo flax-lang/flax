@@ -186,60 +186,55 @@ namespace sst
 					}
 
 
+					auto d = defs[0];
+
+					auto tyd = dcast(TypeDefn, d);
+					if(!tyd)
 					{
-						auto d = defs[0];
-
-						auto tyd = dcast(TypeDefn, d);
-						if(!tyd)
+						// helpful error message: see if there's a actually a type further up!
+						ErrorMsg* extraHelp = 0;
 						{
-							// helpful error message: see if there's a actually a type further up!
-							ErrorMsg* extraHelp = 0;
+							auto t = tree->parent;
+							while(!extraHelp && t)
 							{
-								auto t = tree->parent;
-								while(!extraHelp && t)
+								if(auto ds = t->getDefinitionsWithName(name); ds.size() > 0)
 								{
-									if(auto ds = t->getDefinitionsWithName(name); ds.size() > 0)
+									for(const auto& d : ds)
 									{
-										for(const auto& d : ds)
+										if(dcast(sst::TypeDefn, d))
 										{
-											if(dcast(sst::TypeDefn, d))
+											std::vector<std::string> ss;
+											auto t1 = tree;
+											while(t1 != t)
 											{
-												std::vector<std::string> ss;
-												auto t1 = tree;
-												while(t1 != t)
-												{
-													t1 = t1->parent;
-													if(!t1->isAnonymous)
-														ss.push_back("^");
-												}
-
-												ss.push_back(name);
-
-												extraHelp = SimpleError::make(MsgType::Note, d->loc,
-													"'%s' was defined as a type in the parent scope, here:", name)
-													->append(BareError::make(MsgType::Note, "to refer to it, use '%s'", util::serialiseScope(ss)));
+												t1 = t1->parent;
+												if(!t1->isAnonymous)
+													ss.push_back("^");
 											}
+
+											ss.push_back(name);
+
+											extraHelp = SimpleError::make(MsgType::Note, d->loc,
+												"'%s' was defined as a type in the parent scope, here:", name)
+												->append(BareError::make(MsgType::Note, "to refer to it, use '%s'", util::serialiseScope(ss)));
 										}
 									}
-
-									t = t->parent;
 								}
+
+								t = t->parent;
 							}
-
-							//* example of something 'wrong'
-							auto err = SimpleError::make(this->loc(), "definition of '%s' cannot be used as a type", d->id.name)
-								->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name));
-
-							if(extraHelp) err->append(extraHelp);
-
-							err->postAndQuit();
 						}
 
-						return tyd->type;
+						//* example of something 'wrong'
+						auto err = SimpleError::make(this->loc(), "definition of '%s' cannot be used as a type", d->id.name)
+							->append(SimpleError::make(MsgType::Note, d->loc, "'%s' was defined here:", d->id.name));
+
+						if(extraHelp) err->append(extraHelp);
+
+						err->postAndQuit();
 					}
 
-					iceAssert(0);
-					return 0;
+					return tyd->type;
 				};
 
 

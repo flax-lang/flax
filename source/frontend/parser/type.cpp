@@ -97,12 +97,12 @@ namespace parser
 			{
 				defn->nestedTypes.push_back(t);
 			}
-			else if(auto st = dcast(StaticDecl, s))
+			else if(auto sd = dcast(StaticDecl, s))
 			{
-				if(auto fn = dcast(FuncDefn, st->actual))
+				if(auto fn = dcast(FuncDefn, sd->actual))
 					defn->staticMethods.push_back(fn);
 
-				else if(auto vr = dcast(VarDefn, st->actual))
+				else if(auto vr = dcast(VarDefn, sd->actual))
 					defn->staticFields.push_back(vr);
 
 				else
@@ -113,19 +113,34 @@ namespace parser
 				addSelfToMethod(init, /* mutating: */ true);
 
 				if(init->name == "init")
+				{
 					defn->initialisers.push_back(init);
-
+				}
 				else if(init->name == "deinit")
+				{
+					if(defn->deinitialiser)
+						error(init, "deinitialisers cannot be overloaded");
+
 					defn->deinitialiser = init;
-
+				}
 				else if(init->name == "copy")
+				{
+					if(defn->copyInitialiser)
+						error(init, "copy initialisers cannot be overloaded");
+
 					defn->copyInitialiser = init;
-
+				}
 				else if(init->name == "move")
-					defn->moveInitialiser = init;
+				{
+					if(defn->moveInitialiser)
+						error(init, "move initialisers cannot be overloaded");
 
+					defn->moveInitialiser = init;
+				}
 				else
+				{
 					error(s, "wtf? '%s'", init->name);
+				}
 			}
 			else
 			{
@@ -133,8 +148,8 @@ namespace parser
 			}
 		}
 
-		for(auto s : blk->deferredStatements)
-			error(s, "unsupported expression or statement in class body");
+		if(!blk->deferredStatements.empty())
+			error(blk->deferredStatements[0], "unsupported expression or statement in class body");
 
 		st.leaveStructBody();
 		return defn;

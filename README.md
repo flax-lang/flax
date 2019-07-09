@@ -104,7 +104,7 @@ do {
 
 - The `makefile` is the preferred way to build on UNIX systems.
 - LLVM needs to be installed. On macOS, `brew install llvm@7` should work, and you might need to do some PPA fiddling for Debian-based distros.
-- A *C++17*-compatible compiler should be used.
+- A C++17-compatible compiler should be used.
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
 

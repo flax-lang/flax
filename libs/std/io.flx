@@ -5,9 +5,6 @@
 export std::io
 import libc
 
-let ASCII_BACKSLASH: i8     = 92
-let ASCII_PERCENT: i8       = 37
-
 fn error(msg: str)
 {
 	libc::printf("invalid format string: '%s'\n", msg)

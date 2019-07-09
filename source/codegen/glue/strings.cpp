@@ -333,8 +333,8 @@ namespace string
 				// if statement
 				auto ch = cs->irb.ReadPtr(cs->irb.ReadPtr(ptrp));
 
-				auto mask = cs->irb.BitwiseAND(ch, fir::ConstantInt::getInt8((int8_t) 0xC0));
-				auto isch = cs->irb.ICmpNEQ(mask, fir::ConstantInt::getInt8((int8_t) 0x80));
+				auto mask = cs->irb.BitwiseAND(ch, cs->irb.IntSizeCast(fir::ConstantInt::getUint8(0xC0), fir::Type::getInt8()));
+				auto isch = cs->irb.ICmpNEQ(mask, cs->irb.IntSizeCast(fir::ConstantInt::getUint8(0x80), fir::Type::getInt8()));
 
 				fir::IRBlock* incr = cs->irb.addNewBlockInFunction("incr", func);
 				fir::IRBlock* skip = cs->irb.addNewBlockInFunction("skip", func);

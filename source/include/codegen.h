@@ -56,7 +56,7 @@ namespace cgn
 		sst::Block* block = 0;
 
 		std::vector<fir::Value*> refCountedValues;
-		std::vector<fir::Value*> refCountedPointers;
+		std::vector<fir::Value*> raiiValues;
 	};
 
 	struct CodegenState
@@ -140,8 +140,7 @@ namespace cgn
 		fir::Value* getDefaultValue(fir::Type* type);
 
 		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
-		void constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, fir::Value* selfptr, const std::vector<FnCallArgument>& args,
-			bool callInlineInitialiser);
+		fir::Value* constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, const std::vector<FnCallArgument>& args);
 
 		fir::Value* callVirtualMethod(sst::FunctionCall* call);
 
@@ -166,7 +165,7 @@ namespace cgn
 
 
 
-		void addVariableUsingStorage(sst::VarDefn* var, fir::Value* ptr, CGResult val);
+		void addVariableUsingStorage(sst::VarDefn* var, fir::Value* ptr);
 
 		void createWhileLoop(const std::function<void (fir::IRBlock*, fir::IRBlock*)>& check, const std::function<void ()>& body);
 
@@ -177,18 +176,22 @@ namespace cgn
 		void decrementRefCount(fir::Value* val);
 
 		void addRefCountedValue(fir::Value* val);
-		void removeRefCountedValue(fir::Value* val, bool ignoreMissing = false);
-
-		void addRefCountedPointer(fir::Value* ptr);
-		void removeRefCountedPointer(fir::Value* ptr, bool ignoreMissing = false);
+		void removeRefCountedValue(fir::Value* val);
 
 		std::vector<fir::Value*> getRefCountedValues();
-		std::vector<fir::Value*> getRefCountedPointers();
 
-		void performRefCountingAssignment(fir::Value* lhs, fir::Value* rhs, bool isInitial);
-		void moveRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
+		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
 
-		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial, bool performStore);
+
+		void addRAIIValue(fir::Value* val);
+		void removeRAIIValue(fir::Value* val);
+		std::vector<fir::Value*> getRAIIValues();
+
+		void callDestructor(fir::Value* val);
+
+		fir::Value* copyRAIIValue(fir::Value* value);
+		void copyRAIIValue(fir::Value* from, fir::Value* target, bool enableMoving = true);
+		void moveRAIIValue(fir::Value* from, fir::Value* target);
 	};
 
 	fir::Module* codegen(sst::DefinitionTree* __std_exception_destroy);

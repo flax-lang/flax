@@ -243,8 +243,16 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		else if(array->getType()->isArrayType())
 		{
 			fir::Value* arrptr = 0;
-			if(array->islorclvalue())   arrptr = cs->irb.AddressOf(array, false);
-			else                        arrptr = cs->irb.CreateConstLValue(array);
+			if(array->islvalue())
+			{
+				arrptr = cs->irb.AddressOf(array, false);
+			}
+			else
+			{
+				arrptr = cs->irb.CreateLValue(array->getType());
+				cs->irb.Store(array, arrptr);
+				arrptr->makeConst();
+			}
 
 			theptr = cs->irb.GetPointer(cs->irb.ConstGEP2(arrptr, 0, 0), cs->irb.ReadPtr(idxptr));
 		}

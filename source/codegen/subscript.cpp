@@ -32,7 +32,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(lt->isArrayType())
 	{
 		// TODO: LVALUE HOLE
-		if(lr->islorclvalue())
+		if(lr->islvalue())
 		{
 			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getNative(0),
 				fir::ConstantInt::getNative(0));

@@ -18,13 +18,13 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto lr = this->left->codegen(cs).value;
 	auto lt = lr->getType();
 
-	if(!lr->islorclvalue())
+	if(!lr->islvalue())
 	{
 		SpanError::make(SimpleError::make(this->loc, "cannot assign to non-lvalue (most likely a temporary) expression"))
 			->add(util::ESpan(this->left->loc, "here"))
 			->postAndQuit();
 	}
-	else if(lr->isclvalue())
+	else if(lr->isConst())
 	{
 		SpanError::make(SimpleError::make(this->loc, "cannot assign to immutable expression"))
 			->add(util::ESpan(this->left->loc, "here"))
@@ -124,7 +124,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(lt != rr->getType())
 		error(this, "what? left = %s, right = %s", lt, rr->getType());
 
-	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false, /* performStore: */ true);
+	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false);
 	return CGResult(0);
 }
 
@@ -168,7 +168,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				val->getType(), lr.value->getType());
 		}
 
-		cs->autoAssignRefCountedValue(lr.value, rr, /* isInitial: */ false, /* performStore: */ true);
+		cs->autoAssignRefCountedValue(lr.value, rr, /* isInitial: */ false);
 	}
 
 	return CGResult(0);

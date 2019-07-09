@@ -7,7 +7,10 @@
 #include "sst_expr.h"
 #include "stcommon.h"
 
+
 #include "mpreal/mpreal.h"
+
+
 
 namespace fir
 {
@@ -743,8 +746,6 @@ namespace sst
 		std::vector<TypeDefn*> nestedTypes;
 		std::vector<VarDefn*> staticFields;
 		std::vector<FunctionDefn*> staticMethods;
-
-		fir::Function* inlineInitFunction = 0;
 		std::vector<FunctionDefn*> initialisers;
 
 		FunctionDefn* deinitialiser = 0;

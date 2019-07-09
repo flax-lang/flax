@@ -31,17 +31,17 @@ namespace parser
 
 		st.pop();
 		auto stmt = parseStmt(st, /* allowExprs: */ false);
-		if(auto defn = dcast(FuncDefn, stmt))
-			defn->visibility = vis;
+		if(auto fd = dcast(FuncDefn, stmt))
+			fd->visibility = vis;
 
-		else if(auto defn = dcast(ForeignFuncDefn, stmt))
-			defn->visibility = vis;
+		else if(auto ffd = dcast(ForeignFuncDefn, stmt))
+			ffd->visibility = vis;
 
-		else if(auto defn = dcast(VarDefn, stmt))
-			defn->visibility = vis;
+		else if(auto vd = dcast(VarDefn, stmt))
+			vd->visibility = vis;
 
-		else if(auto defn = dcast(TypeDefn, stmt))
-			defn->visibility = vis;
+		else if(auto td = dcast(TypeDefn, stmt))
+			td->visibility = vis;
 
 		else
 			error(st, "access specifier cannot be applied to this statement");
@@ -444,7 +444,7 @@ namespace parser
 				if(auto it = st.binaryOps.find(st.front().str()); it != st.binaryOps.end())
 					return it->second.precedence;
 
-				else if(auto it = st.postfixOps.find(st.front().str()); it != st.postfixOps.end())
+				else if(it = st.postfixOps.find(st.front().str()); it != st.postfixOps.end())
 					return it->second.precedence;
 
 				return -1;

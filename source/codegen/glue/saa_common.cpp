@@ -679,6 +679,13 @@ namespace saa_common
 					if(saa->isStringType())
 						newbytecount = cs->irb.Add(newbytecount, getCI(1));
 
+					// for "default" or empty strings, the buffer points to constant memory that did not come from the heap!!
+					// so, we cannot call realloc with oldbuf, and call it with NULL instead. we do this if the capacity was 0!
+					{
+						auto isfake = cs->irb.ICmpEQ(oldcap, getCI(0));
+						oldbuf = cs->irb.Select(isfake, fir::ConstantValue::getZeroValue(fir::Type::getMutInt8Ptr()), oldbuf);
+					}
+
 					auto newbuf = cs->irb.Call(cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC), oldbuf, newbytecount, "newbuf");
 					newbuf = castRawBufToElmPtr(cs, saa, newbuf);
 

@@ -44,13 +44,12 @@ namespace fir
 		friend struct util::MemoryPool<Value>;
 		friend struct util::FastInsertVector<Value>;
 
-		//? might be renamed when we need more value categories.
+		// congratulations, i fucking played myself.
 		enum class Kind
 		{
-			lvalue,     // lvalue. same as c
-			rvalue,     // same as c.
-			clvalue,    // const lvalue
-			literal     // literal value. mostly simplifies reference counting.
+			lvalue,     // has identity, cannot be moved from
+			xvalue,     // has identity, can be moved from
+			prvalue,    // no identity, can be moved from
 		};
 
 		// virtual funcs
@@ -59,12 +58,10 @@ namespace fir
 		void setKind(Kind k)    { this->kind = k; }
 
 		bool islvalue()     { return this->kind == Kind::lvalue; }
-		bool isrvalue()     { return this->kind == Kind::rvalue; }
-		bool isclvalue()    { return this->kind == Kind::clvalue; }
-		bool islorclvalue() { return this->islvalue() || this->isclvalue(); }
-		bool isLiteral()    { return this->kind == Kind::literal; }
+		bool canmove()      { return this->kind == Kind::xvalue || this->kind == Kind::prvalue; }
 
-		void makeConst()    { iceAssert(this->islvalue()); this->kind = Kind::clvalue; }
+		bool isConst()      { return this->isconst; }
+		void makeConst()    { this->isconst = true; }
 
 		// methods
 		void setName(const Identifier& idt);
@@ -77,13 +74,14 @@ namespace fir
 		// protected shit
 		size_t id;
 		protected:
-		Value(Type* type, Kind k = Kind::rvalue);
+		Value(Type* type, Kind k = Kind::prvalue);
 		virtual ~Value() { }
 
 		// fields
 		Identifier ident;
 		Type* valueType;
 		Kind kind;
+		bool isconst = false;
 	};
 
 	struct PHINode : Value

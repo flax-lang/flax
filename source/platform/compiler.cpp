@@ -57,6 +57,7 @@ namespace compiler
 			{
 				// these dumb paths have spaces in them, so we need to quote it.
 				// link.exe handles its own de-quoting, not cmd.exe or whatever shell.
+
 				auto sdkRoot = strprintf("\"%s\"", getWindowsSDKLocation());
 				auto vsLibRoot = strprintf("\"%s\"", getVSToolchainLibLocation());
 
