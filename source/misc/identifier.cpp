@@ -53,7 +53,7 @@ void PolyArgMapping_t::add(const std::string& name, pts::Type* t)
 	SingleArg arg;
 	arg.name = name;
 	arg.type = t;
-	arg.index = -1;
+	arg.index = (size_t) -1;
 
 	this->maps.push_back(arg);
 }

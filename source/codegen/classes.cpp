@@ -37,14 +37,14 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto f = dcast(fir::Function, res.value);
 		meths.push_back(f);
 
-		if(method->id.name == "init")
-			inits.push_back(f);
-
 		if(method->isVirtual)
 			clsty->addVirtualMethod(f);
+
+		if(method->id.name == "init")   inits.push_back(f);
+		if(method->id.name == "deinit") clsty->setDestructor(f);
+		if(method->id.name == "copy")   clsty->setCopyConstructor(f);
+		if(method->id.name == "move")   clsty->setMoveConstructor(f);
 	}
-
-
 
 	clsty->setMethods(meths);
 	clsty->setInitialiserFunctions(inits);
@@ -60,8 +60,11 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		nt->codegen(cs);
 
 
-	// basically we make a function.
 	auto restore = cs->irb.getCurrentBlock();
+
+
+
+	// make the inline initialiser
 	{
 		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_init", IdKind::Name),
 			fir::FunctionType::get({ this->type->getMutablePointerTo() }, fir::Type::getVoid()),
@@ -95,20 +98,55 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto res = fd->init->codegen(cs, fd->type).value;
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
 
-				cs->autoAssignRefCountedValue(elmptr, res, true, true);
+				cs->autoAssignRefCountedValue(elmptr, res, true);
 			}
 			else
 			{
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
-				cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true, true);
+				cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true);
 			}
 		}
 
 		cs->irb.ReturnVoid();
-		this->inlineInitFunction = func;
-
 		clsty->setInlineInitialiser(func);
 	}
+
+	// this is the inline destructor
+	{
+		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_deinit", IdKind::Name),
+			fir::FunctionType::get({ this->type->getMutablePointerTo() }, fir::Type::getVoid()),
+			fir::LinkageType::Internal);
+
+		fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+		cs->irb.setCurrentBlock(entry);
+
+		auto selfptr = func->getArguments()[0];
+		auto self = cs->irb.Dereference(selfptr, "this");
+
+		for(auto f : this->fields)
+		{
+			if(f->type->isClassType())
+			{
+				auto fld = cs->irb.GetStructMember(self, f->id.name);
+				cs->callDestructor(fld);
+			}
+		}
+
+		// ok, now that we have destroyed our own fields, call the base class destructor, followed by the base class inline destructor!
+		if(auto base = clsty->getBaseClass(); base)
+		{
+			auto baseptr = cs->irb.PointerTypeCast(selfptr, base->getMutablePointerTo());
+
+			if(auto des = base->getDestructor(); des)
+				cs->irb.Call(des, baseptr);
+
+			cs->irb.Call(base->getInlineDestructor(), baseptr);
+		}
+
+		cs->irb.ReturnVoid();
+		clsty->setInlineDestructor(func);
+	}
+
 	cs->irb.setCurrentBlock(restore);
 
 
@@ -132,7 +170,7 @@ fir::Value* cgn::CodegenState::callVirtualMethod(sst::FunctionCall* call)
 		iceAssert(this->isInMethodBody() && fd->parentTypeForMethod);
 
 		auto fake = util::pool<sst::RawValueExpr>(call->loc, fd->parentTypeForMethod->getPointerTo());
-		fake->rawValue = CGResult(this->getMethodSelf());
+		fake->rawValue = CGResult(this->irb.AddressOf(this->getMethodSelf(), /* mutable: */ true));
 
 		//! SELF HANDLING (INSERTION) (CODEGEN)
 		call->arguments.insert(call->arguments.begin(), FnCallArgument(call->loc, "this", fake, 0));

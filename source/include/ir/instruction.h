@@ -178,8 +178,8 @@ namespace fir
 		friend struct Module;
 		friend struct IRBuilder;
 
-		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, const std::vector<Value*>& vals);
-		Instruction(OpKind kind, bool sideEffects, IRBlock* parent, Type* out, const std::vector<Value*>& vals, Value::Kind k);
+		Instruction(OpKind kind, bool sideEffects, Type* out, const std::vector<Value*>& vals);
+		Instruction(OpKind kind, bool sideEffects, Type* out, const std::vector<Value*>& vals, Value::Kind k);
 		std::string str();
 
 		Value* getResult();
@@ -196,7 +196,6 @@ namespace fir
 
 		bool sideEffects;
 		Value* realOutput;
-		IRBlock* parentBlock;
 		std::vector<Value*> operands;
 	};
 }

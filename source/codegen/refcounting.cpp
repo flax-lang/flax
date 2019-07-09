@@ -8,140 +8,56 @@
 
 namespace cgn
 {
-	static void _addRC(const Location& l, fir::Value* v, std::vector<fir::Value*>* list, std::string kind)
-	{
-		if(auto it = std::find(list->begin(), list->end(), v); it == list->end())
-			list->push_back(v);
-
-		else
-			error(l, "adding duplicate refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType());
-	}
-
-	static void _removeRC(const Location& l, fir::Value* v, std::vector<fir::Value*>* list, std::string kind, bool ignore)
-	{
-		if(auto it = std::find(list->begin(), list->end(), v); it != list->end())
-			list->erase(it);
-
-		else if(!ignore)
-			error(l, "removing non-existent refcounted %s (ptr = %p, type = '%s')", kind, v, v->getType());
-	}
-
-
-
 	void CodegenState::addRefCountedValue(fir::Value* val)
 	{
-		// warn(this->loc(), "add id %d", val->id);
-		_addRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value");
+		auto list = &this->blockPointStack.back().refCountedValues;
+
+		if(auto it = std::find(list->begin(), list->end(), val); it == list->end())
+			list->push_back(val);
+		else
+			error(this->loc(), "adding duplicate refcounted value (ptr = %p, type = '%s')", val, val->getType());
 	}
 
-	void CodegenState::removeRefCountedValue(fir::Value* val, bool ignore)
+	void CodegenState::removeRefCountedValue(fir::Value* val)
 	{
-		// warn(this->loc(), "remove id %d", val->id);
-		_removeRC(this->loc(), val, &this->blockPointStack.back().refCountedValues, "value", ignore);
+		auto list = &this->blockPointStack.back().refCountedValues;
+
+		if(auto it = std::find(list->begin(), list->end(), val); it != list->end())
+			list->erase(it);
+		else
+			error(this->loc(), "removing non-existent refcounted value (ptr = %p, type = '%s')", val, val->getType());
 	}
-
-	void CodegenState::addRefCountedPointer(fir::Value* val)
-	{
-		_addRC(this->loc(), val, &this->blockPointStack.back().refCountedPointers, "pointer");
-	}
-
-	void CodegenState::removeRefCountedPointer(fir::Value* val, bool ignore)
-	{
-		_removeRC(this->loc(), val, &this->blockPointStack.back().refCountedPointers, "pointer", ignore);
-	}
-
-
-
 
 	std::vector<fir::Value*> CodegenState::getRefCountedValues()
 	{
 		return this->blockPointStack.back().refCountedValues;
 	}
 
-	std::vector<fir::Value*> CodegenState::getRefCountedPointers()
-	{
-		return this->blockPointStack.back().refCountedPointers;
-	}
 
-
-	void CodegenState::moveRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool initial)
-	{
-		// decrement the lhs refcount (only if not initial)
-		iceAssert(lhs && rhs);
-		if(!lhs->islorclvalue())
-			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
-
-		if(!initial)
-		{
-			this->decrementRefCount(lhs);
-
-			// then do the store
-			this->irb.Store(rhs, lhs);
-		}
-
-		// then, remove the rhs from any refcounting table
-		// but don't change the refcount itself.
-		if(!rhs->isLiteral())
-			this->removeRefCountedValue(rhs);
-	}
-
-	void CodegenState::performRefCountingAssignment(fir::Value* lhs, fir::Value* rhs, bool initial)
-	{
-		// ok, increment the rhs refcount;
-		// and decrement the lhs refcount (only if not initial)
-		iceAssert(lhs && rhs);
-		if(!lhs->islorclvalue())
-			error("assignment (move) to non-lvalue (type '%s')", lhs->getType());
-
-
-		this->incrementRefCount(rhs);
-
-		if(!initial)
-		{
-			this->decrementRefCount(lhs);
-
-			// do the store -- if not initial.
-			// avoids immut shenanigans
-			this->irb.Store(rhs, lhs);
-		}
-	}
-
-	void CodegenState::autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isinit, bool performstore)
+	void CodegenState::autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isinit)
 	{
 		iceAssert(lhs && rhs);
-		bool isPointer = false;
 
-		if(!lhs->islorclvalue())
-		{
-			if(lhs->getType()->isPointerType())
-			{
-				if(rhs->getType() != lhs->getType()->getPointerElementType())
-					error(this->loc(), "mismatched types in assignment (move); cannot store value '%s' in '%s'", rhs->getType(), lhs->getType());
-
-				lhs = this->irb.Dereference(lhs);
-			}
-			else
-			{
-				error(this->loc(), "assignment (move) to non-lvalue and non-pointer (type '%s')", lhs->getType());
-			}
-		}
-
-		// warn(this->loc(), "hi (%d)", rhs->islorclvalue());
+		if(!lhs->islvalue())
+			error(this->loc(), "assignment (move) to non-lvalue and non-pointer (type '%s')", lhs->getType());
 
 		if(fir::isRefCountedType(rhs->getType()))
 		{
-			if(rhs->islorclvalue())
-				this->performRefCountingAssignment(lhs, rhs, isinit);
+			if(!isinit)
+				this->decrementRefCount(lhs);
 
+			if(rhs->canmove())
+			{
+				this->removeRefCountedValue(rhs);
+			}
 			else
-				this->moveRefCountedValue(lhs, rhs, isinit);
+			{
+				this->incrementRefCount(rhs);
+			}
 		}
 
-		if(performstore)
-		{
-			if(isPointer)   this->irb.WritePtr(rhs, lhs);
-			else            this->irb.Store(rhs, lhs);
-		}
+		// copy will do the right thing in all cases (handle non-RAII, and call move if possible)
+		this->copyRAIIValue(rhs, lhs);
 	}
 
 
@@ -236,8 +152,6 @@ namespace cgn
 			error("no: '%s'", type);
 		}
 	}
-
-
 
 	void CodegenState::incrementRefCount(fir::Value* val)
 	{

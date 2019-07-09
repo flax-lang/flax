@@ -172,7 +172,10 @@ namespace fir
 		return ret;
 	}
 
-
+	const util::hash_map<std::string, size_t>& ClassType::getElementNameMap()
+	{
+		return this->indexMap;
+	}
 
 
 
@@ -185,6 +188,40 @@ namespace fir
 	{
 		return this->initialiserList;
 	}
+
+	void ClassType::setDestructor(Function* f)
+	{
+		this->destructor = f;
+	}
+
+	void ClassType::setCopyConstructor(Function* f)
+	{
+		this->copyConstructor = f;
+	}
+
+	void ClassType::setMoveConstructor(Function* f)
+	{
+		this->moveConstructor = f;
+	}
+
+
+	Function* ClassType::getDestructor()
+	{
+		return this->destructor;
+	}
+
+	Function* ClassType::getCopyConstructor()
+	{
+		return this->copyConstructor;
+	}
+
+	Function* ClassType::getMoveConstructor()
+	{
+		return this->moveConstructor;
+	}
+
+
+
 
 	const std::vector<Function*>& ClassType::getMethods()
 	{
@@ -352,6 +389,18 @@ namespace fir
 	{
 		this->inlineInitialiser = fn;
 	}
+
+
+	Function* ClassType::getInlineDestructor()
+	{
+		return this->inlineDestructor;
+	}
+
+	void ClassType::setInlineDestructor(Function* fn)
+	{
+		this->inlineDestructor = fn;
+	}
+
 
 	fir::Type* ClassType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
 	{

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include <fcntl.h>
+#include <stdlib.h>
 
 #include "errors.h"
 #include "frontend.h"
@@ -50,9 +51,21 @@ namespace platform
 
 	std::string getEnvironmentVar(const std::string& name)
 	{
-		auto ret = std::getenv(name.c_str());
-		if(ret) return std::string(ret);
-		else    return "";
+		char buffer[256] = { 0 };
+		size_t len = 0;
+
+	#if OS_WINDOWS
+		if(getenv_s(&len, buffer, name.c_str()) != 0)
+	#else
+		if(getenv(name.c_str()) == 0)
+	#endif
+		{
+			return "";
+		}
+		else
+		{
+			return std::string(buffer, len);
+		}
 	}
 
 	void pushEnvironmentVar(const std::string& name, const std::string& value)
@@ -220,7 +233,6 @@ namespace platform
 			{
 				perror("there was an error reading the file");
 				error("expected %d bytes, but read only %d", fileLength, didRead);
-				exit(-1);
 			}
 		}
 

@@ -91,7 +91,10 @@ namespace array
 				auto ctr = cs->irb.ReadPtr(ctrptr);
 				auto ptr = cs->irb.GetPointer(arrdata, ctr);
 
-				cs->constructClassWithArguments(cls, constr, ptr, args, true);
+				auto val = cs->constructClassWithArguments(cls, constr, args);
+
+				// TODO: this is a bit dubious??
+				cs->irb.WritePtr(val, ptr);
 
 				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getNative(1)), ctrptr);
 
@@ -155,7 +158,7 @@ namespace array
 				auto ctr = cs->irb.ReadPtr(ctrptr);
 				auto ptr = cs->irb.GetPointer(arrdata, ctr);
 
-				cs->autoAssignRefCountedValue(ptr, value, true, true);
+				cs->autoAssignRefCountedValue(ptr, value, true);
 
 				cs->irb.WritePtr(cs->irb.Add(ctr, fir::ConstantInt::getNative(1)), ctrptr);
 

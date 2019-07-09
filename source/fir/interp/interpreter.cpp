@@ -1168,7 +1168,6 @@ namespace interp
 		}
 
 		error("interp: invaild state");
-		return interp::Value();
 	}
 
 
@@ -1229,7 +1228,6 @@ namespace interp
 
 	static interp::Value performGEP2(InterpState* is, fir::Type* resty, const interp::Value& ptr, const interp::Value& i1, const interp::Value& i2)
 	{
-
 		iceAssert(i1.type == i2.type);
 
 		// so, ptr should be a pointer to an array.
@@ -1239,7 +1237,7 @@ namespace interp
 		auto elmty = arrty->getArrayElementType();
 
 		auto ofs = twoArgumentOp(is, resty, i1, i2, [arrty, elmty](auto a, auto b) -> auto {
-			return (a * getSizeOfType(arrty)) + (b * getSizeOfType(elmty));
+			return (getSizeOfType(arrty) * a) + (getSizeOfType(elmty) * b);
 		});
 
 		auto realptr = getActualValue<uintptr_t>(ptr);
@@ -1280,7 +1278,7 @@ namespace interp
 
 	static interp::Value decay(const interp::Value& val)
 	{
-		if(val.val && val.val->islorclvalue())
+		if(val.val && val.val->islvalue())
 		{
 			auto ret = loadFromPtr(val, val.val->getType());
 			ret.val = val.val;
@@ -1981,7 +1979,7 @@ namespace interp
 				setRet(is, inst, oneArgumentOp(is, inst, b, [realptr, elmty](auto b) -> auto {
 					// this doesn't do pointer arithmetic!! if it's a pointer type, the value we get
 					// will be a uintptr_t.
-					return realptr + (b * getSizeOfType(elmty));
+					return realptr + (getSizeOfType(elmty) * b);
 				}));
 
 				break;
@@ -2069,8 +2067,6 @@ namespace interp
 				iceAssert(inst.args.size() == 2);
 				auto a = getArg(is, inst, 0);
 				auto b = getUndecayedArg(is, inst, 1);
-
-				iceAssert(inst.args[1]->islorclvalue());
 
 				auto ptr = (void*) getActualValue<uintptr_t>(b);
 				if(a.dataSize > LARGE_DATA_SIZE)    memmove(ptr, a.ptr, a.dataSize);
@@ -2469,8 +2465,6 @@ namespace interp
 			{
 				iceAssert(inst.args.size() == 2);
 				auto targtype = inst.args[1]->getType();
-
-				iceAssert(inst.args[0]->islorclvalue());
 
 				// again. just manipulate the memory.
 				auto unn = getUndecayedArg(is, inst, 0);

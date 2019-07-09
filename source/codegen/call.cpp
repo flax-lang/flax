@@ -79,7 +79,8 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		if(argExprs.find(i) == argExprs.end())
 		{
 			auto it = defaultArgumentValues.find(i);
-			iceAssert(it != defaultArgumentValues.end());
+			if(it == defaultArgumentValues.end())
+				error(cs->loc(), "missing value for argument %d", i);
 
 			argExprs[i] = it->second;
 			revArgExprs[it->second] = i;
@@ -129,6 +130,12 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 			auto infer = ft->getArgumentN(k);
 			auto val = arg->codegen(cs, infer).value;
+
+			//! RAII: COPY CONSTRUCTOR CALL
+			//? the copy constructor is called when passed as an argument to a function call
+			//* copyRAIIValue will just return 'val' if it is not a class type, so we don't check it here!
+			val = cs->copyRAIIValue(val);
+
 
 			//* arguments are added to the refcounting list in the function,
 			//* so we need to "pre-increment" the refcount here, so it does not
@@ -305,13 +312,6 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	size_t numArgs = ft->getArgumentCount();
-	/* if(!ft->isCStyleVarArg() && !ft->isVariadicFunc() && this->arguments.size() != numArgs)
-	{
-		error(this, "mismatch in number of arguments in call to '%s'; %zu %s provided, but %zu %s expected",
-			this->name, this->arguments.size(), this->arguments.size() == 1 ? "was" : "were", numArgs,
-			numArgs == 1 ? "was" : "were");
-	}
-	else if((ft->isCStyleVarArg() || !ft->isVariadicFunc()) && this->arguments.size() < numArgs) */
 	if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
 		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
@@ -342,6 +342,9 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// do the refcounting if we need to
 	if(fir::isRefCountedType(ret->getType()))
 		cs->addRefCountedValue(ret);
+
+	if(ret->getType()->isClassType())
+		cs->addRAIIValue(ret);
 
 	return CGResult(ret);
 }
@@ -414,7 +417,6 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(auto te = dcast(sst::TypeExpr, this->callee))
 		return callBuiltinTypeConstructor(cs, te->type, this->arguments);
 
-
 	fir::Value* fn = this->callee->codegen(cs).value;
 	iceAssert(fn->getType()->isFunctionType());
 
@@ -436,6 +438,13 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	std::vector<fir::Value*> args = cs->codegenAndArrangeFunctionCallArguments(/* targetDefn: */ nullptr, ft, fcas);
 
 	auto ret = cs->irb.CallToFunctionPointer(fn, ft, args);
+
+	if(fir::isRefCountedType(ret->getType()))
+		cs->addRefCountedValue(ret);
+
+	if(ret->getType()->isClassType())
+		cs->addRAIIValue(ret);
+
 	return CGResult(ret);
 }
 

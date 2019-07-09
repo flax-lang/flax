@@ -53,7 +53,7 @@ namespace fir
 
 		Type* getReturnType();
 		size_t getArgumentCount();
-		std::vector<Argument*> getArguments();
+		const std::vector<Argument*>& getArguments();
 		Argument* getArgumentWithName(std::string name);
 
 		std::vector<IRBlock*>& getBlockList();
@@ -71,7 +71,7 @@ namespace fir
 		// this is used so the function knows how much space it needs to reserve for
 		// allocas.
 		void addStackAllocation(Type* ty);
-		std::vector<Type*> getStackAllocations();
+		const std::vector<Type*>& getStackAllocations();
 
 		void cullUnusedValues();
 

@@ -61,71 +61,63 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 			iceAssert(alloc->initBlockVar);
 
 			// ok, then. create the variables:
-			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp, CGResult(0));
-			cs->addVariableUsingStorage(alloc->initBlockVar, elmp, CGResult(0));
+			cs->addVariableUsingStorage(alloc->initBlockIdx, idxp);
+			cs->addVariableUsingStorage(alloc->initBlockVar, elmp);
 
 			alloc->initBlock->codegen(cs);
 		};
 
 
 
-		{
-			auto arrp = ptr;
-			auto ctrp = cs->irb.CreateLValue(fir::Type::getNativeWord());
 
-			auto actuallyStore = [cs, type, alloc](fir::Value* ptr) -> void {
+		auto arrp = ptr;
+		auto ctrp = cs->irb.CreateLValue(fir::Type::getNativeWord());
 
-				if(type->isClassType())
-				{
-					auto constr = dcast(sst::FunctionDefn, alloc->constructor);
-					iceAssert(constr);
+		auto actuallyStore = [cs, type, alloc](fir::Value* ptr) -> void {
 
-					//! here, the arguments are called once per element.
-					cs->constructClassWithArguments(type->toClassType(), constr, ptr, alloc->arguments, true);
-				}
-				else if(type->isStructType())
-				{
-					auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
-					cs->autoAssignRefCountedValue(ptr, value, true, true);
-				}
-				else
-				{
-					//! ACHTUNG !
-					//* hack: the only reason to add to the refcount table is so we can remove it later
-					//* when we move-assign below.
-
-					auto value = cs->getDefaultValue(type);
-
-					if(fir::isRefCountedType(type))
-						cs->addRefCountedValue(value);
-
-					cs->autoAssignRefCountedValue(ptr, value, true, true);
-				}
-			};
-
-
-			if(alloc->counts.empty())
+			if(type->isClassType())
 			{
-				actuallyStore(arrp);
+				auto constr = dcast(sst::FunctionDefn, alloc->constructor);
+				iceAssert(constr);
+
+				//! here, the arguments are called once per element.
+				auto value = cs->constructClassWithArguments(type->toClassType(), constr, alloc->arguments);
+				cs->autoAssignRefCountedValue(cs->irb.Dereference(ptr), value, true);
+			}
+			else if(type->isStructType())
+			{
+				auto value = cs->getConstructedStructValue(type->toStructType(), alloc->arguments);
+				cs->autoAssignRefCountedValue(cs->irb.Dereference(ptr), value, true);
 			}
 			else
 			{
-				cs->createWhileLoop([cs, ctrp, count](auto pass, auto fail) {
-					auto cond = cs->irb.ICmpLT(ctrp, count);
-					cs->irb.CondBranch(cond, pass, fail);
-				},
-				[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
-
-					auto ptr = cs->irb.GetPointer(arrp, ctrp);
-
-					actuallyStore(ptr);
-
-					if(alloc->initBlock)
-						callUserCode(cs->irb.Dereference(ptr), ctrp);
-
-					cs->irb.Store(cs->irb.Add(ctrp, fir::ConstantInt::getNative(1)), ctrp);
-				});
+				auto value = cs->getDefaultValue(type);
+				cs->autoAssignRefCountedValue(cs->irb.Dereference(ptr), value, true);
 			}
+		};
+
+
+		if(alloc->counts.empty())
+		{
+			actuallyStore(arrp);
+		}
+		else
+		{
+			cs->createWhileLoop([cs, ctrp, count](auto pass, auto fail) {
+				auto cond = cs->irb.ICmpLT(ctrp, count);
+				cs->irb.CondBranch(cond, pass, fail);
+			},
+			[cs, callUserCode, actuallyStore, alloc, ctrp, arrp]() {
+
+				auto ptr = cs->irb.GetPointer(arrp, ctrp);
+
+				actuallyStore(ptr);
+
+				if(alloc->initBlock)
+					callUserCode(cs->irb.Dereference(ptr), ctrp);
+
+				cs->irb.Store(cs->irb.Add(ctrp, fir::ConstantInt::getNative(1)), ctrp);
+			});
 		}
 	};
 

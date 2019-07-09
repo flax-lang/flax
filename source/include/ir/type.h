@@ -696,6 +696,8 @@ namespace fir
 		const std::vector<Type*>& getElements();
 		std::vector<Type*> getAllElementsIncludingBase();
 
+		const util::hash_map<std::string, size_t>& getElementNameMap();
+
 		const std::vector<Function*>& getMethods();
 		std::vector<Function*> getMethodsWithName(std::string id);
 		Function* getMethodWithType(FunctionType* ftype);
@@ -706,11 +708,22 @@ namespace fir
 		Function* getInlineInitialiser();
 		void setInlineInitialiser(Function* fn);
 
+		Function* getInlineDestructor();
+		void setInlineDestructor(Function* fn);
+
 		void setMembers(const std::vector<std::pair<std::string, Type*>>& members);
 		void setMethods(const std::vector<Function*>& methods);
 
 		ClassType* getBaseClass();
 		void setBaseClass(ClassType* ty);
+
+		void setDestructor(Function* f);
+		void setCopyConstructor(Function* f);
+		void setMoveConstructor(Function* f);
+
+		Function* getDestructor();
+		Function* getCopyConstructor();
+		Function* getMoveConstructor();
 
 		bool isInParentHierarchy(Type* base);
 
@@ -754,7 +767,13 @@ namespace fir
 		std::map<std::pair<std::string, std::vector<Type*>>, size_t> virtualMethodMap;
 
 		ClassType* baseClass = 0;
+
 		Function* inlineInitialiser = 0;
+		Function* inlineDestructor = 0;
+
+		Function* destructor = 0;
+		Function* copyConstructor = 0;
+		Function* moveConstructor = 0;
 
 		// static funcs
 		public:

@@ -101,7 +101,7 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->lhs->type->isRawUnionType())
 		{
 			fir::Value* field = 0;
-			if(res->islorclvalue())
+			if(res->islvalue())
 			{
 				field = cs->irb.GetRawUnionFieldByType(res.value, this->type);
 			}
@@ -115,7 +115,7 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			if(res->islorclvalue())
+			if(res->islvalue())
 			{
 				// ok, at this point it's just a normal, instance field.
 				return CGResult(cs->irb.StructGEP(res.value, this->indexOfTransparentField));
@@ -132,7 +132,7 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(this->lhs->type->isRawUnionType())
 		{
 			fir::Value* field = 0;
-			if(res->islorclvalue())
+			if(res->islvalue())
 			{
 				field = cs->irb.GetRawUnionField(res.value, this->rhsIdent);
 			}
@@ -146,7 +146,7 @@ CGResult sst::FieldDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else
 		{
-			if(res->islorclvalue())
+			if(res->islvalue())
 			{
 				// ok, at this point it's just a normal, instance field.
 				return CGResult(cs->irb.GetStructMember(res.value, this->rhsIdent));
@@ -178,7 +178,7 @@ CGResult sst::TupleDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// ok, if we have a pointer, then return an lvalue
 	// if not, return an rvalue
-	if(res->islorclvalue())
+	if(res->islvalue())
 	{
 		return CGResult(cs->irb.StructGEP(res.value, this->index));
 	}

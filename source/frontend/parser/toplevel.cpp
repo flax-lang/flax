@@ -160,7 +160,7 @@ namespace parser
 
 					auto ns = parseTopLevel(st, tok.str());
 					if(priv != VisibilityLevel::Invalid)
-						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = -1;
+						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = (size_t) -1;
 
 					root->statements.push_back(ns);
 
@@ -243,7 +243,7 @@ namespace parser
 					{
 						st.rewindTo(tix);
 
-						tix = -1;
+						tix = (size_t) -1;
 						priv = VisibilityLevel::Invalid;
 					}
 

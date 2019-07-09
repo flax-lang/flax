@@ -235,11 +235,7 @@ namespace cgn
 
 		if(!result)
 		{
-			// nope.
-			//! ACHTUNG !
-			//* ew, goto.
 			error(this->loc(), "unsupported autocast of '%s' -> '%s'", fromType, target);
-			return 0;
 		}
 		else
 		{

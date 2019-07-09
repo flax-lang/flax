@@ -911,7 +911,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 	}
 
 	error("????!!!!");
-	return 0;
 }
 
 

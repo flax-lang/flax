@@ -14,15 +14,14 @@ namespace fir
 	static util::MemoryPool<Value> value_pool(65536);
 
 
-	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, const std::vector<Value*>& vals)
-		: Instruction(kind, sideeff, parent, out, vals, Value::Kind::rvalue) { }
+	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, const std::vector<Value*>& vals)
+		: Instruction(kind, sideeff, out, vals, Value::Kind::prvalue) { }
 
-	Instruction::Instruction(OpKind kind, bool sideeff, IRBlock* parent, Type* out, const std::vector<Value*>& vals, Value::Kind k) : Value(out)
+	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, const std::vector<Value*>& vals, Value::Kind k) : Value(out)
 	{
 		this->opKind = kind;
 		this->operands = vals;
 		this->sideEffects = sideeff;
-		this->parentBlock = parent;
 		this->realOutput = value_pool.construct(out, k);
 	}
 
@@ -238,7 +237,9 @@ namespace fir
 				else
 				{
 					auto name = op->getName().str();
-					ops += name + (name.empty() ? "" : " ") + "(%" + std::to_string(op->id) + ") :: " + op->getType()->str();
+					if(name.empty()) name += " ";
+
+					ops += strprintf("%s(%s%%%d) :: %s", name, op->islvalue() ? "*" : "", op->id, op->getType());
 				}
 
 				if(!didfn)

@@ -62,7 +62,7 @@ static void checkTuple(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	{
 		CGResult v;
 
-		if(rhs->islorclvalue())
+		if(rhs->islvalue())
 		{
 			auto gep = cs->irb.StructGEP(rhs.value, i);
 			v = CGResult(gep);
@@ -161,7 +161,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 		}
 
 		// # if 0
-		if(!rhs->islorclvalue() && rt->isArrayType())
+		if(!rhs->islvalue() && rt->isArrayType())
 		{
 			//* because of the way LLVM is designed, and hence by extension how we are designed,
 			//* fixed-sized arrays are kinda dumb. If we don't have a pointer to the array (for whatever reason???),

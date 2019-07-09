@@ -241,7 +241,7 @@ namespace sst
 		}
 		else if(this->op == Operator::AddressOf)
 		{
-			if(!val->islorclvalue())
+			if(!val->islvalue())
 				error(this, "cannot take address of a non-lvalue");
 
 			else if(val->getType()->isFunctionType())

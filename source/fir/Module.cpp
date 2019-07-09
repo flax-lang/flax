@@ -288,7 +288,7 @@ namespace fir
 		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
 			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
-		gs->setKind(Value::Kind::literal);
+		gs->setKind(Value::Kind::prvalue);
 		return (this->globalStrings[str] = gs);
 	}
 

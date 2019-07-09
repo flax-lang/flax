@@ -161,7 +161,7 @@ int Process::get_exit_status() {
   DWORD exit_status;
   WaitForSingleObject(data.handle, INFINITE);
   if(!GetExitCodeProcess(data.handle, &exit_status))
-    exit_status=-1;
+    exit_status=(DWORD)-1;
   {
     std::lock_guard<std::mutex> lock(close_mutex);
     CloseHandle(data.handle);

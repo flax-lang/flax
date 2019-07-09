@@ -12,12 +12,13 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-
 #include <fstream>
+
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
 	#pragma warning(disable: 4267)
+	#pragma warning(disable: 4244)
 #endif
 
 #include "llvm/IR/Verifier.h"

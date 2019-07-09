@@ -10,8 +10,6 @@
 #include <string.h>
 
 #include "utils.h"
-#include "precompile.h"
-
 
 #ifndef __has_include
 #error "Please switch to a compiler that supports '__has_include'"
