@@ -67,20 +67,20 @@ static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::Typ
 				error(fld, "transparent fields must have either a struct or raw-union type.");
 			}
 
-			auto defn = fs->typeDefnMap[ty];
-			iceAssert(defn);
+			auto innerdef = fs->typeDefnMap[ty];
+			iceAssert(innerdef);
 
 			std::vector<sst::StructFieldDefn*> flds;
-			if(auto str = dcast(sst::StructDefn, defn); str)
+			if(auto str = dcast(sst::StructDefn, innerdef); str)
 				flds = str->fields;
 
-			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
+			else if(auto unn = dcast(sst::RawUnionDefn, innerdef); unn)
 				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
 
 			else
 				error(fs->loc(), "what kind of type is this? '%s'", ty);
 
-			_checkTransparentFieldRedefinition(fs, defn, flds, seen);
+			_checkTransparentFieldRedefinition(fs, innerdef, flds, seen);
 		}
 		else
 		{

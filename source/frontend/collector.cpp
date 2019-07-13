@@ -102,7 +102,7 @@ namespace frontend
 				iceAssert(stree);
 
 				ImportThing ithing { imported->name, d->ithing.importAs, d->ithing.pubImport, d->ithing.loc };
-				if(auto it = std::find_if(imports.begin(), imports.end(), [&ithing](auto x) -> bool { return x.first.name == ithing.name; });
+				if(auto it = std::find_if(imports.begin(), imports.end(), [&ithing](const auto& x) -> bool { return x.first.name == ithing.name; });
 					it != imports.end())
 				{
 					SimpleError::make(ithing.loc, "importing previously imported module '%s'", ithing.name)

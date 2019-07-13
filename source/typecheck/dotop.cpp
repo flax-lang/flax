@@ -537,7 +537,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			else
 			{
 				auto c = util::pool<sst::ExprCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
-				c->arguments = util::map(arguments, [](FnCallArgument e) -> sst::Expr* { return e.value; });
+				c->arguments = util::map(arguments, [](const FnCallArgument& e) -> sst::Expr* { return e.value; });
 
 				auto tmp = util::pool<sst::FieldDotOp>(fc->loc, resolved->type);
 				tmp->lhs = lhs;

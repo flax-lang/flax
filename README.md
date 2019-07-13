@@ -11,6 +11,8 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![Build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
+&nbsp;&nbsp;&nbsp;&nbsp;
+[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
 
 
 

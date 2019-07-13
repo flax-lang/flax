@@ -465,8 +465,8 @@ namespace sst
 				{
 					auto a = dcast(sst::FunctionDecl, defn);
 					auto b = dcast(sst::FunctionDecl, otherdef);
-					if(fir::Type::areTypeListsEqual(util::map(a->params, [](auto p) -> fir::Type* { return p.type; }),
-						util::map(b->params, [](auto p) -> fir::Type* { return p.type; })))
+					if(fir::Type::areTypeListsEqual(util::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
+						util::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
 					{
 						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded based on argument names alone"));
 					}

@@ -218,10 +218,10 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	defn->isIntrinsic = this->isIntrinsic;
 
 	if(this->isVarArg)
-		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
 
 	else
-		defn->type = fir::FunctionType::get(util::map(ps, [](FnParam p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::get(util::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
 
 
 	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
@@ -233,8 +233,8 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 			// check the typelists, then
 			bool ret = fir::Type::areTypeListsEqual(
-				util::map(defn->params, [](FnParam p) -> fir::Type* { return p.type; }),
-				util::map(decl->params, [](FnParam p) -> fir::Type* { return p.type; })
+				util::map(defn->params, [](const FnParam& p) -> fir::Type* { return p.type; }),
+				util::map(decl->params, [](const FnParam& p) -> fir::Type* { return p.type; })
 			);
 
 			return ret;

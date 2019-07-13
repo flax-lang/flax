@@ -163,7 +163,7 @@ namespace sst
 
 			size_t ctr = 0;
 			util::hash_map<std::string, size_t> seenNames;
-			for(auto arg : arguments)
+			for(const auto& arg : arguments)
 			{
 				if((arg.name.empty() && useNames) || (!firstName && !useNames && !arg.name.empty()))
 				{
@@ -229,8 +229,8 @@ namespace sst
 
 	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
 	{
-		return this->getOverloadDistance(util::map(a, [](auto p) -> auto { return p.type; }),
-			util::map(b, [](auto p) -> auto { return p.type; })) == 0;
+		return this->getOverloadDistance(util::map(a, [](const auto& p) -> auto { return p.type; }),
+			util::map(b, [](const auto& p) -> auto { return p.type; })) == 0;
 	}
 
 }

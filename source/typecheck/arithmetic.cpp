@@ -24,7 +24,7 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 
 		for(auto ovp : (*thelist)[op])
 		{
-			int dist = fs->getOverloadDistance(util::map(ovp->params, [](auto p) { return p.type; }), args);
+			int dist = fs->getOverloadDistance(util::map(ovp->params, [](const auto& p) { return p.type; }), args);
 			if(dist == -1) continue;
 
 			if(dist == best)
