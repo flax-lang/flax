@@ -38,6 +38,11 @@ namespace backend
 		platform::compiler::performSelfDlOpen();
 	}
 
+	FIRInterpBackend::~FIRInterpBackend()
+	{
+		if(this->is) delete this->is;
+	}
+
 	std::string FIRInterpBackend::str()
 	{
 		return "FIR Interpreter";

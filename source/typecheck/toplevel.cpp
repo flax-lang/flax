@@ -88,8 +88,8 @@ namespace sst
 								}
 								else if(auto f = dcast(FunctionDecl, ot))
 								{
-									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](auto p) -> fir::Type* { return p.type; }),
-										util::map(f->params, [](auto p) -> fir::Type* { return p.type; })))
+									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](const auto& p) -> fir::Type* { return p.type; }),
+										util::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
 									{
 										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
 											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)", f, fn))
@@ -379,9 +379,9 @@ namespace sst
 }
 
 
-static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* ns)
+static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* top)
 {
-	for(auto stmt : ns->statements)
+	for(auto stmt : top->statements)
 	{
 		if(auto decl = dcast(ast::Parameterisable, stmt))
 		{

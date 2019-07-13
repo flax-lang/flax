@@ -14,7 +14,7 @@ namespace backend
 	struct FIRInterpBackend : Backend
 	{
 		FIRInterpBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
-		virtual ~FIRInterpBackend() { }
+		virtual ~FIRInterpBackend();
 
 		virtual void performCompilation() override;
 		virtual void optimiseProgram() override;

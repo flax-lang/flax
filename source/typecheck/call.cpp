@@ -22,7 +22,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	{
 		auto ret = util::pool<sst::ExprCall>(this->loc, ty);
 		ret->callee = sst::TypeExpr::make(this->loc, ty);
-		ret->arguments = util::map(_arguments, [](auto e) -> sst::Expr* { return e.value; });
+		ret->arguments = util::map(_arguments, [](const auto& e) -> sst::Expr* { return e.value; });
 
 		return ret;
 	}
@@ -139,7 +139,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	auto ret = util::pool<sst::ExprCall>(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;
-	ret->arguments = util::map(arguments, [](auto e) -> sst::Expr* { return e.value; });
+	ret->arguments = util::map(arguments, [](const auto& e) -> sst::Expr* { return e.value; });
 
 	return ret;
 }
