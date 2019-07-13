@@ -16,7 +16,7 @@ IF /I "%1"=="debugopt" (
 	SET buildDir="build\meson-reldbg"
 )
 
-
+REM del "%buildDir%\flaxc@exe\precompile.pch"
 ninja -C %buildDir% && cls && %buildDir%\flaxc.exe -Ox -sysroot build\sysroot -run build\%2.flx %3 %4 %5 %6 %7 %8 %9
 
 IF /I "%1"=="release" (

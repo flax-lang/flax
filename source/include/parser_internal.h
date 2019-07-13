@@ -258,6 +258,7 @@ namespace parser
 	ast::Expr* parseExpr(State& st);
 	ast::Stmt* parseStmt(State& st, bool allowExprs = true);
 
+
 	ast::DeferredStmt* parseDefer(State& st);
 
 	ast::Stmt* parseVariable(State& st);
@@ -280,6 +281,7 @@ namespace parser
 
 	ast::RunDirective* parseRunDirective(State& st);
 
+	ast::TraitDefn* parseTrait(State& st);
 	ast::EnumDefn* parseEnum(State& st);
 	ast::ClassDefn* parseClass(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);

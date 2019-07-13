@@ -7,12 +7,12 @@ the_compiler = meson.get_compiler('c')
 
 
 if the_compiler.get_id() == 'msvc'
-	add_project_arguments('/utf-8', language: 'cpp')
+	add_project_arguments('/utf-8', language:  ['c', 'cpp'])
 	add_project_arguments('/std:c++17', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
-	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language: 'cpp')
-	add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'cpp')
+	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language:  ['c', 'cpp'])
+	add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language:  ['c', 'cpp'])
 	add_project_arguments('-D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING', language: 'cpp')
 
 	add_project_arguments('/W4', language: ['c', 'cpp'])
@@ -30,16 +30,19 @@ if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/w14265', language: ['c', 'cpp'])    # non-virtual destructor when class has virtual methods
 	add_project_arguments('/w14548', language: ['c', 'cpp'])    # first part of comma-expression has no side-effects
 
+	# until meson fixes the PCH issue on MSVC (https://github.com/mesonbuild/meson/issues/5648)
+	# we must force include precompile.h to get the STL types!
+	add_project_arguments('/FIsource/include/precompile.h', language: 'cpp')
 
 
 	add_project_link_arguments('/ignore:4099', language: ['c', 'cpp'])
-	add_project_link_arguments('/machine:X64', language: 'cpp')
+	add_project_link_arguments('/machine:X64', language:  ['c', 'cpp'])
 
-	add_project_link_arguments('/opt:noref', language: 'cpp')
-	add_project_link_arguments('/incremental', language: 'cpp')
+	add_project_link_arguments('/opt:noref', language:  ['c', 'cpp'])
+	add_project_link_arguments('/incremental', language:  ['c', 'cpp'])
 
-	add_project_link_arguments('/nodefaultlib:libcmt.lib', language: 'cpp')
-	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language: 'cpp')
+	add_project_link_arguments('/nodefaultlib:libcmt.lib', language:  ['c', 'cpp'])
+	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language:  ['c', 'cpp'])
 
 	if get_option('buildtype') == 'debug'
 		libKind = 'Debug'
@@ -150,7 +153,7 @@ if the_compiler.get_id() == 'msvc'
 else
 	add_project_arguments('-std=c11', language: 'c')
 	add_project_arguments('-std=c++17', language: 'cpp')
-	add_project_arguments('-include', 'source/include/precompile.h', language: 'cpp')
+	# add_project_arguments('-include', 'source/include/precompile.h', language: 'cpp')
 
 	add_project_arguments('-Wall', '-Wno-unused-parameter', '-Wno-sign-conversion', '-Wno-padded', '-Wno-conversion',
 		'-Wno-shadow', '-Wno-missing-noreturn', '-Wno-unused-macros', '-Wno-switch-enum', '-Wno-deprecated', '-Wno-format-nonliteral',
@@ -225,6 +228,7 @@ source_files = files([
 	'source/typecheck/ranges.cpp',
 	'source/typecheck/sizeof.cpp',
 	'source/typecheck/unions.cpp',
+	'source/typecheck/traits.cpp',
 	'source/typecheck/special.cpp',
 	'source/typecheck/structs.cpp',
 	'source/typecheck/classes.cpp',
@@ -262,6 +266,7 @@ source_files = files([
 	'source/codegen/sizeof.cpp',
 	'source/codegen/assign.cpp',
 	'source/codegen/unions.cpp',
+	'source/codegen/traits.cpp',
 	'source/codegen/structs.cpp',
 	'source/codegen/classes.cpp',
 	'source/codegen/logical.cpp',
@@ -310,6 +315,7 @@ source_files = files([
 	'source/fir/Types/OpaqueType.cpp',
 	'source/fir/Types/StructType.cpp',
 	'source/fir/Types/ArrayType.cpp',
+	'source/fir/Types/TraitType.cpp',
 	'source/fir/Types/ClassType.cpp',
 	'source/fir/Types/TupleType.cpp',
 	'source/fir/Types/UnionType.cpp',
@@ -344,7 +350,7 @@ tinyproclib_dep = declare_dependency(include_directories: include_directories('e
 executable('flaxc', source_files,
 	include_directories: include_directories([ 'source/include', 'external' ]),
 	dependencies: all_deps + [ tinyproclib_dep, utf8rewind_dep ],
-	cpp_pch: 'source/include/precompile.h'
+	# cpp_pch: 'source/include/precompile.h'
 )
 
 

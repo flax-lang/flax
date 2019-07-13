@@ -52,7 +52,7 @@ namespace lexer
 		Export,
 		Namespace,
 		Override,
-		Protocol,
+		Trait,
 		Virtual,
 		Using,
 		Mutable,

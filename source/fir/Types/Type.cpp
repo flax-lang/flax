@@ -594,6 +594,12 @@ namespace fir
 		return static_cast<OpaqueType*>(this);
 	}
 
+	TraitType* Type::toTraitType()
+	{
+		if(this->kind != TypeKind::Trait) error("not trait type");
+		return static_cast<TraitType*>(this);
+	}
+
 
 
 
@@ -761,6 +767,10 @@ namespace fir
 		return this->kind == TypeKind::Opaque;
 	}
 
+	bool Type::isTraitType()
+	{
+		return this->kind == TypeKind::Trait;
+	}
 
 
 	// static getting functions

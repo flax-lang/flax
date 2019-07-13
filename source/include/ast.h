@@ -498,6 +498,19 @@ namespace ast
 		std::vector<std::pair<Location, pts::Type*>> transparentFields;
 	};
 
+	struct TraitDefn : TypeDefn
+	{
+		TraitDefn(const Location& l) : TypeDefn(l) { this->readableName = "trait definition"; }
+		~TraitDefn() { }
+
+		virtual std::string getKind() override { return "trait"; }
+		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
+
+		std::vector<pts::Type*> bases;
+		std::vector<FuncDefn*> methods;
+	};
+
 	struct TypeExpr : Expr
 	{
 		TypeExpr(const Location& l, pts::Type* t) : Expr(l), type(t) { this->readableName = "<TYPE EXPRESSION>"; }
