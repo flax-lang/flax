@@ -201,7 +201,26 @@ namespace parser
 			defn->generics = parseGenericTypeList(st);
 		}
 
-		// unions don't inherit stuff (for now????) so we don't check for it.
+		st.skipWS();
+		if(st.front() == TT::Colon)
+		{
+			// the inheritance list.
+			st.eat();
+
+			while(true)
+			{
+				defn->bases.push_back(parseType(st));
+				if(st.front() == TT::Comma)
+				{
+					st.pop();
+					continue;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
 
 		st.skipWS();
 		if(st.eat() != TT::LBrace)
@@ -494,6 +513,94 @@ namespace parser
 		return ret;
 	}
 
+
+
+	TraitDefn* parseTrait(State& st)
+	{
+		iceAssert(st.front() == TT::Trait);
+		st.eat();
+
+		if(st.front() != TT::Identifier)
+			expectedAfter(st, "identifier", "'trait'", st.front().str());
+
+		auto idloc = st.loc();
+		TraitDefn* defn = util::pool<TraitDefn>(st.loc());
+		defn->name = st.eat().str();
+
+		st.skipWS();
+		if(st.front() == TT::Colon)
+		{
+			// the inheritance list.
+			st.eat();
+
+			while(true)
+			{
+				defn->bases.push_back(parseType(st));
+				if(st.front() == TT::Comma)
+				{
+					st.pop();
+					continue;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		// ok...
+		st.skipWS();
+		if(st.eat() != TT::LBrace)
+			expectedAfter(st.ploc(), "opening brace", "'trait'", st.front().str());
+
+		st.enterStructBody();
+		st.skipWS();
+
+		size_t index = 0;
+		while(st.front() != TT::RBrace)
+		{
+			st.skipWS();
+
+			if(st.front() == TT::Func)
+			{
+				// ok parse a func as usual
+				auto [ method, isvar, varloc ] = parseFunctionDecl(st);
+				if(isvar)
+					error(varloc, "C-style variadic arguments are not supported on non-foreign functions");
+
+				addSelfToMethod(method, method->isMutating);
+				defn->methods.push_back(method);
+			}
+			else if(st.front() == TT::Var || st.front() == TT::Val)
+			{
+				error(st.loc(), "traits cannot contain fields");
+			}
+			else if(st.front() == TT::Static)
+			{
+				error(st.loc(), "traits cannot contain static declarations");
+			}
+			else if(st.front() == TT::NewLine || st.front() == TT::Semicolon)
+			{
+				st.pop();
+			}
+			else if(st.front() == TT::RBrace)
+			{
+				break;
+			}
+			else
+			{
+				error(st.loc(), "unexpected token '%s' inside trait body", st.front().str());
+			}
+
+			index++;
+		}
+
+		iceAssert(st.front() == TT::RBrace);
+		st.eat();
+
+		st.leaveStructBody();
+		return defn;
+	}
 
 
 

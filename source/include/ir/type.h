@@ -16,17 +16,18 @@ namespace fir
 	struct Type;
 	struct Module;
 	struct AnyType;
+	struct BoolType;
+	struct EnumType;
 	struct NullType;
 	struct VoidType;
-	struct EnumType;
-	struct BoolType;
 	struct ArrayType;
-	struct TupleType;
 	struct ClassType;
 	struct RangeType;
+	struct TraitType;
+	struct TupleType;
 	struct UnionType;
-	struct StructType;
 	struct StringType;
+	struct StructType;
 	struct OpaqueType;
 	struct PointerType;
 	struct FunctionType;
@@ -65,6 +66,7 @@ namespace fir
 		Class,
 		Range,
 		Union,
+		Trait,
 		Struct,
 		String,
 		Opaque,
@@ -122,6 +124,7 @@ namespace fir
 		OpaqueType* toOpaqueType();
 		StructType* toStructType();
 		StringType* toStringType();
+		TraitType* toTraitType();
 		RangeType* toRangeType();
 		ClassType* toClassType();
 		UnionType* toUnionType();
@@ -135,6 +138,7 @@ namespace fir
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
 
+		bool isTraitType();
 		bool isUnionType();
 		bool isTupleType();
 		bool isClassType();
@@ -636,6 +640,38 @@ namespace fir
 	};
 
 
+
+	struct TraitType : Type
+	{
+		friend struct Type;
+
+		// methods
+		Identifier getTypeName();
+		size_t getMethodCount();
+		const std::vector<std::pair<std::string, FunctionType*>>& getMethods();
+		void setMethods(const std::vector<std::pair<std::string, FunctionType*>>& m);
+
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual bool isTypeEqual(Type* other) override;
+		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+
+		// protected constructor
+		virtual ~TraitType() override { }
+		protected:
+		TraitType(const Identifier& name, const std::vector<std::pair<std::string, FunctionType*>>& meths);
+
+		// fields
+		Identifier traitName;
+		std::vector<std::pair<std::string, FunctionType*>> methods;
+
+		// static funcs
+		public:
+		static TraitType* create(const Identifier& name);
+	};
+
+
+
 	struct StructType : Type
 	{
 		friend struct Type;
@@ -783,7 +819,6 @@ namespace fir
 	};
 
 
-
 	struct EnumType : Type
 	{
 		friend struct Type;
@@ -914,23 +949,6 @@ namespace fir
 	};
 
 
-
-	struct ProtocolType : Type
-	{
-		friend struct Type;
-
-		// methods
-
-
-		// protected constructor
-
-
-		// fields
-
-
-		// static funcs
-		public:
-	};
 
 
 	struct FunctionType : Type

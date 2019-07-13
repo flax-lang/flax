@@ -4,102 +4,18 @@
 
 export ultratiny
 import libc as _
-import "tests/scopes.flx"
 
-class Foo
+trait Drop
 {
-	init(x: int)
-	{
-		printf("* create foo %d\n", x)
-		this.rc = alloc mut int
-		*this.rc = 1
-
-		this.v = x
-	}
-
-	copy(from: &self) { this.v = from.v; this.rc = from.rc; *this.rc += 1; printf("* copy foo %d/rc: %d\n", this.v, *this.rc) }
-	move(from: &mut self) { this.v = from.v; this.rc = from.rc; from.rc = null; printf("* move foo %d/rc: %d\n", this.v, *this.rc) }
-
-	deinit { if(this.rc) => *this.rc -= 1; printf("* delete foo %d/rc: %d\n", this.v, *this.rc) }
-
-	var rc: &mut int
-	var v: int
+	fn deinit()
 }
 
-fn bar() -> Foo
+struct Foo : Drop
 {
-	return Foo(x: 7)
-}
 
-fn con(x: Foo)
-{
-	printf("\nconsumed %d, rc: %d\n\n", x.v, *x.rc)
 }
-
 
 @entry fn main()
 {
-	let y = bar()
-	printf("\ny.value = %d, rc: %d\n\n", y.v, *y.rc)
-
-	let x = Foo(x: 13)
-	printf("\nx.value = %d, rc: %d\n\n", x.v, *x.rc)
-
-	con(x)
-
-	// test_scopes::doScopeTest("__llvm_jit__build/test")
+	printf("hola amigo\n")
 }
-
-
-
-/*
-	! let x = alloc int { it = ... } fails!!
-
-	todo to cleanup semantics:
-	1. copy and move constructors must call a base class constructor if there is not default one
-	2. allow omitting the explicit call if the base class has a no-arg constructor (to prevent init() : super() { ... })
-	3. check if constructing stuff in conditionals will wrongly destruct them!
-
-	todo for implementing destructors properly:
-	2. only classes can contain other classes! (ANY notwithstanding)
-	3. similar to how class constructors call the superclass constructors, we need to call base destructors also!
-	4. virtual destructors! need to add it to the vtable!!!!!
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -731,6 +731,17 @@ namespace sst
 		std::vector<FunctionDefn*> methods;
 	};
 
+	struct TraitDefn : TypeDefn
+	{
+		TraitDefn(const Location& l) : TypeDefn(l) { this->readableName = "trait definition"; }
+		~TraitDefn() { }
+
+		virtual std::string getKind() override { return "trait"; }
+		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
+		std::vector<FunctionDecl*> methods;
+	};
+
 
 	struct ClassDefn : StructDefn
 	{

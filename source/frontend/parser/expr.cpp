@@ -141,6 +141,9 @@ namespace parser
 				case TT::Enum:
 					return parseEnum(st);
 
+				case TT::Trait:
+					return parseTrait(st);
+
 				case TT::Static:
 					return parseStaticDecl(st);
 
@@ -155,7 +158,6 @@ namespace parser
 				case TT::Override:
 					return checkMethodModifiers(false, false, false);
 
-				case TT::Protocol:
 				case TT::Extension:
 				case TT::TypeAlias:
 					error(st, "notsup");
@@ -1155,7 +1157,7 @@ namespace parser
 				case TT::Public:
 				case TT::Private:
 				case TT::Operator:
-				case TT::Protocol:
+				case TT::Trait:
 				case TT::Internal:
 				case TT::Override:
 				case TT::Extension:

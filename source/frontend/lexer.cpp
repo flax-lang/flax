@@ -95,6 +95,7 @@ namespace lexer
 		keywordMap["enum"]      = TokenType::Enum;
 		keywordMap["null"]      = TokenType::Null;
 		keywordMap["case"]      = TokenType::Case;
+		keywordMap["trait"]     = TokenType::Trait;
 		keywordMap["defer"]     = TokenType::Defer;
 		keywordMap["alloc"]     = TokenType::Alloc;
 		keywordMap["false"]     = TokenType::False;
@@ -119,7 +120,6 @@ namespace lexer
 		keywordMap["virtual"]   = TokenType::Virtual;
 		keywordMap["internal"]  = TokenType::Internal;
 		keywordMap["override"]  = TokenType::Override;
-		keywordMap["protocol"]  = TokenType::Protocol;
 		keywordMap["operator"]  = TokenType::Operator;
 		keywordMap["continue"]  = TokenType::Continue;
 		keywordMap["typealias"] = TokenType::TypeAlias;
