@@ -43,13 +43,9 @@ if the_compiler.get_id() == 'msvc'
 
 	if get_option('buildtype') == 'debug'
 		libKind = 'Debug'
-		debug_kind = 'fastlink'
 	else
 		libKind = 'Release'
-		debug_kind = 'none'
 	endif
-
-	add_project_link_arguments('/debug:' + debug_kind, language: ['c', 'cpp'])
 
 	# ok, so because meson is dumb, and we want to allow configuring the locations *without* editing this file
 	# eg. in CI environments, we run an external command that's just an echo of the environment variable, and
