@@ -2,6 +2,7 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#pragma once
 #include "backend.h"
 
 namespace fir::interp
@@ -14,7 +15,7 @@ namespace backend
 	struct FIRInterpBackend : Backend
 	{
 		FIRInterpBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
-		virtual ~FIRInterpBackend() { }
+		virtual ~FIRInterpBackend();
 
 		virtual void performCompilation() override;
 		virtual void optimiseProgram() override;

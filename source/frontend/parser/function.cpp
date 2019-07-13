@@ -187,7 +187,7 @@ namespace parser
 		ffn->returnType = defn->returnType;
 
 		// make sure we don't have optional arguments here
-		util::foreach(ffn->params, [](auto a) {
+		util::foreach(ffn->params, [](const auto& a) {
 			if(a.defaultValue)
 				error(a.loc, "foreign functions cannot have optional arguments");
 		});

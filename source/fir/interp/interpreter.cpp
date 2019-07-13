@@ -552,10 +552,7 @@ namespace interp
 			if(ty == Type::getFloat32())    return &ffi_type_float;
 			if(ty == Type::getFloat64())    return &ffi_type_double;
 		}
-		else
-		{
 
-		}
 
 		error("interp: unsupported type '%s' in libffi-translation", ty);
 	}

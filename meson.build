@@ -50,7 +50,6 @@ if the_compiler.get_id() == 'msvc'
 		libKind = 'Release'
 	endif
 
-
 	# ok, so because meson is dumb, and we want to allow configuring the locations *without* editing this file
 	# eg. in CI environments, we run an external command that's just an echo of the environment variable, and
 	# capture the output to use. all because it's apparently "a bad idea" to allow people to read env vars...

@@ -18,6 +18,7 @@ namespace fir
 
 	Argument::~Argument()
 	{
+		delete this->realValue;
 	}
 
 	Value* Argument::getActualValue()

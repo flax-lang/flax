@@ -375,44 +375,44 @@ namespace backend
 		return func;
 	}
 
-	static llvm::Constant* constToLlvm(fir::ConstantValue* c, util::hash_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
+	static llvm::Constant* constToLlvm(fir::ConstantValue* fc, util::hash_map<size_t, llvm::Value*>& valueMap, llvm::Module* mod)
 	{
-		iceAssert(c);
-		auto ret = cachedConstants[c];
+		iceAssert(fc);
+		auto ret = cachedConstants[fc];
 		if(ret) return ret;
 
-		if(auto ci = dcast(fir::ConstantInt, c))
+		if(auto ci = dcast(fir::ConstantInt, fc))
 		{
-			llvm::Type* it = typeToLlvm(c->getType(), mod);
+			llvm::Type* it = typeToLlvm(fc->getType(), mod);
 			if(ci->getType()->toPrimitiveType()->isSigned())
 			{
-				return cachedConstants[c] = llvm::ConstantInt::getSigned(it, ci->getSignedValue());
+				return cachedConstants[fc] = llvm::ConstantInt::getSigned(it, ci->getSignedValue());
 			}
 			else
 			{
-				return cachedConstants[c] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
+				return cachedConstants[fc] = llvm::ConstantInt::get(it, ci->getUnsignedValue());
 			}
 		}
-		else if(auto cf = dcast(fir::ConstantFP, c))
+		else if(auto cf = dcast(fir::ConstantFP, fc))
 		{
-			llvm::Type* it = typeToLlvm(c->getType(), mod);
-			return cachedConstants[c] = llvm::ConstantFP::get(it, cf->getValue());
+			llvm::Type* it = typeToLlvm(fc->getType(), mod);
+			return cachedConstants[fc] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(dcast(fir::ConstantNumber, c))
+		else if(dcast(fir::ConstantNumber, fc))
 		{
 			error("cannot");
 		}
-		else if(auto cc = dcast(fir::ConstantBool, c))
+		else if(auto cc = dcast(fir::ConstantBool, fc))
 		{
-			llvm::Type* ct = typeToLlvm(c->getType(), mod);
-			return cachedConstants[c] = llvm::ConstantInt::get(ct, cc->getValue());
+			llvm::Type* ct = typeToLlvm(fc->getType(), mod);
+			return cachedConstants[fc] = llvm::ConstantInt::get(ct, cc->getValue());
 		}
-		else if(auto cbc = dcast(fir::ConstantBitcast, c))
+		else if(auto cbc = dcast(fir::ConstantBitcast, fc))
 		{
 			llvm::Type* t = typeToLlvm(cbc->getType(), mod);
-			return cachedConstants[c] = llvm::ConstantExpr::getBitCast(constToLlvm(cbc->getValue(), valueMap, mod), t);
+			return cachedConstants[fc] = llvm::ConstantExpr::getBitCast(constToLlvm(cbc->getValue(), valueMap, mod), t);
 		}
-		else if(auto ca = dcast(fir::ConstantArray, c))
+		else if(auto ca = dcast(fir::ConstantArray, fc))
 		{
 			auto arrt = llvm::cast<llvm::ArrayType>(typeToLlvm(ca->getType(), mod));
 
@@ -432,9 +432,9 @@ namespace backend
 				vals.push_back(c);
 			}
 
-			return cachedConstants[c] = llvm::ConstantArray::get(arrt, vals);
+			return cachedConstants[fc] = llvm::ConstantArray::get(arrt, vals);
 		}
-		else if(auto ct = dcast(fir::ConstantTuple, c))
+		else if(auto ct = dcast(fir::ConstantTuple, fc))
 		{
 			std::vector<llvm::Constant*> vals;
 			vals.reserve(ct->getValues().size());
@@ -442,17 +442,17 @@ namespace backend
 			for(auto v : ct->getValues())
 				vals.push_back(constToLlvm(v, valueMap, mod));
 
-			return cachedConstants[c] = llvm::ConstantStruct::getAnon(LLVMBackend::getLLVMContext(), vals);
+			return cachedConstants[fc] = llvm::ConstantStruct::getAnon(LLVMBackend::getLLVMContext(), vals);
 		}
-		else if(auto cec = dcast(fir::ConstantEnumCase, c))
+		else if(auto cec = dcast(fir::ConstantEnumCase, fc))
 		{
 			auto ty = typeToLlvm(cec->getType(), mod);
 			iceAssert(ty->isStructTy());
 
-			return cachedConstants[c] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
+			return cachedConstants[fc] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(auto cs = dcast(fir::ConstantString, c))
+		else if(auto cs = dcast(fir::ConstantString, fc))
 		{
 			size_t origLen = cs->getValue().length();
 			std::string str = cs->getValue();
@@ -473,17 +473,17 @@ namespace backend
 			std::vector<llvm::Constant*> mems = { gepd, len };
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(fir::Type::getCharSlice(false), mod)), mems);
 
-			cachedConstants[c] = ret;
+			cachedConstants[fc] = ret;
 			return ret;
 		}
-		else if(auto cas = dcast(fir::ConstantArraySlice, c))
+		else if(auto cas = dcast(fir::ConstantArraySlice, fc))
 		{
 			std::vector<llvm::Constant*> mems = { constToLlvm(cas->getData(), valueMap, mod), constToLlvm(cas->getLength(), valueMap, mod) };
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
-			return cachedConstants[c] = ret;
+			return cachedConstants[fc] = ret;
 		}
-		else if(auto cda = dcast(fir::ConstantDynamicArray, c))
+		else if(auto cda = dcast(fir::ConstantDynamicArray, fc))
 		{
 			if(cda->getArray())
 			{
@@ -512,7 +512,7 @@ namespace backend
 				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod), zconst };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
-				return cachedConstants[c] = ret;
+				return cachedConstants[fc] = ret;
 			}
 			else
 			{
@@ -520,24 +520,24 @@ namespace backend
 					constToLlvm(cda->getCapacity(), valueMap, mod), llvm::ConstantInt::get(getNativeWordTy(), 0) };
 
 				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
-				return cachedConstants[c] = ret;
+				return cachedConstants[fc] = ret;
 			}
 		}
-		else if(auto fn = dcast(fir::Function, c))
+		else if(auto fn = dcast(fir::Function, fc))
 		{
 			return translateFunctionDecl(fn, valueMap, mod);
 		}
-		else if(dcast(fir::ConstantStruct, c))
+		else if(dcast(fir::ConstantStruct, fc))
 		{
 			_error_and_exit("notsup const struct\n");
 		}
-		else if(auto it = valueMap.find(c->id); it != valueMap.end() && llvm::isa<llvm::Constant>(it->second))
+		else if(auto it = valueMap.find(fc->id); it != valueMap.end() && llvm::isa<llvm::Constant>(it->second))
 		{
 			return llvm::cast<llvm::Constant>(it->second);
 		}
 		else
 		{
-			return cachedConstants[c] = llvm::Constant::getNullValue(typeToLlvm(c->getType(), mod));
+			return cachedConstants[fc] = llvm::Constant::getNullValue(typeToLlvm(fc->getType(), mod));
 		}
 	}
 
