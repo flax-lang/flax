@@ -46,13 +46,6 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 	// ok, we should be fine...?
 }
 
-// used in typecheck/unions.cpp and typecheck/classes.cpp
-void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
-{
-	std::set<fir::Type*> seeing;
-	_checkFieldRecursion(fs, strty, field, floc, seeing);
-}
-
 static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
 	util::hash_map<std::string, Location>& seen)
 {
@@ -98,6 +91,15 @@ static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::Typ
 	}
 }
 
+
+
+// used in typecheck/unions.cpp and typecheck/classes.cpp
+void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
+{
+	std::set<fir::Type*> seeing;
+	_checkFieldRecursion(fs, strty, field, floc, seeing);
+}
+
 void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields)
 {
 	util::hash_map<std::string, Location> seen;
@@ -106,8 +108,8 @@ void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* d
 
 
 
-
-
+// defined in typecheck/traits.cpp
+void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn);
 
 
 
@@ -178,6 +180,18 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 	auto str = defn->type->toStructType();
 	iceAssert(str);
 
+	for(auto t : this->bases)
+	{
+		auto base = fs->convertParserTypeToFIR(t);
+		if(!base->isTraitType())
+			error(this, "struct '%s' can only implement traits, which '%s' is not", this->name, base);
+
+		auto tdef = dcast(sst::TraitDefn, fs->typeDefnMap[base]);
+		iceAssert(tdef);
+
+		defn->traits.push_back(tdef);
+	}
+
 
 	auto oldscope = fs->getCurrentScope();
 	fs->teleportToScope(defn->id.scope);
@@ -228,15 +242,15 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 	checkTransparentFieldRedefinition(fs, defn, defn->fields);
 
-
 	fs->popSelfContext();
-
-
 
 	str->setBody(tys);
 
 	fs->popTree();
 	fs->teleportToScope(oldscope);
+
+
+	checkTraitConformity(fs, defn);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
