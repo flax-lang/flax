@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "errors.h"
 #include "typecheck.h"
+#include "polymorph.h"
 
 #include "mpool.h"
 #include "ir/type.h"
@@ -110,27 +111,35 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 // used by typecheck/structs.cpp and typecheck/classes.cpp
-static bool _checkFunctionTypesMatch(fir::FunctionType* a, fir::FunctionType* b)
+static bool _checkFunctionTypesMatch(fir::Type* trait, fir::Type* type, fir::FunctionType* required, fir::FunctionType* candidate)
 {
-	auto as = a->getArgumentTypes();
-	auto bs = b->getArgumentTypes();
+	auto as = required->getArgumentTypes() + required->getReturnType();
+	auto bs = candidate->getArgumentTypes() + candidate->getReturnType();
 
 	// all candidates must have a self!!
 	iceAssert(as.size() > 0 && bs.size() > 0);
 	if(as.size() != bs.size())
 		return false;
 
-	// skip the first argument, since the self types will be different!
-	for(size_t i = 1; i < as.size(); i++)
+	for(size_t i = 0; i < as.size(); i++)
 	{
 		auto ax = as[i];
 		auto bx = bs[i];
 
 		if(ax != bx)
-			return false;
+		{
+			auto [ abase, atrfs ] = sst::poly::internal::decomposeIntoTransforms(ax, SIZE_MAX);
+			auto [ bbase, btrfs ] = sst::poly::internal::decomposeIntoTransforms(bx, SIZE_MAX);
+
+			if(atrfs != btrfs)
+				return false;
+
+			if(abase != trait || bbase != type)
+				return false;
+		}
 	}
 
-	return a->getReturnType() == b->getReturnType();
+	return true;
 }
 
 // TODO: needs to handle extensions!!!
@@ -170,7 +179,11 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
 
 			for(auto cand : cands)
 			{
-				if(_checkFunctionTypesMatch(cand->type->toFunctionType(), meth->type->toFunctionType()))
+				// c++ really fucking needs named arguments!!
+				if(_checkFunctionTypesMatch(trait->type, defn->type,
+					/* required: */ meth->type->toFunctionType(),
+					/* candidate: */ cand->type->toFunctionType()
+				))
 				{
 					found = true;
 					break;
@@ -183,11 +196,14 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
 
 		if(missings.size() > 0)
 		{
-			auto err = SimpleError::make(defn->loc, "type '%s' does not conform to trait '%s': missing implementations for the following methods:",
+			auto err = SimpleError::make(defn->loc, "type '%s' does not conform to trait '%s'",
 				defn->id.name, trait->id.name);
 
 			for(const auto& m : missings)
-				err->append(SimpleError::make(MsgType::Note, std::get<0>(m), "%s: %s, defined here:", std::get<1>(m), (fir::Type*) std::get<2>(m)));
+			{
+				err->append(SimpleError::make(MsgType::Note, std::get<0>(m), "missing implementation for method '%s': %s:",
+					std::get<1>(m), (fir::Type*) std::get<2>(m)));
+			}
 
 			err->append(
 				SimpleError::make(MsgType::Note, trait->loc, "trait '%s' was defined here:", trait->id.name)

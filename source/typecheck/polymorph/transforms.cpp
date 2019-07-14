@@ -98,7 +98,7 @@ namespace poly
 				}
 				else if(t->isPointerType())
 				{
-					ret.push_back(Trf(TrfType::Pointer));
+					ret.push_back(Trf(TrfType::Pointer, t->isMutablePointer()));
 					t = t->getPointerElementType();
 				}
 				else
