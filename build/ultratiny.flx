@@ -13,7 +13,10 @@ trait Drop
 
 struct Foo : Drop
 {
-
+	fn deinit()
+	{
+		printf("lmao\n")
+	}
 }
 
 @entry fn main()

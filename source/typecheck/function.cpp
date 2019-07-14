@@ -24,16 +24,6 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	std::vector<FnParam> ps;
 	std::vector<fir::Type*> ptys;
 
-	// if(infer)
-	// {
-	// 	//! SELF HANDLING (INSERTION) (METHOD DECL)
-	// 	iceAssert((infer->isStructType() || infer->isClassType()) && "expected struct type for method");
-	// 	auto p = FnParam(this->loc, "this", (this->isMutating ? infer->getMutablePointerTo() : infer->getPointerTo()));
-
-	// 	ps.push_back(p);
-	// 	ptys.push_back(p.type);
-	// }
-
 	int polyses = sst::poly::internal::getNextSessionId();
 	for(auto t : this->params)
 	{

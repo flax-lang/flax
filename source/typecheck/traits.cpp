@@ -71,6 +71,8 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	fs->teleportToScope(defn->id.scope);
 	fs->pushTree(defn->id.name);
 
+	fs->pushSelfContext(trt);
+
 	std::vector<std::pair<std::string, fir::FunctionType*>> meths;
 
 	for(auto m : this->methods)
@@ -78,10 +80,7 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		// make sure we don't have bodies -- for now!
 		iceAssert(m->body == 0);
 
-		// this is a problem LOL, because we are not (strictly) in a struct body, 'self' will not be available,
-		// so this thing will die. also we need to figure out how to get the function type, and how to do the matching...
-
-		auto res = m->generateDeclaration(fs, trt, { });
+		auto res = m->generateDeclaration(fs, 0, { });
 		if(res.isParametric())
 			continue;
 
@@ -89,11 +88,12 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		iceAssert(decl);
 
 		defn->methods.push_back(decl);
-
-		// meths.push_back({ m->name, decl->type->toFunctionType() });
+		meths.push_back({ m->name, decl->type->toFunctionType() });
 	}
 
 	trt->setMethods(meths);
+
+	fs->popSelfContext();
 
 	fs->popTree();
 	fs->teleportToScope(oldscope);
@@ -109,6 +109,92 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 
+// used by typecheck/structs.cpp and typecheck/classes.cpp
+static bool _checkFunctionTypesMatch(fir::FunctionType* a, fir::FunctionType* b)
+{
+	auto as = a->getArgumentTypes();
+	auto bs = b->getArgumentTypes();
+
+	// all candidates must have a self!!
+	iceAssert(as.size() > 0 && bs.size() > 0);
+	if(as.size() != bs.size())
+		return false;
+
+	// skip the first argument, since the self types will be different!
+	for(size_t i = 1; i < as.size(); i++)
+	{
+		auto ax = as[i];
+		auto bx = bs[i];
+
+		if(ax != bx)
+			return false;
+	}
+
+	return a->getReturnType() == b->getReturnType();
+}
+
+// TODO: needs to handle extensions!!!
+void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
+{
+	std::vector<sst::TraitDefn*> traits;
+	util::hash_map<std::string, std::vector<sst::FunctionDecl*>> methods;
+
+	if(auto cls = dcast(sst::ClassDefn, defn))
+	{
+		for(auto m : cls->methods)
+			methods[m->id.name].push_back(m);
+
+		error("wait a bit");
+	}
+	else if(auto str = dcast(sst::StructDefn, defn))
+	{
+		for(auto m : str->methods)
+			methods[m->id.name].push_back(m);
+
+		traits = str->traits;
+	}
+	else
+	{
+		return;
+	}
+
+
+	// make this a little less annoying: report errors by trait, so all the missing methods for a trait are given at once
+	for(auto trait : traits)
+	{
+		std::vector<std::tuple<Location, std::string, fir::FunctionType*>> missings;
+		for(auto meth : trait->methods)
+		{
+			auto cands = methods[meth->id.name];
+			bool found = false;
+
+			for(auto cand : cands)
+			{
+				if(_checkFunctionTypesMatch(cand->type->toFunctionType(), meth->type->toFunctionType()))
+				{
+					found = true;
+					break;
+				}
+			}
+
+			if(!found)
+				missings.push_back({ meth->loc, meth->id.name, meth->type->toFunctionType() });
+		}
+
+		if(missings.size() > 0)
+		{
+			auto err = SimpleError::make(defn->loc, "type '%s' does not conform to trait '%s': missing implementations for the following methods:",
+				defn->id.name, trait->id.name);
+
+			for(const auto& m : missings)
+				err->append(SimpleError::make(MsgType::Note, std::get<0>(m), "%s: %s, defined here:", std::get<1>(m), (fir::Type*) std::get<2>(m)));
+
+			err->append(
+				SimpleError::make(MsgType::Note, trait->loc, "trait '%s' was defined here:", trait->id.name)
+			)->postAndQuit();
+		}
+	}
+}
 
 
 
