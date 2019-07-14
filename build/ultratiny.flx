@@ -11,11 +11,20 @@ trait Drop
 	fn deinit()
 }
 
-struct Foo : Drop
+trait Copy
+{
+	fn copy(other: &self)
+}
+
+struct Foo : Drop, Copy
 {
 	fn deinit()
 	{
 		printf("lmao\n")
+	}
+
+	fn copy(other: &Foo)
+	{
 	}
 }
 
