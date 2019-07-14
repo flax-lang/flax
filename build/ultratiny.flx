@@ -4,6 +4,7 @@
 
 export ultratiny
 import libc as _
+import std::math
 
 trait Drop
 {

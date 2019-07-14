@@ -519,16 +519,13 @@ namespace lexer
 
 		// note some special-casing is needed to differentiate between unary +/- and binary +/-
 		// cases where we want binary:
-		// ...) + 3
-		// ...] + 3
-		// ident + 3
-		// number + 3
-		// string + 3
+		// ...) + 3   |   ...] + 3   |   ident + 3   |   number + 3   |   string + 3
 		// so in every other case we want unary +/-.
-		// note: this dumb '<=255' thing is because windows likes to assert useless things.
-		else if((!stream.empty() && ((stream[0] >= 1 && (int) stream[0] <= 255 && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
+		// note: a sane implementation would just return false if isdigit() was passed something weird, like a negative number
+		// (because we tried to dissect a UTF-8 codepoint). so we just check if it's ascii first, which would solve the issue.
+		else if((!stream.empty() && (isascii(stream[0]) && isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
 			/* handle cases like '+ 3' or '- 14' (ie. space between sign and number) */
-			&& ((isdigit(stream[0]) ? true : false) || (stream.size() > 1 && isdigit(stream[1]))))
+			&& ((isascii(stream[0]) && isdigit(stream[0]) ? true : false) || (stream.size() > 1 && isascii(stream[1]) && isdigit(stream[1]))))
 		{
 			// copy it.
 			auto tmp = stream;

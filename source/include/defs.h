@@ -58,7 +58,7 @@ namespace tinyformat
 [[noreturn]] void doTheExit(bool trace = true);
 
 template <typename... Ts>
-[[noreturn]] inline void _error_and_exit(const char* s, Ts... ts)
+[[noreturn]] inline void _error_and_exit(const char* s, Ts&&... ts)
 {
 	tinyformat::format(std::cerr, s, ts...);
 	doTheExit();
@@ -67,7 +67,7 @@ template <typename... Ts>
 
 
 template <typename... Ts>
-std::string strprintf(const char* fmt, Ts... ts)
+std::string strprintf(const char* fmt, Ts&&... ts)
 {
 	return tinyformat::format(fmt, ts...);
 }
@@ -167,7 +167,7 @@ enum class IdKind
 #define COLOUR_WHITE_BOLD		"\033[1m\033[37m"	// Bold White
 #define COLOUR_GREY_BOLD		"\033[30;1m"		// Bold Grey
 
-template <typename... Ts> std::string strbold(const char* fmt, Ts... ts)
+template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 {
 	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + std::string(COLOUR_RESET);
 }
@@ -325,10 +325,10 @@ struct ErrorMsg
 struct BareError : ErrorMsg
 {
 	template <typename... Ts>
-	static BareError* make(const char* fmt, Ts... ts) { return util::make_BareError(strprintf(fmt, ts...)); }
+	static BareError* make(const char* fmt, Ts&&... ts) { return util::make_BareError(strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	static BareError* make(MsgType t, const char* fmt, Ts... ts) { return util::make_BareError(strprintf(fmt, ts...), t); }
+	static BareError* make(MsgType t, const char* fmt, Ts&&... ts) { return util::make_BareError(strprintf(fmt, ts...), t); }
 
 	virtual void post() override;
 	virtual BareError* append(ErrorMsg* e) override { this->subs.push_back(e); return this; }
@@ -347,10 +347,10 @@ struct BareError : ErrorMsg
 struct SimpleError : ErrorMsg
 {
 	template <typename... Ts>
-	static SimpleError* make(const Location& l, const char* fmt, Ts... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...)); }
+	static SimpleError* make(const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
+	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
 
 
 

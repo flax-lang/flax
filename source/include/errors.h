@@ -9,14 +9,14 @@
 #include "precompile.h"
 
 template <typename... Ts>
-inline void debuglog(const char* s, Ts... ts)
+inline void debuglog(const char* s, Ts&&... ts)
 {
 	auto out = tinyformat::format(s, ts...);
 	fprintf(stderr, "%s", out.c_str());
 }
 
 template <typename... Ts>
-inline void debuglogln(const char* s, Ts... ts)
+inline void debuglogln(const char* s, Ts&&... ts)
 {
 	auto out = tinyformat::format(s, ts...);
 	fprintf(stderr, "%s\n", out.c_str());
@@ -89,20 +89,20 @@ namespace frontend
 std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context);
 
 template <typename... Ts>
-std::string __error_gen(const Location& loc, const char* msg, const char* type, bool, Ts... ts)
+std::string __error_gen(const Location& loc, const char* msg, const char* type, bool, Ts&&... ts)
 {
 	return __error_gen_internal(loc, tinyformat::format(msg, ts...), type, true);
 }
 
 
 #define ERROR_FUNCTION(name, type, attr, doexit)                                                                        \
-template <typename... Ts> [[attr]] void name (const char* fmt, Ts... ts)                                                \
+template <typename... Ts> [[attr]] void name (const char* fmt, Ts&&... ts)                                              \
 { fputs(__error_gen(Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }              \
 																														\
-template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts... ts)                                  \
+template <typename... Ts> [[attr]] void name (Locatable* e, const char* fmt, Ts&&... ts)                                \
 { fputs(__error_gen(e ? e->loc : Location(), fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); } \
 																														\
-template <typename... Ts> [[attr]] void name (const Location& loc, const char* fmt, Ts... ts)                           \
+template <typename... Ts> [[attr]] void name (const Location& loc, const char* fmt, Ts&&... ts)                         \
 { fputs(__error_gen(loc, fmt, type, doexit, ts...).c_str(), stderr); if(doexit) doTheExit(false); }
 
 
