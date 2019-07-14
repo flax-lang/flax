@@ -6,24 +6,22 @@ export ultratiny
 import libc as _
 import std::math
 
-trait Drop
-{
-	fn deinit()
-}
+trait Drop { fn deinit() }
+trait Copy { fn copy(other: &self) }
+trait Move { fn move(other: &self) }
 
-trait Copy
-{
-	fn copy(other: &self)
-}
-
-struct Foo : Drop, Copy
+struct Foo : Drop, Copy, Move
 {
 	fn deinit()
 	{
 		printf("lmao\n")
 	}
 
-	fn copy(other: &Foo)
+	fn copy(other: &self)
+	{
+	}
+
+	fn move(other: &mut self)
 	{
 	}
 }
