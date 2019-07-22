@@ -133,7 +133,7 @@ Since nobody in their right mind is *actually* using this, please pass `-sysroot
 
 Since version 0.41.2, executables can be generated on all 3 of our supported platforms! For Linux and macOS, all that is required is a working C compiler in the `$PATH`; we call `cc` to link object files.
 
-For Windows, even if you are not building the compiler from source (eg. you are using a released binary), Visual Studio 2017 or newer must still be installed, with the "Desktop development with C++", "MSVC v142 (or whatever)", and "Windows 10 SDK" components. However, we currently find the toolchain through established means, so that `link.exe` does not have to be in the `%PATH%`, ie. you do not have to call `vcvarsall.bat` before running the compiler.
+For Windows, even if you are not building the compiler from source (eg. you are using a released binary), Visual Studio 2017 or newer must still be installed, with the "Desktop development with C++", "MSVC v142 (or whatever)", and "Windows 10 SDK" components. However, we currently find the toolchain through [established means](https://gist.github.com/machinamentum/a2b587a68a49094257da0c39a6c4405f), so that `link.exe` does not have to be in the `%PATH%`, ie. you do not have to call `vcvarsall.bat` before running the compiler.
 
 -----------------------------------------------
 
