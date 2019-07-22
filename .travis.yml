@@ -30,7 +30,7 @@ addons:
 script:
     - |
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        if [ ! -d "llvm@7" ]; then
+        if [ ! -d "llvm@7/7.1.0/bin" ]; then
           curl 'https://homebrew.bintray.com/bottles/llvm@7-7.1.0.high_sierra.bottle.tar.gz' -L -o llvm-7.1.0.tar.gz;
           tar -xf llvm-7.1.0.tar.gz;
         fi;
