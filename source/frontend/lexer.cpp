@@ -523,7 +523,7 @@ namespace lexer
 		// so in every other case we want unary +/-.
 		// note: a sane implementation would just return false if isdigit() was passed something weird, like a negative number
 		// (because we tried to dissect a UTF-8 codepoint). so we just check if it's ascii first, which would solve the issue.
-		else if((!stream.empty() && (isascii(stream[0]) && isdigit(stream[0]) || shouldConsiderUnaryLiteral(stream, pos)))
+		else if((!stream.empty() && ((isascii(stream[0]) && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
 			/* handle cases like '+ 3' or '- 14' (ie. space between sign and number) */
 			&& ((isascii(stream[0]) && isdigit(stream[0]) ? true : false) || (stream.size() > 1 && isascii(stream[1]) && isdigit(stream[1]))))
 		{

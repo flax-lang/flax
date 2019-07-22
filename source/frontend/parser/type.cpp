@@ -523,7 +523,6 @@ namespace parser
 		if(st.front() != TT::Identifier)
 			expectedAfter(st, "identifier", "'trait'", st.front().str());
 
-		auto idloc = st.loc();
 		TraitDefn* defn = util::pool<TraitDefn>(st.loc());
 		defn->name = st.eat().str();
 
