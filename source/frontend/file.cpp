@@ -25,7 +25,6 @@ namespace frontend
 		std::vector<size_t> importIndices;
 
 		bool didLex = false;
-		bool isLexing = false;
 	};
 
 	static util::hash_map<std::string, FileInnards> fileList;
@@ -35,7 +34,7 @@ namespace frontend
 		// break early if we can
 		{
 			auto it = fileList.find(fullPath);
-			if(it != fileList.end() && it->second.didLex)
+			if(it != fileList.end())
 				return it->second;
 		}
 
@@ -89,21 +88,13 @@ namespace frontend
 			}
 		}
 
-
 		Location pos;
 		FileInnards& innards = fileList[fullPath];
-		if(innards.isLexing)
-		{
-			warn("attempting to lex file while file is already being lexed, stop it");
-			return innards;
-		}
-
 		{
 			pos.fileID = getFileIDFromFilename(fullPath);
 
 			innards.fileContents = std::move(fileContents);
 			innards.lines = std::move(rawlines);
-			innards.isLexing = true;
 		}
 
 		lexer::TokenList& ts = innards.tokens;
@@ -133,7 +124,6 @@ namespace frontend
 		}
 
 		innards.didLex = true;
-		innards.isLexing = false;
 		return innards;
 	}
 

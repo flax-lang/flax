@@ -110,14 +110,14 @@ namespace sst
 
 	struct TypecheckState
 	{
-		TypecheckState(StateTree* st) : dtree(new DefinitionTree(st)), stree(dtree->base) { }
+		TypecheckState(StateTree* st) : dtree(new DefinitionTree(st)), stree(dtree->base), typeDefnMap(dtree->typeDefnMap) { }
 
 		std::string moduleName;
 
 		DefinitionTree* dtree = 0;
 		StateTree* stree = 0;
 
-		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
+		util::hash_map<fir::Type*, TypeDefn*>& typeDefnMap;
 
 		std::vector<Location> locationStack;
 
@@ -207,7 +207,7 @@ namespace sst
 	};
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
-		const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports, bool addPreludeDefinitions);
+		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions);
 
 
 	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);

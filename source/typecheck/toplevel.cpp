@@ -296,8 +296,8 @@ namespace sst
 
 
 	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file, const std::vector<std::pair<frontend::ImportThing, StateTree*>>& imports,
-		bool addPreludeDefinitions)
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file,
+		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
 	{
 		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
 		tree->treeDefn = util::pool<TreeDefn>(Location());
@@ -357,10 +357,11 @@ namespace sst
 
 			iceAssert(insertPoint);
 
-			_addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import, /* commonParent: */ nullptr, ithing.pubImport,
+			_addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import->base, /* commonParent: */ nullptr, ithing.pubImport,
 				/* ignoreVis: */ false, file.name);
 
 			fs->dtree->thingsImported.insert(ithing.name);
+			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
 		}
 
 		if(addPreludeDefinitions)
@@ -372,8 +373,6 @@ namespace sst
 		tns->name = file.moduleName;
 
 		fs->dtree->topLevel = tns;
-
-		fs->dtree->typeDefnMap = fs->typeDefnMap;
 		return fs->dtree;
 	}
 }

@@ -462,6 +462,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	// ok.
 	auto defn = fs->typeDefnMap[type];
+	iceAssert(defn);
 
 	if(auto str = dcast(sst::StructDefn, defn))
 	{

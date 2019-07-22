@@ -93,13 +93,13 @@ namespace frontend
 			// note that we're guaranteed (because that's the whole point)
 			// that any module we encounter here will have had all of its dependencies checked already
 
-			std::vector<std::pair<ImportThing, sst::StateTree*>> imports;
+			std::vector<std::pair<ImportThing, sst::DefinitionTree*>> imports;
 			for(auto d : state->graph->getDependenciesOf(file))
 			{
 				auto imported = d->to;
 
-				auto stree = state->dtrees[imported->name]->base;
-				iceAssert(stree);
+				auto dtree = state->dtrees[imported->name];
+				iceAssert(dtree);
 
 				ImportThing ithing { imported->name, d->ithing.importAs, d->ithing.pubImport, d->ithing.loc };
 				if(auto it = std::find_if(imports.begin(), imports.end(), [&ithing](const auto& x) -> bool { return x.first.name == ithing.name; });
@@ -110,7 +110,7 @@ namespace frontend
 						->postAndQuit();
 				}
 
-				imports.push_back({ ithing, stree });
+				imports.push_back({ ithing, dtree });
 			}
 
 			// i guess we always add prelude definitions?
