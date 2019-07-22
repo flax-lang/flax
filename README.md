@@ -33,7 +33,7 @@ I'm no famous artist but this is my magnum opus, so it'll not be abandoned anyti
 
 - No header files.
 - Minimal runtime
-- Minimal stupidty
+- Minimal stupidity
 - Clean, expressive syntax
 
 
@@ -107,21 +107,21 @@ do {
 - The `makefile` is the preferred way to build on UNIX systems.
 - LLVM needs to be installed. On macOS, `brew install llvm@7` should work, and you might need to do some PPA fiddling for Debian-based distros.
 - A C++17-compatible compiler should be used.
-- Find the `flaxc` executable in `build/sysroot/usr/local/bin`
-- Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`
+- Find the `flaxc` executable in `build/sysroot/usr/local/bin`.
+- Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`.
 
 
 #### Windows
 
 - Install [meson](https://mesonbuild.com/).
 - Run `env MPIR_ROOT_DIR=... LLVM_ROOT_DIR=... meson meson-build-dir` to set the locations for the dependencies (see `meson.build` for the names, there are 4) and configure the build.
-- Optionally, pass `--buildtype=release` to build a release-mode compiler (highly recommended)
+- Optionally, pass `--buildtype=release` to build a release-mode compiler (highly recommended).
 - Run `ninja -C meson-build-dir`.
 - `flaxc.exe` will be found in the build directory.
 
 ##### Libraries
 - Download the [prebuilt binaries](https://github.com/flax-lang/flax/releases/tag/win-build-deps) for the 4 dependencies, and place them somewhere.
-- Note: the folder structure of the libraries should be `(llvm|mpir|mpfr|libffi)/(Release|Debug)/(include|lib)/...`
+- Note: the folder structure of the libraries should be `(llvm|mpir|mpfr|libffi)/(Release|Debug)/(include|lib)/...`.
 
 
 -----------------------------------------------
