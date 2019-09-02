@@ -29,6 +29,8 @@ A low level, general-purpose language with high level syntax and expressibility.
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development.
 I'm no famous artist but this is my magnum opus, so it'll not be abandoned anytime soon.
 
+Development is currently on hiatus. Work will resume NET 2019-12-09.
+
 ### Language Goals
 
 - No header files.
