@@ -2,31 +2,101 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-export ultratiny
+// export ultratiny
+// import libc as _
+// import std::math
+
+// trait Drop { fn deinit() }
+// trait Copy { fn copy(other: &self) }
+// trait Move { fn move(other: &self) }
+
+// struct Foo : Drop, Copy, Move
+// {
+// 	fn deinit()
+// 	{
+// 		printf("lmao\n")
+// 	}
+
+// 	fn copy(other: &self)
+// 	{
+// 	}
+
+// 	fn move(other: &mut self)
+// 	{
+// 	}
+// }
+
+// @entry fn main()
+// {
+// 	printf("hola amigo\n")
+// }
+
+
+import std::io
 import libc as _
-import std::math
 
-trait Drop { fn deinit() }
-trait Copy { fn copy(other: &self) }
-trait Move { fn move(other: &self) }
-
-struct Foo : Drop, Copy, Move
+class X
 {
-	fn deinit()
+	init(c: int)
 	{
-		printf("lmao\n")
+		this.data = c
 	}
 
-	fn copy(other: &self)
-	{
-	}
+	var data: int
+}
 
-	fn move(other: &mut self)
+class Y: X
+{
+	init(c: int) : super(c: 30) { }
+}
+
+class Z: Y
+{
+	init(c: int) : super(c: 30) { }
+}
+
+
+class A
+{
+	init() { }
+	virtual fn foo(a: Y) -> Y
 	{
+		return Y(c: 471)
 	}
 }
+
+class B : A
+{
+	init() : super() { }
+
+	override fn foo(a: Y) -> Y
+	{
+		return Y(c: 748)
+	}
+}
+
+
+
+// issue #1: co/contra-variance of return and parameter types for virtual methods
+// issue #2: crashes when initialisers have default arguments??
+// issue #3: argument names are not in scope when calling super() in init()
+// issue #4: this crashes:               a.foo(Y(c: 1)).data
+// issue #5: this hangs on typechecking: a.foo(X(c: 1)).data
+// issue #6: this also hangs:            a.foo(Z(c: 1)).data
+
+// classes are a Bad Idea (tm) ):
 
 @entry fn main()
 {
-	printf("hola amigo\n")
+	let a = B()
+	let q = a.foo(Z(c: 1)).data
+	std::io::println("thing: %", q)
 }
+
+
+
+
+
+
+
+

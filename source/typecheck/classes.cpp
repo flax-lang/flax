@@ -171,6 +171,19 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		cls->setMembers(tys);
 
 
+
+
+		/*
+			TODO:
+
+			the check for method overriding here needs to check for co/contra variance, which we currently don't support.
+			we have virtual dispatch, so this is necessary. return types need to be covariant (ie. subclass method can only
+			return subclasses of the original return type), and parameters need to be contravariant (ie. the subclass method
+			must accept the superclasses of the original parameter types)
+
+			currently i think we error, and we probably don't check for the return type at all?
+		*/
+
 		for(auto m : this->methods)
 		{
 			if(m->name == "init")
