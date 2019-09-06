@@ -8,7 +8,7 @@
 
 #include <vector>
 
-#define FLAX_VERSION_STRING "0.40.0-pre"
+#define FLAX_VERSION_STRING "0.41.4-pre"
 
 #define ARG_COMPILE_ONLY                        "-c"
 #define ARG_BACKEND                             "-backend"
