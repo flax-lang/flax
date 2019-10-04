@@ -34,9 +34,6 @@
 import std::io
 import libc as _
 
-
-
-
 class X
 {
 	init(c: int)
@@ -81,17 +78,29 @@ class B : A
 // issue #2: crashes when initialisers have default arguments??
 // issue #3: argument names are not in scope when calling super() in init()
 // issue #4: this crashes:               a.foo(Y(c: 1)).data
-// issue #5: this hangs on typechecking: a.foo(X(c: 1)).data
-// issue #6: this also hangs:            a.foo(Z(c: 1)).data
 
 // classes are a Bad Idea (tm) ):
 
 @entry fn main()
 {
 	let a = B()
-	let q = a.foo(Z(c: 1)).data
+	let q = a.foo(Y(c: 1)).data
 	// std::io::println("thing: %", q)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

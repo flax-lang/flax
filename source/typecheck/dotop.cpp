@@ -490,6 +490,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 			ErrorMsg* err = 0;
 			sst::Defn* resolved = 0;
+
+			auto curstr = str;
 			while(!resolved)
 			{
 				auto arg_copy = arguments;
@@ -502,9 +504,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					break;
 				}
 
-				if(auto cls = dcast(sst::ClassDefn, str); cls && cls->baseClass)
+				if(auto cls = dcast(sst::ClassDefn, curstr); cls && cls->baseClass)
 				{
 					fs->teleportToScope(cls->baseClass->id.scope + cls->baseClass->id.name);
+					curstr = cls->baseClass;
 					continue;
 				}
 
@@ -517,7 +520,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			if(!resolved)
 			{
 				iceAssert(err);
-				wrongDotOpError(SimpleError::make(fc->loc, "no method named '%s' in type '%s'", fc->name, str->id.name),
+				wrongDotOpError(SimpleError::make(fc->loc, "no valid call to method named '%s' in type '%s'%s", fc->name, str->id.name,
+					curstr != str ? " (or any of its parent types)" : ""),
 					str, fc->loc, fc->name, false)->append(err)->postAndQuit();
 			}
 
