@@ -35,7 +35,7 @@ import std::io
 import libc as _
 
 
-/*
+
 
 class X
 {
@@ -76,7 +76,6 @@ class B : A
 		return Y(c: 748)
 	}
 }
-*/
 
 // issue #1: co/contra-variance of return and parameter types for virtual methods
 // issue #2: crashes when initialisers have default arguments??
@@ -89,15 +88,9 @@ class B : A
 
 @entry fn main()
 {
-	// let a = B()
-	// let q = a.foo(Z(c: 1)).data
+	let a = B()
+	let q = a.foo(Z(c: 1)).data
 	// std::io::println("thing: %", q)
-
-	let a = 1
-	let b = 3
-	let c = a << b
-
-	std::io::println("c: %", c)
 }
 
 
