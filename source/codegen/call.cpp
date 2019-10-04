@@ -237,8 +237,6 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	return _codegenAndArrangeFunctionCallArguments(this, ft, arguments, idxmap, defaultArgs);
 }
 
-
-
 CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -250,6 +248,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// check this target
 	fir::Value* vf = 0;
 	fir::FunctionType* ft = 0;
+
 
 	if(dcast(VarDefn, this->target))
 	{
@@ -278,7 +277,10 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(auto fd = dcast(FunctionDefn, this->target); fd && fd->isVirtual)
 	{
 		// ok then.
-		return CGResult(cs->callVirtualMethod(this));
+		auto ret = cs->callVirtualMethod(this);
+		cs->addRAIIOrRCValueIfNecessary(ret);
+
+		return CGResult(ret);
 	}
 	else
 	{
@@ -340,12 +342,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 
 	// do the refcounting if we need to
-	if(fir::isRefCountedType(ret->getType()))
-		cs->addRefCountedValue(ret);
-
-	if(ret->getType()->isClassType())
-		cs->addRAIIValue(ret);
-
+	cs->addRAIIOrRCValueIfNecessary(ret);
 	return CGResult(ret);
 }
 
@@ -439,12 +436,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto ret = cs->irb.CallToFunctionPointer(fn, ft, args);
 
-	if(fir::isRefCountedType(ret->getType()))
-		cs->addRefCountedValue(ret);
-
-	if(ret->getType()->isClassType())
-		cs->addRAIIValue(ret);
-
+	cs->addRAIIOrRCValueIfNecessary(ret);
 	return CGResult(ret);
 }
 

@@ -427,7 +427,15 @@ TCResult ast::InitFunctionDefn::typecheck(sst::TypecheckState* fs, fir::Type* in
 			call->classty = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
 			iceAssert(call->classty);
 
-			auto baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
+			std::vector<FnCallArgument> baseargs;
+			{
+				auto restore = fs->stree;
+				fs->stree = ret->insideTree;
+
+				baseargs = sst::resolver::misc::typecheckCallArguments(fs, this->superArgs);
+
+				fs->stree = restore;
+			}
 
 			auto constr = sst::resolver::resolveConstructorCall(fs, this->loc, call->classty, baseargs, PolyArgMapping_t::none());
 

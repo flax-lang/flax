@@ -164,6 +164,8 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			defn->body->isSingleExpr = this->body->isArrow;
 
 			iceAssert(defn->body);
+
+			defn->insideTree = fs->stree;
 		}
 		fs->popTree();
 		fs->leaveFunctionBody();

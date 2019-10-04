@@ -118,7 +118,7 @@ build: build1 $(OUTPUT) copylibs
 	# built
 
 build/%.flx: build
-	@$(OUTPUT) $(FLXFLAGS) -run $@
+	@$(OUTPUT) $(FLXFLAGS) -run -profile $@
 
 
 

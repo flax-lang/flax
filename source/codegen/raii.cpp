@@ -45,6 +45,15 @@ namespace cgn
 		return this->blockPointStack.back().raiiValues;
 	}
 
+	void CodegenState::addRAIIOrRCValueIfNecessary(fir::Value* val, fir::Type* ty)
+	{
+		if(fir::isRefCountedType(ty ? ty : val->getType()))
+			this->addRefCountedValue(val);
+
+		if((ty ? ty : val->getType())->isClassType())
+			this->addRAIIValue(val);
+	}
+
 	static fir::Value* getAddressOfOrMakeTemporaryLValue(CodegenState* cs, fir::Value* val, bool mut)
 	{
 		if(val->islvalue())
@@ -84,7 +93,7 @@ namespace cgn
 
 	static fir::ClassType* doChecks(CodegenState* cs, fir::Value* from, fir::Value* target)
 	{
-   	// this cleans up the callsites so we can just unconditionally call this.
+		// this cleans up the callsites so we can just unconditionally call this.
 		if(!from->getType()->isClassType())
 		{
 			cs->irb.Store(from, target);

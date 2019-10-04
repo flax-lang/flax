@@ -97,11 +97,7 @@ void cgn::CodegenState::addVariableUsingStorage(sst::VarDefn* var, fir::Value* a
 	iceAssert(alloc);
 	this->valueMap[var] = CGResult(alloc);
 
-	if(fir::isRefCountedType(var->type))
-		this->addRefCountedValue(alloc);
-
-	if(var->type->isClassType())
-		this->addRAIIValue(alloc);
+	this->addRAIIOrRCValueIfNecessary(alloc, /* type override: */ var->type);
 }
 
 

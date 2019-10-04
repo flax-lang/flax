@@ -46,12 +46,12 @@ class X
 
 class Y: X
 {
-	init(c: int) : super(c: 30) { }
+	init(c: int) : super(c: c + 30) { }
 }
 
 class Z: Y
 {
-	init(c: int) : super(c: 30) { }
+	init(c: int) : super(c: c - 60) { }
 }
 
 
@@ -76,7 +76,6 @@ class B : A
 
 // issue #1: co/contra-variance of return and parameter types for virtual methods
 // issue #2: crashes when initialisers have default arguments??
-// issue #3: argument names are not in scope when calling super() in init()
 
 // classes are a Bad Idea (tm) ):
 

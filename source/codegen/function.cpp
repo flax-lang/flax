@@ -149,11 +149,7 @@ CGResult sst::ArgumentDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->irb.Store(fn->getArgumentWithName(this->id.name), arg);
 	arg->makeConst();
 
-	if(fir::isRefCountedType(arg->getType()))
-		cs->addRefCountedValue(arg);
-
-	if(arg->getType()->isClassType())
-		cs->addRAIIValue(arg);
+	cs->addRAIIOrRCValueIfNecessary(arg);
 
 	// ok...
 	cs->valueMap[this] = CGResult(arg);

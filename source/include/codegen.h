@@ -182,6 +182,7 @@ namespace cgn
 
 		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
 
+		void addRAIIOrRCValueIfNecessary(fir::Value* val, fir::Type* typeOverride = 0);
 
 		void addRAIIValue(fir::Value* val);
 		void removeRAIIValue(fir::Value* val);

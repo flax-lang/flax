@@ -644,6 +644,9 @@ namespace sst
 
 		std::vector<ArgumentDefn*> arguments;
 
+		// bleh, this exists so we can go *into* the scope to inspect stuff if necessary
+		StateTree* insideTree = 0;
+
 		Block* body = 0;
 		bool needReturnVoid = false;
 
