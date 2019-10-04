@@ -725,12 +725,13 @@ namespace fir
 		// methods
 		Identifier getTypeName();
 		size_t getElementCount();
-		Type* getElementN(size_t n);
+		// Type* getElementN(size_t n);
 		Type* getElement(const std::string& name);
 		bool hasElementWithName(const std::string& name);
-		size_t getElementIndex(const std::string& name);
+		size_t getAbsoluteElementIndex(const std::string& name);
 		const std::vector<Type*>& getElements();
 		std::vector<Type*> getAllElementsIncludingBase();
+		const std::vector<std::string>& getNameList();
 
 		const util::hash_map<std::string, size_t>& getElementNameMap();
 
@@ -783,6 +784,7 @@ namespace fir
 		// fields (protected)
 		Identifier className;
 		std::vector<Type*> typeList;
+		std::vector<std::string> nameList;
 		std::vector<Function*> methodList;
 		std::vector<Function*> initialiserList;
 

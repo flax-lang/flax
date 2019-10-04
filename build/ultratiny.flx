@@ -77,7 +77,6 @@ class B : A
 // issue #1: co/contra-variance of return and parameter types for virtual methods
 // issue #2: crashes when initialisers have default arguments??
 // issue #3: argument names are not in scope when calling super() in init()
-// issue #4: this crashes:               a.foo(Y(c: 1)).data
 
 // classes are a Bad Idea (tm) ):
 
@@ -85,7 +84,7 @@ class B : A
 {
 	let a = B()
 	let q = a.foo(Y(c: 1)).data
-	// std::io::println("thing: %", q)
+	std::io::println("thing: %", q)
 }
 
 

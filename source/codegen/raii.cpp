@@ -119,12 +119,11 @@ namespace cgn
 			auto otherptr = getAddressOfOrMakeTemporaryLValue(cs, from, true);
 
 			// assign `lhs = rhs`
-			auto pairs = util::pairs(clsty->getElementNameMap());
 
-			for(size_t i = 0; i < clsty->getElementCount(); i++)
+			for(const auto& name : clsty->getNameList())
 			{
-				auto lhs = cs->irb.StructGEP(cs->irb.Dereference(selfptr), i);
-				auto rhs = cs->irb.StructGEP(cs->irb.Dereference(otherptr), i);
+				auto lhs = cs->irb.GetStructMember(cs->irb.Dereference(selfptr), name);
+				auto rhs = cs->irb.GetStructMember(cs->irb.Dereference(otherptr), name);
 
 				if(move)    cs->moveRAIIValue(rhs, lhs);
 				else        cs->copyRAIIValue(rhs, lhs);

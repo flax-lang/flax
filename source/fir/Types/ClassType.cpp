@@ -75,13 +75,6 @@ namespace fir
 		return this->typeList.size();
 	}
 
-	Type* ClassType::getElementN(size_t n)
-	{
-		iceAssert(n < this->typeList.size() && "out of bounds");
-
-		return this->typeList[n];
-	}
-
 	Type* ClassType::getElement(const std::string& name)
 	{
 		auto cls = this;
@@ -92,9 +85,7 @@ namespace fir
 		return cls->classMembers[name];
 	}
 
-
-
-	size_t ClassType::getElementIndex(const std::string& name)
+	size_t ClassType::getAbsoluteElementIndex(const std::string& name)
 	{
 		auto cls = this;
 		while(cls->classMembers.find(name) == cls->classMembers.end())
@@ -102,12 +93,7 @@ namespace fir
 
 		iceAssert(cls && "no such member");
 
-		// debuglog("index of %s = %d\n", name, cls->indexMap[name]);
-
 		return cls->indexMap[name];
-		// iceAssert(this->classMembers.find(name) != this->classMembers.end() && "no such member");
-
-		// return this->indexMap[name];
 	}
 
 	void ClassType::setMembers(const std::vector<std::pair<std::string, Type*>>& members)
@@ -122,11 +108,12 @@ namespace fir
 			}
 		}
 
-
 		for(auto p : members)
 		{
 			this->classMembers[p.first] = p.second;
 			this->indexMap[p.first] = i;
+
+			this->nameList.push_back(p.first);
 			this->typeList.push_back(p.second);
 
 			i++;
@@ -140,9 +127,6 @@ namespace fir
 			cls = cls->baseClass;
 
 		return cls != 0;
-
-
-		// return this->indexMap.find(name) != this->indexMap.end();
 	}
 
 
@@ -150,6 +134,11 @@ namespace fir
 	const std::vector<Type*>& ClassType::getElements()
 	{
 		return this->typeList;
+	}
+
+	const std::vector<std::string>& ClassType::getNameList()
+	{
+		return this->nameList;
 	}
 
 	std::vector<Type*> ClassType::getAllElementsIncludingBase()
