@@ -7,7 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 static void importScopeContentsIntoNewScope(sst::TypecheckState* fs, const std::vector<std::string>& sfrom,
 	const std::vector<std::string>& stoParent, const std::string& name)

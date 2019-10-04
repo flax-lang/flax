@@ -4,7 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 CGResult sst::WhileLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {

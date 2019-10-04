@@ -9,7 +9,7 @@
 #include "ir/type.h"
 #include "ir/constant.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {

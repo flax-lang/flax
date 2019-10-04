@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 {

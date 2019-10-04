@@ -5,7 +5,7 @@
 #include "errors.h"
 #include "codegen.h"
 #include "typecheck.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {

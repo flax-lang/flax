@@ -6,7 +6,7 @@
 #include "platform.h"
 #include "parser_internal.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 #include "utf8rewind/include/utf8rewind/utf8rewind.h"
 

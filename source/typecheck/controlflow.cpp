@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {

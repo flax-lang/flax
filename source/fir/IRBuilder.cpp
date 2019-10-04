@@ -11,7 +11,7 @@
 #include "ir/irbuilder.h"
 #include "ir/instruction.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 #define DO_IN_SITU_CONSTANT_FOLDING		0
 

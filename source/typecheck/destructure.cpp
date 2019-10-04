@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 static void checkAndAddBinding(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* rhs, bool immut, bool allowref);
 static void checkTuple(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* rhs, bool immut)

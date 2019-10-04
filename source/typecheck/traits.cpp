@@ -7,7 +7,7 @@
 #include "typecheck.h"
 #include "polymorph.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 #include "ir/type.h"
 
 

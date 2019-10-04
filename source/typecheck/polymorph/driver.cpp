@@ -13,7 +13,7 @@
 #include "resolver.h"
 #include "polymorph.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 #include <set>
 

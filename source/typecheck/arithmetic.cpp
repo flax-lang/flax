@@ -7,7 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 
 static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const Location& loc, int kind, std::string op,

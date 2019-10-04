@@ -7,7 +7,7 @@
 #include "ir/constant.h"
 #include "ir/instruction.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 namespace fir
 {

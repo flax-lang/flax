@@ -9,7 +9,7 @@
 #include "sst.h"
 #include "frontend.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 #define LEFT_PADDING TAB_WIDTH
 

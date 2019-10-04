@@ -11,7 +11,7 @@
 
 #include "typecheck.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 // defined in typecheck/structs.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc);

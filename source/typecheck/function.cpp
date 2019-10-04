@@ -9,7 +9,7 @@
 #include "polymorph.h"
 
 #include "ir/type.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 
 TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)

@@ -9,7 +9,7 @@
 
 #include "parser_internal.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 using namespace lexer;
 using namespace ast;

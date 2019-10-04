@@ -5,7 +5,7 @@
 #include "errors.h"
 #include "codegen.h"
 #include "typecheck.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 static bool isAutoDereferencable(fir::Type* t)
 {

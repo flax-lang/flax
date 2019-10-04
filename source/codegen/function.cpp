@@ -4,7 +4,7 @@
 
 #include "sst.h"
 #include "codegen.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 #include "ir/irbuilder.h"
 

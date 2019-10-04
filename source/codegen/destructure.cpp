@@ -5,7 +5,7 @@
 #include "sst.h"
 #include "codegen.h"
 #include "gluecode.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 
 CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)

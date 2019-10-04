@@ -11,7 +11,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, const std::vector<FnCallArgument>& _arguments, fir::Type* infer)
 {

@@ -6,7 +6,7 @@
 #include "pts.h"
 #include "parser_internal.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 using namespace ast;
 using namespace lexer;

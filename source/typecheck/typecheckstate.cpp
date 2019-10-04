@@ -7,7 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 #include <deque>
 

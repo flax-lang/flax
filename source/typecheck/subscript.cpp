@@ -7,7 +7,7 @@
 #include "typecheck.h"
 
 #include "ir/type.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {

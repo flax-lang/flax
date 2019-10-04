@@ -13,7 +13,7 @@
 #include "ir/type.h"
 #include "ir/interp.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 
 TCResult ast::RunDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)

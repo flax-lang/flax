@@ -10,7 +10,7 @@
 #include "ir/type.h"
 #include "resolver.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {

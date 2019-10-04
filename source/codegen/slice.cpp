@@ -6,7 +6,7 @@
 #include "codegen.h"
 #include "platform.h"
 #include "gluecode.h"
-#include "mpool.h"
+#include "memorypool.h"
 
 static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Value* maxlen, fir::Value* beginIndex, fir::Value* endIndex,
 	sst::Expr* bexpr, sst::Expr* eexpr)

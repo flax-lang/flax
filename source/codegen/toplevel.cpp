@@ -12,7 +12,7 @@
 #include "ir/interp.h"
 #include "ir/irbuilder.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 namespace cgn
 {

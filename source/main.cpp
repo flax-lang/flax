@@ -9,7 +9,7 @@
 
 #include "ir/module.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 #include "allocator.h"
 
 #include "ir/interp.h"

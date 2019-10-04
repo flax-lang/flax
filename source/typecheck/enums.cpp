@@ -8,7 +8,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 /*
 	ok, here's some documentation of how enumerations work

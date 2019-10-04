@@ -5,7 +5,7 @@
 #include <set>
 
 #include "sst.h"
-#include "mpool.h"
+#include "memorypool.h"
 #include "codegen.h"
 #include "gluecode.h"
 

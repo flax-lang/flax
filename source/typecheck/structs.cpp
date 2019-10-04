@@ -9,7 +9,7 @@
 #include "typecheck.h"
 
 #include <set>
-#include "mpool.h"
+#include "memorypool.h"
 
 static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing)
 {

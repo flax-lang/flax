@@ -9,7 +9,7 @@
 
 #include "ir/type.h"
 
-#include "mpool.h"
+#include "memorypool.h"
 
 TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 {
