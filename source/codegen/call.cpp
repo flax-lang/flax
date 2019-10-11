@@ -125,7 +125,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		for(size_t i = 0; i < argExprs.size(); i++)
 		{
 			// this extra complexity is to ensure we codegen arguments from left-to-right!
-			auto arg = arguments[i].value;
+			auto arg = argExprs[i];
 			auto k = revArgExprs[arg];
 
 			auto infer = ft->getArgumentN(k);

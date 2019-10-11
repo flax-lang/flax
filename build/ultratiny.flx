@@ -58,9 +58,10 @@ class Z: Y
 class A
 {
 	init() { }
-	virtual fn foo(a: Y) -> Y
+	virtual fn lol(a: Y) -> &Y
 	{
-		return Y(c: 471)
+		std::io::println("A::foo()")
+		return alloc Y(c: 471)
 	}
 }
 
@@ -68,21 +69,53 @@ class B : A
 {
 	init() : super() { }
 
-	override fn foo(a: Y) -> Y
+	override fn foo(a: Y) -> &Y
 	{
-		return Y(c: 748)
+		std::io::println("B::foo()")
+		return alloc Z(c: 748)
+		// return 3
 	}
 }
 
+// import std::io as _
+
+// @entry fn main()
+// {
+// 	println("hello, world!")
+// }
+
+// issue #0: we basically don't really even check for overriding methods properly.
 // issue #1: co/contra-variance of return and parameter types for virtual methods
-// issue #2: crashes when initialisers have default arguments??
+// issue #2: crashes when functions have default arguments??
 
 // classes are a Bad Idea (tm) ):
 
+class Tmp
+{
+	var z: int
+
+	init(x: int = 3, y: int = 7)
+	{
+		this.z = x * y
+	}
+}
+
+
 @entry fn main()
 {
-	let a = B()
-	let q = a.foo(Y(c: 1)).data
+	fn foo(x: int = 3, y: int = 7) -> int => x * y
+
+	// let a = B()
+	// let q = a.foo(Y(c: 1)).data
+
+	// let y: &X = alloc Y(c: 41)
+	// std::io::println("y = %", y.data)
+
+	// let q = Tmp(k: 3, m: 7).meth()
+
+	// let q = B().foo(Y(c: 1)).data
+
+	let q = foo(x: 7)
 	std::io::println("thing: %", q)
 }
 

@@ -467,6 +467,7 @@ void OverloadError::post()
 
 
 
+
 [[noreturn]] void doTheExit(bool trace)
 {
 	fprintf(stderr, "there were errors, compilation cannot continue\n");
@@ -474,6 +475,11 @@ void OverloadError::post()
 	if(frontend::getAbortOnError()) abort();
 	else                            exit(-1);
 }
+
+
+
+
+
 
 
 

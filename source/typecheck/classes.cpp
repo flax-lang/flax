@@ -209,13 +209,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 					{
 						// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
 						// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
-
-						// note: we're passing by copy here intentionally so we can erase the first one.
-						auto compareMethods = [&fs](std::vector<FnParam> a, std::vector<FnParam> b) -> bool {
-							return fs->isDuplicateOverload(a, b);
+						auto compareMethodSignatures = [&fs](const std::vector<FnParam>& a, const std::vector<FnParam>& b) -> bool {
+							return fs->isDuplicateOverload(util::drop(a, 1), util::drop(b, 1));
 						};
 
-						if(bf->id.name == meth->id.name && compareMethods(bf->params, meth->params))
+						if(bf->id.name == meth->id.name && compareMethodSignatures(bf->params, meth->params))
 						{
 							// check for virtual functions.
 							//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also

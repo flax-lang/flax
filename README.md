@@ -29,7 +29,7 @@ A low level, general-purpose language with high level syntax and expressibility.
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development.
 I'm no famous artist but this is my magnum opus, so it'll not be abandoned anytime soon.
 
-Development is currently on hiatus. Work will resume NET 2019-12-09.
+Development is currently on hiatus. Regular work will resume NET 2019-12-09.
 
 ### Language Goals
 
@@ -44,25 +44,40 @@ Development is currently on hiatus. Work will resume NET 2019-12-09.
 
 ### Current Features
 
-- Structs, classes, unions, enums
+- Structs, unions, enums
 - Arrays (fixed and dynamic), slices
 - Pointer manipulation/arithmetic
 - Operator overloading
 - Generic functions and types
 - Type inference (including for generics)
 - Full compile-time execution (of arbitrary code)
+- Classes, including virtual dispatch and (single) inheritance
 
 -----------------------------------------------
 
 
 ### Language Syntax
-- See https://flax-lang.github.io (incomplete, outdated, obsolete, etc. etc.)
+
+- We don't have a proper place that documents everything yet, but most of the basic stuff is probably not gonna change much.
+  The testing code in `build/tests/` (most of them, anyway — check `tester.flx` to see which ones we call) tests basically 90% of the
+  language, so that's the syntax reference for now.
+- Yes, the syntax is not "officially" defined by a grammar. The reference parser implementation is the One True Definition, for now.
 
 -----------------------------------------------
 
 
 
 ### Code Sample
+
+```rust
+import std::io as _
+
+@entry fn main()
+{
+	println("hello, world!")
+}
+
+```
 
 ```rust
 do {
