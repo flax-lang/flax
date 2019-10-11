@@ -1019,11 +1019,17 @@ namespace parser
 
 		if(st.front() == TT::LParen)
 		{
+			auto leftloc = st.loc();
+
 			st.pop();
 			ret->args = parseCallArgumentList(st);
 
 			if(ret->args.empty())
-				info(st.loc(), "empty argument list in alloc expression () can be omitted");
+			{
+				// parseCallArgumentList consumes the closing )
+				auto tmp = Location::unionOf(leftloc, st.ploc());
+				info(tmp, "empty argument list in alloc expression () can be omitted");
+			}
 		}
 
 

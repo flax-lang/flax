@@ -336,7 +336,7 @@ namespace resolver
 							//* here we're just checking that 'ty' and 'self' are part of the same class hierarchy -- we don't really care about the method
 							//* that we resolve being at the lowest or highest level of that hierarchy.
 
-							if(!ty->isInParentHierarchy(self) && !self->isInParentHierarchy(ty))
+							if(!ty->hasParent(self) && !self->hasParent(ty))
 							{
 								virt = false;
 								break;

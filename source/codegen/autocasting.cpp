@@ -176,7 +176,7 @@ namespace cgn
 			result = ret;
 		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType()->isClassType()
-			&& fromType->getPointerElementType()->toClassType()->isInParentHierarchy(target->getPointerElementType()))
+			&& fromType->getPointerElementType()->toClassType()->hasParent(target->getPointerElementType()))
 		{
 			auto ret = this->irb.PointerTypeCast(from, target);
 			result = ret;
