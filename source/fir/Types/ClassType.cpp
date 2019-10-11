@@ -296,20 +296,9 @@ namespace fir
 
 	void ClassType::addVirtualMethod(Function* method)
 	{
-		//* what this does is compare the arguments without the first parameter,
-		//* since that's going to be the self parameter, and that's going to be different
-		auto withoutself = [](std::vector<Type*> p) -> std::vector<Type*> {
-			p.erase(p.begin());
-
-			return p;
-		};
-
-		auto matching = [&withoutself](const std::vector<Type*>& a, FunctionType* ft) -> bool {
-			auto bp = withoutself(ft->getArgumentTypes());
-
-			//* note: we don't call withoutself on 'a' because we expect that to already have been done
-			//* before it was added.
-			return Type::areTypeListsEqual(a, bp);
+		auto matching = [](const std::vector<Type*>& a, FunctionType* ft) -> bool {
+			//* note: we don't drop 'a' because we expect that to already have been done before it was added.
+			return Type::areTypeListsEqual(a, util::drop(ft->getArgumentTypes(), 1));
 		};
 
 		//* note: the 'reverse' virtual method map is to allow us, at translation time, to easily create the vtable without
@@ -328,7 +317,7 @@ namespace fir
 			if(vm.first.first == method->getName().name && matching(vm.first.second, method->getType()->toFunctionType()))
 			{
 				found = true;
-				this->virtualMethodMap[{ method->getName().name, withoutself(list) }] = vm.second;
+				this->virtualMethodMap[{ method->getName().name, util::drop(list, 1) }] = vm.second;
 				this->reverseVirtualMethodMap[vm.second] = method;
 				break;
 			}
@@ -337,7 +326,7 @@ namespace fir
 		if(!found)
 		{
 			// just make a new one.
-			this->virtualMethodMap[{ method->getName().name, withoutself(list) }] = this->virtualMethodCount;
+			this->virtualMethodMap[{ method->getName().name, util::drop(list, 1) }] = this->virtualMethodCount;
 			this->reverseVirtualMethodMap[this->virtualMethodCount] = method;
 			this->virtualMethodCount++;
 		}

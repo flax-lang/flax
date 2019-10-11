@@ -155,7 +155,7 @@ static std::string getSingleContext(const Location& loc, const std::string& unde
 
 
 
-std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context)
+std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context, bool multipart)
 {
 	std::string ret;
 
@@ -194,6 +194,7 @@ std::string __error_gen_internal(const Location& loc, const std::string& msg, co
 		ret += getSingleContext(loc, underlineColour) + "\n";
 	}
 
+	if(!multipart) ret += "\n";
 	return ret;
 }
 
@@ -223,10 +224,10 @@ static size_t strprinterrf(const char* fmt, Ts... ts)
 	return (size_t) fprintf(stderr, "%s", strprintf(fmt, ts...).c_str());
 }
 
-template <typename... Ts>
-static void outputWithoutContext(const char* type, const Location& loc, const char* fmt, Ts... ts)
+// template <typename... Ts>
+static void outputWithoutContext(const char* type, const Location& loc, const char* s, bool multi)
 {
-	strprinterrf("%s", __error_gen_internal(loc, strprintf(fmt, ts...), type, false));
+	strprinterrf("%s", __error_gen_internal(loc, s, type, false, multi));
 }
 
 
@@ -237,7 +238,8 @@ static void outputWithoutContext(const char* type, const Location& loc, const ch
 
 void BareError::post()
 {
-	if(!this->msg.empty()) outputWithoutContext(typestr(this->type).c_str(), Location(), this->msg.c_str());
+	if(!this->msg.empty())
+		outputWithoutContext(typestr(this->type).c_str(), Location(), this->msg.c_str(), !this->subs.empty());
 
 	for(auto other : this->subs)
 		other->post();
@@ -248,9 +250,9 @@ void SimpleError::post()
 {
 	if(!this->msg.empty())
 	{
-		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str());
+		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str(), !this->subs.empty());
 		strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
-			this->printContext ? getSingleContext(this->loc, this->type == MsgType::Note ? COLOUR_BLUE_BOLD : COLOUR_RED_BOLD) + "\n\n" : "");
+			this->printContext ? getSingleContext(this->loc, this->type == MsgType::Note ? COLOUR_BLUE_BOLD : COLOUR_RED_BOLD) + "\n" : "");
 	}
 
 	for(auto other : this->subs)
@@ -260,7 +262,7 @@ void SimpleError::post()
 
 void ExampleMsg::post()
 {
-	outputWithoutContext(typestr(this->type).c_str(), Location(), "for example:");
+	outputWithoutContext(typestr(this->type).c_str(), Location(), "for example:", !this->subs.empty());
 	strprinterrf("%s\n\n", getSingleContext(Location(), COLOUR_BLUE_BOLD, this->example));
 
 	for(auto other : this->subs)
@@ -470,7 +472,7 @@ void OverloadError::post()
 
 [[noreturn]] void doTheExit(bool trace)
 {
-	fprintf(stderr, "there were errors, compilation cannot continue\n");
+	fprintf(stderr, "\nthere were errors, compilation cannot continue\n");
 
 	if(frontend::getAbortOnError()) abort();
 	else                            exit(-1);

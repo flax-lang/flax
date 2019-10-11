@@ -180,6 +180,18 @@ namespace util
 		return std::vector<T>(v.begin() + std::min(num, v.size()), v.end());
 	}
 
+	template <typename T, typename U>
+	std::vector<std::pair<T, U>> cartesian(const std::vector<T>& a, const std::vector<U>& b)
+	{
+		std::vector<std::pair<T, U>> ret;
+
+		for(size_t i = 0; i < a.size(); i++)
+			for(size_t k = 0; k < b.size(); k++)
+				ret.push_back({ a[i], b[k] });
+
+		return ret;
+	}
+
 	inline std::string join(const std::vector<std::string>& list, const std::string& sep)
 	{
 		if(list.empty())            return "";

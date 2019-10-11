@@ -184,80 +184,96 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			currently i think we error, and we probably don't check for the return type at all?
 		*/
 
-		for(auto m : this->methods)
 		{
-			if(m->name == "init")
-				error(m, "cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
-
-			auto res = m->generateDeclaration(fs, cls, { });
-			if(res.isParametric())
-				continue;
-
-			auto decl = dcast(sst::FunctionDefn, res.defn());
-			iceAssert(decl);
-
-			defn->methods.push_back(decl);
-
 			//* check for what would be called 'method hiding' in c++ -- ie. methods in the derived class with exactly the same type signature as
 			//* the base class method.
 
-			// TODO: code dupe with the field hiding thing we have above. simplify??
-			std::function<void (sst::ClassDefn*, sst::FunctionDefn*)> checkDupe = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
+			auto checkAgainstBaseClasses = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
+
+				auto checkSingleMethod = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* self, sst::FunctionDefn* bf) -> bool {
+
+					// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
+					// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
+					auto compareMethodSignatures = [&fs](const std::vector<FnParam>& a, const std::vector<FnParam>& b) -> bool {
+						return fs->isDuplicateOverload(util::drop(a, 1), util::drop(b, 1));
+					};
+
+					if(bf->id.name == self->id.name && compareMethodSignatures(bf->params, self->params))
+					{
+						// check for virtual functions.
+						//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also
+						//* 'isVirtual'.
+
+						// nice comprehensive error messages, I hope.
+						if(!self->isOverride)
+						{
+							auto err = SimpleError::make(self->loc, "redefinition of method '%s' (with type '%s'), that exists in"
+								" the base class '%s'", self->id.name, self->type, cls->id);
+
+							if(bf->isVirtual)
+							{
+								err->append(SimpleError::make(MsgType::Note, bf->loc, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name));
+							}
+							else
+							{
+								err->append(
+									SimpleError::make(MsgType::Note, bf->loc,
+										"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
+											BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name)
+									)
+								);
+							}
+
+							err->postAndQuit();
+						}
+						else if(!bf->isVirtual)
+						{
+							SimpleError::make(self->loc, "cannot override non-virtual method '%s'", bf->id.name)
+								->append(SimpleError::make(MsgType::Note, bf->loc,
+									"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)
+								)->append(BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name))
+								->postAndQuit();
+						}
+
+						return true;
+					}
+
+					return false;
+				};
+
+				bool matched = false;
 				while(cls)
 				{
 					for(auto bf : cls->methods)
-					{
-						// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
-						// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
-						auto compareMethodSignatures = [&fs](const std::vector<FnParam>& a, const std::vector<FnParam>& b) -> bool {
-							return fs->isDuplicateOverload(util::drop(a, 1), util::drop(b, 1));
-						};
-
-						if(bf->id.name == meth->id.name && compareMethodSignatures(bf->params, meth->params))
-						{
-							// check for virtual functions.
-							//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also
-							//* 'isVirtual'.
-
-							// nice comprehensive error messages, I hope.
-							if(!meth->isOverride)
-							{
-								auto err = SimpleError::make(meth->loc, "redefinition of method '%s' (with type '%s'), that exists in the base class '%s'",
-									meth->id.name, meth->type, cls->id);
-
-								if(bf->isVirtual)
-								{
-									err->append(SimpleError::make(MsgType::Note, bf->loc, "'%s' was defined as a virtual method; to override it, use the 'override' keyword", bf->id.name));
-								}
-								else
-								{
-									err->append(
-										SimpleError::make(MsgType::Note, bf->loc,
-											"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
-												BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name)
-										)
-									);
-								}
-
-								err->postAndQuit();
-							}
-							else if(!bf->isVirtual)
-							{
-								SimpleError::make(meth->loc, "cannot override non-virtual method '%s'", bf->id.name)
-									->append(SimpleError::make(MsgType::Note, bf->loc,
-										"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)
-									)->append(BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name))
-									->postAndQuit();
-							}
-						}
-					}
+						matched |= checkSingleMethod(cls, meth, bf);
 
 					cls = cls->baseClass;
 				}
+
+				if(!matched && meth->isOverride)
+				{
+					error(meth, "overrides nothing");
+				}
 			};
 
-			checkDupe(defn->baseClass, decl);
+			for(auto m : this->methods)
+			{
+				if(m->name == "init")
+					error(m, "cannot have methods named 'init' in a class; to create an initialiser, omit the 'fn' keyword.");
+
+				auto res = m->generateDeclaration(fs, cls, { });
+				if(res.isParametric())
+					continue;
+
+				auto decl = dcast(sst::FunctionDefn, res.defn());
+				iceAssert(decl);
+
+				defn->methods.push_back(decl);
+
+				checkAgainstBaseClasses(defn->baseClass, decl);
+			}
 		}
+
 
 		{
 			// make the constructors

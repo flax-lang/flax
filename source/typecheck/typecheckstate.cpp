@@ -468,7 +468,8 @@ namespace sst
 					if(fir::Type::areTypeListsEqual(util::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
 						util::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
 					{
-						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded based on argument names alone"));
+						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded over argument names or"
+							" return types alone"));
 					}
 				}
 

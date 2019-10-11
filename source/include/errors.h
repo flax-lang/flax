@@ -86,12 +86,12 @@ namespace frontend
 }
 
 
-std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context);
+std::string __error_gen_internal(const Location& loc, const std::string& msg, const char* type, bool context, bool multiPart);
 
 template <typename... Ts>
 std::string __error_gen(const Location& loc, const char* msg, const char* type, bool, Ts&&... ts)
 {
-	return __error_gen_internal(loc, tinyformat::format(msg, ts...), type, true);
+	return __error_gen_internal(loc, tinyformat::format(msg, ts...), type, true, false);
 }
 
 

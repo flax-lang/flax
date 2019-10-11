@@ -44,12 +44,12 @@ class X
 	var data: int
 }
 
-class Y: X
+class Y : X
 {
 	init(c: int) : super(c: c + 30) { }
 }
 
-class Z: Y
+class Z : Y
 {
 	init(c: int) : super(c: c - 60) { }
 }
@@ -58,7 +58,7 @@ class Z: Y
 class A
 {
 	init() { }
-	virtual fn lol(a: Y) -> &Y
+	virtual fn foo(a: Y) -> &Y
 	{
 		std::io::println("A::foo()")
 		return alloc Y(c: 471)
@@ -77,20 +77,16 @@ class B : A
 	}
 }
 
-// import std::io as _
 
-// @entry fn main()
-// {
-// 	println("hello, world!")
-// }
 
 // issue #0: we basically don't really even check for overriding methods properly.
 // issue #1: co/contra-variance of return and parameter types for virtual methods
-// issue #2: crashes when functions have default arguments??
+// issue #2: class inheritance is source-order-dependent (ie. the definition of the base class must
+//           appear before the definition of any children)
 
 // classes are a Bad Idea (tm) ):
 
-class Tmp
+class P
 {
 	var z: int
 
@@ -98,6 +94,23 @@ class Tmp
 	{
 		this.z = x * y
 	}
+
+	virtual fn foo(x: int) => printf("P::foo(%d)\n", x)
+	fn bar(x: int) => printf("P::bar(%d)\n", x)
+}
+
+class Q : P
+{
+	init() : super(x: 5, y: 8) { }
+
+	// override fn foo(x: int) => printf("Q::foo(%d)\n", x)
+}
+
+class R : Q
+{
+	init() : super() { }
+
+	override fn foo(x: int) => printf("R::foo(%d)\n", x)
 }
 
 
@@ -117,6 +130,11 @@ class Tmp
 
 	let q = foo(x: 7)
 	std::io::println("thing: %", q)
+
+	let m = alloc P
+	let n = alloc Q
+
+	n.foo(3)
 }
 
 
