@@ -171,7 +171,13 @@ namespace util
 	template <typename T>
 	std::vector<T> take(const std::vector<T>& v, size_t num)
 	{
-		return std::vector<T>(v.begin(), v.begin() + num);
+		return std::vector<T>(v.begin(), v.begin() + std::min(num, v.size()));
+	}
+
+	template <typename T>
+	std::vector<T> drop(const std::vector<T>& v, size_t num)
+	{
+		return std::vector<T>(v.begin() + std::min(num, v.size()), v.end());
 	}
 
 	inline std::string join(const std::vector<std::string>& list, const std::string& sep)

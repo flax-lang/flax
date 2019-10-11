@@ -62,6 +62,15 @@ CGResult sst::MethodDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		fir::Type* sty = 0;
 		auto res = getAppropriateValuePointer(cs, this, this->lhs, &sty);
 
+		if(!res->islvalue())
+		{
+			auto tmplval = cs->irb.CreateLValue(this->lhs->type);
+			cs->irb.Store(res.value, tmplval);
+
+			res.value = tmplval;
+			res->makeConst();
+		}
+
 		// then we insert it as the first argument
 		auto rv = util::pool<sst::RawValueExpr>(this->loc, res.value->getType()->getMutablePointerTo());
 		rv->rawValue = CGResult(cs->irb.AddressOf(res.value, true));

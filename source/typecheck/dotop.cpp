@@ -462,8 +462,9 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 	// ok.
 	auto defn = fs->typeDefnMap[type];
-	iceAssert(defn);
 
+	// note: if `defn` is null, then all the dcasts will fail and we'll
+	// fallthrough to the bottom.
 	if(auto str = dcast(sst::StructDefn, defn))
 	{
 		// right.
