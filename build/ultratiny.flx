@@ -51,36 +51,9 @@ class Y : X
 
 class Z : Y
 {
-	init(c: int) : super(c: c - 60) { }
+	init(c: int) : super(c: c - 90) { }
 }
 
-
-class A
-{
-	init() { }
-	virtual fn foo(a: Y) -> &Y
-	{
-		std::io::println("A::foo()")
-		return alloc Y(c: 471)
-	}
-}
-
-class B : A
-{
-	init() : super() { }
-
-	override fn foo(a: Y) -> &Y
-	{
-		std::io::println("B::foo()")
-		return alloc Z(c: 748)
-		// return 3
-	}
-}
-
-
-
-// issue #0: we basically don't really even check for overriding methods properly.
-// issue #1: co/contra-variance of return and parameter types for virtual methods
 // issue #2: class inheritance is source-order-dependent (ie. the definition of the base class must
 //           appear before the definition of any children)
 
@@ -95,8 +68,7 @@ class P
 		this.z = x * y
 	}
 
-	virtual fn foo(x: int) => printf("P::foo(%d)\n", x)
-	fn bar(x: int) => printf("P::bar(%d)\n", x)
+	virtual fn foo(x: &Y) => printf("P::foo(%d)\n", x.data)
 }
 
 class Q : P
@@ -110,8 +82,33 @@ class R : Q
 {
 	init() : super() { }
 
-	override fn foo(x: int) => printf("R::foo(%d)\n", x)
+	override fn foo(x: &X) => printf("R::foo(%d)\n", x.data)
 }
+
+
+
+class A
+{
+	init() { }
+	virtual fn foo(a: &Y) -> &Y
+	{
+		std::io::println("A::foo()")
+		return alloc Y(c: 471)
+	}
+}
+
+class B : A
+{
+	init() : super() { }
+
+	override fn foo(a: &X) -> &Z
+	{
+		std::io::println("B::foo()")
+		return alloc Z(c: 748)
+	}
+}
+
+
 
 
 @entry fn main()
@@ -126,15 +123,8 @@ class R : Q
 
 	// let q = Tmp(k: 3, m: 7).meth()
 
-	// let q = B().foo(Y(c: 1)).data
-
-	let q = foo(x: 7)
-	std::io::println("thing: %", q)
-
-	let m = alloc P
-	let n = alloc Q
-
-	n.foo(3)
+	let q = B().foo(alloc Y(c: 1)).data
+	printf("q = %d\n", q)
 }
 
 

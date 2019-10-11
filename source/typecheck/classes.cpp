@@ -185,21 +185,27 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		*/
 
 		{
-			//* check for what would be called 'method hiding' in c++ -- ie. methods in the derived class with exactly the same type signature as
-			//* the base class method.
+			//* check for what would be called 'method hiding' in c++, and also valid overrides.
+			// TODO: make an error note about co/contra-variance for param/return types. right now it just complains and it's vague af.
+			auto checkAgainstBaseClasses = [](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
 
-			auto checkAgainstBaseClasses = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* meth) -> auto {
-
-				auto checkSingleMethod = [&fs](sst::ClassDefn* cls, sst::FunctionDefn* self, sst::FunctionDefn* bf) -> bool {
+				auto checkSingleMethod = [](sst::ClassDefn* cls, sst::FunctionDefn* self, sst::FunctionDefn* bf, bool* matchedName) -> bool {
 
 					// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
 					// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
-					auto compareMethodSignatures = [&fs](const std::vector<FnParam>& a, const std::vector<FnParam>& b) -> bool {
-						return fs->isDuplicateOverload(util::drop(a, 1), util::drop(b, 1));
+					auto compareMethodSignatures = [](fir::FunctionType* a, fir::FunctionType* b) -> bool {
+
+						// well the order is important!!
+						return fir::ClassType::areMethodsVirtuallyCompatible(a, b);
 					};
 
-					if(bf->id.name == self->id.name && compareMethodSignatures(bf->params, self->params))
+					if(bf->id.name == self->id.name)
 					{
+						*matchedName |= true;
+
+						if(!compareMethodSignatures(bf->type->toFunctionType(), self->type->toFunctionType()))
+							return false;
+
 						// check for virtual functions.
 						//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also
 						//* 'isVirtual'.
@@ -217,9 +223,10 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 							else
 							{
 								err->append(
-									SimpleError::make(MsgType::Note, bf->loc,
-										"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)->append(
-											BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name)
+									SimpleError::make(MsgType::Note, bf->loc, "'%s' was previously defined in the base class '%s'"
+										" as a non-virtual method here:", bf->id.name, cls->id.name
+										)->append(BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method",
+											bf->id.name)
 									)
 								);
 							}
@@ -230,7 +237,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 						{
 							SimpleError::make(self->loc, "cannot override non-virtual method '%s'", bf->id.name)
 								->append(SimpleError::make(MsgType::Note, bf->loc,
-									"'%s' was previously defined in the base class as a non-virtual method here:", bf->id.name)
+									"'%s' was previously defined in the base class '%s' as a non-virtual method here:", bf->id.name, cls->id.name)
 								)->append(BareError::make(MsgType::Note, "to override it, define '%s' as a virtual method", bf->id.name))
 								->postAndQuit();
 						}
@@ -241,18 +248,27 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 					return false;
 				};
 
-				bool matched = false;
+				bool matchedSig = false;
+				bool matchedName = false;
 				while(cls)
 				{
 					for(auto bf : cls->methods)
-						matched |= checkSingleMethod(cls, meth, bf);
+						matchedSig |= checkSingleMethod(cls, meth, bf, &matchedName);
 
 					cls = cls->baseClass;
 				}
 
-				if(!matched && meth->isOverride)
+				if(meth->isOverride && !matchedSig)
 				{
-					error(meth, "overrides nothing");
+					if(matchedName && !matchedSig)
+					{
+						error(meth, "invalid override: no method named '%s' in any base class with a signature matching"
+							" (or compatible with) '%s'", meth->id.name, meth->type->str());
+					}
+					else if(!matchedName)
+					{
+						error(meth, "invalid override: no method in any base class named '%s'", meth->id.name);
+					}
 				}
 			};
 

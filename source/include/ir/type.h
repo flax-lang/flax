@@ -762,7 +762,7 @@ namespace fir
 		Function* getCopyConstructor();
 		Function* getMoveConstructor();
 
-		bool isInParentHierarchy(Type* base);
+		bool hasParent(Type* base);
 
 		void addVirtualMethod(Function* method);
 		size_t getVirtualMethodIndex(const std::string& name, FunctionType* ft);
@@ -818,6 +818,9 @@ namespace fir
 		static ClassType* createWithoutBody(const Identifier& name);
 		static ClassType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
 			const std::vector<Function*>& methods, const std::vector<Function*>& inits);
+
+		// returns true if 'fn' is a valid virtual override of 'base'. deals with co/contra-variance
+		static bool areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn);
 	};
 
 

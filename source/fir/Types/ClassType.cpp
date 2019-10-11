@@ -240,7 +240,7 @@ namespace fir
 	}
 
 
-	bool ClassType::isInParentHierarchy(Type* base)
+	bool ClassType::hasParent(Type* base)
 	{
 		auto target = dcast(ClassType, base);
 		if(!target) return false;
@@ -294,13 +294,74 @@ namespace fir
 		this->reverseVirtualMethodMap = this->baseClass->reverseVirtualMethodMap;
 	}
 
+
+	// expects the self param to be removed already!!!
+	// note: this one doesn't check if the return types are compatible; we expect typechecking to have already
+	// verified that, and we don't store the return type in the class virtual method map anyway.
+	static bool _areTypeListsVirtuallyCompatible(const std::vector<Type*>& base, const std::vector<Type*>& fn)
+	{
+		// parameters must be contravariant, ie. fn must take more general types than base
+		// return type must be covariant, ie. fn must return a more specific type than base.
+
+		// duh
+		if(base.size() != fn.size())
+			return false;
+
+		// drop the first argument.
+		for(auto [ base, derv ] : util::zip(base, fn))
+		{
+			if(base == derv)
+				continue;
+
+			if(!derv->isPointerType() || !derv->getPointerElementType()->isClassType()
+				|| !base->isPointerType() || !base->getPointerElementType()->isClassType())
+			{
+				return false;
+			}
+
+			auto bc = base->getPointerElementType()->toClassType();
+			auto dc = derv->getPointerElementType()->toClassType();
+
+			if(!bc->hasParent(dc))
+			{
+				debuglogln("%s is not a parent of %s", dc->str(), bc->str());
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool ClassType::areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn)
+	{
+		bool ret = _areTypeListsVirtuallyCompatible(util::drop(base->getArgumentTypes(), 1), util::drop(fn->getArgumentTypes(), 1));
+
+		if(!ret)
+			return false;
+
+		auto baseRet = base->getReturnType();
+		auto fnRet = fn->getReturnType();
+
+		// ok now check the return type.
+		if(baseRet == fnRet)
+			return true;
+
+		if(baseRet->isPointerType() && baseRet->getPointerElementType()->isClassType()
+			&& fnRet->isPointerType() && fnRet->getPointerElementType()->isClassType())
+		{
+			auto br = baseRet->getPointerElementType()->toClassType();
+			auto dr = fnRet->getPointerElementType()->toClassType();
+
+			return dr->hasParent(br);
+		}
+		else
+		{
+			return false;
+		}
+	}
+
 	void ClassType::addVirtualMethod(Function* method)
 	{
-		auto matching = [](const std::vector<Type*>& a, FunctionType* ft) -> bool {
-			//* note: we don't drop 'a' because we expect that to already have been done before it was added.
-			return Type::areTypeListsEqual(a, util::drop(ft->getArgumentTypes(), 1));
-		};
-
 		//* note: the 'reverse' virtual method map is to allow us, at translation time, to easily create the vtable without
 		//* unnecessary searching. When we set a base class, we copy its 'reverse' map; thus, if we don't override anything,
 		//* our vtable will just refer to the methods in the base class.
@@ -308,16 +369,17 @@ namespace fir
 		//* but if we do override something, we just set the method in our 'reverse' map, which is what we'll use to build
 		//* the vtable. simple?
 
-		auto list = method->getType()->toFunctionType()->getArgumentTypes();
+		auto list = util::drop(method->getType()->toFunctionType()->getArgumentTypes(), 1);
 
 		// check every member of the current mapping -- not the fastest method i admit.
 		bool found = false;
 		for(auto vm : this->virtualMethodMap)
 		{
-			if(vm.first.first == method->getName().name && matching(vm.first.second, method->getType()->toFunctionType()))
+			if(vm.first.first == method->getName().name
+				&& _areTypeListsVirtuallyCompatible(vm.first.second, list))
 			{
 				found = true;
-				this->virtualMethodMap[{ method->getName().name, util::drop(list, 1) }] = vm.second;
+				this->virtualMethodMap[{ method->getName().name, list }] = vm.second;
 				this->reverseVirtualMethodMap[vm.second] = method;
 				break;
 			}
@@ -326,7 +388,7 @@ namespace fir
 		if(!found)
 		{
 			// just make a new one.
-			this->virtualMethodMap[{ method->getName().name, util::drop(list, 1) }] = this->virtualMethodCount;
+			this->virtualMethodMap[{ method->getName().name, list }] = this->virtualMethodCount;
 			this->reverseVirtualMethodMap[this->virtualMethodCount] = method;
 			this->virtualMethodCount++;
 		}
