@@ -109,8 +109,6 @@ class B : A
 }
 
 
-
-
 @entry fn main()
 {
 	fn foo(x: int = 3, y: int = 7) -> int => x * y

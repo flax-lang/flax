@@ -32,10 +32,11 @@
 #define ARG_SHOW_CLANG_OUTPUT                   "-show-clang"
 #define ARG_SYSROOT                             "-sysroot"
 #define ARG_TARGET                              "-target"
-#define ARG_FREESTANDING                        "-ffreestanding"
-#define ARG_NOSTDLIB                            "-nostdlib"
-#define ARG_NO_RUNTIME_CHECKS                   "-no-runtime-checks"
-#define ARG_NO_RUNTIME_ERROR_STRINGS            "-no-runtime-error-strings"
+#define ARG_FFI_ESCAPE                          "--ffi-escape"
+#define ARG_FREESTANDING                        "--freestanding"
+#define ARG_NOSTDLIB                            "--nostdlib"
+#define ARG_NO_RUNTIME_CHECKS                   "--no-runtime-checks"
+#define ARG_NO_RUNTIME_ERROR_STRINGS            "--no-runtime-error-strings"
 
 // for internal use!
 #define ARG_ABORT_ON_ERROR                      "-abort-on-error"
@@ -72,6 +73,7 @@ static void setupMap()
 
 	list.push_back({ ARG_FREESTANDING, "generate a freestanding executable or object file" });
 	list.push_back({ ARG_NOSTDLIB, "do not link with default libraries (libc/libm/msvcrt)" });
+	list.push_back({ ARG_FFI_ESCAPE, "allow calling external functions (eg. libc) at compile-time" });
 
 	list.push_back({ ARG_POSINDEPENDENT, "generate position independent code" });
 	list.push_back({ ARG_PRINT_FIR, "print the FlaxIR before compilation" });
@@ -171,6 +173,7 @@ namespace frontend
 	bool _noStandardLibraries = false;
 	bool _noAutoGlobalConstructor = false;
 	bool _abortOnError = false;
+	bool _ffiEscape = false;
 
 	bool _noRuntimeChecks = false;
 	bool _noRuntimeErrorStrings = false;
@@ -223,6 +226,10 @@ namespace frontend
 		return _abortOnError;
 	}
 
+	bool getCanFFIEscape()
+	{
+		return _ffiEscape;
+	}
 
 	bool getPrintFIR()
 	{
@@ -435,6 +442,10 @@ namespace frontend
 				else if(!strcmp(argv[i], ARG_NO_RUNTIME_ERROR_STRINGS))
 				{
 					frontend::_noRuntimeErrorStrings = true;
+				}
+				else if(!strcmp(argv[i], ARG_FFI_ESCAPE))
+				{
+					frontend::_ffiEscape = true;
 				}
 				else if(!strcmp(argv[i], ARG_BACKEND))
 				{

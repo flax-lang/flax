@@ -9,6 +9,7 @@
 #include "ir/function.h"
 #include "ir/instruction.h"
 
+#include "frontend.h"
 #include "gluecode.h"
 #include "platform.h"
 
@@ -918,11 +919,32 @@ namespace interp
 
 
 
-
-
-
-	static interp::Value runFunctionWithLibFFI(InterpState* is, void* fnptr, fir::FunctionType* fnty, const std::vector<interp::Value>& args)
+	static void complainAboutFFIEscape(void* fnptr, fir::Type* fnty, const std::string& name)
 	{
+		if(frontend::getCanFFIEscape())
+			return;
+
+		BareError* e = 0;
+		if(name.empty())
+		{
+			e = BareError::make("interp: cannot call external function (name unavailable; symbol address %p, function type '%s')",
+					fnptr, fnty->str());
+		}
+		else
+		{
+			e = BareError::make("interp: cannot call external function '%s'", name);
+		}
+
+		e->append(BareError::make(MsgType::Note, "to call external functions (ffi), pass '--ffi-escape' as a command-line flag"));
+		e->postAndQuit();
+	}
+
+
+	static interp::Value runFunctionWithLibFFI(InterpState* is, void* fnptr, fir::FunctionType* fnty, const std::vector<interp::Value>& args,
+		const std::string& nameIfAvailable = "")
+	{
+		complainAboutFFIEscape(fnptr, fnty, nameIfAvailable);
+
 		// we are assuming the values in 'args' are correct!
 		ffi_type** arg_types = new ffi_type*[args.size()];
 		{
@@ -998,7 +1020,7 @@ namespace interp
 		void* fnptr = platform::compiler::getSymbol(fn->getName().str());
 		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn->getName().str());
 
-		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args);
+		return runFunctionWithLibFFI(is, fnptr, fn->getType(), args, /* name: */ fn->getName().str());
 	}
 
 	static interp::Value runFunctionWithLibFFI(InterpState* is, const interp::Function& fn, const std::vector<interp::Value>& args)
@@ -1006,7 +1028,7 @@ namespace interp
 		void* fnptr = platform::compiler::getSymbol(fn.func->getName().str());
 		if(!fnptr) error("interp: failed to find symbol named '%s'\n", fn.func->getName().str());
 
-		return runFunctionWithLibFFI(is, fnptr, fn.func->getType(), args);
+		return runFunctionWithLibFFI(is, fnptr, fn.func->getType(), args, /* name: */ fn.extFuncName);
 	}
 
 
@@ -1134,7 +1156,8 @@ namespace interp
 						else
 							error("interp: call to function pointer with invalid type '%s'", targ.type);
 
-						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, (void*) ptr, fnty, res.callArguments);
+						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, (void*) ptr, fnty, res.callArguments,
+							/* name: */ res.callTarget->extFuncName);
 						i += 1;
 					}
 				} break;

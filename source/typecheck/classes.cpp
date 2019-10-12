@@ -48,6 +48,10 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto cls = fir::ClassType::createWithoutBody(defn->id);
 	defn->type = cls;
 
+
+	// why do we do this when generating the declaration instead of only when we typecheck?
+	// as it currently stands, this means that our base class + any traits must appear before
+	// this class definition in the source code, which is kinda dumb.
 	if(this->bases.size() > 0)
 	{
 		auto base = fs->convertParserTypeToFIR(this->bases[0]);
