@@ -30,8 +30,8 @@ template <typename T>
 std::vector<T> operator + (const std::vector<T>& a, const std::vector<T>& b)
 {
 	auto ret = a;
+	ret.insert(ret.end(), b.begin(), b.end());
 
-	ret.insert(ret.begin(), b.begin(), b.end());
 	return ret;
 }
 

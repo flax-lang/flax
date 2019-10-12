@@ -424,7 +424,8 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = make_instr(OpKind::Floating_Truncate, false, targetType,
-			util::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType)));
+			util::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType))
+		);
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1075,6 +1076,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+
 	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, const std::string& vname)
 	{
 		// args[0] must be the self, for obvious reasons.
@@ -1088,11 +1090,11 @@ namespace fir
 			util::vectorOf<Value*>(
 				ConstantValue::getZeroValue(cls),
 				ConstantInt::getNative(index),
-				ConstantValue::getZeroValue(ft)) + args
-			);
+				ConstantValue::getZeroValue(ft)
+			) + args
+		);
 
-
-			// (Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getNative(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
+			//
 
 		return this->addInstruction(instr, vname);
 	}
