@@ -218,7 +218,6 @@ namespace sst
 		VarDefn* initBlockIdx = 0;
 		Block* initBlock = 0;
 
-		bool isRaw = false;
 		bool isMutable = false;
 	};
 
@@ -623,8 +622,6 @@ namespace sst
 		fir::Type* returnType = 0;
 		fir::Type* parentTypeForMethod = 0;
 
-		bool isEntry = false;
-		bool noMangle = false;
 		bool isVarArg = false;
 
 		virtual std::string getKind() override { return "function"; }

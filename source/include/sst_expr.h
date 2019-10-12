@@ -25,6 +25,8 @@ namespace sst
 		size_t cachedCSId = 0;
 		bool didCodegen = false;
 		CGResult cachedResult = CGResult(0);
+
+		AttributeSet attrs;
 	};
 
 	struct Expr : Stmt

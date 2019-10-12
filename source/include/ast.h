@@ -35,6 +35,8 @@ namespace ast
 		Stmt(const Location& l) : Locatable(l, "statement") { }
 		virtual ~Stmt();
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) = 0;
+
+		AttributeSet attrs;
 	};
 
 	struct Expr : Stmt
@@ -156,9 +158,6 @@ namespace ast
 		pts::Type* returnType = 0;
 
 		Block* body = 0;
-
-		bool isEntry = false;
-		bool noMangle = false;
 
 		bool isMutating = false;
 
@@ -492,7 +491,6 @@ namespace ast
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
 
-		bool israw = false;
 		util::hash_map<std::string, std::tuple<size_t, Location, pts::Type*>> cases;
 
 		std::vector<std::pair<Location, pts::Type*>> transparentFields;
@@ -578,7 +576,6 @@ namespace ast
 
 		Block* initBody = 0;
 
-		bool isRaw = false;
 		bool isMutable = false;
 	};
 

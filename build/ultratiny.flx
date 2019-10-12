@@ -2,128 +2,36 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-// export ultratiny
-// import libc as _
-// import std::math
+export ultratiny
 
-// trait Drop { fn deinit() }
-// trait Copy { fn copy(other: &self) }
-// trait Move { fn move(other: &self) }
-
-// struct Foo : Drop, Copy, Move
-// {
-// 	fn deinit()
-// 	{
-// 		printf("lmao\n")
-// 	}
-
-// 	fn copy(other: &self)
-// 	{
-// 	}
-
-// 	fn move(other: &mut self)
-// 	{
-// 	}
-// }
-
-// @entry fn main()
-// {
-// 	printf("hola amigo\n")
-// }
-
-import std::io
 import libc as _
+import std::math
 
-class X
+@compiler_support trait Drop { fn deinit() }
+@compiler_support trait Copy { fn copy(other: &self) }
+@compiler_support trait Move { fn move(other: &mut self) }
+
+struct Foo : Drop, Copy, Move
 {
-	init(c: int)
+	fn deinit()
 	{
-		this.data = c
+		printf("lmao\n")
 	}
 
-	var data: int
-}
-
-class Y : X
-{
-	init(c: int) : super(c: c + 30) { }
-}
-
-class Z : Y
-{
-	init(c: int) : super(c: c - 90) { }
-}
-
-// issue #2: class inheritance is source-order-dependent (ie. the definition of the base class must
-//           appear before the definition of any children)
-
-// classes are a Bad Idea (tm) ):
-
-class P
-{
-	var z: int
-
-	init(x: int = 3, y: int = 7)
+	fn copy(other: &self)
 	{
-		this.z = x * y
 	}
 
-	virtual fn foo(x: &Y) => printf("P::foo(%d)\n", x.data)
-}
-
-class Q : P
-{
-	init() : super(x: 5, y: 8) { }
-
-	// override fn foo(x: int) => printf("Q::foo(%d)\n", x)
-}
-
-class R : Q
-{
-	init() : super() { }
-
-	override fn foo(x: &X) => printf("R::foo(%d)\n", x.data)
-}
-
-
-
-class A
-{
-	init() { }
-	virtual fn foo(a: &Y) -> &Y
+	fn move(other: &mut self)
 	{
-		std::io::println("A::foo()")
-		return alloc Y(c: 471)
 	}
 }
-
-class B : A
-{
-	init() : super() { }
-
-	override fn foo(a: &X) -> &Z
-	{
-		std::io::println("B::foo()")
-		return alloc Z(c: 748)
-	}
-}
-
 
 @entry fn main()
 {
-	fn foo(x: int = 3, y: int = 7) -> int => x * y
-
-	// let a = B()
-	// let q = a.foo(Y(c: 1)).data
-
-	// let y: &X = alloc Y(c: 41)
-	// std::io::println("y = %", y.data)
-
-	// let q = Tmp(k: 3, m: 7).meth()
-
-	let q = B().foo(alloc Y(c: 1)).data
-	printf("q = %d\n", q)
+	printf("hola amigo\n")
 }
+
 
 
 

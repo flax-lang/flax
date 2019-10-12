@@ -27,9 +27,11 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
+	bool israw = this->attrs.has(attr::RAW);
+
 	sst::TypeDefn* defn = 0;
-	if(this->israw) defn = util::pool<sst::RawUnionDefn>(this->loc);
-	else            defn = util::pool<sst::UnionDefn>(this->loc);
+	if(israw)   defn = util::pool<sst::RawUnionDefn>(this->loc);
+	else        defn = util::pool<sst::UnionDefn>(this->loc);
 
 	defn->bareName = this->name;
 
@@ -38,8 +40,8 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->visibility = this->visibility;
 	defn->original = this;
 
-	if(this->israw) defn->type = fir::RawUnionType::createWithoutBody(defn->id);
-	else            defn->type = fir::UnionType::createWithoutBody(defn->id);
+	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id);
+	else        defn->type = fir::UnionType::createWithoutBody(defn->id);
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
@@ -71,7 +73,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 	sst::TypeDefn* ret = 0;
-	if(this->israw)
+	if(this->attrs.has(attr::RAW))
 	{
 		auto defn = dcast(sst::RawUnionDefn, tcr.defn());
 		iceAssert(defn);

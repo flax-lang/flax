@@ -189,7 +189,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->counts.size() > 1)
 		error(this, "multi-dimensional arrays are not supported yet.");
 
-	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->isRaw));
+	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->attrs.has(attr::RAW)));
 }
 
 

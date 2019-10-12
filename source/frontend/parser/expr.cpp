@@ -98,65 +98,87 @@ namespace parser
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
+			Stmt* ret = 0;
+
+			bool compiler_support = false;
+			if(tok.type == TT::Attr_CompilerSupport)
+				compiler_support = true, st.pop(), tok = st.front();
+
 			// handle the things that are OK to appear anywhere first:
 			switch(tok.type)
 			{
 				case TT::Var:
 				case TT::Val:
-					return parseVariable(st);
+					ret = parseVariable(st);
+					break;
 
 				case TT::Func:
-					return parseFunction(st);
+					ret = parseFunction(st);
+					break;
 
 				case TT::ForeignFunc:
-					return parseForeignFunction(st);
+					ret = parseForeignFunction(st);
+					break;
 
 				case TT::Public:
 				case TT::Private:
 				case TT::Internal:
-					return parseStmtWithAccessSpec(st);
+					ret = parseStmtWithAccessSpec(st);
+					break;
 
 				case TT::Directive_If:
-					return parseIfStmt(st);
+					ret = parseIfStmt(st);
+					break;
 
 				case TT::Directive_Run:
-					return parseRunDirective(st);
+					ret = parseRunDirective(st);
+					break;
 
 				case TT::Attr_Raw:
 					st.eat();
 					if(st.front() != TT::Union)
 						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
 
-					return parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
+					ret = parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
+					break;
 
 				case TT::Union:
-					return parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
+					ret = parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
+					break;
 
 				case TT::Struct:
-					return parseStruct(st, /* nameless: */ false);
+					ret = parseStruct(st, /* nameless: */ false);
+					break;
 
 				case TT::Class:
-					return parseClass(st);
+					ret = parseClass(st);
+					break;
 
 				case TT::Enum:
-					return parseEnum(st);
+					ret = parseEnum(st);
+					break;
 
 				case TT::Trait:
-					return parseTrait(st);
+					ret = parseTrait(st);
+					break;
 
 				case TT::Static:
-					return parseStaticDecl(st);
+					ret = parseStaticDecl(st);
+					break;
 
 				case TT::Operator:
-					return parseOperatorOverload(st);
+					ret = parseOperatorOverload(st);
+					break;
 
 				case TT::Using:
-					return parseUsingStmt(st);
+					ret = parseUsingStmt(st);
+					break;
 
 				case TT::Mutable:
 				case TT::Virtual:
 				case TT::Override:
-					return checkMethodModifiers(false, false, false);
+					ret = checkMethodModifiers(false, false, false);
+					break;
 
 				case TT::Extension:
 				case TT::TypeAlias:
@@ -182,12 +204,20 @@ namespace parser
 					break;
 			}
 
+			if(ret)
+			{
+				if(compiler_support)
+					ret->attrs.set(attr::COMPILER_SUPPORT);
+
+				return ret;
+			}
+
 
 			// if we got here, then it wasn't any of those things.
 			// we store it first, so we can give better error messages (after knowing what it is)
 			// in the event that it wasn't allowed at top-level.
 
-			Stmt* ret = 0;
+
 			switch(tok.type)
 			{
 				case TT::If:
@@ -1014,7 +1044,9 @@ namespace parser
 		if(st.front() == TT::Mutable)
 			ret->isMutable = true, st.pop();
 
-		ret->isRaw = raw;
+		if(raw)
+			ret->attrs.set(attr::RAW);
+
 		ret->allocTy = parseType(st);
 
 		if(st.front() == TT::LParen)

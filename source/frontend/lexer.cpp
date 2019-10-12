@@ -419,6 +419,12 @@ namespace lexer
 			tok.text = "@platform";
 			read = 9;
 		}
+		else if(hasPrefix(stream, "@compiler_support"))
+		{
+			tok.type = TokenType::Attr_CompilerSupport;
+			tok.text = "@compiler_support";
+			read = 17;
+		}
 
 		// directives
 		else if(hasPrefix(stream, "#if"))

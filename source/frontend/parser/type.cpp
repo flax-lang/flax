@@ -421,7 +421,9 @@ namespace parser
 		iceAssert(st.front() == TT::RBrace);
 		st.eat();
 
-		defn->israw = israw;
+		if(israw)
+			defn->attrs.set(attr::RAW);
+
 		return defn;
 	}
 

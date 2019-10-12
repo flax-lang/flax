@@ -15,6 +15,52 @@ namespace ast
 	struct Expr;
 }
 
+namespace attr
+{
+	constexpr uint32_t FN_ENTRYPOINT    = 0x1;
+	constexpr uint32_t NO_MANGLE        = 0x2;
+	constexpr uint32_t RAW              = 0x4;
+	constexpr uint32_t COMPILER_SUPPORT = 0x8;
+}
+
+struct AttributeSet
+{
+	struct UserAttrib
+	{
+		std::string name;
+		std::vector<std::string> args;
+	};
+
+	std::vector<UserAttrib> userAttribs;
+
+	template <typename T>
+	bool has(T x) const { return (this->flags & x); }
+
+	template <typename T>
+	bool hasAny(T x) const { return (this->flags & x); }
+
+	template <typename T, typename... Args>
+	bool hasAny(T x, Args... xs) const { return (this->flags & x) || hasAny(xs...); }
+
+	template <typename T>
+	bool hasAll(T x) const { return (this->flags & x); }
+
+	template <typename T, typename... Args>
+	bool hasAll(T x, Args... xs) const { return (this->flags & x) && hasAll(xs...); }
+
+	template <typename T>
+	void set(T x) { this->flags |= x; }
+
+	template <typename T, typename... Args>
+	void set(T x, Args... xs) { this->flags |= x; set(xs...); }
+
+
+
+	private:
+	uint32_t flags;
+};
+
+
 struct DecompMapping
 {
 	Location loc;

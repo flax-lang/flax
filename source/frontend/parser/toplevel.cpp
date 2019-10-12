@@ -184,10 +184,10 @@ namespace parser
 						warn(st, "attribute '@nomangle' is redundant on 'ffi' functions");
 
 					else if(auto fd = dcast(FuncDefn, stmt))
-						fd->noMangle = true;
+						fd->attrs.set(attr::NO_MANGLE);
 
 					else if(auto vd = dcast(VarDefn, stmt))
-						vd->noMangle = true;
+						vd->attrs.set(attr::NO_MANGLE);
 
 					root->statements.push_back(stmt);
 
@@ -201,7 +201,7 @@ namespace parser
 					st.pop();
 					auto stmt = parseStmt(st);
 					if(auto fd = dcast(FuncDefn, stmt))
-						fd->isEntry = true;
+						fd->attrs.set(attr::FN_ENTRYPOINT);
 
 					else
 						error(st, "'@entry' attribute is only applicable to function definitions");

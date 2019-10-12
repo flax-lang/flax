@@ -24,7 +24,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	auto ft = fir::FunctionType::get(ptypes, this->returnType);
 
 	auto ident = this->id;
-	if(this->isEntry || this->noMangle)
+	if(this->attrs.hasAny(attr::FN_ENTRYPOINT, attr::NO_MANGLE))
 		ident = Identifier(this->id.name, IdKind::Name);
 
 	auto fn = cs->module->getOrCreateFunction(ident, ft,
@@ -82,7 +82,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->parentTypeForMethod)
 		cs->leaveMethodBody();
 
-	if(this->isEntry)
+	if(this->attrs.has(attr::FN_ENTRYPOINT))
 	{
 		if(cs->entryFunction.first != 0)
 		{

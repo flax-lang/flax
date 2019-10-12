@@ -57,6 +57,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->parentTypeForMethod = infer;
 
 
+	defn->attrs = this->attrs;
 	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
 	defn->id.scope = this->realScope;
@@ -65,10 +66,6 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->params = ps;
 	defn->returnType = retty;
 	defn->visibility = this->visibility;
-
-	defn->isEntry = this->isEntry;
-	defn->noMangle = this->noMangle;
-
 
 	defn->global = !fs->isInFunctionBody();
 
