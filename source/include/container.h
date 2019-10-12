@@ -31,7 +31,7 @@ namespace util
 
 			for(auto c : other.chunks)
 			{
-				auto nc = (ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize);
+				auto nc = static_cast<ValueType*>(mem::allocate_memory(sizeof(ValueType) * ChunkSize));
 				memmove(nc, c, sizeof(ValueType) * ChunkSize);
 				this->chunks.push_back(nc);
 			}
@@ -86,7 +86,7 @@ namespace util
 			size_t offs = index % ChunkSize;
 
 			iceAssert(cind < this->chunks.size());
-			return *((ValueType*) (this->chunks[cind] + offs));
+			return *(static_cast<ValueType*>(this->chunks[cind] + offs));
 		}
 
 		ValueType* getNextSlotAndIncrement()
@@ -124,7 +124,7 @@ namespace util
 		private:
 		void makeNewChunk()
 		{
-			this->chunks.push_back((ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize));
+			this->chunks.push_back(static_cast<ValueType*>(mem::allocate_memory(sizeof(ValueType) * ChunkSize)));
 		}
 
 		// possibly use a faster implementation?? since we're just storing pointers idk if there's a point.

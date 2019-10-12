@@ -1250,7 +1250,7 @@ namespace parser
 
 				case TT::CharacterLiteral:
 					st.pop();
-					return util::pool<LitChar>(tok.loc, (uint32_t) tok.text[0]);
+					return util::pool<LitChar>(tok.loc, static_cast<uint32_t>(tok.text[0]));
 
 				// no point creating separate functions for these
 				case TT::True:

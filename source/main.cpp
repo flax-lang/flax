@@ -20,8 +20,8 @@ struct timer
 {
 	timer() : out(nullptr)              { start = std::chrono::high_resolution_clock::now(); }
 	explicit timer(double* t) : out(t)  { start = std::chrono::high_resolution_clock::now(); }
-	~timer()                    { if(out) *out = (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
-	double stop()               { return (double) (std::chrono::high_resolution_clock::now() - start).count() / 1000.0 / 1000.0; }
+	~timer()        { if(out) *out = static_cast<double>((std::chrono::high_resolution_clock::now() - start).count()) / 1000000.0; }
+	double stop()   { return static_cast<double>((std::chrono::high_resolution_clock::now() - start).count()) / 1000000.0; }
 
 	double* out = 0;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
@@ -100,13 +100,16 @@ static void compile(std::string in, std::string out)
 
 	if(frontend::getPrintProfileStats())
 	{
-		auto compile_ms = (double) (std::chrono::high_resolution_clock::now() - start_time).count() / 1000.0 / 1000.0;
+		auto compile_ms = static_cast<double>((std::chrono::high_resolution_clock::now() - start_time).count()) / 1000.0 / 1000.0;
 
 		debuglogln("cleared (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", total.stop(), mem::getWatermark() / 1024.0,
 			mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
+
 		debuglogln("compile (%.1f ms)\t[lex: %.1f, parse: %.1f, typechk: %.1f, codegen: %.1f]",
 			compile_ms, lexer_ms, parser_ms, typecheck_ms, codegen_ms);
-		debuglogln("%d lines, %.2f loc/s, %d fir values\n", state.totalLinesOfCode, (double) state.totalLinesOfCode / (compile_ms / 1000.0),
+
+		debuglogln("%d lines, %.2f loc/s, %d fir values\n", state.totalLinesOfCode,
+			static_cast<double>(state.totalLinesOfCode) / (compile_ms / 1000.0),
 			fir::Value::getCurrentValueId());
 	}
 
@@ -137,7 +140,7 @@ static void compile(std::string in, std::string out)
 				capsneeded |= BackendCaps::EmitProgram;
 		}
 
-		if(backend->hasCapability((BackendCaps::Capabilities) capsneeded))
+		if(backend->hasCapability(static_cast<BackendCaps::Capabilities>(capsneeded)))
 		{
 			backend->performCompilation();
 			backend->optimiseProgram();
@@ -146,7 +149,7 @@ static void compile(std::string in, std::string out)
 		else
 		{
 			error("selected backend '%s' does not have some required capabilities (missing %s)\n", backend->str(),
-				capabilitiesToString((BackendCaps::Capabilities) capsneeded));
+				capabilitiesToString(static_cast<BackendCaps::Capabilities>(capsneeded)));
 		}
 	}
 }

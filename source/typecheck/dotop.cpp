@@ -283,7 +283,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				if(!args[0]->type->isCharType() && !args[0]->type->isStringType() && !args[0]->type->isCharSliceType())
 				{
 					error(fc, "invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, fir::Type::getInt8(), (fir::Type*) fir::Type::getCharSlice(false), (fir::Type*) fir::Type::getString());
+						args[0]->type, fir::Type::getInt8(), dcast(fir::Type, fir::Type::getCharSlice(false)),
+						dcast(fir::Type, fir::Type::getString()));
 				}
 			}
 
@@ -363,7 +364,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					&& args[0]->type != type)
 				{
 					error(fc, "invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, type, type->getArrayElementType(), (fir::Type*) fir::ArraySliceType::get(type->getArrayElementType(), false));
+						args[0]->type, type, type->getArrayElementType(),
+						dcast(fir::Type, fir::ArraySliceType::get(type->getArrayElementType(), false)));
 				}
 			}
 

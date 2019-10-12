@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
@@ -38,14 +37,14 @@ namespace fir
 
 		static ConstantNumber* get(ConstantNumberType* cnt, const mpfr::mpreal& n);
 
-		int8_t getInt8()        { return (int8_t)  this->number.toLLong(); }
-		int16_t getInt16()      { return (int16_t) this->number.toLLong(); }
-		int32_t getInt32()      { return (int32_t) this->number.toLLong(); }
-		int64_t getInt64()      { return (int64_t) this->number.toLLong(); }
-		uint8_t getUint8()      { return (uint8_t)  this->number.toULLong(); }
-		uint16_t getUint16()    { return (uint16_t) this->number.toULLong(); }
-		uint32_t getUint32()    { return (uint32_t) this->number.toULLong(); }
-		uint64_t getUint64()    { return (uint64_t) this->number.toULLong(); }
+		int8_t getInt8()        { return static_cast<int8_t>(this->number.toLLong()); }
+		int16_t getInt16()      { return static_cast<int16_t>(this->number.toLLong()); }
+		int32_t getInt32()      { return static_cast<int32_t>(this->number.toLLong()); }
+		int64_t getInt64()      { return static_cast<int64_t>(this->number.toLLong()); }
+		uint8_t getUint8()      { return static_cast<uint8_t>(this->number.toULLong()); }
+		uint16_t getUint16()    { return static_cast<uint16_t>(this->number.toULLong()); }
+		uint32_t getUint32()    { return static_cast<uint32_t>(this->number.toULLong()); }
+		uint64_t getUint64()    { return static_cast<uint64_t>(this->number.toULLong()); }
 
 		float getFloat()        { return this->number.toFloat(); }
 		double getDouble()      { return this->number.toDouble(); }

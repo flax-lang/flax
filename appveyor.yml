@@ -40,7 +40,7 @@ test_script:
   - ps: New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
   - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
   - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
-  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape -run -backend interp build\tester.flx
   - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot build\tester.flx
   - ps: .\tester.exe
 

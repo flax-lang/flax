@@ -17,8 +17,6 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		return CGResult(0);
 
 	std::vector<fir::Type*> ptypes;
-	// if(this->parentTypeForMethod)
-	// 	ptypes.push_back(this->isMutating ? this->parentTypeForMethod->getMutablePointerTo() : this->parentTypeForMethod->getPointerTo());
 
 	for(auto p : this->params)
 		ptypes.push_back(p.type);

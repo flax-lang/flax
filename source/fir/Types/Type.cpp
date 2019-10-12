@@ -61,7 +61,9 @@ namespace fir
 		{
 			if(from->isSignedIntType() == to->isSignedIntType())
 			{
-				auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
+				auto bitdiff = std::abs(static_cast<int>(from->toPrimitiveType()->getIntegerBitWidth())
+					- static_cast<int>(to->toPrimitiveType()->getIntegerBitWidth()));
+
 				switch(bitdiff)
 				{
 					case 0:		return 0;	// same

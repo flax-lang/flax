@@ -87,7 +87,7 @@ namespace fir
 
 	int64_t ConstantInt::getSignedValue()
 	{
-		return (int64_t) this->value;
+		return static_cast<int64_t>(this->value);
 	}
 
 	uint64_t ConstantInt::getUnsignedValue()
@@ -187,7 +187,7 @@ namespace fir
 
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = (double) val;
+		this->value = static_cast<double>(val);
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)

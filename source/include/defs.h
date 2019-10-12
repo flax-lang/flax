@@ -22,10 +22,10 @@
 	1: experimental, std::experimental::string_view
 	2: external, stx::string_view
 */
-#if __has_include(<string_view>) && _HAS_CXX17
+#if __has_include(<string_view>)
 	#include <string_view>
 	#define STRING_VIEW_TYPE 0
-#elif __has_include(<experimental/string_view>) && _HAS_CXX17
+#elif __has_include(<experimental/string_view>)
 	#include <experimental/string_view>
 	#define STRING_VIEW_TYPE 1
 #else

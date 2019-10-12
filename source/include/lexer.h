@@ -141,7 +141,7 @@ namespace lexer
 
 	inline void operator << (std::ostream& os, const TokenType& tt)
 	{
-		os << (int) tt;
+		os << static_cast<int>(tt);
 	}
 
 	// using TokenList = util::FastVector<Token>;

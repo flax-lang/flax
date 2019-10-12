@@ -70,6 +70,17 @@ namespace util
 
 
 
+	template <typename T>
+	std::vector<T> vectorOf(const T& x)
+	{
+		return std::vector<T>({ x });
+	}
+
+	template <typename T, typename... Args>
+	std::vector<T> vectorOf(const T& x, const Args&... xs)
+	{
+		return x + vectorOf<T>(xs...);
+	}
 
 
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>

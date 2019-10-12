@@ -13,9 +13,6 @@
 
 #include "memorypool.h"
 
-#define DO_IN_SITU_CONSTANT_FOLDING		0
-
-
 
 static bool isSAAType(fir::Type* t)
 {
@@ -427,7 +424,7 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = make_instr(OpKind::Floating_Truncate, false, targetType,
-			{ v, ConstantValue::getZeroValue(targetType) });
+			util::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType)));
 
 		return this->addInstruction(instr, vname);
 	}
@@ -763,7 +760,7 @@ namespace fir
 			if(std::modf(cfp->getValue(), &_) != 0.0)
 				warn("truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
 
-			return ConstantInt::get(targetType, (size_t) cfp->getValue());
+			return ConstantInt::get(targetType, static_cast<size_t>(cfp->getValue()));
 		}
 
 		Instruction* instr = make_instr(OpKind::Cast_FloatToInt, false, targetType,
@@ -784,13 +781,13 @@ namespace fir
 			bool sgn = ci->getType()->isSignedIntType();
 			if(targetType == Type::getFloat32())
 			{
-				if(sgn)	ret = ConstantFP::getFloat32((float) ci->getSignedValue());
-				else	ret = ConstantFP::getFloat32((float) ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
+				else	ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
 			}
 			else if(targetType == Type::getFloat64())
 			{
-				if(sgn)	ret = ConstantFP::getFloat64((double) ci->getSignedValue());
-				else	ret = ConstantFP::getFloat64((double) ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
+				else	ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
 			}
 			else
 			{
@@ -1088,7 +1085,14 @@ namespace fir
 		iceAssert(self && self == cls);
 
 		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, ft->getReturnType(),
-			(Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getNative(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
+			util::vectorOf<Value*>(
+				ConstantValue::getZeroValue(cls),
+				ConstantInt::getNative(index),
+				ConstantValue::getZeroValue(ft)) + args
+			);
+
+
+			// (Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getNative(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1148,7 +1152,7 @@ namespace fir
 
 		// insert at the front (back = no guarantees)
 		this->currentBlock->instructions.insert(this->currentBlock->instructions.begin(), instr);
-		return (PHINode*) instr->realOutput;
+		return dcast(PHINode, instr->realOutput);
 	}
 
 	Value* IRBuilder::StackAlloc(Type* type, const std::string& vname)

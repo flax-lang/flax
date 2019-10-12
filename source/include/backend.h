@@ -67,7 +67,7 @@ namespace backend
 
 	struct Backend
 	{
-		BackendCaps::Capabilities getCapabilities() { return (BackendCaps::Capabilities) this->capabilities; }
+		BackendCaps::Capabilities getCapabilities() { return static_cast<BackendCaps::Capabilities>(this->capabilities); }
 		bool hasCapability(BackendCaps::Capabilities cap) { return this->capabilities & cap; }
 
 		static Backend* getBackendFromOption(BackendOption opt, CompiledData& cd, std::vector<std::string> in, std::string out);

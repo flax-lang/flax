@@ -39,7 +39,7 @@ script:
         CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make -j2 build;
       fi
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend interp build/tester.flx
+    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend interp build/tester.flx
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
 
 notifications:

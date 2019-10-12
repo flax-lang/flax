@@ -42,7 +42,7 @@ namespace sst
 			else
 			{
 				// limit decomposition of the given types by the number of transforms on the target type.
-				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, (size_t) -1);
+				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, static_cast<size_t>(-1));
 				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
 				// if(ttrfs != gtrfs)

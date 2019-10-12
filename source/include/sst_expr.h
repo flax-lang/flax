@@ -5,6 +5,7 @@
 #pragma once
 
 #include "defs.h"
+#include "stcommon.h"
 
 namespace cgn
 {

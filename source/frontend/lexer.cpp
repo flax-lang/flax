@@ -630,7 +630,7 @@ namespace lexer
 			// because we want to avoid using std::string (ie. copying) in the lexer (Token), we must send the string over verbatim.
 
 			// store the starting position
-			size_t start = (size_t) (stream.data() - whole.data() + 1);
+			size_t start = (stream.data() - whole.data() + 1);
 
 			// opening "
 			pos.col++;

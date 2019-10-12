@@ -116,7 +116,7 @@ namespace parser
 
 		bool isFirst = true;
 		auto priv = VisibilityLevel::Invalid;
-		size_t tix = (size_t) -1;
+		size_t tix = static_cast<size_t>(-1);
 
 
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
@@ -160,7 +160,11 @@ namespace parser
 
 					auto ns = parseTopLevel(st, tok.str());
 					if(priv != VisibilityLevel::Invalid)
-						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = (size_t) -1;
+					{
+						ns->visibility = priv;
+						priv = VisibilityLevel::Invalid;
+						tix = static_cast<size_t>(-1);
+					}
 
 					root->statements.push_back(ns);
 
@@ -243,7 +247,7 @@ namespace parser
 					{
 						st.rewindTo(tix);
 
-						tix = (size_t) -1;
+						tix = static_cast<size_t>(-1);
 						priv = VisibilityLevel::Invalid;
 					}
 

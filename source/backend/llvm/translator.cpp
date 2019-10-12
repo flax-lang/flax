@@ -13,6 +13,9 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -21,6 +24,8 @@
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include "gluecode.h"
@@ -71,7 +76,7 @@ namespace backend
 	static llvm::Type* getNativeWordTy()
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-		return llvm::IntegerType::getIntNTy(gc, (unsigned int) fir::getNativeWordSizeInBits());
+		return llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(fir::getNativeWordSizeInBits()));
 	}
 
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
@@ -84,7 +89,7 @@ namespace backend
 			// signed/unsigned is lost.
 			if(pt->isIntegerType())
 			{
-				return llvm::IntegerType::getIntNTy(gc, (unsigned int) pt->getIntegerBitWidth());
+				return llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(pt->getIntegerBitWidth()));
 			}
 			else if(pt->isFloatingPointType())
 			{
@@ -281,7 +286,7 @@ namespace backend
 			for(auto v : ut->getVariants())
 			{
 				if(!v.second->getInteriorType()->isVoidType())
-					maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second->getInteriorType(), mod)));
+					maxSz = std::max(maxSz, static_cast<size_t>(dl.getTypeAllocSize(typeToLlvm(v.second->getInteriorType(), mod))));
 			}
 
 			if(maxSz > 0)
@@ -308,11 +313,11 @@ namespace backend
 
 			size_t maxSz = 0;
 			for(auto v : ut->getVariants())
-				maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second, mod)));
+				maxSz = std::max(maxSz, static_cast<size_t>(dl.getTypeAllocSize(typeToLlvm(v.second, mod))));
 
 			iceAssert(maxSz > 0);
 			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
-				llvm::IntegerType::getIntNTy(gc, (unsigned int) (maxSz * CHAR_BIT))
+				llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(maxSz * CHAR_BIT))
 			}, ut->getTypeName().mangled());
 
 			return createdTypes[ut->getTypeName()];
@@ -1526,10 +1531,14 @@ namespace backend
 							auto phi = dcast(fir::PHINode, inst->realOutput);
 							iceAssert(phi);
 
-							llvm::PHINode* ret = builder.CreatePHI(t, (unsigned int) phi->getValues().size());
+							llvm::PHINode* ret = builder.CreatePHI(t, static_cast<unsigned int>(phi->getValues().size()));
 
 							for(auto v : phi->getValues())
-								ret->addIncoming(decay(v.second, getValue(v.second)), llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first))));
+							{
+								ret->addIncoming(decay(v.second, getValue(v.second)),
+									llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first)))
+								);
+							}
 
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1604,7 +1613,7 @@ namespace backend
 								clsty->getVirtualMethodCount())->getPointerTo());
 
 							auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-								0, (unsigned int) dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+								0, static_cast<unsigned int>(dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue()));
 
 							auto ffty = inst->operands[2]->getType()->toFunctionType();
 
@@ -1863,7 +1872,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back((unsigned int) ci->getUnsignedValue());
+								inds.push_back(static_cast<unsigned int>(ci->getUnsignedValue()));
 							}
 
 
@@ -1899,7 +1908,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back((unsigned int) ci->getUnsignedValue());
+								inds.push_back(static_cast<unsigned int>(ci->getUnsignedValue()));
 							}
 
 							iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
@@ -2282,7 +2291,7 @@ namespace backend
 							iceAssert(ci);
 
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
-								ptr, (unsigned int) ci->getUnsignedValue());
+								ptr, static_cast<unsigned int>(ci->getUnsignedValue()));
 
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -2323,7 +2332,7 @@ namespace backend
 							auto ut = inst->operands[0]->getType()->toUnionType();
 							auto vid = dcast(fir::ConstantInt, inst->operands[1])->getSignedValue();
 
-							iceAssert((size_t) vid < ut->getVariantCount());
+							iceAssert(static_cast<size_t>(vid < ut->getVariantCount()));
 							auto vt = ut->getVariant(vid)->getInteriorType();
 
 							auto lut = typeToLlvm(ut, module);

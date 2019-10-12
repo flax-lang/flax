@@ -23,7 +23,7 @@ namespace backend
 		if(frontend::getPrintProfileStats())
 		{
 			auto dur = std::chrono::high_resolution_clock::now() - ts;
-			auto ms = (double) dur.count() / 1000.0 / 1000.0;
+			auto ms = static_cast<double>(dur.count()) / 1000000.0;
 			printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
 		}
 	}

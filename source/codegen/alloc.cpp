@@ -17,7 +17,8 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 		auto restore = cs->irb.getCurrentBlock();
 
 		fir::Function* func = cs->module->getOrCreateFunction(fname,
-			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
+			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()),
+			fir::LinkageType::Internal);
 
 		func->setAlwaysInline();
 

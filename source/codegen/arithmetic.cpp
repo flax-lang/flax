@@ -49,7 +49,7 @@ namespace sst
 				if(auto parent = target->toUnionVariantType()->getParentUnion(); parent != vt)
 				{
 					error(this, "unwrapping union of type '%s' to variant ('%s') of unrelated union '%s'",
-						vt, target->toUnionVariantType()->getName(), (fir::Type*) parent);
+						vt, target->toUnionVariantType()->getName(), dcast(fir::Type, parent));
 				}
 				else
 				{

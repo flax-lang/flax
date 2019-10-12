@@ -9,6 +9,7 @@
 #include "frontend.h"
 #include "platform.h"
 
+
 #if OS_WINDOWS
 	#define WIN32_LEAN_AND_MEAN 1
 
@@ -198,8 +199,7 @@ namespace platform
 		// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
 		// if we have at least 4mb worth of file.
 		// if not, then just 2 * pagesize.
-		#define MINIMUM_MMAP_THRESHOLD ((size_t) (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
-		#define _
+		#define MINIMUM_MMAP_THRESHOLD (static_cast<size_t>(EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
 
 		char* contents = 0;
 
@@ -213,8 +213,8 @@ namespace platform
 			if(fileLength >= MINIMUM_MMAP_THRESHOLD)
 			{
 				// ok, do an mmap
-				contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
-				if(contents == MAP_FAILED)
+				contents = static_cast<char*>(mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0));
+				if(contents == reinterpret_cast<void*>(-1))
 				{
 					perror("there was an error reading the file");
 					exit(-1);
@@ -366,6 +366,12 @@ namespace platform
 		#endif
 	}
 
+#ifdef _MSC_VER
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
 	size_t getTerminalWidth()
 	{
 		#if OS_WINDOWS
@@ -406,13 +412,13 @@ namespace platform
 
 		#endif
 	}
+
+#ifdef _MSC_VER
+#else
+	#pragma GCC diagnostic pop
+#endif
+
 }
-
-
-
-
-
-
 
 
 

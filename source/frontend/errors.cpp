@@ -221,7 +221,7 @@ static std::string typestr(MsgType t)
 template <typename... Ts>
 static size_t strprinterrf(const char* fmt, Ts... ts)
 {
-	return (size_t) fprintf(stderr, "%s", strprintf(fmt, ts...).c_str());
+	return static_cast<size_t>(fprintf(stderr, "%s", strprintf(fmt, ts...).c_str()));
 }
 
 // template <typename... Ts>
@@ -341,7 +341,7 @@ void SpanError::post()
 			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), util::ESpan(this->top->loc, "")));
 
 		size_t cursor = 0;
-		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
+		size_t width = static_cast<size_t>(0.85 * platform::getTerminalWidth());
 
 		// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
 		// it doesn't really matter.

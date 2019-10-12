@@ -14,7 +14,11 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
+
 
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/DataLayout.h"
@@ -38,6 +42,8 @@
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include "backend.h"

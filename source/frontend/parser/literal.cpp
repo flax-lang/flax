@@ -39,7 +39,7 @@ namespace parser
 
 			// ok then.
 			char s[2] = { sv[1], sv[2] };
-			char val = (char) std::stol(s, /* pos: */ 0, /* base: */ 16);
+			char val = static_cast<char>(std::stol(s, /* pos: */ 0, /* base: */ 16));
 
 			*ofs = 3;
 			return std::string(&val, 1);

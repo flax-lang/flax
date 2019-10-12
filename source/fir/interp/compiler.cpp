@@ -19,7 +19,7 @@ namespace interp
 		interp::Instruction ret;
 
 		ret.result = finstr->realOutput;
-		ret.opcode = (uint64_t) finstr->opKind;
+		ret.opcode = static_cast<uint64_t>(finstr->opKind);
 
 		for(auto a : finstr->operands)
 			ret.args.push_back(a);

@@ -5,7 +5,6 @@
 #pragma once
 #include "defs.h"
 #include "sst_expr.h"
-#include "stcommon.h"
 
 
 #include "mpreal/mpreal.h"

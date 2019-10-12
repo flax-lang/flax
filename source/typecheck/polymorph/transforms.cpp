@@ -160,11 +160,11 @@ namespace poly
 					case TrfType::None:
 						break;
 					case TrfType::Slice:
-						base = fir::ArraySliceType::get(base, (bool) it->data);
+						base = fir::ArraySliceType::get(base, static_cast<bool>(it->data));
 						break;
 					case TrfType::Pointer:
 						base = base->getPointerTo();
-						if((bool) it->data) base = base->getMutablePointerVersion();
+						if(static_cast<bool>(it->data)) base = base->getMutablePointerVersion();
 						break;
 					case TrfType::FixedArray:
 						base = fir::ArrayType::get(base, it->data);
@@ -176,7 +176,7 @@ namespace poly
 						base = fir::ArraySliceType::getVariadic(base);
 						break;
 					default:
-						error("unsupported transformation '%d'", (int) it->type);
+						error("unsupported transformation '%d'", static_cast<int>(it->type));
 				}
 			}
 			return base;

@@ -19,6 +19,9 @@
 	#pragma warning(push, 0)
 	#pragma warning(disable: 4267)
 	#pragma warning(disable: 4244)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -45,6 +48,8 @@
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include <stdio.h>
@@ -72,7 +77,7 @@ static void _printTiming(T ts, const std::string& thing)
 	if(frontend::getPrintProfileStats())
 	{
 		auto dur = std::chrono::high_resolution_clock::now() - ts;
-		auto ms = (double) dur.count() / 1000.0 / 1000.0;
+		auto ms = static_cast<double>(dur.count()) / 1000000.0;
 		printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
 	}
 }
@@ -218,7 +223,7 @@ namespace backend
 		else if(frontend::getOutputMode() == ProgOutputMode::LLVMBitcode)
 		{
 			std::error_code e;
-			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+			llvm::sys::fs::OpenFlags of = static_cast<llvm::sys::fs::OpenFlags>(0);
 			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
 			llvm::WriteBitcodeToFile(*this->linkedModule.get(), rso);
@@ -438,9 +443,8 @@ namespace backend
 			this->jitInstance = new LLVMJit(this->targetMachine);
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
-			// this->jitInstance->
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
-			ret = (EntryPoint_t) entryaddr;
+			ret = reinterpret_cast<EntryPoint_t>(entryaddr);
 
 			iceAssert(ret && "failed to resolve entry function address");
 		}

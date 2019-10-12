@@ -117,11 +117,11 @@ namespace interp
 	{
 		if(v.dataSize > LARGE_DATA_SIZE)
 		{
-			return *((T*) v.ptr);
+			return *(static_cast<T*>(v.ptr));
 		}
 		else
 		{
-			return *((T*) &v.data[0]);
+			return *(reinterpret_cast<T*>(const_cast<uint8_t*>(&v.data[0])));
 		}
 	}
 
@@ -186,7 +186,7 @@ namespace interp
 
 	static interp::Value loadFromPtr(const interp::Value& x, fir::Type* ty)
 	{
-		auto ptr = (void*) getActualValue<uintptr_t>(x);
+		auto ptr = reinterpret_cast<void*>(getActualValue<uintptr_t>(x));
 
 		interp::Value ret;
 		ret.dataSize = getSizeOfType(ty);
@@ -253,14 +253,14 @@ namespace interp
 		{
 			interp::Value ret;
 
-			if(ci->getType() == fir::Type::getInt8())        ret = makeValue(c, (int8_t) ci->getSignedValue());
-			else if(ci->getType() == fir::Type::getInt16())  ret = makeValue(c, (int16_t) ci->getSignedValue());
-			else if(ci->getType() == fir::Type::getInt32())  ret = makeValue(c, (int32_t) ci->getSignedValue());
-			else if(ci->getType() == fir::Type::getInt64())  ret = makeValue(c, (int64_t) ci->getSignedValue());
-			else if(ci->getType() == fir::Type::getUint8())  ret = makeValue(c, (uint8_t) ci->getUnsignedValue());
-			else if(ci->getType() == fir::Type::getUint16()) ret = makeValue(c, (uint16_t) ci->getUnsignedValue());
-			else if(ci->getType() == fir::Type::getUint32()) ret = makeValue(c, (uint32_t) ci->getUnsignedValue());
-			else if(ci->getType() == fir::Type::getUint64()) ret = makeValue(c, (uint64_t) ci->getUnsignedValue());
+			if(ci->getType() == fir::Type::getInt8())        ret = makeValue(c, static_cast<int8_t>(ci->getSignedValue()));
+			else if(ci->getType() == fir::Type::getInt16())  ret = makeValue(c, static_cast<int16_t>(ci->getSignedValue()));
+			else if(ci->getType() == fir::Type::getInt32())  ret = makeValue(c, static_cast<int32_t>(ci->getSignedValue()));
+			else if(ci->getType() == fir::Type::getInt64())  ret = makeValue(c, static_cast<int64_t>(ci->getSignedValue()));
+			else if(ci->getType() == fir::Type::getUint8())  ret = makeValue(c, static_cast<uint8_t>(ci->getUnsignedValue()));
+			else if(ci->getType() == fir::Type::getUint16()) ret = makeValue(c, static_cast<uint16_t>(ci->getUnsignedValue()));
+			else if(ci->getType() == fir::Type::getUint32()) ret = makeValue(c, static_cast<uint32_t>(ci->getUnsignedValue()));
+			else if(ci->getType() == fir::Type::getUint64()) ret = makeValue(c, static_cast<uint64_t>(ci->getUnsignedValue()));
 			else error("interp: unsupported type '%s' for integer constant", ci->getType());
 
 			return (cachedConstants[c] = ret);
@@ -341,7 +341,7 @@ namespace interp
 				void* buffer = new uint8_t[sz]; memset(buffer, 0, sz);
 				is->globalAllocs.push_back(buffer);
 
-				uint8_t* ofs = (uint8_t*) buffer;
+				uint8_t* ofs = reinterpret_cast<uint8_t*>(buffer);
 				for(const auto& x : theArray->getValues())
 				{
 					auto v = makeConstant(is, x);
@@ -391,7 +391,7 @@ namespace interp
 			// make sure we compile it first, so it gets added to InterpState::compiledFunctions
 			is->compileFunction(fn);
 
-			auto ret = makeValue(fn, (uintptr_t) fn);
+			auto ret = makeValue(fn, reinterpret_cast<uintptr_t>(fn));
 			return (cachedConstants[c] = ret);
 		}
 		else if(auto glob = dcast(fir::GlobalValue, c))
@@ -660,14 +660,14 @@ namespace interp
 		}
 
 		uintptr_t dst = 0;
-		if(str.dataSize > LARGE_DATA_SIZE)  dst = (uintptr_t) ret.ptr;
-		else                                dst = (uintptr_t) &ret.data[0];
+		if(str.dataSize > LARGE_DATA_SIZE)  dst = reinterpret_cast<uintptr_t>(ret.ptr);
+		else                                dst = reinterpret_cast<uintptr_t>(&ret.data[0]);
 
 		uintptr_t src = 0;
-		if(elm.dataSize > LARGE_DATA_SIZE)  src = (uintptr_t) elm.ptr;
-		else                                src = (uintptr_t) &elm.data[0];
+		if(elm.dataSize > LARGE_DATA_SIZE)  src = reinterpret_cast<uintptr_t>(elm.ptr);
+		else                                src = reinterpret_cast<uintptr_t>(&elm.data[0]);
 
-		memmove((void*) (dst + ofs), (void*) src, elm.dataSize);
+		memmove(reinterpret_cast<void*>(dst + ofs), reinterpret_cast<void*>(src), elm.dataSize);
 
 		return ret;
 	}
@@ -709,14 +709,14 @@ namespace interp
 		iceAssert(ret.type == elm);
 
 		uintptr_t src = 0;
-		if(str.dataSize > LARGE_DATA_SIZE)  src = (uintptr_t) str.ptr;
-		else                                src = (uintptr_t) &str.data[0];
+		if(str.dataSize > LARGE_DATA_SIZE)  src = reinterpret_cast<uintptr_t>(str.ptr);
+		else                                src = reinterpret_cast<uintptr_t>(&str.data[0]);
 
 		uintptr_t dst = 0;
-		if(ret.dataSize > LARGE_DATA_SIZE)  dst = (uintptr_t) ret.ptr;
-		else                                dst = (uintptr_t) &ret.data[0];
+		if(ret.dataSize > LARGE_DATA_SIZE)  dst = reinterpret_cast<uintptr_t>(ret.ptr);
+		else                                dst = reinterpret_cast<uintptr_t>(&ret.data[0]);
 
-		memmove((void*) dst, (void*) (src + ofs), ret.dataSize);
+		memmove(reinterpret_cast<void*>(dst), reinterpret_cast<void*>(src + ofs), ret.dataSize);
 
 		return ret;
 	}
@@ -984,23 +984,23 @@ namespace interp
 			for(size_t i = 0; i < args.size(); i++)
 			{
 				if(args[i].dataSize <= LARGE_DATA_SIZE)
-					arg_values[i] = (void*) &args[i].data[0];
+					arg_values[i] = reinterpret_cast<void*>(const_cast<uint8_t*>(&args[i].data[0]));
 			}
 
 			for(size_t i = 0; i < args.size(); i++)
 			{
 				if(args[i].dataSize <= LARGE_DATA_SIZE)
-					arg_pointers[i] = (void*) arg_values[i];
+					arg_pointers[i] = reinterpret_cast<void*>(arg_values[i]);
 
 				else
-					arg_pointers[i] = (void*) args[i].ptr;
+					arg_pointers[i] = reinterpret_cast<void*>(args[i].ptr);
 			}
 
 			delete[] arg_values;
 		}
 
-		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, (size_t) 8)];
-		ffi_call(&fn_cif, FFI_FN(fnptr), ret_buffer, arg_pointers);
+		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, size_t(8))];
+		ffi_call(&fn_cif, reinterpret_cast<void(*)()>(fnptr), ret_buffer, arg_pointers);
 
 		interp::Value ret;
 		ret.type = fnty->getReturnType();
@@ -1132,7 +1132,7 @@ namespace interp
 
 				case FLOW_DYCALL: {
 					auto ptr = getActualValue<uintptr_t>(res.virtualCallTarget);
-					auto firfn = (fir::Function*) ptr;
+					auto firfn = reinterpret_cast<fir::Function*>(ptr);
 
 					if(auto it = is->compiledFunctions.find(firfn); it != is->compiledFunctions.end())
 					{
@@ -1156,8 +1156,9 @@ namespace interp
 						else
 							error("interp: call to function pointer with invalid type '%s'", targ.type);
 
-						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, (void*) ptr, fnty, res.callArguments,
-							/* name: */ res.callTarget->extFuncName);
+						is->stackFrames.back().values[res.callResultValue] = runFunctionWithLibFFI(is, reinterpret_cast<void*>(ptr),
+							fnty, res.callArguments, /* name: */ res.callTarget->extFuncName);
+
 						i += 1;
 					}
 				} break;
@@ -1340,7 +1341,7 @@ namespace interp
 	// returns either FLOW_NORMAL, FLOW_BRANCH or FLOW_RETURN.
 	static int runInstruction(InterpState* is, const interp::Instruction& inst, InstrResult* instrRes)
 	{
-		auto ok = (OpKind) inst.opcode;
+		auto ok = static_cast<OpKind>(inst.opcode);
 		switch(ok)
 		{
 			case OpKind::Signed_Add:
@@ -1646,10 +1647,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a.type == Type::getFloat64() && t == Type::getFloat32())
-					ret = makeValue(inst.result, (float) getActualValue<double>(a));
+					ret = makeValue(inst.result, static_cast<float>(getActualValue<double>(a)));
 
-				else if(a.type == Type::getFloat32())   ret = makeValue(inst.result, (float) getActualValue<float>(a));
-				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, (double) getActualValue<double>(a));
+				else if(a.type == Type::getFloat32())   ret = makeValue(inst.result, getActualValue<float>(a));
+				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, getActualValue<double>(a));
 				else                                    error("interp: unsupported");
 
 				setRet(is, inst, ret);
@@ -1664,10 +1665,10 @@ namespace interp
 
 				interp::Value ret;
 				if(a.type == Type::getFloat32() && t == Type::getFloat64())
-					ret = makeValue(inst.result, (double) getActualValue<float>(a));
+					ret = makeValue(inst.result, static_cast<double>(getActualValue<float>(a)));
 
-				else if(a.type == Type::getFloat32())   ret = makeValue(inst.result, (float) getActualValue<float>(a));
-				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, (double) getActualValue<double>(a));
+				else if(a.type == Type::getFloat32())   ret = makeValue(inst.result, getActualValue<float>(a));
+				else if(a.type == Type::getFloat64())   ret = makeValue(inst.result, getActualValue<double>(a));
 				else                                    error("interp: unsupported");
 
 				setRet(is, inst, ret);
@@ -1686,7 +1687,7 @@ namespace interp
 				if(a.type != b.type->getPointerElementType())
 					error("interp: cannot write '%s' into '%s'", a.type, b.type);
 
-				auto ptr = (void*) getActualValue<uintptr_t>(b);
+				auto ptr = reinterpret_cast<void*>(getActualValue<uintptr_t>(b));
 				if(a.dataSize > LARGE_DATA_SIZE)
 				{
 					// just a memcopy.
@@ -1914,21 +1915,21 @@ namespace interp
 					// just get the value as a bool, then cast it to an i64 ourselves, then
 					// pass *that* to the ops.
 
-					auto boolval = (int64_t) getActualValue<bool>(a);
+					auto boolval = static_cast<int64_t>(getActualValue<bool>(a));
 					ret = oneArgumentOp(is, inst, b, [boolval](auto b) -> auto {
-						return (decltype(b)) boolval;
+						return static_cast<decltype(b)>(boolval);
 					});
 				}
 				else if(b.type->isBoolType())
 				{
 					ret = oneArgumentOp(is, inst, a, [](auto a) -> auto {
-						return (bool) a;
+						return static_cast<bool>(a);
 					});
 				}
 				else
 				{
 					ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
-						return (decltype(b)) a;
+						return static_cast<decltype(b)>(a);
 					});
 				}
 
@@ -1961,7 +1962,7 @@ namespace interp
 				auto b = getArg(is, inst, 1);
 
 				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
-					return (decltype(b)) a;
+					return static_cast<decltype(b)>(a);
 				});
 
 				setRet(is, inst, ret);
@@ -1975,7 +1976,7 @@ namespace interp
 				auto b = getArg(is, inst, 1);
 
 				interp::Value ret = twoArgumentOp(is, inst, a, b, [](auto a, auto b) -> auto {
-					return (decltype(b)) a;
+					return static_cast<decltype(b)>(a);
 				});
 
 				setRet(is, inst, ret);
@@ -2053,10 +2054,10 @@ namespace interp
 
 				auto ci = fir::ConstantInt::getNative(getSizeOfType(ty));
 
-				if(fir::getNativeWordSizeInBits() == 64) setRet(is, inst, makeValue(inst.result, (int64_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 32) setRet(is, inst, makeValue(inst.result, (int32_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 16) setRet(is, inst, makeValue(inst.result, (int16_t) ci->getSignedValue()));
-				if(fir::getNativeWordSizeInBits() == 8)  setRet(is, inst, makeValue(inst.result, (int8_t)  ci->getSignedValue()));
+				if(fir::getNativeWordSizeInBits() == 64) setRet(is, inst, makeValue(inst.result, static_cast<int64_t>(ci->getSignedValue())));
+				if(fir::getNativeWordSizeInBits() == 32) setRet(is, inst, makeValue(inst.result, static_cast<int32_t>(ci->getSignedValue())));
+				if(fir::getNativeWordSizeInBits() == 16) setRet(is, inst, makeValue(inst.result, static_cast<int16_t>(ci->getSignedValue())));
+				if(fir::getNativeWordSizeInBits() == 8)  setRet(is, inst, makeValue(inst.result, static_cast<int8_t>(ci->getSignedValue())));
 
 				break;
 			}
@@ -2088,7 +2089,7 @@ namespace interp
 				auto a = getArg(is, inst, 0);
 				auto b = getUndecayedArg(is, inst, 1);
 
-				auto ptr = (void*) getActualValue<uintptr_t>(b);
+				auto ptr = reinterpret_cast<void*>(getActualValue<uintptr_t>(b));
 				if(a.dataSize > LARGE_DATA_SIZE)    memmove(ptr, a.ptr, a.dataSize);
 				else                                memmove(ptr, &a.data[0], a.dataSize);
 
@@ -2142,7 +2143,7 @@ namespace interp
 
 				auto str = getArg(is, inst, 0);
 				auto elm = getArg(is, inst, 1);
-				auto idx = (size_t) getActualValue<int64_t>(getArg(is, inst, 2));
+				auto idx = static_cast<size_t>(getActualValue<int64_t>(getArg(is, inst, 2)));
 
 				setRet(is, inst, doInsertValue(is, inst.result, str, elm, idx));
 				break;
@@ -2154,7 +2155,7 @@ namespace interp
 				iceAssert(inst.args.size() >= 2);
 
 				auto str = getArg(is, inst, 0);
-				auto idx = (size_t) getActualValue<int64_t>(getArg(is, inst, 1));
+				auto idx = static_cast<size_t>(getActualValue<int64_t>(getArg(is, inst, 1)));
 
 				setRet(is, inst, doExtractValue(is, inst.result, str, idx));
 				break;
@@ -2414,7 +2415,7 @@ namespace interp
 				auto ut = inst.args[0]->getType()->toUnionType();
 				auto vid = dcast(fir::ConstantInt, inst.args[1])->getSignedValue();
 
-				iceAssert((size_t) vid < ut->getVariantCount());
+				iceAssert(static_cast<size_t>(vid) < ut->getVariantCount());
 				auto vt = ut->getVariant(vid)->getInteriorType();
 
 				// because we can operate with the raw memory values, we can probably do this a bit more efficiently
@@ -2426,15 +2427,15 @@ namespace interp
 
 				// then, get the array:
 				uintptr_t arrayAddr = 0;
-				if(theUnion.dataSize > LARGE_DATA_SIZE) arrayAddr = (uintptr_t) theUnion.ptr;
-				else                                    arrayAddr = (uintptr_t) &theUnion.data[0];
+				if(theUnion.dataSize > LARGE_DATA_SIZE) arrayAddr = reinterpret_cast<uintptr_t>(theUnion.ptr);
+				else                                    arrayAddr = reinterpret_cast<uintptr_t>(&theUnion.data[0]);
 
 				// offset it appropriately:
 				arrayAddr += getSizeOfType(fir::Type::getNativeWord());
 
 				// ok so now we just do a 'setRaw' to get the value out.
 				auto ret = is->makeValue(inst.result);
-				setValueRaw(is, &ret, (void*) arrayAddr, getSizeOfType(vt));
+				setValueRaw(is, &ret, reinterpret_cast<void*>(arrayAddr), getSizeOfType(vt));
 
 				setRet(is, inst, ret);
 				break;
@@ -2447,9 +2448,9 @@ namespace interp
 				iceAssert(inst.args[0]->getType()->isUnionType());
 
 				auto ut = inst.args[0]->getType()->toUnionType();
-				auto vid = (intptr_t) dcast(fir::ConstantInt, inst.args[1])->getSignedValue();
+				auto vid = static_cast<intptr_t>(dcast(fir::ConstantInt, inst.args[1])->getSignedValue());
 
-				iceAssert((size_t) vid < ut->getVariantCount());
+				iceAssert(static_cast<size_t>(vid) < ut->getVariantCount());
 
 				// again, we do this "manually" because we can access the raw bytes, so we don't have to
 				// twist ourselves through hoops like with llvm.
@@ -2459,22 +2460,22 @@ namespace interp
 
 				// then, get the array:
 				uintptr_t baseAddr = 0;
-				if(theUnion.dataSize > LARGE_DATA_SIZE) baseAddr = (uintptr_t) theUnion.ptr;
-				else                                    baseAddr = (uintptr_t) &theUnion.data[0];
+				if(theUnion.dataSize > LARGE_DATA_SIZE) baseAddr = reinterpret_cast<uintptr_t>(theUnion.ptr);
+				else                                    baseAddr = reinterpret_cast<uintptr_t>(&theUnion.data[0]);
 
 				// offset it appropriately:
 				auto arrayAddr = baseAddr + getSizeOfType(fir::Type::getNativeWord());
 
 				// ok, now we just do a memcpy into the struct.
 				iceAssert(sizeof(intptr_t) == (fir::getNativeWordSizeInBits() / CHAR_BIT));
-				memmove((void*) baseAddr, &vid, sizeof(intptr_t));
+				memmove(reinterpret_cast<void*>(baseAddr), &vid, sizeof(intptr_t));
 
 				uintptr_t valueAddr = 0;
 				auto theValue = getArg(is, inst, 2);
-				if(theValue.dataSize > LARGE_DATA_SIZE) valueAddr = (uintptr_t) theValue.ptr;
-				else                                    valueAddr = (uintptr_t) &theValue.data[0];
+				if(theValue.dataSize > LARGE_DATA_SIZE) valueAddr = reinterpret_cast<uintptr_t>(theValue.ptr);
+				else                                    valueAddr = reinterpret_cast<uintptr_t>(&theValue.data[0]);
 
-				memmove((void*) arrayAddr, (void*) valueAddr, theValue.dataSize);
+				memmove(reinterpret_cast<void*>(arrayAddr), reinterpret_cast<void*>(valueAddr), theValue.dataSize);
 
 				setRet(is, inst, theUnion);
 				break;

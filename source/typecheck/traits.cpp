@@ -202,7 +202,7 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
 			for(const auto& m : missings)
 			{
 				err->append(SimpleError::make(MsgType::Note, std::get<0>(m), "missing implementation for method '%s': %s:",
-					std::get<1>(m), (fir::Type*) std::get<2>(m)));
+					std::get<1>(m), dcast(fir::Type, std::get<2>(m))));
 			}
 
 			err->append(

@@ -204,7 +204,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				i, ty, vr->getType());
 		}
 
-		allConst &= (bool) dcast(fir::ConstantValue, vr);
+		allConst &= (dcast(fir::ConstantValue, vr) != nullptr);
 		vals.push_back(vr);
 	}
 
@@ -252,7 +252,7 @@ CGResult sst::LiteralChar::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
-	return CGResult(fir::ConstantInt::getInt8((int8_t) this->value));
+	return CGResult(fir::ConstantInt::getInt8(static_cast<int8_t>(this->value)));
 }
 
 CGResult sst::LiteralString::_codegen(cgn::CodegenState* cs, fir::Type* infer)

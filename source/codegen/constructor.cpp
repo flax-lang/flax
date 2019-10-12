@@ -118,7 +118,7 @@ fir::Value* cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, 
 	if(vargs.size() != wrapper_func->getArgumentCount())
 	{
 		SimpleError::make(this->loc(), "mismatched number of arguments in constructor call to class '%s'; expected %d, found %d instead",
-			(fir::Type*) cls, constrfn->getArgumentCount(), vargs.size())
+			dcast(fir::Type, cls), constrfn->getArgumentCount(), vargs.size())
 			->append(SimpleError::make(MsgType::Note, constr->loc, "constructor was defined here:"))
 			->postAndQuit();
 	}

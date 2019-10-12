@@ -113,7 +113,7 @@ namespace fir
 		if(cnt->isFloating())
 		{
 			if(cnt->getMinBits() > 64)
-				error("constant number type '%s' requires too many bits", (Type*) cnt);
+				error("constant number type '%s' requires too many bits", dcast(Type, cnt));
 
 			return fir::Type::getFloat64();
 		}
@@ -125,12 +125,12 @@ namespace fir
 			}
 			else if(cnt->isSigned())
 			{
-				error("constant number type '%s' requires too many bits", (Type*) cnt);
+				error("constant number type '%s' requires too many bits", dcast(Type, cnt));
 			}
 			else
 			{
 				if(cnt->getMinBits() > fir::Type::getNativeUWord()->getBitWidth())
-					error("constant number type '%s' requires too many bits", (Type*) cnt);
+					error("constant number type '%s' requires too many bits", dcast(Type, cnt));
 
 				return fir::Type::getNativeUWord();
 			}
@@ -154,7 +154,7 @@ namespace fir
 	static std::vector<util::hash_map<std::string, PolyPlaceholderType*>> cache;
 	PolyPlaceholderType* PolyPlaceholderType::get(const std::string& n, int group)
 	{
-		while((size_t) group >= cache.size())
+		while(static_cast<size_t>(group) >= cache.size())
 			cache.push_back({ });
 
 		if(auto it = cache[group].find(n); it != cache[group].end())
