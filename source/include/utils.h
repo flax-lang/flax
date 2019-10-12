@@ -195,10 +195,8 @@ namespace util
 	template <typename T, typename U>
 	std::vector<std::pair<T, U>> zip(const std::vector<T>& a, const std::vector<U>& b)
 	{
-		assert(a.size() == b.size());
-
 		std::vector<std::pair<T, U>> ret;
-		for(size_t i = 0; i < a.size(); i++)
+		for(size_t i = 0; i < std::min(a.size(), b.size()); i++)
 			ret.push_back({ a[i], b[i] });
 
 		return ret;

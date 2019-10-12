@@ -48,6 +48,7 @@ namespace frontend
 	bool getPrintProfileStats();
 	bool getAbortOnError();
 
+	bool getCanFFIEscape();
 	bool getIsFreestanding();
 	bool getIsNoStandardLibraries();
 	bool getIsPositionIndependent();
