@@ -22,5 +22,5 @@ blocks:
           - sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y llvm-7 llvm-7-dev libllvm7 libmpfr-dev libmpfr6
           - CXX=g++-8 CC=gcc-8 LLVM_CONFIG=llvm-config-7 make -j2 build
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
-          - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend interp build/tester.flx
+          - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
