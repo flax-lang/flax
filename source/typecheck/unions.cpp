@@ -34,6 +34,7 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	else        defn = util::pool<sst::UnionDefn>(this->loc);
 
 	defn->bareName = this->name;
+	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;

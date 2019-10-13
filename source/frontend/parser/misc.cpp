@@ -100,7 +100,71 @@ namespace parser
 
 
 
+	AttribSet parseAttributes(State& st)
+	{
+		using UA = AttribSet::UserAttrib;
 
+		if(st.front() <= TT::Attr_ATTRS_BEGIN || st.front() >= TT::Attr_ATTRS_END)
+			return AttribSet::of(attr::NONE);
+
+		auto parseUA = [](State& st) -> UA {
+
+			auto ret = UA(st.eat().str(), {});
+
+			if(st.front() == TT::LSquare)
+			{
+				auto begin = st.loc();
+
+				st.eat();
+
+				//* this means that attributes can only take tokens as arguments. if you want more complex stuff,
+				//* then it needs to be wrapped up in a string literal.
+				while(st.front() != TT::RSquare)
+				{
+					ret.args.push_back(st.eat().str());
+
+					if(st.front() == TT::Comma)
+						st.eat();
+
+					else if(st.front() != TT::RSquare)
+						expected(st.loc(), "']' to end argument list", st.prev().str());
+				}
+
+				iceAssert(st.front() == TT::RSquare);
+				st.pop();
+
+				if(ret.args.empty())
+					warn(Location::unionOf(begin, st.ploc()), "empty argument list to attribute");
+			}
+
+			return ret;
+		};
+
+
+		AttribSet ret;
+		while(st.front() > TT::Attr_ATTRS_BEGIN && st.front() < TT::Attr_ATTRS_END)
+		{
+			// i would love me some static reflection right now
+			switch(st.front())
+			{
+				case TT::Attr_Raw:      ret.set(attr::RAW); st.pop(); break;
+				case TT::Attr_NoMangle: ret.set(attr::NO_MANGLE); st.pop(); break;
+				case TT::Attr_EntryFn:  ret.set(attr::FN_ENTRYPOINT); st.pop(); break;
+				case TT::Attr_Platform: unexpected(st.loc(), "@platform definition");
+				case TT::Attr_Operator: unexpected(st.loc(), "@operator declaration");
+
+				default:
+					ret.add(parseUA(st));
+					break;
+			}
+		}
+
+		return ret;
+	}
+
+
+	// TODO: switch this to the new attribute system. after the whole cddc19 shitshow @platform functionality
+	// TODO: remains unused.
 	PlatformDefn* parsePlatformDefn(State& st)
 	{
 		iceAssert(st.front() == TT::Attr_Platform);

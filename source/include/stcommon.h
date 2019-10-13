@@ -17,47 +17,70 @@ namespace ast
 
 namespace attr
 {
-	constexpr uint32_t FN_ENTRYPOINT    = 0x1;
-	constexpr uint32_t NO_MANGLE        = 0x2;
-	constexpr uint32_t RAW              = 0x4;
-	constexpr uint32_t COMPILER_SUPPORT = 0x8;
+	using FlagTy = uint32_t;
+
+	constexpr FlagTy NONE               = 0x0;
+	constexpr FlagTy FN_ENTRYPOINT      = 0x1;
+	constexpr FlagTy NO_MANGLE          = 0x2;
+	constexpr FlagTy RAW                = 0x4;
 }
 
-struct AttributeSet
+struct AttribSet
 {
+	using FlagTy = attr::FlagTy;
+
 	struct UserAttrib
 	{
+		UserAttrib(const std::string& name, const std::vector<std::string>& args) : name(name), args(args) { }
+
 		std::string name;
 		std::vector<std::string> args;
 	};
 
+
+
+	bool has(const std::string& uaName)
+	{
+		return std::find_if(this->userAttribs.begin(), this->userAttribs.end(), [uaName](const UserAttrib& ua) -> bool {
+			return ua.name == uaName;
+		}) != this->userAttribs.end();
+	}
+
+	UserAttrib get(const std::string& uaName)
+	{
+		auto it = std::find_if(this->userAttribs.begin(), this->userAttribs.end(), [uaName](const UserAttrib& ua) -> bool {
+			return ua.name == uaName;
+		});
+
+		// would use optionals or something but lazy
+		if(it != this->userAttribs.end())   return *it;
+		else                                return UserAttrib("", {});
+	}
+
+	void set(FlagTy x) { this->flags |= x; }
+	bool has(FlagTy x) const { return (this->flags & x); }
+	bool hasAny(FlagTy x) const { return (this->flags & x); }
+	bool hasAll(FlagTy x) const { return (this->flags & x); }
+
+	template <typename... Args> void set(FlagTy x, Args... xs) { this->flags |= x; set(xs...); }
+	template <typename... Args> bool hasAny(FlagTy x, Args... xs) const { return (this->flags & x) || hasAny(xs...); }
+	template <typename... Args> bool hasAll(FlagTy x, Args... xs) const { return (this->flags & x) && hasAll(xs...); }
+
+	void add(const UserAttrib& ua)
+	{
+		this->userAttribs.push_back(ua);
+	}
+
+	static AttribSet of(FlagTy flags, const std::vector<UserAttrib>& attribs = {})
+	{
+		return AttribSet {
+			.flags = flags,
+			.userAttribs = attribs
+		};
+	}
+
+	FlagTy flags = attr::NONE;
 	std::vector<UserAttrib> userAttribs;
-
-	template <typename T>
-	bool has(T x) const { return (this->flags & x); }
-
-	template <typename T>
-	bool hasAny(T x) const { return (this->flags & x); }
-
-	template <typename T, typename... Args>
-	bool hasAny(T x, Args... xs) const { return (this->flags & x) || hasAny(xs...); }
-
-	template <typename T>
-	bool hasAll(T x) const { return (this->flags & x); }
-
-	template <typename T, typename... Args>
-	bool hasAll(T x, Args... xs) const { return (this->flags & x) && hasAll(xs...); }
-
-	template <typename T>
-	void set(T x) { this->flags |= x; }
-
-	template <typename T, typename... Args>
-	void set(T x, Args... xs) { this->flags |= x; set(xs...); }
-
-
-
-	private:
-	uint32_t flags;
 };
 
 

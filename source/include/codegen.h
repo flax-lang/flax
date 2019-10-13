@@ -28,6 +28,7 @@ namespace sst
 	struct TypeDefn;
 	struct BinaryOp;
 	struct StateTree;
+	struct FunctionDecl;
 	struct FunctionDefn;
 	struct FunctionCall;
 	struct DefinitionTree;
@@ -41,9 +42,6 @@ namespace cgn
 			block(b), breakPoint(bp), continuePoint(cp) { }
 
 		sst::Block* block = 0;
-
-		// std::vector<fir::Value*> refCountedValues;
-		// std::vector<fir::Value*> refCountedPointers;
 
 		fir::IRBlock* breakPoint = 0;
 		fir::IRBlock* continuePoint = 0;
@@ -88,6 +86,7 @@ namespace cgn
 		util::hash_map<fir::Function*, fir::Type*> methodList;
 
 		util::hash_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+		util::hash_map<std::string, sst::Defn*> compilerSupportDefinitions;
 
 
 		size_t _debugIRIndent = 0;
@@ -188,6 +187,13 @@ namespace cgn
 		void removeRAIIValue(fir::Value* val);
 		std::vector<fir::Value*> getRAIIValues();
 
+		sst::FunctionDefn* findMatchingMethodInType(sst::TypeDefn* td, sst::FunctionDecl* fn);
+
+		bool isRAIIType(fir::Type* ty);
+		bool typeHasDestructor(fir::Type* ty);
+		bool typeHasCopyConstructor(fir::Type* ty);
+		bool typeHasMoveConstructor(fir::Type* ty);
+
 		void callDestructor(fir::Value* val);
 
 		fir::Value* copyRAIIValue(fir::Value* value);
@@ -195,7 +201,7 @@ namespace cgn
 		void moveRAIIValue(fir::Value* from, fir::Value* target);
 	};
 
-	fir::Module* codegen(sst::DefinitionTree* __std_exception_destroy);
+	fir::Module* codegen(sst::DefinitionTree* dtree);
 }
 
 

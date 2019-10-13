@@ -33,6 +33,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	auto defn = util::pool<sst::ClassDefn>(this->loc);
 	defn->bareName = this->name;
+	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;

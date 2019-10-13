@@ -171,6 +171,30 @@ namespace util
 	}
 
 	template <typename T, class Predicate>
+	bool matchAny(const std::vector<T>& input, Predicate cond)
+	{
+		for(const auto& x : input)
+			if(cond(x)) return true;
+
+		return false;
+	}
+
+	template <typename T, class Predicate>
+	bool matchNone(const std::vector<T>& input, Predicate cond)
+	{
+		return !matchAny(input, cond);
+	}
+
+	template <typename T, class Predicate>
+	bool matchAll(const std::vector<T>& input, Predicate cond)
+	{
+		for(const auto& x : input)
+			if(!cond(x)) return false;
+
+		return true;
+	}
+
+	template <typename T, class Predicate>
 	size_t indexOf(const std::vector<T>& input, Predicate cond)
 	{
 		for(size_t i = 0; i < input.size(); i++)

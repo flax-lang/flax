@@ -196,6 +196,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	defn->id = Identifier(this->name, IdKind::Name);
 	defn->bareName = this->name;
+	defn->attrs = this->attrs;
 
 	defn->params = ps;
 	defn->returnType = retty;

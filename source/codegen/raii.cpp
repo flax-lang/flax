@@ -10,7 +10,7 @@ namespace cgn
 {
 	void CodegenState::addRAIIValue(fir::Value* val)
 	{
-		if(!val->getType()->isClassType())
+		if(!this->isRAIIType(val->getType()))
 			error("val is not a class type! '%s'", val->getType());
 
 		auto list = &this->blockPointStack.back().raiiValues;
@@ -26,7 +26,7 @@ namespace cgn
 
 	void CodegenState::removeRAIIValue(fir::Value* val)
 	{
-		if(!val->getType()->isClassType())
+		if(!this->isRAIIType(val->getType()))
 			error("val is not a class type! '%s'", val->getType());
 
 		auto list = &this->blockPointStack.back().raiiValues;
@@ -47,10 +47,13 @@ namespace cgn
 
 	void CodegenState::addRAIIOrRCValueIfNecessary(fir::Value* val, fir::Type* ty)
 	{
-		if(fir::isRefCountedType(ty ? ty : val->getType()))
+		if(!ty)
+			ty = val->getType();
+
+		if(fir::isRefCountedType(ty))
 			this->addRefCountedValue(val);
 
-		if((ty ? ty : val->getType())->isClassType())
+		if(this->isRAIIType(ty))
 			this->addRAIIValue(val);
 	}
 
@@ -73,19 +76,43 @@ namespace cgn
 
 	void CodegenState::callDestructor(fir::Value* val)
 	{
-		if(!val->getType()->isClassType())
-			error("val is not a class type! '%s'", val->getType());
+		if(!this->typeHasDestructor(val->getType()))
+			return;
 
 		fir::Value* selfptr = getAddressOfOrMakeTemporaryLValue(this, val, /* mutable: */ true);
 
-		auto cls = val->getType()->toClassType();
 
-		// call the user-defined one first, if any:
-		if(auto des = cls->getDestructor(); des)
-			this->irb.Call(des, selfptr);
+		if(val->getType()->isClassType())
+		{
+			auto cls = val->getType()->toClassType();
 
-		// call the auto one. this will handle calling base class destructors for us!
-		this->irb.Call(cls->getInlineDestructor(), selfptr);
+			// call the user-defined one first, if any:
+			if(auto des = cls->getDestructor(); des)
+				this->irb.Call(des, selfptr);
+
+			// call the auto one. this will handle calling base class destructors for us!
+			this->irb.Call(cls->getInlineDestructor(), selfptr);
+		}
+		else
+		{
+			if(auto it = this->compilerSupportDefinitions.find("raii_trait::drop"); it != this->compilerSupportDefinitions.end())
+			{
+				auto trt = dcast(sst::TraitDefn, it->second);
+				if(!trt) error("invalid use of @compiler_support[\"raii_trait::drop\"] on non-trait definition!");
+
+				iceAssert(trt->methods.size() == 1);
+
+				auto str = dcast(sst::StructDefn, this->typeDefnMap[val->getType()]);
+				iceAssert(str);
+
+				auto destructor = this->findMatchingMethodInType(str, trt->methods[0]);
+				if(destructor)
+				{
+					this->irb.Call(dcast(fir::Function, destructor->codegen(this).value), selfptr);
+					return;
+				}
+			}
+		}
 	}
 
 
@@ -102,8 +129,9 @@ namespace cgn
 
 		auto clsty = from->getType()->toClassType();
 
+		// TODO: this is a shitty error message.
 		if(!target->islvalue())
-			error("invalid constructor on non-lvalue");
+			error(cs->loc(), "invalid operation on non-lvalue");
 
 		return clsty;
 	}
@@ -204,7 +232,6 @@ namespace cgn
 			return;
 		}
 
-
 		if(auto movecon = clsty->getMoveConstructor(); movecon)
 		{
 			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
@@ -218,6 +245,48 @@ namespace cgn
 		}
 
 		this->removeRAIIValue(from);
+	}
+
+
+
+	static bool findRAIITraitImpl(CodegenState* cs, fir::Type* ty, const std::string& name)
+	{
+		if(ty->isClassType())
+			return true;
+
+		if(!ty->isStructType())
+			return false;
+
+		auto str = ty->toStructType();
+		auto def = dcast(sst::StructDefn, cs->typeDefnMap[str]);
+		iceAssert(def);
+
+		return util::matchAny(def->traits, [name](auto trt) -> bool {
+			return trt->id.name == name;
+		});
+	}
+
+	// TODO:
+	//* after @compiler_support is implemented properly, these should probably use that mechanism to
+	//* find the name of the trait to search.
+	bool CodegenState::typeHasDestructor(fir::Type* ty)
+	{
+		return findRAIITraitImpl(this, ty, "Drop");
+	}
+
+	bool CodegenState::typeHasCopyConstructor(fir::Type* ty)
+	{
+		return findRAIITraitImpl(this, ty, "Copy");
+	}
+
+	bool CodegenState::typeHasMoveConstructor(fir::Type* ty)
+	{
+		return findRAIITraitImpl(this, ty, "Move");
+	}
+
+	bool CodegenState::isRAIIType(fir::Type* ty)
+	{
+		return this->typeHasDestructor(ty) || this->typeHasCopyConstructor(ty) || this->typeHasMoveConstructor(ty);
 	}
 }
 

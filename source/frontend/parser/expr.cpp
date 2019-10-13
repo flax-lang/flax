@@ -98,89 +98,89 @@ namespace parser
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
-			Stmt* ret = 0;
+			auto attrs = parseAttributes(st);
+			auto enforceAttrs = [&attrs](Stmt* ret, const AttribSet& allowed = AttribSet::of(attr::NONE)) -> Stmt* {
 
-			bool compiler_support = false;
-			if(tok.type == TT::Attr_CompilerSupport)
-				compiler_support = true, st.pop(), tok = st.front();
+				using namespace attr;
+
+				// there's probably a better way to do this, but bleugh
+				if((attrs.flags & RAW) && !(allowed.flags & RAW))
+					error(ret, "unsupported attribute '@raw' on %s", ret->readableName);
+
+				if((attrs.flags & NO_MANGLE) && !(allowed.flags & NO_MANGLE))
+					error(ret, "unsupported attribute '@nomangle' on %s", ret->readableName);
+
+				if((attrs.flags & FN_ENTRYPOINT) && !(allowed.flags & FN_ENTRYPOINT))
+					error(ret, "unsupported attribute '@entry' on %s", ret->readableName);
+
+				// here let's check the arguments and stuff for default attributes.
+				// note: due to poor API design on my part, if there is no attribute with that name then ::get()
+				// returns an empty UA, which has a blank name -- so we check that instead.
+
+				if(auto ua = attrs.get("@compiler_support"); !ua.name.empty() && ua.args.size() != 1)
+					error(ret, "@compiler_support requires exactly one argument");
+
+				// actually that's it
+
+				ret->attrs = attrs;
+				return ret;
+			};
 
 			// handle the things that are OK to appear anywhere first:
+			tok = st.front();
 			switch(tok.type)
 			{
-				case TT::Var:
+				case TT::Var:   [[fallthrough]];
 				case TT::Val:
-					ret = parseVariable(st);
-					break;
+					return enforceAttrs(parseVariable(st), AttribSet::of(attr::NO_MANGLE));
 
 				case TT::Func:
-					ret = parseFunction(st);
-					break;
+					return enforceAttrs(parseFunction(st), AttribSet::of(attr::NO_MANGLE | attr::FN_ENTRYPOINT));
 
 				case TT::ForeignFunc:
-					ret = parseForeignFunction(st);
-					break;
+					return enforceAttrs(parseForeignFunction(st));
 
-				case TT::Public:
-				case TT::Private:
+				case TT::Public:    [[fallthrough]];
+				case TT::Private:   [[fallthrough]];
 				case TT::Internal:
-					ret = parseStmtWithAccessSpec(st);
-					break;
+					return enforceAttrs(parseStmtWithAccessSpec(st));
 
 				case TT::Directive_If:
-					ret = parseIfStmt(st);
-					break;
+					return enforceAttrs(parseIfStmt(st));
 
 				case TT::Directive_Run:
-					ret = parseRunDirective(st);
-					break;
-
-				case TT::Attr_Raw:
-					st.eat();
-					if(st.front() != TT::Union)
-						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
-
-					ret = parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
-					break;
+					return enforceAttrs(parseRunDirective(st));
 
 				case TT::Union:
-					ret = parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
-					break;
+					return enforceAttrs(parseUnion(st, attrs.has(attr::RAW), /* nameless: */ false), AttribSet::of(attr::RAW));
 
 				case TT::Struct:
-					ret = parseStruct(st, /* nameless: */ false);
-					break;
+					return enforceAttrs(parseStruct(st, /* nameless: */ false));
 
 				case TT::Class:
-					ret = parseClass(st);
-					break;
+					return enforceAttrs(parseClass(st));
 
 				case TT::Enum:
-					ret = parseEnum(st);
-					break;
+					return enforceAttrs(parseEnum(st));
 
 				case TT::Trait:
-					ret = parseTrait(st);
-					break;
+					return enforceAttrs(parseTrait(st));
 
 				case TT::Static:
-					ret = parseStaticDecl(st);
-					break;
+					return enforceAttrs(parseStaticDecl(st));
 
 				case TT::Operator:
-					ret = parseOperatorOverload(st);
-					break;
+					return enforceAttrs(parseOperatorOverload(st));
 
 				case TT::Using:
-					ret = parseUsingStmt(st);
-					break;
+					return enforceAttrs(parseUsingStmt(st));
 
-				case TT::Mutable:
-				case TT::Virtual:
+				case TT::Mutable:   [[fallthrough]];
+				case TT::Virtual:   [[fallthrough]];
 				case TT::Override:
-					ret = checkMethodModifiers(false, false, false);
-					break;
+					return enforceAttrs(checkMethodModifiers(false, false, false), AttribSet::of(attr::NO_MANGLE));
 
-				case TT::Extension:
+				case TT::Extension: [[fallthrough]];
 				case TT::TypeAlias:
 					error(st, "notsup");
 
@@ -204,20 +204,13 @@ namespace parser
 					break;
 			}
 
-			if(ret)
-			{
-				if(compiler_support)
-					ret->attrs.set(attr::COMPILER_SUPPORT);
-
-				return ret;
-			}
-
 
 			// if we got here, then it wasn't any of those things.
 			// we store it first, so we can give better error messages (after knowing what it is)
 			// in the event that it wasn't allowed at top-level.
 
 
+			Stmt* ret = 0;
 			switch(tok.type)
 			{
 				case TT::If:
@@ -231,7 +224,7 @@ namespace parser
 					ret = parseReturn(st);
 					break;
 
-				case TT::Do:
+				case TT::Do:    [[fallthrough]];
 				case TT::While:
 					ret = parseWhileLoop(st);
 					break;
@@ -413,20 +406,20 @@ namespace parser
 			// unary ... (splat)
 			// ^^ all have 950.
 
-			case TT::As:
+			case TT::As:            [[fallthrough]];
 			case TT::Is:
 				return 900;
 
-			case TT::DoublePlus:
+			case TT::DoublePlus:    [[fallthrough]];
 			case TT::DoubleMinus:
 				return 850;
 
-			case TT::Asterisk:
-			case TT::Divide:
+			case TT::Asterisk:      [[fallthrough]];
+			case TT::Divide:        [[fallthrough]];
 			case TT::Percent:
 				return 800;
 
-			case TT::Plus:
+			case TT::Plus:          [[fallthrough]];
 			case TT::Minus:
 				return 750;
 
@@ -443,15 +436,15 @@ namespace parser
 			case TT::Pipe:
 				return 550;
 
-			case TT::LAngle:
-			case TT::RAngle:
-			case TT::LessThanEquals:
-			case TT::GreaterEquals:
-			case TT::EqualsTo:
+			case TT::LAngle:        [[fallthrough]];
+			case TT::RAngle:        [[fallthrough]];
+			case TT::LessThanEquals:[[fallthrough]];
+			case TT::GreaterEquals: [[fallthrough]];
+			case TT::EqualsTo:      [[fallthrough]];
 			case TT::NotEquals:
 				return 500;
 
-			case TT::Ellipsis:
+			case TT::Ellipsis:      [[fallthrough]];
 			case TT::HalfOpenEllipsis:
 				return 475;
 
@@ -461,14 +454,14 @@ namespace parser
 			case TT::LogicalOr:
 				return 350;
 
-			case TT::Equal:
-			case TT::PlusEq:
-			case TT::MinusEq:
-			case TT::MultiplyEq:
-			case TT::DivideEq:
-			case TT::ModEq:
-			case TT::AmpersandEq:
-			case TT::PipeEq:
+			case TT::Equal:         [[fallthrough]];
+			case TT::PlusEq:        [[fallthrough]];
+			case TT::MinusEq:       [[fallthrough]];
+			case TT::MultiplyEq:    [[fallthrough]];
+			case TT::DivideEq:      [[fallthrough]];
+			case TT::ModEq:         [[fallthrough]];
+			case TT::AmpersandEq:   [[fallthrough]];
+			case TT::PipeEq:        [[fallthrough]];
 			case TT::CaretEq:
 				return 100;
 

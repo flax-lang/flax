@@ -26,7 +26,7 @@ namespace sst
 		bool didCodegen = false;
 		CGResult cachedResult = CGResult(0);
 
-		AttributeSet attrs;
+		AttribSet attrs;
 	};
 
 	struct Expr : Stmt

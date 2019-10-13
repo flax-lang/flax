@@ -118,12 +118,16 @@ namespace lexer
 		Comment,
 		EndOfFile,
 
+		Attr_ATTRS_BEGIN,
+
 		Attr_Raw,
 		Attr_EntryFn,
 		Attr_NoMangle,
 		Attr_Operator,
 		Attr_Platform,
 		Attr_CompilerSupport,
+
+		Attr_ATTRS_END,
 
 		Directive_Run,
 		Directive_If,

@@ -36,7 +36,7 @@ namespace ast
 		virtual ~Stmt();
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) = 0;
 
-		AttributeSet attrs;
+		AttribSet attrs;
 	};
 
 	struct Expr : Stmt

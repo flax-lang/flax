@@ -362,6 +362,11 @@ namespace sst
 
 			fs->dtree->thingsImported.insert(ithing.name);
 			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
+
+			// merge the things. hopefully there are no conflicts????
+			// TODO: check for conflicts!
+			fs->dtree->compilerSupportDefinitions.insert(import->compilerSupportDefinitions.begin(),
+				import->compilerSupportDefinitions.end());
 		}
 
 		if(addPreludeDefinitions)
@@ -414,11 +419,7 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 	{
 		// visit all functions first, to get out-of-order calling -- but only at the namespace level, not inside functions.
 		// once we're in function-body-land, everything should be imperative-driven, and you shouldn't
-		// be able to see something before it is defined/declared.
-
-		//* but, we need all types to be visible, so we can use them in the function declarations
-		//* we'll see next -- if not then it breaks
-		// visitTypes(fs, this, ret);
+		// be able to see something before it is defined/declared
 
 		visitDeclarables(fs, this);
 	}
@@ -435,6 +436,19 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		else if(!tcr.isParametric() && !tcr.isDummy())
 			ret->statements.push_back(tcr.stmt());
+
+
+		// check for compiler support so we can add it to the big list of things.
+		if(tcr.stmt()->attrs.has("@compiler_support"))
+		{
+			if(!tcr.isDefn())
+				error(tcr.stmt(), "@compiler_support can only be applied to definitions");
+
+			auto ua = tcr.stmt()->attrs.get("@compiler_support");
+			iceAssert(!ua.name.empty() && ua.args.size() == 1);
+
+			fs->dtree->compilerSupportDefinitions[ua.args[0]] = tcr.defn();
+		}
 	}
 
 	if(tree->parent)

@@ -7,36 +7,69 @@ export ultratiny
 import libc as _
 import std::math
 
-@compiler_support trait Drop { fn deinit() }
-@compiler_support trait Copy { fn copy(other: &self) }
-@compiler_support trait Move { fn move(other: &mut self) }
+@compiler_support["raii_trait::drop"] trait Drop { fn deinit() }
+@compiler_support["raii_trait::copy"] trait Copy { fn copy(other: &self) }
+@compiler_support["raii_trait::move"] trait Move { fn move(other: &mut self) }
 
 struct Foo : Drop, Copy, Move
 {
+	data: int
+
 	fn deinit()
 	{
-		printf("lmao\n")
+		printf("is kill\n")
 	}
 
 	fn copy(other: &self)
 	{
+		printf("am copy\n")
 	}
 
 	fn move(other: &mut self)
 	{
+		printf("be move\n")
 	}
+}
+
+class Bar
+{
+	var data: int
+	init(x: int)
+	{
+		this.data = x
+	}
+}
+
+fn stuff() -> Foo
+{
+	return Foo(data: 33)
+}
+
+fn stuff2() -> Bar
+{
+	return Bar(x: 57)
 }
 
 @entry fn main()
 {
-	printf("hola amigo\n")
+	let q = stuff()
+	// let p = stuff2()
+	printf("q = %d\n", q)
 }
 
 
 
+/*
+	raii traits checklist:
 
+	// 1. call the appropriate methods on structs.
+		(kind of: still need Copy and Move)
 
+	// 4. implement @compiler_support
 
+	2. generalise the raii mechanism to by searching for traits instead of hardcoding for classes
+	3. remove the copy/move/destruct stuff from FIR?
+*/
 
 
 

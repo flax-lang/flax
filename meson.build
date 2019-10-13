@@ -8,7 +8,7 @@ the_compiler = meson.get_compiler('c')
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/utf-8', language:  ['c', 'cpp'])
-	add_project_arguments('/std:c++17', language: 'cpp')
+	add_project_arguments('/std:c++latest', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language:  ['c', 'cpp'])

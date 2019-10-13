@@ -24,6 +24,7 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto defn = util::pool<sst::TraitDefn>(this->loc);
 	defn->bareName = this->name;
 
+	defn->attrs = this->attrs;
 	defn->id = Identifier(defnname, IdKind::Type);
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
@@ -126,6 +127,7 @@ static bool _checkFunctionTypesMatch(fir::Type* trait, fir::Type* type, fir::Fun
 		auto ax = as[i];
 		auto bx = bs[i];
 
+		// TODO: wtf is this doing?!
 		if(ax != bx)
 		{
 			auto [ abase, atrfs ] = sst::poly::internal::decomposeIntoTransforms(ax, SIZE_MAX);

@@ -250,7 +250,7 @@ void SimpleError::post()
 {
 	if(!this->msg.empty())
 	{
-		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str(), !this->subs.empty());
+		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str(), true);
 		strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
 			this->printContext ? getSingleContext(this->loc, this->type == MsgType::Note ? COLOUR_BLUE_BOLD : COLOUR_RED_BOLD) + "\n" : "");
 	}

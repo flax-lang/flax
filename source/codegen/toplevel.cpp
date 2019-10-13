@@ -31,6 +31,7 @@ namespace cgn
 		cs->module = mod;
 
 		cs->typeDefnMap = dtr->typeDefnMap;
+		cs->compilerSupportDefinitions = dtr->compilerSupportDefinitions;
 
 		{
 			cs->pushLoc(dtr->topLevel);

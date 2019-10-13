@@ -318,6 +318,7 @@ namespace parser
 	std::vector<std::pair<std::string, TypeConstraints_t>> parseGenericTypeList(State& st);
 
 	PolyArgMapping_t parsePAMs(State& st, bool* failed);
+	AttribSet parseAttributes(State& st);
 
 	std::tuple<std::vector<ast::FuncDefn::Param>, std::vector<std::pair<std::string, TypeConstraints_t>>,
 		pts::Type*, bool, Location> parseFunctionLookingDecl(State& st);

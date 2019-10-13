@@ -106,6 +106,7 @@ namespace sst
 		std::unordered_set<std::string> thingsImported;
 
 		util::hash_map<fir::Type*, TypeDefn*> typeDefnMap;
+		util::hash_map<std::string, sst::Defn*> compilerSupportDefinitions;
 	};
 
 	struct TypecheckState
