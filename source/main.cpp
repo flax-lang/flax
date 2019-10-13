@@ -158,6 +158,7 @@ static void compile(std::string in, std::string out)
 
 int main(int argc, char** argv)
 {
+	platform::setupCrashHandlers();
 	platform::setupTerminalIfNecessary();
 	platform::compiler::performSelfDlOpen();
 

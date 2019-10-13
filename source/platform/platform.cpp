@@ -413,6 +413,26 @@ namespace platform
 		#endif
 	}
 
+	void setupCrashHandlers()
+	{
+		#if OS_WINDOWS
+
+		#else
+			signal(SIGSEGV, [](int) -> void {
+				constexpr const char* msg = COLOUR_RED_BOLD "\n\ncompiler crash! " COLOUR_RESET "(segmentation fault)\n"
+											COLOUR_BLUE_BOLD "stacktrace:\n" COLOUR_RESET;
+
+				write(1, msg, strlen(msg));
+
+				// note: this does not care about being re-entrant in signal handlers.
+				// fuck that noise.
+				printStackTrace();
+
+				abort();
+			});
+		#endif
+	}
+
 #ifdef _MSC_VER
 #else
 	#pragma GCC diagnostic pop

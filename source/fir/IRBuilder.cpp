@@ -1094,8 +1094,6 @@ namespace fir
 			) + args
 		);
 
-			//
-
 		return this->addInstruction(instr, vname);
 	}
 

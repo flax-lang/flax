@@ -2332,7 +2332,7 @@ namespace backend
 							auto ut = inst->operands[0]->getType()->toUnionType();
 							auto vid = dcast(fir::ConstantInt, inst->operands[1])->getSignedValue();
 
-							iceAssert(static_cast<size_t>(vid < ut->getVariantCount()));
+							iceAssert(static_cast<size_t>(vid) < ut->getVariantCount());
 							auto vt = ut->getVariant(vid)->getInteriorType();
 
 							auto lut = typeToLlvm(ut, module);

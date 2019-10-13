@@ -87,6 +87,8 @@ namespace platform
 	void pushEnvironmentVar(const std::string& name, const std::string& value);
 	void popEnvironmentVar(const std::string& name);
 
+	void printStackTrace();
+	void setupCrashHandlers();
 
 	namespace compiler
 	{
