@@ -23,6 +23,7 @@
 #else
 	#include <dlfcn.h>
 	#include <unistd.h>
+	#include <signal.h>
 	#include <sys/mman.h>
 	#include <sys/ioctl.h>
 
