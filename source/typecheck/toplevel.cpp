@@ -437,9 +437,8 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 		else if(!tcr.isParametric() && !tcr.isDummy())
 			ret->statements.push_back(tcr.stmt());
 
-
 		// check for compiler support so we can add it to the big list of things.
-		if(tcr.stmt()->attrs.has("@compiler_support"))
+		if(tcr.isStmt() && tcr.stmt()->attrs.has("@compiler_support"))
 		{
 			if(!tcr.isDefn())
 				error(tcr.stmt(), "@compiler_support can only be applied to definitions");
