@@ -12,6 +12,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	defer(cs->popLoc());
 
 	auto checkStore = [this, cs](fir::Value* val) -> fir::Value* {
+		iceAssert(val);
 
 		fir::Value* nv = val;
 		if(nv->getType() != this->type)

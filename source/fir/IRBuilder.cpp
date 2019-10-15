@@ -127,13 +127,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -155,13 +155,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -183,13 +183,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -211,13 +211,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -239,56 +239,56 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
 		else if(ao == "<<")
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
-			op = OpKind::Bitwise_Shl;
 
+			op = OpKind::Bitwise_Shl;
 			out = lhs;
 		}
 		else if(ao == ">>")
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
-			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
 
+			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
 			out = lhs;
 		}
 		else if(ao == "&")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_And;
 
+			op = OpKind::Bitwise_And;
 			out = lhs;
 		}
 		else if(ao == "|")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Or;
 
+			op = OpKind::Bitwise_Or;
 			out = lhs;
 		}
 		else if(ao == "^")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Xor;
 
+			op = OpKind::Bitwise_Xor;
 			out = lhs;
 		}
 		else if(ao == "~")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Not;
 
+			op = OpKind::Bitwise_Not;
 			out = lhs;
 		}
 		else

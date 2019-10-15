@@ -116,9 +116,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	rr = cs->oneWayAutocast(rr, lt);
 
 	if(rr == 0)
-	{
-		error(this, "invalid assignment from value of type '%s' to expected type '%s'", rr->getType(), lt);
-	}
+		error(this, "invalid assignment from value of type '%s' to expected type '%s'", rt, lt);
 
 	// ok then
 	if(lt != rr->getType())

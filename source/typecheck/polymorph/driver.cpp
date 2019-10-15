@@ -320,6 +320,7 @@ namespace poly
 			}
 			else
 			{
+				iceAssert(thing);
 				return std::make_pair(Solution_t(partial),
 					SimpleError::make(thing->loc, "unable to infer type for unsupported entity '%s'", thing->getKind())
 				);

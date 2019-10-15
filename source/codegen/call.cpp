@@ -414,6 +414,8 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(auto te = dcast(sst::TypeExpr, this->callee))
 		return callBuiltinTypeConstructor(cs, te->type, this->arguments);
 
+	iceAssert(this->callee);
+
 	fir::Value* fn = this->callee->codegen(cs).value;
 	iceAssert(fn->getType()->isFunctionType());
 

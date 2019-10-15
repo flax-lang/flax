@@ -1013,6 +1013,8 @@ namespace fir
 		for(auto ty : tys)
 		{
 			auto a = getAlignmentOfType(ty);
+			iceAssert(a > 0);
+
 			if(ptr % a > 0)
 				ptr += (a - (ptr % a));
 
@@ -1020,6 +1022,7 @@ namespace fir
 			aln = std::max(aln, a);
 		}
 
+		iceAssert(aln > 0);
 		if(ptr % aln > 0)
 			ptr += (aln - (ptr % aln));
 

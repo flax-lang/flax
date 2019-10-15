@@ -25,12 +25,14 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 	else                                        retty = fir::Type::getVoid();
 
 	auto fn = cs->module->getOrCreateFunction(fname, fir::FunctionType::get({ }, retty), fir::LinkageType::Internal);
+
 	iceAssert(fn);
+	iceAssert(stmt);
 
 	// make the function:
 	{
 		auto entry = cs->irb.addNewBlockInFunction("entry", fn);
-		 cs->irb.setCurrentBlock(entry);
+		cs->irb.setCurrentBlock(entry);
 
 		fir::Value* ret = 0;
 
