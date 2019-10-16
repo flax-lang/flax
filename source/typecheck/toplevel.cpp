@@ -9,6 +9,7 @@
 #include "parser.h"
 #include "frontend.h"
 #include "typecheck.h"
+#include "string_consts.h"
 
 #include "ir/type.h"
 #include "memorypool.h"
@@ -438,12 +439,12 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 			ret->statements.push_back(tcr.stmt());
 
 		// check for compiler support so we can add it to the big list of things.
-		if(tcr.isStmt() && tcr.stmt()->attrs.has("@compiler_support"))
+		if((tcr.isStmt() || tcr.isDefn()) && tcr.stmt()->attrs.has(strs::attrs::COMPILER_SUPPORT))
 		{
 			if(!tcr.isDefn())
 				error(tcr.stmt(), "@compiler_support can only be applied to definitions");
 
-			auto ua = tcr.stmt()->attrs.get("@compiler_support");
+			auto ua = tcr.stmt()->attrs.get(strs::attrs::COMPILER_SUPPORT);
 			iceAssert(!ua.name.empty() && ua.args.size() == 1);
 
 			fs->dtree->compilerSupportDefinitions[ua.args[0]] = tcr.defn();

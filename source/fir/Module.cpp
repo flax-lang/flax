@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-#include "gluecode.h"
+#include "string_consts.h"
 
 #include "ir/module.h"
 #include "ir/irbuilder.h"
@@ -53,7 +53,7 @@ namespace fir
 
 			builder.setCurrentBlock(newentry);
 
-			auto gif = this->getFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME));
+			auto gif = this->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
 			if(!gif) error("fir: failed to find global init function");
 
 			builder.Call(gif);

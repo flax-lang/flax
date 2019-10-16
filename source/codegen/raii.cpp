@@ -4,7 +4,8 @@
 
 #include "sst.h"
 #include "codegen.h"
-#include "gluecode.h"
+// #include "gluecode.h"
+#include "string_consts.h"
 
 namespace cgn
 {
@@ -93,24 +94,22 @@ namespace cgn
 			// call the auto one. this will handle calling base class destructors for us!
 			this->irb.Call(cls->getInlineDestructor(), selfptr);
 		}
-		else
+		else if(auto it = this->compilerSupportDefinitions.find(strs::names::support::RAII_TRAIT_DROP);
+			it != this->compilerSupportDefinitions.end())
 		{
-			if(auto it = this->compilerSupportDefinitions.find("raii_trait::drop"); it != this->compilerSupportDefinitions.end())
+			auto trt = dcast(sst::TraitDefn, it->second);
+			if(!trt) error("invalid use of @compiler_support[\"raii_trait::drop\"] on non-trait definition!");
+
+			iceAssert(trt->methods.size() == 1);
+
+			auto str = dcast(sst::StructDefn, this->typeDefnMap[val->getType()]);
+			iceAssert(str);
+
+			auto destructor = this->findMatchingMethodInType(str, trt->methods[0]);
+			if(destructor)
 			{
-				auto trt = dcast(sst::TraitDefn, it->second);
-				if(!trt) error("invalid use of @compiler_support[\"raii_trait::drop\"] on non-trait definition!");
-
-				iceAssert(trt->methods.size() == 1);
-
-				auto str = dcast(sst::StructDefn, this->typeDefnMap[val->getType()]);
-				iceAssert(str);
-
-				auto destructor = this->findMatchingMethodInType(str, trt->methods[0]);
-				if(destructor)
-				{
-					this->irb.Call(dcast(fir::Function, destructor->codegen(this).value), selfptr);
-					return;
-				}
+				this->irb.Call(dcast(fir::Function, destructor->codegen(this).value), selfptr);
+				return;
 			}
 		}
 	}
@@ -248,7 +247,7 @@ namespace cgn
 	}
 
 
-
+	// TODO: memoise this for each type; the typeHas-blalba ones also!
 	static bool findRAIITraitImpl(CodegenState* cs, fir::Type* ty, const std::string& name)
 	{
 		if(ty->isClassType())
@@ -261,27 +260,27 @@ namespace cgn
 		auto def = dcast(sst::StructDefn, cs->typeDefnMap[str]);
 		iceAssert(def);
 
-		return util::matchAny(def->traits, [name](auto trt) -> bool {
-			return trt->id.name == name;
+		return util::matchAny(def->traits, [name](sst::TraitDefn* trt) -> bool {
+			// if we do not have such an attribute, then ::get returns an empty UA,
+			// with an empty string as a name.
+			return trt->attrs.get(strs::attrs::COMPILER_SUPPORT).name == strs::attrs::COMPILER_SUPPORT;
 		});
 	}
 
-	// TODO:
-	//* after @compiler_support is implemented properly, these should probably use that mechanism to
-	//* find the name of the trait to search.
+
 	bool CodegenState::typeHasDestructor(fir::Type* ty)
 	{
-		return findRAIITraitImpl(this, ty, "Drop");
+		return findRAIITraitImpl(this, ty, strs::names::support::RAII_TRAIT_DROP);
 	}
 
 	bool CodegenState::typeHasCopyConstructor(fir::Type* ty)
 	{
-		return findRAIITraitImpl(this, ty, "Copy");
+		return findRAIITraitImpl(this, ty, strs::names::support::RAII_TRAIT_COPY);
 	}
 
 	bool CodegenState::typeHasMoveConstructor(fir::Type* ty)
 	{
-		return findRAIITraitImpl(this, ty, "Move");
+		return findRAIITraitImpl(this, ty, strs::names::support::RAII_TRAIT_MOVE);
 	}
 
 	bool CodegenState::isRAIIType(fir::Type* ty)

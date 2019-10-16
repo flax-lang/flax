@@ -14,6 +14,7 @@
 
 #include "memorypool.h"
 
+namespace names = strs::names;
 
 
 // make the nice message.
@@ -243,11 +244,15 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(util::match(vr->name, BUILTIN_SAA_FIELD_LENGTH, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT, BUILTIN_STRING_FIELD_COUNT))
+			if(util::match(vr->name, names::saa::FIELD_LENGTH, names::saa::FIELD_CAPACITY,
+				names::saa::FIELD_REFCOUNT, names::string::FIELD_COUNT))
+			{
 				res = fir::Type::getNativeWord();
-
-			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
+			}
+			else if(vr->name == names::saa::FIELD_POINTER)
+			{
 				res = fir::Type::getInt8Ptr();
+			}
 
 
 			if(res)
@@ -264,13 +269,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			fir::Type* res = 0;
 			std::vector<sst::Expr*> args;
-			if(fc->name == BUILTIN_SAA_FN_CLONE)
+			if(fc->name == names::saa::FN_CLONE)
 			{
 				res = type;
 				if(fc->args.size() != 0)
 					error(fc, "builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
-			else if(fc->name == BUILTIN_SAA_FN_APPEND)
+			else if(fc->name == names::saa::FN_APPEND)
 			{
 				res = fir::Type::getVoid();
 				if(fc->args.size() != 1)
@@ -307,12 +312,12 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		if(auto vr = dcast(ast::Ident, rhs))
 		{
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_SAA_FIELD_LENGTH || (type->isDynamicArrayType()
-				&& util::match(vr->name, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT)))
+			if(vr->name == names::saa::FIELD_LENGTH || (type->isDynamicArrayType()
+				&& util::match(vr->name, names::saa::FIELD_CAPACITY, names::saa::FIELD_REFCOUNT)))
 			{
 				res = fir::Type::getNativeWord();
 			}
-			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
+			else if(vr->name == names::saa::FIELD_POINTER)
 			{
 				res = type->getArrayElementType()->getPointerTo();
 				if(type->isDynamicArrayType())
@@ -339,13 +344,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			fir::Type* res = 0;
 			std::vector<sst::Expr*> args;
 
-			if(fc->name == BUILTIN_SAA_FN_CLONE)
+			if(fc->name == names::saa::FN_CLONE)
 			{
 				res = type;
 				if(fc->args.size() != 0)
 					error(fc, "builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
-			else if(fc->name == BUILTIN_SAA_FN_APPEND)
+			else if(fc->name == names::saa::FN_APPEND)
 			{
 				if(type->isArrayType())
 					error(fc, "'append' method cannot be called on arrays");
@@ -391,13 +396,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_ENUM_FIELD_NAME)
+			if(vr->name == names::enumeration::FIELD_NAME)
 				res = fir::Type::getString();
 
-			else if(vr->name == BUILTIN_ENUM_FIELD_INDEX)
+			else if(vr->name == names::enumeration::FIELD_INDEX)
 				res = fir::Type::getNativeWord();
 
-			else if(vr->name == BUILTIN_ENUM_FIELD_VALUE)
+			else if(vr->name == names::enumeration::FIELD_VALUE)
 				res = type->toEnumType()->getCaseType();
 
 
@@ -419,7 +424,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_RANGE_FIELD_BEGIN || vr->name == BUILTIN_RANGE_FIELD_END || vr->name == BUILTIN_RANGE_FIELD_STEP)
+			if(vr->name == names::range::FIELD_BEGIN || vr->name == names::range::FIELD_END || vr->name == names::range::FIELD_STEP)
 				res = fir::Type::getNativeWord();
 
 			if(res)
@@ -441,10 +446,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_ANY_FIELD_TYPEID)
+			if(vr->name == names::any::FIELD_TYPEID)
 				res = fir::Type::getNativeUWord();
 
-			else if(vr->name == BUILTIN_ANY_FIELD_REFCOUNT)
+			else if(vr->name == names::any::FIELD_REFCOUNT)
 				res = fir::Type::getNativeWord();
 
 			if(res)

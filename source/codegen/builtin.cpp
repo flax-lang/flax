@@ -7,6 +7,9 @@
 #include "gluecode.h"
 #include "typecheck.h"
 
+// stupid c++, u don't do it with 'using'
+namespace names = strs::names;
+
 
 static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Value* ptr)
 {
@@ -45,7 +48,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->isFunctionCall)
 	{
 		std::vector<fir::Value*> arguments = util::map(this->args, [cs](sst::Expr* e) -> fir::Value* { return e->codegen(cs).value; });
-		if(this->name == BUILTIN_SAA_FN_CLONE)
+		if(this->name == names::saa::FN_CLONE)
 		{
 			iceAssert(arguments.empty());
 			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
@@ -57,7 +60,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			return CGResult(ret);
 		}
-		else if(this->name == BUILTIN_ARRAY_FN_POP)
+		else if(this->name == names::array::FN_POP)
 		{
 			iceAssert(!ty->isStringType());
 
@@ -79,7 +82,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			cs->irb.Store(newarr, res.value);
 			return CGResult(retelm);
 		}
-		else if(this->name == BUILTIN_SAA_FN_APPEND)
+		else if(this->name == names::saa::FN_APPEND)
 		{
 			iceAssert(arguments.size() == 1);
 
@@ -107,20 +110,20 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if(ty->isStringType() || ty->isDynamicArrayType())
 		{
-			if(this->name == BUILTIN_SAA_FIELD_POINTER)
+			if(this->name == names::saa::FIELD_POINTER)
 				return CGResult(cs->irb.GetSAAData(res.value));
 
-			else if(this->name == BUILTIN_SAA_FIELD_LENGTH)
+			else if(this->name == names::saa::FIELD_LENGTH)
 				return CGResult(cs->irb.GetSAALength(res.value));
 
-			else if(this->name == BUILTIN_SAA_FIELD_CAPACITY)
+			else if(this->name == names::saa::FIELD_CAPACITY)
 				return CGResult(cs->irb.GetSAACapacity(res.value));
 
-			else if(this->name == BUILTIN_SAA_FIELD_REFCOUNT)
+			else if(this->name == names::saa::FIELD_REFCOUNT)
 			{
 				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetSAARefCountPointer(res.value)));
 			}
-			else if(ty->isStringType() && this->name == BUILTIN_STRING_FIELD_COUNT)
+			else if(ty->isStringType() && this->name == names::string::FIELD_COUNT)
 			{
 				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);
 				iceAssert(fn);
@@ -131,19 +134,19 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(ty->isArraySliceType())
 		{
-			if(this->name == BUILTIN_SAA_FIELD_LENGTH)
+			if(this->name == names::saa::FIELD_LENGTH)
 				return CGResult(cs->irb.GetArraySliceLength(res.value));
 
-			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
+			else if(this->name == names::saa::FIELD_POINTER)
 				return CGResult(cs->irb.GetArraySliceData(res.value));
 		}
 		else if(ty->isArrayType())
 		{
-			if(this->name == BUILTIN_SAA_FIELD_LENGTH)
+			if(this->name == names::saa::FIELD_LENGTH)
 			{
 				return CGResult(fir::ConstantInt::getNative(ty->toArrayType()->getArraySize()));
 			}
-			else if(this->name == BUILTIN_SAA_FIELD_POINTER)
+			else if(this->name == names::saa::FIELD_POINTER)
 			{
 				auto ret = cs->irb.ConstGEP2(res.value, 0, 0);
 				return CGResult(ret);
@@ -151,35 +154,35 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 		else if(ty->isRangeType())
 		{
-			if(this->name == BUILTIN_RANGE_FIELD_BEGIN)
+			if(this->name == names::range::FIELD_BEGIN)
 				return CGResult(cs->irb.GetRangeLower(res.value));
 
-			else if(this->name == BUILTIN_RANGE_FIELD_END)
+			else if(this->name == names::range::FIELD_END)
 				return CGResult(cs->irb.GetRangeUpper(res.value));
 
-			else if(this->name == BUILTIN_RANGE_FIELD_STEP)
+			else if(this->name == names::range::FIELD_STEP)
 				return CGResult(cs->irb.GetRangeStep(res.value));
 
 		}
 		else if(ty->isAnyType())
 		{
-			if(this->name == BUILTIN_ANY_FIELD_TYPEID)
+			if(this->name == names::any::FIELD_TYPEID)
 				return CGResult(cs->irb.GetAnyTypeID(res.value));
 
-			else if(this->name == BUILTIN_ANY_FIELD_REFCOUNT)
+			else if(this->name == names::any::FIELD_REFCOUNT)
 				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetAnyRefCountPointer(res.value)));
 		}
 		else if(ty->isEnumType())
 		{
-			if(this->name == BUILTIN_ENUM_FIELD_INDEX)
+			if(this->name == names::enumeration::FIELD_INDEX)
 			{
 				return CGResult(cs->irb.GetEnumCaseIndex(res.value));
 			}
-			else if(this->name == BUILTIN_ENUM_FIELD_VALUE)
+			else if(this->name == names::enumeration::FIELD_VALUE)
 			{
 				return CGResult(cs->irb.GetEnumCaseValue(res.value));
 			}
-			else if(this->name == BUILTIN_ENUM_FIELD_NAME)
+			else if(this->name == names::enumeration::FIELD_NAME)
 			{
 				auto namearr = ty->toEnumType()->getNameArray();
 				iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());

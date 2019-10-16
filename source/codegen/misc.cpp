@@ -50,7 +50,7 @@ sst::FunctionDefn* cgn::CodegenState::findMatchingMethodInType(sst::TypeDefn* td
 	if(auto str = dcast(sst::StructDefn, td); str)
 	{
 		// TODO: when (if) we figure out what's going on in typecheck/traits.cpp:129, possibly change this to match.
-		auto it = std::find_if(str->methods.begin(), str->methods.end(), [this, fn](sst::FunctionDefn* method) -> bool {
+		auto it = std::find_if(str->methods.begin(), str->methods.end(), [fn](sst::FunctionDefn* method) -> bool {
 
 			//* i think this check should work, `areMethodsVirtuallyCompatible` basically checks the parameters but takes
 			//* co/contravariance into account and doesn't match the first (self) parameter.

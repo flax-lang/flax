@@ -7,6 +7,7 @@
 #include "typecheck.h"
 #include "memorypool.h"
 
+
 static bool isAutoDereferencable(fir::Type* t)
 {
 	return (t->isStructType() || t->isClassType() || t->isRawUnionType());

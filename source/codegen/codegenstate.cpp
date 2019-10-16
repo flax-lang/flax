@@ -356,7 +356,7 @@ namespace cgn
 
 		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME),
+			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);

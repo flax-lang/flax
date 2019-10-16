@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "stcommon.h"
+#include "string_consts.h"
 
 #define DEBUG_RUNTIME_GLUE_MASTER	0
 
@@ -25,35 +26,8 @@
 #define DEBUG_ANY_ALLOCATION		(1 & DEBUG_ANY_MASTER)
 #define DEBUG_ANY_REFCOUNTING		(1 & DEBUG_ANY_MASTER)
 
-
-#define BUILTIN_SAA_FN_APPEND       "append"
-#define BUILTIN_SAA_FN_CLONE        "clone"
-
-#define BUILTIN_SAA_FIELD_LENGTH    "length"
-#define BUILTIN_SAA_FIELD_POINTER   "ptr"
-#define BUILTIN_SAA_FIELD_REFCOUNT  "refcount"
-#define BUILTIN_SAA_FIELD_CAPACITY  "capacity"
-
-
-#define BUILTIN_STRING_FIELD_COUNT  "count"
-
-#define BUILTIN_ARRAY_FN_POP        "pop"
-
-#define BUILTIN_ENUM_FIELD_VALUE    "value"
-#define BUILTIN_ENUM_FIELD_INDEX    "index"
-#define BUILTIN_ENUM_FIELD_NAME     "name"
-
-#define BUILTIN_RANGE_FIELD_BEGIN   "begin"
-#define BUILTIN_RANGE_FIELD_END     "end"
-#define BUILTIN_RANGE_FIELD_STEP    "step"
-
-#define BUILTIN_ANY_FIELD_TYPEID    "id"
-#define BUILTIN_ANY_FIELD_REFCOUNT  "refcount"
-
 #define BUILTIN_ANY_DATA_BYTECOUNT  32
 #define BUILTIN_ANY_FLAG_MASK       0x8000000000000000
-
-#define BUILTIN_GLOBAL_INIT_FUNCTION_NAME "global_init_function__"
 
 
 namespace fir
