@@ -133,7 +133,7 @@ copylibs: $(FLXSRC)
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -lfmt
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind
 
 
 %.cpp.o: %.cpp
