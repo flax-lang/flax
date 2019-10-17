@@ -4,7 +4,9 @@
 
 
 
-WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wno-deprecated-declarations -Wno-init-list-lifetime
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wno-deprecated-declarations
+
+GCCWARNINGS     := -Wno-init-list-lifetime
 
 
 CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat -Wold-style-cast
@@ -23,6 +25,7 @@ LLVM_CONFIG		?= "llvm-config"
 
 CXXSRC			:= $(shell find source external -iname "*.cpp")
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
+CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 PRECOMP_HDRS	:= source/include/precompile.h
 PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
@@ -30,7 +33,6 @@ PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
 FLXLIBLOCATION	:= $(SYSROOT)/$(PREFIX)/lib
 FLXSRC			:= $(shell find libs -iname "*.flx")
 
-CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 NUMFILES		:= $$(($(words $(CXXSRC))))
 
@@ -68,8 +70,10 @@ CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
 LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
 
 ifneq (,$(findstring clang,$(COMPILER_IDENT)))
-	CXXFLAGS += -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	CXXFLAGS += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+else
+	CXXFLAGS += (GCCWARNINGS)
 endif
 
 
@@ -141,19 +145,13 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
 	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -Iexternal -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
 
-$(UTF8REWIND_AR):
-	@make -C external/utf8rewind all
-
-
-%.c.o: %.c
-	@$(eval DONEFILES += "C")
-	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CC) $(CFLAGS) $(WARNINGS) -Iexternal/utf8rewind/include/utf8rewind -MMD -MP -o $@ $<
-
-
 %.h.gch: %.h
 	@printf "# precompiling header $<\n"
 	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $<
+
+
+$(UTF8REWIND_AR):
+	@make -C external/utf8rewind all
 
 
 # haha

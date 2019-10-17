@@ -320,7 +320,7 @@ namespace resolver
 						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getNativeWord()) < 0)
 						{
 							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								dcast(fir::Type, fir::Type::getNativeWord()), t2);
+								fir::Type::getNativeWord(), t2);
 						}
 						else
 						{

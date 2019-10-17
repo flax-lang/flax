@@ -20,7 +20,7 @@ addons:
         - ubuntu-toolchain-r-test
 
         packages:
-        - g++-8
+        - g++-9
         - llvm-7
         - llvm-7-dev
         - libllvm7
@@ -34,9 +34,9 @@ script:
           curl 'https://homebrew.bintray.com/bottles/llvm@7-7.1.0.high_sierra.bottle.tar.gz' -L -o llvm-7.1.0.tar.gz;
           tar -xf llvm-7.1.0.tar.gz;
         fi;
-        PATH="$(pwd)/llvm@7/7.1.0/bin:$PATH" LLVM_CONFIG=llvm-config make -j2 build;
+        PATH="$PATH:$(pwd)/llvm@7/7.1.0/bin" LLVM_CONFIG=llvm-config make -j2 build;
       else
-        CXX=g++-$GCC_VERSION CC=gcc-$GCC_VERSION LLVM_CONFIG=llvm-config-7 make -j2 build;
+        CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-7 make -j2 build;
       fi
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
     - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend interp build/tester.flx

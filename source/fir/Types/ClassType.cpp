@@ -410,7 +410,7 @@ namespace fir
 		else
 		{
 			error("no method named '%s' matching signature '%s' in virtual method table of class '%s'",
-				name, dcast(Type, ft), this->getTypeName().name);
+				name, ft, this->getTypeName().name);
 		}
 	}
 

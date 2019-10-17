@@ -113,7 +113,7 @@ namespace fir
 		if(cnt->isFloating())
 		{
 			if(cnt->getMinBits() > 64)
-				error("constant number type '%s' requires too many bits", dcast(Type, cnt));
+				error("constant number type '%s' requires too many bits", cnt);
 
 			return fir::Type::getFloat64();
 		}
@@ -125,12 +125,12 @@ namespace fir
 			}
 			else if(cnt->isSigned())
 			{
-				error("constant number type '%s' requires too many bits", dcast(Type, cnt));
+				error("constant number type '%s' requires too many bits", cnt);
 			}
 			else
 			{
 				if(cnt->getMinBits() > fir::Type::getNativeUWord()->getBitWidth())
-					error("constant number type '%s' requires too many bits", dcast(Type, cnt));
+					error("constant number type '%s' requires too many bits", cnt);
 
 				return fir::Type::getNativeUWord();
 			}

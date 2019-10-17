@@ -80,29 +80,12 @@ std::string strprintf(const char* fmt, Ts&&... ts)
 
 #define TAB_WIDTH	4
 
-
 #define dcast(t, v)		dynamic_cast<t*>(v)
-
-#define USE_SKA_HASHMAP false
-#if USE_SKA_HASHMAP
-	#include "ska/flat_hash_map.hpp"
-#endif
 
 namespace util
 {
-	#if USE_SKA_HASHMAP
-		using hash_map = ska::flat_hash_map;
-
-		template <typename K, typename V>
-		std::vector<std::pair<K, V>> pairs(const util::hash_map<K, V>& map)
-		{
-			auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
-			return ret;
-		}
-	#else
-		template<typename K, typename V>
-		using hash_map = std::unordered_map<K, V>;
-	#endif
+	template<typename K, typename V>
+	using hash_map = std::unordered_map<K, V>;
 }
 
 namespace fir
