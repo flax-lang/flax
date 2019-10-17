@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <string>
-#include <charconv>
 #include <type_traits>
 #include <string_view>
 
@@ -309,8 +308,8 @@ namespace zpr
 		{
 			int base = 10;
 			if(args.specifier == 'x' || args.specifier == 'X')      base = 16;
-			else if(args.specifier == 'o')                          base = 8;
-			else if(args.specifier == 'b')                          base = 2;
+			// else if(args.specifier == 'o')                          base = 8;
+			// else if(args.specifier == 'b')                          base = 2;
 
 			// handle negative values ourselves btw, due to padding
 			bool is_neg = false;
@@ -327,17 +326,46 @@ namespace zpr
 				char buf[65] = {0};
 
 				size_t digits_len = 0;
+				const char* fmt_str = 0;
+				auto spec = args.specifier;
 
-				std::to_chars_result ret;
-				if constexpr (std::is_enum_v<T>)
-					ret = std::to_chars(&buf[0], &buf[65], static_cast<std::underlying_type_t<T>>(x), /* base: */ base);
+				switch(args.length)
+				{
+					case format_args::LENGTH_SHORT_SHORT: fmt_str = (spec == 'u'
+						? "%hhu" : (spec == 'x' ? "%hhx" : (spec == 'X' ? "%hhX" : "%hhd"))); break;
+					case format_args::LENGTH_SHORT:     fmt_str = (spec == 'u'
+						? "%hu" : (spec == 'x' ? "%hx" : (spec == 'X' ? "%hX" : "%hd"))); break;
+					case format_args::LENGTH_LONG:      fmt_str = (spec == 'u'
+						? "%lu" : (spec == 'x' ? "%lx" : (spec == 'X' ? "%lX" : "%ld"))); break;
+					case format_args::LENGTH_LONG_LONG: fmt_str = (spec == 'u'
+						? "%llu" : (spec == 'x' ? "%llx" : (spec == 'X' ? "%llX" : "%lld"))); break;
+					case format_args::LENGTH_INTMAX_T:  fmt_str = (spec == 'u'
+						? "%ju" : (spec == 'x' ? "%jx" : (spec == 'X' ? "%jX" : "%jd"))); break;
+					case format_args::LENGTH_SIZE_T:    fmt_str = (spec == 'u'
+						? "%zu" : (spec == 'x' ? "%zx" : (spec == 'X' ? "%zX" : "%zd"))); break;
+					case format_args::LENGTH_PTRDIFF_T: fmt_str = (spec == 'u'
+						? "%tu" : (spec == 'x' ? "%tx" : (spec == 'X' ? "%tX" : "%td"))); break;
 
-				else
-					ret = std::to_chars(&buf[0], &buf[65], x, /* base: */ base);
+					case format_args::LENGTH_DEFAULT:   [[fallthrough]];
+					default:
+						fmt_str = (spec == 'u' ? "%u" : (spec == 'x' ? "%x" : (spec == 'X' ? "%X" : "%d")));
+						break;
+				}
+
+				digits_len = snprintf(&buf[0], 64, fmt_str, x);
+
+				// sadly, we must cheat here as well, because osx doesn't bloody have charconv (STILL)?
+
+				// std::to_chars_result ret;
+				// if constexpr (std::is_enum_v<T>)
+				// 	ret = std::to_chars(&buf[0], &buf[65], static_cast<std::underlying_type_t<T>>(x), /* base: */ base);
+
+				// else
+				// 	ret = std::to_chars(&buf[0], &buf[65], x, /* base: */ base);
 
 
-				if(ret.ec == std::errc())   digits_len = (ret.ptr - &buf[0]), *ret.ptr = 0;
-				else                        return "<to_chars(int) error>";
+				// if(ret.ec == std::errc())   digits_len = (ret.ptr - &buf[0]), *ret.ptr = 0;
+				// else                        return "<to_chars(int) error>";
 
 				if(isupper(args.specifier))
 					for(size_t i = 0; i < digits_len; i++)
@@ -411,7 +439,7 @@ namespace zpr
 			{
 				constexpr int default_prec = 6;
 
-				char buf[80] = { 0 };
+				char buf[81] = { 0 };
 				int64_t num_length = 0;
 
 				// lmao. nobody except msvc stl (and only the most recent version) implements std::to_chars

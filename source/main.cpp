@@ -29,6 +29,7 @@ struct timer
 	std::chrono::time_point<hrc> start;
 };
 
+
 static void compile(std::string in, std::string out)
 {
 	auto start_time = std::chrono::high_resolution_clock::now();
