@@ -3,6 +3,11 @@
 // Licensed under the Apache License Version 2.0.
 
 #pragma once
+
+#include <stdint.h>
+#include <stddef.h>
+#include <sys/types.h>
+
 #include <string>
 #include <charconv>
 #include <type_traits>
