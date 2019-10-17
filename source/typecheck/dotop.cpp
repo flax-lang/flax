@@ -163,7 +163,7 @@ static sst::FieldDotOp* resolveFieldNameDotOp(sst::TypecheckState* fs, sst::Expr
 	}
 
 	auto ret = dcast(sst::FieldDotOp, cur);
-	assert(ret);
+	iceAssert(ret);
 
 	return ret;
 }

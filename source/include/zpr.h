@@ -315,7 +315,7 @@ namespace zpr
 			// handle negative values ourselves btw, due to padding
 			bool is_neg = false;
 
-			if constexpr (!std::is_enum_v<T>)
+			if constexpr (!std::is_enum_v<T> && std::is_signed_v<T>)
 			{
 				is_neg = (x < 0);
 				if(is_neg) x = -x;
@@ -341,7 +341,7 @@ namespace zpr
 
 				if(isupper(args.specifier))
 					for(size_t i = 0; i < digits_len; i++)
-						buf[i] = toupper(buf[i]);
+						buf[i] = static_cast<char>(toupper(buf[i]));
 
 				digits = std::string(buf, digits_len);
 			}
