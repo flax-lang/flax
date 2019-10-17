@@ -7,7 +7,7 @@ matrix:
       dist: xenial
       sudo: false
     - os: osx
-      osx_image: xcode11.1
+      osx_image: xcode11.2
 
 cache:
     directories:
@@ -34,6 +34,8 @@ script:
           curl 'https://homebrew.bintray.com/bottles/llvm@7-7.1.0.high_sierra.bottle.tar.gz' -L -o llvm-7.1.0.tar.gz;
           tar -xf llvm-7.1.0.tar.gz;
         fi;
+        echo "clang version:" $($CC --version);
+        echo "clang path:" $(which $CC);
         PATH="$PATH:$(pwd)/llvm@7/7.1.0/bin" LLVM_CONFIG=llvm-config make -j2 build;
       else
         CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-7 make -j2 build;
