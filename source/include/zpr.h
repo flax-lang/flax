@@ -6,7 +6,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sys/types.h>
 
 #include <string>
 #include <charconv>
@@ -32,9 +31,9 @@ namespace zpr
 
 		char specifier      = 0;
 
-		ssize_t width       = 0;
-		ssize_t length      = 0;
-		ssize_t precision   = -1;
+		int64_t width       = 0;
+		int64_t length      = 0;
+		int64_t precision   = -1;
 
 		constexpr static int LENGTH_DEFAULT     = 0;
 		constexpr static int LENGTH_SHORT_SHORT = 1;
@@ -341,7 +340,7 @@ namespace zpr
 				else                        return "<to_chars(int) error>";
 
 				if(isupper(args.specifier))
-					for(int i = 0; i < digits_len; i++)
+					for(size_t i = 0; i < digits_len; i++)
 						buf[i] = toupper(buf[i]);
 
 				digits = std::string(buf, digits_len);
@@ -353,7 +352,7 @@ namespace zpr
 			else if(args.prepend_blank_if_positive) prefix += " ";
 
 			// prepend 0x or 0b or 0o for alternate.
-			ssize_t prefix_digits_length = 0;
+			int64_t prefix_digits_length = 0;
 			if((base == 2 || base == 8 || base == 16) && args.alternate)
 			{
 				prefix += "0";
@@ -365,37 +364,37 @@ namespace zpr
 				prefix_digits_length += 2;
 			}
 
-			ssize_t output_length_with_precision = (args.precision == -1
+			int64_t output_length_with_precision = (args.precision == -1
 				? digits.size()
-				: std::max(args.precision, static_cast<ssize_t>(digits.size()))
+				: std::max(args.precision, static_cast<int64_t>(digits.size()))
 			);
 
-			ssize_t digits_length = prefix_digits_length + digits.size();
-			ssize_t normal_length = prefix.size() + digits.size();
-			ssize_t length_with_precision = prefix.size() + output_length_with_precision;
+			int64_t digits_length = prefix_digits_length + digits.size();
+			int64_t normal_length = prefix.size() + digits.size();
+			int64_t length_with_precision = prefix.size() + output_length_with_precision;
 
 			bool use_precision = (args.precision != -1);
 			bool use_zero_pad = args.zero_pad && 0 <= args.width && !use_precision;
 			bool use_left_pad = !use_zero_pad && 0 <= args.width;
 			bool use_right_pad = !use_zero_pad && args.width < 0;
 
-			ssize_t abs_field_width = std::abs(args.width);
+			int64_t abs_field_width = std::abs(args.width);
 
 			std::string pre_prefix;
 			if(use_left_pad)
-				pre_prefix = std::string(std::max(ssize_t(0), abs_field_width - length_with_precision), ' ');
+				pre_prefix = std::string(std::max(int64_t(0), abs_field_width - length_with_precision), ' ');
 
 			std::string post_prefix;
 			if(use_zero_pad)
-				post_prefix = std::string(std::max(ssize_t(0), abs_field_width - normal_length), '0');
+				post_prefix = std::string(std::max(int64_t(0), abs_field_width - normal_length), '0');
 
 			std::string prec_string;
 			if(use_precision)
-				prec_string = std::string(std::max(ssize_t(0), args.precision - digits_length), '0');
+				prec_string = std::string(std::max(int64_t(0), args.precision - digits_length), '0');
 
 			std::string postfix;
 			if(use_right_pad)
-				postfix = std::string(std::max(ssize_t(0), abs_field_width - length_with_precision), ' ');
+				postfix = std::string(std::max(int64_t(0), abs_field_width - length_with_precision), ' ');
 
 			return pre_prefix + prefix + post_prefix + prec_string + digits + postfix;
 		}
@@ -413,7 +412,7 @@ namespace zpr
 				constexpr int default_prec = 6;
 
 				char buf[80] = { 0 };
-				ssize_t num_length = 0;
+				int64_t num_length = 0;
 
 				// lmao. nobody except msvc stl (and only the most recent version) implements std::to_chars
 				// for floating point types, even though it's in the c++17 standard. so we just cheat.
@@ -451,7 +450,7 @@ namespace zpr
 
 				std::string pre_prefix;
 				if(use_left_pad)
-					pre_prefix = std::string(std::max(ssize_t(0), abs_field_width - num_length), ' ');
+					pre_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
 
 				std::string prefix;
 				if(x < 0)                               prefix = "-";
@@ -460,11 +459,11 @@ namespace zpr
 
 				std::string post_prefix;
 				if(use_zero_pad)
-					post_prefix = std::string(std::max(ssize_t(0), abs_field_width - num_length), '0');
+					post_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), '0');
 
 				std::string postfix;
 				if(use_right_pad)
-					postfix = std::string(std::max(ssize_t(0), abs_field_width - num_length), ' ');
+					postfix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
 
 				return pre_prefix + prefix + post_prefix + std::string(buf) + postfix;
 			}
@@ -482,18 +481,18 @@ namespace zpr
 	{
 		std::string print(const T& x, const format_args& args)
 		{
-			ssize_t string_length = 0;
-			ssize_t abs_field_width = std::abs(args.width);
+			int64_t string_length = 0;
+			int64_t abs_field_width = std::abs(args.width);
 
 			if constexpr (std::is_pointer_v<std::decay_t<T>>)
 			{
-				for(ssize_t i = 0; (args.precision != -1 ? (i < args.precision && x && x[i]) : (x && x[i])); i++)
+				for(int64_t i = 0; (args.precision != -1 ? (i < args.precision && x && x[i]) : (x && x[i])); i++)
 					string_length++;
 			}
 			else
 			{
-				if(args.precision >= 0) string_length = std::min(args.precision, static_cast<ssize_t>(x.size()));
-				else                    string_length = static_cast<ssize_t>(x.size());
+				if(args.precision >= 0) string_length = std::min(args.precision, static_cast<int64_t>(x.size()));
+				else                    string_length = static_cast<int64_t>(x.size());
 			}
 
 			std::string prefix;
