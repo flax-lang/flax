@@ -13,9 +13,9 @@ all: ../libutf8rewind.a
 	@echo "# libutf8rewind"
 	@$(AR) rcs ../libutf8rewind.a $(COBJ)
 
-%.cc.o: %.cc
-	@echo "# fmt/$(notdir $<)"
-	@$(CXX) -std=c11 -O3 -c -Iinclude -o $@ $<
+%.c.o: %.c
+	@echo "# utf8rewind/$(notdir $<)"
+	@$(CC) -std=c11 -O3 -c -Iinclude -o $@ $<
 
 
 
