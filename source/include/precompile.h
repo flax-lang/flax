@@ -18,6 +18,7 @@
 #include <utility>
 #include <charconv>
 #include <algorithm>
+#include <functional>
 #include <type_traits>
 #include <string_view>
 #include <unordered_map>

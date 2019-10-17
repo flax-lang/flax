@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "zpr.h"
 #include "utils.h"
 
 
@@ -19,17 +20,6 @@ namespace fir { struct Type; }
 namespace pts { struct Type; }
 
 
-// namespace tinyformat
-// {
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
-// }
-
-// #define TINYFORMAT_ERROR(x)
-// #include "tinyformat/tinyformat.h"
-
-#include "zpr.h"
 namespace zpr
 {
 	template <typename T>
