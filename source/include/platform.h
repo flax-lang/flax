@@ -75,7 +75,7 @@ namespace platform
 	size_t getFileSize(const std::string& path);
 	bool checkFileExists(const std::string& path);
 
-	util::string_view readEntireFile(const std::string& path);
+	std::string_view readEntireFile(const std::string& path);
 
 	std::string getFullPath(const std::string& partial);
 

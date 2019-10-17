@@ -170,6 +170,19 @@ welcome.
 
 
 
+### Licensing
+
+The Flax compiler itself (this repository) is licensed under the Apache 2.0 license (see `LICENSE` file). For ease of building, some dependencies
+are included in the repository itself (under the `external` folder) and compiled together, instead of as a separate library (shared or otherwise).
+These are:
+
+1. [fmt](https://github.com/fmtlib/fmt), MIT
+2. [mpreal](https://bitbucket.org/advanpix/mpreal), GPL
+3. [tinyformat](https://github.com/c42f/tinyformat), Boost
+4. [utf8rewind](https://bitbucket.org/knight666/utf8rewind), MIT
+5. [flat_hash_map](https://github.com/skarupke/flat_hash_map), Boost
+6. [tinyprocesslib](https://gitlab.com/eidheim/tiny-process-library), MIT
+
 
 
 

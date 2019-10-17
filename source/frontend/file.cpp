@@ -20,8 +20,8 @@ namespace frontend
 	struct FileInnards
 	{
 		lexer::TokenList tokens;
-		util::string_view fileContents;
-		util::FastInsertVector<util::string_view> lines;
+		std::string_view fileContents;
+		util::FastInsertVector<std::string_view> lines;
 		std::vector<size_t> importIndices;
 
 		bool didLex = false;
@@ -39,7 +39,7 @@ namespace frontend
 		}
 
 
-		util::string_view fileContents;
+		std::string_view fileContents;
 		{
 			fileContents = platform::readEntireFile(fullPath);
 		}
@@ -48,10 +48,10 @@ namespace frontend
 
 		// split into lines
 		bool crlf = false;
-		util::FastInsertVector<util::string_view> rawlines;
+		util::FastInsertVector<std::string_view> rawlines;
 
 		{
-			util::string_view view = fileContents;
+			std::string_view view = fileContents;
 
 			bool first = true;
 			while(true)
@@ -61,18 +61,18 @@ namespace frontend
 				if(first || crlf)
 				{
 					ln = view.find("\r\n");
-					if(ln != util::string_view::npos && first)
+					if(ln != std::string_view::npos && first)
 						crlf = true;
 				}
 
-				if((!first && !crlf) || (first && !crlf && ln == util::string_view::npos))
+				if((!first && !crlf) || (first && !crlf && ln == std::string_view::npos))
 					ln = view.find('\n');
 
 				first = false;
 
-				if(ln != util::string_view::npos)
+				if(ln != std::string_view::npos)
 				{
-					new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), ln + (crlf ? 2 : 1));
+					new (rawlines.getNextSlotAndIncrement()) std::string_view(view.data(), ln + (crlf ? 2 : 1));
 					view.remove_prefix(ln + (crlf ? 2 : 1));
 				}
 				else
@@ -84,7 +84,7 @@ namespace frontend
 			// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
 			if(!view.empty())
 			{
-				new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), view.length());
+				new (rawlines.getNextSlotAndIncrement()) std::string_view(view.data(), view.length());
 			}
 		}
 
@@ -135,7 +135,7 @@ namespace frontend
 
 	std::string getFileContents(const std::string& fullPath)
 	{
-		return util::to_string(readFileIfNecessary(fullPath).fileContents);
+		return std::string(readFileIfNecessary(fullPath).fileContents);
 	}
 
 
@@ -162,7 +162,7 @@ namespace frontend
 		}
 	}
 
-	const util::FastInsertVector<util::string_view>& getFileLines(size_t id)
+	const util::FastInsertVector<std::string_view>& getFileLines(size_t id)
 	{
 		std::string fp = getFilenameFromID(id);
 		return readFileIfNecessary(fp).lines;

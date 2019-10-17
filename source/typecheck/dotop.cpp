@@ -220,7 +220,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		auto tup = type->toTupleType();
 
 		if(n >= tup->getElementCount())
-			error(dotop->right, "tuple only has %zu elements, cannot access element %zu", tup->getElementCount(), n);
+			error(dotop->right, "tuple only has %d elements, cannot access element %d", tup->getElementCount(), n);
 
 		auto ret = util::pool<sst::TupleDotOp>(dotop->loc, tup->getElementN(n));
 		ret->lhs = lhs;

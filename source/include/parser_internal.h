@@ -28,7 +28,7 @@ namespace parser
 				return this->tokens[this->index + num];
 
 			else
-				error("lookahead %zu tokens > size %zu", num, this->tokens.size());
+				error("lookahead %d tokens > size %d", num, this->tokens.size());
 		}
 
 		void skip(size_t num)
@@ -37,7 +37,7 @@ namespace parser
 				this->index += num;
 
 			else
-				error("skip %zu tokens > size %zu", num, this->tokens.size());
+				error("skip %d tokens > size %d", num, this->tokens.size());
 		}
 
 		void rewind(size_t num)
@@ -46,13 +46,13 @@ namespace parser
 				this->index -= num;
 
 			else
-				error("rewind %zu tokens > index %zu", num, this->index);
+				error("rewind %d tokens > index %d", num, this->index);
 		}
 
 		void rewindTo(size_t ix)
 		{
 			if(ix >= this->tokens.size())
-				error("ix %zu > size %zu", ix, this->tokens.size());
+				error("ix %d > size %d", ix, this->tokens.size());
 
 			this->index = ix;
 		}

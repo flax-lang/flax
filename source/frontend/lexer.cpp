@@ -7,7 +7,7 @@
 
 #include "utf8rewind/include/utf8rewind/utf8rewind.h"
 
-using string_view = util::string_view;
+using string_view = std::string_view;
 
 namespace lexer
 {
@@ -77,7 +77,7 @@ namespace lexer
 	}
 
 
-	static util::hash_map<util::string_view, TokenType> keywordMap;
+	static util::hash_map<std::string_view, TokenType> keywordMap;
 	static void initKeywordMap()
 	{
 		if(keywordMap.size() > 0) return;
@@ -629,6 +629,11 @@ namespace lexer
 
 			else
 				tok.type = TokenType::Identifier;
+
+			// again, assume that one codepoint is 1 character wide?
+			// note: we convert to std::string because I believe utf8len expects null-term strings, but
+			// tok.text is a string_view.
+			unicodeLength = utf8len(std::string(tok.text).c_str());
 		}
 		else if(!stream.empty() && stream[0] == '"')
 		{
@@ -700,8 +705,7 @@ namespace lexer
 
 				if(i == stream.size() - 1 || stream[i] == '\n')
 				{
-					error(pos, "expected closing '\"' (%zu/%zu/%zu/%c/%s/%zu)", i, stream.size(), didRead,
-						stream[i], util::to_string(stream), *offset);
+					error(pos, "expected closing '\"'");
 				}
 			}
 
@@ -780,10 +784,19 @@ namespace lexer
 
 				tok.text = stream.substr(0, read);
 				tok.type = TokenType::UnicodeSymbol;
+
+				// assume that everything is one character wide only!
+				unicodeLength = 1;
 			}
 			else
 			{
-				error(tok.loc, "unknown token '%s'", util::to_string(stream.substr(0, 10)));
+				// one char wide, at least. not in bytes.
+				auto l = tok.loc; l.len = 1;
+
+				// get the number of bytes of the next codepoint, by seeking +1 and subtracting the pointer.
+				auto cplen = utf8seek(stream.data(), stream.size(), stream.data(), 1, SEEK_SET) - stream.data();
+
+				error(l, "unknown token '%s'", stream.substr(0, cplen));
 			}
 		}
 
@@ -813,7 +826,6 @@ namespace lexer
 			(*offset) = 0;
 		}
 
-		// debuglog("token %s: %d // %d\n", util::to_string(tok.text), tok.loc.col, pos.col);
 
 		prevType = tok.type;
 		prevID = tok.loc.fileID;

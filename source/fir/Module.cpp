@@ -7,8 +7,6 @@
 #include "ir/module.h"
 #include "ir/irbuilder.h"
 
-#include <sstream>
-
 namespace fir
 {
 	Module::Module(std::string nm)
@@ -375,7 +373,7 @@ namespace fir
 			// do the args
 			for(auto arg : ffn->getArguments())
 			{
-				ret += strprintf("\n    arg %s (%%%zu) :: %s", arg->getName().name, arg->id, arg->getType()->str());
+				ret += strprintf("\n    arg %s (%%%d) :: %s", arg->getName().name, arg->id, arg->getType()->str());
 			}
 
 

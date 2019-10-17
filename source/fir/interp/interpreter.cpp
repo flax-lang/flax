@@ -155,7 +155,7 @@ namespace interp
 	static void setValueRaw(InterpState* is, interp::Value* target, void* value, size_t sz)
 	{
 		if(target->dataSize != sz)
-			error("interp: cannot set value, size mismatch (%zu vs %zu)", target->dataSize, sz);
+			error("interp: cannot set value, size mismatch (%d vs %d)", target->dataSize, sz);
 
 		if(sz > LARGE_DATA_SIZE)    memmove(target->ptr, value, sz);
 		else                        memmove(&target->data[0], value, sz);
@@ -400,7 +400,7 @@ namespace interp
 				return it->second.first;
 
 			else
-				error("interp: global value '%s' id %zu was not found", glob->getName().str(), glob->id);
+				error("interp: global value '%s' id %d was not found", glob->getName().str(), glob->id);
 		}
 		else
 		{
@@ -1200,7 +1200,7 @@ namespace interp
 		if((!fn.func->isCStyleVarArg() && args.size() != fn.func->getArgumentCount())
 			|| (fn.func->isCStyleVarArg() && args.size() < fn.func->getArgumentCount()))
 		{
-			error("interp: mismatched argument count in call to '%s': need %zu, received %zu",
+			error("interp: mismatched argument count in call to '%s': need %d, received %d",
 				fn.func->getName().str(), fn.func->getArgumentCount(), args.size());
 		}
 
@@ -1243,7 +1243,7 @@ namespace interp
 			return makeConstant(is, cnst);
 
 		else
-			error("interp: no value with id %zu", fv->id);
+			error("interp: no value with id %d", fv->id);
 	}
 
 
@@ -1738,7 +1738,7 @@ namespace interp
 					}
 				}
 
-				if(!found) error("interp: predecessor was not listed in the PHI node (id %zu)!", phi->id);
+				if(!found) error("interp: predecessor was not listed in the PHI node (id %d)!", phi->id);
 
 				setRet(is, inst, val);
 				break;
@@ -1771,7 +1771,7 @@ namespace interp
 					}
 				}
 
-				if(!target) error("interp: branch to block %zu not in current function", blk->id);
+				if(!target) error("interp: branch to block %d not in current function", blk->id);
 
 				instrRes->targetBlk = target;
 				return FLOW_BRANCH;
@@ -1797,7 +1797,7 @@ namespace interp
 						break;
 				}
 
-				if(!trueblk || !falseblk) error("interp: branch to blocks %zu or %zu not in current function", trueblk->blk->id, falseblk->blk->id);
+				if(!trueblk || !falseblk) error("interp: branch to blocks %d or %d not in current function", trueblk->blk->id, falseblk->blk->id);
 
 
 				if(getActualValue<bool>(cond))
@@ -1833,7 +1833,7 @@ namespace interp
 						}
 					}
 
-					if(!target) error("interp: no function %zu (name '%s')", fn->id, fn->getName().str());
+					if(!target) error("interp: no function %d (name '%s')", fn->id, fn->getName().str());
 				}
 
 				iceAssert(target);

@@ -759,7 +759,7 @@ namespace fir
 			double _ = 0;
 
 			if(std::modf(cfp->getValue(), &_) != 0.0)
-				warn("truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
+				warn("truncating constant '%f' in constant cast to type '%s'", cfp->getValue(), targetType);
 
 			return ConstantInt::get(targetType, static_cast<size_t>(cfp->getValue()));
 		}
@@ -924,7 +924,7 @@ namespace fir
 	{
 		if(args.size() != fn->getArgumentCount() && !fn->isVariadic() && !fn->isCStyleVarArg())
 		{
-			error("irbuilder: calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+			error("irbuilder: calling function '%s' with the wrong number of arguments (needs %d, have %d)", fn->getName().str(),
 				fn->getArgumentCount(), args.size());
 		}
 
@@ -974,7 +974,7 @@ namespace fir
 
 				if(out[i]->getType() != target)
 				{
-					error("irbuilder: mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+					error("irbuilder: mismatch in argument type (arg. %d) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
 						fn->getArguments()[i]->getType(), out[i]->getType());
 				}
 			}
@@ -990,7 +990,7 @@ namespace fir
 				}
 				else if(args[i]->getType() != elm)
 				{
-					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')",
+					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %d) in function '%s' (need '%s', have '%s')",
 						i, fn->getName().str(), elm, args[i]->getType());
 				}
 				else

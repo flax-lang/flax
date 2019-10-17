@@ -18,16 +18,16 @@
 
 struct timer
 {
-	timer() : out(nullptr)              { start = std::chrono::high_resolution_clock::now(); }
-	explicit timer(double* t) : out(t)  { start = std::chrono::high_resolution_clock::now(); }
-	~timer()        { if(out) *out = static_cast<double>((std::chrono::high_resolution_clock::now() - start).count()) / 1000000.0; }
-	double stop()   { return static_cast<double>((std::chrono::high_resolution_clock::now() - start).count()) / 1000000.0; }
+	using hrc = std::chrono::high_resolution_clock;
+
+	timer() : out(nullptr)              { start = hrc::now(); }
+	explicit timer(double* t) : out(t)  { start = hrc::now(); }
+	~timer()                            { if(out) *out = static_cast<double>((hrc::now() - start).count()) / 1000000.0; }
+	double measure()                    { return static_cast<double>((hrc::now() - start).count()) / 1000000.0; }
 
 	double* out = 0;
-	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+	std::chrono::time_point<hrc> start;
 };
-
-
 
 static void compile(std::string in, std::string out)
 {
@@ -43,7 +43,7 @@ static void compile(std::string in, std::string out)
 	auto printStats = [&total](const std::string& name) {
 		if(frontend::getPrintProfileStats())
 		{
-			debuglogln("%-9s (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", name, total.stop(), mem::getWatermark() / 1024.0,
+			debuglogln("%-9s (%.1f ms)\t[w: %.1fk, f: %.1fk, a: %.1fk]", name, total.measure(), mem::getWatermark() / 1024.0,
 				mem::getDeallocatedCount() / 1024.0, mem::getAllocatedCount() / 1024.0);
 		}
 	};

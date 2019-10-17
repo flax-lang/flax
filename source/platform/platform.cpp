@@ -183,7 +183,7 @@ namespace platform
 		#endif
 	}
 
-	util::string_view readEntireFile(const std::string& path)
+	std::string_view readEntireFile(const std::string& path)
 	{
 		// first, get the size of the file
 		size_t fileLength = getFileSize(path);
@@ -240,7 +240,7 @@ namespace platform
 		iceAssert(contents);
 		closeFile(fd);
 
-		return util::string_view(contents, fileLength);
+		return std::string_view(contents, fileLength);
 	}
 
 	filehandle_t openFile(const char* name, int mode, int flags)

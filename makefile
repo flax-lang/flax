@@ -22,10 +22,7 @@ LLVM_CONFIG		?= "llvm-config"
 
 
 CXXSRC			:= $(shell find source external -iname "*.cpp")
-CSRC			:= $(shell find source external -iname "*.c")
-
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
-COBJ			:= $(CSRC:.c=.c.o)
 
 PRECOMP_HDRS	:= source/include/precompile.h
 PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
@@ -35,8 +32,7 @@ FLXSRC			:= $(shell find libs -iname "*.flx")
 
 CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
-
-NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
+NUMFILES		:= $$(($(words $(CXXSRC))))
 
 DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
@@ -46,16 +42,7 @@ CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-str
 
 LDFLAGS			+= $(SANITISE)
 
-FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
 
-
-SUPERTINYBIN	:= build/supertiny
-GLTESTBIN		:= build/gltest
-TESTBIN			:= build/tester
-
-SUPERTINYSRC	:= build/supertiny.flx
-GLTESTSRC		:= build/gltest.flx
-TESTSRC			:= build/tester.flx
 
 UNAME_IDENT		:= $(shell uname)
 COMPILER_IDENT	:= $(shell $(CC) --version | head -n 1)
@@ -84,6 +71,20 @@ ifneq (,$(findstring clang,$(COMPILER_IDENT)))
 	CXXFLAGS += -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 endif
+
+
+UTF8REWIND_AR   := external/libutf8rewind.a
+
+
+FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
+
+SUPERTINYBIN	:= build/supertiny
+GLTESTBIN		:= build/gltest
+TESTBIN			:= build/tester
+
+SUPERTINYSRC	:= build/supertiny.flx
+GLTESTSRC		:= build/gltest.flx
+TESTSRC			:= build/tester.flx
 
 
 .DEFAULT_GOAL = jit
@@ -129,16 +130,19 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread -ldl -lffi
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -lfmt
 
 
 %.cpp.o: %.cpp
 	@$(eval DONEFILES += "CPP")
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
 	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -Iexternal -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
+
+$(UTF8REWIND_AR):
+	@make -C external/utf8rewind all
 
 
 %.c.o: %.c

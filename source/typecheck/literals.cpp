@@ -108,7 +108,7 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto tt = infer->toTupleType();
 		if(tt->getElementCount() != this->values.size())
 		{
-			error(this, "mismatched types in inferred type: have literal with %zu elements, inferred type has %zu", this->values.size(),
+			error(this, "mismatched types in inferred type: have literal with %d elements, inferred type has %d", this->values.size(),
 				tt->getElementCount());
 		}
 	}
@@ -186,7 +186,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			else if(infer->isArrayType())
 			{
 				if(infer->toArrayType()->getArraySize() != 0)
-					error(this, "array type with non-zero length %zu was inferred for empty array literal", infer->toArrayType()->getArraySize());
+					error(this, "array type with non-zero length %d was inferred for empty array literal", infer->toArrayType()->getArraySize());
 			}
 			else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
 			{

@@ -200,7 +200,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		if(vr->getType() != ty)
 		{
-			error(this->values[i], "mismatched types in tuple element %zu; expected type '%s', found type '%s'",
+			error(this->values[i], "mismatched types in tuple element %d; expected type '%s', found type '%s'",
 				i, ty, vr->getType());
 		}
 

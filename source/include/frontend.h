@@ -10,6 +10,7 @@
 #include "parser.h"
 #include "platform.h"
 
+#include <stack>
 #include <unordered_set>
 
 namespace ast
@@ -102,7 +103,7 @@ namespace frontend
 	const std::string& getFilenameFromID(size_t fileID);
 	size_t getFileIDFromFilename(const std::string& name);
 	lexer::TokenList& getFileTokens(const std::string& fullPath);
-	const util::FastInsertVector<util::string_view>& getFileLines(size_t id);
+	const util::FastInsertVector<std::string_view>& getFileLines(size_t id);
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename);
 
 	std::string resolveImport(const std::string& imp, const Location& loc, const std::string& fullPath);

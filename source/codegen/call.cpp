@@ -316,7 +316,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	size_t numArgs = ft->getArgumentCount();
 	if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
-		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
+		error(this, "need at least %d arguments to call variadic function '%s', only have %d",
 			numArgs, this->name, this->arguments.size());
 	}
 
@@ -425,7 +425,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentCount())
 		{
-			error(this, "mismatched number of arguments; expected %zu, but %zu were given",
+			error(this, "mismatched number of arguments; expected %d, but %d were given",
 				ft->getArgumentCount(), this->arguments.size());
 		}
 	}

@@ -356,7 +356,7 @@ namespace resolver
 				}
 				else
 				{
-					auto err = SimpleError::make(callLoc, "ambiguous call to function '%s', have %zu candidates:",
+					auto err = SimpleError::make(callLoc, "ambiguous call to function '%s', have %d candidates:",
 						cands[0].first->id.name, finals.size());
 
 					for(auto f : finals)

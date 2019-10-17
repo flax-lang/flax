@@ -56,8 +56,8 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 	auto lines = frontend::getFileLines(loc.fileID);
 	if(lines.size() > loc.line)
 	{
-		std::string orig = util::to_string(lines[loc.line]);
 		std::stringstream ln;
+		auto orig = std::string(lines[loc.line]);
 
 		// skip all leading whitespace.
 		bool ws = true;
@@ -477,9 +477,6 @@ void OverloadError::post()
 	if(frontend::getAbortOnError()) abort();
 	else                            exit(-1);
 }
-
-
-
 
 
 

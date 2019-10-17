@@ -484,13 +484,14 @@ namespace fir
 
 		bool isMutable();
 
+		virtual std::string str() override;
+		virtual std::string encodedStr() override;
+		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+
 		// protected constructor
 		virtual ~PointerType() override { }
 		protected:
 		PointerType(Type* base, bool mut);
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
 
 		Type* baseType = 0;
 		bool isPtrMutable = false;

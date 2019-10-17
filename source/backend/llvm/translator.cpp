@@ -581,7 +581,7 @@ namespace backend
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("llvm: failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName());
+					error("llvm: failed to find var %d in mod %s\n", gv->id, firmod->getModuleName());
 
 				iceAssert(lgv);
 				return lgv;
@@ -590,7 +590,7 @@ namespace backend
 			else if(dcast(fir::Function, fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("llvm: !ret fn (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret fn (id = %d)", fv->id);
 				return ret;
 			}
 			else if(fir::ConstantValue* cv = dcast(fir::ConstantValue, fv))
@@ -600,7 +600,7 @@ namespace backend
 			else
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("llvm: !ret (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret (id = %d)", fv->id);
 				return ret;
 			}
 		};
@@ -627,13 +627,13 @@ namespace backend
 
 			iceAssert(v);
 
-			// fprintf(stderr, "add id %zu\n", fv->id);
+			// fprintf(stderr, "add id %d\n", fv->id);
 
 			if(valueMap.find(fv->id) != valueMap.end())
-				error("llvm: already have value with id %zu", fv->id);
+				error("llvm: already have value with id %d", fv->id);
 
 			valueMap[fv->id] = v;
-			// printf("adding value %zu\n", fv->id);
+			// printf("adding value %d\n", fv->id);
 
 			if(!v->getType()->isVoidTy())
 				v->setName(fv->getName().mangled());
@@ -915,7 +915,7 @@ namespace backend
 				size_t i = 0;
 				for(auto arg : ffn->getArguments())
 				{
-					DUMP_INSTR("%%%zu :: %s", arg->id, arg->getType()->str().c_str());
+					DUMP_INSTR("%%%d :: %s", arg->id, arg->getType()->str().c_str());
 					i++;
 
 					(void) arg;

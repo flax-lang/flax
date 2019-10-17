@@ -93,7 +93,8 @@ namespace sst
 										util::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
 									{
 										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
-											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)", f, fn))
+											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)",
+												reinterpret_cast<void*>(f), reinterpret_cast<void*>(fn)))
 											->postAndQuit();
 									}
 								}

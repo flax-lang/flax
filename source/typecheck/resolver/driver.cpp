@@ -329,8 +329,8 @@ namespace resolver
 					}
 					else
 					{
-						error(arguments[2].loc, "string initialiser only takes 1 (from slice) or 2 (from pointer+length) arguments, found '%ld' instead",
-							arguments.size());
+						error(arguments[2].loc, "string initialiser only takes 1 (from slice) or 2 (from pointer+length)"
+							" arguments, found '%d' instead", arguments.size());
 					}
 				}
 				else

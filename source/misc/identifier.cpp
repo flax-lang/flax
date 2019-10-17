@@ -77,7 +77,7 @@ std::string util::obfuscateName(const std::string& name)
 }
 std::string util::obfuscateName(const std::string& name, size_t id)
 {
-	return strprintf("__#%s_%zu", name, id);
+	return strprintf("__#%s_%d", name, id);
 }
 std::string util::obfuscateName(const std::string& name, const std::string& extra)
 {
@@ -354,25 +354,50 @@ namespace util
 	}
 }
 
-
-namespace tinyformat
+namespace zpr
 {
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl)
+	std::string print_formatter<Identifier>::print(const Identifier& x, const format_args& args)
 	{
-		switch(vl)
+		return x.str();
+	}
+
+	std::string print_formatter<VisibilityLevel>::print(const VisibilityLevel& x, const format_args& args)
+	{
+		switch(x)
 		{
-			case VisibilityLevel::Invalid:	out << "invalid"; break;
-			case VisibilityLevel::Public:	out << "public"; break;
-			case VisibilityLevel::Private:	out << "private"; break;
-			case VisibilityLevel::Internal:	out << "internal"; break;
+			case VisibilityLevel::Invalid:	return "invalid";
+			case VisibilityLevel::Public:	return "public";
+			case VisibilityLevel::Private:	return "private";
+			case VisibilityLevel::Internal:	return "internal";
+			default:                        return "unknown";
 		}
 	}
-
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id)
-	{
-		out << id.str();
-	}
 }
+
+
+// namespace tinyformat
+// {
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl)
+// 	{
+// 		switch(vl)
+// 		{
+// 			case VisibilityLevel::Invalid:	out << "invalid"; break;
+// 			case VisibilityLevel::Public:	out << "public"; break;
+// 			case VisibilityLevel::Private:	out << "private"; break;
+// 			case VisibilityLevel::Internal:	out << "internal"; break;
+// 		}
+// 	}
+
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id)
+// 	{
+// 		out << id.str();
+// 	}
+
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty)
+// 	{
+// 		out << ty->str();
+// 	}
+// }
 
 
 

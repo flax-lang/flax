@@ -191,7 +191,7 @@ namespace fir
 			std::string nodes;
 
 			for(auto i : phi->getValues())
-				nodes += strprintf("[$%s -> %%%zu], ", i.first->getName().name, i.second->id);
+				nodes += strprintf("[$%s -> %%%d], ", i.first->getName().name, i.second->id);
 
 			ops += nodes;
 		}
@@ -232,7 +232,7 @@ namespace fir
 				}
 				else if(IRBlock* ib = dcast(IRBlock, op))
 				{
-					ops += strprintf("$%zu/%s", ib->id, ib->getName().str());
+					ops += strprintf("$%d/%s", ib->id, ib->getName().str());
 				}
 				else
 				{

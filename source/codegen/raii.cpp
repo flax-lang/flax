@@ -21,7 +21,7 @@ namespace cgn
 		}
 		else
 		{
-			error("adding duplicate raii value (ptr = %p, type = '%s')", val, val->getType());
+			error("adding duplicate raii value (ptr = %p, type = '%s')", reinterpret_cast<void*>(val), val->getType());
 		}
 	}
 
@@ -37,7 +37,7 @@ namespace cgn
 		}
 		else
 		{
-			error("removing non-existent raii value (ptr = %p, type = '%s')", val, val->getType());
+			error("removing non-existent raii value (ptr = %p, type = '%s')", reinterpret_cast<void*>(val), val->getType());
 		}
 	}
 

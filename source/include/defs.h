@@ -11,46 +11,51 @@
 
 #include "utils.h"
 
-#ifndef __has_include
-#error "Please switch to a compiler that supports '__has_include'"
-#endif
-
-/*
-	STRING_VIEW_TYPE documentation
-
-	0: normal, std::string_view
-	1: experimental, std::experimental::string_view
-	2: external, stx::string_view
-*/
-#if __has_include(<string_view>)
-	#include <string_view>
-	#define STRING_VIEW_TYPE 0
-#elif __has_include(<experimental/string_view>)
-	#include <experimental/string_view>
-	#define STRING_VIEW_TYPE 1
-#else
-	// #error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
-	#include "stx/string_view.hpp"
-	#define STRING_VIEW_TYPE 2
-#endif
-
-
-
 
 struct Identifier;
 enum class VisibilityLevel;
 
 namespace fir { struct Type; }
 namespace pts { struct Type; }
-namespace tinyformat
-{
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
-}
 
-#define TINYFORMAT_ERROR(x)
-#include "tinyformat/tinyformat.h"
+
+// namespace tinyformat
+// {
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
+// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
+// }
+
+// #define TINYFORMAT_ERROR(x)
+// #include "tinyformat/tinyformat.h"
+
+#include "zpr.h"
+namespace zpr
+{
+	template <typename T>
+	struct print_formatter<T, typename std::enable_if<
+		(std::is_same_v<fir::Type*, T>) ||
+		(std::is_pointer_v<T> && std::is_base_of_v<fir::Type, std::remove_pointer_t<T>>)
+	>::type>
+	{
+		std::string print(const T& x, const format_args& args)
+		{
+			return x->str();
+		}
+	};
+
+	template <>
+	struct print_formatter<Identifier>
+	{
+		std::string print(const Identifier& x, const format_args& args);
+	};
+
+	template <>
+	struct print_formatter<VisibilityLevel>
+	{
+		std::string print(const VisibilityLevel& x, const format_args& args);
+	};
+}
 
 
 
@@ -58,9 +63,10 @@ namespace tinyformat
 [[noreturn]] void doTheExit(bool trace = true);
 
 template <typename... Ts>
-[[noreturn]] inline void _error_and_exit(const char* s, Ts&&... ts)
+[[noreturn]] inline void _error_and_exit(const char* fmt, Ts&&... ts)
 {
-	tinyformat::format(std::cerr, s, ts...);
+	// tinyformat::format(std::cerr, fmt, ts...);
+	fprintf(stderr, "%s", zpr::sprint(fmt, ts...).c_str());
 	doTheExit();
 }
 
@@ -69,7 +75,8 @@ template <typename... Ts>
 template <typename... Ts>
 std::string strprintf(const char* fmt, Ts&&... ts)
 {
-	return tinyformat::format(fmt, ts...);
+	// return tinyformat::format(fmt, ts...);
+	return zpr::sprint(fmt, ts...);
 }
 
 
@@ -93,22 +100,6 @@ std::string strprintf(const char* fmt, Ts&&... ts)
 
 namespace util
 {
-	#ifndef STRING_VIEW_TYPE
-		#error "what?"
-	#endif
-
-	#if STRING_VIEW_TYPE == 0
-		using string_view = std::string_view;
-	#elif STRING_VIEW_TYPE == 1
-		using string_view = std::experimental::string_view;
-	#elif STRING_VIEW_TYPE == 2
-		using string_view = stx::string_view;
-	#else
-		#error "No string_view, or unknown type"
-	#endif
-
-
-
 	#if USE_SKA_HASHMAP
 		using hash_map = ska::flat_hash_map;
 
@@ -122,7 +113,6 @@ namespace util
 		template<typename K, typename V>
 		using hash_map = std::unordered_map<K, V>;
 	#endif
-
 }
 
 namespace fir
@@ -169,7 +159,7 @@ enum class IdKind
 
 template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 {
-	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + std::string(COLOUR_RESET);
+	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + strprintf(fmt, ts...) + std::string(COLOUR_RESET);
 }
 
 struct Identifier
@@ -644,11 +634,6 @@ struct PolyArgMapping_t
 
 namespace util
 {
-	inline std::string to_string(const string_view& sv)
-	{
-		return std::string(sv.data(), sv.length());
-	}
-
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
 
 	std::string obfuscateName(const std::string& name);

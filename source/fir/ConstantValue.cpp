@@ -223,13 +223,13 @@ namespace fir
 	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
-			error("mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
+			error("mismatched structs: expected %d fields, got %d", st->getElementCount(), members.size());
 
 		for(size_t i = 0; i < st->getElementCount(); i++)
 		{
 			if(st->getElementN(i) != members[i]->getType())
 			{
-				error("mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
+				error("mismatched types in field %d: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
 			}
 		}
 

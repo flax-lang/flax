@@ -11,6 +11,8 @@
 #include "resolver.h"
 #include "polymorph.h"
 
+#include <deque>
+
 namespace sst
 {
 	fir::Type* TypecheckState::inferCorrectTypeForLiteral(fir::ConstantNumberType* type)

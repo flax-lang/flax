@@ -25,7 +25,7 @@ namespace fir
 	void setNativeWordSizeInBits(size_t sz)
 	{
 		if(sz < 8 || sz > 64)
-			error("native word size must be >= 8 and < 64, %zu invalid", sz);
+			error("native word size must be >= 8 and < 64, %d invalid", sz);
 
 		// we're not gonna check any further, anything becomes your problem once you change this.
 		nativeWordSize = sz;
@@ -1171,19 +1171,6 @@ namespace fir
 		}
 	}
 }
-
-
-
-
-
-namespace tinyformat
-{
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty)
-	{
-		out << (ty ? ty->str() : "(null)");
-	}
-}
-
 
 
 

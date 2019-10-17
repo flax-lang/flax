@@ -31,6 +31,34 @@ struct Foo : Drop, Copy, Move
 	}
 }
 
+/*
+	tinyformat:
+      115.76 real       345.23 user        26.28 sys
+      117.63 real       349.01 user        26.86 sys
+      118.45 real       348.56 user        26.33 sys
+      115.53 real       346.42 user        26.40 sys
+      115.75 real       345.30 user        26.11 sys
+
+AVG:  116.62 real       346.90 user        26.39 sys
+
+----------------------------------------------------
+
+	zpr:
+      101.56 real       340.92 user        22.60 sys
+      102.43 real       341.59 user        22.76 sys
+       99.60 real       337.48 user        22.46 sys
+      100.78 real       340.38 user        22.63 sys
+      102.06 real       341.57 user        22.75 sys
+
+AVG:  101.28 real       340.38 user        22.64 sys
+
+----------------------------------------------------
+
+	fmt:
+	  154.54 real       465.11 user        31.90 sys
+	  163.59 real       481.25 user        32.88 sys
+*/
+
 class Bar
 {
 	var data: int
