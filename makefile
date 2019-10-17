@@ -73,7 +73,7 @@ ifneq (,$(findstring clang,$(COMPILER_IDENT)))
 	CXXFLAGS += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
 else
-	CXXFLAGS += (GCCWARNINGS)
+	CXXFLAGS += $(GCCWARNINGS)
 endif
 
 
