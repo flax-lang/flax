@@ -684,7 +684,7 @@ namespace backend
 
 		for(auto intr : firmod->_getIntrinsicFunctions())
 		{
-			llvm::Constant* fn = 0;
+			llvm::Value* fn = 0;
 
 			//* in LLVM 7, the intrinsics changed to no longer specify the alignment
 			//* so, the arugments are: [ ptr, ptr, size, is_volatile ]
@@ -692,19 +692,19 @@ namespace backend
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memcpy.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memcpy.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memmove")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memmove.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memmove.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8Ty(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memset.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memset.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memcmp")
 			{

@@ -43,8 +43,9 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/DynamicLibrary.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar/Scalarizer.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
@@ -440,7 +441,7 @@ namespace backend
 		{
 			auto name = this->entryFunction->getName().str();
 
-			this->jitInstance = new LLVMJit(this->targetMachine);
+			this->jitInstance = new LLVMJit();
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);

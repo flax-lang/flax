@@ -38,6 +38,8 @@
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/LambdaResolver.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
+#include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 
 #ifdef _MSC_VER
@@ -65,12 +67,10 @@ namespace backend
 
 	struct LLVMJit
 	{
-		// typedef llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT ModuleHandle_t;
-
 		using ModuleHandle_t = llvm::orc::VModuleKey;
+		using OptimiseFunction = std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)>;
 
-		LLVMJit(llvm::TargetMachine* tm);
-		llvm::TargetMachine* getTargetMachine();
+		LLVMJit();
 
 		void removeModule(ModuleHandle_t mod);
 		ModuleHandle_t addModule(std::unique_ptr<llvm::Module> mod);
@@ -79,13 +79,29 @@ namespace backend
 		llvm::JITTargetAddress getSymbolAddress(const std::string& name);
 
 		private:
-		llvm::orc::ExecutionSession execSession;
-		std::unique_ptr<llvm::TargetMachine> targetMachine;
-		std::shared_ptr<llvm::orc::SymbolResolver> symbolResolver;
 
-		llvm::DataLayout dataLayout;
-		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
-		llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
+		std::unique_ptr<llvm::Module> optimiseModule(std::unique_ptr<llvm::Module> M);
+
+		llvm::orc::ExecutionSession ES;
+		std::map<llvm::orc::VModuleKey, std::shared_ptr<llvm::orc::SymbolResolver>> Resolvers;
+		std::unique_ptr<llvm::TargetMachine> TM;
+		const llvm::DataLayout DL;
+		llvm::orc::LegacyRTDyldObjectLinkingLayer ObjectLayer;
+		llvm::orc::LegacyIRCompileLayer<decltype(ObjectLayer), llvm::orc::SimpleCompiler> CompileLayer;
+
+		llvm::orc::LegacyIRTransformLayer<decltype(CompileLayer), OptimiseFunction> OptimiseLayer;
+
+		std::unique_ptr<llvm::orc::JITCompileCallbackManager> CompileCallbackManager;
+		llvm::orc::LegacyCompileOnDemandLayer<decltype(OptimiseLayer)> CODLayer;
+
+
+		// llvm::orc::ExecutionSession execSession;
+		// std::unique_ptr<llvm::TargetMachine> targetMachine;
+		// std::shared_ptr<llvm::orc::SymbolResolver> symbolResolver;
+
+		// llvm::DataLayout dataLayout;
+		// llvm::orc::RTDyldObjectLinkingLayer objectLayer;
+		// llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
 	};
 
 	struct LLVMBackend : Backend
