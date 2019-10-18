@@ -435,68 +435,63 @@ namespace zpr
 	{
 		std::string print(const T& x, const format_args& args)
 		{
-			std::string num;
+			constexpr int default_prec = 6;
+
+			char buf[81] = { 0 };
+			int64_t num_length = 0;
+
+			// lmao. nobody except msvc stl (and only the most recent version) implements std::to_chars
+			// for floating point types, even though it's in the c++17 standard. so we just cheat.
+
+			// let printf handle the precision, but we'll handle the width and the negativity.
 			{
-				constexpr int default_prec = 6;
+				const char* fmt_str = 0;
+				bool longdouble = (args.length == format_args::LENGTH_LONG_DOUBLE);
 
-				char buf[81] = { 0 };
-				int64_t num_length = 0;
-
-				// lmao. nobody except msvc stl (and only the most recent version) implements std::to_chars
-				// for floating point types, even though it's in the c++17 standard. so we just cheat.
-
-				// let printf handle the precision, but we'll handle the width and the negativity.
+				switch(args.specifier)
 				{
-					const char* fmt_str = 0;
-					bool longdouble = (args.length == format_args::LENGTH_LONG_DOUBLE);
+					case 'E': fmt_str = (longdouble ? "%.*LE" : "%.*E"); break;
+					case 'e': fmt_str = (longdouble ? "%.*Le" : "%.*e"); break;
+					case 'F': fmt_str = (longdouble ? "%.*LF" : "%.*F"); break;
+					case 'f': fmt_str = (longdouble ? "%.*Lf" : "%.*f"); break;
+					case 'G': fmt_str = (longdouble ? "%.*LG" : "%.*G"); break;
 
-					switch(args.specifier)
-					{
-						case 'E': fmt_str = (longdouble ? "%.*LE" : "%.*E"); break;
-						case 'e': fmt_str = (longdouble ? "%.*Le" : "%.*e"); break;
-						case 'F': fmt_str = (longdouble ? "%.*LF" : "%.*F"); break;
-						case 'f': fmt_str = (longdouble ? "%.*Lf" : "%.*f"); break;
-						case 'G': fmt_str = (longdouble ? "%.*LG" : "%.*G"); break;
-
-						case 'g': [[fallthrough]];
-						default:  fmt_str = (longdouble ? "%.*Lg" : "%.*g"); break;
-					}
-
-					num_length = snprintf(&buf[0], 80, fmt_str,
-						(args.precision == -1 ? default_prec : args.precision), fabs(x));
+					case 'g': [[fallthrough]];
+					default:  fmt_str = (longdouble ? "%.*Lg" : "%.*g"); break;
 				}
 
-				auto abs_field_width = std::abs(args.width);
-
-				bool use_zero_pad = args.zero_pad && args.width >= 0;
-				bool use_left_pad = !use_zero_pad && args.width >= 0;
-				bool use_right_pad = !use_zero_pad && args.width < 0;
-
-				// account for the signs, if any.
-				if(x < 0 || args.prepend_plus_if_positive || args.prepend_blank_if_positive)
-					num_length += 1;
-
-				std::string pre_prefix;
-				if(use_left_pad)
-					pre_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
-
-				std::string prefix;
-				if(x < 0)                               prefix = "-";
-				else if(args.prepend_plus_if_positive)  prefix = "+";
-				else if(args.prepend_blank_if_positive) prefix = " ";
-
-				std::string post_prefix;
-				if(use_zero_pad)
-					post_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), '0');
-
-				std::string postfix;
-				if(use_right_pad)
-					postfix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
-
-				return pre_prefix + prefix + post_prefix + std::string(buf) + postfix;
+				num_length = snprintf(&buf[0], 80, fmt_str,
+					(args.precision == -1 ? default_prec : args.precision), fabs(x));
 			}
 
-			return num;
+			auto abs_field_width = std::abs(args.width);
+
+			bool use_zero_pad = args.zero_pad && args.width >= 0;
+			bool use_left_pad = !use_zero_pad && args.width >= 0;
+			bool use_right_pad = !use_zero_pad && args.width < 0;
+
+			// account for the signs, if any.
+			if(x < 0 || args.prepend_plus_if_positive || args.prepend_blank_if_positive)
+				num_length += 1;
+
+			std::string pre_prefix;
+			if(use_left_pad)
+				pre_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
+
+			std::string prefix;
+			if(x < 0)                               prefix = "-";
+			else if(args.prepend_plus_if_positive)  prefix = "+";
+			else if(args.prepend_blank_if_positive) prefix = " ";
+
+			std::string post_prefix;
+			if(use_zero_pad)
+				post_prefix = std::string(std::max(int64_t(0), abs_field_width - num_length), '0');
+
+			std::string postfix;
+			if(use_right_pad)
+				postfix = std::string(std::max(int64_t(0), abs_field_width - num_length), ' ');
+
+			return pre_prefix + prefix + post_prefix + std::string(buf) + postfix;
 		}
 	};
 

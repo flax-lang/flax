@@ -29,102 +29,91 @@
 #endif
 
 
+static std::string dealWithLLVMError(const llvm::Error& err)
+{
+	std::string str;
+	auto out = llvm::raw_string_ostream(str);
 
+	out << err;
+	return out.str();
+}
 
 namespace backend
 {
-	LLVMJit::LLVMJit() :
-		TM(llvm::EngineBuilder().selectTarget()), DL(TM->createDataLayout()),
-		ObjectLayer(llvm::AcknowledgeORCv1Deprecation, ES, [this](llvm::orc::VModuleKey K) -> auto {
-			return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources {
-				std::make_shared<llvm::SectionMemoryManager>(), Resolvers[K]
-			};
+	LLVMJit::LLVMJit(llvm::orc::JITTargetMachineBuilder JTMB, llvm::DataLayout DL) : ObjectLayer(ES, []() {
+			return llvm::make_unique<llvm::SectionMemoryManager>();
 		}),
-		CompileLayer(llvm::AcknowledgeORCv1Deprecation, ObjectLayer, llvm::orc::SimpleCompiler(*TM)),
-		OptimiseLayer(llvm::AcknowledgeORCv1Deprecation, CompileLayer, [this](std::unique_ptr<llvm::Module> M) -> auto {
-			return optimiseModule(std::move(M));
-		}),
-		CompileCallbackManager(cantFail(llvm::orc::createLocalCompileCallbackManager(TM->getTargetTriple(), ES, 0))),
-		CODLayer(llvm::AcknowledgeORCv1Deprecation, ES, OptimiseLayer,
-			[&](ModuleHandle_t K) { return Resolvers[K]; },
-			[&](ModuleHandle_t K, std::shared_ptr<llvm::orc::SymbolResolver> R) {
-				Resolvers[K] = std::move(R);
-			},
-			[](llvm::Function& F) { return std::set<llvm::Function* >({ &F }); },
-			*CompileCallbackManager, llvm::orc::createLocalIndirectStubsManagerBuilder(TM->getTargetTriple()))
+        CompileLayer(ES, ObjectLayer, llvm::orc::ConcurrentIRCompiler(std::move(JTMB))),
+        OptimiseLayer(ES, CompileLayer, optimiseModule),
+        DL(std::move(DL)), Mangle(ES, this->DL),
+        Ctx(llvm::make_unique<llvm::LLVMContext>())
 	{
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+		ES.getMainJITDylib().setGenerator(llvm::cantFail(
+			llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix())));
+
+		// dunno who's bright idea it was to match symbol flags *EXACTLY* instead of something more sane
+		ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
+		ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
 	}
 
-	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
+	void LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
 	{
-		auto vmod = this->ES.allocateVModule();
+		// store it first lest it get stolen away
+		auto modIdent = mod->getModuleIdentifier();
 
-		this->Resolvers[vmod] = createLegacyLookupResolver(this->ES, [this](const std::string& name) -> llvm::JITSymbol {
-			if(auto Sym = CompileLayer.findSymbol(name, false))
-				return Sym;
-
-			else if(auto Err = Sym.takeError())
-				return std::move(Err);
-
-			if(auto SymAddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
-				return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
-
-			return nullptr;
-		}, [](llvm::Error Err) { llvm::cantFail(std::move(Err), "lookupFlags failed"); });
-
-		// Add the module to the JIT with the new key.
-		llvm::cantFail(this->CODLayer.addModule(vmod, std::move(mod)));
-
-		return vmod;
+		// llvm::Error::operator bool() returns true if there's an error.
+		if(auto err = OptimiseLayer.add(ES.getMainJITDylib(), llvm::orc::ThreadSafeModule(std::move(mod), Ctx)); err)
+			error("llvm: failed to add module '%s': %s", modIdent, dealWithLLVMError(err));
 	}
 
-	void LLVMJit::removeModule(LLVMJit::ModuleHandle_t mod)
+	llvm::JITEvaluatedSymbol LLVMJit::findSymbol(const std::string& name)
 	{
-		llvm::cantFail(this->CODLayer.removeModule(mod));
+		if(auto ret = ES.lookup({ &ES.getMainJITDylib() }, Mangle(name)); !ret)
+			error("llvm: failed to find symbol '%s': %s", name, dealWithLLVMError(ret.takeError()));
+
+		else
+			return ret.get();
 	}
 
-	llvm::JITSymbol LLVMJit::findSymbol(const std::string& name)
-	{
-		std::string mangledName;
-		llvm::raw_string_ostream out(mangledName);
-		llvm::Mangler::getNameWithPrefix(out, name, this->DL);
 
-		return this->CODLayer.findSymbol(out.str(), false);
+
+	LLVMJit* LLVMJit::create()
+	{
+		auto JTMB = llvm::orc::JITTargetMachineBuilder::detectHost();
+		if(!JTMB) error("llvm: failed to detect host", dealWithLLVMError(JTMB.takeError()));
+
+		auto DL = JTMB->getDefaultDataLayoutForTarget();
+		if(!DL) error("llvm: failed to get data layout", dealWithLLVMError(DL.takeError()));
+
+		return new LLVMJit(std::move(*JTMB), std::move(*DL));
 	}
 
-	std::unique_ptr<llvm::Module> LLVMJit::optimiseModule(std::unique_ptr<llvm::Module> mod)
+
+	llvm::Expected<llvm::orc::ThreadSafeModule> LLVMJit::optimiseModule(llvm::orc::ThreadSafeModule TSM,
+		const llvm::orc::MaterializationResponsibility& R)
 	{
-		// Create a function pass manager.
-		auto fpm = llvm::make_unique<llvm::legacy::FunctionPassManager>(mod.get());
+		 // Create a function pass manager.
+		auto FPM = llvm::make_unique<llvm::legacy::FunctionPassManager>(TSM.getModule());
 
-		// Add some optimisations.
-		fpm->add(llvm::createInstructionCombiningPass());
-		fpm->add(llvm::createReassociatePass());
-		fpm->add(llvm::createGVNPass());
-		fpm->add(llvm::createCFGSimplificationPass());
-		fpm->doInitialization();
+		// Add some optimizations.
+		FPM->add(llvm::createInstructionCombiningPass());
+		FPM->add(llvm::createReassociatePass());
+		FPM->add(llvm::createGVNPass());
+		FPM->add(llvm::createCFGSimplificationPass());
+		FPM->doInitialization();
 
-		// Run the optimizations over all functions in the module being added to the JIT.
-		for(auto& F : *mod)
-			fpm->run(F);
+		// Run the optimizations over all functions in the module being added to
+		// the JIT.
+		for(auto& F : *TSM.getModule())
+			FPM->run(F);
 
-		return mod;
+		return TSM;
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
 	{
-		auto addr = this->findSymbol(name).getAddress();
-		if(!addr)
-		{
-			std::string err;
-			auto out = llvm::raw_string_ostream(err);
-
-			out << addr.takeError();
-			error("llvm: failed to find symbol '%s' (%s)", name, out.str());
-		}
-
-		return addr.get();
+		return this->findSymbol(name).getAddress();
 	}
 }
 

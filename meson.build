@@ -1,4 +1,4 @@
-project('flax', version: '0.40.0-pre', default_options: [ 'warning_level=3' ])
+project('flax', version: '0.41.7-pre', default_options: [ 'warning_level=3' ])
 
 add_languages(['c', 'cpp'])
 
@@ -59,7 +59,7 @@ if the_compiler.get_id() == 'msvc'
 	envname_llvm    = '%LLVM_ROOT_DIR%'
 	envname_libffi  = '%LIBFFI_ROOT_DIR%'
 
-	llvm_version   = '7.1.0'
+	llvm_version   = '9.0.0'
 
 	mpir_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpir).stdout().strip()
 	if mpir_root_dir == envname_mpir
@@ -122,10 +122,12 @@ if the_compiler.get_id() == 'msvc'
 			the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMRemarks', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDemangle', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
@@ -140,11 +142,13 @@ if the_compiler.get_id() == 'msvc'
 			the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoDWARF', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
+			the_compiler.find_library('LLVMBitstreamReader', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir),
 		]
 	)
 
@@ -164,7 +168,7 @@ else
 	# on unix, we use GMP instead of MPIR.
 	mpfr_dep = dependency('mpfr', version: '>= 4.0.0')
 	libffi_dep = dependency('libffi', version: '>= 3.2.1')
-	llvm_dep = dependency('llvm', static: true, version: '7.0.1', modules: [
+	llvm_dep = dependency('llvm', static: true, version: '9.0.0', modules: [
 		'core', 'engine', 'native', 'linker', 'bitwriter',
 		'lto', 'vectorize', 'all-targets', 'object', 'orcjit'
 	])

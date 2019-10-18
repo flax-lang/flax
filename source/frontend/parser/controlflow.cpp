@@ -124,7 +124,8 @@ namespace parser
 			for(auto& c : ret->cases)
 				c.body->doNotPushNewScope = true;
 
-			ret->elseCase->doNotPushNewScope = true;
+			if(ret->elseCase)
+				ret->elseCase->doNotPushNewScope = true;
 
 			return ret;
 		}

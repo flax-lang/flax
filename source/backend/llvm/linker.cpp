@@ -441,7 +441,7 @@ namespace backend
 		{
 			auto name = this->entryFunction->getName().str();
 
-			this->jitInstance = new LLVMJit();
+			this->jitInstance = LLVMJit::create();
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
