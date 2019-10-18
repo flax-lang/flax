@@ -31,6 +31,7 @@ install:
   # Install meson
   - cmd: pip install meson
 
+
 build_script:
   - ps: meson --buildtype=release build/meson-rel
   - ps: ninja -C build/meson-rel
