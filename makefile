@@ -40,7 +40,6 @@ DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
 CXXFLAGS		+= -std=c++17 -O0 -g -c -Wall -frtti -fno-exceptions -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE)
 
@@ -65,15 +64,23 @@ endif
 MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)
 MPFR_LDFLAGS    := $(shell pkg-config --libs mpfr)
 
-CFLAGS   += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
 CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
 LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
 
+ENABLE_CODE_COVERAGE ?= "yes"
+
 ifneq (,$(findstring clang,$(COMPILER_IDENT)))
 	CXXFLAGS += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	ifeq ("$(ENABLE_CODE_COVERAGE)","yes")
+		CXXFLAGS += -fprofile-instr-generate -fcoverage-mapping
+		LDFLAGS  += -fprofile-instr-generate -fcoverage-mapping
+	endif
 else
 	CXXFLAGS += $(GCCWARNINGS)
+	ifeq ("$(ENABLE_CODE_COVERAGE)","yes")
+		CXXFLAGS += -fprofile-arcs -ftest-coverage
+		LDFLAGS  += -lgcov
+	endif
 endif
 
 

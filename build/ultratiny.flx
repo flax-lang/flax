@@ -53,7 +53,7 @@ fn stuff2() -> Bar
 @entry fn main()
 {
 	let q = stuff()
-	// let p = stuff2()
+	let p = stuff2()
 	printf("q = %d\n", q)
 }
 
@@ -65,9 +65,9 @@ fn stuff2() -> Bar
 	// 1. call the appropriate methods on structs.
 		(kind of: still need Copy and Move)
 
-	// 4. implement @compiler_support
+	// 2. generalise the raii mechanism to by searching for traits instead of hardcoding for classes
+		(kind of: still need Copy and Move)
 
-	2. generalise the raii mechanism to by searching for traits instead of hardcoding for classes
 	3. remove the copy/move/destruct stuff from FIR?
 */
 

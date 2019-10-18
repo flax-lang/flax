@@ -32,6 +32,9 @@
 *.app
 *.pdb
 
+# profile data
+*.profdata
+*.profraw
 
 
 # overrides:
@@ -41,9 +44,6 @@ run
 build/sysroot
 build/meson-*
 .modifydates
-
-# this is a generated file, so we ignore it.
-source/unity.cpp
 
 build/test
 build/gltest

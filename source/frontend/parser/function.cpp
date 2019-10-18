@@ -166,6 +166,7 @@ namespace parser
 	{
 		iceAssert(st.front() == TT::ForeignFunc);
 		st.pop();
+		st.skipWS();
 
 		if(st.front() != TT::Func)
 			expectedAfter(st, "'fn'", "'ffi'", st.front().str());

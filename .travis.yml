@@ -36,19 +36,27 @@ script:
         fi;
         echo "clang version:" $($CC --version);
         echo "clang path:" $(which $CC);
-        PATH="$PATH:$(pwd)/llvm@7/7.1.0/bin" LLVM_CONFIG=llvm-config make -j2 build;
+        PATH="$PATH:$(pwd)/llvm@7/7.1.0/bin" LLVM_CONFIG=llvm-config ENABLE_CODE_COVERAGE=yes make -j2 build;
       else
-        CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-7 make -j2 build;
+        CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-7 ENABLE_CODE_COVERAGE=yes make -j2 build;
       fi
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend interp build/tester.flx
-    - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
+    - LLVM_PROFILE_FILE="tester_llvm.profraw"    build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
+    - LLVM_PROFILE_FILE="tester_interp.profraw"  build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend interp build/tester.flx
+    - LLVM_PROFILE_FILE="tester_compile.profraw" build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
+    - |
+      if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        llvm@7/7.1.0/bin/llvm-profdata merge -sparse tester_llvm.profraw tester_interp.profraw tester_compile.profraw -o tester_all.profdata;
+        llvm@7/7.1.0/bin/llvm-cov show ./build/sysroot/usr/local/bin/flaxc -instr-profile=tester_all.profdata > coverage.txt;
+      else
+        for filename in `find . -name '*.cpp'`; do gcov-9 -o "$filename".gcno $filename > /dev/null; done
+      fi
 
 notifications:
     email: false
 
 after_success:
     - zip -r $TRAVIS_OS_NAME-x64 build/sysroot
+    - bash <(curl -s https://codecov.io/bash)
 
 deploy:
     provider: releases
@@ -58,3 +66,5 @@ deploy:
     on:
         all_branches: true
         tags: true
+
+
