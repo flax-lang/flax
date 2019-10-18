@@ -11,42 +11,42 @@ matrix:
 
 cache:
     directories:
-    - llvm@7
+    - llvm
 
 addons:
     apt:
         sources:
-        - llvm-toolchain-xenial-7
+        - llvm-toolchain-xenial-9
         - ubuntu-toolchain-r-test
 
         packages:
         - g++-9
-        - llvm-7
-        - llvm-7-dev
-        - libllvm7
+        - llvm-9
+        - llvm-9-dev
+        - libllvm9
         - libmpfr-dev
         - libmpfr4
 
 script:
     - |
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        if [ ! -d "llvm@7/7.1.0/bin" ]; then
-          curl 'https://homebrew.bintray.com/bottles/llvm@7-7.1.0.high_sierra.bottle.tar.gz' -L -o llvm-7.1.0.tar.gz;
-          tar -xf llvm-7.1.0.tar.gz;
+        if [ ! -d "llvm/9.0.0/bin" ]; then
+          curl 'https://homebrew.bintray.com/bottles/llvm-9.0.0.high_sierra.bottle.tar.gz' -L -o llvm-9.0.0.tar.gz;
+          tar -xf llvm-9.0.0.tar.gz;
         fi;
         echo "clang version:" $($CC --version);
         echo "clang path:" $(which $CC);
-        PATH="$PATH:$(pwd)/llvm@7/7.1.0/bin" LLVM_CONFIG=llvm-config ENABLE_CODE_COVERAGE=yes make -j2 build;
+        PATH="$PATH:$(pwd)/llvm/9.0.0/bin" LLVM_CONFIG=llvm-config ENABLE_CODE_COVERAGE=yes make -j2 build;
       else
-        CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-7 ENABLE_CODE_COVERAGE=yes make -j2 build;
+        CXX=g++-9 CC=gcc-9 LLVM_CONFIG=llvm-config-9 ENABLE_CODE_COVERAGE=yes make -j2 build;
       fi
-    - LLVM_PROFILE_FILE="tester_llvm.profraw"    build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile -run -backend llvm build/tester.flx
+    - LLVM_PROFILE_FILE="tester_llvm.profraw"    build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend llvm build/tester.flx
     - LLVM_PROFILE_FILE="tester_interp.profraw"  build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile -run -backend interp build/tester.flx
-    - LLVM_PROFILE_FILE="tester_compile.profraw" build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile build/tester.flx && ./tester
+    - LLVM_PROFILE_FILE="tester_compile.profraw" build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot --ffi-escape -profile build/tester.flx && ./tester
     - |
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-        llvm@7/7.1.0/bin/llvm-profdata merge -sparse tester_llvm.profraw tester_interp.profraw tester_compile.profraw -o tester_all.profdata;
-        llvm@7/7.1.0/bin/llvm-cov show ./build/sysroot/usr/local/bin/flaxc -instr-profile=tester_all.profdata > coverage.txt;
+        llvm/9.0.0/bin/llvm-profdata merge -sparse tester_llvm.profraw tester_interp.profraw tester_compile.profraw -o tester_all.profdata;
+        llvm/9.0.0/bin/llvm-cov show ./build/sysroot/usr/local/bin/flaxc -instr-profile=tester_all.profdata > coverage.txt;
       else
         for filename in `find . -name '*.cpp'`; do gcov-9 -o "$filename".gcno $filename > /dev/null; done
       fi
