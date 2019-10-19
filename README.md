@@ -14,7 +14,7 @@ A low level, general-purpose language with high level syntax and expressibility.
 
 Currently not expected to pass (for a while): <br />
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
-&mdash; Ubuntu 14.04 EOLed
+&mdash; Ubuntu 14.04 EOLed <br />
 [![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
 &mdash; llvm-toolchain-xenial-9 not approved on linux
 
