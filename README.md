@@ -12,10 +12,13 @@ A low level, general-purpose language with high level syntax and expressibility.
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
 
-<br />
 Currently not expected to pass (for a while):
-(Ubuntu 14.04 EOLed) [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)&nbsp;&nbsp;&nbsp;&nbsp;
-(llvm-toolchain-xenial-9 not approved on linux) [![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)&nbsp;&nbsp;&nbsp;&nbsp;
+(Ubuntu 14.04 EOLed)
+[![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
+&nbsp;&nbsp;&nbsp;&nbsp;
+(llvm-toolchain-xenial-9 not approved on linux)
+[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
+&nbsp;&nbsp;&nbsp;&nbsp;
 
 
 
