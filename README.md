@@ -114,8 +114,10 @@ do {
 
 ### Building the Flax compiler
 
+Note: the `master` branch is still using LLVM 7, and is stable; `develop` is now on LLVM 9. Changes will be merged into `master` eventually.
+
 #### Dependencies ####
-- LLVM 7, mostly due to their obsession with changing the IR interface every damn version
+- LLVM 9, mostly due to their obsession with changing the IR interface every damn version
 - GMP/MPIR
 - MPFR
 - libffi
@@ -124,7 +126,7 @@ do {
 #### macOS / Linux
 
 - The `makefile` is the preferred way to build on UNIX systems.
-- LLVM needs to be installed. On macOS, `brew install llvm@7` should work, and you might need to do some PPA fiddling for Debian-based distros.
+- LLVM needs to be installed. On macOS, `brew install llvm` should work, and you might need to do some PPA fiddling for Debian-based distros.
 - A C++17-compatible compiler should be used.
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`.
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`.
