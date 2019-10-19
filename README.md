@@ -6,6 +6,8 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
 
+[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
+&nbsp;&nbsp;&nbsp;&nbsp;
 [![Build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![codecov](https://codecov.io/gh/flax-lang/flax/branch/develop/graph/badge.svg)](https://codecov.io/gh/flax-lang/flax)
@@ -14,10 +16,6 @@ A low level, general-purpose language with high level syntax and expressibility.
 
 Currently not expected to pass (for a while): <br />
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
-&mdash; Ubuntu 14.04 EOLed <br />
-[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
-&mdash; llvm-toolchain-xenial-9 not approved on linux
-
 
 
 -----------------------------------------------
