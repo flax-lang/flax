@@ -34,8 +34,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// TODO: LVALUE HOLE
 		if(lr->islvalue())
 		{
-			datapointer = cs->irb.GEP2(cs->irb.AddressOf(lr.value, true), fir::ConstantInt::getNative(0),
-				fir::ConstantInt::getNative(0));
+			datapointer = cs->irb.ConstGEP2(cs->irb.AddressOf(lr.value, true), 0, 0);
 			maxlength = fir::ConstantInt::getNative(lt->toArrayType()->getArraySize());
 		}
 		else

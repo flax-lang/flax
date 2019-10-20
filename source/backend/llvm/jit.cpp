@@ -93,6 +93,7 @@ namespace backend
 	llvm::Expected<llvm::orc::ThreadSafeModule> LLVMJit::optimiseModule(llvm::orc::ThreadSafeModule TSM,
 		const llvm::orc::MaterializationResponsibility& R)
 	{
+		#if 0
 		 // Create a function pass manager.
 		auto FPM = llvm::make_unique<llvm::legacy::FunctionPassManager>(TSM.getModule());
 
@@ -107,6 +108,7 @@ namespace backend
 		// the JIT.
 		for(auto& F : *TSM.getModule())
 			FPM->run(F);
+		#endif
 
 		return TSM;
 	}

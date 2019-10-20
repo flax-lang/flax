@@ -372,6 +372,16 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 						fir::ArraySliceType::get(type->getArrayElementType(), false));
 				}
 			}
+			else if(fc->name == names::array::FN_POP)
+			{
+				if(!type->isDynamicArrayType())
+					error(fc, "'pop' method can only be called on dynamic arrays");
+
+				res = type->getArrayElementType();
+
+				if(fc->args.size() != 0)
+					error(fc, "builtin array method 'pop' expects no arguments, found %d instead", fc->args.size());
+			}
 
 			// fallthrough
 
@@ -396,7 +406,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			// TODO: Extension support here
 			fir::Type* res = 0;
 			if(vr->name == names::enumeration::FIELD_NAME)
-				res = fir::Type::getString();
+				res = fir::Type::getCharSlice(false);
 
 			else if(vr->name == names::enumeration::FIELD_INDEX)
 				res = fir::Type::getNativeWord();

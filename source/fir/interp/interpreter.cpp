@@ -275,16 +275,13 @@ namespace interp
 		}
 		else if(auto cs = dcast(fir::ConstantCharSlice, c))
 		{
-			auto str = cs->getValue();
+			auto str = makeGlobalString(is, cs->getValue());
+			auto ptr = fir::ConstantBitcast::get(fir::ConstantInt::getUNative(reinterpret_cast<uintptr_t>(str)), fir::Type::getInt8Ptr());
+			auto len = fir::ConstantInt::getNative(cs->getValue().size());
 
-			interp::Value ret;
-			ret.dataSize = sizeof(char*);
-			ret.type = cs->getType();
-			ret.val = cs;
+			auto bytecount = getSizeOfType(ptr->getType()) + getSizeOfType(len->getType());
 
-			auto s = makeGlobalString(is, str);
-
-			setValueRaw(is, &ret, &s, sizeof(char*));
+			auto ret = constructStructThingy(cs, bytecount, { ptr, len });
 
 			return (cachedConstants[c] = ret);
 		}

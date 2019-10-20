@@ -77,6 +77,7 @@ namespace fir
 		Value* Call(Function* fn, Value* p1, const std::string& vname = "");
 		Value* Call(Function* fn, Value* p1, Value* p2, const std::string& vname = "");
 		Value* Call(Function* fn, Value* p1, Value* p2, Value* p3, const std::string& vname = "");
+		Value* Call(Function* fn, Value* p1, Value* p2, Value* p3, Value* p4, const std::string& vname = "");
 
 		Value* Call(Function* fn, const std::vector<Value*>& args, const std::string& vname = "");
 		Value* Call(Function* fn, const std::initializer_list<Value*>& args, const std::string& vname = "");

@@ -292,7 +292,9 @@ namespace any
 
 					// same as above but we skip a load.
 					auto fakeptr = cs->irb.PointerTypeCast(arrptr, type->getMutablePointerTo());
-					cs->irb.Return(cs->irb.ReadPtr(fakeptr));
+					auto ret = cs->irb.ReadPtr(fakeptr);
+
+					cs->irb.Return(ret);
 				}
 			}
 

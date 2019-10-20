@@ -919,6 +919,11 @@ namespace fir
 		return this->Call(fn, { p1, p2, p3 }, vname);
 	}
 
+	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, Value* p3, Value* p4, const std::string& vname)
+	{
+		return this->Call(fn, { p1, p2, p3, p4 }, vname);
+	}
+
 
 	Value* IRBuilder::Call(Function* fn, const std::vector<Value*>& args, const std::string& vname)
 	{

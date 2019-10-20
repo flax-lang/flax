@@ -67,6 +67,9 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			if(!res->islvalue())
 				error(this->lhs, "cannot call 'pop()' on an rvalue");
 
+			else if(res->isConst())
+				error(this->lhs, "cannot call 'pop()' (which mutates) on a constant value");
+
 			else if(ty->isArrayType())
 				error(this->lhs, "cannot call 'pop()' on an array type ('%s')", ty);
 
@@ -148,8 +151,16 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 			else if(this->name == names::saa::FIELD_POINTER)
 			{
-				auto ret = cs->irb.ConstGEP2(res.value, 0, 0);
-				return CGResult(ret);
+				// TODO: LVALUE HOLE
+				if(res.value->islvalue())
+				{
+					auto ret = cs->irb.ConstGEP2(cs->irb.AddressOf(res.value, /* mut: */ false), 0, 0);
+					return CGResult(ret);
+				}
+				else
+				{
+					error("NOT SUP");
+				}
 			}
 		}
 		else if(ty->isRangeType())
@@ -185,10 +196,13 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			else if(this->name == names::enumeration::FIELD_NAME)
 			{
 				auto namearr = ty->toEnumType()->getNameArray();
-				iceAssert(namearr->getType()->isPointerType() && namearr->getType()->getPointerElementType()->isArrayType());
+				iceAssert(namearr->islvalue());
+
+				auto namearrptr = cs->irb.AddressOf(namearr, /* mut: */ false);
+				iceAssert(namearrptr->getType()->isPointerType() && namearrptr->getType()->getPointerElementType()->isArrayType());
 
 				auto idx = cs->irb.GetEnumCaseIndex(res.value);
-				auto n = cs->irb.GEP2(namearr, fir::ConstantInt::getNative(0), idx);
+				auto n = cs->irb.GEP2(namearrptr, fir::ConstantInt::getNative(0), idx);
 
 				return CGResult(cs->irb.ReadPtr(n));
 			}

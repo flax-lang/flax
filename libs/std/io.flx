@@ -108,6 +108,11 @@ public fn format(fmt: str, args: [any: ...]) -> string
 	return ret
 }
 
+// in case you're lazy
+public fn println()
+{
+	libc::puts("")
+}
 
 public fn println(fmt: str, args: [any: ...])
 {

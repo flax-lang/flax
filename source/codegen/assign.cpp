@@ -150,6 +150,9 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(!res->islvalue())
 			error(v, "cannot assign to non-lvalue expression in tuple assignment");
 
+		if(res->isConst())
+			error(v, "cannot assign to constant in tuple assignment");
+
 		results.push_back(res);
 		idx++;
 	}

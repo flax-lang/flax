@@ -113,10 +113,13 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
 
-		else if(left->isStringType() && right->isStringType())
+		else if(left->isStringType() && (right->isStringType() || right->isCharSliceType() || right->isCharType()))
 			return fir::Type::getString();
 
 		else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
+			return left;
+
+		else if(left->isDynamicArrayType() && left->getArrayElementType() == right)
 			return left;
 
 		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))

@@ -578,7 +578,7 @@ namespace saa_common
 			fir::Value* lhs = func->getArguments()[0];
 			fir::Value* rhs = func->getArguments()[1];
 
-			auto rhsslice = cs->irb.CreateValue(getSAASlice(saa), "rhsslice");
+			auto rhsslice = cs->irb.CreateValue(getSAASlice(saa, /* mut: */ false), "rhsslice");
 			rhsslice = cs->irb.SetArraySliceData(rhsslice, cs->irb.ImmutStackAlloc(getSAAElm(saa), rhs, "rhsptr"));
 			rhsslice = cs->irb.SetArraySliceLength(rhsslice, getCI(1));
 
@@ -603,7 +603,7 @@ namespace saa_common
 
 
 
-
+	// TODO: this shit is bloody unmaintainable
 	fir::Function* generateReserveAtLeastFunction(CodegenState* cs, fir::Type* saa)
 	{
 		auto fname = misc::getReserveEnough_FName(saa);
@@ -672,26 +672,44 @@ namespace saa_common
 					auto newlen = cs->irb.Divide(cs->irb.Multiply(minsz, getCI(3)), getCI(2), "mul1.5");
 
 					// call realloc. handles the null case as well, which is nice.
-					auto oldbuf = cs->irb.PointerTypeCast(cs->irb.GetSAAData(s1), fir::Type::getMutInt8Ptr(), "oldbuf");
+					const auto oldbuf = cs->irb.PointerTypeCast(cs->irb.GetSAAData(s1), fir::Type::getMutInt8Ptr(), "oldbuf");
 
 					auto newbytecount = cs->irb.Multiply(newlen, cs->irb.Sizeof(getSAAElm(saa)), "newbytecount");
 
 					if(saa->isStringType())
 						newbytecount = cs->irb.Add(newbytecount, getCI(1));
 
-					// for "default" or empty strings, the buffer points to constant memory that did not come from the heap!!
-					// so, we cannot call realloc with oldbuf, and call it with NULL instead. we do this if the capacity was 0!
-					{
-						auto isfake = cs->irb.ICmpEQ(oldcap, getCI(0));
-						oldbuf = cs->irb.Select(isfake, fir::ConstantValue::getZeroValue(fir::Type::getMutInt8Ptr()), oldbuf);
-					}
+					// if the capacity was negative, then the buffer points to constant memory that did not come from the heap!!
+					// so, we cannot call realloc with oldbuf, and call it with NULL instead. also for strings, capacity of 0 is empty
+					// so we do the same dealio.
+					auto isfake = cs->irb.ICmpLEQ(oldcap, getCI(0));
+					auto origbuf = cs->irb.Select(isfake, fir::ConstantValue::getZeroValue(fir::Type::getMutInt8Ptr()), oldbuf);
 
-					auto newbuf = cs->irb.Call(cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC), oldbuf, newbytecount, "newbuf");
-					newbuf = castRawBufToElmPtr(cs, saa, newbuf);
+					auto _newbuf = cs->irb.Call(cs->getOrDeclareLibCFunction(REALLOCATE_MEMORY_FUNC), origbuf, newbytecount, "newbuf");
+					auto newbuf = castRawBufToElmPtr(cs, saa, _newbuf);
+
+
+					// again with the NULL thingy: now we need to (possibly) copy the data from the old buffer to the new buffer
+					// bopian need some branching here.
+					{
+						auto needcopy = cs->irb.addNewBlockInFunction("copyold", func);
+						auto nocopy = cs->irb.addNewBlockInFunction("nocopyold", func);
+
+						cs->irb.CondBranch(isfake, needcopy, nocopy);
+						cs->irb.setCurrentBlock(needcopy);
+						{
+							cs->irb.Call(cs->module->getIntrinsicFunction("memmove"), _newbuf, oldbuf, cs->irb.Multiply(oldlen,
+								cs->irb.Sizeof(getSAAElm(saa))), /* isVolatile: */ fir::ConstantBool::get(false));
+							cs->irb.UnCondBranch(nocopy);
+						}
+
+						cs->irb.setCurrentBlock(nocopy);
+					}
 
 					// null terminator
 					if(saa->isStringType())
 						cs->irb.WritePtr(fir::ConstantInt::getInt8(0), cs->irb.GetPointer(newbuf, cs->irb.Subtract(newbytecount, getCI(1))));
+
 
 					auto ret = cs->irb.CreateValue(saa);
 					ret = cs->irb.SetSAAData(ret, newbuf);

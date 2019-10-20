@@ -60,6 +60,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok, this can basically be anything.
 		// no restrictions.
 
+		fir::Value* returnValue = 0;
 		auto elmty = this->type->getArrayElementType();
 
 		if(this->values.empty())
@@ -73,106 +74,110 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			{
 				// ok.
 				elmty = infer->getArrayElementType();
-
-				return CGResult(fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
-					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z));
+				returnValue = fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z);
 			}
 			else if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
 
 				//* note: it's clearly a null pointer, so it must be immutable.
-				return CGResult(fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
-					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z));
+				returnValue = fir::ConstantArraySlice::get(fir::ArraySliceType::get(elmty, false),
+					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z);
 			}
 			else
 			{
 				error(this, "incorrectly inferred type '%s' for empty array literal", infer);
 			}
 		}
-
-		// make a function specifically to initialise this thing
-
-		static size_t _id = 0;
-
-
-		auto _aty = fir::ArrayType::get(elmty, this->values.size());
-		auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
-			_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
-
-		{
-			auto restore = cs->irb.getCurrentBlock();
-
-			fir::Function* func = cs->module->getOrCreateFunction(util::obfuscateIdentifier("init_array", _id - 1),
-				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
-
-			fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
-			cs->irb.setCurrentBlock(entry);
-
-			auto arrptr = cs->irb.AddressOf(array, true);
-
-			std::vector<fir::Value*> vals;
-			for(auto v : this->values)
-			{
-				auto vl = v->codegen(cs, elmty).value;
-				if(vl->getType() != elmty)
-					vl = cs->oneWayAutocast(vl, elmty);
-
-				if(vl->getType() != elmty)
-				{
-					error(v, "mismatched type for array literal; expected element type '%s', found '%s'",
-						elmty, vl->getType());
-				}
-
-				// ok, it works
-				vals.push_back(vl);
-			}
-
-			// ok -- basically unroll the loop, except there's no loop -- so we're just...
-			// doing a thing.
-			for(size_t i = 0; i < vals.size(); i++)
-			{
-				// offset by 1
-				fir::Value* ptr = cs->irb.ConstGEP2(arrptr, 0, i);
-				cs->irb.WritePtr(vals[i], ptr);
-			}
-
-			cs->irb.ReturnVoid();
-			cs->irb.setCurrentBlock(restore);
-
-			// ok, call the function
-			cs->irb.Call(func);
-		}
-
-		// return it
-		if(this->type->isDynamicArrayType())
-		{
-			auto arrptr = cs->irb.AddressOf(array, true);
-
-			auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
-
-			aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
-			aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
-			aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
-			aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
-
-			return CGResult(aa);
-		}
-		else if(this->type->isArraySliceType())
-		{
-			auto arrptr = cs->irb.AddressOf(array, true);
-
-			auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
-
-			aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));
-			aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getNative(this->values.size()));
-
-			return CGResult(aa);
-		}
 		else
 		{
-			error(this, "what???");
+			// make a function specifically to initialise this thing
+			static size_t _id = 0;
+
+			auto _aty = fir::ArrayType::get(elmty, this->values.size());
+			auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
+				_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
+
+			{
+				auto restore = cs->irb.getCurrentBlock();
+
+				fir::Function* func = cs->module->getOrCreateFunction(util::obfuscateIdentifier("init_array", _id - 1),
+					fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
+
+				fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);
+				cs->irb.setCurrentBlock(entry);
+
+				auto arrptr = cs->irb.AddressOf(array, true);
+
+				std::vector<fir::Value*> vals;
+				for(auto v : this->values)
+				{
+					auto vl = v->codegen(cs, elmty).value;
+					if(vl->getType() != elmty)
+						vl = cs->oneWayAutocast(vl, elmty);
+
+					if(vl->getType() != elmty)
+					{
+						error(v, "mismatched type for array literal; expected element type '%s', found '%s'",
+							elmty, vl->getType());
+					}
+
+					// ok, it works
+					vals.push_back(vl);
+				}
+
+				// ok -- basically unroll the loop, except there's no loop -- so we're just...
+				// doing a thing.
+				for(size_t i = 0; i < vals.size(); i++)
+				{
+					// offset by 1
+					fir::Value* ptr = cs->irb.ConstGEP2(arrptr, 0, i);
+					cs->irb.WritePtr(vals[i], ptr);
+				}
+
+				cs->irb.ReturnVoid();
+				cs->irb.setCurrentBlock(restore);
+
+				// ok, call the function
+				cs->irb.Call(func);
+			}
+
+			// return it
+			if(this->type->isDynamicArrayType())
+			{
+				auto arrptr = cs->irb.AddressOf(array, true);
+
+				auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
+
+				aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
+				aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
+				aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
+				aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
+
+				returnValue = aa;
+			}
+			else if(this->type->isArraySliceType())
+			{
+				auto arrptr = cs->irb.AddressOf(array, true);
+
+				auto aa = cs->irb.CreateValue(this->type->toArraySliceType());
+
+				aa = cs->irb.SetArraySliceData(aa, cs->irb.PointerTypeCast(cs->irb.ConstGEP2(arrptr, 0, 0), elmty->getPointerTo()));
+				aa = cs->irb.SetArraySliceLength(aa, fir::ConstantInt::getNative(this->values.size()));
+
+				returnValue = aa;
+			}
+			else
+			{
+				error(this, "what???");
+			}
 		}
+
+		iceAssert(returnValue);
+		cs->addRAIIOrRCValueIfNecessary(returnValue);
+
+		return CGResult(returnValue);
 	}
 	else
 	{
