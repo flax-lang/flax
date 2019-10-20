@@ -4,7 +4,9 @@
 
 export ultratiny
 
-// import libc as _
+import libc as _
+import std::io as _
+
 // import std::math
 /*
 @compiler_support["raii_trait::drop"] trait Drop { fn deinit() }
@@ -51,8 +53,6 @@ fn stuff2() -> Bar
 }
  */
 
-ffi fn printf(fmt: &i8, ...) -> i32
-
 struct Thicc
 {
 	x: i64
@@ -70,10 +70,152 @@ struct Thicc
 	// let q = stuff()
 	// let p = stuff2()
 	// printf("q = %d\n", q)
-	let x = Flat(x: 3, y: 20)
+	// let x = Flat(x: 3, y: 20)
 
-	printf("%d, %d, %d\n", sizeof(x), sizeof(Thicc), sizeof(Flat))
+	// printf("%d, %d, %d\n", sizeof(x), sizeof(Thicc), sizeof(Flat))
+
+	doBasicTest()
 }
+
+
+public fn doBasicTest()
+{
+
+	// fn print_array<T>(xs: [T:])
+	// {
+	// 	for x in xs => print("% ", x)
+	// 	println()
+	// }
+
+
+	// // test logical operators
+	// do {
+	// 	fn t() -> bool { print("T "); return true }
+	// 	fn f() -> bool { print("F "); return false }
+
+	// 	if t() || f() => println("yes")
+	// 	if t() && f() => println("no")
+
+	// 	printf("\n\n")
+	// }
+
+	// // test tuple assignment
+	// do {
+	// 	var (a, b) = (10, 20)
+	// 	println("a = %, b = %", a, b)
+
+	// 	(b, a) = (a, b)
+	// 	println("swapped: a = %, b = %\n", a, b)
+	// }
+
+	// // test assignment & appending
+	// do {
+	// 	do {
+	// 		var xs: [str] = [ "foo", "bar" ]
+	// 		xs += "qux"
+
+	// 		var ys: [i64] = [ 1, 2, 3, 4 ]
+	// 		ys += 5 as i64
+
+	// 		print_array(xs)
+	// 		print_array(ys)
+	// 	}
+
+	// 	println()
+
+	// 	do {
+	// 		var xs: [str] = [ "foo", "bar" ]
+	// 		xs += [ "pepega", "kekw" ]
+
+	// 		var ys: [i64] = [ 1, 2, 3, 4 ]
+	// 		ys += [ 5, 6, 7, 8 ]
+
+	// 		print_array(xs)
+	// 		print_array(ys)
+	// 	}
+
+	// 	println()
+
+	// 	do {
+	// 		var s = string("some string")
+	// 		s += "_appendage"
+
+	// 		var t = string("an underscore: ")
+	// 		t += '_'
+
+	// 		println("s = %", s)
+	// 		println("t = %", t)
+	// 	}
+	// }
+
+	// println()
+
+	// // test + on non-arithmetics
+	// do {
+	// 	let a = string("hello ") + "world"
+	// 	println("a = %", a)
+
+	// 	let b = string("an asterisk: ") + '*'
+	// 	println("b = %\n", b)
+
+	// 	let c: [int] = [ 2, 3, 5, 7 ]
+	// 	let d: [int] = [ 11, 13, 17, 19 ]
+
+	// 	print_array(c + d)
+	// }
+
+	// println()
+
+	// test builtin functions on aggregate data types
+	do {
+		// var a: [int] = [ 2, 3, 5, 7 ]
+		// print("% : ", a.pop())
+		// print_array(a)
+
+		// var b: [int: 3] = [ 1, 4, 9 ]
+		// // drop to printf for %p support
+		// printf("b.ptr = %p, b.length = %d\n\n", b.ptr, b.length)
+
+		// var s = string("thank you ございました")
+		// println("\"%\".count = % (expect 16)\n", s, s.count)
+
+		// var r = 0...10 step 2
+		// for i in r => print("% ", i)
+		// println("\nstart: %, end: %, step: %", r.begin, r.end, r.step)
+
+		// var c: any = 30
+		// println("c.typeid = %, c.refcount = %", c.id, c.refcount)
+
+		enum E
+		{
+			case ONE
+			case TWO
+		}
+
+		var e = E::ONE
+		println("e.index = %, e.value = %, e.name = %", e.index, e.value, e.name)
+		// let s = e.name
+		// println("s = %", s)
+
+
+		// fn test(x: any)
+		// {
+		// 	var out = string("foo: ")
+		// 	if x is str => out += x as str
+
+		// 	printf("out = %s\n", out)
+		// }
+
+		// // let s = "hello"
+		// // // printf("s = %s\n", s as str)
+		// test(s)
+
+	}
+
+
+	println()
+}
+
 
 
 

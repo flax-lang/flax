@@ -1,0 +1,26 @@
+// basic.flx
+// Copyright (c) 2019, zhiayang, Apache License 2.0.
+
+export test_basic
+import libc as _
+
+public fn doBasicTest()
+{
+	// test logical operators
+	do {
+		fn t() -> bool { printf("T "); return true }
+		fn f() -> bool { printf("F "); return false }
+
+		if t() || f() => printf("yes\n")
+		if t() && f() => printf("no\n")
+	}
+
+	// test assignment & appending
+	do {
+		var xs: [str] = [ "foo", "bar" ]
+		xs += "qux"
+
+		for x in xs => printf("%d ", x)
+		printf("\n")
+	}
+}

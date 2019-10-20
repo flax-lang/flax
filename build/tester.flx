@@ -24,6 +24,7 @@ import "tests/arraytest.flx"
 import "tests/functions.flx"
 import "tests/unions.flx"
 import "tests/using.flx"
+import "tests/basic.flx"
 
 fn runTests()
 {
@@ -46,6 +47,7 @@ fn runTests()
 	let unionsTitle     = "           *** UNIONS TEST ***          \n"
 	let usingTitle      = "           *** USING TEST ***           \n"
 	let miscTitle       = "       *** MISCELLANEOUS TESTS ***      \n"
+	let basicTitle      = "           *** BASIC TESTS ***          \n"
 	let thinLine        = "----------------------------------------\n"
 	let endTitle        = "============ TESTS COMPLETE ============\n"
 
@@ -165,6 +167,10 @@ fn runTests()
 	// misc tests
 	std::io::print("%%", miscTitle, thinLine)
 	// miscellaneousTests()
+	std::io::print("\n\n\n")
+
+	std::io::print("%%", basicTitle, thinLine)
+	test_basic::doBasicTest()
 	std::io::print("\n\n\n")
 
 	// fin.
