@@ -42,22 +42,23 @@ class Bar
 	}
 }
 
-fn stuff() -> Foo
+fn one() -> Foo
 {
 	return Foo(data: 33)
 }
 
-fn stuff2() -> Bar
+fn two(x: Foo)
 {
-	return Bar(x: 57)
+	printf("x.data = %d\n", x.data)
 }
 
 
 
 @entry fn main()
 {
-	let q = stuff()
-	let p = stuff2()
+	let q = one()
+	two(q)
+
 	printf("q = %d\n", q)
 }
 

@@ -74,6 +74,32 @@ namespace cgn
 	}
 
 
+	static fir::Function* getImplementationForRAIITrait(CodegenState* cs, const std::string& name, fir::Type* ty)
+	{
+		if(auto it = cs->compilerSupportDefinitions.find(name); it != cs->compilerSupportDefinitions.end())
+		{
+			auto trt = dcast(sst::TraitDefn, it->second);
+			if(!trt) error("invalid use of @compiler_support[\"%s\"] on non-trait definition!", name);
+
+			iceAssert(trt->methods.size() == 1);
+
+			auto str = dcast(sst::StructDefn, cs->typeDefnMap[ty]);
+			iceAssert(str);
+
+			auto target = cs->findMatchingMethodInType(str, trt->methods[0]);
+			if(target)
+			{
+				// the inferred type should be the receiver type
+				auto ret = target->codegen(cs, ty);
+				return dcast(fir::Function, ret.value);
+			}
+		}
+
+		return 0;
+	}
+
+
+
 
 	void CodegenState::callDestructor(fir::Value* val)
 	{
@@ -94,46 +120,18 @@ namespace cgn
 			// call the auto one. this will handle calling base class destructors for us!
 			this->irb.Call(cls->getInlineDestructor(), selfptr);
 		}
-		else if(auto it = this->compilerSupportDefinitions.find(strs::names::support::RAII_TRAIT_DROP);
-			it != this->compilerSupportDefinitions.end())
+		else
 		{
-			auto trt = dcast(sst::TraitDefn, it->second);
-			if(!trt) error("invalid use of @compiler_support[\"raii_trait::drop\"] on non-trait definition!");
+			auto destructor = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_DROP, val->getType());
 
-			iceAssert(trt->methods.size() == 1);
-
-			auto str = dcast(sst::StructDefn, this->typeDefnMap[val->getType()]);
-			iceAssert(str);
-
-			auto destructor = this->findMatchingMethodInType(str, trt->methods[0]);
-			if(destructor)
-			{
-				this->irb.Call(dcast(fir::Function, destructor->codegen(this).value), selfptr);
-				return;
-			}
+			// well if you didn't implement it then the typechecker would have already complained about you so...
+			iceAssert(destructor);
+			this->irb.Call(destructor, selfptr);
 		}
 	}
 
 
 
-
-	static fir::ClassType* doChecks(CodegenState* cs, fir::Value* from, fir::Value* target)
-	{
-		// this cleans up the callsites so we can just unconditionally call this.
-		if(!from->getType()->isClassType())
-		{
-			cs->irb.Store(from, target);
-			return 0;
-		}
-
-		auto clsty = from->getType()->toClassType();
-
-		// TODO: this is a shitty error message.
-		if(!target->islvalue())
-			error(cs->loc(), "invalid operation on non-lvalue");
-
-		return clsty;
-	}
 
 	static void doMemberWiseStuffIfNecessary(CodegenState* cs, fir::ClassType* clsty, fir::Value* from, fir::Value* target, bool move)
 	{
@@ -175,10 +173,28 @@ namespace cgn
 
 
 
+	static fir::ClassType* doChecks(CodegenState* cs, fir::Value* from, fir::Value* target)
+	{
+		// this cleans up the callsites so we can just unconditionally call this.
+		if(!from->getType()->isClassType())
+		{
+			cs->irb.Store(from, target);
+			return 0;
+		}
+
+		auto clsty = from->getType()->toClassType();
+
+		// TODO: this is a shitty error message.
+		if(!target->islvalue())
+			error(cs->loc(), "invalid operation on non-lvalue");
+
+		return clsty;
+	}
+
 
 	fir::Value* CodegenState::copyRAIIValue(fir::Value* value)
 	{
-		if(!value->getType()->isClassType())
+		if(!typeHasCopyConstructor(value->getType()))
 			return value;
 
 		// this will zero-initialise!
@@ -194,8 +210,11 @@ namespace cgn
 	{
 		iceAssert(from->getType() == target->getType());
 
-		auto clsty = doChecks(this, from, target);
-		if(!clsty) return;
+		if(!typeHasCopyConstructor(from->getType()))
+		{
+			this->irb.Store(from, target);
+			return;
+		}
 
 		if(!from->islvalue() && enableMoving)
 		{
@@ -203,19 +222,42 @@ namespace cgn
 			return;
 		}
 
-		// if there is a copy-constructor, then we will call the copy constructor.
-		if(auto copycon = clsty->getCopyConstructor(); copycon)
+		// there's probably a better way to structure this, but i can't be bothered right now
+		// or ever. it's just 2 lines of code dupe anyway. so sue me.
+
+		if(from->getType()->isClassType())
+		{
+			auto clsty = from->getType()->toClassType();
+
+			// if there is a copy-constructor, then we will call the copy constructor.
+			if(auto copycon = clsty->getCopyConstructor(); copycon)
+			{
+				auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
+				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+
+				this->irb.Call(copycon, selfptr, otherptr);
+			}
+			else
+			{
+				doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ false);
+			}
+		}
+		else
 		{
 			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
 			auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
 
+			// well we got here, so we know at least the type has a copy constructor somewhere.
+			auto copycon = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_COPY, from->getType());
+
+			// again, typechecking would have complained prior to this
+			iceAssert(copycon);
 			this->irb.Call(copycon, selfptr, otherptr);
 		}
-		else
-		{
-			doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ false);
-		}
 	}
+
+
+
 
 	void CodegenState::moveRAIIValue(fir::Value* from, fir::Value* target)
 	{

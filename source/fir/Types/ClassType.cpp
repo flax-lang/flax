@@ -319,14 +319,11 @@ namespace fir
 				return false;
 			}
 
-			auto bc = base->getPointerElementType()->toClassType();
-			auto dc = derv->getPointerElementType()->toClassType();
+			auto bce = base->getPointerElementType();
+			auto dce = derv->getPointerElementType();
 
-			if(!bc->hasParent(dc))
-			{
-				debuglogln("%s is not a parent of %s", dc->str(), bc->str());
+			if(bce->isClassType() && dce->isClassType() && !bce->toClassType()->hasParent(dce))
 				return false;
-			}
 		}
 
 		return true;
