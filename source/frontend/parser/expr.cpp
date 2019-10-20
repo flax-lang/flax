@@ -121,7 +121,7 @@ namespace parser
 				// note: due to poor API design on my part, if there is no attribute with that name then ::get()
 				// returns an empty UA, which has a blank name -- so we check that instead.
 
-				if(auto ua = attrs.get("@compiler_support"); !ua.name.empty() && ua.args.size() != 1)
+				if(auto ua = attrs.get("compiler_support"); !ua.name.empty() && ua.args.size() != 1)
 					error(ret, "@compiler_support requires exactly one argument");
 
 				// actually that's it

@@ -8,7 +8,7 @@ import libc as _
 import std::io as _
 
 // import std::math
-/*
+
 @compiler_support["raii_trait::drop"] trait Drop { fn deinit() }
 @compiler_support["raii_trait::copy"] trait Copy { fn copy(other: &self) }
 @compiler_support["raii_trait::move"] trait Move { fn move(other: &mut self) }
@@ -51,30 +51,14 @@ fn stuff2() -> Bar
 {
 	return Bar(x: 57)
 }
- */
 
-struct Thicc
-{
-	x: i64
-	y: i8
-}
 
-@packed struct Flat
-{
-	x: i64
-	y: i8
-}
 
 @entry fn main()
 {
-	// let q = stuff()
-	// let p = stuff2()
-	// printf("q = %d\n", q)
-	// let x = Flat(x: 3, y: 20)
-
-	// printf("%d, %d, %d\n", sizeof(x), sizeof(Thicc), sizeof(Flat))
-
-	doBasicTest()
+	let q = stuff()
+	let p = stuff2()
+	printf("q = %d\n", q)
 }
 
 

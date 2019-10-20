@@ -126,7 +126,6 @@ namespace lexer
 		Attr_NoMangle,
 		Attr_Operator,
 		Attr_Platform,
-		Attr_CompilerSupport,
 
 		Attr_ATTRS_END,
 

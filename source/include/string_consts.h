@@ -9,7 +9,7 @@ namespace strs
 {
 	namespace attrs
 	{
-		inline constexpr auto COMPILER_SUPPORT      = "@compiler_support";
+		inline constexpr auto COMPILER_SUPPORT      = "compiler_support";
 	}
 
 	namespace names
