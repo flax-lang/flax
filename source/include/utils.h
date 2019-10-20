@@ -83,6 +83,18 @@ namespace util
 	}
 
 
+	template <typename T, typename U, class FoldOp>
+	U foldl(const U& i, const std::vector<T>& xs, FoldOp fn)
+	{
+		auto ret = i;
+		for(const auto& x : xs)
+			ret = fn(ret, x);
+
+		return ret;
+	}
+
+
+
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
 	{

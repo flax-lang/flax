@@ -147,7 +147,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	for(auto m : this->methods)
 		m->parentType = this, m->realScope = this->realScope + defn->id.name;
 
-	auto str = fir::StructType::createWithoutBody(defn->id);
+	auto str = fir::StructType::createWithoutBody(defn->id, /* isPacked: */ this->attrs.has(attr::PACKED));
 	defn->type = str;
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });

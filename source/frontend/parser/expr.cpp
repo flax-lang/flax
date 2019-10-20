@@ -113,6 +113,10 @@ namespace parser
 				if((attrs.flags & FN_ENTRYPOINT) && !(allowed.flags & FN_ENTRYPOINT))
 					error(ret, "unsupported attribute '@entry' on %s", ret->readableName);
 
+				if((attrs.flags & PACKED) && !(allowed.flags & PACKED))
+					error(ret, "unsupported attribute '@packed' on %s", ret->readableName);
+
+
 				// here let's check the arguments and stuff for default attributes.
 				// note: due to poor API design on my part, if there is no attribute with that name then ::get()
 				// returns an empty UA, which has a blank name -- so we check that instead.
@@ -155,7 +159,7 @@ namespace parser
 					return enforceAttrs(parseUnion(st, attrs.has(attr::RAW), /* nameless: */ false), AttribSet::of(attr::RAW));
 
 				case TT::Struct:
-					return enforceAttrs(parseStruct(st, /* nameless: */ false));
+					return enforceAttrs(parseStruct(st, /* nameless: */ false), AttribSet::of(attr::PACKED));
 
 				case TT::Class:
 					return enforceAttrs(parseClass(st));

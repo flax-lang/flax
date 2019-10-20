@@ -104,10 +104,13 @@ namespace parser
 	{
 		using UA = AttribSet::UserAttrib;
 
-		if(st.front() <= TT::Attr_ATTRS_BEGIN || st.front() >= TT::Attr_ATTRS_END)
+		if(st.front() != TT::At && (st.front() <= TT::Attr_ATTRS_BEGIN || st.front() >= TT::Attr_ATTRS_END))
 			return AttribSet::of(attr::NONE);
 
 		auto parseUA = [](State& st) -> UA {
+
+			iceAssert(st.front() == TT::At);
+			st.pop();
 
 			auto ret = UA(st.eat().str(), {});
 
@@ -142,23 +145,29 @@ namespace parser
 
 
 		AttribSet ret;
-		while(st.front() > TT::Attr_ATTRS_BEGIN && st.front() < TT::Attr_ATTRS_END)
+		while(true)
 		{
 			// i would love me some static reflection right now
 			switch(st.front())
 			{
 				case TT::Attr_Raw:      ret.set(attr::RAW); st.pop(); break;
+				case TT::Attr_Packed:   ret.set(attr::PACKED); st.pop(); break;
 				case TT::Attr_NoMangle: ret.set(attr::NO_MANGLE); st.pop(); break;
 				case TT::Attr_EntryFn:  ret.set(attr::FN_ENTRYPOINT); st.pop(); break;
 				case TT::Attr_Platform: unexpected(st.loc(), "@platform definition");
 				case TT::Attr_Operator: unexpected(st.loc(), "@operator declaration");
 
-				default:
+				case TT::At:
 					ret.add(parseUA(st));
 					break;
+
+				default:
+					goto out;
 			}
 		}
 
+		// sue me
+		out:
 		return ret;
 	}
 

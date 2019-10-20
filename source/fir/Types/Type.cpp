@@ -1005,28 +1005,44 @@ namespace fir
 
 
 
-	static size_t getAggregateSize(const std::vector<Type*>& tys)
+	static size_t getAggregateSize(const std::vector<Type*>& tys, bool packed = false)
 	{
 		size_t ptr = 0;
 		size_t aln = 0;
 
-		for(auto ty : tys)
+		if(packed)
 		{
-			auto a = getAlignmentOfType(ty);
-			iceAssert(a > 0);
+			// gg
+			// return util::foldl(0, tys, [](Type* a, Type* b) -> size_t {
+			// 	return getSizeOfType(a) + getSizeOfType(b);
+			// });
 
-			if(ptr % a > 0)
-				ptr += (a - (ptr % a));
+			size_t ret = 0;
+			for(const auto& t : tys)
+				ret += getSizeOfType(t);
 
-			ptr += getSizeOfType(ty);
-			aln = std::max(aln, a);
+			return ret;
 		}
+		else
+		{
+			for(auto ty : tys)
+			{
+				auto a = getAlignmentOfType(ty);
+				iceAssert(a > 0);
 
-		iceAssert(aln > 0);
-		if(ptr % aln > 0)
-			ptr += (aln - (ptr % aln));
+				if(ptr % a > 0)
+					ptr += (a - (ptr % a));
 
-		return ptr;
+				ptr += getSizeOfType(ty);
+				aln = std::max(aln, a);
+			}
+
+			iceAssert(aln > 0);
+			if(ptr % aln > 0)
+				ptr += (aln - (ptr % aln));
+
+			return ptr;
+		}
 	}
 
 	size_t getSizeOfType(Type* type)
@@ -1058,6 +1074,7 @@ namespace fir
 		}
 		else if(type->isClassType() || type->isStructType() || type->isTupleType())
 		{
+			bool packed = false;
 			std::vector<Type*> tys;
 
 			if(type->isClassType())
@@ -1067,6 +1084,7 @@ namespace fir
 			}
 			else if(type->isStructType())
 			{
+				packed = type->toStructType()->isPackedStruct();
 				tys = type->toStructType()->getElements();
 			}
 			else
@@ -1074,7 +1092,7 @@ namespace fir
 				tys = type->toTupleType()->getElements();
 			}
 
-			return getAggregateSize(tys);
+			return getAggregateSize(tys, packed);
 		}
 		else if(type->isUnionType() )
 		{

@@ -401,6 +401,12 @@ namespace lexer
 			tok.text = "@entry";
 			read = 6;
 		}
+		else if(hasPrefix(stream, "@packed"))
+		{
+			tok.type = TokenType::Attr_Packed;
+			tok.text = "@packed";
+			read = 7;
+		}
 		else if(hasPrefix(stream, "@raw"))
 		{
 			tok.type = TokenType::Attr_Raw;

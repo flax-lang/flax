@@ -121,6 +121,7 @@ namespace lexer
 		Attr_ATTRS_BEGIN,
 
 		Attr_Raw,
+		Attr_Packed,
 		Attr_EntryFn,
 		Attr_NoMangle,
 		Attr_Operator,

@@ -23,6 +23,7 @@ namespace attr
 	constexpr FlagTy FN_ENTRYPOINT      = 0x1;
 	constexpr FlagTy NO_MANGLE          = 0x2;
 	constexpr FlagTy RAW                = 0x4;
+	constexpr FlagTy PACKED             = 0x8;
 }
 
 struct AttribSet
