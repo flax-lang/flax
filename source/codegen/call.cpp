@@ -294,12 +294,17 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		auto vt = vf->getType();
-		iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
+		// we should have disallowed this already in the typechecker.
+		// TODO: is the usecase then to just cast to a function type?
+		// eg. let entry = (0x400000) as (fn()->int) or something
+		iceAssert(false && "somehow you got a pointer-to-function?!");
 
-		ft = vt->getPointerElementType()->toFunctionType();
+		// auto vt = vf->getType();
+		// iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
 
-		warn(this, "prefer using functions to function pointers");
+		// ft = vt->getPointerElementType()->toFunctionType();
+
+		// warn(this, "prefer using functions to function pointers");
 	}
 
 	iceAssert(ft);
