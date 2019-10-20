@@ -73,7 +73,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		fir::Function* checkf = cgn::glue::saa_common::generateBoundsCheckFunction(cs, /* isString: */ lt->isStringType(), /* isDecomp: */false);
 		if(checkf)
-			cs->irb.Call(checkf, maxlength, index, fir::ConstantString::get(this->loc.shortString()));
+			cs->irb.Call(checkf, maxlength, index, fir::ConstantCharSlice::get(this->loc.shortString()));
 	}
 
 	// ok, do it

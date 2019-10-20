@@ -218,9 +218,12 @@ namespace any
 
 				auto arr = cs->irb.ReadPtr(arrptr);
 				any = cs->irb.SetAnyData(any, arr);
+
+
 			}
 
 			any = cs->irb.SetAnyTypeID(any, fir::ConstantInt::getUNative(tid));
+
 			cs->irb.Return(any);
 
 			cs->irb.setCurrentBlock(restore);
@@ -261,7 +264,7 @@ namespace any
 
 			cs->irb.setCurrentBlock(invalid);
 			{
-				printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
+				printRuntimeError(cs, fir::ConstantCharSlice::get(cs->loc().toString()),
 					"invalid unwrap of 'any' with type id '%ld' into type '%s' (with id '%ld')",
 					{ tid, cs->module->createGlobalString(type->str()), fir::ConstantInt::getUNative(type->getID()) }
 				);

@@ -243,17 +243,17 @@ namespace fir
 
 
 
-	ConstantString* ConstantString::get(std::string s)
+	ConstantCharSlice* ConstantCharSlice::get(std::string s)
 	{
-		return new ConstantString(s);
+		return new ConstantCharSlice(s);
 	}
 
-	ConstantString::ConstantString(std::string s) : ConstantValue(fir::Type::getCharSlice(false))
+	ConstantCharSlice::ConstantCharSlice(std::string s) : ConstantValue(fir::Type::getCharSlice(false))
 	{
 		this->str = s;
 	}
 
-	std::string ConstantString::getValue()
+	std::string ConstantCharSlice::getValue()
 	{
 		return this->str;
 	}

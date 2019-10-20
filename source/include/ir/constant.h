@@ -157,15 +157,15 @@ namespace fir
 		ConstantValue* value = 0;
 	};
 
-	struct ConstantString : ConstantValue
+	struct ConstantCharSlice : ConstantValue
 	{
 		friend struct Module;
 
-		static ConstantString* get(std::string value);
+		static ConstantCharSlice* get(std::string value);
 		std::string getValue();
 
 		protected:
-		ConstantString(std::string str);
+		ConstantCharSlice(std::string str);
 
 		std::string str;
 	};

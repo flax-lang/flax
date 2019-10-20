@@ -180,7 +180,7 @@ namespace cgn
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 
-			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantString::get("")),
+			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantCharSlice::get("")),
 				fir::Type::getMutInt8Ptr()));
 			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
 			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));

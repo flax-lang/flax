@@ -28,7 +28,7 @@ CGResult sst::EnumDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(cv);
 
 		// values[c->index] = fir::ConstantStruct(cv);
-		names[c->index] = fir::ConstantString::get(n);
+		names[c->index] = fir::ConstantCharSlice::get(n);
 	}
 
 

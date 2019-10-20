@@ -27,7 +27,7 @@ ninja -C $buildDir
 
 if($?) {
 	# cls
-	& $buildDir\flaxc.exe -Ox -sysroot build\sysroot -run "build\$theProgram.flx" $extraArgs
+	& $buildDir\flaxc.exe -Ox -sysroot build\sysroot -run "build\$theProgram.flx" --ffi-escape $extraArgs
 }
 
 if($buildType -eq "release") {

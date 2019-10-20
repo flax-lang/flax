@@ -273,7 +273,7 @@ namespace interp
 		{
 			return cachedConstants[c] = makeValue(c, cb->getValue());
 		}
-		else if(auto cs = dcast(fir::ConstantString, c))
+		else if(auto cs = dcast(fir::ConstantCharSlice, c))
 		{
 			auto str = cs->getValue();
 

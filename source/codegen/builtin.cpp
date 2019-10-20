@@ -71,7 +71,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(this->lhs, "cannot call 'pop()' on an array type ('%s')", ty);
 
 			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty);
-			auto tupl = cs->irb.Call(popf, res.value, fir::ConstantString::get(this->loc.toString()));
+			auto tupl = cs->irb.Call(popf, res.value, fir::ConstantCharSlice::get(this->loc.toString()));
 
 			// tupl[0] is the new array
 			// tupl[1] is the last element

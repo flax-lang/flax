@@ -457,7 +457,7 @@ namespace backend
 			return cachedConstants[fc] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(auto cs = dcast(fir::ConstantString, fc))
+		else if(auto cs = dcast(fir::ConstantCharSlice, fc))
 		{
 			size_t origLen = cs->getValue().length();
 			std::string str = cs->getValue();
