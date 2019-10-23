@@ -13,10 +13,6 @@
 #include <stack>
 #include <unordered_set>
 
-namespace ast
-{
-	struct Expr;
-}
 
 namespace sst
 {
@@ -37,7 +33,7 @@ namespace backend
 
 namespace frontend
 {
-	std::string getParameter(std::string arg);
+	std::string getParameter(const std::string& arg);
 
 	backend::ProgOutputMode getOutputMode();
 	backend::OptimisationLevel getOptLevel();

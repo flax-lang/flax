@@ -118,7 +118,7 @@ bool Identifier::operator != (const Identifier& other) const
 std::string Identifier::str() const
 {
 	std::string ret;
-	for(auto s : this->scope)
+	for(const auto& s : this->scope)
 		ret += s + ".";
 
 	ret += this->name;
@@ -126,7 +126,7 @@ std::string Identifier::str() const
 	if(this->kind == IdKind::Function)
 	{
 		ret += "(";
-		for(auto p : this->params)
+		for(const auto& p : this->params)
 			ret += p->str() + ", ";
 
 		if(this->params.size() > 0)
@@ -144,7 +144,7 @@ static std::string mangleScopeOnly(const Identifier& id)
 {
 	bool first = true;
 	std::string ret;
-	for(auto s : id.scope)
+	for(const auto& s : id.scope)
 	{
 		ret += (!first ? std::to_string(s.length()) : "") + s;
 		first = false;
@@ -153,7 +153,7 @@ static std::string mangleScopeOnly(const Identifier& id)
 	return ret;
 }
 
-static inline std::string lentypestr(std::string s)
+static inline std::string lentypestr(const std::string& s)
 {
 	return std::to_string(s.length()) + s;
 }
@@ -356,12 +356,12 @@ namespace util
 
 namespace zpr
 {
-	std::string print_formatter<Identifier>::print(const Identifier& x, const format_args& args)
+	std::string print_formatter<Identifier>::print(const Identifier& x, const format_args&)
 	{
 		return x.str();
 	}
 
-	std::string print_formatter<VisibilityLevel>::print(const VisibilityLevel& x, const format_args& args)
+	std::string print_formatter<VisibilityLevel>::print(const VisibilityLevel& x, const format_args&)
 	{
 		switch(x)
 		{
@@ -373,32 +373,6 @@ namespace zpr
 		}
 	}
 }
-
-
-// namespace tinyformat
-// {
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl)
-// 	{
-// 		switch(vl)
-// 		{
-// 			case VisibilityLevel::Invalid:	out << "invalid"; break;
-// 			case VisibilityLevel::Public:	out << "public"; break;
-// 			case VisibilityLevel::Private:	out << "private"; break;
-// 			case VisibilityLevel::Internal:	out << "internal"; break;
-// 		}
-// 	}
-
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id)
-// 	{
-// 		out << id.str();
-// 	}
-
-// 	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty)
-// 	{
-// 		out << ty->str();
-// 	}
-// }
-
 
 
 

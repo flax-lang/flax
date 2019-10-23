@@ -7,7 +7,8 @@
 
 namespace backend
 {
-	Backend* Backend::getBackendFromOption(BackendOption opt, CompiledData& cd, std::vector<std::string> in, std::string out)
+	Backend* Backend::getBackendFromOption(BackendOption opt, CompiledData& cd,
+		const std::vector<std::string>& in, const std::string& out)
 	{
 		switch(opt)
 		{

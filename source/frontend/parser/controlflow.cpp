@@ -30,8 +30,9 @@ namespace parser
 
 
 		// first one
-		bool hadParen = false;
 		{
+			bool hadParen = false;
+
 			if(st.front() == TT::LParen)
 				hadParen = true, st.eat();
 
@@ -57,7 +58,6 @@ namespace parser
 
 				st.eat();
 			}
-			hadParen = false;
 
 			cases.back().body = parseBracedBlock(st);
 		}

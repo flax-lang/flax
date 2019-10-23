@@ -296,7 +296,7 @@ namespace parser
 		return root;
 	}
 
-	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs)
+	ParsedFile parseFile(const std::string& filename, frontend::CollectorState& cs)
 	{
 		auto full = frontend::getFullPathOfFile(filename);
 		const TokenList& tokens = frontend::getFileTokens(full);

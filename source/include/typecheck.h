@@ -31,7 +31,6 @@ namespace ast
 	struct Stmt;
 	struct TypeDefn;
 	struct FuncDefn;
-	struct FunctionCall;
 	struct Parameterisable;
 }
 

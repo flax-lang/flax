@@ -9,7 +9,7 @@
 
 namespace fir
 {
-	Module::Module(std::string nm)
+	Module::Module(const std::string& nm)
 	{
 		this->moduleName = nm;
 	}
@@ -222,11 +222,10 @@ namespace fir
 		// todo: *very* inefficient.
 
 		std::vector<Function*> ret;
-		for(auto fn : this->functions)
+		for(const auto& [ ident, fn ] : this->functions)
 		{
-			// if(fn.first.name == id.name && fn.first.scope == id.scope)
-			if(fn.first == id)
-				ret.push_back(fn.second);
+			if(ident == id)
+				ret.push_back(fn);
 		}
 
 		return ret;
@@ -276,7 +275,7 @@ namespace fir
 
 
 
-	GlobalVariable* Module::createGlobalString(std::string str)
+	GlobalVariable* Module::createGlobalString(const std::string& str)
 	{
 		static int stringId = 0;
 
@@ -308,12 +307,12 @@ namespace fir
 		std::string ret;
 		ret = "# MODULE = " + this->getModuleName() + "\n";
 
-		for(auto string : this->globalStrings)
+		for(const auto& [ str, gv ] : this->globalStrings)
 		{
-			ret += "global string (%" + std::to_string(string.second->id);
+			ret += "global string (%" + std::to_string(gv->id);
 
 			std::string copy;
-			for(auto c : string.first)
+			for(auto c : str)
 			{
 				if(c == '\r') copy += "\\r";
 				else if(c == '\n') copy += "\\n";
@@ -321,7 +320,7 @@ namespace fir
 				else copy += c;
 			}
 
-			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + copy + "\"\n";
+			ret += ") [" + std::to_string(str.length()) + "] = \"" + copy + "\"\n";
 		}
 
 		for(auto global : this->globals)
@@ -342,9 +341,9 @@ namespace fir
 			ret += "declare type :: " + type.second->str() + " { " + tl + " }\n";
 		}
 
-		for(auto fp : this->functions)
+		for(const auto& [ id, fp ] : this->functions)
 		{
-			Function* ffn = fp.second;
+			Function* ffn = fp;
 
 			std::string decl;
 
@@ -394,7 +393,7 @@ namespace fir
 
 
 
-	Function* Module::getIntrinsicFunction(std::string id)
+	Function* Module::getIntrinsicFunction(const std::string& id)
 	{
 		Identifier name;
 		FunctionType* ft = 0;
@@ -457,7 +456,9 @@ namespace fir
 	std::vector<GlobalVariable*> Module::getGlobalVariables()
 	{
 		std::vector<GlobalVariable*> ret;
-		for(auto g : this->globals)
+		ret.reserve(this->globals.size());
+
+		for(const auto& g : this->globals)
 			ret.push_back(g.second);
 
 		return ret;
@@ -466,7 +467,9 @@ namespace fir
 	std::vector<Type*> Module::getNamedTypes()
 	{
 		std::vector<Type*> ret;
-		for(auto g : this->namedTypes)
+		ret.reserve(this->namedTypes.size());
+
+		for(const auto& g : this->namedTypes)
 			ret.push_back(g.second);
 
 		return ret;
@@ -475,7 +478,9 @@ namespace fir
 	std::vector<Function*> Module::getAllFunctions()
 	{
 		std::vector<Function*> ret;
-		for(auto g : this->functions)
+		ret.reserve(this->functions.size());
+
+		for(const auto& g : this->functions)
 			ret.push_back(g.second);
 
 		return ret;
@@ -486,7 +491,7 @@ namespace fir
 		return this->moduleName;
 	}
 
-	void Module::setModuleName(std::string name)
+	void Module::setModuleName(const std::string& name)
 	{
 		this->moduleName = name;
 	}

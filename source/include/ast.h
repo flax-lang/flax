@@ -22,7 +22,6 @@ namespace fir
 
 namespace sst
 {
-	struct TypeDefn;
 	struct TypecheckState;
 	struct FunctionDefn;
 	struct FunctionDecl;
@@ -532,7 +531,7 @@ namespace ast
 
 	struct Ident : Expr
 	{
-		Ident(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "identifier"; }
+		Ident(const Location& l, const std::string& n) : Expr(l), name(n) { this->readableName = "identifier"; }
 		~Ident() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -620,7 +619,8 @@ namespace ast
 
 	struct BinaryOp : Expr
 	{
-		BinaryOp(const Location& loc, std::string o, Expr* l, Expr* r) : Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
+		BinaryOp(const Location& loc, const std::string& o, Expr* l, Expr* r)
+			: Expr(loc), op(o), left(l), right(r) { this->readableName = "binary expression"; }
 		~BinaryOp() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -702,7 +702,7 @@ namespace ast
 
 	struct FunctionCall : Expr
 	{
-		FunctionCall(const Location& l, std::string n) : Expr(l), name(n) { this->readableName = "function call"; }
+		FunctionCall(const Location& l, const std::string& n) : Expr(l), name(n) { this->readableName = "function call"; }
 		~FunctionCall() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -747,7 +747,7 @@ namespace ast
 
 	struct LitNumber : Expr
 	{
-		LitNumber(const Location& l, std::string n) : Expr(l), num(n) { this->readableName = "number literal"; }
+		LitNumber(const Location& l, const std::string& n) : Expr(l), num(n) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -777,7 +777,9 @@ namespace ast
 
 	struct LitString : Expr
 	{
-		LitString(const Location& l, std::string s, bool isc) : Expr(l), str(s), isCString(isc) { this->readableName = "string literal"; }
+		LitString(const Location& l, const std::string& s, bool isc)
+			: Expr(l), str(s), isCString(isc) { this->readableName = "string literal"; }
+
 		~LitString() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -796,7 +798,7 @@ namespace ast
 
 	struct LitTuple : Expr
 	{
-		LitTuple(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "tuple literal"; }
+		LitTuple(const Location& l, const std::vector<Expr*>& its) : Expr(l), values(its) { this->readableName = "tuple literal"; }
 		~LitTuple() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -806,7 +808,7 @@ namespace ast
 
 	struct LitArray : Expr
 	{
-		LitArray(const Location& l, std::vector<Expr*> its) : Expr(l), values(its) { this->readableName = "array literal"; }
+		LitArray(const Location& l, const std::vector<Expr*>& its) : Expr(l), values(its) { this->readableName = "array literal"; }
 		~LitArray() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
@@ -845,7 +847,7 @@ namespace ast
 
 	struct TopLevelBlock : Stmt
 	{
-		TopLevelBlock(const Location& l, std::string n) : Stmt(l), name(n) { this->readableName = "namespace"; }
+		TopLevelBlock(const Location& l, const std::string& n) : Stmt(l), name(n) { this->readableName = "namespace"; }
 		~TopLevelBlock() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;

@@ -737,7 +737,7 @@ namespace fir
 		const util::hash_map<std::string, size_t>& getElementNameMap();
 
 		const std::vector<Function*>& getMethods();
-		std::vector<Function*> getMethodsWithName(std::string id);
+		std::vector<Function*> getMethodsWithName(const std::string& id);
 		Function* getMethodWithType(FunctionType* ftype);
 
 		const std::vector<Function*>& getInitialiserFunctions();

@@ -436,7 +436,7 @@ namespace fir
 		else if(ty->isUnionType())
 		{
 			bool res = false;
-			for(auto t : ty->toUnionType()->getVariants())
+			for(const auto& t : ty->toUnionType()->getVariants())
 				res |= _containsPlaceholders(t.second, seen, found);
 
 			return res;
@@ -1119,7 +1119,7 @@ namespace fir
 			auto ut = type->toRawUnionType();
 
 			size_t maxSz = 0;
-			for(auto v : ut->getVariants())
+			for(const auto& v : ut->getVariants())
 				maxSz = std::max(maxSz, getSizeOfType(v.second));
 
 			iceAssert(maxSz > 0);

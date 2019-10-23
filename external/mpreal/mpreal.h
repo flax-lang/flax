@@ -142,7 +142,7 @@
 #endif
 
 // Less important options
-#define MPREAL_DOUBLE_BITS_OVERFLOW -1          // Triggers overflow exception during conversion to double if mpreal
+#define MPREAL_DOUBLE_BITS_OVERFLOW (-1)        // Triggers overflow exception during conversion to double if mpreal
 												// cannot fit in MPREAL_DOUBLE_BITS_OVERFLOW bits
 												// = -1 disables overflow checks (default)
 
@@ -194,8 +194,8 @@ public:
 	~mpreal();
 
 #ifdef MPREAL_HAVE_MOVE_SUPPORT
-	mpreal& operator=(mpreal&& v);
-	mpreal(mpreal&& u);
+	mpreal& operator=(mpreal&& v) noexcept;
+	mpreal(mpreal&& u) noexcept;
 #endif
 
 	// Operations
@@ -603,7 +603,7 @@ inline mpreal::mpreal(const mpreal& u)
 }
 
 #ifdef MPREAL_HAVE_MOVE_SUPPORT
-inline mpreal::mpreal(mpreal&& other)
+inline mpreal::mpreal(mpreal&& other) noexcept
 {
 	mpfr_set_uninitialized(mpfr_ptr());     // make sure "other" holds no pointer to actual data
 	mpfr_swap(mpfr_ptr(), other.mpfr_ptr());
@@ -611,7 +611,7 @@ inline mpreal::mpreal(mpreal&& other)
 	MPREAL_MSVC_DEBUGVIEW_CODE;
 }
 
-inline mpreal& mpreal::operator=(mpreal&& other)
+inline mpreal& mpreal::operator=(mpreal&& other) noexcept
 {
 	mpfr_swap(mpfr_ptr(), other.mpfr_ptr());
 
@@ -1093,7 +1093,8 @@ inline mpreal& mpreal::operator=(const std::string& s)
 template <typename real_t>
 inline mpreal& mpreal::operator= (const std::complex<real_t>& z)
 {
-	return *this = z.real();
+	*this = z.real();
+	return *this;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3004,7 +3005,7 @@ namespace std
 {
 	// we are allowed to extend namespace std with specializations only
 	template <>
-	inline void swap(mpfr::mpreal& x, mpfr::mpreal& y)
+	inline void swap(mpfr::mpreal& x, mpfr::mpreal& y) noexcept
 	{
 		return mpfr::swap(x, y);
 	}

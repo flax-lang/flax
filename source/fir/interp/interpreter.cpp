@@ -157,8 +157,17 @@ namespace interp
 		if(target->dataSize != sz)
 			error("interp: cannot set value, size mismatch (%d vs %d)", target->dataSize, sz);
 
-		if(sz > LARGE_DATA_SIZE)    memmove(target->ptr, value, sz);
-		else                        memmove(&target->data[0], value, sz);
+		if(sz > LARGE_DATA_SIZE)
+		{
+			if(!target->ptr)
+				target->ptr = calloc(1, sz);
+
+			memmove(target->ptr, value, sz);
+		}
+		else
+		{
+			memmove(&target->data[0], value, sz);
+		}
 	}
 
 	static void setValue(InterpState* is, interp::Value* target, const interp::Value& val)
@@ -242,6 +251,8 @@ namespace interp
 			const std::vector<ConstantValue*>& inserts) -> interp::Value
 		{
 			std::vector<interp::Value> vals;
+			vals.reserve(inserts.size());
+
 			for(const auto& x : inserts)
 				vals.push_back(makeConstant(is, x));
 
@@ -401,6 +412,8 @@ namespace interp
 		}
 		else
 		{
+			iceAssert(c);
+
 			auto ret = is->makeValue(c);
 			return (cachedConstants[c] = ret);
 		}
@@ -420,7 +433,7 @@ namespace interp
 
 	void InterpState::initialise()
 	{
-		for(const auto [ str, glob ] : this->module->_getGlobalStrings())
+		for(const auto& [ str, glob ] : this->module->_getGlobalStrings())
 		{
 			auto val = makeValue(glob);
 			auto s = makeGlobalString(this, str);
@@ -431,7 +444,7 @@ namespace interp
 			this->globals[glob] = { val, false };
 		}
 
-		for(const auto [ id, glob ] : this->module->_getGlobals())
+		for(const auto& [ id, glob ] : this->module->_getGlobals())
 		{
 			auto ty = glob->getType();
 			auto sz = getSizeOfType(ty);
@@ -455,14 +468,14 @@ namespace interp
 			this->globals[glob] = { ret, false };
 		}
 
-		for(auto intr : this->module->_getIntrinsicFunctions())
+		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
 		{
-			auto fname = Identifier("__interp_intrinsic_" + intr.first.str(), IdKind::Name);
-			auto fn = this->module->getOrCreateFunction(fname, intr.second->getType(), fir::LinkageType::ExternalWeak);
+			auto fname = Identifier("__interp_intrinsic_" + id.str(), IdKind::Name);
+			auto fn = this->module->getOrCreateFunction(fname, intr->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
 			// new function here `fn` that doesn't match the intrinsic function `intr`, we need to map that as well.
-			this->compiledFunctions[intr.second] = this->compileFunction(fn);
+			this->compiledFunctions[intr] = this->compileFunction(fn);
 		}
 
 
@@ -999,7 +1012,7 @@ namespace interp
 		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, size_t(8))];
 		ffi_call(&fn_cif, reinterpret_cast<void(*)()>(fnptr), ret_buffer, arg_pointers);
 
-		interp::Value ret;
+		interp::Value ret = { 0 };
 		ret.type = fnty->getReturnType();
 		ret.dataSize = ffi_retty->size;
 

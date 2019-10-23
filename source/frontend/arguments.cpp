@@ -107,7 +107,7 @@ static void printHelp()
 	printf("options:\n");
 
 	size_t maxl = 0;
-	for(auto p : list)
+	for(const auto& p : list)
 	{
 		if(p.first.length() > maxl)
 			maxl = p.first.length();
@@ -116,8 +116,8 @@ static void printHelp()
 	maxl += 4;
 
 	// ok
-	for(auto p : list)
-		printf("  %s%s%s\n", p.first.c_str(), std::string(maxl - p.first.length(), ' ').c_str(), p.second.c_str());
+	for(const auto& [ opt, desc ] : list)
+		printf("  %s%s%s\n", opt.c_str(), std::string(maxl - opt.length(), ' ').c_str(), desc.c_str());
 
 	printf("\n");
 }
@@ -277,7 +277,7 @@ namespace frontend
 	}
 
 
-	std::string getParameter(std::string name)
+	std::string getParameter(const std::string& name)
 	{
 		if(name == "mcmodel")
 			return _mcModel;

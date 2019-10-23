@@ -76,7 +76,7 @@ namespace sst
 		RawValueExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<RAW VALUE EXPRESSION>"; }
 		~RawValueExpr() { }
 
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->rawValue; }
+		virtual CGResult _codegen(cgn::CodegenState*, fir::Type* = 0) override { return this->rawValue; }
 
 		CGResult rawValue;
 	};
@@ -692,7 +692,7 @@ namespace sst
 		~StructFieldDefn() { }
 
 		virtual std::string getKind() override { return "field"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
+		virtual CGResult _codegen(cgn::CodegenState*, fir::Type* = 0) override { return CGResult(0); }
 
 		TypeDefn* parentType = 0;
 		bool isTransparentField = false;

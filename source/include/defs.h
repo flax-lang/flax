@@ -28,7 +28,7 @@ namespace zpr
 		(std::is_pointer_v<T> && std::is_base_of_v<fir::Type, std::remove_pointer_t<T>>)
 	>::type>
 	{
-		std::string print(const T& x, const format_args& args)
+		std::string print(const T& x, const format_args&)
 		{
 			return x->str();
 		}
@@ -73,14 +73,13 @@ std::string strprintf(const char* fmt, Ts&&... ts)
 #define __nothing
 
 #ifdef NDEBUG
-#define iceAssert(x)        ((void) (x))
+#define iceAssert(x)    ((void) (x))
 #else
-#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#define iceAssert(x)    ((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 #endif
 
-#define TAB_WIDTH	4
-
-#define dcast(t, v)		dynamic_cast<t*>(v)
+#define TAB_WIDTH       4
+#define dcast(t, v)     (dynamic_cast<t*>(v))
 
 namespace util
 {
@@ -138,7 +137,7 @@ template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 struct Identifier
 {
 	Identifier() : name(""), kind(IdKind::Invalid) { }
-	Identifier(std::string n, IdKind k) : name(n), kind(k) { }
+	Identifier(const std::string& n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
 	std::vector<std::string> scope;
@@ -460,7 +459,7 @@ struct TCResult
 		else if(this->isDefn()) this->_df = r._df;
 	}
 
-	TCResult(TCResult&& r)
+	TCResult(TCResult&& r) noexcept
 	{
 		this->_kind = r._kind;
 
@@ -477,7 +476,7 @@ struct TCResult
 		return *this;
 	}
 
-	TCResult& operator = (TCResult&& r)
+	TCResult& operator = (TCResult&& r) noexcept
 	{
 		if(&r != this)
 		{

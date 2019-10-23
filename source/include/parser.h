@@ -46,7 +46,7 @@ namespace parser
 	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t i, int* kind, CustomOperatorDecl* out);
 
 	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens);
-	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs);
+	ParsedFile parseFile(const std::string& filename, frontend::CollectorState& cs);
 }
 
 

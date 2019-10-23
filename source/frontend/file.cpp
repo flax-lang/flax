@@ -93,7 +93,7 @@ namespace frontend
 		{
 			pos.fileID = getFileIDFromFilename(fullPath);
 
-			innards.fileContents = std::move(fileContents);
+			innards.fileContents = fileContents;
 			innards.lines = std::move(rawlines);
 		}
 
@@ -164,8 +164,7 @@ namespace frontend
 
 	const util::FastInsertVector<std::string_view>& getFileLines(size_t id)
 	{
-		std::string fp = getFilenameFromID(id);
-		return readFileIfNecessary(fp).lines;
+		return readFileIfNecessary(getFilenameFromID(id)).lines;
 	}
 
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename)
@@ -210,7 +209,7 @@ namespace frontend
 
 	std::string removeExtensionFromFilename(const std::string& name)
 	{
-		auto i = name.find_last_of(".");
+		auto i = name.find_last_of('.');
 		return name.substr(0, i);
 	}
 }

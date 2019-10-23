@@ -107,11 +107,11 @@ namespace fir
 	void StructType::setBody(const std::vector<std::pair<std::string, Type*>>& members)
 	{
 		size_t i = 0;
-		for(auto p : members)
+		for(const auto& [ name, ty ] : members)
 		{
-			this->structMembers[p.first] = p.second;
-			this->indexMap[p.first] = i;
-			this->typeList.push_back(p.second);
+			this->structMembers[name] = ty;
+			this->indexMap[name] = i;
+			this->typeList.push_back(ty);
 
 			i++;
 		}

@@ -77,9 +77,6 @@ inline void debuglogln(const char* s, Ts&&... ts)
 
 
 
-namespace ast { struct Expr; }
-namespace sst { struct Expr; }
-
 namespace frontend
 {
 	const std::string& getFilenameFromID(size_t fileID);

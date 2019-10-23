@@ -51,7 +51,7 @@ namespace cgn
 
 	namespace glue
 	{
-		void printRuntimeError(CodegenState* cs, fir::Value* pos, std::string msg, std::vector<fir::Value*> args);
+		void printRuntimeError(CodegenState* cs, fir::Value* pos, const std::string& msg, const std::vector<fir::Value*>& args);
 
 		namespace string
 		{

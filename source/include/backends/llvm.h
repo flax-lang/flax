@@ -93,7 +93,7 @@ namespace backend
 
 	struct LLVMBackend : Backend
 	{
-		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
+		LLVMBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output);
 		virtual ~LLVMBackend() { }
 
 		virtual void performCompilation() override;

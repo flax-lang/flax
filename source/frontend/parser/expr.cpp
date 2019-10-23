@@ -850,7 +850,7 @@ namespace parser
 		return ret;
 	}
 
-	static FunctionCall* parseFunctionCall(State& st, const Location& loc, std::string name)
+	static FunctionCall* parseFunctionCall(State& st, const Location& loc, const std::string& name)
 	{
 		auto ret = util::pool<FunctionCall>(loc, name);
 

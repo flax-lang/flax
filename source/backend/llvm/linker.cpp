@@ -90,7 +90,8 @@ namespace backend
 		return globalContext;
 	}
 
-	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
+	LLVMBackend::LLVMBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output)
+		: Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 	}
 

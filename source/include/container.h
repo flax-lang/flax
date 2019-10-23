@@ -46,7 +46,7 @@ namespace util
 			return *this;
 		}
 
-		FastInsertVector(FastInsertVector&& other)
+		FastInsertVector(FastInsertVector&& other) noexcept
 		{
 			// move.
 			this->chunks = std::move(other.chunks);
@@ -56,7 +56,7 @@ namespace util
 			other.length = 0;
 		}
 
-		FastInsertVector& operator = (FastInsertVector&& other)
+		FastInsertVector& operator = (FastInsertVector&& other) noexcept
 		{
 			if(this != &other)
 			{
@@ -158,12 +158,12 @@ namespace util
 			return *this;
 		}
 
-		MemoryPool(MemoryPool&& other)
+		MemoryPool(MemoryPool&& other) noexcept
 		{
 			this->storage = std::move(other.storage);
 		}
 
-		MemoryPool& operator = (MemoryPool&& other)
+		MemoryPool& operator = (MemoryPool&& other) noexcept
 		{
 			if(this != &other) this->storage = std::move(other.storage);
 			return *this;

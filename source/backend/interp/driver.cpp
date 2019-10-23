@@ -32,7 +32,7 @@ namespace backend
 	using namespace fir;
 	using namespace fir::interp;
 
-	FIRInterpBackend::FIRInterpBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output)
+	FIRInterpBackend::FIRInterpBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output)
 		: Backend(BackendCaps::JIT, dat, inputs, output)
 	{
 		platform::compiler::performSelfDlOpen();

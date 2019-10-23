@@ -11,11 +11,6 @@
 #include "value.h"
 #include "function.h"
 
-namespace llvm
-{
-	class Module;
-}
-
 
 namespace fir
 {
@@ -24,7 +19,7 @@ namespace fir
 		friend struct GlobalValue;
 		friend struct GlobalVariable;
 
-		Module(std::string nm);
+		Module(const std::string& nm);
 
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage);
 		GlobalVariable* createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage);
@@ -34,7 +29,7 @@ namespace fir
 
 		GlobalVariable* getOrCreateVirtualTableForClass(ClassType* cls);
 
-		GlobalVariable* createGlobalString(std::string str);
+		GlobalVariable* createGlobalString(const std::string& str);
 
 		std::vector<GlobalVariable*> getGlobalVariables();
 		std::vector<Function*> getAllFunctions();
@@ -42,7 +37,7 @@ namespace fir
 
 		// note: only looks at the name + scope, excludes the parameter list.
 		std::vector<Function*> getFunctionsWithName(const Identifier& id);
-		Function* getIntrinsicFunction(std::string id);
+		Function* getIntrinsicFunction(const std::string& id);
 
 		Type* getNamedType(const Identifier& name);
 		void addNamedType(const Identifier& name, Type* type);
@@ -55,7 +50,7 @@ namespace fir
 		Function* getOrCreateFunction(const Identifier& id, FunctionType* ftype, LinkageType linkage);
 
 		std::string getModuleName();
-		void setModuleName(std::string name);
+		void setModuleName(const std::string& name);
 
 		std::string print();
 

@@ -53,7 +53,7 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 {
 	if(loc.fileID == 0) return "";
 
-	auto lines = frontend::getFileLines(loc.fileID);
+	const auto& lines = frontend::getFileLines(loc.fileID);
 	if(lines.size() > loc.line)
 	{
 		std::stringstream ln;
@@ -123,7 +123,7 @@ static std::string getSpannedContext(const Location& loc, const std::vector<util
 		// columns actually start at 1 for some reason.
 		ret += spaces(LEFT_PADDING - 1);
 
-		for(auto span : spans)
+		for(const auto& span : spans)
 		{
 			std::string underliner = (span.loc.len < 3 ? "^" : UNDERLINE_CHARACTER);
 

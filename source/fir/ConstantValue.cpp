@@ -215,12 +215,12 @@ namespace fir
 
 
 
-	ConstantStruct* ConstantStruct::get(StructType* st, std::vector<ConstantValue*> members)
+	ConstantStruct* ConstantStruct::get(StructType* st, const std::vector<ConstantValue*>& members)
 	{
 		return new ConstantStruct(st, members);
 	}
 
-	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
+	ConstantStruct::ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
 			error("mismatched structs: expected %d fields, got %d", st->getElementCount(), members.size());
@@ -243,12 +243,12 @@ namespace fir
 
 
 
-	ConstantCharSlice* ConstantCharSlice::get(std::string s)
+	ConstantCharSlice* ConstantCharSlice::get(const std::string& s)
 	{
 		return new ConstantCharSlice(s);
 	}
 
-	ConstantCharSlice::ConstantCharSlice(std::string s) : ConstantValue(fir::Type::getCharSlice(false))
+	ConstantCharSlice::ConstantCharSlice(const std::string& s) : ConstantValue(fir::Type::getCharSlice(false))
 	{
 		this->str = s;
 	}
@@ -260,7 +260,7 @@ namespace fir
 
 
 
-	ConstantTuple* ConstantTuple::get(std::vector<ConstantValue*> mems)
+	ConstantTuple* ConstantTuple::get(const std::vector<ConstantValue*>& mems)
 	{
 		return new ConstantTuple(mems);
 	}
@@ -270,9 +270,11 @@ namespace fir
 		return this->values;
 	}
 
-	static std::vector<Type*> mapTypes(std::vector<ConstantValue*> vs)
+	static std::vector<Type*> mapTypes(const std::vector<ConstantValue*>& vs)
 	{
 		std::vector<Type*> ret;
+		ret.reserve(vs.size());
+
 		for(auto v : vs)
 			ret.push_back(v->getType());
 
@@ -280,7 +282,7 @@ namespace fir
 	}
 
 	// well this is stupid.
-	ConstantTuple::ConstantTuple(std::vector<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
+	ConstantTuple::ConstantTuple(const std::vector<ConstantValue*>& mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
 	{
 		this->values = mems;
 	}
@@ -338,12 +340,12 @@ namespace fir
 
 
 
-	ConstantArray* ConstantArray::get(Type* type, std::vector<ConstantValue*> vals)
+	ConstantArray* ConstantArray::get(Type* type, const std::vector<ConstantValue*>& vals)
 	{
 		return new ConstantArray(type, vals);
 	}
 
-	ConstantArray::ConstantArray(Type* type, std::vector<ConstantValue*> vals) : fir::ConstantValue(type)
+	ConstantArray::ConstantArray(Type* type, const std::vector<ConstantValue*>& vals) : fir::ConstantValue(type)
 	{
 		this->values = vals;
 	}

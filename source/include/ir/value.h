@@ -65,7 +65,7 @@ namespace fir
 
 		// methods
 		void setName(const Identifier& idt);
-		void setName(std::string s);
+		void setName(const std::string& s);
 		const Identifier& getName();
 		bool hasName();
 

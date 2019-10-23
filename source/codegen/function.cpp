@@ -18,7 +18,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	std::vector<fir::Type*> ptypes;
 
-	for(auto p : this->params)
+	for(const auto& p : this->params)
 		ptypes.push_back(p.type);
 
 	auto ft = fir::FunctionType::get(ptypes, this->returnType);
@@ -106,7 +106,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::FunctionType* ft = 0;
 	std::vector<fir::Type*> ptypes;
-	for(auto p : this->params)
+	for(const auto& p : this->params)
 		ptypes.push_back(p.type);
 
 	if(this->isVarArg)

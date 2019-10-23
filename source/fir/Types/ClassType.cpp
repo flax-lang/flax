@@ -108,13 +108,13 @@ namespace fir
 			}
 		}
 
-		for(auto p : members)
+		for(const auto& [ name, ty ] : members)
 		{
-			this->classMembers[p.first] = p.second;
-			this->indexMap[p.first] = i;
+			this->classMembers[name] = ty;
+			this->indexMap[name] = i;
 
-			this->nameList.push_back(p.first);
-			this->typeList.push_back(p.second);
+			this->nameList.push_back(name);
+			this->typeList.push_back(ty);
 
 			i++;
 		}
@@ -217,10 +217,12 @@ namespace fir
 		return this->methodList;
 	}
 
-	std::vector<Function*> ClassType::getMethodsWithName(std::string id)
+	std::vector<Function*> ClassType::getMethodsWithName(const std::string& id)
 	{
-		std::vector<Function*> ret;
 		auto l = this->classMethodMap[id];
+
+		std::vector<Function*> ret;
+		ret.reserve(l.size());
 
 		for(auto f : l)
 			ret.push_back(f);
@@ -370,7 +372,7 @@ namespace fir
 
 		// check every member of the current mapping -- not the fastest method i admit.
 		bool found = false;
-		for(auto vm : this->virtualMethodMap)
+		for(const auto& vm : this->virtualMethodMap)
 		{
 			if(vm.first.first == method->getName().name
 				&& _areTypeListsVirtuallyCompatible(vm.first.second, list))

@@ -30,7 +30,7 @@ namespace fir
 		this->ident = name;
 	}
 
-	void Value::setName(std::string name)
+	void Value::setName(const std::string& name)
 	{
 		this->ident = Identifier(name, IdKind::Name);
 	}

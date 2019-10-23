@@ -120,12 +120,12 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantArray* get(Type* type, std::vector<ConstantValue*> vals);
+		static ConstantArray* get(Type* type, const std::vector<ConstantValue*>& vals);
 
 		std::vector<ConstantValue*> getValues() { return this->values; }
 
 		protected:
-		ConstantArray(Type* type, std::vector<ConstantValue*> vals);
+		ConstantArray(Type* type, const std::vector<ConstantValue*>& vals);
 
 		std::vector<ConstantValue*> values;
 	};
@@ -134,10 +134,10 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantStruct* get(StructType* st, std::vector<ConstantValue*> members);
+		static ConstantStruct* get(StructType* st, const std::vector<ConstantValue*>& members);
 
 		protected:
-		ConstantStruct(StructType* st, std::vector<ConstantValue*> members);
+		ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members);
 		std::vector<ConstantValue*> members;
 	};
 
@@ -161,11 +161,11 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantCharSlice* get(std::string value);
+		static ConstantCharSlice* get(const std::string& value);
 		std::string getValue();
 
 		protected:
-		ConstantCharSlice(std::string str);
+		ConstantCharSlice(const std::string& str);
 
 		std::string str;
 	};
@@ -174,11 +174,11 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantTuple* get(std::vector<ConstantValue*> mems);
+		static ConstantTuple* get(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> getValues();
 
 		protected:
-		ConstantTuple(std::vector<ConstantValue*> mems);
+		ConstantTuple(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> values;
 	};
 

@@ -7,13 +7,15 @@
 
 namespace fir
 {
+	using PolySubst = util::hash_map<fir::Type*, fir::Type*>;
+
 	static AnyType* singleAny = 0;
 	AnyType::AnyType() : Type(TypeKind::Any)            { }
 	std::string AnyType::str()                          { return "any"; }
 	std::string AnyType::encodedStr()                   { return "any"; }
 	bool AnyType::isTypeEqual(Type* other)              { return other && other->isAnyType(); }
 	AnyType* AnyType::get()                             { return singleAny = (singleAny ? singleAny : new AnyType()); }
-	fir::Type* AnyType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)     { return this; }
+	fir::Type* AnyType::substitutePlaceholders(const PolySubst&)    { return this; }
 
 
 	static BoolType* singleBool = 0;
@@ -22,7 +24,7 @@ namespace fir
 	std::string BoolType::encodedStr()                  { return "bool"; }
 	bool BoolType::isTypeEqual(Type* other)             { return other && other->isBoolType(); }
 	BoolType* BoolType::get()                           { return singleBool = (singleBool ? singleBool : new BoolType()); }
-	fir::Type* BoolType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)    { return this; }
+	fir::Type* BoolType::substitutePlaceholders(const PolySubst&)   { return this; }
 
 
 	static VoidType* singleVoid = 0;
@@ -31,7 +33,7 @@ namespace fir
 	std::string VoidType::encodedStr()                  { return "void"; }
 	bool VoidType::isTypeEqual(Type* other)             { return other && other->isVoidType(); }
 	VoidType* VoidType::get()                           { return singleVoid = (singleVoid ? singleVoid : new VoidType()); }
-	fir::Type* VoidType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)    { return this; }
+	fir::Type* VoidType::substitutePlaceholders(const PolySubst&)   { return this; }
 
 
 	static NullType* singleNull = 0;
@@ -40,7 +42,7 @@ namespace fir
 	std::string NullType::encodedStr()                  { return "nulltype"; }
 	bool NullType::isTypeEqual(Type* other)             { return other && other->isNullType(); }
 	NullType* NullType::get()                           { return singleNull = (singleNull ? singleNull : new NullType()); }
-	fir::Type* NullType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)    { return this; }
+	fir::Type* NullType::substitutePlaceholders(const PolySubst&)   { return this; }
 
 
 	static RangeType* singleRange = 0;
@@ -49,7 +51,7 @@ namespace fir
 	std::string RangeType::encodedStr()                 { return "range"; }
 	bool RangeType::isTypeEqual(Type* other)            { return other && other->isRangeType(); }
 	RangeType* RangeType::get()                         { return singleRange = (singleRange ? singleRange : new RangeType()); }
-	fir::Type* RangeType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)   { return this; }
+	fir::Type* RangeType::substitutePlaceholders(const PolySubst&)  { return this; }
 
 
 	static StringType* singleString = 0;
@@ -58,7 +60,7 @@ namespace fir
 	std::string StringType::encodedStr()                { return "string"; }
 	bool StringType::isTypeEqual(Type* other)           { return other && other->isStringType(); }
 	StringType* StringType::get()                       { return singleString = (singleString ? singleString : new StringType()); }
-	fir::Type* StringType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)  { return this; }
+	fir::Type* StringType::substitutePlaceholders(const PolySubst&) { return this; }
 
 
 
@@ -86,7 +88,7 @@ namespace fir
 		this->_signed = neg;
 		this->_floating = flt;
 	}
-	fir::Type* ConstantNumberType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* ConstantNumberType::substitutePlaceholders(const PolySubst& subst)
 	{
 		return this;
 	}
@@ -181,7 +183,7 @@ namespace fir
 	}
 
 
-	static fir::Type* _substitute(const util::hash_map<fir::Type*, fir::Type*>& subst, fir::Type* t)
+	static fir::Type* _substitute(const PolySubst& subst, fir::Type* t)
 	{
 		if(auto it = subst.find(t); it != subst.end())
 			return it->second->substitutePlaceholders(subst);
@@ -189,7 +191,7 @@ namespace fir
 		return t;
 	}
 
-	fir::Type* PolyPlaceholderType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)
+	fir::Type* PolyPlaceholderType::substitutePlaceholders(const PolySubst& subst)
 	{
 		return _substitute(subst, this);
 	}

@@ -184,21 +184,21 @@ namespace zpr
 
 		// we need bogus ones that don't take the arguments. if we get error handling, these will throw errors.
 		template <typename... Args>
-		std::string _consume_both_sprint(const format_args& args, const char* fmt, Args&&... xs)
+		std::string _consume_both_sprint(const format_args&, const char* fmt, Args&&... xs)
 		{
 			return std::string("<missing width and prec>")
 				.append(sprint(fmt, xs...));
 		}
 
 		template <typename... Args>
-		std::string _consume_prec_sprint(const format_args& args, const char* fmt, Args&&... xs)
+		std::string _consume_prec_sprint(const format_args&, const char* fmt, Args&&... xs)
 		{
 			return std::string("<missing prec>")
 				.append(sprint(fmt, xs...));
 		}
 
 		template <typename... Args>
-		std::string _consume_width_sprint(const format_args& args, const char* fmt, Args&&... xs)
+		std::string _consume_width_sprint(const format_args&, const char* fmt, Args&&... xs)
 		{
 			return std::string("<missing width>")
 				.append(sprint(fmt, xs...));
@@ -317,7 +317,9 @@ namespace zpr
 			if constexpr (!std::is_enum_v<T> && std::is_signed_v<T>)
 			{
 				is_neg = (x < 0);
-				if(is_neg) x = -x;
+
+				if(is_neg)
+					x = -x;
 			}
 
 			std::string digits;

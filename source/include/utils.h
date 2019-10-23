@@ -39,7 +39,7 @@ std::vector<T> operator + (const std::vector<T>& a, const std::vector<T>& b)
 namespace util
 {
 	template <typename T>
-	bool match(const T& first)
+	bool match(const T&)
 	{
 		return true;
 	}
@@ -56,16 +56,10 @@ namespace util
 		return (first == second) || match(first, comps...);
 	}
 
-	template <typename T>
-	std::vector<T> merge(const std::vector<T>& x)
-	{
-		return x;
-	}
-
 	template <typename T, typename... Args>
 	std::vector<T> merge(const std::vector<T>& x, const Args&... xs)
 	{
-		return x + merge(xs...);
+		return (x + ... + xs);
 	}
 
 
@@ -98,7 +92,7 @@ namespace util
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T)>::type>
 	std::vector<K> map(const std::vector<T>& input, UnaryOp fn)
 	{
-		std::vector<K> ret;
+		std::vector<K> ret; ret.reserve(input.size());
 		for(const auto& i : input)
 			ret.push_back(fn(i));
 
@@ -123,7 +117,7 @@ namespace util
 	template <typename T, class UnaryOp, typename K = typename std::result_of<UnaryOp(T, size_t)>::type>
 	std::vector<K> mapidx(const std::vector<T>& input, UnaryOp fn)
 	{
-		std::vector<K> ret;
+		std::vector<K> ret; ret.reserve(input.size());
 		for(size_t i = 0; i < input.size(); i++)
 			ret.push_back(fn(input[i], i));
 

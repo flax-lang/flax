@@ -11,7 +11,7 @@
 namespace cgn {
 namespace glue {
 
-void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string message, std::vector<fir::Value*> args)
+void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, const std::string& message, const std::vector<fir::Value*>& args)
 {
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
