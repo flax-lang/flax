@@ -90,7 +90,6 @@ namespace fir
 
 	bool areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn, bool traitChecking)
 	{
-		debuglogln("check %s, %s", base, fn);
 		bool ret = areTypeListsContravariant(util::drop(base->getArgumentTypes(), 1),
 			util::drop(fn->getArgumentTypes(), 1), traitChecking);
 
