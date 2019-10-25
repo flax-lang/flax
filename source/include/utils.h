@@ -210,6 +210,12 @@ namespace util
 	}
 
 	template <typename T>
+	bool contains(const std::vector<T>& input, const T& x)
+	{
+		return std::find(input.begin(), input.end(), x) != input.end();
+	}
+
+	template <typename T>
 	std::vector<T> take(const std::vector<T>& v, size_t num)
 	{
 		return std::vector<T>(v.begin(), v.begin() + std::min(num, v.size()));

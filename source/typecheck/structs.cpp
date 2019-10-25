@@ -191,6 +191,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		iceAssert(tdef);
 
 		defn->traits.push_back(tdef);
+		str->addTraitImpl(tdef->type->toTraitType());
 	}
 
 

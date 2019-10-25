@@ -52,6 +52,16 @@ namespace fir
 	void setNativeWordSizeInBits(size_t sz);
 	size_t getNativeWordSizeInBits();
 
+	// in theory.
+	size_t getSizeOfType(Type* type);
+	size_t getAlignmentOfType(Type* type);
+
+	bool areTypesCovariant(Type* base, Type* derv);
+	bool areTypesContravariant(Type* base, Type* derv, bool traitChecking);
+	bool areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn, bool traitChecking);
+	bool areTypeListsContravariant(const std::vector<Type*>& base, const std::vector<Type*>& derv, bool traitChecking);
+
+
 	enum class TypeKind
 	{
 		Invalid,
@@ -80,10 +90,6 @@ namespace fir
 		ConstantNumber,
 		PolyPlaceholder,
 	};
-
-	// in theory.
-	size_t getSizeOfType(Type* type);
-	size_t getAlignmentOfType(Type* type);
 
 	struct Type
 	{
@@ -688,7 +694,9 @@ namespace fir
 
 		void setBody(const std::vector<std::pair<std::string, Type*>>& members);
 
-
+		void addTraitImpl(TraitType* trt);
+		bool implementsTrait(TraitType* trt);
+		std::vector<TraitType*> getImplementedTraits();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
@@ -704,6 +712,7 @@ namespace fir
 		bool isTypePacked;
 		Identifier structName;
 		std::vector<Type*> typeList;
+		std::vector<TraitType*> implTraits;
 		util::hash_map<std::string, size_t> indexMap;
 		util::hash_map<std::string, Type*> structMembers;
 
@@ -763,6 +772,10 @@ namespace fir
 		Function* getCopyConstructor();
 		Function* getMoveConstructor();
 
+		void addTraitImpl(TraitType* trt);
+		bool implementsTrait(TraitType* trt);
+		std::vector<TraitType*> getImplementedTraits();
+
 		bool hasParent(Type* base);
 
 		void addVirtualMethod(Function* method);
@@ -788,6 +801,8 @@ namespace fir
 		std::vector<std::string> nameList;
 		std::vector<Function*> methodList;
 		std::vector<Function*> initialiserList;
+
+		std::vector<TraitType*> implTraits;
 
 		util::hash_map<std::string, size_t> indexMap;
 		util::hash_map<std::string, Type*> classMembers;
@@ -819,9 +834,6 @@ namespace fir
 		static ClassType* createWithoutBody(const Identifier& name);
 		static ClassType* create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
 			const std::vector<Function*>& methods, const std::vector<Function*>& inits);
-
-		// returns true if 'fn' is a valid virtual override of 'base'. deals with co/contra-variance
-		static bool areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn);
 	};
 
 

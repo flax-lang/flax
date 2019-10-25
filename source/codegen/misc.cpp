@@ -54,8 +54,8 @@ sst::FunctionDefn* cgn::CodegenState::findMatchingMethodInType(sst::TypeDefn* td
 
 			//* i think this check should work, `areMethodsVirtuallyCompatible` basically checks the parameters but takes
 			//* co/contravariance into account and doesn't match the first (self) parameter.
-			return (fn->id.name == method->id.name && fir::ClassType::areMethodsVirtuallyCompatible(
-				fn->type->toFunctionType(), method->type->toFunctionType())
+			return (fn->id.name == method->id.name && fir::areMethodsVirtuallyCompatible(
+				fn->type->toFunctionType(), method->type->toFunctionType(), /* checking trait: */ true)
 			);
 		});
 

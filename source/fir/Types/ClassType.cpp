@@ -6,8 +6,6 @@
 #include "ir/type.h"
 #include "ir/function.h"
 
-#include "pts.h"
-
 namespace fir
 {
 	// structs
@@ -279,6 +277,25 @@ namespace fir
 	}
 
 
+	void ClassType::addTraitImpl(TraitType* trt)
+	{
+		if(util::contains(this->implTraits, trt))
+			error("'%s' already implements trait '%s'", this, trt);
+
+		this->implTraits.push_back(trt);
+	}
+
+	bool ClassType::implementsTrait(TraitType* trt)
+	{
+		return util::contains(this->implTraits, trt);
+	}
+
+	std::vector<TraitType*> ClassType::getImplementedTraits()
+	{
+		return this->implTraits;
+	}
+
+
 	ClassType* ClassType::getBaseClass()
 	{
 		return this->baseClass;
@@ -297,68 +314,6 @@ namespace fir
 	}
 
 
-	// expects the self param to be removed already!!!
-	// note: this one doesn't check if the return types are compatible; we expect typechecking to have already
-	// verified that, and we don't store the return type in the class virtual method map anyway.
-	static bool _areTypeListsVirtuallyCompatible(const std::vector<Type*>& base, const std::vector<Type*>& fn)
-	{
-		// parameters must be contravariant, ie. fn must take more general types than base
-		// return type must be covariant, ie. fn must return a more specific type than base.
-
-		// duh
-		if(base.size() != fn.size())
-			return false;
-
-		// drop the first argument.
-		for(auto [ base, derv ] : util::zip(base, fn))
-		{
-			if(base == derv)
-				continue;
-
-			if(!derv->isPointerType() || !derv->getPointerElementType()->isClassType()
-				|| !base->isPointerType() || !base->getPointerElementType()->isClassType())
-			{
-				return false;
-			}
-
-			auto bce = base->getPointerElementType();
-			auto dce = derv->getPointerElementType();
-
-			if(bce->isClassType() && dce->isClassType() && !bce->toClassType()->hasParent(dce))
-				return false;
-		}
-
-		return true;
-	}
-
-	bool ClassType::areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn)
-	{
-		bool ret = _areTypeListsVirtuallyCompatible(util::drop(base->getArgumentTypes(), 1), util::drop(fn->getArgumentTypes(), 1));
-
-		if(!ret)
-			return false;
-
-		auto baseRet = base->getReturnType();
-		auto fnRet = fn->getReturnType();
-
-		// ok now check the return type.
-		if(baseRet == fnRet)
-			return true;
-
-		if(baseRet->isPointerType() && baseRet->getPointerElementType()->isClassType()
-			&& fnRet->isPointerType() && fnRet->getPointerElementType()->isClassType())
-		{
-			auto br = baseRet->getPointerElementType()->toClassType();
-			auto dr = fnRet->getPointerElementType()->toClassType();
-
-			return dr->hasParent(br);
-		}
-		else
-		{
-			return false;
-		}
-	}
-
 	void ClassType::addVirtualMethod(Function* method)
 	{
 		//* note: the 'reverse' virtual method map is to allow us, at translation time, to easily create the vtable without
@@ -374,8 +329,7 @@ namespace fir
 		bool found = false;
 		for(const auto& vm : this->virtualMethodMap)
 		{
-			if(vm.first.first == method->getName().name
-				&& _areTypeListsVirtuallyCompatible(vm.first.second, list))
+			if(vm.first.first == method->getName().name && areTypeListsContravariant(vm.first.second, list, /* trait checking: */ false))
 			{
 				found = true;
 				this->virtualMethodMap[{ method->getName().name, list }] = vm.second;

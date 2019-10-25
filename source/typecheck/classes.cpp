@@ -183,20 +183,15 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 				auto checkSingleMethod = [](sst::ClassDefn* cls, sst::FunctionDefn* self, sst::FunctionDefn* bf, bool* matchedName) -> bool {
 
-					// ok -- issue is that we cannot compare the method signatures directly -- because the method will take the 'self' of its
-					// respective class, meaning they won't be duplicates. so, we must compare without the first parameter.
-					auto compareMethodSignatures = [](fir::FunctionType* a, fir::FunctionType* b) -> bool {
-
-						// well the order is important!!
-						return fir::ClassType::areMethodsVirtuallyCompatible(a, b);
-					};
-
 					if(bf->id.name == self->id.name)
 					{
 						*matchedName |= true;
 
-						if(!compareMethodSignatures(bf->type->toFunctionType(), self->type->toFunctionType()))
+						if(!fir::areMethodsVirtuallyCompatible(bf->type->toFunctionType(), self->type->toFunctionType(),
+							/* trait checking: */ false))
+						{
 							return false;
+						}
 
 						// check for virtual functions.
 						//* note: we don't need to care if 'bf' is the base method, because if we are 'isOverride', then we are also

@@ -4,7 +4,6 @@
 
 #include "sst.h"
 #include "codegen.h"
-// #include "gluecode.h"
 #include "string_consts.h"
 
 namespace cgn
@@ -173,24 +172,6 @@ namespace cgn
 
 
 
-	static fir::ClassType* doChecks(CodegenState* cs, fir::Value* from, fir::Value* target)
-	{
-		// this cleans up the callsites so we can just unconditionally call this.
-		if(!from->getType()->isClassType())
-		{
-			cs->irb.Store(from, target);
-			return 0;
-		}
-
-		auto clsty = from->getType()->toClassType();
-
-		// TODO: this is a shitty error message.
-		if(!target->islvalue())
-			error(cs->loc(), "invalid operation on non-lvalue");
-
-		return clsty;
-	}
-
 
 	fir::Value* CodegenState::copyRAIIValue(fir::Value* value)
 	{
@@ -232,8 +213,9 @@ namespace cgn
 			// if there is a copy-constructor, then we will call the copy constructor.
 			if(auto copycon = clsty->getCopyConstructor(); copycon)
 			{
+				// note: we make otherptr immutable, because copy() isn't supposed to pass the thing mutably!
 				auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
-				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, false);
 
 				this->irb.Call(copycon, selfptr, otherptr);
 			}
@@ -244,8 +226,9 @@ namespace cgn
 		}
 		else
 		{
+			// note: we make otherptr immutable, because copy() isn't supposed to pass the thing mutably!
 			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
-			auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+			auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, false);
 
 			// well we got here, so we know at least the type has a copy constructor somewhere.
 			auto copycon = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_COPY, from->getType());
@@ -263,26 +246,43 @@ namespace cgn
 	{
 		iceAssert(from->getType() == target->getType());
 
-		auto clsty = doChecks(this, from, target);
-		if(!clsty) return;
-
-		if(from->islvalue())
+		if(!typeHasMoveConstructor(from->getType()) || from->islvalue())
 		{
 			// you can't move from lvalues!
 			this->copyRAIIValue(from, target);
 			return;
 		}
 
-		if(auto movecon = clsty->getMoveConstructor(); movecon)
+		if(from->getType()->isClassType())
 		{
-			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
-			auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+			auto clsty = from->getType()->toClassType();
 
-			this->irb.Call(movecon, selfptr, otherptr);
+			// if there is a copy-constructor, then we will call the copy constructor.
+			if(auto movecon = clsty->getMoveConstructor(); movecon)
+			{
+				// note: here both are mutable.
+				auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
+				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+
+				this->irb.Call(movecon, selfptr, otherptr);
+			}
+			else
+			{
+				doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ true);
+			}
 		}
 		else
 		{
-			doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ true);
+			// note: here both are mutable.
+			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
+			auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
+
+			// well we got here, so we know at least the type has a copy constructor somewhere.
+			auto movecon = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_MOVE, from->getType());
+
+			// again, typechecking would have complained prior to this
+			iceAssert(movecon);
+			this->irb.Call(movecon, selfptr, otherptr);
 		}
 
 		this->removeRAIIValue(from);

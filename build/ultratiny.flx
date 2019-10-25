@@ -25,11 +25,14 @@ struct Foo : Drop, Copy, Move
 	fn copy(other: &self)
 	{
 		printf("am copy\n")
+		this.data = other.data
 	}
 
 	fn move(other: &mut self)
 	{
 		printf("be move\n")
+		this.data = other.data
+		other.data = 0
 	}
 }
 
@@ -65,12 +68,6 @@ fn two(x: Foo)
 
 /*
 	raii traits checklist:
-
-	// 1. call the appropriate methods on structs.
-		(kind of: still need Copy and Move)
-
-	// 2. generalise the raii mechanism to by searching for traits instead of hardcoding for classes
-		(kind of: still need Copy and Move)
 
 	3. remove the copy/move/destruct stuff from FIR?
 */

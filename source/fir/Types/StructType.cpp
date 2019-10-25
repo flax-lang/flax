@@ -103,6 +103,25 @@ namespace fir
 		return this->typeList;
 	}
 
+	void StructType::addTraitImpl(TraitType* trt)
+	{
+		if(util::contains(this->implTraits, trt))
+			error("'%s' already implements trait '%s'", this, trt);
+
+		this->implTraits.push_back(trt);
+	}
+
+	bool StructType::implementsTrait(TraitType* trt)
+	{
+		return util::contains(this->implTraits, trt);
+	}
+
+	std::vector<TraitType*> StructType::getImplementedTraits()
+	{
+		return this->implTraits;
+	}
+
+
 
 	void StructType::setBody(const std::vector<std::pair<std::string, Type*>>& members)
 	{

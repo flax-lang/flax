@@ -318,6 +318,7 @@ source_files = files([
 	'source/fir/Types/SingleTypes.cpp',
 	'source/fir/Types/OpaqueType.cpp',
 	'source/fir/Types/StructType.cpp',
+	'source/fir/Types/TypeUtils.cpp',
 	'source/fir/Types/ArrayType.cpp',
 	'source/fir/Types/TraitType.cpp',
 	'source/fir/Types/ClassType.cpp',
