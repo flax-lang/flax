@@ -76,6 +76,7 @@ namespace platform
 	bool checkFileExists(const std::string& path);
 
 	std::string_view readEntireFile(const std::string& path);
+	void cachePreExistingFile(const std::string& path, const std::string& contents);
 
 	std::string getFullPath(const std::string& partial);
 

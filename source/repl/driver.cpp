@@ -12,15 +12,16 @@ namespace repl
 	static void runCommand(const std::string& s)
 	{
 		if(s == "q")            exit(0);
-		else if(s == "help")    fprintf(stderr, "no help implemented\n");
-		else                    fprintf(stderr, "invalid command '%s'\n", s.c_str());
+		else if(s == "help")    repl::error("no help implemented. ggwp.");
+		else                    repl::error("invalid command '%s'.", s);
 	}
 
-	static constexpr const char* PROMPT_STRING = COLOUR_BLUE "*" COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* PROMPT_STRING              = COLOUR_BLUE " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* CONTINUATION_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 
 	void start()
 	{
-		printf("flax version %s\n", frontend::getVersion().c_str());
+		printf("flax repl -- version %s\n", frontend::getVersion().c_str());
 		printf("type :help for help\n\n");
 
 		linenoiseSetMultiLine(1);
@@ -39,11 +40,8 @@ namespace repl
 				continue;
 			}
 
-
-
-
-
-			printf("here: %s\n", line.c_str());
+			processLine(line);
+			printf("\n");
 		}
 	}
 }

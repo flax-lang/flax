@@ -92,6 +92,18 @@ namespace frontend
 	std::pair<std::string, std::string> parseCmdLineOpts(int argc, char** argv);
 
 
+	struct FileInnards
+	{
+		lexer::TokenList tokens;
+		std::string_view fileContents;
+		util::FastInsertVector<std::string_view> lines;
+		std::vector<size_t> importIndices;
+
+		bool didLex = false;
+	};
+
+	FileInnards& getFileState(const std::string& name);
+	FileInnards lexTokensFromString(const std::string& fakename, const std::string_view& str);
 
 	std::string getPathFromFile(const std::string& path);
 	std::string getFilenameFromPath(const std::string& path);

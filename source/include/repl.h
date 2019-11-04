@@ -8,4 +8,12 @@
 namespace repl
 {
 	void start();
+	void processLine(const std::string& line);
+
+
+	template <typename... Args>
+	static void error(const std::string& fmt, Args&&... args)
+	{
+		fprintf(stderr, "%serror:%s %s\n", COLOUR_RED_BOLD, COLOUR_RESET, zpr::sprint(fmt, args...).c_str());
+	}
 }

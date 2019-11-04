@@ -183,8 +183,19 @@ namespace platform
 		#endif
 	}
 
+
+	static util::hash_map<std::string, std::string> cachedFileContents;
+
+	void cachePreExistingFile(const std::string& path, const std::string& contents)
+	{
+		cachedFileContents[path] = contents;
+	}
+
 	std::string_view readEntireFile(const std::string& path)
 	{
+		if(auto it = cachedFileContents.find(path); it != cachedFileContents.end())
+			return it->second;
+
 		// first, get the size of the file
 		size_t fileLength = getFileSize(path);
 
@@ -235,12 +246,14 @@ namespace platform
 				perror("there was an error reading the file");
 				error("expected %d bytes, but read only %d", fileLength, didRead);
 			}
+
+			cachedFileContents[path] = std::string(contents, fileLength);
 		}
 
 		iceAssert(contents);
 		closeFile(fd);
 
-		return std::string_view(contents, fileLength);
+		return cachedFileContents[path];
 	}
 
 	filehandle_t openFile(const char* name, int mode, int flags)
