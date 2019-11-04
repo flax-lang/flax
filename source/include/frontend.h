@@ -53,6 +53,8 @@ namespace frontend
 	bool getIsNoRuntimeChecks();
 	bool getIsNoRuntimeErrorStrings();
 
+	bool getIsReplMode();
+
 	std::vector<std::string> getFrameworksToLink();
 	std::vector<std::string> getFrameworkSearchPaths();
 	std::vector<std::string> getLibrariesToLink();

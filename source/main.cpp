@@ -164,7 +164,11 @@ int main(int argc, char** argv)
 	platform::compiler::performSelfDlOpen();
 
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
-	compile(input_file, output_file);
+
+	if(frontend::getIsReplMode())   ;
+	else                            compile(input_file, output_file);
+
+
 	return 0;
 }
 
