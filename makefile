@@ -85,6 +85,7 @@ endif
 
 
 UTF8REWIND_AR   := external/libutf8rewind.a
+LINENOISE_AR    := external/liblinenoise.a
 
 
 FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
@@ -121,6 +122,9 @@ compile: build
 test: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
 
+repl: build
+	@$(OUTPUT) $(FLXFLAGS) -repl
+
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
@@ -141,10 +145,10 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR) $(LINENOISE_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -llinenoise
 
 
 %.cpp.o: %.cpp
@@ -160,6 +164,8 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 $(UTF8REWIND_AR):
 	@make -C external/utf8rewind all
 
+$(LINENOISE_AR):
+	@make -C external/linenoise all
 
 # haha
 clena: clean

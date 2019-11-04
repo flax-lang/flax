@@ -148,6 +148,11 @@ static std::string parseQuotedString(char** argv, int& i)
 
 namespace frontend
 {
+	std::string getVersion()
+	{
+		return FLAX_VERSION_STRING;
+	}
+
 	static std::vector<std::string> frameworksToLink;
 	static std::vector<std::string> frameworkSearchPaths;
 

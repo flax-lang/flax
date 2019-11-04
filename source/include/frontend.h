@@ -34,6 +34,7 @@ namespace backend
 namespace frontend
 {
 	std::string getParameter(const std::string& arg);
+	std::string getVersion();
 
 	backend::ProgOutputMode getOutputMode();
 	backend::OptimisationLevel getOptLevel();

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "defs.h"
+#include "repl.h"
 #include "errors.h"
 #include "backend.h"
 #include "frontend.h"
@@ -165,7 +166,7 @@ int main(int argc, char** argv)
 
 	auto [ input_file, output_file ] = frontend::parseCmdLineOpts(argc, argv);
 
-	if(frontend::getIsReplMode())   ;
+	if(frontend::getIsReplMode())   repl::start();
 	else                            compile(input_file, output_file);
 
 
