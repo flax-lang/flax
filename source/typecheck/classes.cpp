@@ -53,21 +53,34 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// why do we do this when generating the declaration instead of only when we typecheck?
 	// as it currently stands, this means that our base class + any traits must appear before
 	// this class definition in the source code, which is kinda dumb.
-	if(this->bases.size() > 0)
+	for(auto base : util::map(this->bases, [fs](auto t) -> auto { return fs->convertParserTypeToFIR(t); }))
 	{
-		auto base = fs->convertParserTypeToFIR(this->bases[0]);
-		if(!base->isClassType())
-			error(this, "class '%s' can only inherit from a class, which '%s' is not", this->name, base);
+		if(base->isClassType())
+		{
+			if(defn->baseClass)
+				error(this, "cannot inherit from more than one class (already inherited from '%s')", defn->baseClass->id.name);
 
-		cls->setBaseClass(base->toClassType());
+			else if(!defn->traits.empty())
+				error(this, "base class must come before any traits in the inheritance list");
 
-		if(this->bases.size() > 1)
-			error(this, "cannot inherit from more than one class");
+			auto basedef = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
+			iceAssert(basedef);
 
-		auto basedef = dcast(sst::ClassDefn, fs->typeDefnMap[base]);
-		iceAssert(basedef);
+			defn->baseClass = basedef;
+			cls->setBaseClass(base->toClassType());
+		}
+		else if(base->isTraitType())
+		{
+			auto tdef = dcast(sst::TraitDefn, fs->typeDefnMap[base]);
+			iceAssert(tdef);
 
-		defn->baseClass = basedef;
+			defn->traits.push_back(tdef);
+			cls->addTraitImpl(tdef->type->toTraitType());
+		}
+		else
+		{
+			error(this, "invalid type '%s' in inheritance list of class", base);
+		}
 	}
 
 	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });

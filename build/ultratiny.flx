@@ -13,26 +13,39 @@ import std::io as _
 @compiler_support["raii_trait::copy"] trait Copy { fn copy(other: &self) }
 @compiler_support["raii_trait::move"] trait Move { fn move(other: &mut self) }
 
-struct Foo : Drop, Copy, Move
+class Foo1
 {
-	data: int
+	init() { }
+	deinit { printf("killed base\n"); }
+}
+
+class Foo : Foo1, Drop, Copy, Move
+{
+	var data: int
+
+	init(x: int)
+	{
+		printf("of make (%d)\n", x)
+		this.data = x
+	}
 
 	fn deinit()
 	{
-		printf("is kill\n")
+		printf("is kill (%d)\n", data)
 	}
 
 	fn copy(other: &self)
 	{
-		printf("am copy\n")
 		this.data = other.data
+		printf("am copy (%d)\n", data)
 	}
 
 	fn move(other: &mut self)
 	{
-		printf("be move\n")
 		this.data = other.data
 		other.data = 0
+
+		printf("be move (%d)\n", data)
 	}
 }
 
@@ -47,7 +60,7 @@ class Bar
 
 fn one() -> Foo
 {
-	return Foo(data: 33)
+	return Foo(x: 33)
 }
 
 fn two(x: Foo)
@@ -60,6 +73,8 @@ fn two(x: Foo)
 @entry fn main()
 {
 	let q = one()
+	q.data = 17
+
 	two(q)
 
 	printf("q = %d\n", q)
@@ -68,6 +83,19 @@ fn two(x: Foo)
 
 /*
 	raii traits checklist:
+
+	problem with deinit: in any given class implementation, the user-defined deinit *needs* to call both:
+	(a) the inline destructor for the class
+	(b) the user-defined destructor for the base class
+	(c) the inline destructor for the base class
+
+	so this is a bunch of work that isn't done? also, in the base class case, the derived class cannot properly
+	define a deinit() function, because of redefinitions. what's the solution?
+
+	(1) everything becomes virtual (ew)
+	(2) method hiding (also ew)
+	(3) ???
+
 
 	3. remove the copy/move/destruct stuff from FIR?
 */
