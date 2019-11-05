@@ -391,7 +391,7 @@ namespace parser
 			st.skipWS();
 			while(st.front() != TT::RBrace)
 			{
-				auto stmt = parseStmt(st);
+				auto stmt = parseStmt(st).val();
 				if(auto defer = dcast(DeferredStmt, stmt))
 					ret->deferredStatements.push_back(defer);
 
@@ -421,7 +421,7 @@ namespace parser
 		else if(st.front() == TT::FatRightArrow)
 		{
 			Block* ret = util::pool<Block>(st.eat().loc);
-			ret->statements.push_back(parseStmt(st));
+			ret->statements.push_back(parseStmt(st).val());
 			ret->closingBrace = st.loc();
 			ret->isArrow = true;
 

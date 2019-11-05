@@ -250,13 +250,155 @@ namespace parser
 			const lexer::TokenList& tokens;
 	};
 
+
+	// like TCResult i guess.
+	template <typename T>
+	struct PResult
+	{
+		PResult(T* val)
+		{
+			this->state = 0;
+			this->value = val;
+		}
+
+		explicit PResult(ErrorMsg* err, bool needsmore = false)
+		{
+			this->error = err;
+			this->state = (needsmore ? 2 : 1);
+		}
+
+
+		PResult(const PResult& r)
+		{
+			this->state = r.state;
+			if(this->state == 0)    this->value = r.value;
+			else                    this->error = r.error;
+		}
+
+		PResult(PResult&& r) noexcept
+		{
+			this->state = r.state;
+			r.state = -1;
+
+			if(this->state == 0)    this->value = std::move(r.value);
+			else                    this->error = std::move(r.error);
+		}
+
+		PResult& operator = (const PResult& r)
+		{
+			PResult tmp(r);
+			*this = std::move(tmp);
+			return *this;
+		}
+
+		PResult& operator = (PResult&& r) noexcept
+		{
+			if(&r != this)
+			{
+				this->state = r.state;
+				r.state = -1;
+
+				if(this->state == 0)    this->value = std::move(r.value);
+				else                    this->error = std::move(r.error);
+			}
+
+			return *this;
+		}
+
+		// implicit conversion operator.
+		template <typename A, typename X = std::enable_if_t<std::is_base_of_v<typename A::value_t, T>>>
+		operator A() const
+		{
+			if(this->state == 0)    return PResult<typename A::value_t>(this->value);
+			else                    return PResult<typename A::value_t>(this->error);
+		}
+
+
+
+
+		template <typename F>
+		PResult<T> mutate(const F& fn)
+		{
+			if(this->state == 0) fn(this->value);
+			return *this;
+		}
+
+		template <typename F, typename U = typename std::remove_pointer_t<std::result_of_t<F(T*)>>>
+		PResult<U> map(const F& fn) const
+		{
+			if(this->state > 0) return PResult<U>(this->error);
+			else                return PResult<U>(fn(this->value));
+		}
+
+		template <typename F, typename U = typename std::result_of_t<F(T*)>::value_t>
+		PResult<U> flatmap(const F& fn) const
+		{
+			if(this->state > 0) return PResult<U>(this->error);
+			else                return fn(this->value);
+		}
+
+		ErrorMsg* err() const
+		{
+			if(this->state < 1) _error_and_exit("not error\n");
+			else                return this->error;
+		}
+
+		T* val() const
+		{
+			if(this->state != 0)    _error_and_exit("no value\n");
+			else                    return this->value;
+		}
+
+		bool isError() const
+		{
+			return this->state > 0;
+		}
+
+		bool hasValue() const
+		{
+			return this->state == 0;
+		}
+
+
+		using value_t = T;
+
+	private:
+		// 0 = result, 1 = error, 2 = needsmoretokens
+		int state;
+
+		union {
+			T* value;
+			ErrorMsg* error;
+		};
+	};
+
+	// Expected $, found '$' instead
+	[[noreturn]] inline void expected(const Location& loc, std::string a, std::string b)
+	{
+		error(loc, "expected %s, found '%s' instead", a, b);
+	}
+
+	// Expected $ after $, found '$' instead
+	[[noreturn]] inline void expectedAfter(const Location& loc, std::string a, std::string b, std::string c)
+	{
+		error(loc, "expected %s after %s, found '%s' instead", a, b, c);
+	}
+
+	// Unexpected $
+	[[noreturn]] inline void unexpected(const Location& loc, std::string a)
+	{
+		error(loc, "unexpected %s", a);
+	}
+
+
+
 	std::string parseStringEscapes(const Location& loc, const std::string& str);
 
 	std::string parseOperatorTokens(State& st);
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
-	ast::Stmt* parseStmt(State& st, bool allowExprs = true);
+	PResult<ast::Stmt> parseStmt(State& st, bool allowExprs = true);
 
 
 	ast::DeferredStmt* parseDefer(State& st);
@@ -265,7 +407,7 @@ namespace parser
 	ast::ReturnStmt* parseReturn(State& st);
 	ast::ImportStmt* parseImport(State& st);
 	ast::FuncDefn* parseFunction(State& st);
-	ast::Stmt* parseStmtWithAccessSpec(State& st);
+	PResult<ast::Stmt> parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 	ast::OperatorOverloadDefn* parseOperatorOverload(State& st);
 

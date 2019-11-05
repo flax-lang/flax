@@ -130,7 +130,7 @@ namespace sst
 							{
 								// probably a class or something
 								conflict:
-								SimpleError::make(def->loc, "duplicate definition of '%s'", def->id.name)
+								SimpleError::make(def->loc, "duplicate definition of %s '%s'", def->readableName, def->id.name)
 									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
 									->postAndQuit();
 							}

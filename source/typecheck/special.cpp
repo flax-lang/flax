@@ -23,7 +23,7 @@ TCResult ast::MutabilityTypeExpr::typecheck(sst::TypecheckState* fs, fir::Type* 
 TCResult ast::ImportStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
 	// nothing to check??
-	unexpected(this->loc, "import statement");
+	error(this->loc, "unexpected import statement");
 }
 
 TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)

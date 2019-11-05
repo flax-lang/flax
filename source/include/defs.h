@@ -254,6 +254,8 @@ namespace util
 	SimpleError* make_SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error);
 	OverloadError* make_OverloadError(SimpleError* se, MsgType t = MsgType::Error);
 	ExampleMsg* make_ExampleMsg(const std::string& eg, MsgType t = MsgType::Note);
+
+
 }
 
 

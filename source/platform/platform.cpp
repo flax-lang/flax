@@ -189,6 +189,9 @@ namespace platform
 	void cachePreExistingFile(const std::string& path, const std::string& contents)
 	{
 		cachedFileContents[path] = contents;
+
+		// this will give cache a new id for us. (over there)
+		frontend::cachePreExistingFilename(path);
 	}
 
 	std::string_view readEntireFile(const std::string& path)

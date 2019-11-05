@@ -10,13 +10,15 @@ namespace repl
 {
 	void processLine(const std::string& line)
 	{
+		std::string replName = "<repl>";
+
 		frontend::CollectorState collector;
 
 		// lex.
-		platform::cachePreExistingFile("<repl>", line);
-		auto lexResult = frontend::lexTokensFromString("<repl>", line);
+		platform::cachePreExistingFile(replName, line);
+		auto lexResult = frontend::lexTokensFromString(replName, line);
 
 		// parse
-		auto parseResult = parser::parseFile("<repl>", lexResult, collector);
+		auto parseResult = parser::parseFile(replName, lexResult, collector);
 	}
 }

@@ -110,6 +110,7 @@ namespace frontend
 	std::string getFullPathOfFile(const std::string& partial);
 	std::string removeExtensionFromFilename(const std::string& name);
 
+	void cachePreExistingFilename(const std::string& name);
 	std::string getFileContents(const std::string& fullPath);
 	const std::string& getFilenameFromID(size_t fileID);
 	size_t getFileIDFromFilename(const std::string& name);

@@ -167,6 +167,11 @@ namespace frontend
 
 	static std::vector<std::string> fileNames { "null" };
 	static util::hash_map<std::string, size_t> existingNames;
+	void cachePreExistingFilename(const std::string& name)
+	{
+		fileNames.push_back(name);
+	}
+
 	const std::string& getFilenameFromID(size_t fileID)
 	{
 		iceAssert(fileID > 0 && fileID < fileNames.size());

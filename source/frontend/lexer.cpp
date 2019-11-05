@@ -383,7 +383,7 @@ namespace lexer
 		}
 		else if(hasPrefix(stream, "*/"))
 		{
-			unexpected(tok.loc, "'*/'");
+			error(tok.loc, "unexpected '*/'");
 		}
 
 
@@ -654,7 +654,7 @@ namespace lexer
 				{
 					if(i + 1 == stream.size())
 					{
-						unexpected(pos, "end of input");
+						error(pos, "unexpected end of input");
 					}
 					else if(stream[i + 1] == '"')
 					{
@@ -672,7 +672,7 @@ namespace lexer
 						(*line)++;
 
 						if(*line == lines.size())
-							unexpected(pos, "end of input");
+							error(pos, "unexpected end of input");
 
 						i = 0;
 

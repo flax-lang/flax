@@ -177,7 +177,7 @@ namespace parser
 
 				case TT::Attr_NoMangle: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(!dcast(FuncDefn, stmt) && !dcast(VarDefn, stmt))
 						error(st, "attribute '@nomangle' can only be applied on function and variable declarations");
 
@@ -200,7 +200,7 @@ namespace parser
 
 				case TT::Attr_EntryFn: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(auto fd = dcast(FuncDefn, stmt))
 						fd->attrs.set(attr::FN_ENTRYPOINT);
 
@@ -274,7 +274,7 @@ namespace parser
 					st.operatorsStillValid = false;
 					st.nativeWordSizeStillValid = false;
 
-					root->statements.push_back(parseStmt(st, /* allowExprs: */ false));
+					root->statements.push_back(parseStmt(st, /* allowExprs: */ false).val());
 				} break;
 			}
 

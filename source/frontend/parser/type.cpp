@@ -613,7 +613,7 @@ namespace parser
 		iceAssert(st.front() == TT::Static);
 		st.eat();
 
-		auto stmt = parseStmt(st);
+		auto stmt = parseStmt(st).val();
 		if(dcast(FuncDefn, stmt) || dcast(VarDefn, stmt))
 			return util::pool<StaticDecl>(stmt);
 
