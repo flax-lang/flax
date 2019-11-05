@@ -78,8 +78,11 @@ namespace parser
 
 		void skipWS()
 		{
-			while(this->tokens[this->index] == lexer::TokenType::NewLine || this->tokens[this->index] == lexer::TokenType::Comment)
+			while(this->index < this->tokens.size() && (this->tokens[this->index] == lexer::TokenType::NewLine
+				|| this->tokens[this->index] == lexer::TokenType::Comment))
+			{
 				this->index++;
+			}
 		}
 
 		const lexer::Token& front() const
@@ -138,7 +141,7 @@ namespace parser
 
 		bool hasTokens() const
 		{
-			return this->index < this->tokens.size();
+			return this->index < this->tokens.size() && this->tokens[this->index] != lexer::TokenType::EndOfFile;
 		}
 
 		const lexer::TokenList& getTokenList()
@@ -267,6 +270,14 @@ namespace parser
 			this->state = (needsmore ? 2 : 1);
 		}
 
+	private:
+		explicit PResult(ErrorMsg* err, int stt)
+		{
+			this->error = err;
+			this->state = stt;
+		}
+	public:
+
 
 		PResult(const PResult& r)
 		{
@@ -310,7 +321,7 @@ namespace parser
 		operator A() const
 		{
 			if(this->state == 0)    return PResult<typename A::value_t>(this->value);
-			else                    return PResult<typename A::value_t>(this->error);
+			else                    return PResult<typename A::value_t>(this->error, this->state);
 		}
 
 
@@ -339,13 +350,13 @@ namespace parser
 
 		ErrorMsg* err() const
 		{
-			if(this->state < 1) _error_and_exit("not error\n");
+			if(this->state < 1) compiler_crash("not error");
 			else                return this->error;
 		}
 
 		T* val() const
 		{
-			if(this->state != 0)    _error_and_exit("no value\n");
+			if(this->state != 0)    compiler_crash("no value");
 			else                    return this->value;
 		}
 
@@ -359,6 +370,28 @@ namespace parser
 			return this->state == 0;
 		}
 
+		bool needsMoreTokens() const
+		{
+			return this->state == 2;
+		}
+
+		static PResult<T> insufficientTokensError()
+		{
+			return PResult<T>(BareError::make("unexpected end of input"), /* needmore: */ true);
+		}
+
+		template <typename U>
+		static PResult<T> copyError(const PResult<U>& other)
+		{
+			// only for error.
+			if(other.state < 1)
+				compiler_crash("not error");
+
+			return PResult<T>(other.err(), other.state);
+		}
+
+		template <typename U>
+		friend struct PResult;
 
 		using value_t = T;
 
@@ -440,7 +473,7 @@ namespace parser
 	ast::DeallocOp* parseDealloc(State& st);
 	ast::SizeofOp* parseSizeof(State& st);
 
-	ast::Block* parseBracedBlock(State& st);
+	PResult<ast::Block> parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);
 	ast::LitString* parseString(State& st, bool israw);
@@ -448,7 +481,7 @@ namespace parser
 
 	ast::Stmt* parseForLoop(State& st);
 	ast::Stmt* parseIfStmt(State& st);
-	ast::WhileLoop* parseWhileLoop(State& st);
+	PResult<ast::WhileLoop> parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);
 

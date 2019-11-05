@@ -151,7 +151,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			defn->body = parseBracedBlock(st);
+			defn->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -247,7 +247,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -277,7 +277,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -295,7 +295,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -380,7 +380,7 @@ namespace parser
 
 
 
-	Block* parseBracedBlock(State& st)
+	PResult<Block> parseBracedBlock(State& st)
 	{
 		st.skipWS();
 
@@ -391,24 +391,31 @@ namespace parser
 			st.skipWS();
 			while(st.front() != TT::RBrace)
 			{
-				auto stmt = parseStmt(st).val();
-				if(auto defer = dcast(DeferredStmt, stmt))
-					ret->deferredStatements.push_back(defer);
+				if(!st.hasTokens())
+					return PResult<Block>::insufficientTokensError();
 
-				else
-					ret->statements.push_back(stmt);
+				auto s = parseStmt(st).mutate([&](auto stmt) {
+					if(auto defer = dcast(DeferredStmt, stmt))
+						ret->deferredStatements.push_back(defer);
+
+					else
+						ret->statements.push_back(stmt);
 
 
-				if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
-					st.pop();
+					if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
+						st.pop();
 
-				else if(st.frontAfterWS() == TT::RBrace)
-					break;
+					else if(st.frontAfterWS() == TT::RBrace)
+						return;
 
-				else
-					expected(st, "newline or semicolon to terminate a statement", st.front().str());
+					else
+						expected(st, "newline or semicolon to terminate a statement", st.front().str());
 
-				st.skipWS();
+					st.skipWS();
+				});
+
+				if(s.isError())
+					return PResult<Block>::copyError(s);
 			}
 
 			auto closing = st.eat();

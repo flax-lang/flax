@@ -77,7 +77,7 @@ namespace parser
 
 		st.enterStructBody();
 
-		auto blk = parseBracedBlock(st);
+		auto blk = parseBracedBlock(st).val();
 		for(auto s : blk->statements)
 		{
 			if(auto v = dcast(VarDefn, s))

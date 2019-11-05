@@ -56,10 +56,19 @@ template <typename... Ts>
 [[noreturn]] inline void _error_and_exit(const char* fmt, Ts&&... ts)
 {
 	// tinyformat::format(std::cerr, fmt, ts...);
-	fprintf(stderr, "%s", zpr::sprint(fmt, ts...).c_str());
+	fprintf(stderr, "%s\n", zpr::sprint(fmt, ts...).c_str());
 	doTheExit();
 }
+namespace platform { void printStackTrace(); }
 
+template <typename... Ts>
+[[noreturn]] inline void compiler_crash(const char* fmt, Ts&&... ts)
+{
+	fprintf(stderr, "%s\n", zpr::sprint(fmt, ts...).c_str());
+
+	platform::printStackTrace();
+	abort();
+}
 
 
 template <typename... Ts>

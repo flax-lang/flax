@@ -8,7 +8,8 @@
 namespace repl
 {
 	void start();
-	void processLine(const std::string& line);
+	void setupEnvironment();
+	bool processLine(const std::string& line);
 
 
 	template <typename... Args>

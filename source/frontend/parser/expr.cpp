@@ -51,7 +51,7 @@ namespace parser
 	PResult<Stmt> parseStmt(State& st, bool allowExprs)
 	{
 		if(!st.hasTokens())
-			unexpected(st, "end of file");
+			return PResult<Stmt>::insufficientTokensError();
 
 		st.skipWS();
 
@@ -274,12 +274,12 @@ namespace parser
 			}();
 
 			return ret.mutate([&](auto ret) {
-				if(!st.isInFunctionBody() && !st.isInStructBody())
+				if(!allowExprs && !st.isInFunctionBody() && !st.isInStructBody())
 					error(ret, "%s is not allowed at the top-level", ret->readableName);
 			});
 		}
 
-		unexpected(st.loc(), "end of file");
+		return PResult<Stmt>::insufficientTokensError();
 	}
 
 
@@ -1074,7 +1074,7 @@ namespace parser
 			if(raw) error(st.loc(), "initialisation body cannot be used with raw array allocations");
 
 			// ok, get it
-			ret->initBody = parseBracedBlock(st);
+			ret->initBody = parseBracedBlock(st).val();
 		}
 
 
@@ -1098,7 +1098,7 @@ namespace parser
 		auto ret = util::pool<DeferredStmt>(st.eat().loc);
 
 		if(st.front() == TT::LBrace)
-			ret->actual = parseBracedBlock(st);
+			ret->actual = parseBracedBlock(st).val();
 
 		else
 			ret->actual = parseStmt(st).val();

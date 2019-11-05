@@ -23,7 +23,8 @@ extern "C" {
 
 namespace platform
 {
-	constexpr size_t MAX_FRAMES = 128;
+	constexpr size_t MAX_FRAMES     = 128;
+	constexpr size_t SKIP_FRAMES    = 1;
 
 	struct piece_t
 	{
@@ -49,7 +50,7 @@ namespace platform
 
 		std::vector<piece_t> pieces;
 
-		for(size_t i = 5; i < num; i++)
+		for(size_t i = SKIP_FRAMES; i < num; i++)
 		{
 			// platform-specific output!
 			if constexpr (OS_DARWIN)

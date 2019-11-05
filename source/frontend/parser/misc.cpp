@@ -92,7 +92,7 @@ namespace parser
 		st.enterFunctionBody();
 		defer(st.leaveFunctionBody());
 
-		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st);
+		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st).val();
 		else                            ret->insideExpr = parseExpr(st);
 
 		return ret;

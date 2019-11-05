@@ -21,27 +21,44 @@ namespace repl
 
 	void start()
 	{
+		setupEnvironment();
+		linenoiseSetMultiLine(1);
+
 		printf("flax repl -- version %s\n", frontend::getVersion().c_str());
 		printf("type :help for help\n\n");
 
-		linenoiseSetMultiLine(1);
-		while(char* _line = linenoise(PROMPT_STRING))
+		std::string input;
+		while(char* line = linenoise(PROMPT_STRING))
 		{
-			std::string line = _line;
-			linenoiseFree(_line);
+			input += std::string(line) + "\n";
+			linenoiseFree(line);
 
-			if(line.empty())
+			if(input.empty())
 				continue;
 
-			if(line[0] == ':')
+			if(input[0] == ':')
 			{
-				runCommand(line.substr(1));
+				runCommand(input.substr(1));
 				printf("\n");
 				continue;
 			}
 
-			processLine(line);
-			printf("\n");
+			if(bool needmore = processLine(input); needmore)
+			{
+				// read more.
+				while(needmore)
+				{
+					char* line = linenoise(CONTINUATION_PROMPT_STRING);
+
+					input += std::string(line) + "\n";
+					linenoiseFree(line);
+
+					needmore = processLine(input);
+				}
+			}
+
+			// ok, we're done -- clear.
+			input.clear();
 		}
 	}
 }
