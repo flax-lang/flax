@@ -597,6 +597,24 @@ namespace detail
 		return i;
 	}
 
+	static size_t findEndOfUTF8CP(const uint8_t* bytes, size_t i)
+	{
+		if(bytes[i] <= 0x7F)
+			return i;
+
+		if((bytes[i] & 0xE0) == 0xC0)
+			return i + 1;
+
+		else if((bytes[i] & 0xF0) == 0xE0)
+			return i + 2;
+
+		else if((bytes[i] & 0xF8) == 0xF0)
+			return i + 3;
+
+		return i;
+	}
+
+
 	static bool read_line(State* st)
 	{
 		constexpr char CTRL_C       = '\x03';
@@ -606,6 +624,80 @@ namespace detail
 		constexpr char BACKSPACE    = '\x7F';
 
 		enterRawMode();
+
+		auto cursor_home = [&st]() {
+			st->cursor = 0;
+			st->byteCursor = 0;
+
+			refresh_line(st);
+		};
+
+		auto cursor_end = [&st]() {
+			st->cursor = displayedTextLength(st->currLine);
+			st->byteCursor = st->currLine.size();
+
+			refresh_line(st);
+		};
+
+		auto cursor_left = [&st]() {
+			if(st->cursor > 0)
+			{
+				auto x = st->byteCursor - 1;
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+				st->byteCursor -= (x - l + 1);
+				st->cursor -= 1;
+
+				refresh_line(st);
+			}
+		};
+
+		auto cursor_right = [&st]() {
+			if(st->byteCursor < st->currLine.size())
+			{
+				auto x = st->byteCursor;
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+
+				st->byteCursor += (l - x + 1);
+				st->cursor += 1;
+
+				refresh_line(st);
+			}
+		};
+
+
+
+		auto delete_left = [&st]() {
+			if(st->cursor > 0 && st->currLine.size() > 0)
+			{
+				auto x = st->byteCursor - 1;
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+
+				st->currLine.erase(l, x - l + 1);
+				st->byteCursor -= (x - l + 1);
+				st->cursor -= 1;
+
+				refresh_line(st);
+			}
+		};
+
+		auto delete_right = [&st]() {
+			if(st->byteCursor < st->currLine.size())
+			{
+				auto x = st->byteCursor;
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+
+				st->currLine.erase(x, l - x + 1);
+
+				// both cursors remain unchanged.
+				refresh_line(st);
+			}
+		};
+
+
+
+
+
+
 
 		bool eof = false;
 		while(true)
@@ -651,21 +743,55 @@ namespace detail
 				// backspace
 				case BACKSPACE: [[fallthrough]];
 				case BACKSPACE_: {
-					if(st->cursor > 0 && st->currLine.size() > 0)
-					{
-						auto x = st->byteCursor - 1;
-						auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
-
-						st->currLine.erase(l, x - l + 1);
-						st->cursor -= 1;
-						st->byteCursor -= (x - l + 1);
-					}
-
-					refresh_line(st);
+					delete_left();
 				} break;
 
 				// time for some fun.
 				case ESC: {
+					// there should be at least two more!
+					char seq[2]; platform_read(seq, 2);
+
+					if(seq[0] == '[')
+					{
+						if(seq[1] >= '0' && seq[1] <= '9')
+						{
+							int n = 0;
+
+							// ok now time to read until a ~
+							char x = seq[1];
+							while(x != '~')
+							{
+								n = (10 * n) + (x - '0');
+								platform_read_one(&x);
+							}
+
+							switch(n)
+							{
+								case 3: delete_right(); break;
+
+								case 1: cursor_home(); break;
+								case 7: cursor_home(); break;
+
+								case 4: cursor_end(); break;
+								case 8: cursor_end(); break;
+							}
+						}
+						else
+						{
+							switch(seq[1])
+							{
+								case 'C': cursor_right(); break;
+								case 'D': cursor_left(); break;
+								case 'H': cursor_home(); break;
+								case 'F': cursor_end(); break;
+							}
+						}
+					}
+					else if(seq[0] == 'O')
+					{
+						if(seq[1] == 'H')       cursor_home();
+						else if(seq[1] == 'F')  cursor_end();
+					}
 
 				} break;
 
@@ -674,7 +800,7 @@ namespace detail
 					uint8_t uc = static_cast<uint8_t>(c);
 					if(uc >= 0x20 && uc <= 0x7F)
 					{
-						st->currLine += c;
+						st->currLine.insert(st->currLine.begin() + st->byteCursor, c);
 
 						st->cursor += 1;
 						st->byteCursor += 1;
@@ -705,7 +831,8 @@ namespace detail
 							cp += buf;
 						}
 
-						st->currLine += cp;
+						st->currLine.insert(st->byteCursor, cp);
+
 						st->byteCursor += cp.size();
 						st->cursor += displayedTextLength(cp);
 					}
