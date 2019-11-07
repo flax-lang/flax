@@ -10,6 +10,8 @@
 #define ZTMU_CREATE_IMPL 1
 #include "ztmu.h"
 
+#include "linenoise/linenoise.h"
+
 namespace repl
 {
 	static void runCommand(const std::string& s)
@@ -20,6 +22,7 @@ namespace repl
 	}
 
 	static constexpr const char* PROMPT_STRING              = COLOUR_BLUE " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* WRAP_PROMPT_STRING         = COLOUR_GREY_BOLD " |" COLOUR_RESET " ";
 	static constexpr const char* CONTINUATION_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 
 	void start()
@@ -33,11 +36,10 @@ namespace repl
 
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
+		st.setWrappedPrompt(WRAP_PROMPT_STRING);
 		st.setContinuationPrompt(CONTINUATION_PROMPT_STRING);
 
 		printf("\nread: %s\n", st.read().c_str());
-
-
 
 
 

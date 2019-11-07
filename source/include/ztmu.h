@@ -26,19 +26,26 @@ namespace ztmu
 		std::string readContinuation();
 
 		void setPrompt(const std::string& prompt);
+		void setWrappedPrompt(const std::string& prompt);
 		void setContinuationPrompt(const std::string& prompt);
 
 
 
-
-		bool isContinuationMode = false;
+		// 0 = normal, 1 = continuation
+		int promptMode = 0;
 
 		std::string promptString;
 		std::string contPromptString;
+		std::string wrappedPromptString;
 
 		size_t cursor = 0;
 		size_t byteCursor = 0;
-		std::string currLine;
+
+		size_t lineIdx = 0;
+		size_t wrappedLineIdx = 0;
+
+		size_t termWidth = 0;
+		size_t termHeight = 0;
 
 		std::vector<std::string> lines;
 	};
@@ -160,8 +167,8 @@ namespace detail
 
 	static int platform_read_one(char* c);
 	static int platform_read(char* c, size_t len);
-	static void platform_write(const std::string& s);
 	static void platform_write(const char* s, size_t len);
+	static void platform_write(const std::string_view& sv);
 
 	static std::string moveCursorUp(int n);
 	static std::string moveCursorDown(int n);
@@ -201,7 +208,9 @@ namespace detail
 #ifndef _WIN32
 
 	#include <unistd.h>
+	#include <signal.h>
 	#include <termios.h>
+	#include <sys/ioctl.h>
 
 	static struct termios original_termios;
 
@@ -252,31 +261,35 @@ namespace detail
 	static bool didRegisterAtexit = false;
 	static bool isInRawMode = false;
 
-	static inline void platform_write(const std::string& s)
+	static inline void platform_write(const std::string_view& sv)
 	{
-		platform_write(s.c_str(), s.size());
+		platform_write(sv.data(), sv.size());
 	}
 
 	static inline std::string moveCursorUp(int n)
 	{
+		if(n == 0)  return "";
 		if(n < 0)   return moveCursorDown(-n);
 		else        return zpr::sprint("%s%dA", CSI, n);
 	}
 
 	static inline std::string moveCursorDown(int n)
 	{
+		if(n == 0)  return "";
 		if(n < 0)   return moveCursorUp(-n);
 		else        return zpr::sprint("%s%dB", CSI, n);
 	}
 
 	static inline std::string moveCursorLeft(int n)
 	{
+		if(n == 0)  return "";
 		if(n < 0)   return moveCursorRight(-n);
 		else        return zpr::sprint("%s%dD", CSI, n);
 	}
 
 	static inline std::string moveCursorRight(int n)
 	{
+		if(n == 0)  return "";
 		if(n < 0)   return moveCursorLeft(-n);
 		else        return zpr::sprint("%s%dC", CSI, n);
 	}
@@ -563,27 +576,61 @@ namespace detail
 		isInRawMode = true;
 	}
 
-
-
-
-	static void refresh_line(State* st)
+	static size_t getTerminalWidth()
 	{
-		// let's not care about multiline for now.
+		#ifdef _WIN32
+			CONSOLE_SCREEN_BUFFER_INFO csbi;
+			GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+			return csbi.srWindow.Right - csbi.srWindow.Left + 1;
+		#else
 
-		// kill the entire line, and move the cursor to the beginning as well.
-		platform_write("\x1b[2K");
-		platform_write(moveCursorLeft(9999));
+			#ifdef _MSC_VER
+			#else
+				#pragma GCC diagnostic push
+				#pragma GCC diagnostic ignored "-Wold-style-cast"
+			#endif
 
-		// print out the prompt.
-		auto pr = st->isContinuationMode ? st->contPromptString : st->promptString;
-		auto promptLen = displayedTextLength(pr);
+			struct winsize w;
+			ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+			return w.ws_col;
 
-		platform_write(pr);
-		platform_write(st->currLine);
+			#ifdef _MSC_VER
+			#else
+				#pragma GCC diagnostic pop
+			#endif
 
-		// move the cursor to the right by the cursor.
-		platform_write(moveCursorLeft(9999));
-		platform_write(moveCursorRight(st->cursor + promptLen));
+		#endif
+	}
+
+	static size_t getTerminalHeight()
+	{
+		#ifdef _WIN32
+			CONSOLE_SCREEN_BUFFER_INFO csbi;
+			GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+			return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+		#else
+
+			#ifdef _MSC_VER
+			#else
+				#pragma GCC diagnostic push
+				#pragma GCC diagnostic ignored "-Wold-style-cast"
+			#endif
+
+			struct winsize w;
+			ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+			return w.ws_row;
+
+			#ifdef _MSC_VER
+			#else
+				#pragma GCC diagnostic pop
+			#endif
+
+		#endif
+	}
+
+	static std::string& getCurLine(State* st)
+	{
+		return st->lines[st->lineIdx];
 	}
 
 	static size_t findBeginningOfUTF8CP(const uint8_t* bytes, size_t i)
@@ -615,6 +662,218 @@ namespace detail
 	}
 
 
+
+	static void refresh_line(State* st, std::string* oldLine = 0)
+	{
+		// what we want to do is write the entire command + text string at once to reduce flickering.
+		// for now, meh.
+
+		auto pr = st->promptMode == 0 ? st->promptString : st->contPromptString;
+		auto promptLen = displayedTextLength(pr);
+
+		auto wrapPL = displayedTextLength(st->wrappedPromptString);
+
+		if(!oldLine)
+			oldLine = &getCurLine(st);
+
+		std::string commands;
+		auto qcmd = [&commands](const std::string_view& c) {
+			commands += c;
+		};
+
+		auto flushcmd = [&commands]() {
+			platform_write(commands);
+			commands.clear();
+		};
+
+
+		// kill the entire line, and move the cursor to the beginning as well.
+		qcmd("\x1b[2K");
+		qcmd(moveCursorLeft(9999));
+
+		auto calc_wrap = [&](size_t len) -> size_t {
+			auto width = st->termWidth;
+			auto norm_pl = promptLen;
+			auto wrap_pl = displayedTextLength(st->wrappedPromptString);
+
+			size_t lines = 1;
+			while(len > 0)
+			{
+				auto left = width - (lines == 1 ? norm_pl : wrap_pl);
+				if(left == len)
+					lines += 1;
+
+				len -= std::min(left, len);
+				if(len == 0)
+					break;
+
+				lines += 1;
+			}
+
+			return lines;
+		};
+
+		auto calc_wli = [&](size_t len) {
+			size_t done = 0;
+			size_t remaining = len;
+
+			size_t lc = 1;
+			st->wrappedLineIdx = 0;
+
+			while(true)
+			{
+				auto left = st->termWidth - (lc == 1 ? promptLen : wrapPL);
+				auto todo = std::min(left, remaining);
+
+				if(remaining == left)
+					st->wrappedLineIdx++;
+
+				remaining -= todo;
+				done += todo;
+
+				if(remaining == 0)
+					break;
+
+				// if your cursor is beyond this point, then you are on the next line.
+				if(st->cursor >= done + 1)
+				{
+					st->wrappedLineIdx++;
+					lc++;
+				}
+			}
+		};
+
+
+		std::string_view currentLine = getCurLine(st);
+
+		auto old_strlen = displayedTextLength(*oldLine);
+		auto new_strlen = displayedTextLength(currentLine);
+
+		// calculate how many rows the current wrapping line is using.
+		size_t old_numWrappingLines = calc_wrap(old_strlen);
+		size_t new_numWrappingLines = calc_wrap(new_strlen);
+
+		auto numWrappingLines = (old_strlen > new_strlen ? old_numWrappingLines : new_numWrappingLines);
+
+		// move up some number of lines, while clearing the line (note: we already cleared the first one, so skip that)
+		// TODO: if the entire context spans more than the terminal height, we need to stop, and only print out the bottom half!
+
+		// what we want to do here is go all the way to the bottom of the string (regardless of cursor position), and clear it.
+		// then go up one line and repeat, basically clearing the whole thing.
+		qcmd(moveCursorDown(numWrappingLines - st->wrappedLineIdx - 1));
+		// fprintf(stderr, "new wl: %zu, old wl: %zu, WLI: %zu, NWL: %zu\n", new_numWrappingLines, old_numWrappingLines,
+		// 	st->wrappedLineIdx, numWrappingLines);
+
+		for(size_t i = 1; i < numWrappingLines; i++)
+		{
+			qcmd("\x1b[2K");
+			qcmd(moveCursorUp(1));
+		}
+
+
+		// move to the first position.
+		qcmd(moveCursorLeft(9999));
+		flushcmd();
+
+		auto old_pos = getCursorPosition();
+
+
+		// start dumping:
+		qcmd(pr);
+
+
+		size_t remaining = new_strlen;
+		size_t curlinecount = 1;
+
+		calc_wli(st->cursor);
+
+		while(true)
+		{
+			auto adv_and_cons = [&currentLine](size_t cons) -> std::string_view {
+				// return the view from [here, cons) -- in terms of codepoints
+				// and advance the line by cons codepoints.
+
+				size_t bytes_to_adv = 0;
+				for(size_t i = 0; i < cons; i++)
+				{
+					bytes_to_adv = 1 + findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(currentLine.data()),
+						bytes_to_adv);
+				}
+
+				auto ret = currentLine.substr(0, bytes_to_adv);
+				currentLine.remove_prefix(bytes_to_adv);
+
+				return ret;
+			};
+
+			auto left = st->termWidth - (curlinecount == 1 ? promptLen : wrapPL);
+			auto todo = std::min(left, remaining);
+
+			qcmd(adv_and_cons(todo));
+
+			remaining -= todo;
+
+			if(remaining == 0)
+			{
+				// pad out the rest of the line with spaces.
+				for(size_t i = todo; i < left; i++)
+					qcmd(" ");
+
+				break;
+			}
+
+			// if there's more:
+			// move the cursor down and left.
+			qcmd(moveCursorDown(1));
+			qcmd(moveCursorLeft(9999));
+
+			// print the wrap prompt.
+			qcmd(st->wrappedPromptString);
+			curlinecount += 1;
+		}
+
+		// ok, now it's time to fix up the cursor...
+		{
+			size_t hcursor = promptLen;
+			size_t vcursor = 0;
+			size_t x = st->cursor;
+
+			while(true)
+			{
+				auto left = st->termWidth - hcursor;
+				auto todo = std::min(left, x);
+				x -= todo;
+
+				if(x == 0)
+				{
+					hcursor += todo;
+					if(hcursor == st->termWidth)
+						vcursor++, hcursor = wrapPL;
+
+					break;
+				}
+
+				// move to the next line.
+				vcursor += 1;
+				hcursor = wrapPL;
+			}
+
+			// we know what to do now. first go back to the start:
+			qcmd(setCursorPosition(old_pos));
+
+			qcmd(moveCursorDown(st->wrappedLineIdx));
+			qcmd(moveCursorRight(hcursor));
+		}
+
+		flushcmd();
+	}
+
+
+
+
+
+	// this is ugly!!!
+	static State* currentStateForSignal = 0;
 	static bool read_line(State* st)
 	{
 		constexpr char CTRL_C       = '\x03';
@@ -623,7 +882,36 @@ namespace detail
 		constexpr char ENTER        = '\x0D';
 		constexpr char BACKSPACE    = '\x7F';
 
+		// NOT THREAD SAFE!!
 		enterRawMode();
+		currentStateForSignal = st;
+		st->termWidth = getTerminalWidth();
+		st->termHeight = getTerminalHeight();
+
+		platform_write(st->promptMode == 0 ? st->promptString : st->contPromptString);
+		st->lines.push_back("");
+
+		bool didSetSignalHandler = false;
+
+		// time for some signalling!
+		struct sigaction new_sa {
+			.sa_flags = SA_RESTART,  // this is important, if not read() will return EINTR (interrupted by signal)
+			.sa_handler = [](int sig) {
+				if(currentStateForSignal)
+				{
+					currentStateForSignal->termWidth = getTerminalWidth();
+					currentStateForSignal->termHeight = getTerminalHeight();
+				}
+			}
+		};
+
+		struct sigaction old_sa;
+		if(sigaction(SIGWINCH, &new_sa, &old_sa) == 0)
+			didSetSignalHandler = true;
+
+
+
+
 
 		auto cursor_home = [&st]() {
 			st->cursor = 0;
@@ -633,8 +921,8 @@ namespace detail
 		};
 
 		auto cursor_end = [&st]() {
-			st->cursor = displayedTextLength(st->currLine);
-			st->byteCursor = st->currLine.size();
+			st->cursor = displayedTextLength(getCurLine(st));
+			st->byteCursor = getCurLine(st).size();
 
 			refresh_line(st);
 		};
@@ -643,7 +931,7 @@ namespace detail
 			if(st->cursor > 0)
 			{
 				auto x = st->byteCursor - 1;
-				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
 				st->byteCursor -= (x - l + 1);
 				st->cursor -= 1;
 
@@ -652,10 +940,10 @@ namespace detail
 		};
 
 		auto cursor_right = [&st]() {
-			if(st->byteCursor < st->currLine.size())
+			if(st->byteCursor < getCurLine(st).size())
 			{
 				auto x = st->byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
 
 				st->byteCursor += (l - x + 1);
 				st->cursor += 1;
@@ -664,32 +952,34 @@ namespace detail
 			}
 		};
 
-
-
 		auto delete_left = [&st]() {
-			if(st->cursor > 0 && st->currLine.size() > 0)
+			if(st->cursor > 0 && getCurLine(st).size() > 0)
 			{
 				auto x = st->byteCursor - 1;
-				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
 
-				st->currLine.erase(l, x - l + 1);
+				auto old = getCurLine(st);
+
+				getCurLine(st).erase(l, x - l + 1);
 				st->byteCursor -= (x - l + 1);
 				st->cursor -= 1;
 
-				refresh_line(st);
+				refresh_line(st, &old);
 			}
 		};
 
 		auto delete_right = [&st]() {
-			if(st->byteCursor < st->currLine.size())
+			if(st->byteCursor < getCurLine(st).size())
 			{
 				auto x = st->byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(st->currLine.c_str()), x);
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
 
-				st->currLine.erase(x, l - x + 1);
+				auto old = getCurLine(st);
+
+				getCurLine(st).erase(x, l - x + 1);
 
 				// both cursors remain unchanged.
-				refresh_line(st);
+				refresh_line(st, &old);
 			}
 		};
 
@@ -714,29 +1004,35 @@ namespace detail
 					goto finish;
 				}
 
-				// this is a little complex; if there's stuff in the buffer, then don't do anything
-				// possibly do a bell -- swift and python both do this.
+				// this is a little complex; control-D is apparently both EOF: when the buffer is empty,
+				// and delete-left: when it is not...
 				case CTRL_D: {
-
 					// if the buffer is empty, then quit.
-					if(st->currLine.empty())
-					{
-						eof = true;
-						goto finish;
-					}
-				} break;
-
-				case CTRL_C: {
-					if(st->currLine.empty())
+					if(getCurLine(st).empty())
 					{
 						eof = true;
 						goto finish;
 					}
 					else
 					{
-						st->currLine.clear();
+						delete_left();
+					}
+				} break;
+
+				case CTRL_C: {
+					if(getCurLine(st).empty())
+					{
+						eof = true;
+						goto finish;
+					}
+					else
+					{
+						auto old = getCurLine(st);
+						getCurLine(st).clear();
+
 						st->cursor = 0;
-						refresh_line(st);
+						st->byteCursor = 0;
+						refresh_line(st, &old);
 					}
 				}
 
@@ -797,10 +1093,12 @@ namespace detail
 
 				// default: just append -- if it's not a control char.
 				default: {
+					auto old = getCurLine(st);
+
 					uint8_t uc = static_cast<uint8_t>(c);
 					if(uc >= 0x20 && uc <= 0x7F)
 					{
-						st->currLine.insert(st->currLine.begin() + st->byteCursor, c);
+						getCurLine(st).insert(getCurLine(st).begin() + st->byteCursor, c);
 
 						st->cursor += 1;
 						st->byteCursor += 1;
@@ -831,18 +1129,26 @@ namespace detail
 							cp += buf;
 						}
 
-						st->currLine.insert(st->byteCursor, cp);
+						getCurLine(st).insert(st->byteCursor, cp);
 
 						st->byteCursor += cp.size();
 						st->cursor += displayedTextLength(cp);
 					}
 
-					refresh_line(st);
+					refresh_line(st, &old);
 				} break;
 			}
 		}
 
+
+
+
 	finish:
+		// restore the signal state, and reset the terminal to normal mode.
+		currentStateForSignal = 0;
+		if(didSetSignalHandler)
+			sigaction(SIGWINCH, &old_sa, nullptr);
+
 		leaveRawMode();
 		return eof;
 	}
@@ -869,6 +1175,11 @@ namespace ztmu
 		this->promptString = prompt;
 	}
 
+	void State::setWrappedPrompt(const std::string& prompt)
+	{
+		this->wrappedPromptString = prompt;
+	}
+
 	void State::setContinuationPrompt(const std::string& prompt)
 	{
 		this->contPromptString = prompt;
@@ -878,39 +1189,34 @@ namespace ztmu
 	{
 		// clear.
 		this->clear();
+		this->promptMode = 0;
 
-		detail::platform_write(this->promptString);
 		bool eof = detail::read_line(this);
 
 		if(!eof)
 		{
-			this->lines.push_back(this->currLine);
-			this->currLine.clear();
-
 			return this->lines.back();
 		}
 		else
 		{
-			return "\x4";
+			return "\x04";
 		}
 	}
 
 	std::string State::readContinuation()
 	{
 		// don't clear.
-		detail::platform_write(this->contPromptString);
+		this->promptMode = 1;
 		bool eof = detail::read_line(this);
 
 		if(!eof)
 		{
-			this->lines.push_back(this->currLine);
-			this->currLine.clear();
-
+			// DOES NOT WORK!!!
 			return this->lines.back();
 		}
 		else
 		{
-			return "\x4";
+			return "\x04";
 		}
 	}
 }
