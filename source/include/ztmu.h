@@ -29,6 +29,18 @@ namespace ztmu
 		void setWrappedPrompt(const std::string& prompt);
 		void setContinuationPrompt(const std::string& prompt);
 
+		void move_cursor_left(int n);
+		void move_cursor_right(int n);
+
+		void move_cursor_up(int n);
+		void move_cursor_down(int n);
+
+		void move_cursor_home();
+		void move_cursor_end();
+
+		void delete_left(int n);
+		void delete_right(int n);
+
 
 
 		// 0 = normal, 1 = continuation
@@ -662,6 +674,33 @@ namespace detail
 	}
 
 
+	static size_t get_cursor_line_offset(State* st, size_t num, size_t firstPromptLen, size_t subsequentPromptLen)
+	{
+		size_t hcursor = firstPromptLen;
+		size_t x = st->cursor;
+
+		while(true)
+		{
+			auto left = st->termWidth - hcursor;
+			auto todo = std::min(left, x);
+			x -= todo;
+
+			if(x == 0)
+			{
+				hcursor += todo;
+				if(hcursor == st->termWidth)
+					hcursor = subsequentPromptLen;
+
+				break;
+			}
+
+			hcursor = subsequentPromptLen;
+		}
+
+		return hcursor;
+	}
+
+
 
 	static void refresh_line(State* st, std::string* oldLine = 0)
 	{
@@ -834,29 +873,7 @@ namespace detail
 
 		// ok, now it's time to fix up the cursor...
 		{
-			size_t hcursor = promptLen;
-			size_t vcursor = 0;
-			size_t x = st->cursor;
-
-			while(true)
-			{
-				auto left = st->termWidth - hcursor;
-				auto todo = std::min(left, x);
-				x -= todo;
-
-				if(x == 0)
-				{
-					hcursor += todo;
-					if(hcursor == st->termWidth)
-						vcursor++, hcursor = wrapPL;
-
-					break;
-				}
-
-				// move to the next line.
-				vcursor += 1;
-				hcursor = wrapPL;
-			}
+			auto hcursor = get_cursor_line_offset(st, st->cursor, promptLen, wrapPL);
 
 			// we know what to do now. first go back to the start:
 			qcmd(setCursorPosition(old_pos));
@@ -866,6 +883,161 @@ namespace detail
 		}
 
 		flushcmd();
+	}
+
+	static void cursor_home(State* st)
+	{
+		st->cursor = 0;
+		st->byteCursor = 0;
+
+		refresh_line(st);
+	}
+
+	static void cursor_end(State* st)
+	{
+		st->cursor = displayedTextLength(getCurLine(st));
+		st->byteCursor = getCurLine(st).size();
+
+		refresh_line(st);
+	}
+
+	static void cursor_left(State* st, int n, bool refresh = true)
+	{
+		for(int i = 0; i < n; i++)
+		{
+			if(st->cursor > 0)
+			{
+				auto x = st->byteCursor - 1;
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+				st->byteCursor -= (x - l + 1);
+				st->cursor -= 1;
+			}
+		}
+
+		if(refresh)
+			refresh_line(st);
+	}
+
+	static void cursor_right(State* st, int n, bool refresh = true)
+	{
+		for(int i = 0; i < n; i++)
+		{
+			if(st->byteCursor < getCurLine(st).size())
+			{
+				auto x = st->byteCursor;
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+
+				st->byteCursor += (l - x + 1);
+				st->cursor += 1;
+			}
+		}
+
+		if(refresh)
+			refresh_line(st);
+	}
+
+	static void delete_left(State* st)
+	{
+		if(st->cursor > 0 && getCurLine(st).size() > 0)
+		{
+			auto x = st->byteCursor - 1;
+			auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+
+			auto old = getCurLine(st);
+
+			getCurLine(st).erase(l, x - l + 1);
+			st->byteCursor -= (x - l + 1);
+			st->cursor -= 1;
+
+			refresh_line(st, &old);
+		}
+	}
+
+	static void delete_right(State* st)
+	{
+		if(st->byteCursor < getCurLine(st).size())
+		{
+			auto x = st->byteCursor;
+			auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+
+			auto old = getCurLine(st);
+
+			getCurLine(st).erase(x, l - x + 1);
+
+			// both cursors remain unchanged.
+			refresh_line(st, &old);
+		}
+	}
+
+	static void cursor_up(State* st)
+	{
+		if(st->cursor > 0 && st->wrappedLineIdx > 0)
+		{
+			size_t promptL = displayedTextLength(st->promptMode == 0 ? st->promptString : st->contPromptString);
+			size_t wrapL = displayedTextLength(st->wrappedPromptString);
+
+			// first, get the current horz cursor position:
+			auto hcursor = get_cursor_line_offset(st, st->cursor, promptL, wrapL);
+
+			// because wrappedLineIdx > 0, we know we're wrapping. this is the number of chars on the current
+			// line (of text!), to the left of the cursor.
+			auto h_curlength = hcursor - wrapL;
+
+			// this is how many extra chars to go left.
+			auto rightmargin = st->termWidth - hcursor;
+
+			// this will stop when we can't go further, so there's no need to limit.
+			// note: this doesn't manipulate the console cursor at all -- we only do that in
+			// refresh_line, once!
+			cursor_left(st, h_curlength + rightmargin);
+
+			/*
+				so what we want to do, ideally, is move "left" termWidth number of codepoints. HOWEVER,
+			 	if we have such a situation:
+				 * > some long str
+				 | ing
+				   ^
+
+				if the cursor is there and we want to go "up", what ought to happen is that the cursor gets
+				moved to the left extreme -- ie. before the "s" in "some". we will make and document an
+				assumption here: all the wrapped prompts are the same length, and the only situation where
+				you get this problem is when you move from the second line up to the first line. thus, we
+				can use the length of the string, without having to do stupid weird math to figure out
+				how many chars are on the previous line.
+			*/
+		}
+		else
+		{
+			// TODO: handle moving up into the previous "line" list -- during continuations.
+			// TODO: possibly handle history?
+		}
+	}
+
+	static void cursor_down(State* st)
+	{
+		if(st->byteCursor < getCurLine(st).size())
+		{
+			// works on a similar principle as cursor_up.
+			size_t promptL = displayedTextLength(st->promptMode == 0 ? st->promptString : st->contPromptString);
+			size_t wrapL = displayedTextLength(st->wrappedPromptString);
+
+			auto hcursor = get_cursor_line_offset(st, st->cursor, promptL, wrapL);
+
+			// again, we make a similar assumption -- that only the first and second prompts can differ; the second and
+			// subsequent wrapping prompts must have the same length.
+
+			auto rightmargin = st->termWidth - hcursor;
+
+			// in the next line, the prompt will always be a wrapping prompt.
+			auto leftmargin = hcursor - wrapL;
+
+			cursor_right(st, rightmargin + leftmargin);
+		}
+		else
+		{
+			// TODO: handle moving down into the next "line" list -- during continuations.
+			// TODO: possibly handle history?
+		}
 	}
 
 
@@ -913,82 +1085,6 @@ namespace detail
 
 
 
-		auto cursor_home = [&st]() {
-			st->cursor = 0;
-			st->byteCursor = 0;
-
-			refresh_line(st);
-		};
-
-		auto cursor_end = [&st]() {
-			st->cursor = displayedTextLength(getCurLine(st));
-			st->byteCursor = getCurLine(st).size();
-
-			refresh_line(st);
-		};
-
-		auto cursor_left = [&st]() {
-			if(st->cursor > 0)
-			{
-				auto x = st->byteCursor - 1;
-				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-				st->byteCursor -= (x - l + 1);
-				st->cursor -= 1;
-
-				refresh_line(st);
-			}
-		};
-
-		auto cursor_right = [&st]() {
-			if(st->byteCursor < getCurLine(st).size())
-			{
-				auto x = st->byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-
-				st->byteCursor += (l - x + 1);
-				st->cursor += 1;
-
-				refresh_line(st);
-			}
-		};
-
-		auto delete_left = [&st]() {
-			if(st->cursor > 0 && getCurLine(st).size() > 0)
-			{
-				auto x = st->byteCursor - 1;
-				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-
-				auto old = getCurLine(st);
-
-				getCurLine(st).erase(l, x - l + 1);
-				st->byteCursor -= (x - l + 1);
-				st->cursor -= 1;
-
-				refresh_line(st, &old);
-			}
-		};
-
-		auto delete_right = [&st]() {
-			if(st->byteCursor < getCurLine(st).size())
-			{
-				auto x = st->byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-
-				auto old = getCurLine(st);
-
-				getCurLine(st).erase(x, l - x + 1);
-
-				// both cursors remain unchanged.
-				refresh_line(st, &old);
-			}
-		};
-
-
-
-
-
-
-
 		bool eof = false;
 		while(true)
 		{
@@ -1015,7 +1111,7 @@ namespace detail
 					}
 					else
 					{
-						delete_left();
+						delete_left(st);
 					}
 				} break;
 
@@ -1039,7 +1135,7 @@ namespace detail
 				// backspace
 				case BACKSPACE: [[fallthrough]];
 				case BACKSPACE_: {
-					delete_left();
+					delete_left(st);
 				} break;
 
 				// time for some fun.
@@ -1063,30 +1159,32 @@ namespace detail
 
 							switch(n)
 							{
-								case 3: delete_right(); break;
+								case 3: delete_right(st); break;
 
-								case 1: cursor_home(); break;
-								case 7: cursor_home(); break;
+								case 1: cursor_home(st); break;
+								case 7: cursor_home(st); break;
 
-								case 4: cursor_end(); break;
-								case 8: cursor_end(); break;
+								case 4: cursor_end(st); break;
+								case 8: cursor_end(st); break;
 							}
 						}
 						else
 						{
 							switch(seq[1])
 							{
-								case 'C': cursor_right(); break;
-								case 'D': cursor_left(); break;
-								case 'H': cursor_home(); break;
-								case 'F': cursor_end(); break;
+								case 'A': cursor_up(st); break;
+								case 'B': cursor_down(st); break;
+								case 'C': cursor_right(st, 1); break;
+								case 'D': cursor_left(st, 1); break;
+								case 'H': cursor_home(st); break;
+								case 'F': cursor_end(st); break;
 							}
 						}
 					}
 					else if(seq[0] == 'O')
 					{
-						if(seq[1] == 'H')       cursor_home();
-						else if(seq[1] == 'F')  cursor_end();
+						if(seq[1] == 'H')       cursor_home(st);
+						else if(seq[1] == 'F')  cursor_end(st);
 					}
 
 				} break;
@@ -1154,8 +1252,6 @@ namespace detail
 	}
 
 
-
-
 #endif
 
 }
@@ -1184,6 +1280,67 @@ namespace ztmu
 	{
 		this->contPromptString = prompt;
 	}
+
+	void State::move_cursor_left(int n)
+	{
+		if(n < 0)   move_cursor_right(-n);
+
+		detail::cursor_left(this, n);
+	}
+
+	void State::move_cursor_right(int n)
+	{
+		if(n < 0)   move_cursor_left(-n);
+
+		detail::cursor_right(this, n);
+	}
+
+	void State::move_cursor_up(int n)
+	{
+		if(n < 0)   move_cursor_down(-n);
+
+		for(int i = 0; i < n; i++)
+			detail::cursor_up(this);
+	}
+
+	void State::move_cursor_down(int n)
+	{
+		if(n < 0)   move_cursor_up(-n);
+
+		for(int i = 0; i < n; i++)
+			detail::cursor_down(this);
+	}
+
+
+	void State::move_cursor_home()
+	{
+		detail::cursor_home(this);
+	}
+
+	void State::move_cursor_end()
+	{
+		detail::cursor_end(this);
+	}
+
+	void State::delete_left(int n)
+	{
+		if(n <= 0) return;
+
+		for(int i = 0; i < n; i++)
+			detail::delete_left(this);
+	}
+
+	void State::delete_right(int n)
+	{
+		if(n <= 0) return;
+
+		for(int i = 0; i < n; i++)
+			detail::delete_right(this);
+	}
+
+
+
+
 
 	std::string State::read()
 	{
