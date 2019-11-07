@@ -39,44 +39,35 @@ namespace repl
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
 		st.setContinuationPrompt(CONTINUATION_PROMPT_STRING);
 
-		printf("\nread: %s\n", st.read().c_str());
+		while(auto line = st.read())
+		{
+			input += std::string(*line);
 
+			if(input.empty())
+				continue;
 
+			if(input[0] == ':')
+			{
+				runCommand(input.substr(1));
+				printf("\n");
+			}
+			else if(bool needmore = processLine(input += "\n"); needmore)
+			{
+				// read more.
+				while(auto line = st.readContinuation())
+				{
+					input += std::string(*line) + "\n";
 
-		// printf("len = %zu\n", ztmu::detail::displayedTextLength(PROMPT_STRING));
+					needmore = processLine(input);
 
+					if(!needmore)
+						break;
+				}
+			}
 
-
-
-		// while(auto line = (PROMPT_STRING))
-		// {
-		// 	input += std::string(line);
-
-		// 	if(input.empty())
-		// 		continue;
-
-		// 	if(input[0] == ':')
-		// 	{
-		// 		runCommand(input.substr(1));
-		// 		printf("\n");
-		// 		continue;
-		// 	}
-
-		// 	if(bool needmore = processLine(input + "\n"); needmore)
-		// 	{
-		// 		// read more.
-		// 		while(needmore)
-		// 		{
-		// 			auto line = (CONTINUATION_PROMPT_STRING);
-		// 			input += std::string(line) + "\n";
-
-		// 			needmore = processLine(input);
-		// 		}
-		// 	}
-
-		// 	// ok, we're done -- clear.
-		// 	input.clear();
-		// }
+			// ok, we're done -- clear.
+			input.clear();
+		}
 	}
 }
 

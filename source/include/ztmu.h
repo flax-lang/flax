@@ -13,6 +13,7 @@
 
 #include <vector>
 #include <string>
+#include <optional>
 #include <string_view>
 
 
@@ -22,8 +23,8 @@ namespace ztmu
 	{
 		void clear();
 
-		std::string read();
-		std::string readContinuation();
+		std::optional<std::string> read();
+		std::optional<std::string> readContinuation();
 
 		void setPrompt(const std::string& prompt);
 		void setWrappedPrompt(const std::string& prompt);
@@ -1048,8 +1049,10 @@ namespace detail
 	static State* currentStateForSignal = 0;
 	static bool read_line(State* st)
 	{
+		constexpr char CTRL_A       = '\x01';
 		constexpr char CTRL_C       = '\x03';
 		constexpr char CTRL_D       = '\x04';
+		constexpr char CTRL_E       = '\x05';
 		constexpr char BACKSPACE_   = '\x08';
 		constexpr char ENTER        = '\x0D';
 		constexpr char BACKSPACE    = '\x7F';
@@ -1060,8 +1063,12 @@ namespace detail
 		st->termWidth = getTerminalWidth();
 		st->termHeight = getTerminalHeight();
 
+		st->cursor = 0;
+		st->byteCursor = 0;
+		st->wrappedLineIdx = 0;
+		st->lines.emplace_back("");
+
 		platform_write(st->promptMode == 0 ? st->promptString : st->contPromptString);
-		st->lines.push_back("");
 
 		bool didSetSignalHandler = false;
 
@@ -1113,6 +1120,14 @@ namespace detail
 					{
 						delete_left(st);
 					}
+				} break;
+
+				case CTRL_A: {
+					cursor_home(st);
+				} break;
+
+				case CTRL_E: {
+					cursor_end(st);
 				} break;
 
 				case CTRL_C: {
@@ -1247,7 +1262,12 @@ namespace detail
 		if(didSetSignalHandler)
 			sigaction(SIGWINCH, &old_sa, nullptr);
 
+		// move the cursor to the end, refresh the line, then leave raw mode -- this makes sure
+		// that we leave the cursor in a nice place after the call to this function returns.
+		cursor_end(st);
 		leaveRawMode();
+
+		platform_write("\n");
 		return eof;
 	}
 
@@ -1264,6 +1284,7 @@ namespace ztmu
 	{
 		// reset the thing.
 		this->lines.clear();
+		this->lineIdx = 0;
 	}
 
 	void State::setPrompt(const std::string& prompt)
@@ -1342,7 +1363,7 @@ namespace ztmu
 
 
 
-	std::string State::read()
+	std::optional<std::string> State::read()
 	{
 		// clear.
 		this->clear();
@@ -1350,31 +1371,20 @@ namespace ztmu
 
 		bool eof = detail::read_line(this);
 
-		if(!eof)
-		{
-			return this->lines.back();
-		}
-		else
-		{
-			return "\x04";
-		}
+		if(eof) return std::nullopt;
+		else    return this->lines.back();
 	}
 
-	std::string State::readContinuation()
+	std::optional<std::string> State::readContinuation()
 	{
 		// don't clear.
 		this->promptMode = 1;
+		this->lineIdx++;
+
 		bool eof = detail::read_line(this);
 
-		if(!eof)
-		{
-			// DOES NOT WORK!!!
-			return this->lines.back();
-		}
-		else
-		{
-			return "\x04";
-		}
+		if(eof) return std::nullopt;
+		else    return this->lines.back();
 	}
 }
 
