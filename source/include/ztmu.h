@@ -757,10 +757,6 @@ namespace detail
 		};
 
 
-		// kill the entire line, and move the cursor to the beginning as well.
-		qcmd("\x1b[2K");
-		qcmd(moveCursorLeft(9999));
-
 		auto calc_wrap = [&](size_t len) -> size_t {
 			auto width = st->termWidth;
 
@@ -834,6 +830,11 @@ namespace detail
 
 		auto new_wli = calc_wli(st->cursor);
 
+		// kill the entire line, and move the cursor to the beginning as well.
+		// qcmd("\x1b[2K");
+		qcmd(moveCursorLeft(9999));
+
+
 		fprintf(stderr, "nwl: %zu, old_nwl: %zu, new_wli: %zu, old_wli: %zu\n", numWrappingLines, old_NWL, new_wli, st->wrappedLineIdx);
 
 		// what we want to do here is go all the way to the bottom of the string (regardless of cursor position), and clear it.
@@ -842,7 +843,21 @@ namespace detail
 			auto nwl = std::max(numWrappingLines, old_NWL);
 
 			if(numWrappingLines > st->wrappedLineIdx)
-				qcmd(moveCursorDown(nwl - st->wrappedLineIdx - 1));
+			{
+				// the the current position (just the vcursor):
+				auto vcursor = getCursorPosition().y;
+				auto tomove = nwl - st->wrappedLineIdx - 1;
+
+				fprintf(stderr, "height: %zu, vc: %zu, tm: %zu\n", st->termHeight, vcursor, tomove);
+				if(st->termHeight - vcursor < tomove)
+				{
+					fprintf(stderr, "need to scroll\n");
+					// scroll the screen down -- but move the text *up*
+					qcmd(zpr::sprint("%s%dS", CSI, tomove - (st->termHeight - vcursor)));
+				}
+
+				qcmd(moveCursorDown(tomove));
+			}
 
 			for(size_t i = 1; i < nwl - new_wli; i++)
 			{
