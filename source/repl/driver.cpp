@@ -84,6 +84,7 @@ namespace repl
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
+		st.setContPrompt(CONTINUATION_PROMPT_STRING);
 
 		while(auto line = st.read())
 		{
@@ -117,8 +118,6 @@ namespace repl
 		#endif
 	}
 }
-
-// std::wcerr << L"<writing " << (wchar_t*) _display.data() << L">";
 
 
 
