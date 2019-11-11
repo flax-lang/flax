@@ -1,4 +1,4 @@
-// parse.cpp
+// execute.cpp
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
@@ -44,7 +44,8 @@ namespace repl
 		sst::TypecheckState* fs;
 		cgn::CodegenState* cs;
 
-		size_t counter = 0;
+		size_t fnCounter = 0;
+		size_t varCounter = 0;
 	};
 
 	static State* state = 0;
@@ -96,10 +97,25 @@ namespace repl
 				// ok, we have a thing. try to run it.
 
 				auto value = magicallyRunExpressionAtCompileTime(state->cs, tcr.stmt(), nullptr,
-					Identifier(zpr::sprint("__anon_runner_%d", state->counter++), IdKind::Name));
+					Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name));
 
 				if(value)
-					printf("%s\n", zpr::sprint("%s  ::  %s", value->str(), value->getType()).c_str());
+				{
+					// if it was an expression, then give it a name so we can refer to it later.
+					auto init = util::pool<sst::RawValueExpr>(Location(), value->getType());
+					init->rawValue = CGResult(value);
+
+					auto vardef = util::pool<sst::VarDefn>(Location());
+					vardef->type = init->type;
+					vardef->id = Identifier(zpr::sprint("_%d", state->varCounter++), IdKind::Name);
+					vardef->global = true;
+					vardef->init = init;
+
+					state->fs->stree->addDefinition(vardef->id.name, vardef);
+
+
+					printf("%s\n", zpr::sprint("%s: %s = %s", vardef->id.name, value->getType(), value->str()).c_str());
+				}
 			}
 		}
 

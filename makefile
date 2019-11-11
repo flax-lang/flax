@@ -85,8 +85,6 @@ endif
 
 
 UTF8REWIND_AR   := external/libutf8rewind.a
-LINENOISE_AR    := external/liblinenoise.a
-REPLXX_AR       := external/libreplxx.a
 
 
 FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
@@ -146,10 +144,10 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR) $(LINENOISE_AR) $(REPLXX_AR)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -llinenoise -lreplxx
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind
 
 
 %.cpp.o: %.cpp
@@ -164,12 +162,6 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR) $(LINENOISE_AR) $(R
 
 $(UTF8REWIND_AR):
 	@make -C external/utf8rewind all
-
-$(LINENOISE_AR):
-	@make -C external/linenoise all
-
-$(REPLXX_AR): $(shell find external/replxx -name "*.cpp" -or -name "*.hxx")
-	@make -C external/replxx all
 
 # haha
 clena: clean

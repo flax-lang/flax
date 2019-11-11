@@ -322,7 +322,7 @@ namespace fir
 
 	std::string ConstantCharSlice::str()
 	{
-		return this->value;
+		return zpr::sprint("\"%s\"", this->value);
 	}
 
 

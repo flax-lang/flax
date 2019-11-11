@@ -10,8 +10,6 @@
 #define ZTMU_CREATE_IMPL 1
 #include "ztmu.h"
 
-#include "replxx/include/replxx.hxx"
-
 namespace repl
 {
 	static void runCommand(const std::string& s)
