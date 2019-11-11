@@ -480,6 +480,8 @@ struct TCResult
 	{
 		if(&r != this)
 		{
+			this->_kind = r._kind;
+
 			if(this->isError())     { this->_pe = r._pe; r._pe = 0; }
 			else if(this->isStmt()) { this->_st = r._st; r._st = 0; }
 			else if(this->isExpr()) { this->_ex = r._ex; r._ex = 0; }
