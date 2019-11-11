@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <map>
 #include <vector>
 #include <string>
 #include <optional>
@@ -19,12 +20,39 @@
 
 namespace ztmu
 {
+	enum class Key
+	{
+		// start above 0xFF, so anything below we can just use as normal chars.
+		ESCAPE = 0x100,
+		ENTER,
+		UP,
+		DOWN,
+		LEFT,
+		RIGHT,
+		HOME,
+		END,
+		DELETE,
+		INSERT,
+		PAGEUP,
+		PAGEDOWN,
+		F0, F1, F2, F3, F4, F5, F6, F7, F8, F9,
+		F10, F11, F12, F13, F14, F15, F16, F17,
+		F18, F19, F20, F21, F22, F23, F24
+	};
+
+	enum class HandlerAction
+	{
+		CONTINUE,   // do nothing, and continue reading the line.
+		RETURN,     // as if enter was pressed -- finish the line and give it back.
+		QUIT        // abandon ship -- return EOF.
+	};
+
 	struct State
 	{
 		void clear();
 
 		std::optional<std::string> read();
-		std::optional<std::string> readContinuation();
+		std::optional<std::string> readContinuation(const std::string& seed = "");
 
 		void setPrompt(const std::string& prompt);
 		void setContPrompt(const std::string& prompt);
@@ -42,7 +70,12 @@ namespace ztmu
 		void delete_left(int n);
 		void delete_right(int n);
 
-		void setEnterHandler(std::function<bool (State*)> handler);
+		// the handler will return true to continue reading, false to stop and return all input.
+		void setKeyHandler(Key k, std::function<HandlerAction (State*, Key)> handler);
+		void unsetKeyHandler(Key k);
+
+		std::string getCurrentLine();
+		void setCurrentLine(const std::string& s);
 
 		std::string promptString;
 		std::string contPromptString;
@@ -63,7 +96,7 @@ namespace ztmu
 		size_t termHeight = 0;
 
 		std::vector<std::string> lines;
-		std::function<bool (State*)> enterHandler;
+		std::map<Key, std::function<HandlerAction (State*, Key)>> keyHandlers;
 	};
 }
 
@@ -80,25 +113,6 @@ namespace detail
 		int y = -1;
 	};
 
-	enum class Key
-	{
-		NONE = 0,
-		ESCAPE,
-		UP,
-		DOWN,
-		LEFT,
-		RIGHT,
-		HOME,
-		END,
-		DELETE,
-		INSERT,
-		PAGEUP,
-		PAGEDOWN,
-		F0, F1, F2, F3, F4, F5, F6, F7, F8, F9,
-		F10, F11, F12, F13, F14, F15, F16, F17,
-		F18, F19, F20, F21, F22, F23, F24
-	};
-
 	struct ControlSeq
 	{
 		ControlSeq() { }
@@ -110,73 +124,6 @@ namespace detail
 		int numParams = 0;
 		int params[8];
 	};
-
-	struct KeyEvent
-	{
-		union {
-			char key;
-			Key escKey;
-			ControlSeq ctrlSeq;
-		};
-
-		KeyEvent()
-		{
-			this->escKey = Key::NONE;
-			this->isNormalChar = false;
-			this->isControlSeq = false;
-		}
-
-		KeyEvent(const ControlSeq& cs)
-		{
-			this->ctrlSeq = cs;
-			this->isNormalChar = false;
-			this->isControlSeq = true;
-		}
-
-		KeyEvent(Key escKey)
-		{
-			this->escKey = escKey;
-			this->isNormalChar = false;
-			this->isControlSeq = false;
-		}
-
-		KeyEvent(char c)
-		{
-			this->key = c;
-			this->isNormalChar = true;
-			this->isControlSeq = false;
-		}
-
-		KeyEvent ctrl()
-		{
-			auto copy = *this;
-			copy.isControlled = true;
-			return copy;
-		}
-
-		KeyEvent alt()
-		{
-			auto copy = *this;
-			copy.isAlted = true;
-			return copy;
-		}
-
-		KeyEvent shift()
-		{
-			auto copy = *this;
-			copy.isShifted = true;
-			return copy;
-		}
-
-
-		bool isNormalChar = true;
-		bool isControlSeq = false;
-
-		bool isAlted = false;
-		bool isShifted = false;
-		bool isControlled = false;
-	};
-
 
 	static void leaveRawMode();
 	static void enterRawMode();
@@ -194,7 +141,7 @@ namespace detail
 	static std::string setCursorPosition(const CursorPosition& pos);
 
 	static size_t displayedTextLength(const std::string_view& str);
-	static std::pair<KeyEvent, size_t> parseEscapeSequence(const std::string_view& str);
+	static size_t parseEscapeSequence(const std::string_view& str);
 
 
 
@@ -267,7 +214,7 @@ namespace detail
 #endif
 
 
-	#if 1
+	#if 0
 		template <typename... Args>
 		void ztmu_dbg(const char* fmt, Args&&... args)
 		{
@@ -367,10 +314,10 @@ namespace detail
 
 
 
-	static std::pair<KeyEvent, size_t> parseEscapeSequence(const std::string_view& str)
+	static size_t parseEscapeSequence(const std::string_view& str)
 	{
 		if(str.size() < 2 || str[0] != ESC)
-			return std::make_pair(KeyEvent(), 0);
+			return 0;
 
 		auto read_digits = [](const std::string_view& s, int* out) -> size_t {
 			int ret = 0;
@@ -393,11 +340,11 @@ namespace detail
 
 		if(str[1] == ESC)
 		{
-			return std::make_pair(KeyEvent(Key::ESCAPE), 2);
+			return 2;
 		}
 		else if(str[1] == 'N' || str[1] == 'O' || str[1] == 'c')
 		{
-			return std::make_pair(KeyEvent(ControlSeq(str[1])), 2);
+			return 2;
 		}
 		else if(str[1] == 'P' || str[1] == ']' || str[1] == 'X' || str[1] == '^' || str[1] == '_')
 		{
@@ -406,7 +353,7 @@ namespace detail
 			while(cons + 1 < str.size() && (str[cons] != ESC || str[cons + 1] != '\\'))
 				cons++;
 
-			return std::make_pair(ControlSeq(str[1]), cons);
+			return cons;
 		}
 		else if(str[1] == '[')
 		{
@@ -440,75 +387,11 @@ namespace detail
 			}
 
 			csi.lastChar = str[cons++];
-			switch(csi.lastChar)
-			{
-				case '~': {
-					auto ke = KeyEvent();
-					switch(csi.params[0])
-					{
-						case 1:  ke = KeyEvent(Key::HOME);      break;
-						case 2:  ke = KeyEvent(Key::INSERT);    break;
-						case 3:  ke = KeyEvent(Key::DELETE);    break;
-						case 4:  ke = KeyEvent(Key::END);       break;
-						case 5:  ke = KeyEvent(Key::PAGEUP);    break;
-						case 6:  ke = KeyEvent(Key::PAGEDOWN);  break;
-						case 7:  ke = KeyEvent(Key::HOME);      break;
-						case 8:  ke = KeyEvent(Key::END);       break;
-						case 10: ke = KeyEvent(Key::F0);        break;
-						case 11: ke = KeyEvent(Key::F1);        break;
-						case 12: ke = KeyEvent(Key::F2);        break;
-						case 13: ke = KeyEvent(Key::F3);        break;
-						case 14: ke = KeyEvent(Key::F4);        break;
-						case 15: ke = KeyEvent(Key::F5);        break;
-						case 17: ke = KeyEvent(Key::F6);        break;
-						case 18: ke = KeyEvent(Key::F7);        break;
-						case 19: ke = KeyEvent(Key::F8);        break;
-						case 20: ke = KeyEvent(Key::F9);        break;
-						case 21: ke = KeyEvent(Key::F10);       break;
-						case 23: ke = KeyEvent(Key::F11);       break;
-						case 24: ke = KeyEvent(Key::F12);       break;
-						case 25: ke = KeyEvent(Key::F13);       break;
-						case 26: ke = KeyEvent(Key::F14);       break;
-						case 28: ke = KeyEvent(Key::F15);       break;
-						case 29: ke = KeyEvent(Key::F16);       break;
-						case 31: ke = KeyEvent(Key::F17);       break;
-						case 32: ke = KeyEvent(Key::F18);       break;
-						case 33: ke = KeyEvent(Key::F19);       break;
-						case 34: ke = KeyEvent(Key::F20);       break;
-					}
-
-					if(ke.escKey != Key::NONE && csi.numParams == 2)
-					{
-						int mods = csi.params[1] - 1;
-						if(mods & 0x1)  ke = ke.shift();
-						if(mods & 0x2)  ke = ke.alt();
-						if(mods & 0x4)  ke = ke.ctrl();
-						if(mods & 0x8)  ke = ke.alt();  // actually meta
-					}
-
-					return std::make_pair(ke, cons);
-				}
-
-				case 'A': return std::make_pair(KeyEvent(Key::UP),    cons);
-				case 'B': return std::make_pair(KeyEvent(Key::DOWN),  cons);
-				case 'C': return std::make_pair(KeyEvent(Key::RIGHT), cons);
-				case 'D': return std::make_pair(KeyEvent(Key::LEFT),  cons);
-				case 'F': return std::make_pair(KeyEvent(Key::END),   cons);
-				case 'H': return std::make_pair(KeyEvent(Key::HOME),  cons);
-
-				case 'P': return std::make_pair(KeyEvent(Key::F1), cons);
-				case 'Q': return std::make_pair(KeyEvent(Key::F2), cons);
-				case 'R': return std::make_pair(KeyEvent(Key::F3), cons);
-				case 'S': return std::make_pair(KeyEvent(Key::F4), cons);
-			}
-
-
-
-			return std::make_pair(KeyEvent(csi), cons);
+			return cons;
 		}
 		else
 		{
-			return std::make_pair(KeyEvent(), 0);
+			return 0;
 		}
 	}
 
@@ -538,7 +421,7 @@ namespace detail
 			{
 				if(sv[i] == ESC)
 				{
-					size_t k = parseEscapeSequence(sv.substr(i)).second;
+					size_t k = parseEscapeSequence(sv.substr(i));
 					i += k;
 					cons += k;
 				}
@@ -689,11 +572,11 @@ namespace detail
 		return i;
 	}
 
-	static size_t convertCursorToByteCursor(const uint8_t* bytes, size_t cursor)
+	static size_t convertCursorToByteCursor(const char* bytes, size_t cursor)
 	{
 		size_t bc = 0;
 		for(size_t i = 0; i < cursor; i++)
-			bc = 1 + findEndOfUTF8CP(bytes, bc);
+			bc = 1 + findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(bytes), bc);
 
 		return bc;
 	}
@@ -1220,7 +1103,7 @@ namespace detail
 			auto prev_right_margin = st->termWidth - prev_hcursor;
 
 			st->cursor = prevLineLen;
-			st->byteCursor = convertCursorToByteCursor(reinterpret_cast<const uint8_t*>(prevLine.data()), st->cursor);
+			st->byteCursor = convertCursorToByteCursor(prevLine.data(), st->cursor);
 			ztmu_dbg("c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
 				prev_right_margin, std::string(prevLine).c_str());
 
@@ -1281,35 +1164,12 @@ namespace detail
 
 			// ok, time to do the real work.
 			st->cursor = next_leftChars;
-			st->byteCursor = convertCursorToByteCursor(reinterpret_cast<const uint8_t*>(nextLine.data()), st->cursor);
+			st->byteCursor = convertCursorToByteCursor(nextLine.data(), st->cursor);
 			st->lineIdx += 1;
 
 			// now move the cursor and refresh!
 			platform_write(moveCursorDown(1));
 			refresh_line(st);
-
-
-
-			// // now, we get the offset of the previous line:
-			// auto prev_hcursor = get_cursor_line_offset(st->termWidth, prevLineLen,
-			// 	st->lineIdx > 1 ? promptL : displayedTextLength(st->promptString), wrapL);
-
-			// auto prev_right_margin = st->termWidth - prev_hcursor;
-
-			// st->cursor = prevLineLen;
-			// st->byteCursor = convertCursorToByteCursor(reinterpret_cast<const uint8_t*>(prevLine.data()), st->cursor);
-			// ztmu_dbg("c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
-			// 	prev_right_margin, std::string(prevLine).c_str());
-
-			// st->lineIdx -= 1;
-
-			// // and then we move the cursor.
-			// platform_write(moveCursorUp(1));
-			// cursor_left(st, st->termWidth - hcursor - prev_right_margin, /* refresh: */ false);
-			// refresh_line(st);
-
-			// ztmu_dbg("c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
-			// 	prev_right_margin, std::string(prevLine).c_str());
 		}
 		else
 		{
@@ -1324,7 +1184,7 @@ namespace detail
 
 	// this is ugly!!!
 	static State* currentStateForSignal = 0;
-	static bool read_line(State* st, int promptMode)
+	static bool read_line(State* st, int promptMode, std::string seed)
 	{
 		constexpr char CTRL_A       = '\x01';
 		constexpr char CTRL_C       = '\x03';
@@ -1340,12 +1200,17 @@ namespace detail
 		st->termWidth = getTerminalWidth();
 		st->termHeight = getTerminalHeight();
 
-		st->cursor = 0;
-		st->byteCursor = 0;
 		st->wrappedLineIdx = 0;
-		st->lines.emplace_back("");
+		{
+			// TODO: fix this. probably pull out calc_wli from the refresh function.
+			// if your seed exceeds the terminal width, then you deserve it.
+			st->lines.push_back(seed);
+			st->cursor = seed.size();
+			st->byteCursor = convertCursorToByteCursor(seed.c_str(), st->cursor);
+		}
 
 		platform_write(promptMode == 0 ? st->promptString : st->contPromptString);
+		platform_write(seed);
 
 		bool didSetSignalHandler = false;
 
@@ -1372,6 +1237,9 @@ namespace detail
 		bool eof = false;
 		while(true)
 		{
+		// lol
+		loop_top:
+
 			char c = 0;
 			if(platform_read_one(&c) <= 0)
 				break;
@@ -1381,6 +1249,23 @@ namespace detail
 			{
 				// enter
 				case ENTER: {
+					if(auto fn = st->keyHandlers[Key::ENTER]; fn)
+					{
+						auto res = fn(st, Key::ENTER);
+						switch(res)
+						{
+							case HandlerAction::CONTINUE:
+								goto loop_top;
+
+							case HandlerAction::QUIT:
+								eof = true;
+								goto finish;
+
+							default:
+								break;
+						}
+					}
+
 					goto finish;
 				}
 
@@ -1506,6 +1391,23 @@ namespace detail
 					auto old = getCurLine(st);
 
 					uint8_t uc = static_cast<uint8_t>(c);
+
+					// also: for handlers, we don't bother about giving you codepoints, so... tough luck.
+					// TODO.
+					if(auto fn = st->keyHandlers[static_cast<Key>(uc)]; fn)
+					{
+						switch(fn(st, static_cast<Key>(uc)))
+						{
+							case HandlerAction::CONTINUE:
+								break;
+
+							case HandlerAction::QUIT: eof = true; [[fallthrough]];
+							case HandlerAction::RETURN: [[fallthrough]];
+							default:
+								goto finish;
+						}
+					}
+
 					if(uc >= 0x20 && uc <= 0x7F)
 					{
 						getCurLine(st).insert(getCurLine(st).begin() + st->byteCursor, c);
@@ -1659,27 +1561,49 @@ namespace ztmu
 			detail::delete_right(this);
 	}
 
-	void State::setEnterHandler(std::function<bool (State*)> handler)
+	void State::setKeyHandler(Key k, std::function<HandlerAction (State*, Key)> handler)
 	{
-		this->enterHandler = handler;
+		this->keyHandlers[k] = handler;
+	}
+
+	void State::unsetKeyHandler(Key k)
+	{
+		this->keyHandlers[k] = std::function<HandlerAction (State*, Key)>();
+	}
+
+	std::string State::getCurrentLine()
+	{
+		return this->lines[this->lineIdx];
+	}
+
+	void State::setCurrentLine(const std::string& s)
+	{
+		auto old = this->lines[this->lineIdx];
+		this->lines[this->lineIdx] = s;
+
+		// we need to ensure the cursors are updated!
+		this->cursor = std::min(this->cursor, detail::displayedTextLength(s));
+		this->byteCursor = detail::convertCursorToByteCursor(s.c_str(), this->cursor);
+
+		detail::refresh_line(this, &old);
 	}
 
 	std::optional<std::string> State::read()
 	{
 		// clear.
 		this->clear();
-		bool eof = detail::read_line(this, /* promptMode: */ 0);
+		bool eof = detail::read_line(this, /* promptMode: */ 0, "");
 
 		if(eof) return std::nullopt;
 		else    return this->lines.back();
 	}
 
-	std::optional<std::string> State::readContinuation()
+	std::optional<std::string> State::readContinuation(const std::string& seed)
 	{
 		// don't clear
 		this->lineIdx++;
 
-		bool eof = detail::read_line(this, /* promptMode: */ 1);
+		bool eof = detail::read_line(this, /* promptMode: */ 1, seed);
 
 		if(eof) return std::nullopt;
 		else    return this->lines.back();

@@ -326,6 +326,13 @@ namespace cgn
 			}
 		}
 
+		// TODO: do we really want this?
+		else if((lt->isFloatingPointType() && rt->isIntegerType()) || (rt->isFloatingPointType() && lt->isIntegerType()))
+		{
+			if(lt->isFloatingPointType())   return { lhs, this->irb.IntToFloatCast(rhs, lt) };
+			else                            return { this->irb.IntToFloatCast(lhs, rt), rhs };
+		}
+
 		// nope...
 		warn(this->loc(), "unsupported autocast of '%s' -> '%s'", lt, rt);
 		return { 0, 0 };

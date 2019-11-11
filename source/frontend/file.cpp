@@ -69,8 +69,27 @@ namespace frontend
 		size_t i = 0;
 
 		do {
+			// store it here so we can fiddle with it later, if we need to.
+			auto tok_out = ts->getNextSlotAndIncrement();
+
 			auto type = lexer::getNextToken(lines, &curLine, &curOffset, fileContents, *pos,
-				ts->getNextSlotAndIncrement(), crlf);
+				tok_out, crlf);
+
+			// if we reached the end of file, do everybody a favour and insert a newline before the
+			// EOF token. the lexer itself can't do this, because it can only operate on one token
+			// at a time!
+
+			if(type == lexer::TokenType::EndOfFile)
+			{
+				// here is the aforementioned fiddling.
+				tok_out->type = lexer::TokenType::NewLine;
+				tok_out->text = "\n";
+
+				// ok, now we can make another one.
+				auto real_eof  = ts->getNextSlotAndIncrement();
+				real_eof->loc  = tok_out->loc;
+				real_eof->type = lexer::TokenType::EndOfFile;
+			}
 
 			flag = (type != lexer::TokenType::EndOfFile);
 

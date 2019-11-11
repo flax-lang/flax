@@ -25,6 +25,7 @@ namespace repl
 	static constexpr const char* WRAP_PROMPT_STRING         = COLOUR_GREY_BOLD " |" COLOUR_RESET " ";
 	static constexpr const char* CONTINUATION_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 
+	static constexpr const char* EXTRA_INDENT               = "  ";
 
 	void start()
 	{
@@ -35,56 +36,19 @@ namespace repl
 
 		std::string input;
 
-		#if 0
-		auto st = replxx::Replxx();
-		st.bind_key(replxx::Replxx::KEY::ENTER, [&st, &input](char32_t code) -> replxx::Replxx::ACTION_RESULT {
-			// try to process the current input.
-			using AR = replxx::Replxx::ACTION_RESULT;
-
-			auto inp = std::string(st.get_state().text()) + "\n";
-
-			if(input.empty())
-			{
-				if(inp.empty())
-				{
-					return AR::RETURN;
-				}
-				else if(inp[0] == ':')
-				{
-					runCommand(inp.substr(1));
-					printf("\n");
-
-					return AR::RETURN;
-				}
-			}
-
-			input += inp;
-			if(bool more = processLine(input); more)
-			{
-				// get more...
-				st.print("\n");
-				st.print(CONTINUATION_PROMPT_STRING);
-				return AR::CONTINUE;
-			}
-			else
-			{
-				// ok done.
-				return AR::RETURN;
-			}
-		});
-
-		while(auto line = st.input(PROMPT_STRING))
-		{
-			// ok, we're done -- clear.
-			input.clear();
-		}
-
-		#else
-
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
 		st.setContPrompt(CONTINUATION_PROMPT_STRING);
+
+		st.setKeyHandler(static_cast<ztmu::Key>('}'), [](ztmu::State* st, ztmu::Key k) -> ztmu::HandlerAction {
+			// a bit dirty, but we just do this -- if we can find the indent at the back, then remove it.
+			auto line = st->getCurrentLine();
+			if(line.size() >= 2 && line.find(EXTRA_INDENT, line.size() - strlen(EXTRA_INDENT)) != -1)
+				st->setCurrentLine(line.substr(0, line.size() - 2));
+
+			return ztmu::HandlerAction::CONTINUE;
+		});
 
 		while(auto line = st.read())
 		{
@@ -98,13 +62,22 @@ namespace repl
 				runCommand(input.substr(1));
 				printf("\n");
 			}
-			else if(bool needmore = processLine(input += "\n"); needmore)
+			else if(bool needmore = processLine(input); needmore)
 			{
-				// read more.
-				while(auto line = st.readContinuation())
+				const char* indent = "";
+				switch(input.back())
 				{
-					input += std::string(*line) + "\n";
+					case '{': [[fallthrough]];
+					case '(': [[fallthrough]];
+					case '[': [[fallthrough]];
+					case ',':
+						indent = EXTRA_INDENT;
+				}
 
+				// read more.
+				while(auto line = st.readContinuation(indent))
+				{
+					input += "\n" + std::string(*line);
 					needmore = processLine(input);
 
 					if(!needmore)
@@ -115,7 +88,6 @@ namespace repl
 			// ok, we're done -- clear.
 			input.clear();
 		}
-		#endif
 	}
 }
 

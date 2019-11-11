@@ -265,7 +265,7 @@ namespace parser
 			else if(st.front() == TT::Func)
 			{
 				// ok parse a func as usual
-				auto method = parseFunction(st);
+				auto method = parseFunction(st).val();
 				addSelfToMethod(method, method->isMutating);
 
 				defn->methods.push_back(method);

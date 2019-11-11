@@ -2,12 +2,14 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <math.h>
+#include <float.h>
+#include <inttypes.h>
+
+#include <functional>
+
 #include "ir/value.h"
 #include "ir/constant.h"
-
-#include <cmath>
-#include <cfloat>
-#include <functional>
 
 namespace fir
 {
@@ -29,6 +31,11 @@ namespace fir
 		return ret;
 	}
 
+	std::string ConstantValue::str()
+	{
+		return "<unknown>";
+	}
+
 
 	ConstantBool* ConstantBool::get(bool val)
 	{
@@ -44,6 +51,15 @@ namespace fir
 		return this->value;
 	}
 
+	std::string ConstantBool::str()
+	{
+		return this->value ? "true" : "false";
+	}
+
+
+
+
+
 
 	ConstantBitcast* ConstantBitcast::get(ConstantValue* v, Type* t)
 	{
@@ -52,6 +68,11 @@ namespace fir
 
 	ConstantBitcast::ConstantBitcast(ConstantValue* v, Type* t) : ConstantValue(t), value(v)
 	{
+	}
+
+	std::string ConstantBitcast::str()
+	{
+		return this->value->str();
 	}
 
 
@@ -66,6 +87,13 @@ namespace fir
 	{
 		this->number = n;
 	}
+
+	std::string ConstantNumber::str()
+	{
+		// 6 decimal places, like default printf.
+		return this->number.toString("%.6R");
+	}
+
 
 
 	// todo: unique these values.
@@ -145,6 +173,21 @@ namespace fir
 		return ConstantInt::get(Type::getNativeUWord(), value);
 	}
 
+	std::string ConstantInt::str()
+	{
+		char buf[64] = {0};
+		if(this->getType() == Type::getInt8())          snprintf(buf, 63, "%" PRIi8,  static_cast<int8_t>(this->value));
+		else if(this->getType() == Type::getInt16())    snprintf(buf, 63, "%" PRIi16, static_cast<int16_t>(this->value));
+		else if(this->getType() == Type::getInt32())    snprintf(buf, 63, "%" PRIi32, static_cast<int32_t>(this->value));
+		else if(this->getType() == Type::getInt64())    snprintf(buf, 63, "%" PRIi64, static_cast<int64_t>(this->value));
+		else if(this->getType() == Type::getUint8())    snprintf(buf, 63, "%" PRIu8,  static_cast<uint8_t>(this->value));
+		else if(this->getType() == Type::getUint16())   snprintf(buf, 63, "%" PRIu16, static_cast<uint16_t>(this->value));
+		else if(this->getType() == Type::getUint32())   snprintf(buf, 63, "%" PRIu32, static_cast<uint32_t>(this->value));
+		else if(this->getType() == Type::getUint64())   snprintf(buf, 63, "%" PRIu64, static_cast<uint64_t>(this->value));
+		else                                            snprintf(buf, 63, "<unknown int>");
+
+		return std::string(buf);
+	}
 
 
 
@@ -210,6 +253,17 @@ namespace fir
 		return ConstantFP::get(Type::getFloat64(), value);
 	}
 
+	std::string ConstantFP::str()
+	{
+		char buf[64] = {0};
+		if(this->getType() == Type::getFloat32())       snprintf(buf, 63, "%.6f", static_cast<float>(this->value));
+		else if(this->getType() == Type::getFloat64())  snprintf(buf, 63, "%.6f", static_cast<double>(this->value));
+		else                                            snprintf(buf, 63, "<unknown float>");
+
+		return std::string(buf);
+	}
+
+
 
 
 
@@ -237,6 +291,14 @@ namespace fir
 		this->members = members;
 	}
 
+	std::string ConstantStruct::str()
+	{
+		std::string ret = this->getType()->str() + " {\n";
+		for(auto x : this->members)
+			ret += "  " + x->str() + "\n";
+
+		return ret + "}";
+	}
 
 
 
@@ -250,13 +312,20 @@ namespace fir
 
 	ConstantCharSlice::ConstantCharSlice(const std::string& s) : ConstantValue(fir::Type::getCharSlice(false))
 	{
-		this->str = s;
+		this->value = s;
 	}
 
 	std::string ConstantCharSlice::getValue()
 	{
-		return this->str;
+		return this->value;
 	}
+
+	std::string ConstantCharSlice::str()
+	{
+		return this->value;
+	}
+
+
 
 
 
@@ -287,6 +356,12 @@ namespace fir
 		this->values = mems;
 	}
 
+	std::string ConstantTuple::str()
+	{
+		return "(" + util::listToString(this->values, [](auto x) -> auto { return x->str(); }) + ")";
+	}
+
+
 
 
 
@@ -315,6 +390,12 @@ namespace fir
 	{
 		this->index = index;
 		this->value = value;
+	}
+
+	std::string ConstantEnumCase::str()
+	{
+		// TODO: why the fuck did i design enums this way?!
+		return this->value->str();
 	}
 
 
@@ -350,6 +431,11 @@ namespace fir
 		this->values = vals;
 	}
 
+	std::string ConstantArray::str()
+	{
+		return "[ " + util::listToString(this->values, [](auto x) -> auto { return x->str(); }) + " ]";
+	}
+
 
 
 
@@ -377,6 +463,12 @@ namespace fir
 	{
 	}
 
+	std::string ConstantDynamicArray::str()
+	{
+		return "<dyn array>";
+	}
+
+
 
 
 
@@ -392,6 +484,11 @@ namespace fir
 
 	ConstantArraySlice::ConstantArraySlice(ArraySliceType* t) : ConstantValue(t)
 	{
+	}
+
+	std::string ConstantArraySlice::str()
+	{
+		return "<slice>";
 	}
 }
 

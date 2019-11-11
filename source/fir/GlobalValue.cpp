@@ -20,6 +20,12 @@ namespace fir
 		else    this->kind = Kind::prvalue;
 	}
 
+	std::string GlobalValue::str()
+	{
+		return "<global>";
+	}
+
+
 
 	GlobalVariable::GlobalVariable(const Identifier& name, Module* module, Type* type, bool immutable, LinkageType lt, ConstantValue* initValue)
 		: GlobalValue(module, type, lt, !immutable)
@@ -42,6 +48,11 @@ namespace fir
 	ConstantValue* GlobalVariable::getInitialValue()
 	{
 		return this->initValue;
+	}
+
+	std::string GlobalVariable::str()
+	{
+		return this->initValue->str();
 	}
 }
 

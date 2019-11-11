@@ -139,7 +139,7 @@ namespace parser
 
 
 
-	FuncDefn* parseFunction(State& st)
+	PResult<FuncDefn> parseFunction(State& st)
 	{
 		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
 		if(isvar)
@@ -151,7 +151,10 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			defn->body = parseBracedBlock(st).val();
+			auto body = parseBracedBlock(st);
+
+			if(body.hasValue()) defn->body = body.val();
+			else                return PResult<FuncDefn>::copyError(body);
 		}
 		st.leaveFunctionBody();
 

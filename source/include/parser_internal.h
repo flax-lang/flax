@@ -337,14 +337,14 @@ namespace parser
 		template <typename F, typename U = typename std::remove_pointer_t<std::result_of_t<F(T*)>>>
 		PResult<U> map(const F& fn) const
 		{
-			if(this->state > 0) return PResult<U>(this->error);
+			if(this->state > 0) return PResult<U>(this->error, this->state);
 			else                return PResult<U>(fn(this->value));
 		}
 
 		template <typename F, typename U = typename std::result_of_t<F(T*)>::value_t>
 		PResult<U> flatmap(const F& fn) const
 		{
-			if(this->state > 0) return PResult<U>(this->error);
+			if(this->state > 0) return PResult<U>(this->error, this->state);
 			else                return fn(this->value);
 		}
 
@@ -439,7 +439,7 @@ namespace parser
 	ast::Stmt* parseVariable(State& st);
 	ast::ReturnStmt* parseReturn(State& st);
 	ast::ImportStmt* parseImport(State& st);
-	ast::FuncDefn* parseFunction(State& st);
+	PResult<ast::FuncDefn> parseFunction(State& st);
 	PResult<ast::Stmt> parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 	ast::OperatorOverloadDefn* parseOperatorOverload(State& st);
