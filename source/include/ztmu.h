@@ -24,11 +24,9 @@ namespace ztmu
 		void clear();
 
 		std::optional<std::string> read();
-		std::optional<std::string> readContinuation();
 
 		void setPrompt(const std::string& prompt);
 		void setWrappedPrompt(const std::string& prompt);
-		void setContinuationPrompt(const std::string& prompt);
 
 		void move_cursor_left(int n);
 		void move_cursor_right(int n);
@@ -42,9 +40,9 @@ namespace ztmu
 		void delete_left(int n);
 		void delete_right(int n);
 
+		void setEnterHandler(std::function<bool (State*)> handler);
 
 		std::string promptString;
-		std::string contPromptString;
 		std::string wrappedPromptString;
 
 		size_t cursor = 0;
@@ -57,6 +55,7 @@ namespace ztmu
 		size_t termHeight = 0;
 
 		std::vector<std::string> lines;
+		std::function<bool (State*)> enterHandler;
 	};
 }
 
@@ -670,6 +669,15 @@ namespace detail
 		return i;
 	}
 
+	static size_t convertCursorToByteCursor(const uint8_t* bytes, size_t cursor)
+	{
+		size_t bc = 0;
+		for(size_t i = 0; i < cursor; i++)
+			bc = 1 + findEndOfUTF8CP(bytes, bc);
+
+		return bc;
+	}
+
 
 	static std::pair<size_t, size_t> calculate_left_codepoints(int n, const std::string_view& sv, size_t cursor, size_t byteCursor)
 	{
@@ -706,21 +714,21 @@ namespace detail
 
 
 
-	static size_t get_cursor_line_offset(State* st, size_t num, size_t firstPromptLen, size_t subsequentPromptLen, bool* didWrap = 0)
+	static size_t get_cursor_line_offset(size_t termWidth, size_t num, size_t firstPromptLen, size_t subsequentPromptLen, bool* didWrap = 0)
 	{
 		size_t hcursor = firstPromptLen;
 		size_t x = num;
 
 		while(true)
 		{
-			auto left = st->termWidth - hcursor;
+			auto left = termWidth - hcursor;
 			auto todo = std::min(left, x);
 			x -= todo;
 
 			if(x == 0)
 			{
 				hcursor += todo;
-				if(hcursor == st->termWidth)
+				if(hcursor == termWidth)
 				{
 					hcursor = subsequentPromptLen;
 					if(didWrap) *didWrap = true;
@@ -737,14 +745,12 @@ namespace detail
 
 
 
-	static void refresh_line(State* st, std::string* oldLine = 0)
+	static void _refresh_line(State* st, size_t lineIdx, std::string* oldLine = 0)
 	{
 		auto normPL = displayedTextLength(st->promptString);
 		auto contPL = displayedTextLength(st->contPromptString);
 		auto wrapPL = displayedTextLength(st->wrappedPromptString);
 
-		if(!oldLine)
-			oldLine = &getCurLine(st);
 
 		std::string commands;
 		auto qcmd = [&commands](const std::string_view& c) {
@@ -810,7 +816,7 @@ namespace detail
 		};
 
 		auto getPromptForLine = [&](size_t wli) -> std::pair<std::string, size_t> {
-			if(st->lineIdx == 0)
+			if(lineIdx == 0)
 			{
 				if(wli == 0) return { st->promptString, normPL };
 				else         return { st->wrappedPromptString, wrapPL };
@@ -822,18 +828,18 @@ namespace detail
 			}
 		};
 
+		if(!oldLine)
+			oldLine = &st->lines[lineIdx];
 
-		std::string_view currentLine = getCurLine(st);
+
+		std::string_view currentLine = st->lines[lineIdx];
 
 		size_t numWrappingLines = calc_wrap(displayedTextLength(currentLine));
 		size_t old_NWL = calc_wrap(displayedTextLength(*oldLine));
 
 		auto new_wli = calc_wli(st->cursor);
 
-		// kill the entire line, and move the cursor to the beginning as well.
-		// qcmd("\x1b[2K");
 		qcmd(moveCursorLeft(9999));
-
 
 		fprintf(stderr, "nwl: %zu, old_nwl: %zu, new_wli: %zu, old_wli: %zu\n", numWrappingLines, old_NWL, new_wli, st->wrappedLineIdx);
 
@@ -848,7 +854,7 @@ namespace detail
 				auto vcursor = getCursorPosition().y;
 				auto tomove = nwl - st->wrappedLineIdx - 1;
 
-				fprintf(stderr, "height: %zu, vc: %zu, tm: %zu\n", st->termHeight, vcursor, tomove);
+				// fprintf(stderr, "height: %zu, vc: %zu, tm: %zu\n", st->termHeight, vcursor, tomove);
 				if(st->termHeight - vcursor < tomove)
 				{
 					fprintf(stderr, "need to scroll\n");
@@ -877,7 +883,7 @@ namespace detail
 			size_t alrPrinted = 0;
 
 			// TODO: we always use normPL here, but we should choose between normPL and contPL!
-			auto hcursor = get_cursor_line_offset(st, st->cursor, normPL, wrapPL, &didWrap);
+			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor, normPL, wrapPL, &didWrap);
 			fprintf(stderr, "didWrap: %d\n", didWrap);
 
 			if(didWrap)
@@ -907,13 +913,20 @@ namespace detail
 			else
 			{
 				auto [ pstr, plen ] = getPromptForLine(new_wli);
+				fprintf(stderr, "aaa\n");
 
 				auto leftCPs = hcursor - plen;
 				auto leftByteCursor = calculate_left_codepoints(leftCPs, currentLine, st->cursor, st->byteCursor).second;
+				fprintf(stderr, "bbb\n");
 
 				// we need to print leftCPs of stuff *before* the current cursor.
 				auto leftPortion = currentLine.substr(leftByteCursor, st->byteCursor - leftByteCursor);
+				fprintf(stderr, "ccc\n");
+				fprintf(stderr, "ddd li=%zu, (%zu, %zu) - '%s'\n", lineIdx, st->byteCursor, currentLine.size(),
+					std::string(currentLine).c_str());
+
 				currentLine.remove_prefix(st->byteCursor);
+
 
 				auto rem = displayedTextLength(currentLine);
 				fprintf(stderr, "hcursor = %zu, remaining = %zu, bc = %zu, lbc = %zu, len = %zu, line = '%.*s', pr = '%s', plen = %zu\n",
@@ -993,6 +1006,32 @@ namespace detail
 		st->wrappedLineIdx = calc_wli(st->cursor);
 		fprintf(stderr, "updated wli: %zu\n\n", st->wrappedLineIdx);
 		flushcmd();
+	}
+
+	static void refresh_line(State* st, std::string* oldLine = 0)
+	{
+		// refresh the top line manually:
+		_refresh_line(st, st->lineIdx, oldLine);
+
+		// this is not re-entrant!!!
+		auto old_wli = st->wrappedLineIdx;
+		auto old_bcr = st->byteCursor;
+		auto old_cur = st->cursor;
+
+		// refresh every line including and after the current line.
+		for(size_t i = st->lineIdx + 1; i < st->lines.size(); i++)
+		{
+			st->wrappedLineIdx = 0;
+			st->byteCursor = 0;
+			st->cursor = 0;
+
+			fprintf(stderr, "** refreshing line %zu...\n", i);
+			_refresh_line(st, i, &st->lines[i]);
+		}
+
+		st->wrappedLineIdx = old_wli;
+		st->byteCursor = old_bcr;
+		st->cursor = old_cur;
 	}
 
 	static void cursor_home(State* st)
@@ -1083,12 +1122,11 @@ namespace detail
 	{
 		if(st->cursor > 0 && st->wrappedLineIdx > 0)
 		{
-			// TODO:
-			size_t promptL = displayedTextLength(st->promptString);
+			size_t promptL = displayedTextLength(st->lineIdx == 0 ? st->promptString : st->contPromptString);
 			size_t wrapL = displayedTextLength(st->wrappedPromptString);
 
 			// first, get the current horz cursor position:
-			auto hcursor = get_cursor_line_offset(st, st->cursor, promptL, wrapL);
+			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor, promptL, wrapL);
 
 			// because wrappedLineIdx > 0, we know we're wrapping. this is the number of chars on the current
 			// line (of text!), to the left of the cursor.
@@ -1098,8 +1136,6 @@ namespace detail
 			auto rightmargin = st->termWidth - hcursor;
 
 			// this will stop when we can't go further, so there's no need to limit.
-			// note: this doesn't manipulate the console cursor at all -- we only do that in
-			// refresh_line, once!
 			cursor_left(st, h_curlength + rightmargin);
 
 			/*
@@ -1120,6 +1156,37 @@ namespace detail
 		else if(st->lineIdx > 0)
 		{
 			// ok -- we are now into weird strange territory. move up into the previous continuation line...
+			fprintf(stderr, "going up...\n");
+
+			std::string_view prevLine = st->lines[st->lineIdx - 1];
+			size_t prevLineLen = displayedTextLength(prevLine);
+
+			size_t promptL = displayedTextLength(st->contPromptString);
+			size_t wrapL = displayedTextLength(st->wrappedPromptString);
+
+			// first, get the current horz cursor position:
+			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor, promptL, wrapL);
+
+			// now, we get the offset of the previous line:
+			auto prev_hcursor = get_cursor_line_offset(st->termWidth, prevLineLen,
+				st->lineIdx > 1 ? promptL : displayedTextLength(st->promptString), wrapL);
+
+			auto prev_right_margin = st->termWidth - prev_hcursor;
+
+			st->cursor = prevLineLen;
+			st->byteCursor = convertCursorToByteCursor(reinterpret_cast<const uint8_t*>(prevLine.data()), st->cursor);
+			fprintf(stderr, "c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
+				prev_right_margin, std::string(prevLine).c_str());
+
+			st->lineIdx -= 1;
+
+			// and then we move the cursor.
+			platform_write(moveCursorUp(1));
+			cursor_left(st, st->termWidth - hcursor - prev_right_margin, /* refresh: */ false);
+			_refresh_line(st, st->lineIdx);
+
+			fprintf(stderr, "c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
+				prev_right_margin, std::string(prevLine).c_str());
 		}
 		else
 		{
@@ -1134,15 +1201,10 @@ namespace detail
 			// works on a similar principle as cursor_up.
 
 			// TODO:
-			size_t promptL = 0;
-			{
-
-			}
-
-			promptL = displayedTextLength(st->promptString);
+			size_t promptL = displayedTextLength(st->lineIdx == 0 ? st->promptString : st->contPromptString);
 			size_t wrapL = displayedTextLength(st->wrappedPromptString);
 
-			auto hcursor = get_cursor_line_offset(st, st->cursor, promptL, wrapL);
+			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor, promptL, wrapL);
 
 			// again, we make a similar assumption -- that only the first and second prompts can differ; the second and
 			// subsequent wrapping prompts must have the same length.
@@ -1437,11 +1499,6 @@ namespace ztmu
 		this->wrappedPromptString = prompt;
 	}
 
-	void State::setContinuationPrompt(const std::string& prompt)
-	{
-		this->contPromptString = prompt;
-	}
-
 	void State::move_cursor_left(int n)
 	{
 		if(n < 0)   move_cursor_right(-n);
@@ -1499,26 +1556,16 @@ namespace ztmu
 			detail::delete_right(this);
 	}
 
-
-
-
+	void State::setEnterHandler(std::function<bool (State*)> handler)
+	{
+		this->enterHandler = handler;
+	}
 
 	std::optional<std::string> State::read()
 	{
 		// clear.
 		this->clear();
 		bool eof = detail::read_line(this, /* promptMode: */ 0);
-
-		if(eof) return std::nullopt;
-		else    return this->lines.back();
-	}
-
-	std::optional<std::string> State::readContinuation()
-	{
-		// don't clear.
-		this->lineIdx++;
-
-		bool eof = detail::read_line(this, /* promptMode: */ 1);
 
 		if(eof) return std::nullopt;
 		else    return this->lines.back();

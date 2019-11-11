@@ -23,7 +23,7 @@ CXX				?= "clang++"
 LLVM_CONFIG		?= "llvm-config"
 
 
-CXXSRC			:= $(shell find source external -iname "*.cpp")
+CXXSRC			:= $(shell find source external/tinyprocesslib -iname "*.cpp")
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
 CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
@@ -86,6 +86,7 @@ endif
 
 UTF8REWIND_AR   := external/libutf8rewind.a
 LINENOISE_AR    := external/liblinenoise.a
+REPLXX_AR       := external/libreplxx.a
 
 
 FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
@@ -145,10 +146,10 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR) $(LINENOISE_AR)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR) $(LINENOISE_AR) $(REPLXX_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -llinenoise
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind -llinenoise -lreplxx
 
 
 %.cpp.o: %.cpp
@@ -166,6 +167,9 @@ $(UTF8REWIND_AR):
 
 $(LINENOISE_AR):
 	@make -C external/linenoise all
+
+$(REPLXX_AR): $(shell find external/replxx -name "*.cpp" -or -name "*.hxx")
+	@make -C external/replxx all
 
 # haha
 clena: clean
