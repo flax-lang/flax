@@ -8,8 +8,10 @@
 
 #include "ir/interp.h"
 
+#include "memorypool.h"
 
-fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer, const Identifier& fname)
+fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
+	const Identifier& fname, fir::interp::InterpState* is = 0)
 {
 	// what we do is to make a new function in IR, set the insertpoint to that,
 	// then run codegen on the expression (so it generates inside), restore the insertpoint,
@@ -34,6 +36,11 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 		auto entry = cs->irb.addNewBlockInFunction("entry", fn);
 		cs->irb.setCurrentBlock(entry);
 
+		// we need a block, even though we don't codegen -- this is to handle raii/refcounting things.
+		// stack allocate, so we can get rid of it later. (automatically)
+		auto fakeBlk = sst::Block(Location());
+		cs->enterBlock(&fakeBlk);
+
 		fir::Value* ret = 0;
 
 		if(isExpr)  ret = stmt->codegen(cs, infer).value;
@@ -45,21 +52,36 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 		else
 			cs->irb.Return(ret);
 
+
+		cs->leaveBlock();
+
 		if(restore) cs->irb.setCurrentBlock(restore);
 	}
+
+	// finalise the global init function if necessary:
+	cs->finishGlobalInitFunction();
 
 	// run the function:
 	fir::ConstantValue* ret = 0;
 	{
-		auto is = new fir::interp::InterpState(cs->module);
-		is->initialise();
+		bool needToFinalise = false;
+		if(!is)
+		{
+			is = new fir::interp::InterpState(cs->module);
+			is->initialise();
+
+			needToFinalise = true;
+		}
+
 		{
 			auto result = is->runFunction(is->compileFunction(fn), { });
 
 			if(!retty->isVoidType())
 				ret = is->unwrapInterpValueIntoConstant(result);
 		}
-		is->finalise();
+
+		if(needToFinalise)
+			is->finalise();
 
 		delete is;
 	}

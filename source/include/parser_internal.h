@@ -356,7 +356,7 @@ namespace parser
 
 		T* val() const
 		{
-			if(this->state != 0)    compiler_crash("no value");
+			if(this->state != 0)    this->error->postAndQuit();
 			else                    return this->value;
 		}
 
@@ -480,7 +480,7 @@ namespace parser
 	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::Stmt* parseForLoop(State& st);
-	ast::Stmt* parseIfStmt(State& st);
+	PResult<ast::Stmt> parseIfStmt(State& st);
 	PResult<ast::WhileLoop> parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);

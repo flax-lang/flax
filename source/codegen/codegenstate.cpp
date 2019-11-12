@@ -333,22 +333,11 @@ namespace cgn
 
 
 
-	void CodegenState::addGlobalInitialiser(fir::Value* storage, fir::Value* value)
+
+	bool CodegenState::isWithinGlobalInitFunction()
 	{
-		if(!storage->getType()->isPointerType())
-		{
-			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType());
-		}
-		else if(storage->getType()->getPointerElementType() != value->getType())
-		{
-			error(this->loc(), "cannot store value of type '%s' into storage of type '%s'", value->getType(),
-				storage->getType());
-		}
-
-		// ok, then
-		this->globalInits.push_back({ value, storage });
+		return this->isInsideGlobalInitFunc;
 	}
-
 
 	fir::IRBlock* CodegenState::enterGlobalInitFunction()
 	{
@@ -368,19 +357,30 @@ namespace cgn
 		iceAssert(this->globalInitFunc);
 		this->irb.setCurrentBlock(this->globalInitFunc->getBlockList().back());
 
+		this->isInsideGlobalInitFunc = true;
 		return ret;
 	}
 
 	void CodegenState::leaveGlobalInitFunction(fir::IRBlock* restore)
 	{
 		this->irb.setCurrentBlock(restore);
+		this->isInsideGlobalInitFunc = false;
 	}
 
 	void CodegenState::finishGlobalInitFunction()
 	{
 		auto r = this->enterGlobalInitFunction();
 
-		this->irb.ReturnVoid();
+		// ok, here's a thing -- if the current block doesn't end with a return, then we insert it.
+		// this lets us keep calling finishGlobalInitFunction() without repercussions, even if we
+		// already "finished" the constructor function. this workaround is used to make our life
+		// simpler when doing compile-time execution.
+
+		if(const auto& instrs = this->irb.getCurrentBlock()->getInstructions();
+			instrs.empty() || instrs.back()->opKind != fir::OpKind::Value_Return)
+		{
+			this->irb.ReturnVoid();
+		}
 
 		this->leaveGlobalInitFunction(r);
 	}

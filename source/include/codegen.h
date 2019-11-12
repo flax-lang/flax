@@ -81,7 +81,6 @@ namespace cgn
 		std::vector<fir::Value*> methodSelfStack;
 
 		fir::Function* globalInitFunc = 0;
-		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
 		util::hash_map<fir::Function*, fir::Type*> methodList;
 
@@ -150,8 +149,8 @@ namespace cgn
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);
 
-		void addGlobalInitialiser(fir::Value* storage, fir::Value* value);
-
+		bool isInsideGlobalInitFunc = false;
+		bool isWithinGlobalInitFunction();
 		fir::IRBlock* enterGlobalInitFunction();
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();

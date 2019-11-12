@@ -15,20 +15,22 @@ namespace repl
 	static void runCommand(const std::string& s)
 	{
 		if(s == "q")            exit(0);
+		else if(s == "reset")   { zpr::println("resetting environment..."); setupEnvironment(); }
 		else if(s == "help")    repl::error("no help implemented. ggwp.");
 		else                    repl::error("invalid command '%s'.", s);
 	}
 
-	static constexpr const char* PROMPT_STRING              = COLOUR_BLUE " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
-	static constexpr const char* WRAP_PROMPT_STRING         = COLOUR_GREY_BOLD " |" COLOUR_RESET " ";
-	static constexpr const char* CONTINUATION_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* PROMPT_STRING      = COLOUR_BLUE " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* WRAP_PROMPT_STRING = COLOUR_GREY_BOLD " |" COLOUR_RESET " ";
+	static constexpr const char* CONT_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 
-	static constexpr const char* EXTRA_INDENT               = "  ";
+	static constexpr const char* EXTRA_INDENT       = "  ";
+	static constexpr size_t EXTRA_INDENT_LEN        = std::char_traits<char>::length(EXTRA_INDENT);
 
 	void start()
 	{
-		printf("flax repl -- version %s\n", frontend::getVersion().c_str());
-		printf("type :help for help\n\n");
+		zpr::println("flax repl -- version %s", frontend::getVersion());
+		zpr::println("type :help for help\n");
 
 		setupEnvironment();
 
@@ -36,14 +38,20 @@ namespace repl
 
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
+		st.setContPrompt(CONT_PROMPT_STRING);
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
-		st.setContPrompt(CONTINUATION_PROMPT_STRING);
 
-		st.setKeyHandler(static_cast<ztmu::Key>('}'), [](ztmu::State* st, ztmu::Key k) -> ztmu::HandlerAction {
+		// we need to put this up here, so the handler can capture it.
+		int indentLevel = 0;
+
+		st.setKeyHandler(static_cast<ztmu::Key>('}'), [&indentLevel](ztmu::State* st, ztmu::Key k) -> ztmu::HandlerAction {
 			// a bit dirty, but we just do this -- if we can find the indent at the back, then remove it.
 			auto line = st->getCurrentLine();
-			if(line.size() >= 2 && line.find(EXTRA_INDENT, line.size() - strlen(EXTRA_INDENT)) != -1)
+			if(indentLevel > 0 && line.size() >= 2 && line.find(EXTRA_INDENT, line.size() - EXTRA_INDENT_LEN) != -1)
+			{
 				st->setCurrentLine(line.substr(0, line.size() - 2));
+				indentLevel--;
+			}
 
 			return ztmu::HandlerAction::CONTINUE;
 		});
@@ -62,20 +70,27 @@ namespace repl
 			}
 			else if(bool needmore = processLine(input); needmore)
 			{
-				const char* indent = "";
-				switch(input.back())
-				{
-					case '{': [[fallthrough]];
-					case '(': [[fallthrough]];
-					case '[': [[fallthrough]];
-					case ',':
-						indent = EXTRA_INDENT;
-				}
+				auto calc_indent = [](char c) -> int {
+					switch(c)
+					{
+						case '{': [[fallthrough]];
+						case '(': [[fallthrough]];
+						case '[': [[fallthrough]];
+						case ',':
+							return 1;
+					}
+
+					return 0;
+				};
+
+				indentLevel = calc_indent(input.back());
 
 				// read more.
-				while(auto line = st.readContinuation(indent))
+				while(auto line = st.readContinuation(std::string(indentLevel * EXTRA_INDENT_LEN, ' ')))
 				{
 					input += "\n" + std::string(*line);
+					indentLevel += calc_indent(input.back());
+
 					needmore = processLine(input);
 
 					if(!needmore)

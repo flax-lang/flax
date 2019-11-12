@@ -274,10 +274,36 @@ namespace zpr
 		return fmt;
 	}
 
+	inline int print(const std::string& fmt)
+	{
+		return printf("%s", fmt.c_str());
+	}
+
+	inline int println(const std::string& fmt)
+	{
+		return printf("%s\n", fmt.c_str());
+	}
+
+
+
 	template <typename... Args>
 	std::string sprint(const std::string& fmt, Args&&... xs)
 	{
 		return _internal::sprint(fmt.c_str(), xs...);
+	}
+
+	template <typename... Args>
+	int print(const std::string& fmt, Args&&... xs)
+	{
+		auto x = _internal::sprint(fmt.c_str(), xs...);
+		return printf("%s", x.c_str());
+	}
+
+	template <typename... Args>
+	int println(const std::string& fmt, Args&&... xs)
+	{
+		auto x = _internal::sprint(fmt.c_str(), xs...);
+		return printf("%s\n", x.c_str());
 	}
 
 

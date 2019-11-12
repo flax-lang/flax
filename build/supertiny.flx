@@ -36,6 +36,9 @@ struct foo
 	x: int
 }
 
+let glob = "foozle"[2:]
+let glob2 = string("lmao")
+
 @entry fn main()
 {
 	// do {
@@ -53,6 +56,10 @@ struct foo
 		(x, y) = (y, x)
 
 		printf("%d, %d\n", x, y)
+	}
+
+	do {
+		printf("%s\n", glob)
 	}
 
 	// fn foo<T>(a: T) -> T

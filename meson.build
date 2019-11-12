@@ -186,6 +186,9 @@ source_files = files([
 	'source/misc/identifier.cpp',
 	'source/misc/destructors.cpp',
 
+	'source/repl/driver.cpp',
+	'source/repl/execute.cpp',
+
 	'source/frontend/pts.cpp',
 	'source/frontend/file.cpp',
 	'source/frontend/lexer.cpp',

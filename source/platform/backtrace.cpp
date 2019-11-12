@@ -103,7 +103,7 @@ namespace platform
 					piece.demangledName = piece.mangledName;
 				}
 
-				debuglogln("    %2d: %12p   |   %s + %#x", piece.num, piece.address, piece.demangledName, piece.offset);
+				debuglogln("    %2d: %12x   |   %s + %#x", piece.num, piece.address, piece.demangledName, piece.offset);
 			}
 			else
 			{

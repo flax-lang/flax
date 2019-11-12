@@ -42,7 +42,8 @@ TCResult ast::RunDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 // defined in codegen/directives.cpp
-fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer, const Identifier& fname);
+fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
+	const Identifier& fname, fir::interp::InterpState* is = 0);
 
 static size_t condCounter = 0;
 TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)

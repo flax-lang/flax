@@ -425,6 +425,13 @@ struct OverloadError : ErrorMsg
 
 
 
+struct ErrorException : public std::exception
+{
+	ErrorException(ErrorMsg* msg) : err(msg) { }
+
+	ErrorMsg* err;
+};
+
 
 struct TCResult
 {

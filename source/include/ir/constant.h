@@ -226,6 +226,23 @@ namespace fir
 		ConstantArray* arr = 0;
 	};
 
+	// this is the 'string' type!!
+	struct ConstantDynamicString : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantDynamicString* get(const std::string& s);
+		std::string getValue();
+
+		virtual std::string str() override;
+
+		protected:
+		ConstantDynamicString(const std::string& s);
+
+		std::string value;
+	};
+
+
 	struct ConstantArraySlice : ConstantValue
 	{
 		friend struct Module;

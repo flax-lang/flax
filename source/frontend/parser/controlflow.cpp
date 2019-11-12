@@ -12,7 +12,7 @@ namespace parser
 	using TT = lexer::TokenType;
 	using namespace ast;
 
-	Stmt* parseIfStmt(State& st)
+	PResult<Stmt> parseIfStmt(State& st)
 	{
 		using Case = IfStmt::Case;
 
@@ -61,7 +61,11 @@ namespace parser
 				st.eat();
 			}
 
-			cases.back().body = parseBracedBlock(st).val();
+			if(auto x = parseBracedBlock(st); x.isError())
+				return PResult<Stmt>::copyError(x);
+
+			else
+				cases.back().body = x.val();
 		}
 
 
@@ -100,7 +104,13 @@ namespace parser
 					st.eat();
 				}
 
-				c.body = parseBracedBlock(st).val();
+
+				if(auto x = parseBracedBlock(st); x.isError())
+					return PResult<Stmt>::copyError(x);
+
+				else
+					c.body = x.val();
+
 				cases.push_back(c);
 			}
 			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)

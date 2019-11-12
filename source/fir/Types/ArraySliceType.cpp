@@ -25,6 +25,12 @@ namespace fir
 		return this->isSliceMutable;
 	}
 
+	Type* ArraySliceType::getDataPointerType()
+	{
+		if(this->isSliceMutable)    return this->arrayElementType->getMutablePointerTo();
+		else                        return this->arrayElementType->getPointerTo();
+	}
+
 	std::string ArraySliceType::str()
 	{
 		if(this->isCharSliceType())

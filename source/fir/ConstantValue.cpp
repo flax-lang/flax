@@ -358,7 +358,7 @@ namespace fir
 
 	std::string ConstantTuple::str()
 	{
-		return "(" + util::listToString(this->values, [](auto x) -> auto { return x->str(); }) + ")";
+		return "(" + util::join(util::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + ")";
 	}
 
 
@@ -433,7 +433,7 @@ namespace fir
 
 	std::string ConstantArray::str()
 	{
-		return "[ " + util::listToString(this->values, [](auto x) -> auto { return x->str(); }) + " ]";
+		return "[ " + util::join(util::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + " ]";
 	}
 
 
@@ -466,6 +466,28 @@ namespace fir
 	std::string ConstantDynamicArray::str()
 	{
 		return "<dyn array>";
+	}
+
+
+
+	ConstantDynamicString* ConstantDynamicString::get(const std::string& s)
+	{
+		return new ConstantDynamicString(s);
+	}
+
+	ConstantDynamicString::ConstantDynamicString(const std::string& s) : ConstantValue(fir::Type::getString())
+	{
+		this->value = s;
+	}
+
+	std::string ConstantDynamicString::getValue()
+	{
+		return this->value;
+	}
+
+	std::string ConstantDynamicString::str()
+	{
+		return zpr::sprint("\"%s\"", this->value);
 	}
 
 

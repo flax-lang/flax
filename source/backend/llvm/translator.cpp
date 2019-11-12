@@ -457,26 +457,43 @@ namespace backend
 			return cachedConstants[fc] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(auto cs = dcast(fir::ConstantCharSlice, fc))
+		else if(dcast(fir::ConstantCharSlice, fc) || dcast(fir::ConstantDynamicString, fc))
 		{
-			size_t origLen = cs->getValue().length();
-			std::string str = cs->getValue();
+			bool wasDynStr = false;
+
+			std::string str;
+			if(auto ccs = dcast(fir::ConstantCharSlice, fc))
+				str = ccs->getValue();
+
+			else if(auto cds = dcast(fir::ConstantDynamicString, fc))
+				wasDynStr = true, str = cds->getValue();
+
 
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), str, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(cs->id));
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(fc->id));
 
 			auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
 			std::vector<llvm::Constant*> indices = { zconst, zconst };
 			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
 
-			auto len = llvm::ConstantInt::get(getNativeWordTy(), origLen);
+			auto len = llvm::ConstantInt::get(getNativeWordTy(), str.size());
 
 			iceAssert(gepd->getType() == llvm::Type::getInt8PtrTy(LLVMBackend::getLLVMContext()));
 			iceAssert(len->getType() == getNativeWordTy());
 
+			fir::Type* ty = fir::Type::getCharSlice(false);
 			std::vector<llvm::Constant*> mems = { gepd, len };
-			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(fir::Type::getCharSlice(false), mod)), mems);
+			if(wasDynStr)
+			{
+				ty = fir::Type::getString();
+
+				// add -1 for the capacity and 0 for the refcountptr.
+				mems.push_back(llvm::ConstantInt::get(getNativeWordTy(), -1));
+				mems.push_back(zconst);
+			}
+
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(ty, mod)), mems);
 
 			cachedConstants[fc] = ret;
 			return ret;

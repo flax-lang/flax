@@ -11,12 +11,14 @@
 #include "typecheck.h"
 
 #include "ir/module.h"
+#include "ir/interp.h"
 #include "ir/irbuilder.h"
 
 #include "memorypool.h"
 
 // defined in codegen/directives.cpp
-fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer, const Identifier& fname);
+fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
+	const Identifier& fname, fir::interp::InterpState* is = 0);
 
 namespace repl
 {
@@ -35,14 +37,24 @@ namespace repl
 			this->fs = new sst::TypecheckState(tree);
 			this->cs = new cgn::CodegenState(fir::IRBuilder(this->module));
 			this->cs->module = this->module;
+			this->interpState = new fir::interp::InterpState(this->module);
 
 			// so we don't crash, give us a starting location.
 			this->cs->pushLoc(Location());
 		}
 
+		~State()
+		{
+			delete this->interpState;
+			delete this->cs;
+			delete this->fs;
+			delete this->module;
+		}
+
 		fir::Module* module;
-		sst::TypecheckState* fs;
 		cgn::CodegenState* cs;
+		sst::TypecheckState* fs;
+		fir::interp::InterpState* interpState;
 
 		size_t fnCounter = 0;
 		size_t varCounter = 0;
@@ -51,6 +63,9 @@ namespace repl
 	static State* state = 0;
 	void setupEnvironment()
 	{
+		if(state)
+			delete state;
+
 		state = new State();
 	}
 
@@ -82,11 +97,29 @@ namespace repl
 		// it will store the relevant state into the TypecheckState.
 		{
 			auto stmt = _stmt.val();
-			auto tcr = stmt->typecheck(state->fs);
+
+			// ugh.
+			auto tcr = TCResult(reinterpret_cast<sst::Stmt*>(0));
+
+			try
+			{
+				tcr = stmt->typecheck(state->fs);
+			}
+			catch(ErrorException& ee)
+			{
+				ee.err->post();
+				printf("\n");
+
+				return false;
+			}
+
+
 
 			if(tcr.isError())
 			{
 				tcr.error()->post();
+				printf("\n");
+
 				return false;
 			}
 			else if(!tcr.isParametric() && !tcr.isDummy())

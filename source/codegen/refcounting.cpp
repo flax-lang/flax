@@ -10,6 +10,9 @@ namespace cgn
 {
 	void CodegenState::addRefCountedValue(fir::Value* val)
 	{
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		auto list = &this->blockPointStack.back().refCountedValues;
 
 		if(auto it = std::find(list->begin(), list->end(), val); it == list->end())
@@ -25,6 +28,9 @@ namespace cgn
 
 	void CodegenState::removeRefCountedValue(fir::Value* val)
 	{
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		auto list = &this->blockPointStack.back().refCountedValues;
 
 		if(auto it = std::find(list->begin(), list->end(), val); it != list->end())

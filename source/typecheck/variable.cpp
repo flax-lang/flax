@@ -148,7 +148,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	if(this->name == "_")
-		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
+		return TCResult(
+			SimpleError::make(this->loc, "'_' is a discarding binding; it does not yield a value and cannot be referred to")
+		);
 
 	// else if(this->name == "::" || this->name == "^")
 	// 	error(this, "invalid use of scope-path-specifier '%s' in a non-scope-path context", this->name);
@@ -285,7 +287,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "reference to unknown entity '%s'", this->name);
+	return TCResult(
+		SimpleError::make(this->loc, "reference to unknown entity '%s'", this->name)
+	);
 }
 
 

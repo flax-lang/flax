@@ -163,7 +163,7 @@ namespace detail
 
 
 
-#if ZTMU_CREATE_IMPL
+#if ZTMU_CREATE_IMPL || true
 
 // comes as a pair yo
 #include "zpr.h"
@@ -214,11 +214,12 @@ namespace detail
 #endif
 
 
-	#if 0
+	#if 1
 		template <typename... Args>
 		void ztmu_dbg(const char* fmt, Args&&... args)
 		{
-			fprintf(stderr, "%s", zpr::sprint(fmt, args...).c_str());
+			if(!isatty(STDERR_FILENO))
+				fprintf(stderr, "%s", zpr::sprint(fmt, args...).c_str());
 		}
 	#else
 		template <typename... Args>
@@ -439,6 +440,9 @@ namespace detail
 	{
 		if(isInRawMode && tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) != -1)
         	isInRawMode = false;
+
+        // disable bracketed paste:
+        platform_write("\x1b[?2004l");
 	}
 
 	static void enterRawMode()
@@ -471,7 +475,7 @@ namespace detail
 		// control modes - set 8 bit chars
 		raw.c_cflag |= (CS8);
 
-		// local modes - choing off, canonical off, no extended functions,
+		// local modes - echoing off, canonical off, no extended functions,
 		// no signal chars (^Z,^C)
 		raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
@@ -484,6 +488,8 @@ namespace detail
 		if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
 			return;
 
+		// enable bracketed paste:
+		platform_write("\x1b[?2004h");
 		isInRawMode = true;
 	}
 
@@ -646,6 +652,39 @@ namespace detail
 		return hcursor;
 	}
 
+	static size_t calculate_wli(State* st, size_t len)
+	{
+		size_t done = 0;
+		size_t remaining = len;
+
+		size_t lc = 1;
+		size_t wli = 0;
+
+		while(true)
+		{
+			auto left = st->termWidth - (lc == 1 ? (st->lineIdx == 0 ? st->normPL : st->contPL) : st->wrapPL);
+			auto todo = std::min(left, remaining);
+
+			if(remaining == left)
+				wli++;
+
+			remaining -= todo;
+			done += todo;
+
+			if(remaining == 0)
+				break;
+
+			// if your cursor is beyond this point, then you are on the next line.
+			if(st->cursor >= done + 1)
+			{
+				wli++;
+				lc++;
+			}
+		}
+
+		return wli;
+	}
+
 
 
 	// returns (linesBelowCursor, finalHcursor)
@@ -669,7 +708,7 @@ namespace detail
 			size_t lines = 1;
 			while(len > 0)
 			{
-				auto left = width - (lines == 1 ? st->normPL : st->wrapPL);
+				auto left = width - (lines == 1 ? (st->lineIdx == 0 ? st->normPL : st->contPL) : st->wrapPL);
 				if(left == len)
 					lines += 1;
 
@@ -681,38 +720,6 @@ namespace detail
 			}
 
 			return lines;
-		};
-
-		auto calc_wli = [&](size_t len) -> size_t {
-			size_t done = 0;
-			size_t remaining = len;
-
-			size_t lc = 1;
-			size_t wli = 0;
-
-			while(true)
-			{
-				auto left = st->termWidth - (lc == 1 ? st->normPL : st->wrapPL);
-				auto todo = std::min(left, remaining);
-
-				if(remaining == left)
-					wli++;
-
-				remaining -= todo;
-				done += todo;
-
-				if(remaining == 0)
-					break;
-
-				// if your cursor is beyond this point, then you are on the next line.
-				if(st->cursor >= done + 1)
-				{
-					wli++;
-					lc++;
-				}
-			}
-
-			return wli;
 		};
 
 		auto getPromptForLine = [&](size_t wli) -> std::pair<std::string, size_t> {
@@ -741,7 +748,7 @@ namespace detail
 
 		size_t old_NWL = calc_wrap(displayedTextLength(oldLine));
 
-		auto new_wli = calc_wli(st->cursor);
+		auto new_wli = calculate_wli(st, st->cursor);
 
 		qcmd(moveCursorLeft(9999));
 
@@ -902,7 +909,7 @@ namespace detail
 
 			ztmu_dbg("hcursor = %zu\n", hcursor);
 
-			st->wrappedLineIdx = calc_wli(st->cursor);
+			st->wrappedLineIdx = calculate_wli(st, st->cursor);
 			ztmu_dbg("updated wli: %zu\n\n", st->wrappedLineIdx);
 
 			if(defer_flush) *commandBuffer = commands;
@@ -1108,6 +1115,7 @@ namespace detail
 				prev_right_margin, std::string(prevLine).c_str());
 
 			st->lineIdx -= 1;
+			st->wrappedLineIdx = calculate_wli(st, st->cursor);
 
 			// and then we move the cursor.
 			platform_write(moveCursorUp(1));
@@ -1244,7 +1252,7 @@ namespace detail
 			if(platform_read_one(&c) <= 0)
 				break;
 
-			// ztmu_dbg("[%d]", c);
+			ztmu_dbg("[%d]", static_cast<int>(c));
 			switch(c)
 			{
 				// enter
@@ -1319,7 +1327,6 @@ namespace detail
 				case ESC: {
 					// there should be at least two more!
 					char seq[2]; platform_read(seq, 2);
-
 					char thing = 0;
 					if(seq[0] == '[')
 					{
@@ -1353,6 +1360,43 @@ namespace detail
 							else
 							{
 								thing = n;
+							}
+
+							if(n == 200)
+							{
+								ztmu_dbg("PASTE!\n");
+
+								// keep reading until we find an esc.
+								std::string pasted;
+
+								char x = 0;
+								while(platform_read_one(&x) > 0)
+								{
+									pasted += x;
+									if(pasted.rfind("\x1b[201~") != -1)
+										break;
+								}
+
+								// get rid of the thing at the end.
+								pasted.erase(pasted.rfind("\x1b[201~"));
+
+								ztmu_dbg("PASTED: '%s'\n", pasted);
+
+								auto oldline = getCurLine(st);
+
+								auto len = displayedTextLength(pasted);
+
+								getCurLine(st).insert(st->byteCursor, pasted);
+
+								st->cursor += len;
+								st->byteCursor += pasted.size();
+
+								ztmu_dbg("c: %zu, bc: %zu\n", st->cursor, st->byteCursor);
+
+
+								refresh_line(st, &oldline);
+
+								goto loop_top;
 							}
 						}
 						else

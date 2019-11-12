@@ -374,12 +374,20 @@ namespace sst
 		if(addPreludeDefinitions)
 			generatePreludeDefinitions(fs);
 
-		auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
-		iceAssert(tns);
+		// handle exception here:
+		try {
+			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
+			iceAssert(tns);
 
-		tns->name = file.moduleName;
+			tns->name = file.moduleName;
 
-		fs->dtree->topLevel = tns;
+			fs->dtree->topLevel = tns;
+		}
+		catch (ErrorException& ee)
+		{
+			ee.err->postAndQuit();
+		}
+
 		return fs->dtree;
 	}
 }
