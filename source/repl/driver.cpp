@@ -34,8 +34,6 @@ namespace repl
 
 		setupEnvironment();
 
-		std::string input;
-
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
 		st.setContPrompt(CONT_PROMPT_STRING);
@@ -58,7 +56,7 @@ namespace repl
 
 		while(auto line = st.read())
 		{
-			input += std::string(*line);
+			auto input = std::string(*line);
 
 			if(input.empty())
 				continue;
@@ -83,12 +81,20 @@ namespace repl
 					return 0;
 				};
 
+				auto join_lines = [](const std::vector<std::string>& lines) -> std::string {
+					std::string ret;
+					for(const auto& l : lines)
+						ret += "\n" + l;
+
+					return ret;
+				};
+
 				indentLevel = calc_indent(input.back());
 
 				// read more.
-				while(auto line = st.readContinuation(std::string(indentLevel * EXTRA_INDENT_LEN, ' ')))
+				while(auto lines = st.readContinuation(std::string(indentLevel * EXTRA_INDENT_LEN, ' ')))
 				{
-					input += "\n" + std::string(*line);
+					auto input = join_lines(*lines);
 					indentLevel += calc_indent(input.back());
 
 					needmore = processLine(input);
@@ -100,8 +106,8 @@ namespace repl
 
 			st.addPreviousInputToHistory();
 
-			// ok, we're done -- clear.
-			input.clear();
+			// add an extra line
+			printf("\n");
 		}
 	}
 }

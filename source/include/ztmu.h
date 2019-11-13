@@ -52,7 +52,7 @@ namespace ztmu
 		void clear();
 
 		std::optional<std::string> read();
-		std::optional<std::string> readContinuation(const std::string& seed = "");
+		std::optional<std::vector<std::string>> readContinuation(const std::string& seed = "");
 
 		void setPrompt(const std::string& prompt);
 		void setContPrompt(const std::string& prompt);
@@ -1003,41 +1003,6 @@ namespace detail
 		refresh_line(st);
 	}
 
-	static void cursor_left(State* st, int n, bool refresh = true)
-	{
-		for(int i = 0; i < n; i++)
-		{
-			if(st->cursor > 0)
-			{
-				auto x = st->byteCursor - 1;
-				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-				st->byteCursor -= (x - l + 1);
-				st->cursor -= 1;
-			}
-		}
-
-		if(refresh)
-			refresh_line(st);
-	}
-
-	static void cursor_right(State* st, int n, bool refresh = true)
-	{
-		for(int i = 0; i < n; i++)
-		{
-			if(st->byteCursor < getCurLine(st).size())
-			{
-				auto x = st->byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
-
-				st->byteCursor += (l - x + 1);
-				st->cursor += 1;
-			}
-		}
-
-		if(refresh)
-			refresh_line(st);
-	}
-
 	static void delete_left(State* st)
 	{
 		if(st->cursor > 0 && getCurLine(st).size() > 0)
@@ -1070,6 +1035,93 @@ namespace detail
 			refresh_line(st, &old);
 		}
 	}
+
+	// we differentiate between _cursor_left() and cursor_left() -- the latter only moves along
+	// a single line ("logical line"), while the latter will move to the previous line if the current
+	// line is exhausted. user-inputs call cursor_left(), while internal users should call _cursor_left().
+
+	static void _cursor_left(State* st, int n, bool refresh = true)
+	{
+		for(int i = 0; i < n; i++)
+		{
+			if(st->cursor > 0)
+			{
+				auto x = st->byteCursor - 1;
+				auto l = findBeginningOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+				st->byteCursor -= (x - l + 1);
+				st->cursor -= 1;
+			}
+		}
+
+		if(refresh)
+			refresh_line(st);
+	}
+
+	static void cursor_left(State* st, bool refresh = true)
+	{
+		if(st->cursor > 0)
+		{
+			_cursor_left(st, 1, refresh);
+		}
+		else if(st->lineIdx > 0)
+		{
+			st->lineIdx -= 1;
+
+			// physical cursor needs to move up one.
+			platform_write(moveCursorUp(1));
+
+			st->cursor = displayedTextLength(st->lines[st->lineIdx]);
+			st->byteCursor = st->lines[st->lineIdx].size();
+			st->wrappedLineIdx = calculate_wli(st, st->cursor);
+
+			// need to refresh.
+			refresh_line(st);
+		}
+	}
+
+
+	// same deal with _cursor_right as for _cursor_left.
+	static void _cursor_right(State* st, int n, bool refresh = true)
+	{
+		for(int i = 0; i < n; i++)
+		{
+			if(st->byteCursor < getCurLine(st).size())
+			{
+				auto x = st->byteCursor;
+				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(getCurLine(st).c_str()), x);
+
+				st->byteCursor += (l - x + 1);
+				st->cursor += 1;
+			}
+		}
+
+		if(refresh)
+			refresh_line(st);
+	}
+
+	static void cursor_right(State* st, bool refresh = true)
+	{
+		if(st->byteCursor < getCurLine(st).size())
+		{
+			_cursor_right(st, 1, refresh);
+		}
+		else if(st->lineIdx + 1 < st->lines.size())
+		{
+			st->lineIdx += 1;
+
+			// physical cursor needs to move down one.
+			platform_write(moveCursorDown(1));
+
+			st->cursor = 0;
+			st->byteCursor = 0;
+			st->wrappedLineIdx = 0;
+
+			// need to refresh.
+			refresh_line(st);
+		}
+	}
+
+
 
 	static size_t _calculate_total_nwl_for_all_lines(State* st)
 	{
@@ -1127,7 +1179,7 @@ namespace detail
 			auto rightmargin = st->termWidth - hcursor;
 
 			// this will stop when we can't go further, so there's no need to limit.
-			cursor_left(st, h_curlength + rightmargin);
+			_cursor_left(st, h_curlength + rightmargin);
 
 			/*
 				so what we want to do, ideally, is move "left" termWidth number of codepoints. HOWEVER,
@@ -1172,7 +1224,7 @@ namespace detail
 
 			// and then we move the cursor.
 			platform_write(moveCursorUp(1));
-			cursor_left(st, st->termWidth - hcursor - prev_right_margin, /* refresh: */ false);
+			_cursor_left(st, st->termWidth - hcursor - prev_right_margin, /* refresh: */ false);
 			refresh_line(st);
 
 			ztmu_dbg("c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
@@ -1221,7 +1273,7 @@ namespace detail
 			// in the next line, the prompt will always be a wrapping prompt.
 			auto leftmargin = hcursor - st->wrapPL;
 
-			cursor_right(st, rightmargin + leftmargin);
+			_cursor_right(st, rightmargin + leftmargin);
 		}
 		else if(st->lineIdx + 1 < st->lines.size())
 		{
@@ -1506,8 +1558,8 @@ namespace detail
 
 							case 'A': cursor_up(st); break;
 							case 'B': cursor_down(st); break;
-							case 'C': cursor_right(st, 1); break;
-							case 'D': cursor_left(st, 1); break;
+							case 'C': cursor_right(st); break;
+							case 'D': cursor_left(st); break;
 							case 'H': cursor_home(st); break;
 							case 'F': cursor_end(st); break;
 						}
@@ -1657,14 +1709,20 @@ namespace ztmu
 	{
 		if(n < 0)   move_cursor_right(-n);
 
-		detail::cursor_left(this, n);
+		for(int i = 0; i < n; i++)
+			detail::cursor_left(this, /* refresh: */ false);
+
+		detail::refresh_line(this);
 	}
 
 	void State::move_cursor_right(int n)
 	{
 		if(n < 0)   move_cursor_left(-n);
 
-		detail::cursor_right(this, n);
+		for(int i = 0; i < n; i++)
+			detail::cursor_right(this, /* refresh: */ false);
+
+		detail::refresh_line(this);
 	}
 
 	void State::move_cursor_up(int n)
@@ -1673,6 +1731,8 @@ namespace ztmu
 
 		for(int i = 0; i < n; i++)
 			detail::cursor_up(this);
+
+		detail::refresh_line(this);
 	}
 
 	void State::move_cursor_down(int n)
@@ -1681,6 +1741,8 @@ namespace ztmu
 
 		for(int i = 0; i < n; i++)
 			detail::cursor_down(this);
+
+		detail::refresh_line(this);
 	}
 
 
@@ -1782,7 +1844,7 @@ namespace ztmu
 		else    return this->lines.back();
 	}
 
-	std::optional<std::string> State::readContinuation(const std::string& seed)
+	std::optional<std::vector<std::string>> State::readContinuation(const std::string& seed)
 	{
 		// don't clear
 		this->lineIdx++;
@@ -1790,7 +1852,7 @@ namespace ztmu
 		bool eof = detail::read_line(this, /* promptMode: */ 1, seed);
 
 		if(eof) return std::nullopt;
-		else    return this->lines.back();
+		else    return this->lines;
 	}
 }
 
