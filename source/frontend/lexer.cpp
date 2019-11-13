@@ -163,8 +163,6 @@ namespace lexer
 		tok.loc = pos;
 		tok.type = TokenType::Invalid;
 
-		fprintf(stderr, "stream: '%d'\n", stream[0]);
-
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
 		{

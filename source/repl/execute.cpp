@@ -69,7 +69,18 @@ namespace repl
 		state = new State();
 	}
 
-	bool processLine(const std::string& line)
+	void setEnvironment(State* st)
+	{
+		state = st;
+	}
+
+	State* getEnvironment()
+	{
+		return state;
+	}
+
+
+	std::optional<sst::Stmt*> parseAndTypecheck(const std::string& line, bool* needmore)
 	{
 		std::string replName = "<repl>";
 
@@ -83,23 +94,27 @@ namespace repl
 		auto st = parser::State(lexResult.tokens);
 		auto _stmt = parser::parseStmt(st, /* exprs: */ true);
 
+		*needmore = false;
 		if(_stmt.needsMoreTokens())
 		{
-			return true;
+			*needmore = true;
+			return std::nullopt;
 		}
 		else if(_stmt.isError())
 		{
 			_stmt.err()->post();
-			return false;
-		}
 
-		// there's no need to fiddle with AST-level trees -- once we typecheck it,
-		// it will store the relevant state into the TypecheckState.
+			return std::nullopt;
+		}
+		else
 		{
 			auto stmt = _stmt.val();
 
 			// ugh.
 			auto tcr = TCResult(reinterpret_cast<sst::Stmt*>(0));
+
+			// there's no need to fiddle with AST-level trees -- once we typecheck it,
+			// it will store the relevant state into the TypecheckState.
 
 			try
 			{
@@ -110,51 +125,58 @@ namespace repl
 				ee.err->post();
 				printf("\n");
 
-				return false;
+				return std::nullopt;
 			}
-
-
 
 			if(tcr.isError())
 			{
 				tcr.error()->post();
 				printf("\n");
-
-				return false;
 			}
 			else if(!tcr.isParametric() && !tcr.isDummy())
 			{
-				// copy some stuff over.
-				state->cs->typeDefnMap = state->fs->typeDefnMap;
+				return tcr.stmt();
+			}
 
-				// ok, we have a thing. try to run it.
-
-				auto value = magicallyRunExpressionAtCompileTime(state->cs, tcr.stmt(), nullptr,
-					Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name));
-
-				if(value)
-				{
-					// if it was an expression, then give it a name so we can refer to it later.
-					auto init = util::pool<sst::RawValueExpr>(Location(), value->getType());
-					init->rawValue = CGResult(value);
-
-					auto vardef = util::pool<sst::VarDefn>(Location());
-					vardef->type = init->type;
-					vardef->id = Identifier(zpr::sprint("_%d", state->varCounter++), IdKind::Name);
-					vardef->global = true;
-					vardef->init = init;
-
-					state->fs->stree->addDefinition(vardef->id.name, vardef);
+			return std::nullopt;
+		}
+	}
 
 
-					printf("%s\n", zpr::sprint("%s: %s = %s", vardef->id.name, value->getType(), value->str()).c_str());
-				}
+	bool processLine(const std::string& line)
+	{
+		bool needmore = false;
+		auto stmt = repl::parseAndTypecheck(line, &needmore);
+		if(!stmt)
+			return needmore;
+
+		{
+			// copy some stuff over.
+			state->cs->typeDefnMap = state->fs->typeDefnMap;
+
+			// ok, we have a thing. try to run it.
+
+			auto value = magicallyRunExpressionAtCompileTime(state->cs, *stmt, nullptr,
+				Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name));
+
+			if(value)
+			{
+				// if it was an expression, then give it a name so we can refer to it later.
+				auto init = util::pool<sst::RawValueExpr>(Location(), value->getType());
+				init->rawValue = CGResult(value);
+
+				auto vardef = util::pool<sst::VarDefn>(Location());
+				vardef->type = init->type;
+				vardef->id = Identifier(zpr::sprint("_%d", state->varCounter++), IdKind::Name);
+				vardef->global = true;
+				vardef->init = init;
+
+				state->fs->stree->addDefinition(vardef->id.name, vardef);
+
+
+				printf("%s\n", zpr::sprint("%s: %s = %s", vardef->id.name, value->getType(), value->str()).c_str());
 			}
 		}
-
-
-
-
 
 
 		return false;

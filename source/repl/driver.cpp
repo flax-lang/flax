@@ -12,15 +12,7 @@
 
 namespace repl
 {
-	static void runCommand(const std::string& s)
-	{
-		if(s == "q")            exit(0);
-		else if(s == "reset")   { zpr::println("resetting environment..."); setupEnvironment(); }
-		else if(s == "help")    repl::error("no help implemented. ggwp.");
-		else                    repl::error("invalid command '%s'.", s);
-	}
-
-	static constexpr const char* PROMPT_STRING      = COLOUR_BLUE " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
+	static constexpr const char* PROMPT_STRING      = COLOUR_BLUE_BOLD " * " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 	static constexpr const char* WRAP_PROMPT_STRING = COLOUR_GREY_BOLD " |" COLOUR_RESET " ";
 	static constexpr const char* CONT_PROMPT_STRING = COLOUR_YELLOW_BOLD ".. " COLOUR_GREY_BOLD ">" COLOUR_RESET " ";
 
@@ -30,15 +22,20 @@ namespace repl
 	void start()
 	{
 		zpr::println("flax repl -- version %s", frontend::getVersion());
-		zpr::println("type :help for help\n");
+		zpr::println("type %s:?%s for help\n", COLOUR_GREEN_BOLD, COLOUR_RESET);
 
-		setupEnvironment();
+		repl::setupEnvironment();
 
 		auto st = ztmu::State();
 		st.setPrompt(PROMPT_STRING);
 		st.setContPrompt(CONT_PROMPT_STRING);
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
 		st.setMessageOnControlC(zpr::sprint("%s(use %s:q%s to quit)%s", COLOUR_GREY_BOLD, COLOUR_GREEN, COLOUR_GREY_BOLD, COLOUR_RESET));
+
+		// temporary.
+		st.enableExitOnEmptyControlC();
+
+
 
 		// we need to put this up here, so the handler can capture it.
 		int indentLevel = 0;
@@ -64,10 +61,9 @@ namespace repl
 
 			if(input[0] == ':')
 			{
-				runCommand(input.substr(1));
-				printf("\n");
+				repl::runCommand(input.substr(1));
 			}
-			else if(bool needmore = processLine(input); needmore)
+			else if(bool needmore = repl::processLine(input); needmore)
 			{
 				size_t last_indented_line = 0;
 				auto calc_indent = [&last_indented_line, &st](char c) -> int {
@@ -108,7 +104,7 @@ namespace repl
 					auto input = join_lines(*lines);
 					indentLevel += calc_indent(input.back());
 
-					needmore = processLine(input);
+					needmore = repl::processLine(input);
 
 					if(!needmore)
 						break;

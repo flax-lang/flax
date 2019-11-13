@@ -188,6 +188,7 @@ source_files = files([
 
 	'source/repl/driver.cpp',
 	'source/repl/execute.cpp',
+	'source/repl/commands.cpp',
 
 	'source/frontend/pts.cpp',
 	'source/frontend/file.cpp',

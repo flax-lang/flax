@@ -83,6 +83,7 @@ namespace ztmu
 		void setCurrentLine(const std::string& s);
 
 		void setMessageOnControlC(const std::string& msg);
+		void enableExitOnEmptyControlC();
 
 		std::string promptString;
 		std::string contPromptString;
@@ -111,8 +112,12 @@ namespace ztmu
 		size_t historyIdx = 0;
 
 		bool wasAborted = false;
+		bool emptyCtrlCExits = false;
 		std::string uselessControlCMsg;
 	};
+
+	size_t getTerminalWidth();
+	size_t displayedTextLength(const std::string_view& str);
 }
 
 
@@ -140,23 +145,19 @@ namespace detail
 		int params[8];
 	};
 
-	static void leaveRawMode();
-	static void enterRawMode();
-
-	static int platform_read_one(char* c);
-	static int platform_read(char* c, size_t len);
-	static void platform_write(const char* s, size_t len);
-	static void platform_write(const std::string_view& sv);
-
-	static std::string moveCursorUp(int n);
-	static std::string moveCursorDown(int n);
-	static std::string moveCursorLeft(int n);
-	static std::string moveCursorRight(int n);
-	static CursorPosition getCursorPosition();
-	static std::string setCursorPosition(const CursorPosition& pos);
-
-	static size_t displayedTextLength(const std::string_view& str);
-	static size_t parseEscapeSequence(const std::string_view& str);
+	size_t getTerminalWidth();
+	size_t displayedTextLength(const std::string_view& str);
+	bool read_line(State* st, int promptMode, std::string seed);
+	void cursor_left(State* st, bool refresh = true);
+	void cursor_right(State* st, bool refresh = true);
+	void refresh_line(State* st, std::string* oldLine = 0);
+	void cursor_up(State* st);
+	void cursor_down(State* st);
+	void cursor_home(State* st);
+	void cursor_end(State* st, bool refresh = true);
+	void delete_left(State* st);
+	void delete_right(State* st);
+	size_t convertCursorToByteCursor(const char* bytes, size_t cursor);
 
 
 
@@ -173,12 +174,7 @@ namespace detail
 
 
 
-
-
-
-
-
-#if ZTMU_CREATE_IMPL || true
+#if ZTMU_CREATE_IMPL // || true
 
 // comes as a pair yo
 #include "zpr.h"
@@ -229,7 +225,7 @@ namespace detail
 #endif
 
 
-	#if 1
+	#if 0
 		template <typename... Args>
 		void ztmu_dbg(const char* fmt, Args&&... args)
 		{
@@ -256,6 +252,11 @@ namespace detail
 	{
 		platform_write(sv.data(), sv.size());
 	}
+
+	static inline std::string moveCursorUp(int n);
+	static inline std::string moveCursorDown(int n);
+	static inline std::string moveCursorLeft(int n);
+	static inline std::string moveCursorRight(int n);
 
 	static inline std::string moveCursorUp(int n)
 	{
@@ -312,13 +313,13 @@ namespace detail
 		return ret;
 	}
 
-	static std::string setCursorPosition(const CursorPosition& pos)
-	{
-		if(pos.x <= 0 || pos.y <= 0)
-			return "";
+	// static std::string setCursorPosition(const CursorPosition& pos)
+	// {
+	// 	if(pos.x <= 0 || pos.y <= 0)
+	// 		return "";
 
-		return zpr::sprint("%s%d;%dH", CSI, pos.y, pos.x);
-	}
+	// 	return zpr::sprint("%s%d;%dH", CSI, pos.y, pos.x);
+	// }
 
 
 
@@ -412,7 +413,7 @@ namespace detail
 	}
 
 
-	static size_t displayedTextLength(const std::string_view& str)
+	inline size_t displayedTextLength(const std::string_view& str)
 	{
 		auto utf8_len = [](const char* begin, const char* end) -> size_t {
 			size_t len = 0;
@@ -508,7 +509,7 @@ namespace detail
 		isInRawMode = true;
 	}
 
-	static size_t getTerminalWidth()
+	inline size_t getTerminalWidth()
 	{
 		#ifdef _WIN32
 			CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -593,7 +594,7 @@ namespace detail
 		return i;
 	}
 
-	static size_t convertCursorToByteCursor(const char* bytes, size_t cursor)
+	inline size_t convertCursorToByteCursor(const char* bytes, size_t cursor)
 	{
 		size_t bc = 0;
 		for(size_t i = 0; i < cursor; i++)
@@ -619,22 +620,22 @@ namespace detail
 		return { cursor, byteCursor };
 	}
 
-	static std::pair<size_t, size_t> calculate_right_codepoints(int n, const std::string_view& sv, size_t cursor, size_t byteCursor)
-	{
-		for(int i = 0; i < n; i++)
-		{
-			if(byteCursor < sv.size())
-			{
-				auto x = byteCursor;
-				auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(sv.data()), x);
+	// static std::pair<size_t, size_t> calculate_right_codepoints(int n, const std::string_view& sv, size_t cursor, size_t byteCursor)
+	// {
+	// 	for(int i = 0; i < n; i++)
+	// 	{
+	// 		if(byteCursor < sv.size())
+	// 		{
+	// 			auto x = byteCursor;
+	// 			auto l = findEndOfUTF8CP(reinterpret_cast<const uint8_t*>(sv.data()), x);
 
-				byteCursor += (l - x + 1);
-				cursor += 1;
-			}
-		}
+	// 			byteCursor += (l - x + 1);
+	// 			cursor += 1;
+	// 		}
+	// 	}
 
-		return { cursor, byteCursor };
-	}
+	// 	return { cursor, byteCursor };
+	// }
 
 
 
@@ -933,7 +934,7 @@ namespace detail
 		}
 	}
 
-	static void refresh_line(State* st, std::string* oldLine = 0)
+	inline void refresh_line(State* st, std::string* oldLine)
 	{
 		// refresh the top line manually:
 
@@ -1002,7 +1003,7 @@ namespace detail
 	}
 
 
-	static void cursor_home(State* st)
+	inline void cursor_home(State* st)
 	{
 		st->cursor = 0;
 		st->byteCursor = 0;
@@ -1010,7 +1011,7 @@ namespace detail
 		refresh_line(st);
 	}
 
-	static void cursor_end(State* st, bool refresh = true)
+	inline void cursor_end(State* st, bool refresh)
 	{
 		st->cursor = displayedTextLength(getCurLine(st));
 		st->byteCursor = getCurLine(st).size();
@@ -1022,7 +1023,7 @@ namespace detail
 
 	// note: internal code doesn't use delete_left or delete_right, so we don't need two
 	// versions that handle lines.
-	static void delete_left(State* st)
+	inline void delete_left(State* st)
 	{
 		if(st->cursor > 0 && getCurLine(st).size() > 0)
 		{
@@ -1068,7 +1069,7 @@ namespace detail
 		}
 	}
 
-	static void delete_right(State* st)
+	inline void delete_right(State* st)
 	{
 		if(st->byteCursor < getCurLine(st).size())
 		{
@@ -1144,7 +1145,7 @@ namespace detail
 			refresh_line(st);
 	}
 
-	static void cursor_left(State* st, bool refresh = true)
+	inline void cursor_left(State* st, bool refresh)
 	{
 		if(st->cursor > 0)
 		{
@@ -1186,7 +1187,7 @@ namespace detail
 			refresh_line(st);
 	}
 
-	static void cursor_right(State* st, bool refresh = true)
+	inline void cursor_right(State* st, bool refresh)
 	{
 		if(st->byteCursor < getCurLine(st).size())
 		{
@@ -1239,7 +1240,7 @@ namespace detail
 		refresh_line(st);
 	}
 
-	static void cursor_up(State* st)
+	inline void cursor_up(State* st)
 	{
 		if(st->cursor > 0 && st->wrappedLineIdx > 0)
 		{
@@ -1333,7 +1334,7 @@ namespace detail
 		}
 	}
 
-	static void cursor_down(State* st)
+	inline void cursor_down(State* st)
 	{
 		if(st->byteCursor < getCurLine(st).size() && (st->lines.size() == 1 || st->wrappedLineIdx + 1 < st->cachedNWLForCurrentLine))
 		{
@@ -1414,7 +1415,7 @@ namespace detail
 
 	// this is ugly!!!
 	static State* currentStateForSignal = 0;
-	static bool read_line(State* st, int promptMode, std::string seed)
+	inline bool read_line(State* st, int promptMode, std::string seed)
 	{
 		constexpr char CTRL_A       = '\x01';
 		constexpr char CTRL_C       = '\x03';
@@ -1496,8 +1497,17 @@ namespace detail
 
 					if(st->lines.size() == 1 && st->lines[0].empty())
 					{
-						platform_write(st->uselessControlCMsg);
-						goto finish_now;
+						if(st->emptyCtrlCExits)
+						{
+							st->wasAborted = true;
+							eof = true;
+							goto finish;
+						}
+						else
+						{
+							platform_write(st->uselessControlCMsg);
+							goto finish_now;
+						}
 					}
 					else
 					{
@@ -1774,7 +1784,17 @@ namespace detail
 
 namespace ztmu
 {
-	void State::clear()
+	inline size_t displayedTextLength(const std::string_view& str)
+	{
+		return detail::displayedTextLength(str);
+	}
+
+	inline size_t getTerminalWidth()
+	{
+		return detail::getTerminalWidth();
+	}
+
+	inline void State::clear()
 	{
 		// reset the thing.
 		this->savedCurrentInput.clear();
@@ -1785,25 +1805,25 @@ namespace ztmu
 		this->wrappedLineIdx = 0;
 	}
 
-	void State::setPrompt(const std::string& prompt)
+	inline void State::setPrompt(const std::string& prompt)
 	{
 		this->promptString = prompt;
 		this->normPL = detail::displayedTextLength(prompt);
 	}
 
-	void State::setContPrompt(const std::string& prompt)
+	inline void State::setContPrompt(const std::string& prompt)
 	{
 		this->contPromptString = prompt;
 		this->contPL = detail::displayedTextLength(prompt);
 	}
 
-	void State::setWrappedPrompt(const std::string& prompt)
+	inline void State::setWrappedPrompt(const std::string& prompt)
 	{
 		this->wrappedPromptString = prompt;
 		this->wrapPL = detail::displayedTextLength(prompt);
 	}
 
-	void State::move_cursor_left(int n)
+	inline void State::move_cursor_left(int n)
 	{
 		if(n < 0)   move_cursor_right(-n);
 
@@ -1813,7 +1833,7 @@ namespace ztmu
 		detail::refresh_line(this);
 	}
 
-	void State::move_cursor_right(int n)
+	inline void State::move_cursor_right(int n)
 	{
 		if(n < 0)   move_cursor_left(-n);
 
@@ -1823,7 +1843,7 @@ namespace ztmu
 		detail::refresh_line(this);
 	}
 
-	void State::move_cursor_up(int n)
+	inline void State::move_cursor_up(int n)
 	{
 		if(n < 0)   move_cursor_down(-n);
 
@@ -1833,7 +1853,7 @@ namespace ztmu
 		detail::refresh_line(this);
 	}
 
-	void State::move_cursor_down(int n)
+	inline void State::move_cursor_down(int n)
 	{
 		if(n < 0)   move_cursor_up(-n);
 
@@ -1844,17 +1864,17 @@ namespace ztmu
 	}
 
 
-	void State::move_cursor_home()
+	inline void State::move_cursor_home()
 	{
 		detail::cursor_home(this);
 	}
 
-	void State::move_cursor_end()
+	inline void State::move_cursor_end()
 	{
 		detail::cursor_end(this);
 	}
 
-	void State::delete_left(int n)
+	inline void State::delete_left(int n)
 	{
 		if(n <= 0) return;
 
@@ -1862,7 +1882,7 @@ namespace ztmu
 			detail::delete_left(this);
 	}
 
-	void State::delete_right(int n)
+	inline void State::delete_right(int n)
 	{
 		if(n <= 0) return;
 
@@ -1870,22 +1890,22 @@ namespace ztmu
 			detail::delete_right(this);
 	}
 
-	void State::setKeyHandler(Key k, std::function<HandlerAction (State*, Key)> handler)
+	inline void State::setKeyHandler(Key k, std::function<HandlerAction (State*, Key)> handler)
 	{
 		this->keyHandlers[k] = handler;
 	}
 
-	void State::unsetKeyHandler(Key k)
+	inline void State::unsetKeyHandler(Key k)
 	{
 		this->keyHandlers[k] = std::function<HandlerAction (State*, Key)>();
 	}
 
-	std::string State::getCurrentLine()
+	inline std::string State::getCurrentLine()
 	{
 		return this->lines[this->lineIdx];
 	}
 
-	void State::setCurrentLine(const std::string& s)
+	inline void State::setCurrentLine(const std::string& s)
 	{
 		auto old = this->lines[this->lineIdx];
 		this->lines[this->lineIdx] = s;
@@ -1897,14 +1917,14 @@ namespace ztmu
 		detail::refresh_line(this, &old);
 	}
 
-	void State::useUniqueHistory(bool enable)
+	inline void State::useUniqueHistory(bool enable)
 	{
 		this->uniqueHistory = enable;
 	}
 
 	// your responsibility to check if the input was empty!
 	// well if you unique it then you'll only get one empty history entry, but still.
-	void State::addPreviousInputToHistory()
+	inline void State::addPreviousInputToHistory()
 	{
 		if(this->wasAborted)
 			return;
@@ -1924,23 +1944,28 @@ namespace ztmu
 		this->history.push_back(this->lines);
 	}
 
-	void State::loadHistory(const std::vector<std::vector<std::string>>& h)
+	inline void State::loadHistory(const std::vector<std::vector<std::string>>& h)
 	{
 		this->history = h;
 	}
 
 	// it's up to you to serialise it!
-	std::vector<std::vector<std::string>> State::getHistory()
+	inline std::vector<std::vector<std::string>> State::getHistory()
 	{
 		return this->history;
 	}
 
-	void State::setMessageOnControlC(const std::string& msg)
+	inline void State::setMessageOnControlC(const std::string& msg)
 	{
 		this->uselessControlCMsg = msg;
 	}
 
-	std::optional<std::string> State::read()
+	inline void State::enableExitOnEmptyControlC()
+	{
+		this->emptyCtrlCExits = true;
+	}
+
+	inline std::optional<std::string> State::read()
 	{
 		// clear.
 		this->clear();
@@ -1950,7 +1975,7 @@ namespace ztmu
 		else    return this->lines.back();
 	}
 
-	std::optional<std::vector<std::string>> State::readContinuation(const std::string& seed)
+	inline std::optional<std::vector<std::string>> State::readContinuation(const std::string& seed)
 	{
 		// don't clear
 		this->lineIdx++;
