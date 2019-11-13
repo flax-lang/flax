@@ -71,6 +71,8 @@ namespace repl
 
 	bool processLine(const std::string& line)
 	{
+		fprintf(stderr, "line: '%s'\n", line.c_str());
+
 		std::string replName = "<repl>";
 
 		frontend::CollectorState collector;

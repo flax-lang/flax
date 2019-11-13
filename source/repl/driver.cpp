@@ -98,6 +98,8 @@ namespace repl
 				}
 			}
 
+			st.addPreviousInputToHistory();
+
 			// ok, we're done -- clear.
 			input.clear();
 		}

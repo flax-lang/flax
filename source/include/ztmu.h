@@ -58,6 +58,11 @@ namespace ztmu
 		void setContPrompt(const std::string& prompt);
 		void setWrappedPrompt(const std::string& prompt);
 
+		void useUniqueHistory(bool enable);
+		void addPreviousInputToHistory();
+		void loadHistory(const std::vector<std::vector<std::string>>& h);
+		std::vector<std::vector<std::string>> getHistory();
+
 		void move_cursor_left(int n);
 		void move_cursor_right(int n);
 
@@ -97,6 +102,11 @@ namespace ztmu
 
 		std::vector<std::string> lines;
 		std::map<Key, std::function<HandlerAction (State*, Key)>> keyHandlers;
+
+		std::vector<std::vector<std::string>> history;
+		std::vector<std::string> savedCurrentInput;
+		bool uniqueHistory = true;
+		size_t historyIdx = 0;
 	};
 }
 
@@ -685,6 +695,26 @@ namespace detail
 		return wli;
 	}
 
+	static size_t calculate_nwl(State* st, size_t lineIdx, size_t len)
+	{
+		auto width = st->termWidth;
+
+		size_t lines = 1;
+		while(len > 0)
+		{
+			auto left = width - (lines == 1 ? (lineIdx == 0 ? st->normPL : st->contPL) : st->wrapPL);
+			if(left == len)
+				lines += 1;
+
+			len -= std::min(left, len);
+			if(len == 0)
+				break;
+
+			lines += 1;
+		}
+
+		return lines;
+	}
 
 
 	// returns (linesBelowCursor, finalHcursor)
@@ -702,26 +732,6 @@ namespace detail
 		};
 
 
-		auto calc_wrap = [&](size_t len) -> size_t {
-			auto width = st->termWidth;
-
-			size_t lines = 1;
-			while(len > 0)
-			{
-				auto left = width - (lines == 1 ? (st->lineIdx == 0 ? st->normPL : st->contPL) : st->wrapPL);
-				if(left == len)
-					lines += 1;
-
-				len -= std::min(left, len);
-				if(len == 0)
-					break;
-
-				lines += 1;
-			}
-
-			return lines;
-		};
-
 		auto getPromptForLine = [&](size_t wli) -> std::pair<std::string, size_t> {
 			if(lineIdx == 0)
 			{
@@ -738,15 +748,14 @@ namespace detail
 
 		std::string_view currentLine = st->lines[lineIdx];
 
-		size_t numWrappingLines = calc_wrap(displayedTextLength(currentLine));
+		size_t numWrappingLines = calculate_nwl(st, st->lineIdx, displayedTextLength(currentLine));
 
 		// if we're operating on the current line, shun bian cache the NWL count.
 		// we'll use this for cursor_down among other things.
 		if(st->lineIdx == lineIdx)
 			st->cachedNWLForCurrentLine = numWrappingLines;
 
-
-		size_t old_NWL = calc_wrap(displayedTextLength(oldLine));
+		size_t old_NWL = calculate_nwl(st, st->lineIdx, displayedTextLength(oldLine));
 
 		auto new_wli = calculate_wli(st, st->cursor);
 
@@ -923,7 +932,7 @@ namespace detail
 	{
 		// refresh the top line manually:
 
-		ztmu_dbg("\n\n** refreshing line 0...\n");
+		ztmu_dbg("\n\n** refreshing line %d...\n", st->lineIdx);
 		auto [ down, hcursor ] = _refresh_line(st, st->lineIdx, /* skip_cursor: */ false,
 			oldLine ? *oldLine : st->lines[st->lineIdx], /* defer_flush: */ false, /* cmd_buffer: */ nullptr);
 
@@ -946,6 +955,11 @@ namespace detail
 			st->byteCursor = 0;
 			st->cursor = 0;
 
+			// see if we need to scroll. note that _refresh_line will scroll for the current line -- ONLY IF IT WRAPS
+			// but because we are drawing all lines, we need space for the next line as well.
+			if(getCursorPosition().y == st->termHeight)
+				buffer += zpr::sprint("%s1S", CSI); // one should be enough.
+
 			buffer += moveCursorDown(down);
 			downAccum += down;
 
@@ -953,7 +967,7 @@ namespace detail
 
 			std::string buf;
 			down = _refresh_line(st, i, /* skip_cursor: */ true, st->lines[i], /* defer_flush: */ true,
-				&buf).first - 1;
+				&buf).first + 1;
 
 			buffer += buf;
 
@@ -1057,6 +1071,45 @@ namespace detail
 		}
 	}
 
+	static size_t _calculate_total_nwl_for_all_lines(State* st)
+	{
+		size_t down = 0;
+		for(size_t i = 0; i < st->lines.size(); i++)
+			down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
+
+		return down;
+	}
+
+	// shared stuff that history-manipulating people need to do, basically moving the
+	// cursor all the way to the end of the text, including the physical cursor.
+	static void _move_cursor_to_end_of_input(State* st)
+	{
+		// we want the cursor to be at the very end of the last line of input!
+
+		// but first, go to the very beginning, and refresh -- this draws all the lines.
+		st->lineIdx = 0;
+		st->cursor = 0;
+		st->byteCursor = 0;
+		st->wrappedLineIdx = 0;
+
+		refresh_line(st);
+
+		// then we can move to the bottom and refresh again.
+		{
+			size_t down = _calculate_total_nwl_for_all_lines(st) - 1;
+
+			platform_write(moveCursorDown(down));
+		}
+
+		st->cursor = displayedTextLength(st->lines.back());
+		st->byteCursor = convertCursorToByteCursor(st->lines.back().c_str(), st->cursor);
+
+		st->lineIdx = st->lines.size() - 1;
+		st->wrappedLineIdx = calculate_wli(st, st->cursor);
+
+		refresh_line(st);
+	}
+
 	static void cursor_up(State* st)
 	{
 		if(st->cursor > 0 && st->wrappedLineIdx > 0)
@@ -1125,9 +1178,29 @@ namespace detail
 			ztmu_dbg("c: %zu, bc: %zu, margin: %zu, pl: '%s'\n", st->cursor, st->byteCursor,
 				prev_right_margin, std::string(prevLine).c_str());
 		}
-		else
+		else if(st->history.size() > 0 && st->historyIdx < st->history.size())
 		{
-			// TODO: possibly handle history?
+			ztmu_dbg("## history up (%zu)\n", st->historyIdx);
+
+			// save it, so we can go back to it.
+			if(st->historyIdx == 0)
+				st->savedCurrentInput = st->lines;
+
+			// ok, so we're already at the top of the thing, so we should clear the screen from here
+			// to the bottom.
+			platform_write(zpr::sprint("%s0J", CSI));
+
+			// set the index, set the lines, and refresh.
+			st->historyIdx += 1;
+			st->lines = st->history[st->history.size() - st->historyIdx];
+
+			ztmu_dbg("setting: \n");
+			for(const auto& l : st->lines)
+				ztmu_dbg("'%s'\n", l);
+
+			ztmu_dbg("\n");
+
+			_move_cursor_to_end_of_input(st);
 		}
 	}
 
@@ -1161,8 +1234,6 @@ namespace detail
 			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor,
 				st->lineIdx == 0 ? st->normPL:  st->contPL, st->wrapPL);
 
-			// auto leftChars = hcursor - (st->wrappedLineIdx > 0 ? st->wrapPL : (st->lineIdx == 0 ? st->normPL : st->contPL));
-
 			// ok, the next line will definitely be a continuation prompt. so, see how many chars into the line
 			// we'll actually put ourselves -- and handle the edge case of negative values!
 			auto next_leftChars = (hcursor < st->contPL
@@ -1179,10 +1250,32 @@ namespace detail
 			platform_write(moveCursorDown(1));
 			refresh_line(st);
 		}
-		else
+		else if(st->historyIdx > 0)
 		{
-			// TODO: handle moving down into the next "line" list -- during continuations.
-			// TODO: possibly handle history?
+			ztmu_dbg("## history down (%zu)\n", st->historyIdx);
+
+			// somewhat similar to moving up in history. first, we will already be at the bottom of
+			// all lines. so, we need to move the physical and virtual cursor to the top of the entire
+			// input. to do this, calculate the total NWL of all lines:
+			{
+				// we must do this for the current input state, before we change into the history.
+				auto up = _calculate_total_nwl_for_all_lines(st) - 1;
+
+				// as we move up, we must clear the entire line, to get rid of the lingering text.
+				for(size_t i = 0; i < up; i++)
+				{
+					platform_write(zpr::sprint("%s2K", CSI));
+					platform_write(moveCursorUp(1));
+				}
+			}
+
+			// ok, now we can change:
+			st->historyIdx -= 1;
+			if(st->historyIdx == 0) st->lines = st->savedCurrentInput, st->savedCurrentInput.clear();
+			else                    st->lines = st->history[st->history.size() - st->historyIdx];
+
+			// now, fix it.
+			_move_cursor_to_end_of_input(st);
 		}
 	}
 
@@ -1237,9 +1330,6 @@ namespace detail
 		struct sigaction old_sa;
 		if(sigaction(SIGWINCH, &new_sa, &old_sa) == 0)
 			didSetSignalHandler = true;
-
-
-
 
 
 		bool eof = false;
@@ -1507,7 +1597,18 @@ namespace detail
 
 		// move the cursor to the end, refresh the line, then leave raw mode -- this makes sure
 		// that we leave the cursor in a nice place after the call to this function returns.
-		cursor_end(st);
+		{
+			cursor_end(st);
+
+			// see how many lines we need to go down.
+			size_t down = 0;
+			for(size_t i = st->lineIdx + 1; i < st->lines.size(); i++)
+				down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
+
+			platform_write(moveCursorDown(down));
+			platform_write(moveCursorLeft(9999));
+		}
+
 		leaveRawMode();
 
 		platform_write("\n");
@@ -1526,8 +1627,12 @@ namespace ztmu
 	void State::clear()
 	{
 		// reset the thing.
+		this->savedCurrentInput.clear();
 		this->lines.clear();
 		this->lineIdx = 0;
+
+		this->cachedNWLForCurrentLine = 0;
+		this->wrappedLineIdx = 0;
 	}
 
 	void State::setPrompt(const std::string& prompt)
@@ -1630,6 +1735,41 @@ namespace ztmu
 		this->byteCursor = detail::convertCursorToByteCursor(s.c_str(), this->cursor);
 
 		detail::refresh_line(this, &old);
+	}
+
+	void State::useUniqueHistory(bool enable)
+	{
+		this->uniqueHistory = enable;
+	}
+
+	// your responsibility to check if the input was empty!
+	// well if you unique it then you'll only get one empty history entry, but still.
+	void State::addPreviousInputToHistory()
+	{
+		// now, if we need to unique the history, then erase (if any) the
+		// prior occurrence of that item. we shouldn't really need to check for more
+		// than one, because any previous call to addHistory() should have already
+		// left us with at most two.
+
+		// obviously, we check for dupes before adding the current entry, because then we'll
+		// just end up erasing the new entry like an idiot.
+		if(auto it = std::find(this->history.begin(), this->history.end(), this->lines); it != this->history.end())
+			this->history.erase(it);
+
+		// this must be called before the next invocation of read() or readContinuation()
+		// so that State->lines is still preserved.
+		this->history.push_back(this->lines);
+	}
+
+	void State::loadHistory(const std::vector<std::vector<std::string>>& h)
+	{
+		this->history = h;
+	}
+
+	// it's up to you to serialise it!
+	std::vector<std::vector<std::string>> State::getHistory()
+	{
+		return this->history;
 	}
 
 	std::optional<std::string> State::read()
