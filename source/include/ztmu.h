@@ -987,6 +987,16 @@ namespace detail
 
 
 
+	static size_t _calculate_total_nwl_for_all_lines(State* st, size_t startingLineIdx = 0)
+	{
+		size_t down = 0;
+		for(size_t i = startingLineIdx; i < st->lines.size(); i++)
+			down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
+
+		return down;
+	}
+
+
 	static void cursor_home(State* st)
 	{
 		st->cursor = 0;
@@ -1003,6 +1013,9 @@ namespace detail
 		refresh_line(st);
 	}
 
+
+	// note: internal code doesn't use delete_left or delete_right, so we don't need two
+	// versions that handle lines.
 	static void delete_left(State* st)
 	{
 		if(st->cursor > 0 && getCurLine(st).size() > 0)
@@ -1017,6 +1030,35 @@ namespace detail
 			st->cursor -= 1;
 
 			refresh_line(st, &old);
+		}
+		else if(st->lineIdx > 0)
+		{
+			st->lineIdx -= 1;
+
+			st->cursor = displayedTextLength(st->lines[st->lineIdx]);
+			st->byteCursor = st->lines[st->lineIdx].size();
+			st->wrappedLineIdx = calculate_wli(st, st->cursor);
+
+			// here's the thing: the remaining pieces of this line needs to be appended
+			// to the previous line! (+1 here cos we already -= 1 above)
+			auto remaining = st->lines[st->lineIdx + 1];
+			st->lines[st->lineIdx].insert(st->byteCursor, remaining);
+
+			// before we refresh, we need to go all the way to the bottom and erase the last physical line,
+			// so that it won't be lingering later on.
+			{
+				auto down = _calculate_total_nwl_for_all_lines(st, st->lineIdx) - 2;
+				ztmu_dbg("** down = %zu\n", down);
+
+				// physical cursor needs to move up one, so move up one more than we moved down.
+				platform_write(zpr::sprint("%s%s2K%s", moveCursorDown(down), CSI, moveCursorUp(down + 1)));
+			}
+
+			// then we need to erase this line from the lines!
+			st->lines.erase(st->lines.begin() + st->lineIdx + 1);
+
+			// need to refresh.
+			refresh_line(st);
 		}
 	}
 
@@ -1033,6 +1075,25 @@ namespace detail
 
 			// both cursors remain unchanged.
 			refresh_line(st, &old);
+		}
+		else if(st->lineIdx + 1 < st->lines.size())
+		{
+			// we don't move anything. all the text from the next line gets appended to the current line.
+			auto nextLine = st->lines[st->lineIdx + 1];
+			st->lines[st->lineIdx].insert(st->byteCursor, nextLine);
+
+			// before we refresh, we need to go all the way to the bottom and erase the last physical line,
+			// so that it won't be lingering later on.
+			{
+				auto down = _calculate_total_nwl_for_all_lines(st, st->lineIdx) - 1;
+				platform_write(zpr::sprint("%s%s2K%s", moveCursorDown(down), CSI, moveCursorUp(down)));
+			}
+
+			// then we need to erase the next line from the lines!
+			st->lines.erase(st->lines.begin() + st->lineIdx + 1);
+
+			// need to refresh.
+			refresh_line(st);
 		}
 	}
 
@@ -1121,16 +1182,6 @@ namespace detail
 		}
 	}
 
-
-
-	static size_t _calculate_total_nwl_for_all_lines(State* st)
-	{
-		size_t down = 0;
-		for(size_t i = 0; i < st->lines.size(); i++)
-			down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
-
-		return down;
-	}
 
 	// shared stuff that history-manipulating people need to do, basically moving the
 	// cursor all the way to the end of the text, including the physical cursor.
