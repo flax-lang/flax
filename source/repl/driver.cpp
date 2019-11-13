@@ -69,14 +69,24 @@ namespace repl
 			}
 			else if(bool needmore = processLine(input); needmore)
 			{
-				auto calc_indent = [](char c) -> int {
-					switch(c)
+				size_t last_indented_line = 0;
+				auto calc_indent = [&last_indented_line, &st](char c) -> int {
+
+					// note: we use +1 so that last_indented_line is 1-indexed. this
+					// entire thing is so we don't get increasing indentation levels if
+					// we delete and re-enter on a brace.
+					if(last_indented_line == 0 || st.lineIdx + 1 > last_indented_line)
 					{
-						case '{': [[fallthrough]];
-						case '(': [[fallthrough]];
-						case '[': [[fallthrough]];
-						case ',':
-							return 1;
+						switch(c)
+						{
+							case '{': [[fallthrough]];
+							case '(': [[fallthrough]];
+							case '[': [[fallthrough]];
+							case ',': {
+								last_indented_line = st.lineIdx + 1;
+								return 1;
+							}
+						}
 					}
 
 					return 0;

@@ -1491,6 +1491,65 @@ namespace detail
 			ztmu_dbg("[%d]", static_cast<int>(c));
 			switch(c)
 			{
+				case CTRL_C: {
+					st->wasAborted = true;
+
+					if(st->lines.size() == 1 && st->lines[0].empty())
+					{
+						platform_write(st->uselessControlCMsg);
+						goto finish_now;
+					}
+					else
+					{
+						commit_line(/* refresh: */ false);
+
+						// if we are multi-line, we can return eof. if not, just return empty.
+						if(st->lines.size() > 1)
+							eof = true;
+
+						st->clear();
+						goto finish_now;
+					}
+				}
+
+				// this is a little complex; control-D is apparently both EOF: when the buffer is empty,
+				// and delete-left: when it is not...
+				case CTRL_D: {
+					// if the buffer is empty, then quit.
+					if(getCurLine(st).empty() && st->lineIdx == 0)
+					{
+						st->wasAborted = true;
+
+						eof = true;
+						goto finish;
+					}
+					else
+					{
+						delete_left(st);
+					}
+				} break;
+
+
+
+				case CTRL_A: {
+					cursor_home(st);
+				} break;
+
+				case CTRL_E: {
+					cursor_end(st);
+				} break;
+
+				// backspace
+				case CTRL_H: [[fallthrough]];
+				case BACKSPACE: {
+					delete_left(st);
+				} break;
+
+				case CTRL_K: {
+					// delete to end of line.
+					delete_line_right(st);
+				} break;
+
 				// enter
 				case ENTER: {
 					if(auto fn = st->keyHandlers[Key::ENTER]; fn)
@@ -1513,62 +1572,7 @@ namespace detail
 					goto finish;
 				}
 
-				// this is a little complex; control-D is apparently both EOF: when the buffer is empty,
-				// and delete-left: when it is not...
-				case CTRL_D: {
-					// if the buffer is empty, then quit.
-					if(getCurLine(st).empty() && st->lineIdx == 0)
-					{
-						st->wasAborted = true;
 
-						eof = true;
-						goto finish;
-					}
-					else
-					{
-						delete_left(st);
-					}
-				} break;
-
-				case CTRL_A: {
-					cursor_home(st);
-				} break;
-
-				case CTRL_E: {
-					cursor_end(st);
-				} break;
-
-				case CTRL_C: {
-					st->wasAborted = true;
-
-					if(st->lines.size() == 1 && st->lines[0].empty())
-					{
-						platform_write(st->uselessControlCMsg);
-						goto finish_now;
-					}
-					else
-					{
-						commit_line(/* refresh: */ false);
-
-						// if we are multi-line, we can return eof. if not, just return empty.
-						if(st->lines.size() > 1)
-							eof = true;
-
-						st->clear();
-						goto finish_now;
-					}
-				}
-
-				// backspace
-				case CTRL_H: [[fallthrough]];
-				case BACKSPACE: {
-					delete_left(st);
-				} break;
-
-				case CTRL_K: {
-					// delete to end of line.
-					delete_line_right(st);
-				} break;
 
 				// time for some fun.
 				case ESC: {

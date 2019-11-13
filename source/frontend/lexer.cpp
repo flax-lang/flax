@@ -146,7 +146,8 @@ namespace lexer
 		}
 
 		string_view stream = lines[*line].substr(*offset);
-		if(stream.empty())
+		skipWhitespace(stream, pos, offset);
+		if(stream.empty() || stream[0] == 0)
 		{
 			out->loc = pos;
 			out->type = TokenType::EndOfFile;
@@ -154,17 +155,15 @@ namespace lexer
 		}
 
 
-
 		size_t read = 0;
 		size_t unicodeLength = 0;
 
-		// first eat all whitespace
-		skipWhitespace(stream, pos, offset);
 
 		Token& tok = *out;
 		tok.loc = pos;
 		tok.type = TokenType::Invalid;
 
+		fprintf(stderr, "stream: '%d'\n", stream[0]);
 
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
