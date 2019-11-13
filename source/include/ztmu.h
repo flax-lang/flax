@@ -82,6 +82,8 @@ namespace ztmu
 		std::string getCurrentLine();
 		void setCurrentLine(const std::string& s);
 
+		void setMessageOnControlC(const std::string& msg);
+
 		std::string promptString;
 		std::string contPromptString;
 		std::string wrappedPromptString;
@@ -107,6 +109,9 @@ namespace ztmu
 		std::vector<std::string> savedCurrentInput;
 		bool uniqueHistory = true;
 		size_t historyIdx = 0;
+
+		bool wasAborted = false;
+		std::string uselessControlCMsg;
 	};
 }
 
@@ -1005,12 +1010,13 @@ namespace detail
 		refresh_line(st);
 	}
 
-	static void cursor_end(State* st)
+	static void cursor_end(State* st, bool refresh = true)
 	{
 		st->cursor = displayedTextLength(getCurLine(st));
 		st->byteCursor = getCurLine(st).size();
 
-		refresh_line(st);
+		if(refresh)
+			refresh_line(st);
 	}
 
 
@@ -1096,6 +1102,26 @@ namespace detail
 			refresh_line(st);
 		}
 	}
+
+	// bound to C-k by default
+	static void delete_line_right(State* st)
+	{
+		if(st->byteCursor < st->lines[st->lineIdx].size())
+		{
+			st->lines[st->lineIdx].erase(st->byteCursor);
+			refresh_line(st);
+		}
+		else if(st->lineIdx + 1 < st->lines.size())
+		{
+			// just call delete_right, which will collapse this line.
+			delete_right(st);
+		}
+	}
+
+
+
+
+
 
 	// we differentiate between _cursor_left() and cursor_left() -- the latter only moves along
 	// a single line ("logical line"), while the latter will move to the previous line if the current
@@ -1394,7 +1420,8 @@ namespace detail
 		constexpr char CTRL_C       = '\x03';
 		constexpr char CTRL_D       = '\x04';
 		constexpr char CTRL_E       = '\x05';
-		constexpr char BACKSPACE_   = '\x08';
+		constexpr char CTRL_H       = '\x08';
+		constexpr char CTRL_K       = '\x0B';
 		constexpr char ENTER        = '\x0D';
 		constexpr char BACKSPACE    = '\x7F';
 
@@ -1435,6 +1462,22 @@ namespace detail
 			didSetSignalHandler = true;
 
 
+		auto commit_line = [&](bool refresh = true) {
+			// move the cursor to the end, refresh the line, then leave raw mode -- this makes sure
+			// that we leave the cursor in a nice place after the call to this function returns.
+			cursor_end(st, refresh);
+
+			// see how many lines we need to go down.
+			size_t down = 0;
+			for(size_t i = st->lineIdx + 1; i < st->lines.size(); i++)
+				down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
+
+			platform_write(moveCursorDown(down));
+			platform_write(moveCursorLeft(9999));
+		};
+
+		st->wasAborted = false;
+
 		bool eof = false;
 		while(true)
 		{
@@ -1474,8 +1517,10 @@ namespace detail
 				// and delete-left: when it is not...
 				case CTRL_D: {
 					// if the buffer is empty, then quit.
-					if(getCurLine(st).empty())
+					if(getCurLine(st).empty() && st->lineIdx == 0)
 					{
+						st->wasAborted = true;
+
 						eof = true;
 						goto finish;
 					}
@@ -1494,26 +1539,35 @@ namespace detail
 				} break;
 
 				case CTRL_C: {
-					if(getCurLine(st).empty())
+					st->wasAborted = true;
+
+					if(st->lines.size() == 1 && st->lines[0].empty())
 					{
-						eof = true;
-						goto finish;
+						platform_write(st->uselessControlCMsg);
+						goto finish_now;
 					}
 					else
 					{
-						auto old = getCurLine(st);
-						getCurLine(st).clear();
+						commit_line(/* refresh: */ false);
 
-						st->cursor = 0;
-						st->byteCursor = 0;
-						refresh_line(st, &old);
+						// if we are multi-line, we can return eof. if not, just return empty.
+						if(st->lines.size() > 1)
+							eof = true;
+
+						st->clear();
+						goto finish_now;
 					}
 				}
 
 				// backspace
-				case BACKSPACE: [[fallthrough]];
-				case BACKSPACE_: {
+				case CTRL_H: [[fallthrough]];
+				case BACKSPACE: {
 					delete_left(st);
+				} break;
+
+				case CTRL_K: {
+					// delete to end of line.
+					delete_line_right(st);
 				} break;
 
 				// time for some fun.
@@ -1693,24 +1747,13 @@ namespace detail
 
 
 	finish:
+		commit_line();
+
+	finish_now:
 		// restore the signal state, and reset the terminal to normal mode.
 		currentStateForSignal = 0;
 		if(didSetSignalHandler)
 			sigaction(SIGWINCH, &old_sa, nullptr);
-
-		// move the cursor to the end, refresh the line, then leave raw mode -- this makes sure
-		// that we leave the cursor in a nice place after the call to this function returns.
-		{
-			cursor_end(st);
-
-			// see how many lines we need to go down.
-			size_t down = 0;
-			for(size_t i = st->lineIdx + 1; i < st->lines.size(); i++)
-				down += calculate_nwl(st, i, displayedTextLength(st->lines[i]));
-
-			platform_write(moveCursorDown(down));
-			platform_write(moveCursorLeft(9999));
-		}
 
 		leaveRawMode();
 
@@ -1859,6 +1902,9 @@ namespace ztmu
 	// well if you unique it then you'll only get one empty history entry, but still.
 	void State::addPreviousInputToHistory()
 	{
+		if(this->wasAborted)
+			return;
+
 		// now, if we need to unique the history, then erase (if any) the
 		// prior occurrence of that item. we shouldn't really need to check for more
 		// than one, because any previous call to addHistory() should have already
@@ -1883,6 +1929,11 @@ namespace ztmu
 	std::vector<std::vector<std::string>> State::getHistory()
 	{
 		return this->history;
+	}
+
+	void State::setMessageOnControlC(const std::string& msg)
+	{
+		this->uselessControlCMsg = msg;
 	}
 
 	std::optional<std::string> State::read()

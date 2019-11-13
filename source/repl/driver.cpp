@@ -38,6 +38,7 @@ namespace repl
 		st.setPrompt(PROMPT_STRING);
 		st.setContPrompt(CONT_PROMPT_STRING);
 		st.setWrappedPrompt(WRAP_PROMPT_STRING);
+		st.setMessageOnControlC(zpr::sprint("%s(use %s:q%s to quit)%s", COLOUR_GREY_BOLD, COLOUR_GREEN, COLOUR_GREY_BOLD, COLOUR_RESET));
 
 		// we need to put this up here, so the handler can capture it.
 		int indentLevel = 0;
