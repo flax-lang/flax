@@ -8,6 +8,12 @@
 #include <optional>
 
 
+namespace ztmu
+{
+	struct State;
+}
+
+
 namespace repl
 {
 	struct State;
@@ -18,11 +24,14 @@ namespace repl
 	bool processLine(const std::string& line);
 	std::optional<sst::Stmt*> parseAndTypecheck(const std::string& line, bool* needmore);
 
-	void runCommand(const std::string& command);
+	bool runCommand(const std::string& command, ztmu::State* consoleState);
 
 	// used to save/restore if we wanna do weird things.
 	void setEnvironment(State* st);
 	State* getEnvironment();
+
+	void saveHistory(const std::vector<std::vector<std::string>>& history);
+	std::vector<std::vector<std::string>> loadHistory();
 
 
 	template <typename... Args>

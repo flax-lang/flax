@@ -461,7 +461,7 @@ namespace parser
 	ast::ClassDefn* parseClass(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
 
-	ast::StructDefn* parseStruct(State& st, bool nameless);
+	PResult<ast::StructDefn> parseStruct(State& st, bool nameless);
 	ast::UnionDefn* parseUnion(State& st, bool israw, bool nameless);
 
 	ast::Expr* parseDollarExpr(State& st);

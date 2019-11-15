@@ -53,21 +53,22 @@ namespace platform
 
 	std::string getEnvironmentVar(const std::string& name)
 	{
+	#if OS_WINDOWS
 		char buffer[256] = { 0 };
 		size_t len = 0;
 
-	#if OS_WINDOWS
 		if(getenv_s(&len, buffer, name.c_str()) != 0)
-	#else
-		if(getenv(name.c_str()) == 0)
-	#endif
-		{
 			return "";
-		}
+
 		else
-		{
 			return std::string(buffer, len);
-		}
+	#else
+		if(char* val = getenv(name.c_str()); val)
+			return std::string(val);
+
+		else
+			return "";
+	#endif
 	}
 
 	void pushEnvironmentVar(const std::string& name, const std::string& value)

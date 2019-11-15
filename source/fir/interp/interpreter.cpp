@@ -443,8 +443,9 @@ namespace interp
 			delete[] p;
 	}
 
-	void InterpState::initialise()
+	void InterpState::initialise(bool runGlobalInit)
 	{
+		iceAssert(this->module);
 		for(const auto& [ str, glob ] : this->module->_getGlobalStrings())
 		{
 			auto val = makeValue(glob);
@@ -477,7 +478,7 @@ namespace interp
 			setValueRaw(this, &ret, &buffer, sizeof(void*));
 
 			ret.globalValTracker = glob;
-			this->globals[glob] = { ret, false };
+			this->globals[glob] = { ret, true };
 		}
 
 		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
@@ -518,8 +519,11 @@ namespace interp
 		}
 		#endif
 
-		// we need to run the global constructor function!
-		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION)))
+		printf("module: %s\n", this->module->print().c_str());
+
+		// truth be told it'll be more efficient to only get the function after checking runGlobalInit, but... meh.
+		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
+			runGlobalInit && gif)
 		{
 			auto cgif = this->compileFunction(gif);
 			this->runFunction(cgif, { });
@@ -534,15 +538,22 @@ namespace interp
 	{
 		for(const auto [ id, glob ] : this->module->_getGlobals())
 		{
+			// printf("global: %s\n", id.str().c_str());
+
 			// by right we are not supposed to add (or even change the FIR module at all) between calling
 			// initialise() and finalise(), but be defensive a bit.
 			if(auto it = this->globals.find(glob); it != this->globals.end())
 			{
+				// printf("found: %s\n", id.str().c_str());
+
 				// only write-back if we modified the global.
 				if(it->second.second)
 				{
 					auto val = loadFromPtr(it->second.first, it->first->getType());
-					glob->setInitialValue(this->unwrapInterpValueIntoConstant(val));
+					auto x = this->unwrapInterpValueIntoConstant(val);
+
+					printf("write-back: %s = %s\n", id.name.c_str(), x->str().c_str());
+					glob->setInitialValue(x);
 				}
 			}
 		}
@@ -2638,10 +2649,18 @@ namespace interp
 
 			return fir::ConstantDynamicArray::get(ty->toDynamicArrayType(), ptr, len, cap);
 		}
+		else if(ty->isStructType())
+		{
+			auto sty = ty->toStructType();
+			std::vector<fir::ConstantValue*> vals = extractValueList(val, sty->getElements());
+
+			return fir::ConstantStruct::get(sty, vals);
+		}
 
 		#undef gav
 
-		error("interp: cannot unwrap type '%s'", ty);
+		warn("interp: cannot unwrap type '%s'", ty);
+		return fir::ConstantValue::getZeroValue(ty);
 	}
 }
 }

@@ -339,23 +339,23 @@ namespace cgn
 		return this->isInsideGlobalInitFunc;
 	}
 
-	fir::IRBlock* CodegenState::enterGlobalInitFunction()
+	fir::IRBlock* CodegenState::enterGlobalInitFunction(fir::GlobalValue* val)
 	{
+		if(this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (entering when already inside)");
+
 		auto ret = this->irb.getCurrentBlock();
 
-		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
+			fir::Function* func = this->module->getOrCreateFunction(
+				util::obfuscateIdentifier(zpr::sprint("%s_piece_%d", strs::names::GLOBAL_INIT_FUNCTION, this->globalInitPieces.size())),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
-			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
-			this->irb.setCurrentBlock(entry);
+			auto b = this->irb.addNewBlockInFunction("b", func);
+			this->irb.setCurrentBlock(b);
 
-			this->globalInitFunc = func;
+			this->globalInitPieces.push_back(std::make_pair(val, func));
 		}
-
-		iceAssert(this->globalInitFunc);
-		this->irb.setCurrentBlock(this->globalInitFunc->getBlockList().back());
 
 		this->isInsideGlobalInitFunc = true;
 		return ret;
@@ -363,26 +363,47 @@ namespace cgn
 
 	void CodegenState::leaveGlobalInitFunction(fir::IRBlock* restore)
 	{
+		if(!this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (leaving when not inside)");
+
+		// terminate the current function.
+		this->irb.ReturnVoid();
+
 		this->irb.setCurrentBlock(restore);
 		this->isInsideGlobalInitFunc = false;
 	}
 
 	void CodegenState::finishGlobalInitFunction()
 	{
-		auto r = this->enterGlobalInitFunction();
-
-		// ok, here's a thing -- if the current block doesn't end with a return, then we insert it.
-		// this lets us keep calling finishGlobalInitFunction() without repercussions, even if we
-		// already "finished" the constructor function. this workaround is used to make our life
-		// simpler when doing compile-time execution.
-
-		if(const auto& instrs = this->irb.getCurrentBlock()->getInstructions();
-			instrs.empty() || instrs.back()->opKind != fir::OpKind::Value_Return)
+		if(this->finalisedGlobalInitFunction != 0)
 		{
-			this->irb.ReturnVoid();
+			// clear all the blocks from it.
+			for(auto b : this->finalisedGlobalInitFunction->getBlockList())
+				delete b;
+
+			this->finalisedGlobalInitFunction->getBlockList().clear();
+		}
+		else
+		{
+			this->finalisedGlobalInitFunction = this->module->getOrCreateFunction(
+				util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 		}
 
-		this->leaveGlobalInitFunction(r);
+		auto restore = this->irb.getCurrentBlock();
+
+		// ok, now we can do some stuff.
+		// what we wanna do is just call all the "piece" global init functions that we made with enter/leave.
+		// but, this function has no blocks (either cos it's new, or we deleted them all). so, make one.
+		auto blk = this->irb.addNewBlockInFunction("entry", this->finalisedGlobalInitFunction);
+		this->irb.setCurrentBlock(blk);
+
+		for(auto piece : this->globalInitPieces)
+			this->irb.Call(piece.second);
+
+		// ok now return
+		this->irb.ReturnVoid();
+		this->irb.setCurrentBlock(restore);
 	}
 }
 

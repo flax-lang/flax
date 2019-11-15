@@ -223,8 +223,8 @@ namespace fir
 				}
 				else if(ConstantArraySlice* cas = dcast(ConstantArraySlice, op))
 				{
-					ops += "(const slice %" + std::to_string(op->id) + ", %" + std::to_string(cas->getData()->id) + ", %"
-						+ std::to_string(cas->getLength()->id) + " :: " + op->getType()->str();
+					ops += "(const slice %" + std::to_string(op->id) + ": ptr: %" + std::to_string(cas->getData()->id) + ", len: %"
+						+ std::to_string(cas->getLength()->id) + ") :: " + op->getType()->str();
 				}
 				else if(dcast(ConstantValue, op))
 				{

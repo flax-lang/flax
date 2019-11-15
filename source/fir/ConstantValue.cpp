@@ -293,9 +293,21 @@ namespace fir
 
 	std::string ConstantStruct::str()
 	{
+		auto sty = this->getType()->toStructType();
+		util::hash_map<size_t, std::string> names;
+		for(const auto& p : sty->getIndexMap())
+			names[p.second] = p.first;
+
 		std::string ret = this->getType()->str() + " {\n";
-		for(auto x : this->members)
-			ret += "  " + x->str() + "\n";
+
+		for(size_t i = 0; i < sty->getElementCount(); i++)
+		{
+			auto v = this->members[i]->str();
+			auto t = sty->getElementN(i);
+			auto n = names[i];
+
+			ret += zpr::sprint("  %s: %s = %s\n", n, t, v);
+		}
 
 		return ret + "}";
 	}

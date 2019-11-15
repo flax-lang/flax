@@ -121,6 +121,10 @@ namespace fir
 		return this->implTraits;
 	}
 
+	const util::hash_map<std::string, size_t>& StructType::getIndexMap()
+	{
+		return this->indexMap;
+	}
 
 
 	void StructType::setBody(const std::vector<std::pair<std::string, Type*>>& members)

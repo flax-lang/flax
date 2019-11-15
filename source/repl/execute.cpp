@@ -37,10 +37,15 @@ namespace repl
 			this->fs = new sst::TypecheckState(tree);
 			this->cs = new cgn::CodegenState(fir::IRBuilder(this->module));
 			this->cs->module = this->module;
+
+
 			this->interpState = new fir::interp::InterpState(this->module);
+			this->interpState->initialise(/* runGlobalInit: */ true);
 
 			// so we don't crash, give us a starting location.
 			this->cs->pushLoc(Location());
+
+			fprintf(stderr, "NEW STATE!!!\n");
 		}
 
 		~State()
@@ -150,14 +155,19 @@ namespace repl
 		if(!stmt)
 			return needmore;
 
+
 		{
 			// copy some stuff over.
 			state->cs->typeDefnMap = state->fs->typeDefnMap;
 
-			// ok, we have a thing. try to run it.
+			state->interpState->initialise(/* runGlobalInit: */ false);
 
+			// ok, we have a thing. try to run it.
 			auto value = magicallyRunExpressionAtCompileTime(state->cs, *stmt, nullptr,
-				Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name));
+				Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name),
+				state->interpState);
+
+			state->interpState->finalise();
 
 			if(value)
 			{
@@ -172,7 +182,6 @@ namespace repl
 				vardef->init = init;
 
 				state->fs->stree->addDefinition(vardef->id.name, vardef);
-
 
 				printf("%s\n", zpr::sprint("%s: %s = %s", vardef->id.name, value->getType(), value->str()).c_str());
 			}

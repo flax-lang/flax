@@ -165,7 +165,7 @@ namespace parser
 
 
 
-	StructDefn* parseStruct(State& st, bool nameless)
+	PResult<StructDefn> parseStruct(State& st, bool nameless)
 	{
 		static size_t anon_counter = 0;
 
@@ -233,6 +233,8 @@ namespace parser
 		while(st.front() != TT::RBrace)
 		{
 			st.skipWS();
+			if(!st.hasTokens())
+				return PResult<StructDefn>::insufficientTokensError();
 
 			if(st.front() == TT::Identifier)
 			{
@@ -288,7 +290,7 @@ namespace parser
 			}
 			else
 			{
-				error(st.loc(), "unexpected token '%s' inside struct body", st.front().str());
+				error(st.loc(), "unexpected token '%s' (%d) inside struct body", st.front().str(), st.front().type);
 			}
 
 			index++;
@@ -836,7 +838,7 @@ namespace parser
 		}
 		else if(st.front() == TT::Struct)
 		{
-			auto str = parseStruct(st, /* nameless: */ true);
+			auto str = parseStruct(st, /* nameless: */ true).val();
 			st.anonymousTypeDefns.push_back(str);
 
 			return pts::NamedType::create(str->loc, str->name);

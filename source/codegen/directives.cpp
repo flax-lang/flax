@@ -68,7 +68,7 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 		if(!is)
 		{
 			is = new fir::interp::InterpState(cs->module);
-			is->initialise();
+			is->initialise(/* runGlobalInit: */ true);
 
 			needToFinalise = true;
 		}
@@ -81,9 +81,10 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 		}
 
 		if(needToFinalise)
+		{
 			is->finalise();
-
-		delete is;
+			delete is;
+		}
 	}
 
 	return ret;

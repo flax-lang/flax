@@ -697,6 +697,7 @@ namespace fir
 		void addTraitImpl(TraitType* trt);
 		bool implementsTrait(TraitType* trt);
 		std::vector<TraitType*> getImplementedTraits();
+		const util::hash_map<std::string, size_t>& getIndexMap();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;

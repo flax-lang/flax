@@ -1447,16 +1447,18 @@ namespace detail
 		bool didSetSignalHandler = false;
 
 		// time for some signalling!
-		struct sigaction new_sa {
-			.sa_flags = SA_RESTART,  // this is important, if not read() will return EINTR (interrupted by signal)
-			.sa_handler = [](int sig) {
-				if(currentStateForSignal)
-				{
-					currentStateForSignal->termWidth = getTerminalWidth();
-					currentStateForSignal->termHeight = getTerminalHeight();
-				}
+		struct sigaction new_sa;
+
+		// i would use designated initialisers, but some compilers refuse to cooperate.
+		new_sa.sa_flags = SA_RESTART;   // this is important, if not read() will return EINTR (interrupted by signal)
+		new_sa.sa_handler = [](int sig) {
+			if(currentStateForSignal)
+			{
+				currentStateForSignal->termWidth = getTerminalWidth();
+				currentStateForSignal->termHeight = getTerminalHeight();
 			}
 		};
+
 
 		struct sigaction old_sa;
 		if(sigaction(SIGWINCH, &new_sa, &old_sa) == 0)
@@ -1946,6 +1948,7 @@ namespace ztmu
 
 	inline void State::loadHistory(const std::vector<std::vector<std::string>>& h)
 	{
+		this->historyIdx = 0;
 		this->history = h;
 	}
 

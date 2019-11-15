@@ -35,7 +35,8 @@ namespace repl
 		// temporary.
 		st.enableExitOnEmptyControlC();
 
-
+		// load the history.
+		st.loadHistory(repl::loadHistory());
 
 		// we need to put this up here, so the handler can capture it.
 		int indentLevel = 0;
@@ -61,7 +62,8 @@ namespace repl
 
 			if(input[0] == ':')
 			{
-				repl::runCommand(input.substr(1));
+				auto quit = repl::runCommand(input.substr(1), &st);
+				if(quit) break;
 			}
 			else if(bool needmore = repl::processLine(input); needmore)
 			{
@@ -116,6 +118,9 @@ namespace repl
 			// add an extra line
 			printf("\n");
 		}
+
+		// save the history.
+		repl::saveHistory(st.getHistory());
 	}
 }
 

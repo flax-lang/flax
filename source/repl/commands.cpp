@@ -16,13 +16,12 @@ namespace repl
 	static void print_help();
 	static void print_type(const std::string& expr);
 
-	void runCommand(const std::string& s)
+	bool runCommand(const std::string& s, ztmu::State* consoleState)
 	{
 		if(s == "q")
 		{
 			repl::log("exiting repl");
-
-			exit(0);
+			return true;
 		}
 		else if(s == "reset")
 		{
@@ -37,10 +36,17 @@ namespace repl
 		{
 			print_type(s.substr(2));
 		}
+		else if(s.find("clear_history") == 0)
+		{
+			// just loading an empty history will effectively clear the history.
+			consoleState->loadHistory({ });
+		}
 		else
 		{
 			repl::error("invalid command '%s'", s);
 		}
+
+		return false;
 	}
 
 
@@ -92,10 +98,11 @@ namespace repl
 		zpr::sprint(""),
 		zpr::sprint("%s*%s commands %s*%s", COLOUR_GREEN_BOLD, COLOUR_RESET, COLOUR_GREEN_BOLD, COLOUR_RESET),
 		zpr::sprint("\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e\u203e"),
-		zpr::sprint(" :? / :help    -  display help (this listing)"),
-		zpr::sprint(" :q            -  quit the repl"),
-		zpr::sprint(" :reset        -  reset the environment, discarding all existing definitions"),
-		zpr::sprint(" :t <expr>     -  display the type of an expression"),
+		zpr::sprint(" :? / :help        -  display help (this listing)"),
+		zpr::sprint(" :q                -  quit the repl"),
+		zpr::sprint(" :reset            -  reset the environment, discarding all existing definitions"),
+		zpr::sprint(" :clear_history    -  clear the history of things"),
+		zpr::sprint(" :t <expr>         -  display the type of an expression"),
 	};
 
 	static void print_help()

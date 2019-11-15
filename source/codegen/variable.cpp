@@ -35,17 +35,19 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(this->global)
 	{
-		auto rest = cs->enterGlobalInitFunction();
+		//* note: we declare it as not-immutable here to make it easier to set things,
+		//* but otherwise we make it immutable again below after init.
+		auto glob = cs->module->createGlobalVariable(this->id, this->type, false,
+			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
-		// else
+		auto rest = cs->enterGlobalInitFunction(glob);
+
+
 		fir::Value* res = 0;
 
 		if(this->init)  res = this->init->codegen(cs, this->type).value;
 		else            res = cs->getDefaultValue(this->type);
 
-		//* note: we declare it as not-immutable here to make it easier to set things, but otherwise we make it immutable again below after init.
-		auto glob = cs->module->createGlobalVariable(this->id, this->type, false,
-			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		if(auto cv = dcast(fir::ConstantValue, res); cv && cv->getType() == this->type)
 		{
