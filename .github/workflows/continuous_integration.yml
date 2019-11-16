@@ -52,6 +52,7 @@ jobs:
       LIBFFI_ROOT_DIR: C:/tmp/lib/libffi
     steps:
       - uses: seanmiddleditch/gha-setup-ninja@v1
+      - uses: seanmiddleditch/gha-setup-vsdevenv@master
       - uses: actions/checkout@v1
       - name: cache libraries
         uses: actions/cache@v1.0.0
