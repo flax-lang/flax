@@ -78,12 +78,12 @@ jobs:
           New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
           Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
       - name: jit/llvm
-        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm --ffi-escape build\tester.flx
       - name: jit/interp
-        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp build\tester.flx
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp --ffi-escape build\tester.flx
       - name: compile/llvm
         run: |
-          build\meson-rel\flaxc.exe -sysroot build\sysroot build\tester.flx
+          build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape build\tester.flx
           .\tester.exe
           
 
