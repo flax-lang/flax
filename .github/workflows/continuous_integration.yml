@@ -73,6 +73,10 @@ jobs:
         run: |
           meson --buildtype=release build/meson-rel
           ninja -C build/meson-rel
+      - name: copy stdlib
+        run: |
+          New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
+          Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
       - name: jit/llvm
         run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
       - name: jit/interp
