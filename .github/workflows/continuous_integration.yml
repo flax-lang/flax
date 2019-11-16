@@ -11,7 +11,7 @@ jobs:
         sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main" | sudo tee -a /etc/apt/sources.list
         sudo wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
         sudo apt -y update
-        sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y gcc-9 llvm-9 llvm-9-dev libllvm9 libmpfr-dev libmpfr6
+        sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y g++-9 llvm-9 llvm-9-dev libllvm9 libmpfr-dev libmpfr6
     - name: build
       env:
         LLVM_CONFIG: llvm-config-9
