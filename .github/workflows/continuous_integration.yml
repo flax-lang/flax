@@ -43,8 +43,37 @@ jobs:
     - name: compile/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester
       
-
-
+  build-windows:
+    runs-on: windows-2019
+    env:
+      MPIR_ROOT_DIR: $HOME/lib/mpir
+      MPFR_ROOT_DIR: $HOME/lib/mpfr
+      LLVM_ROOT_DIR: $HOME/lib/llvm
+      LIBFFI_ROOT_DIR: $HOME/lib/libffi
+    steps:
+      - uses: seanmiddleditch/gha-setup-ninja@v1
+      - name: cache libraries
+        uses: actions/cache@v1.0.0
+        id: cache-libs
+        with:
+          path: $HOME/lib
+          key: cached-libs
+          
+      - name: download libraries
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls, Tls11, Tls12'
+          Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'libs.zip'
+          7z x -y -o$Env:HOME\lib libs.zip
+      
+      - name: install meson
+        run: pip install meson
+        
+      - name: build
+        run: |
+          meson --buildtype=release build/meson-rel
+          ninja -C build/meson-rel
+          
 
 
 
