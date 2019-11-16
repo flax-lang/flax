@@ -46,10 +46,10 @@ jobs:
   build-windows:
     runs-on: windows-2019
     env:
-      MPIR_ROOT_DIR: $HOME/lib/mpir
-      MPFR_ROOT_DIR: $HOME/lib/mpfr
-      LLVM_ROOT_DIR: $HOME/lib/llvm
-      LIBFFI_ROOT_DIR: $HOME/lib/libffi
+      MPIR_ROOT_DIR:   ${{env.HOME}}/lib/mpir
+      MPFR_ROOT_DIR:   ${{env.HOME}}/lib/mpfr
+      LLVM_ROOT_DIR:   ${{env.HOME}}/lib/llvm
+      LIBFFI_ROOT_DIR: ${{env.HOME}}/lib/libffi
     steps:
       - uses: seanmiddleditch/gha-setup-ninja@v1
       - name: cache libraries
@@ -68,11 +68,10 @@ jobs:
       
       - name: install meson
         run: pip install meson
-        
+      - name: build-1
+        run: meson --buildtype=release build/meson-rel
       - name: build
-        run: |
-          meson --buildtype=release build/meson-rel
-          ninja -C build/meson-rel
+        run: ninja -C build/meson-rel
           
 
 
