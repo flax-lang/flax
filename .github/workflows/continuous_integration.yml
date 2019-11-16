@@ -73,6 +73,14 @@ jobs:
         run: |
           meson --buildtype=release build/meson-rel
           ninja -C build/meson-rel
+      - name: jit/llvm
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
+      - name: jit/interp
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp build\tester.flx
+      - name: compile/llvm
+        run: |
+          build\meson-rel\flaxc.exe -sysroot build\sysroot build\tester.flx
+          .\tester.exe
           
 
 
