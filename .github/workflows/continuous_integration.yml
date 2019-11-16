@@ -29,21 +29,12 @@ jobs:
     runs-on: macOS-10.14
     steps:
     - uses: actions/checkout@v1
-    - name: cache llvm download
-      id: cache-llvm
-      uses: actions/cache@v1.0.0
-      with:
-        path: llvm
-        key: ${{runner.os}}-llvm-9.0.0
-
-    - name: download llvm
-      if: steps.cache-llvm.outputs.cache-hit != 'true'
+    - name: install dependencies
       run: |
-        curl 'https://homebrew.bintray.com/bottles/llvm-9.0.0.high_sierra.bottle.tar.gz' -L -o llvm-9.0.0.tar.gz
-        tar -xf llvm-9.0.0.tar.gz
+        brew install mpfr llvm pkg-config
     - name: build
       env:
-        LLVM_CONFIG: LLVM_CONFIG=llvm-config 
+        LLVM_CONFIG: llvm-config 
       run: PATH="$PATH:$(pwd)/llvm/9.0.0/bin" make -j2 build
     - name: jit/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
