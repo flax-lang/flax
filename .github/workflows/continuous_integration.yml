@@ -34,7 +34,7 @@ jobs:
         brew install mpfr llvm pkg-config
     - name: build
       env:
-        LLVM_CONFIG: llvm-config 
+        LLVM_CONFIG: /usr/local/opt/llvm/bin/llvm-config
       run: PATH="$PATH:$(pwd)/llvm/9.0.0/bin" make -j2 build
     - name: jit/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
