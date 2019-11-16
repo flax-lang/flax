@@ -46,10 +46,10 @@ jobs:
   build-windows:
     runs-on: windows-2019
     env:
-      MPIR_ROOT_DIR:   ${{env.HOME}}/lib/mpir
-      MPFR_ROOT_DIR:   ${{env.HOME}}/lib/mpfr
-      LLVM_ROOT_DIR:   ${{env.HOME}}/lib/llvm
-      LIBFFI_ROOT_DIR: ${{env.HOME}}/lib/libffi
+      MPIR_ROOT_DIR:   C:/tmp/lib/mpir
+      MPFR_ROOT_DIR:   C:/tmp/lib/mpfr
+      LLVM_ROOT_DIR:   C:/tmp/lib/llvm
+      LIBFFI_ROOT_DIR: C:/tmp/lib/libffi
     steps:
       - uses: seanmiddleditch/gha-setup-ninja@v1
       - name: cache libraries
@@ -63,8 +63,9 @@ jobs:
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
           echo "root dirs:" $LLVM_ROOT_DIR
+          echo "extraction: C:\tmp\lib"
           Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'libs.zip'
-          7z x -y -o"$HOME\lib" libs.zip
+          7z x -y -o"C:\tmp\lib" libs.zip
       
       - name: install meson
         run: pip install meson
