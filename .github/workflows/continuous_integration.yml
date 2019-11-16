@@ -62,7 +62,6 @@ jobs:
       - name: download libraries
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
-          [Net.ServicePointManager]::SecurityProtocol = 'Ssl3, Tls'
           Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'libs.zip'
           7z x -y -o$Env:HOME\lib libs.zip
       
