@@ -1002,6 +1002,11 @@ namespace detail
 		return down;
 	}
 
+	inline void touch_line(State* st)
+	{
+		// when we touch the line, we reset the history index.
+		st->historyIdx = 0;
+	}
 
 	inline void cursor_home(State* st)
 	{
@@ -1009,6 +1014,7 @@ namespace detail
 		st->byteCursor = 0;
 
 		refresh_line(st);
+		touch_line(st);
 	}
 
 	inline void cursor_end(State* st, bool refresh)
@@ -1018,6 +1024,8 @@ namespace detail
 
 		if(refresh)
 			refresh_line(st);
+
+		touch_line(st);
 	}
 
 
@@ -1025,6 +1033,7 @@ namespace detail
 	// versions that handle lines.
 	inline void delete_left(State* st)
 	{
+		touch_line(st);
 		if(st->cursor > 0 && getCurLine(st).size() > 0)
 		{
 			auto x = st->byteCursor - 1;
@@ -1071,6 +1080,7 @@ namespace detail
 
 	inline void delete_right(State* st)
 	{
+		touch_line(st);
 		if(st->byteCursor < getCurLine(st).size())
 		{
 			auto x = st->byteCursor;
@@ -1107,6 +1117,7 @@ namespace detail
 	// bound to C-k by default
 	static void delete_line_right(State* st)
 	{
+		touch_line(st);
 		if(st->byteCursor < st->lines[st->lineIdx].size())
 		{
 			st->lines[st->lineIdx].erase(st->byteCursor);
@@ -1130,6 +1141,7 @@ namespace detail
 
 	static void _cursor_left(State* st, int n, bool refresh = true)
 	{
+		touch_line(st);
 		for(int i = 0; i < n; i++)
 		{
 			if(st->cursor > 0)
@@ -1147,6 +1159,7 @@ namespace detail
 
 	inline void cursor_left(State* st, bool refresh)
 	{
+		touch_line(st);
 		if(st->cursor > 0)
 		{
 			_cursor_left(st, 1, refresh);
@@ -1171,6 +1184,7 @@ namespace detail
 	// same deal with _cursor_right as for _cursor_left.
 	static void _cursor_right(State* st, int n, bool refresh = true)
 	{
+		touch_line(st);
 		for(int i = 0; i < n; i++)
 		{
 			if(st->byteCursor < getCurLine(st).size())
@@ -1189,6 +1203,7 @@ namespace detail
 
 	inline void cursor_right(State* st, bool refresh)
 	{
+		touch_line(st);
 		if(st->byteCursor < getCurLine(st).size())
 		{
 			_cursor_right(st, 1, refresh);
@@ -1244,6 +1259,7 @@ namespace detail
 	{
 		if(st->cursor > 0 && st->wrappedLineIdx > 0)
 		{
+			touch_line(st);
 			size_t promptL = st->lineIdx == 0 ? st->normPL : st->contPL;
 
 			// first, get the current horz cursor position:
@@ -1276,6 +1292,8 @@ namespace detail
 		}
 		else if(st->lineIdx > 0)
 		{
+			touch_line(st);
+
 			// ok -- we are now into weird strange territory. move up into the previous continuation line...
 			ztmu_dbg("going up...\n");
 
@@ -1338,6 +1356,7 @@ namespace detail
 	{
 		if(st->byteCursor < getCurLine(st).size() && (st->lines.size() == 1 || st->wrappedLineIdx + 1 < st->cachedNWLForCurrentLine))
 		{
+			touch_line(st);
 			// works on a similar principle as cursor_up.
 
 			auto hcursor = get_cursor_line_offset(st->termWidth, st->cursor,
@@ -1355,6 +1374,8 @@ namespace detail
 		}
 		else if(st->lineIdx + 1 < st->lines.size())
 		{
+			touch_line(st);
+
 			ztmu_dbg("going down...\n");
 
 			std::string_view nextLine = st->lines[st->lineIdx + 1];
@@ -1805,6 +1826,9 @@ namespace ztmu
 
 		this->cachedNWLForCurrentLine = 0;
 		this->wrappedLineIdx = 0;
+
+		// we call clear on commit, so the history index needs to go back to 0.
+		this->historyIdx = 0;
 	}
 
 	inline void State::setPrompt(const std::string& prompt)

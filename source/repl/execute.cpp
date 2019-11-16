@@ -44,8 +44,6 @@ namespace repl
 
 			// so we don't crash, give us a starting location.
 			this->cs->pushLoc(Location());
-
-			fprintf(stderr, "NEW STATE!!!\n");
 		}
 
 		~State()
@@ -160,9 +158,22 @@ namespace repl
 			// copy some stuff over.
 			state->cs->typeDefnMap = state->fs->typeDefnMap;
 
-			state->interpState->initialise(/* runGlobalInit: */ false);
+			// so the thing is, all the previous things have already been code-generated,
+			// and have had their initialisers run. so there's really no need for their
+			// init pieces to stick around. we need to remove the functions as well for this
+			// to work properly!
+			for(auto [ gv, pc ] : state->cs->globalInitPieces)
+			{
+				state->module->removeFunction(pc);
+				delete pc;
+			}
 
-			// ok, we have a thing. try to run it.
+			state->cs->globalInitPieces.clear();
+
+			// ok, we have a thing. try to run it. note: this will help us to run is->initialise(true),
+			// which will call the global inits. this function also calls Stmt::codegen, which will
+			// (potentially) populate the globalInitPieces, before calling cs->finishGlobalInits(). basically,
+			// it's all handled.
 			auto value = magicallyRunExpressionAtCompileTime(state->cs, *stmt, nullptr,
 				Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name),
 				state->interpState);
@@ -183,7 +194,7 @@ namespace repl
 
 				state->fs->stree->addDefinition(vardef->id.name, vardef);
 
-				printf("%s\n", zpr::sprint("%s: %s = %s", vardef->id.name, value->getType(), value->str()).c_str());
+				zpr::println("%s: %s = %s", vardef->id.name, value->getType(), value->str());
 			}
 		}
 

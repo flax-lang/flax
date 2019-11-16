@@ -439,8 +439,6 @@ namespace interp
 
 	InterpState::~InterpState()
 	{
-		for(void* p : this->globalAllocs)
-			delete[] p;
 	}
 
 	void InterpState::initialise(bool runGlobalInit)
@@ -478,7 +476,7 @@ namespace interp
 			setValueRaw(this, &ret, &buffer, sizeof(void*));
 
 			ret.globalValTracker = glob;
-			this->globals[glob] = { ret, true };
+			this->globals[glob] = { ret, false };
 		}
 
 		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
@@ -519,7 +517,7 @@ namespace interp
 		}
 		#endif
 
-		printf("module: %s\n", this->module->print().c_str());
+		// printf("module:\n%s\n", this->module->print().c_str());
 
 		// truth be told it'll be more efficient to only get the function after checking runGlobalInit, but... meh.
 		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
@@ -552,11 +550,18 @@ namespace interp
 					auto val = loadFromPtr(it->second.first, it->first->getType());
 					auto x = this->unwrapInterpValueIntoConstant(val);
 
-					printf("write-back: %s = %s\n", id.name.c_str(), x->str().c_str());
+					// printf("write-back: %s = %s\n", id.name.c_str(), x->str().c_str());
 					glob->setInitialValue(x);
+
+					it->second.second = false;
 				}
 			}
 		}
+
+		for(void* p : this->globalAllocs)
+			delete[] p;
+
+		this->globalAllocs.clear();
 	}
 
 

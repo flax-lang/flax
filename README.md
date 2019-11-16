@@ -6,15 +6,15 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
 
-[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
+[![build status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
+[![build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Build status](https://zhiayang.semaphoreci.com/badges/flax.svg)](zhiayang.semaphoreci.com/projects/flax)
+[![build status](https://github.com/flax-lang/flax/workflows/CI/badge.svg)](https://github.com/flax-lang/flax/actions)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![codecov](https://codecov.io/gh/flax-lang/flax/branch/develop/graph/badge.svg)](https://codecov.io/gh/flax-lang/flax)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
+[![language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
 
 Currently not expected to pass (for a while): <br />
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)

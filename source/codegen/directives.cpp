@@ -64,28 +64,36 @@ fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, s
 	// run the function:
 	fir::ConstantValue* ret = 0;
 	{
-		bool needToFinalise = false;
+		// this unique_ptr handles destructing the temporary interpState when we're done.
+		using unique_ptr_alias = std::unique_ptr<fir::interp::InterpState, std::function<void (fir::interp::InterpState*)>>;
+		auto ptr = unique_ptr_alias();
 		if(!is)
 		{
 			is = new fir::interp::InterpState(cs->module);
 			is->initialise(/* runGlobalInit: */ true);
-
-			needToFinalise = true;
+			ptr = unique_ptr_alias(is, [](fir::interp::InterpState* is) {
+				is->finalise();
+				delete is;
+			});
 		}
-
+		else
 		{
-			auto result = is->runFunction(is->compileFunction(fn), { });
+			// new strategy: run the initialisers anyway.
+			is->initialise(/* runGlobalInit: */ true);
 
-			if(!retty->isVoidType())
-				ret = is->unwrapInterpValueIntoConstant(result);
+			// caller code will finalise.
 		}
 
-		if(needToFinalise)
-		{
-			is->finalise();
-			delete is;
-		}
+		auto result = is->runFunction(is->compileFunction(fn), { });
+
+		if(!retty->isVoidType())
+			ret = is->unwrapInterpValueIntoConstant(result);
 	}
+
+	// please get rid of the runner function
+	cs->module->removeFunction(fn);
+	delete fn;
+
 
 	return ret;
 }

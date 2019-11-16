@@ -161,7 +161,7 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 
 
 $(UTF8REWIND_AR):
-	@make -C external/utf8rewind all
+	@$(MAKE) -C external/utf8rewind all
 
 # haha
 clena: clean
