@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v1.0.0
         id: cache-libs
         with:
-          path: $HOME/lib
+          path: C:/tmp/lib
           key: cached-libs
       - name: download libraries
         if: steps.cache-libs.outputs.cache-hit != 'true'
