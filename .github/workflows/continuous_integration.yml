@@ -52,13 +52,13 @@ jobs:
       LIBFFI_ROOT_DIR: C:/tmp/lib/libffi
     steps:
       - uses: seanmiddleditch/gha-setup-ninja@v1
+      - uses: actions/checkout@v1
       - name: cache libraries
         uses: actions/cache@v1.0.0
         id: cache-libs
         with:
           path: $HOME/lib
           key: cached-libs
-          
       - name: download libraries
         if: steps.cache-libs.outputs.cache-hit != 'true'
         run: |
@@ -66,13 +66,12 @@ jobs:
           echo "extraction: C:\tmp\lib"
           Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'libs.zip'
           7z x -y -o"C:\tmp\lib" libs.zip
-      
       - name: install meson
         run: pip install meson
-      - name: build-1
-        run: meson --buildtype=release build/meson-rel
       - name: build
-        run: ninja -C build/meson-rel
+        run: |
+          meson --buildtype=release build/meson-rel
+          ninja -C build/meson-rel
           
 
 
