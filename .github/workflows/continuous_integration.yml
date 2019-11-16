@@ -13,7 +13,9 @@ jobs:
         sudo apt -y update
         sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y llvm-9 llvm-9-dev libllvm9 libmpfr-dev libmpfr6
     - name: build
-      run: CXX=g++-8 CC=gcc-8 LLVM_CONFIG=llvm-config-9 make -j2 build
+      env:
+        LLVM_CONFIG: llvm-config-9
+      run: make -j2 build
     - name: jit/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
     - name: jit/interp
