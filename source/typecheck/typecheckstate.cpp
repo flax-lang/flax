@@ -406,8 +406,8 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback,
-		StateTree* tree)
+	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn,
+		std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;

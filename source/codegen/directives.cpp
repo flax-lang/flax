@@ -2,6 +2,8 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <memory>
+
 #include "sst.h"
 #include "codegen.h"
 #include "platform.h"
