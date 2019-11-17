@@ -11,7 +11,7 @@
 
 #include "zpr.h"
 #include "utils.h"
-
+#include "container.h"
 
 struct Identifier;
 enum class VisibilityLevel;
@@ -245,9 +245,6 @@ enum class MsgType
 
 namespace util
 {
-	template <typename T> struct MemoryPool;
-	template <typename T> struct FastInsertVector;
-
 	struct ESpan
 	{
 		ESpan() { }
@@ -291,8 +288,8 @@ struct ErrorMsg
 	protected:
 	ErrorMsg(ErrKind k, MsgType t) : kind(k), type(t) { }
 
-	friend struct util::MemoryPool<ErrorMsg>;
-	friend struct util::FastInsertVector<ErrorMsg>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct BareError : ErrorMsg
@@ -313,19 +310,19 @@ struct BareError : ErrorMsg
 	BareError() : ErrorMsg(ErrKind::Bare, MsgType::Error) { }
 	BareError(const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), msg(m) { }
 
-	friend struct util::MemoryPool<BareError>;
-	friend struct util::FastInsertVector<BareError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct SimpleError : ErrorMsg
 {
 	template <typename... Ts>
-	static SimpleError* make(const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...)); }
+	static SimpleError* make(const Location& l, const char* fmt, Ts&&... ts)
+	{ return util::make_SimpleError(l, strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
-
-
+	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts&&... ts)
+	{ return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
 
 
 	virtual void post() override;
@@ -343,8 +340,8 @@ struct SimpleError : ErrorMsg
 	SimpleError() : ErrorMsg(ErrKind::Simple, MsgType::Error) { }
 	SimpleError(const Location& l, const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), loc(l), msg(m) { }
 
-	friend struct util::MemoryPool<SimpleError>;
-	friend struct util::FastInsertVector<SimpleError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct ExampleMsg : ErrorMsg
@@ -361,8 +358,8 @@ struct ExampleMsg : ErrorMsg
 	ExampleMsg() : ErrorMsg(ErrKind::Example, MsgType::Note) { }
 	ExampleMsg(const std::string& eg, MsgType t) : ErrorMsg(ErrKind::Example, t), example(eg) { }
 
-	friend struct util::MemoryPool<ExampleMsg>;
-	friend struct util::FastInsertVector<ExampleMsg>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 
@@ -391,8 +388,8 @@ struct SpanError : ErrorMsg
 	SpanError(SimpleError* se, const std::vector<util::ESpan>& s, MsgType t) : ErrorMsg(ErrKind::Span, t), top(se), spans(s) { }
 
 
-	friend struct util::MemoryPool<SpanError>;
-	friend struct util::FastInsertVector<SpanError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 
@@ -418,8 +415,8 @@ struct OverloadError : ErrorMsg
 	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
 	OverloadError(SimpleError* se, MsgType t) : ErrorMsg(ErrKind::Overload, t), top(se) { }
 
-	friend struct util::MemoryPool<OverloadError>;
-	friend struct util::FastInsertVector<OverloadError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 

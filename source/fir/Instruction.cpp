@@ -11,9 +11,7 @@
 
 namespace fir
 {
-	static util::MemoryPool<Value> value_pool(65536);
-
-
+	static util::MemoryPool<Value, 1 << 16> value_pool;
 	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, const std::vector<Value*>& vals)
 		: Instruction(kind, sideeff, out, vals, Value::Kind::prvalue) { }
 

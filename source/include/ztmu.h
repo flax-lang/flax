@@ -1541,6 +1541,9 @@ namespace detail
 							eof = true;
 
 						st->clear();
+
+						// to prevent fuckery, we need to add an empty line back in!
+						st->lines.push_back("");
 						goto finish_now;
 					}
 				}
