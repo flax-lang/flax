@@ -223,10 +223,11 @@ namespace detail
 	static inline void leaveRawMode()
 	{
 		if(isInRawMode && tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) != -1)
-        	isInRawMode = false;
+			isInRawMode = false;
 
-        // disable bracketed paste:
-        platform_write(std::string_view("\x1b[?2004l"));
+		// disable bracketed paste:
+		auto tmp = std::string_view("\x1b[?2004l");
+		platform_write(tmp.data(), tmp.size());
 	}
 
 	static inline void enterRawMode()
@@ -273,7 +274,8 @@ namespace detail
 			return;
 
 		// enable bracketed paste:
-		platform_write(std::string_view("\x1b[?2004h"));
+		auto tmp = std::string_view("\x1b[?2004h");
+		platform_write(tmp.data(), tmp.size());
 		isInRawMode = true;
 	}
 
@@ -287,7 +289,8 @@ namespace detail
 	}
 
 	static struct sigaction old_sigact;
-	static inline bool setup_sigwinch(State* currentStateForSignal)
+	static State* currentStateForSignal = 0;
+	static inline bool setup_sigwinch()
 	{
 		// time for some signalling!
 		struct sigaction new_sa;
@@ -427,7 +430,8 @@ namespace detail
 		SetConsoleOutputCP(old_output_cp);
 	}
 
-	static inline bool setup_sigwinch(State* currentStateForSignal)
+	static State* currentStateForSignal = 0;
+	static inline bool setup_sigwinch()
 	{
 		// on windows we can't really do anything. knowing about window size changes requires using
 		// ReadConsoleInput to poll for events, which we obviously can't do here, or use another
@@ -689,7 +693,7 @@ namespace detail
 		#endif
 	}
 
-	static size_t getTerminalHeight()
+	inline size_t getTerminalHeight()
 	{
 		#ifdef _WIN32
 			CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -1589,7 +1593,6 @@ namespace detail
 
 
 	// this is ugly!!!
-	static State* currentStateForSignal = 0;
 	inline bool read_line(State* st, int promptMode, std::string seed)
 	{
 		constexpr char CTRL_A       = '\x01';
@@ -1619,7 +1622,7 @@ namespace detail
 		platform_write(promptMode == 0 ? st->promptString : st->contPromptString);
 		platform_write(seed);
 
-		bool didSetSignalHandler = setup_sigwinch(currentStateForSignal);
+		bool didSetSignalHandler = setup_sigwinch();
 
 
 		auto commit_line = [&](bool refresh = true) {
