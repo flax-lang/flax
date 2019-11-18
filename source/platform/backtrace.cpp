@@ -30,7 +30,7 @@ namespace platform
 	{
 		size_t num;
 		uintptr_t address;
-		ssize_t offset;
+		size_t offset;
 
 		std::string modName;
 		std::string mangledName;
@@ -61,7 +61,7 @@ namespace platform
 				char modname[1024] { };
 				char funcname[1024] { };
 
-				sscanf(strs[i], "%*s %s %zx %s %*s %zd", &modname[0], &piece.address, &funcname[0], &piece.offset);
+				sscanf(strs[i], "%*s %s %zx %s %*s %zu", &modname[0], &piece.address, &funcname[0], &piece.offset);
 
 				piece.mangledName = funcname;
 				piece.modName = modname;

@@ -30,7 +30,11 @@ namespace repl
 			repl::log("failed to open file to load history (tried '%s')", path);
 
 			char buf[128] = { 0 };
+		#if OS_WINDOWS
+			strerror_s(buf, 127, errno);
+		#else
 			strerror_r(errno, buf, 127);
+		#endif
 			repl::log("error was: '%s'", buf);
 			return;
 		}
