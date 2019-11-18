@@ -153,6 +153,7 @@ namespace detail
 	void unsetup_console();
 
 	size_t getTerminalWidth();
+	size_t getTerminalHeight();
 	size_t displayedTextLength(const std::string_view& str);
 	bool read_line(State* st, int promptMode, std::string seed);
 	void cursor_left(State* st, bool refresh = true);
@@ -218,13 +219,14 @@ namespace detail
 	}
 
 	static bool isInRawMode = false;
+	static bool didRegisterAtexit = false;
 	static inline void leaveRawMode()
 	{
 		if(isInRawMode && tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) != -1)
         	isInRawMode = false;
 
         // disable bracketed paste:
-        platform_write("\x1b[?2004l");
+        platform_write(std::string_view("\x1b[?2004l"));
 	}
 
 	static inline void enterRawMode()
@@ -271,21 +273,21 @@ namespace detail
 			return;
 
 		// enable bracketed paste:
-		platform_write("\x1b[?2004h");
+		platform_write(std::string_view("\x1b[?2004h"));
 		isInRawMode = true;
 	}
 
-	static inline void setup_console()
+	inline void setup_console()
 	{
 		// on unix, we don't really need to do anything "globally".
 	}
 
-	static inline void unsetup_console()
+	inline void unsetup_console()
 	{
 	}
 
 	static struct sigaction old_sigact;
-	static inline bool setup_sigwinch()
+	static inline bool setup_sigwinch(State* currentStateForSignal)
 	{
 		// time for some signalling!
 		struct sigaction new_sa;
@@ -357,6 +359,8 @@ namespace detail
 	static DWORD old_stdout_mode = 0;
 
 	static bool isInRawMode = false;
+	static bool didRegisterAtexit = false;
+
 	static inline void leaveRawMode()
 	{
 		if(!isInRawMode)
@@ -395,6 +399,15 @@ namespace detail
 			DWORD stdout_mode = ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
 			SetConsoleMode(stdout_handle, stdout_mode);
 		}
+
+		if(!didRegisterAtexit)
+		{
+			atexit([]() {
+				leaveRawMode();
+			});
+
+			didRegisterAtexit = true;
+		}
 	}
 
 	static UINT old_input_cp;
@@ -414,7 +427,7 @@ namespace detail
 		SetConsoleOutputCP(old_output_cp);
 	}
 
-	static inline bool setup_sigwinch()
+	static inline bool setup_sigwinch(State* currentStateForSignal)
 	{
 		// on windows we can't really do anything. knowing about window size changes requires using
 		// ReadConsoleInput to poll for events, which we obviously can't do here, or use another
@@ -446,15 +459,8 @@ namespace detail
 
 
 
-
-
-
-
-
 	static constexpr const char  ESC = '\x1b';
 	static constexpr const char* CSI = "\x1b[";
-
-	static bool didRegisterAtexit = false;
 
 	static inline void platform_write(const std::string_view& sv)
 	{
@@ -754,7 +760,7 @@ namespace detail
 
 	static std::pair<size_t, size_t> calculate_left_codepoints(size_t n, const std::string_view& sv, size_t cursor, size_t byteCursor)
 	{
-		for(int i = 0; i < n; i++)
+		for(size_t i = 0; i < n; i++)
 		{
 			if(cursor > 0)
 			{
@@ -1111,7 +1117,7 @@ namespace detail
 
 			// see if we need to scroll. note that _refresh_line will scroll for the current line -- ONLY IF IT WRAPS
 			// but because we are drawing all lines, we need space for the next line as well.
-			if(getCursorPosition().y == st->termHeight)
+			if(getCursorPosition().y == static_cast<int>(st->termHeight))
 				buffer += zpr::sprint("%s1S", CSI); // one should be enough.
 
 			buffer += moveCursorDown(down);
@@ -1613,7 +1619,7 @@ namespace detail
 		platform_write(promptMode == 0 ? st->promptString : st->contPromptString);
 		platform_write(seed);
 
-		bool didSetSignalHandler = setup_sigwinch();
+		bool didSetSignalHandler = setup_sigwinch(currentStateForSignal);
 
 
 		auto commit_line = [&](bool refresh = true) {
@@ -1790,7 +1796,7 @@ namespace detail
 								while(platform_read_one(&x) > 0)
 								{
 									pasted += x;
-									if(pasted.rfind("\x1b[201~") != -1)
+									if(pasted.rfind("\x1b[201~") != std::string::npos)
 										break;
 								}
 
