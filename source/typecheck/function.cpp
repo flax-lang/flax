@@ -87,13 +87,13 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		error(defn, "only methods of a type can be marked as mutating with 'mut'");
 	}
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	auto conflict_err = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
-		if(auto decl = dcast(sst::FunctionDecl, other))
+		if(auto oth = dcast(sst::FunctionDecl, other))
 		{
 			// make sure we didn't fuck up somewhere
-			iceAssert(decl->id.name == defn->id.name);
-			return fs->isDuplicateOverload(defn->params, decl->params);
+			iceAssert(oth->id.name == defn->id.name);
+			return fs->isDuplicateOverload(defn->params, oth->params);
 		}
 		else
 		{
@@ -102,8 +102,8 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		}
 	});
 
-	if(conflicts)
-		error(this, "conflicting");
+	if(conflict_err)
+		return TCResult(conflict_err);
 
 	if(!defn->type->containsPlaceholders())
 		fs->getTreeOfScope(this->realScope)->addDefinition(this->name, defn, gmaps);
@@ -214,7 +214,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		defn->type = fir::FunctionType::get(util::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
 
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	auto conflict_err = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
@@ -236,8 +236,8 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		}
 	});
 
-	if(conflicts)
-		error(this, "conflicting");
+	if(conflict_err)
+		return TCResult(conflict_err);
 
 	this->generatedDecl = defn;
 

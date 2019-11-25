@@ -121,6 +121,11 @@ namespace repl
 
 			try
 			{
+				// note: usually, visitDeclarables in the top-level typecheck will set the realScope.
+				// BUT, since we're not doing that, we must set it manually!
+				if(auto def = dcast(ast::Parameterisable, stmt); def)
+					def->realScope = state->fs->getCurrentScope();
+
 				tcr = stmt->typecheck(state->fs);
 			}
 			catch(ErrorException& ee)
@@ -148,6 +153,9 @@ namespace repl
 
 	bool processLine(const std::string& line)
 	{
+		// before we begin, bring us into a new namespace.
+		state->fs->pushAnonymousTree();
+
 		bool needmore = false;
 		auto stmt = repl::parseAndTypecheck(line, &needmore);
 		if(!stmt)

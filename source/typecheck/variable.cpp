@@ -229,7 +229,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 				if(succs.empty())
 				{
-					auto errs = SimpleError::make(this->loc, "no definition of '%s'%s", this->name, infer ? strprintf(" matching type '%s'", infer) : "");
+					auto errs = SimpleError::make(this->loc, "no definition of '%s'%s", this->name,
+						infer ? strprintf(" matching type '%s'", infer) : "");
+
 					for(const auto& v : succs)
 						errs->append(v.second.error());
 
@@ -240,7 +242,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					auto errs = SimpleError::make(this->loc, "ambiguous reference to '%s'", this->name);
 
 					for(const auto& v : succs)
-						errs->append(SimpleError::make(MsgType::Note, v.first->loc, "potential target here:"));
+						errs->append(SimpleError::make(MsgType::Note, v.first->loc, "potential target here:", v.first));
 
 					return TCResult(errs);
 				}
@@ -342,7 +344,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	//* for variables, as long as the name matches, we conflict.
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	// check the defn
 	if(this->initialiser)

@@ -60,7 +60,8 @@ namespace repl
 			if(input.empty())
 				continue;
 
-			if(input[0] == ':')
+			// commands start with ':', but also allow '::' path-prefix.
+			if(input[0] == ':' && input.find("::") != 0)
 			{
 				auto quit = repl::runCommand(input.substr(1), &st);
 				if(quit) break;

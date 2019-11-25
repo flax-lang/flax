@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <map>
 #include <string>
 #include <type_traits>
 #include <string_view>
@@ -45,7 +46,7 @@ namespace zpr
 		constexpr static int LENGTH_PTRDIFF_T   = 8;
 	};
 
-	template <typename T, typename E = void>
+	template <typename T, typename = void>
 	struct print_formatter
 	{
 		template <typename K>
@@ -59,7 +60,7 @@ namespace zpr
 
 		// we make a inner type has_formatter which is more descriptive, and since we only make this
 		// error when we try to instantiate the base, any specialisations don't even need to care!
-		static_assert(has_formatter<T>::value, "no formatter defined for type!");
+		static_assert(true || has_formatter<T>::value, "no formatter defined for type!");
 	};
 
 
@@ -204,49 +205,98 @@ namespace zpr
 				.append(sprint(fmt, xs...));
 		}
 
-		template <typename T, typename... Args>
+		// we need separate versions of these functions that only enable if the argument is
+		// a pointer, THEN check if the specifier is 'p', THEN do the void* thing.
+
+		template <typename T>
+		constexpr bool _stupid_type_tester(decltype(!std::is_pointer_v<std::decay<T>>
+			|| &print_formatter<std::decay_t<T>>::print)*) { return true; }
+
+		template <typename>
+		constexpr bool _stupid_type_tester(...) { return false; }
+
+
+		template <typename T, typename... Args, typename = std::enable_if_t<_stupid_type_tester<T>(0)>>
 		std::string _consume_neither_sprint(const format_args& args, const char* fmt, T&& x, Args&&... xs)
 		{
-			return print_formatter<std::decay_t<T>>()
-				.print(x, args)
-				.append(sprint(fmt, xs...));
+			return print_formatter<std::decay_t<T>>().print(x, args).append(sprint(fmt, xs...));
 		}
 
+		template <typename T, typename... Args, typename = std::enable_if_t<!_stupid_type_tester<T>(0)>, typename F = void*>
+		std::string _consume_neither_sprint(const format_args& args, const char* fmt, T&& x, Args&&... xs)
+		{
+			return print_formatter<F>().print(x, args).append(sprint(fmt, xs...));
+		}
+
+
+
 		template <typename W, typename T, typename... Args,
-			typename E = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>>>>
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>> && _stupid_type_tester<T>(0)>
+		>
 		std::string _consume_width_sprint(format_args args, const char* fmt, W&& width, T&& x, Args&&... xs)
 		{
 			args.width = width;
-
-			return print_formatter<std::decay_t<T>>()
-				.print(x, args)
-				.append(sprint(fmt, xs...));
+			return print_formatter<std::decay_t<T>>().print(x, args).append(sprint(fmt, xs...));
 		}
+
+		template <typename W, typename T, typename... Args,
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>> && !_stupid_type_tester<T>(0)>,
+			typename F = void*
+		>
+		std::string _consume_width_sprint(format_args args, const char* fmt, W&& width, T&& x, Args&&... xs)
+		{
+			args.width = width;
+			return print_formatter<F>().print(x, args).append(sprint(fmt, xs...));
+		}
+
 
 
 		template <typename P, typename T, typename... Args,
-			typename E = std::enable_if_t<std::is_integral_v<std::remove_reference_t<P>>>>
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<P>> && _stupid_type_tester<T>(0)>
+		>
 		std::string _consume_prec_sprint(format_args args, const char* fmt, P&& prec, T&& x, Args&&... xs)
 		{
 			args.precision = prec;
-
-			return print_formatter<std::decay_t<T>>()
-				.print(x, args)
-				.append(sprint(fmt, xs...));
+			return print_formatter<std::decay_t<T>>().print(x, args).append(sprint(fmt, xs...));
 		}
 
+		template <typename P, typename T, typename... Args,
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<P>> && !_stupid_type_tester<T>(0)>,
+			typename F = void*
+		>
+		std::string _consume_prec_sprint(format_args args, const char* fmt, P&& prec, T&& x, Args&&... xs)
+		{
+			args.precision = prec;
+			return print_formatter<F>().print(x, args).append(sprint(fmt, xs...));
+		}
+
+
+
+
+
 		template <typename W, typename P, typename T, typename... Args,
-			typename E = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>>
-				&& std::is_integral_v<std::remove_reference_t<P>>>>
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>>
+				&& std::is_integral_v<std::remove_reference_t<P>> && _stupid_type_tester<T>(0)>
+		>
 		std::string _consume_both_sprint(format_args args, const char* fmt, W&& width, P&& prec, T&& x, Args&&... xs)
 		{
 			args.width = width;
 			args.precision = prec;
-
-			return print_formatter<std::decay_t<T>>()
-				.print(x, args)
-				.append(sprint(fmt, xs...));
+			return print_formatter<std::decay_t<T>>().print(x, args).append(sprint(fmt, xs...));
 		}
+
+		template <typename W, typename P, typename T, typename... Args,
+			typename = std::enable_if_t<std::is_integral_v<std::remove_reference_t<W>>
+				&& std::is_integral_v<std::remove_reference_t<P>> && !_stupid_type_tester<T>(0)>,
+			typename F = void*
+		>
+		std::string _consume_both_sprint(format_args args, const char* fmt, W&& width, P&& prec, T&& x, Args&&... xs)
+		{
+			args.width = width;
+			args.precision = prec;
+			return print_formatter<F>().print(x, args).append(sprint(fmt, xs...));
+		}
+
 
 
 		template <typename... Args>
@@ -357,29 +407,17 @@ namespace zpr
 				const char* fmt_str = 0;
 				auto spec = args.specifier;
 
-				switch(args.length)
-				{
-					case format_args::LENGTH_SHORT_SHORT: fmt_str = (spec == 'u'
-						? "%hhu" : (spec == 'x' ? "%hhx" : (spec == 'X' ? "%hhX" : "%hhd"))); break;
-					case format_args::LENGTH_SHORT:     fmt_str = (spec == 'u'
-						? "%hu" : (spec == 'x' ? "%hx" : (spec == 'X' ? "%hX" : "%hd"))); break;
-					case format_args::LENGTH_LONG:      fmt_str = (spec == 'u'
-						? "%lu" : (spec == 'x' ? "%lx" : (spec == 'X' ? "%lX" : "%ld"))); break;
-					case format_args::LENGTH_LONG_LONG: fmt_str = (spec == 'u'
-						? "%llu" : (spec == 'x' ? "%llx" : (spec == 'X' ? "%llX" : "%lld"))); break;
-					case format_args::LENGTH_INTMAX_T:  fmt_str = (spec == 'u'
-						? "%ju" : (spec == 'x' ? "%jx" : (spec == 'X' ? "%jX" : "%jd"))); break;
-					case format_args::LENGTH_SIZE_T:    fmt_str = (spec == 'u'
-						? "%zu" : (spec == 'x' ? "%zx" : (spec == 'X' ? "%zX" : "%zd"))); break;
-					case format_args::LENGTH_PTRDIFF_T: fmt_str = (spec == 'u'
-						? "%tu" : (spec == 'x' ? "%tx" : (spec == 'X' ? "%tX" : "%td"))); break;
+				static std::map<int, std::string> len_specs = {
+					{ format_args::LENGTH_SHORT_SHORT,  "hh"   },
+					{ format_args::LENGTH_SHORT,        "h"    },
+					{ format_args::LENGTH_LONG,         "l"    },
+					{ format_args::LENGTH_LONG_LONG,    "ll"   },
+					{ format_args::LENGTH_INTMAX_T,     "j"    },
+					{ format_args::LENGTH_SIZE_T,       "z"    },
+					{ format_args::LENGTH_PTRDIFF_T,    "t"    }
+				};
 
-					case format_args::LENGTH_DEFAULT:   [[fallthrough]];
-					default:
-						fmt_str = (spec == 'u' ? "%u" : (spec == 'x' ? "%x" : (spec == 'X' ? "%X" : "%d")));
-						break;
-				}
-
+				fmt_str = ("%" + len_specs[args.length] + spec).c_str();
 				digits_len = snprintf(&buf[0], 64, fmt_str, x);
 
 				// sadly, we must cheat here as well, because osx doesn't bloody have charconv (STILL)?
@@ -591,7 +629,7 @@ namespace zpr
 
 	template <typename T>
 	struct print_formatter<T, typename std::enable_if<
-		(std::is_same_v<void*, T>)
+		(std::is_same_v<void*, std::decay_t<T>>)
 	>::type>
 	{
 		std::string print(const T& x, format_args args)

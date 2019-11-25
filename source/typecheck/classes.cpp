@@ -83,7 +83,8 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 		}
 	}
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it

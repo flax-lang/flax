@@ -45,7 +45,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->original = this;
 	defn->type = fir::EnumType::getEmpty();
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 

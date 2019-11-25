@@ -37,7 +37,8 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto str = fir::TraitType::create(defn->id);
 	defn->type = str;
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it

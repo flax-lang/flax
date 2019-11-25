@@ -183,7 +183,8 @@ namespace sst
 		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name, StateTree* tree = 0);
-		bool checkForShadowingOrConflictingDefinition(Defn* def, std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
+		ErrorMsg* checkForShadowingOrConflictingDefinition(Defn* def,
+			std::function<bool (TypecheckState* fs, Defn* other)> checkConflicting, StateTree* tree = 0);
 
 		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, const std::string& op, sst::FunctionDefn** overloadFn = 0);
 

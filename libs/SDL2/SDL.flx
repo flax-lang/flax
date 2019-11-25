@@ -2,7 +2,7 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-import "Keyboard"
+import "Keyboard.flx"
 
 public namespace SDL
 {
@@ -46,71 +46,71 @@ public namespace SDL
 
 	public enum EventType: u32
 	{
-		case FIRSTEVENT									= 0
+		case FIRSTEVENT                 = 0
 
-		case Quit										= 0x100
-		case App_Terminating
-		case App_LowMemory
-		case App_WillEnterBackground
-		case App_DidEnterBackground
-		case App_WillEnterForeground
-		case App_DidEnterForeground
+		case Quit                       = 0x100
+		case App_Terminating            = 0x101
+		case App_LowMemory              = 0x102
+		case App_WillEnterBackground    = 0x103
+		case App_DidEnterBackground     = 0x104
+		case App_WillEnterForeground    = 0x105
+		case App_DidEnterForeground     = 0x106
 
-		case WindowEvent								= 0x200
-		case SysWMEvent
+		case WindowEvent                = 0x200
+		case SysWMEvent                 = 0x201
 
-		case KeyDown									= 0x300
-		case KeyUp
-		case TextEditing
-		case TextInput
-		case KeymapChanged
+		case KeyDown                    = 0x300
+		case KeyUp                      = 0x301
+		case TextEditing                = 0x302
+		case TextInput                  = 0x303
+		case KeymapChanged              = 0x304
 
-		case Mouse_Motion								= 0x400
-		case Mouse_ButtonDown
-		case Mouse_ButtonUp
-		case Mouse_Wheel
+		case Mouse_Motion               = 0x400
+		case Mouse_ButtonDown           = 0x401
+		case Mouse_ButtonUp             = 0x402
+		case Mouse_Wheel                = 0x403
 
-		case Joy_AxisMotion								= 0x600
-		case Joy_BallMotion
-		case Joy_HatMotion
-		case Joy_ButtonDown
-		case Joy_ButtonUp
-		case Joy_DeviceAdded
-		case Joy_DeviceRemoved
+		case Joy_AxisMotion             = 0x600
+		case Joy_BallMotion             = 0x601
+		case Joy_HatMotion              = 0x602
+		case Joy_ButtonDown             = 0x603
+		case Joy_ButtonUp               = 0x604
+		case Joy_DeviceAdded            = 0x605
+		case Joy_DeviceRemoved          = 0x606
 
-		case Controller_AxisMotion						= 0x650
-		case Controller_ButtonDown
-		case Controller_ButtonUp
-		case Controller_DeviceAdded
-		case Controller_DeviceRemoved
-		case Controller_DeviceRemapped
+		case Controller_AxisMotion      = 0x650
+		case Controller_ButtonDown      = 0x651
+		case Controller_ButtonUp        = 0x652
+		case Controller_DeviceAdded     = 0x653
+		case Controller_DeviceRemoved   = 0x654
+		case Controller_DeviceRemapped  = 0x655
 
-		case FingerDown									= 0x700
-		case FingerUp
-		case FingerMotion
+		case FingerDown                 = 0x700
+		case FingerUp                   = 0x701
+		case FingerMotion               = 0x702
 
-		case DollarGesture								= 0x800
-		case DollarRecord
-		case MultiGesture
+		case DollarGesture              = 0x800
+		case DollarRecord               = 0x801
+		case MultiGesture               = 0x802
 
-		case ClipboardUpdate							= 0x900
+		case ClipboardUpdate            = 0x900
 
-		case DropFile									= 0x1000
+		case DropFile                   = 0x1000
 
-		case Audio_DeviceAdded							= 0x1100
-		case Audio_DeviceRemoved
+		case Audio_DeviceAdded          = 0x1100
+		case Audio_DeviceRemoved        = 0x1101
 
-		case Render_TargetsReset						= 0x2000
-		case Render_DeviceReset
+		case Render_TargetsReset        = 0x2000
+		case Render_DeviceReset         = 0x2001
 
-		case USEREVENT									= 0x8000
-		case LASTEVENT									= 0xFFFF
+		case USEREVENT                  = 0x8000
+		case LASTEVENT                  = 0xFFFF
 	}
 
 	public struct Event
 	{
-		var type: SDL.EventType
-		var lol: i8[52]
+		type: SDL::EventType
+		lol: [i8: 52]
 	}
 
 	public class KeyboardEvent
@@ -118,32 +118,32 @@ public namespace SDL
 		public struct KeySym
 		{
 			// SDL_Scancode scancode
-			var scancode: u32
-			var sym: SDL.Key
+			scancode: u32
+			sym: SDL::Key
 
-			var mod: u16
-			var unused: u32
+			mod: u16
+			unused: u32
 		}
 
-		var type: SDL.EventType
+		var type: SDL::EventType
 		var timestamp: u32
 		var windowid: u32
 		var state: u8
 		var repeat: u8
 		var padding: u16
-		var keysym: SDL.KeyboardEvent.KeySym
+		var keysym: SDL::KeyboardEvent::KeySym
 	}
 }
 
 public ffi fn SDL_Init(flags: u32) -> i32
-public ffi fn SDL_CreateWindow(title: i8*, xpos: i32, ypos: i32, width: i32, height: i32, flags: u32) -> void*
+public ffi fn SDL_CreateWindow(title: &i8, xpos: i32, ypos: i32, width: i32, height: i32, flags: u32) -> &void
 
 
 public ffi fn SDL_GL_SetAttribute(attr: i32, value: i32)
 
-public ffi fn SDL_PollEvent(event: SDL.Event*) -> i32
+public ffi fn SDL_PollEvent(event: &SDL::Event) -> i32
 
 // opengl stuff
 
-public ffi fn SDL_GL_CreateContext(window: void*) -> void*
-public ffi fn SDL_GL_SwapWindow(window: void*) -> void
+public ffi fn SDL_GL_CreateContext(window: &void) -> &void
+public ffi fn SDL_GL_SwapWindow(window: &void) -> void
