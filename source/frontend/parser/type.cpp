@@ -461,6 +461,9 @@ namespace parser
 		{
 			st.skipWS();
 
+			if(st.front() == TT::RBrace)
+				break;
+
 			if(st.eat() != TT::Case)
 				expected(st.ploc(), "'case' inside enum body", st.prev().str());
 

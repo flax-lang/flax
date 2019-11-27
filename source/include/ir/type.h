@@ -848,6 +848,7 @@ namespace fir
 		ConstantValue* getNameArray();
 		ConstantValue* getCaseArray();
 
+		void setCaseType(Type* t);
 		void setNameArray(ConstantValue* arr);
 		void setCaseArray(ConstantValue* arr);
 
@@ -870,7 +871,6 @@ namespace fir
 		// static funcs
 		public:
 		static EnumType* get(const Identifier& name, Type* caseType);
-		static EnumType* getEmpty();
 	};
 
 

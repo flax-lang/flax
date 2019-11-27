@@ -2,137 +2,137 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+export SDL
+
 import "Keyboard.flx"
 
-public namespace SDL
+
+public let INIT_TIMER: u32                      = 0x00000001
+public let INIT_AUDIO: u32                      = 0x00000010
+public let INIT_VIDEO: u32                      = 0x00000020
+public let INIT_JOYSTICK: u32                   = 0x00000200
+public let INIT_HAPTIC: u32                     = 0x00001000
+public let INIT_GAMECONTROLLER: u32             = 0x00002000
+public let INIT_EVENTS: u32                     = 0x00004000
+public let INIT_NOPARACHUTE: u32                = 0x00100000
+public let INIT_EVERYTHING: u32                 = INIT_TIMER | INIT_AUDIO | INIT_VIDEO | INIT_EVENTS |
+													INIT_JOYSTICK | INIT_HAPTIC | INIT_GAMECONTROLLER
+
+public let GL_RED_SIZE: i32                     = 0
+public let GL_GREEN_SIZE: i32                   = 1
+public let GL_BLUE_SIZE: i32                    = 2
+public let GL_ALPHA_SIZE: i32                   = 3
+public let GL_BUFFER_SIZE: i32                  = 4
+public let GL_DOUBLEBUFFER: i32                 = 5
+public let GL_DEPTH_SIZE: i32                   = 6
+public let GL_STENCIL_SIZE: i32                 = 7
+public let GL_ACCUM_RED_SIZE: i32               = 8
+public let GL_ACCUM_GREEN_SIZE: i32             = 9
+public let GL_ACCUM_BLUE_SIZE: i32              = 10
+public let GL_ACCUM_ALPHA_SIZE: i32             = 11
+public let GL_STEREO: i32                       = 12
+public let GL_MULTISAMPLEBUFFERS: i32           = 13
+public let GL_MULTISAMPLESAMPLES: i32           = 14
+public let GL_ACCELERATED_VISUAL: i32           = 15
+public let GL_RETAINED_BACKING: i32             = 16
+public let GL_CONTEXT_MAJOR_VERSION: i32        = 17
+public let GL_CONTEXT_MINOR_VERSION: i32        = 18
+public let GL_CONTEXT_EGL: i32                  = 19
+public let GL_CONTEXT_FLAGS: i32                = 20
+public let GL_CONTEXT_PROFILE_MASK: i32         = 21
+public let GL_SHARE_WITH_CURRENT_CONTEXT: i32   = 22
+public let GL_FRAMEBUFFER_SRGB_CAPABLE: i32     = 23
+public let GL_CONTEXT_RELEASE_BEHAVIOR: i32     = 24
+
+
+public enum EventType: u32
 {
-	public let INIT_TIMER: u32						= 0x00000001
-	public let INIT_AUDIO: u32						= 0x00000010
-	public let INIT_VIDEO: u32						= 0x00000020
-	public let INIT_JOYSTICK: u32					= 0x00000200
-	public let INIT_HAPTIC: u32						= 0x00001000
-	public let INIT_GAMECONTROLLER: u32				= 0x00002000
-	public let INIT_EVENTS: u32						= 0x00004000
-	public let INIT_NOPARACHUTE: u32				= 0x00100000
-	public let INIT_EVERYTHING: u32					= SDL.INIT_TIMER | SDL.INIT_AUDIO | SDL.INIT_VIDEO | SDL.INIT_EVENTS |
-														SDL.INIT_JOYSTICK | SDL.INIT_HAPTIC | SDL.INIT_GAMECONTROLLER
+	case FIRSTEVENT                 = 0
 
-	public let GL_RED_SIZE: i32						= 0
-	public let GL_GREEN_SIZE: i32					= 1
-	public let GL_BLUE_SIZE: i32					= 2
-	public let GL_ALPHA_SIZE: i32					= 3
-	public let GL_BUFFER_SIZE: i32					= 4
-	public let GL_DOUBLEBUFFER: i32					= 5
-	public let GL_DEPTH_SIZE: i32					= 6
-	public let GL_STENCIL_SIZE: i32					= 7
-	public let GL_ACCUM_RED_SIZE: i32				= 8
-	public let GL_ACCUM_GREEN_SIZE: i32				= 9
-	public let GL_ACCUM_BLUE_SIZE: i32				= 10
-	public let GL_ACCUM_ALPHA_SIZE: i32				= 11
-	public let GL_STEREO: i32						= 12
-	public let GL_MULTISAMPLEBUFFERS: i32			= 13
-	public let GL_MULTISAMPLESAMPLES: i32			= 14
-	public let GL_ACCELERATED_VISUAL: i32			= 15
-	public let GL_RETAINED_BACKING: i32				= 16
-	public let GL_CONTEXT_MAJOR_VERSION: i32		= 17
-	public let GL_CONTEXT_MINOR_VERSION: i32		= 18
-	public let GL_CONTEXT_EGL: i32					= 19
-	public let GL_CONTEXT_FLAGS: i32				= 20
-	public let GL_CONTEXT_PROFILE_MASK: i32			= 21
-	public let GL_SHARE_WITH_CURRENT_CONTEXT: i32	= 22
-	public let GL_FRAMEBUFFER_SRGB_CAPABLE: i32		= 23
-	public let GL_CONTEXT_RELEASE_BEHAVIOR: i32		= 24
+	case Quit                       = 0x100
+	case App_Terminating            = 0x101
+	case App_LowMemory              = 0x102
+	case App_WillEnterBackground    = 0x103
+	case App_DidEnterBackground     = 0x104
+	case App_WillEnterForeground    = 0x105
+	case App_DidEnterForeground     = 0x106
 
+	case WindowEvent                = 0x200
+	case SysWMEvent                 = 0x201
 
-	public enum EventType: u32
-	{
-		case FIRSTEVENT                 = 0
+	case KeyDown                    = 0x300
+	case KeyUp                      = 0x301
+	case TextEditing                = 0x302
+	case TextInput                  = 0x303
+	case KeymapChanged              = 0x304
 
-		case Quit                       = 0x100
-		case App_Terminating            = 0x101
-		case App_LowMemory              = 0x102
-		case App_WillEnterBackground    = 0x103
-		case App_DidEnterBackground     = 0x104
-		case App_WillEnterForeground    = 0x105
-		case App_DidEnterForeground     = 0x106
+	case Mouse_Motion               = 0x400
+	case Mouse_ButtonDown           = 0x401
+	case Mouse_ButtonUp             = 0x402
+	case Mouse_Wheel                = 0x403
 
-		case WindowEvent                = 0x200
-		case SysWMEvent                 = 0x201
+	case Joy_AxisMotion             = 0x600
+	case Joy_BallMotion             = 0x601
+	case Joy_HatMotion              = 0x602
+	case Joy_ButtonDown             = 0x603
+	case Joy_ButtonUp               = 0x604
+	case Joy_DeviceAdded            = 0x605
+	case Joy_DeviceRemoved          = 0x606
 
-		case KeyDown                    = 0x300
-		case KeyUp                      = 0x301
-		case TextEditing                = 0x302
-		case TextInput                  = 0x303
-		case KeymapChanged              = 0x304
+	case Controller_AxisMotion      = 0x650
+	case Controller_ButtonDown      = 0x651
+	case Controller_ButtonUp        = 0x652
+	case Controller_DeviceAdded     = 0x653
+	case Controller_DeviceRemoved   = 0x654
+	case Controller_DeviceRemapped  = 0x655
 
-		case Mouse_Motion               = 0x400
-		case Mouse_ButtonDown           = 0x401
-		case Mouse_ButtonUp             = 0x402
-		case Mouse_Wheel                = 0x403
+	case FingerDown                 = 0x700
+	case FingerUp                   = 0x701
+	case FingerMotion               = 0x702
 
-		case Joy_AxisMotion             = 0x600
-		case Joy_BallMotion             = 0x601
-		case Joy_HatMotion              = 0x602
-		case Joy_ButtonDown             = 0x603
-		case Joy_ButtonUp               = 0x604
-		case Joy_DeviceAdded            = 0x605
-		case Joy_DeviceRemoved          = 0x606
+	case DollarGesture              = 0x800
+	case DollarRecord               = 0x801
+	case MultiGesture               = 0x802
 
-		case Controller_AxisMotion      = 0x650
-		case Controller_ButtonDown      = 0x651
-		case Controller_ButtonUp        = 0x652
-		case Controller_DeviceAdded     = 0x653
-		case Controller_DeviceRemoved   = 0x654
-		case Controller_DeviceRemapped  = 0x655
+	case ClipboardUpdate            = 0x900
 
-		case FingerDown                 = 0x700
-		case FingerUp                   = 0x701
-		case FingerMotion               = 0x702
+	case DropFile                   = 0x1000
 
-		case DollarGesture              = 0x800
-		case DollarRecord               = 0x801
-		case MultiGesture               = 0x802
+	case Audio_DeviceAdded          = 0x1100
+	case Audio_DeviceRemoved        = 0x1101
 
-		case ClipboardUpdate            = 0x900
+	case Render_TargetsReset        = 0x2000
+	case Render_DeviceReset         = 0x2001
 
-		case DropFile                   = 0x1000
+	case USEREVENT                  = 0x8000
+	case LASTEVENT                  = 0xFFFF
+}
 
-		case Audio_DeviceAdded          = 0x1100
-		case Audio_DeviceRemoved        = 0x1101
+public struct Event
+{
+	type: EventType
+	lol: [i8: 52]
+}
 
-		case Render_TargetsReset        = 0x2000
-		case Render_DeviceReset         = 0x2001
+struct KeySym
+{
+	// SDL_Scancode scancode
+	scancode: u32
+	sym: Keyboard::Key
 
-		case USEREVENT                  = 0x8000
-		case LASTEVENT                  = 0xFFFF
-	}
+	mod: u16
+	unused: u32
+}
 
-	public struct Event
-	{
-		type: SDL::EventType
-		lol: [i8: 52]
-	}
-
-	public class KeyboardEvent
-	{
-		public struct KeySym
-		{
-			// SDL_Scancode scancode
-			scancode: u32
-			sym: SDL::Key
-
-			mod: u16
-			unused: u32
-		}
-
-		var type: SDL::EventType
-		var timestamp: u32
-		var windowid: u32
-		var state: u8
-		var repeat: u8
-		var padding: u16
-		var keysym: SDL::KeyboardEvent::KeySym
-	}
+public struct KeyboardEvent
+{
+	type: EventType
+	timestamp: u32
+	windowid: u32
+	state: u8
+	repeat: u8
+	padding: u16
+	keysym: KeySym
 }
 
 public ffi fn SDL_Init(flags: u32) -> i32
@@ -147,3 +147,7 @@ public ffi fn SDL_PollEvent(event: &SDL::Event) -> i32
 
 public ffi fn SDL_GL_CreateContext(window: &void) -> &void
 public ffi fn SDL_GL_SwapWindow(window: &void) -> void
+
+
+
+

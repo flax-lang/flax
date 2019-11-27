@@ -279,7 +279,7 @@ namespace sst
 			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
 			//* things in the global scope -- which is allowed!
 
-			if(s == tree->name)
+			if(i == 0 && s == tree->name)
 				continue;
 
 			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())

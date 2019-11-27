@@ -33,11 +33,6 @@ namespace parser
 
 		// first one
 		{
-			bool hadParen = false;
-
-			if(st.front() == TT::LParen)
-				hadParen = true, st.eat();
-
 			// ok -- the first one we must do manually.
 			// probably not, but i'm lazy.
 			while(st.front() == TT::Val || st.front() == TT::Var)
@@ -53,13 +48,6 @@ namespace parser
 
 			// ok, we finished doing the variables.
 			cases.back().cond = parseExpr(st);
-			if(hadParen)
-			{
-				if(st.front() != TT::RParen)
-					expected(st, "closing parenthesis ')'", st.front().str());
-
-				st.eat();
-			}
 
 			if(auto x = parseBracedBlock(st); x.isError())
 				return PResult<Stmt>::copyError(x);
@@ -73,7 +61,6 @@ namespace parser
 		while(st.frontAfterWS() == TT::Else)
 		{
 			st.eat();
-			bool paren = false;
 
 			if(st.front() == TT::If)
 			{
@@ -81,8 +68,6 @@ namespace parser
 
 				// ok, it's an else-if.
 				st.eat();
-				if(st.front() == TT::LParen)
-					paren = true, st.eat();
 
 				while(st.front() == TT::Val || st.front() == TT::Var)
 				{
@@ -96,14 +81,6 @@ namespace parser
 				}
 
 				c.cond = parseExpr(st);
-				if(paren)
-				{
-					if(st.front() != TT::RParen)
-						expected(st, "closing parenthesis ')'", st.front().str());
-
-					st.eat();
-				}
-
 
 				if(auto x = parseBracedBlock(st); x.isError())
 					return PResult<Stmt>::copyError(x);
