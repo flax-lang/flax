@@ -424,7 +424,7 @@ namespace platform
 			}
 
 			// then, change the codepage to utf-8:
-			SetConsoleOutputCP(CP_UTF8);
+			SetConsoleCP(CP_UTF8);
 
 		#else
 

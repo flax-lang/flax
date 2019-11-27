@@ -78,6 +78,7 @@ build/cmake-output
 .idea
 # CMakeLists.txt
 
+.flax-repl-history
 
 docs/.antlr
 

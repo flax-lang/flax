@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <functional>
 #include <string_view>
 
 
@@ -50,6 +51,9 @@ namespace ztmu
 	struct State
 	{
 		void clear();
+
+		void setupConsole();
+		void unsetupConsole();
 
 		std::optional<std::string> read();
 		std::optional<std::vector<std::string>> readContinuation(const std::string& seed = "");
@@ -145,7 +149,11 @@ namespace detail
 		int params[8];
 	};
 
+	void setup_console();
+	void unsetup_console();
+
 	size_t getTerminalWidth();
+	size_t getTerminalHeight();
 	size_t displayedTextLength(const std::string_view& str);
 	bool read_line(State* st, int promptMode, std::string seed);
 	void cursor_left(State* st, bool refresh = true);
@@ -162,7 +170,9 @@ namespace detail
 
 
 
-
+// close out the scope here -- we don't want to #include headers in a namespace.
+}
+}
 
 
 
@@ -186,6 +196,10 @@ namespace detail
 	#include <termios.h>
 	#include <sys/ioctl.h>
 
+
+namespace ztmu {
+namespace detail
+{
 	static struct termios original_termios;
 
 
@@ -204,22 +218,229 @@ namespace detail
 		return read(STDIN_FILENO, c, len);
 	}
 
+	static bool isInRawMode = false;
+	static bool didRegisterAtexit = false;
+	static inline void leaveRawMode()
+	{
+		if(isInRawMode && tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) != -1)
+			isInRawMode = false;
+
+		// disable bracketed paste:
+		auto tmp = std::string_view("\x1b[?2004l");
+		platform_write(tmp.data(), tmp.size());
+	}
+
+	static inline void enterRawMode()
+	{
+		if(!isatty(STDIN_FILENO))
+			return;
+
+		if(!didRegisterAtexit)
+		{
+			atexit([]() {
+				leaveRawMode();
+			});
+
+			didRegisterAtexit = true;
+		}
+
+		if(tcgetattr(STDIN_FILENO, &original_termios) == -1)
+			return;
+
+		// copy the original
+		termios raw = original_termios;
+
+		// input modes: no break, no CR to NL, no parity check, no strip char,
+		// no start/stop output control.
+		raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+
+		// output modes - disable post processing
+		raw.c_oflag &= ~(OPOST);
+
+		// control modes - set 8 bit chars
+		raw.c_cflag |= (CS8);
+
+		// local modes - echoing off, canonical off, no extended functions,
+		// no signal chars (^Z,^C)
+		raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+
+		// control chars - set return condition: min number of bytes and timer.
+		// We want read to return every single byte, without timeout.
+		raw.c_cc[VMIN] = 1;
+		raw.c_cc[VTIME] = 0;
+
+		/* put terminal in raw mode after flushing */
+		if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
+			return;
+
+		// enable bracketed paste:
+		auto tmp = std::string_view("\x1b[?2004h");
+		platform_write(tmp.data(), tmp.size());
+		isInRawMode = true;
+	}
+
+	inline void setup_console()
+	{
+		// on unix, we don't really need to do anything "globally".
+	}
+
+	inline void unsetup_console()
+	{
+	}
+
+	static struct sigaction old_sigact;
+	static State* currentStateForSignal = 0;
+	static inline bool setup_sigwinch()
+	{
+		// time for some signalling!
+		struct sigaction new_sa;
+
+		// i would use designated initialisers, but some compilers refuse to cooperate.
+		new_sa.sa_flags = SA_RESTART;   // this is important, if not read() will return EINTR (interrupted by signal)
+		new_sa.sa_handler = [](int sig) {
+			if(currentStateForSignal)
+			{
+				currentStateForSignal->termWidth = getTerminalWidth();
+				currentStateForSignal->termHeight = getTerminalHeight();
+			}
+		};
+
+
+		if(sigaction(SIGWINCH, &new_sa, &old_sigact) == 0)
+			return true;
+
+		return false;
+	}
+
+	static inline void restore_sigwinch()
+	{
+		sigaction(SIGWINCH, &old_sigact, nullptr);
+	}
+
+
 #else
+	// mfw
+	#define WIN32_LEAN_AND_MEAN 1
+
+	#ifndef NOMINMAX
+		#define NOMINMAX
+	#endif
+
+	#include <windows.h>
+
 	#include <io.h>
+	#include <signal.h>
+
+namespace ztmu {
+namespace detail
+{
+	static constexpr int STDOUT_FILENO = 1;
+	static constexpr int STDIN_FILENO  = 0;
 
 	static inline void platform_write(const char* s, size_t len)
 	{
-		_write(STDOUT_FILENO, s, len);
+		DWORD written = 0;
+		WriteConsole(GetStdHandle(STD_OUTPUT_HANDLE), s, static_cast<DWORD>(len), &written, NULL);
 	}
 
 	static inline int platform_read_one(char* c)
 	{
-		return _read(STDIN_FILENO, c, 1);
+		// return _read(STDIN_FILENO, c, 1);
+		DWORD didRead = 0;
+		ReadConsole(GetStdHandle(STD_INPUT_HANDLE), c, 1, &didRead, NULL);
+		return didRead;
 	}
 
 	static inline int platform_read(char* c, size_t len)
 	{
-		return _read(STDIN_FILENO, c, len);
+		DWORD didRead = 0;
+		ReadConsole(GetStdHandle(STD_INPUT_HANDLE), c, static_cast<DWORD>(len), &didRead, NULL);
+		return didRead;
+	}
+
+	static DWORD old_stdin_mode = 0;
+	static DWORD old_stdout_mode = 0;
+
+	static bool isInRawMode = false;
+	static bool didRegisterAtexit = false;
+
+	static inline void leaveRawMode()
+	{
+		if(!isInRawMode)
+			return;
+
+		auto stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+		auto stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+		SetConsoleMode(stdin_handle, old_stdin_mode);
+		SetConsoleMode(stdout_handle, old_stdout_mode);
+
+		isInRawMode = false;
+	}
+
+
+	static inline void enterRawMode()
+	{
+		if(!_isatty(STDIN_FILENO))
+			return;
+
+		isInRawMode = true;
+
+		auto stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+		auto stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+		GetConsoleMode(stdin_handle, &old_stdin_mode);
+		GetConsoleMode(stdout_handle, &old_stdout_mode);
+
+		{
+			// this is pretty much the only flag we want.
+			DWORD stdin_mode = ENABLE_EXTENDED_FLAGS | ENABLE_VIRTUAL_TERMINAL_INPUT;
+			SetConsoleMode(stdin_handle, stdin_mode);
+
+
+			// then stdout:
+			DWORD stdout_mode = ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
+			SetConsoleMode(stdout_handle, stdout_mode);
+		}
+
+		if(!didRegisterAtexit)
+		{
+			atexit([]() {
+				leaveRawMode();
+			});
+
+			didRegisterAtexit = true;
+		}
+	}
+
+	static UINT old_input_cp;
+	static UINT old_output_cp;
+	inline void setup_console()
+	{
+		old_input_cp = GetConsoleCP();
+		old_output_cp = GetConsoleOutputCP();
+
+		SetConsoleCP(CP_UTF8);
+		SetConsoleOutputCP(CP_UTF8);
+	}
+
+	inline void unsetup_console()
+	{
+		SetConsoleCP(old_input_cp);
+		SetConsoleOutputCP(old_output_cp);
+	}
+
+	static State* currentStateForSignal = 0;
+	static inline bool setup_sigwinch()
+	{
+		// on windows we can't really do anything. knowing about window size changes requires using
+		// ReadConsoleInput to poll for events, which we obviously can't do here, or use another
+		// thread, which i'm loathe to do. so for now, suck it up, windows users.
+		return false;
+	}
+
+	static inline void restore_sigwinch()
+	{
 	}
 
 #endif
@@ -245,44 +466,37 @@ namespace detail
 	static constexpr const char  ESC = '\x1b';
 	static constexpr const char* CSI = "\x1b[";
 
-	static bool didRegisterAtexit = false;
-	static bool isInRawMode = false;
-
 	static inline void platform_write(const std::string_view& sv)
 	{
 		platform_write(sv.data(), sv.size());
 	}
 
-	static inline std::string moveCursorUp(int n);
-	static inline std::string moveCursorDown(int n);
-	static inline std::string moveCursorLeft(int n);
-	static inline std::string moveCursorRight(int n);
+	static inline std::string moveCursorUp(size_t n);
+	static inline std::string moveCursorDown(size_t n);
+	static inline std::string moveCursorLeft(size_t n);
+	static inline std::string moveCursorRight(size_t n);
 
-	static inline std::string moveCursorUp(int n)
+	static inline std::string moveCursorUp(size_t n)
 	{
 		if(n == 0)  return "";
-		if(n < 0)   return moveCursorDown(-n);
 		else        return zpr::sprint("%s%dA", CSI, n);
 	}
 
-	static inline std::string moveCursorDown(int n)
+	static inline std::string moveCursorDown(size_t n)
 	{
 		if(n == 0)  return "";
-		if(n < 0)   return moveCursorUp(-n);
 		else        return zpr::sprint("%s%dB", CSI, n);
 	}
 
-	static inline std::string moveCursorLeft(int n)
+	static inline std::string moveCursorLeft(size_t n)
 	{
 		if(n == 0)  return "";
-		if(n < 0)   return moveCursorRight(-n);
 		else        return zpr::sprint("%s%dD", CSI, n);
 	}
 
-	static inline std::string moveCursorRight(int n)
+	static inline std::string moveCursorRight(size_t n)
 	{
 		if(n == 0)  return "";
-		if(n < 0)   return moveCursorLeft(-n);
 		else        return zpr::sprint("%s%dC", CSI, n);
 	}
 
@@ -294,7 +508,7 @@ namespace detail
 		char buf[33] { 0 };
 		for(size_t i = 0; i < 32; i++)
 		{
-			if(read(STDIN_FILENO, buf + i, 1) != 1)
+			if(platform_read_one(buf + i) != 1)
 				break;
 
 			if(buf[i] == 'R')
@@ -428,7 +642,7 @@ namespace detail
 			return len;
 		};
 
-		auto len = utf8_len(str.begin(), str.end());
+		auto len = utf8_len(str.data(), str.data() + str.size());
 		{
 			size_t cons = 0;
 			std::string_view sv = str;
@@ -452,62 +666,6 @@ namespace detail
 		}
 	}
 
-	static void leaveRawMode()
-	{
-		if(isInRawMode && tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) != -1)
-        	isInRawMode = false;
-
-        // disable bracketed paste:
-        platform_write("\x1b[?2004l");
-	}
-
-	static void enterRawMode()
-	{
-		if(!isatty(STDIN_FILENO))
-			return;
-
-		if(!didRegisterAtexit)
-		{
-			atexit([]() {
-				leaveRawMode();
-			});
-
-			didRegisterAtexit = true;
-		}
-
-		if(tcgetattr(STDIN_FILENO, &original_termios) == -1)
-			return;
-
-		// copy the original
-		termios raw = original_termios;
-
-		// input modes: no break, no CR to NL, no parity check, no strip char,
-		// no start/stop output control.
-		raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-
-		// output modes - disable post processing
-		raw.c_oflag &= ~(OPOST);
-
-		// control modes - set 8 bit chars
-		raw.c_cflag |= (CS8);
-
-		// local modes - echoing off, canonical off, no extended functions,
-		// no signal chars (^Z,^C)
-		raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-
-		// control chars - set return condition: min number of bytes and timer.
-		// We want read to return every single byte, without timeout.
-		raw.c_cc[VMIN] = 1;
-		raw.c_cc[VTIME] = 0;
-
-		/* put terminal in raw mode after flushing */
-		if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
-			return;
-
-		// enable bracketed paste:
-		platform_write("\x1b[?2004h");
-		isInRawMode = true;
-	}
 
 	inline size_t getTerminalWidth()
 	{
@@ -535,7 +693,7 @@ namespace detail
 		#endif
 	}
 
-	static size_t getTerminalHeight()
+	inline size_t getTerminalHeight()
 	{
 		#ifdef _WIN32
 			CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -604,9 +762,9 @@ namespace detail
 	}
 
 
-	static std::pair<size_t, size_t> calculate_left_codepoints(int n, const std::string_view& sv, size_t cursor, size_t byteCursor)
+	static std::pair<size_t, size_t> calculate_left_codepoints(size_t n, const std::string_view& sv, size_t cursor, size_t byteCursor)
 	{
-		for(int i = 0; i < n; i++)
+		for(size_t i = 0; i < n; i++)
 		{
 			if(cursor > 0)
 			{
@@ -963,7 +1121,7 @@ namespace detail
 
 			// see if we need to scroll. note that _refresh_line will scroll for the current line -- ONLY IF IT WRAPS
 			// but because we are drawing all lines, we need space for the next line as well.
-			if(getCursorPosition().y == st->termHeight)
+			if(getCursorPosition().y == static_cast<int>(st->termHeight))
 				buffer += zpr::sprint("%s1S", CSI); // one should be enough.
 
 			buffer += moveCursorDown(down);
@@ -1139,10 +1297,10 @@ namespace detail
 	// a single line ("logical line"), while the latter will move to the previous line if the current
 	// line is exhausted. user-inputs call cursor_left(), while internal users should call _cursor_left().
 
-	static void _cursor_left(State* st, int n, bool refresh = true)
+	static void _cursor_left(State* st, size_t n, bool refresh = true)
 	{
 		touch_line(st);
-		for(int i = 0; i < n; i++)
+		for(size_t i = 0; i < n; i++)
 		{
 			if(st->cursor > 0)
 			{
@@ -1182,10 +1340,10 @@ namespace detail
 
 
 	// same deal with _cursor_right as for _cursor_left.
-	static void _cursor_right(State* st, int n, bool refresh = true)
+	static void _cursor_right(State* st, size_t n, bool refresh = true)
 	{
 		touch_line(st);
-		for(int i = 0; i < n; i++)
+		for(size_t i = 0; i < n; i++)
 		{
 			if(st->byteCursor < getCurLine(st).size())
 			{
@@ -1435,7 +1593,6 @@ namespace detail
 
 
 	// this is ugly!!!
-	static State* currentStateForSignal = 0;
 	inline bool read_line(State* st, int promptMode, std::string seed)
 	{
 		constexpr char CTRL_A       = '\x01';
@@ -1465,25 +1622,7 @@ namespace detail
 		platform_write(promptMode == 0 ? st->promptString : st->contPromptString);
 		platform_write(seed);
 
-		bool didSetSignalHandler = false;
-
-		// time for some signalling!
-		struct sigaction new_sa;
-
-		// i would use designated initialisers, but some compilers refuse to cooperate.
-		new_sa.sa_flags = SA_RESTART;   // this is important, if not read() will return EINTR (interrupted by signal)
-		new_sa.sa_handler = [](int sig) {
-			if(currentStateForSignal)
-			{
-				currentStateForSignal->termWidth = getTerminalWidth();
-				currentStateForSignal->termHeight = getTerminalHeight();
-			}
-		};
-
-
-		struct sigaction old_sa;
-		if(sigaction(SIGWINCH, &new_sa, &old_sa) == 0)
-			didSetSignalHandler = true;
+		bool didSetSignalHandler = setup_sigwinch();
 
 
 		auto commit_line = [&](bool refresh = true) {
@@ -1646,7 +1785,7 @@ namespace detail
 							}
 							else
 							{
-								thing = n;
+								thing = static_cast<char>(n);
 							}
 
 							if(n == 200)
@@ -1660,7 +1799,7 @@ namespace detail
 								while(platform_read_one(&x) > 0)
 								{
 									pasted += x;
-									if(pasted.rfind("\x1b[201~") != -1)
+									if(pasted.rfind("\x1b[201~") != std::string::npos)
 										break;
 								}
 
@@ -1793,7 +1932,7 @@ namespace detail
 		// restore the signal state, and reset the terminal to normal mode.
 		currentStateForSignal = 0;
 		if(didSetSignalHandler)
-			sigaction(SIGWINCH, &old_sa, nullptr);
+			restore_sigwinch();
 
 		leaveRawMode();
 
@@ -1801,11 +1940,10 @@ namespace detail
 		return eof;
 	}
 
-
+}
+}
 #endif
 
-}
-}
 
 
 namespace ztmu
@@ -1818,6 +1956,16 @@ namespace ztmu
 	inline size_t getTerminalWidth()
 	{
 		return detail::getTerminalWidth();
+	}
+
+	inline void State::setupConsole()
+	{
+		detail::setup_console();
+	}
+
+	inline void State::unsetupConsole()
+	{
+		detail::unsetup_console();
 	}
 
 	inline void State::clear()

@@ -38,6 +38,9 @@ namespace repl
 		// load the history.
 		st.loadHistory(repl::loadHistory());
 
+		// setup the console (on windows, this changes to utf8 codepage.)
+		st.setupConsole();
+
 		// we need to put this up here, so the handler can capture it.
 		int indentLevel = 0;
 
@@ -122,6 +125,9 @@ namespace repl
 
 		// save the history.
 		repl::saveHistory(st.getHistory());
+
+		// restore the console.
+		st.unsetupConsole();
 	}
 }
 
