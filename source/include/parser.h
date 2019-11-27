@@ -14,6 +14,7 @@ namespace ast
 namespace frontend
 {
 	struct ImportThing;
+	struct FileInnards;
 	struct CollectorState;
 }
 
@@ -46,7 +47,7 @@ namespace parser
 	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t i, int* kind, CustomOperatorDecl* out);
 
 	std::vector<frontend::ImportThing> parseImports(const std::string& filename, const lexer::TokenList& tokens);
-	ParsedFile parseFile(const std::string& filename, frontend::CollectorState& cs);
+	ParsedFile parseFile(const std::string& filename, const frontend::FileInnards& file, frontend::CollectorState& cs);
 }
 
 

@@ -26,6 +26,7 @@ namespace fir
 		static ConstantValue* getZeroValue(Type* type);
 		static ConstantValue* getNull();
 
+		virtual std::string str();
 
 		protected:
 		ConstantValue(Type* type);
@@ -49,6 +50,8 @@ namespace fir
 		float getFloat()        { return this->number.toFloat(); }
 		double getDouble()      { return this->number.toDouble(); }
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n);
 
@@ -61,6 +64,8 @@ namespace fir
 
 		static ConstantBool* get(bool value);
 		bool getValue();
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantBool(bool val);
@@ -89,6 +94,8 @@ namespace fir
 		int64_t getSignedValue();
 		uint64_t getUnsignedValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantInt(Type* type, int64_t val);
 		ConstantInt(Type* type, uint64_t val);
@@ -109,6 +116,8 @@ namespace fir
 
 		double getValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantFP(Type* type, float val);
 		ConstantFP(Type* type, double val);
@@ -124,6 +133,8 @@ namespace fir
 
 		std::vector<ConstantValue*> getValues() { return this->values; }
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantArray(Type* type, const std::vector<ConstantValue*>& vals);
 
@@ -135,6 +146,8 @@ namespace fir
 		friend struct Module;
 
 		static ConstantStruct* get(StructType* st, const std::vector<ConstantValue*>& members);
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members);
@@ -150,6 +163,8 @@ namespace fir
 		ConstantInt* getIndex();
 		ConstantValue* getValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantEnumCase(EnumType* en, ConstantInt* index, ConstantValue* value);
 
@@ -164,10 +179,12 @@ namespace fir
 		static ConstantCharSlice* get(const std::string& value);
 		std::string getValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantCharSlice(const std::string& str);
 
-		std::string str;
+		std::string value;
 	};
 
 	struct ConstantTuple : ConstantValue
@@ -176,6 +193,8 @@ namespace fir
 
 		static ConstantTuple* get(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> getValues();
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantTuple(const std::vector<ConstantValue*>& mems);
@@ -195,6 +214,8 @@ namespace fir
 
 		ConstantArray* getArray() { return this->arr; }
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantDynamicArray(DynamicArrayType* type);
 
@@ -205,6 +226,23 @@ namespace fir
 		ConstantArray* arr = 0;
 	};
 
+	// this is the 'string' type!!
+	struct ConstantDynamicString : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantDynamicString* get(const std::string& s);
+		std::string getValue();
+
+		virtual std::string str() override;
+
+		protected:
+		ConstantDynamicString(const std::string& s);
+
+		std::string value;
+	};
+
+
 	struct ConstantArraySlice : ConstantValue
 	{
 		friend struct Module;
@@ -213,6 +251,8 @@ namespace fir
 
 		ConstantValue* getData() { return this->data; }
 		ConstantValue* getLength() { return this->length; }
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantArraySlice(ArraySliceType* type);
@@ -228,6 +268,8 @@ namespace fir
 		static ConstantBitcast* get(ConstantValue* v, Type* target);
 
 		ConstantValue* getValue() { return this->value; }
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantBitcast(ConstantValue* v, Type* target);
@@ -245,6 +287,8 @@ namespace fir
 
 		Module* getParentModule() { return this->parentModule; }
 
+		virtual std::string str() override;
+
 		protected:
 		GlobalValue(Module* mod, Type* type, LinkageType linkage, bool mut = false);
 
@@ -258,6 +302,8 @@ namespace fir
 		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 		ConstantValue* getInitialValue();
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantValue* initValue = 0;

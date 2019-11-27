@@ -44,10 +44,11 @@ namespace parser
 	}
 
 
-	static std::pair<std::string, std::vector<std::string>> parseModuleName(const std::string& fullpath)
+	static std::pair<std::string, std::vector<std::string>> parseModuleName(const std::string& fullname,
+		const frontend::FileInnards& fileinnards)
 	{
 		using TT = lexer::TokenType;
-		auto tokens = frontend::getFileTokens(fullpath);
+		const auto& tokens = fileinnards.tokens;
 
 		std::vector<std::string> path;
 
@@ -88,7 +89,7 @@ namespace parser
 		}
 
 		if(path.empty())
-			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullpath)) };
+			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullname)) };
 
 		return { path.back(), util::take(path, path.size() - 1) };
 	}
@@ -176,7 +177,7 @@ namespace parser
 
 				case TT::Attr_NoMangle: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(!dcast(FuncDefn, stmt) && !dcast(VarDefn, stmt))
 						error(st, "attribute '@nomangle' can only be applied on function and variable declarations");
 
@@ -199,7 +200,7 @@ namespace parser
 
 				case TT::Attr_EntryFn: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(auto fd = dcast(FuncDefn, stmt))
 						fd->attrs.set(attr::FN_ENTRYPOINT);
 
@@ -273,7 +274,7 @@ namespace parser
 					st.operatorsStillValid = false;
 					st.nativeWordSizeStillValid = false;
 
-					root->statements.push_back(parseStmt(st, /* allowExprs: */ false));
+					root->statements.push_back(parseStmt(st, /* allowExprs: */ false).val());
 				} break;
 			}
 
@@ -296,12 +297,11 @@ namespace parser
 		return root;
 	}
 
-	ParsedFile parseFile(const std::string& filename, frontend::CollectorState& cs)
+	ParsedFile parseFile(const std::string& fullname, const frontend::FileInnards& file, frontend::CollectorState& cs)
 	{
-		auto full = frontend::getFullPathOfFile(filename);
-		const TokenList& tokens = frontend::getFileTokens(full);
+		const TokenList& tokens = file.tokens;
 		auto state = State(tokens);
-		state.currentFilePath = full;
+		state.currentFilePath = fullname;
 
 		// copy this stuff over.
 		state.binaryOps = cs.binaryOps;
@@ -310,12 +310,12 @@ namespace parser
 
 		state.cState = &cs;
 
-		auto [ modname, modpath ] = parseModuleName(full);
+		auto [ modname, modpath ] = parseModuleName(fullname, file);
 		auto toplevel = parseTopLevel(state, "");
 
 
 		return ParsedFile {
-			filename,
+			fullname,
 			modname,
 			modpath,
 			toplevel,

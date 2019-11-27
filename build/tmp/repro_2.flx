@@ -1,0 +1,17 @@
+// repro_2.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+public enum Foo: i32
+{
+	case ONE    = 1
+	case TWO    = 2
+	case FOUR   = 4
+}
+
+public class Bar
+{
+	init() { }
+
+	static fn bla(x: int) -> int => x * x
+}

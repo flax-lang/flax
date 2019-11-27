@@ -34,6 +34,7 @@ namespace backend
 namespace frontend
 {
 	std::string getParameter(const std::string& arg);
+	std::string getVersion();
 
 	backend::ProgOutputMode getOutputMode();
 	backend::OptimisationLevel getOptLevel();
@@ -52,6 +53,8 @@ namespace frontend
 
 	bool getIsNoRuntimeChecks();
 	bool getIsNoRuntimeErrorStrings();
+
+	bool getIsReplMode();
 
 	std::vector<std::string> getFrameworksToLink();
 	std::vector<std::string> getFrameworkSearchPaths();
@@ -89,12 +92,25 @@ namespace frontend
 	std::pair<std::string, std::string> parseCmdLineOpts(int argc, char** argv);
 
 
+	struct FileInnards
+	{
+		lexer::TokenList tokens;
+		std::string_view fileContents;
+		util::FastInsertVector<std::string_view> lines;
+		std::vector<size_t> importIndices;
+
+		bool didLex = false;
+	};
+
+	FileInnards& getFileState(const std::string& name);
+	FileInnards lexTokensFromString(const std::string& fakename, const std::string_view& str);
 
 	std::string getPathFromFile(const std::string& path);
 	std::string getFilenameFromPath(const std::string& path);
 	std::string getFullPathOfFile(const std::string& partial);
 	std::string removeExtensionFromFilename(const std::string& name);
 
+	void cachePreExistingFilename(const std::string& name);
 	std::string getFileContents(const std::string& fullPath);
 	const std::string& getFilenameFromID(size_t fileID);
 	size_t getFileIDFromFilename(const std::string& name);

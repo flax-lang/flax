@@ -8,8 +8,6 @@
 
 #include "defs.h"
 
-namespace platform
-{
 	#define ALLOCATE_MEMORY_FUNC						"malloc"
 	#define REALLOCATE_MEMORY_FUNC						"realloc"
 	#define FREE_MEMORY_FUNC							"free"
@@ -49,22 +47,30 @@ namespace platform
 
 		#define PLATFORM_EXPORT_FUNCTION    extern "C" __declspec(dllexport)
 
-		std::wstring convertStringToWChar(const std::string& s);
-		std::string convertWCharToString(const std::wstring& s);
+		namespace platform
+		{
+			std::wstring convertStringToWChar(const std::string& s);
+			std::string convertWCharToString(const std::wstring& s);
+		}
 	#else
 		#include <unistd.h>
 		#include <sys/stat.h>
 
-		using filehandle_t = int;
+		namespace platform
+		{
+			using filehandle_t = int;
+		}
 
 		#define CRT_FDOPEN			"fdopen"
 		#define PLATFORM_NEWLINE	"\n"
 		#define PLATFORM_EXPORT_FUNCTION    extern "C" __attribute__((visibility("default")))
 	#endif
 
-	extern filehandle_t InvalidFileHandle;
-
 	#define REFCOUNT_SIZE		8
+
+namespace platform
+{
+	extern filehandle_t InvalidFileHandle;
 
 	filehandle_t openFile(const char* name, int mode, int flags);
 	void closeFile(filehandle_t fd);
@@ -76,6 +82,7 @@ namespace platform
 	bool checkFileExists(const std::string& path);
 
 	std::string_view readEntireFile(const std::string& path);
+	void cachePreExistingFile(const std::string& path, const std::string& contents);
 
 	std::string getFullPath(const std::string& partial);
 

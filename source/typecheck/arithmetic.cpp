@@ -194,6 +194,11 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 			return left;
 		}
 	}
+	else if(util::match(op, Operator::BitwiseOr, Operator::BitwiseAnd, Operator::BitwiseXor))
+	{
+		if(left == right)
+			return left;
+	}
 
 
 	// ok, check the operator map.

@@ -279,7 +279,7 @@ namespace sst
 			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
 			//* things in the global scope -- which is allowed!
 
-			if(s == tree->name)
+			if(i == 0 && s == tree->name)
 				continue;
 
 			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
@@ -406,8 +406,8 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback,
-		StateTree* tree)
+	ErrorMsg* TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn,
+		std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
@@ -451,6 +451,7 @@ namespace sst
 			return err;
 		};
 
+
 		// ok, now check only the current scope
 		auto defs = tree->getDefinitionsWithName(defn->id.name);
 
@@ -473,7 +474,7 @@ namespace sst
 					}
 				}
 
-				errs->postAndQuit();
+				return errs;
 			}
 		}
 
@@ -501,20 +502,21 @@ namespace sst
 				);
 
 				if(newgds.size() > 0)
-					makeTheError(fn, fn->id.name, fn->getKind(), newgds)->postAndQuit();
+					return makeTheError(fn, fn->id.name, fn->getKind(), newgds);
 			}
 			else
 			{
 				// assume everything conflicts, since functions are the only thing that can overload.
-				makeTheError(defn, defn->id.name, defn->getKind(),
+				return makeTheError(defn, defn->id.name, defn->getKind(),
 					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());
 					})
-				)->postAndQuit();
+				);
 			}
 		}
 
-		return false;
+		// no error.
+		return nullptr;
 	}
 
 	void TypecheckState::pushAnonymousTree()

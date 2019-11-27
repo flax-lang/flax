@@ -106,7 +106,7 @@ namespace fir
 		virtual std::string str() = 0;
 		virtual std::string encodedStr() = 0;
 		virtual bool isTypeEqual(Type* other) = 0;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) = 0;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) = 0;
 
 		Type* getPointerTo();
 		Type* getMutablePointerTo();
@@ -187,7 +187,7 @@ namespace fir
 		bool isPolyPlaceholderType();
 
 		bool containsPlaceholders();
-		std::vector<fir::PolyPlaceholderType*> getContainedPlaceholders();
+		std::vector<PolyPlaceholderType*> getContainedPlaceholders();
 
 		size_t getBitWidth();
 
@@ -307,7 +307,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~BoolType() override { }
@@ -326,7 +326,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~VoidType() override { }
@@ -345,7 +345,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~NullType() override { }
@@ -370,7 +370,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		static ConstantNumberType* get(bool neg, bool flt, size_t bits);
 
@@ -393,7 +393,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		std::string getName();
 		int getGroup();
@@ -426,7 +426,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 
 		enum class Kind
@@ -492,7 +492,7 @@ namespace fir
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~PointerType() override { }
@@ -532,7 +532,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~TupleType() override { }
@@ -555,7 +555,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		Identifier getTypeName();
 
@@ -597,7 +597,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~UnionVariantType() override { }
@@ -630,7 +630,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 
 		virtual ~RawUnionType() override { }
@@ -661,7 +661,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~TraitType() override { }
@@ -697,11 +697,12 @@ namespace fir
 		void addTraitImpl(TraitType* trt);
 		bool implementsTrait(TraitType* trt);
 		std::vector<TraitType*> getImplementedTraits();
+		const util::hash_map<std::string, size_t>& getIndexMap();
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~StructType() override { }
@@ -786,7 +787,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ClassType() override { }
@@ -817,7 +818,7 @@ namespace fir
 		util::hash_map<size_t, Function*> reverseVirtualMethodMap;
 
 		//* note: we do it this way (where we *EXCLUDE THE SELF POINTER*), because it's just easier -- to compare, and everything.
-		//* we really don't have a use for mapping a fir::Function to an index, only the other way.
+		//* we really don't have a use for mapping a Function to an index, only the other way.
 		std::map<std::pair<std::string, std::vector<Type*>>, size_t> virtualMethodMap;
 
 		ClassType* baseClass = 0;
@@ -844,16 +845,17 @@ namespace fir
 		Type* getCaseType();
 		Identifier getTypeName();
 
-		fir::ConstantValue* getNameArray();
-		fir::ConstantValue* getCaseArray();
+		ConstantValue* getNameArray();
+		ConstantValue* getCaseArray();
 
-		void setNameArray(fir::ConstantValue* arr);
-		void setCaseArray(fir::ConstantValue* arr);
+		void setCaseType(Type* t);
+		void setNameArray(ConstantValue* arr);
+		void setCaseArray(ConstantValue* arr);
 
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~EnumType() override { }
@@ -863,13 +865,12 @@ namespace fir
 		Type* caseType;
 		Identifier typeName;
 
-		fir::ConstantValue* runtimeNameArray = 0;
-		fir::ConstantValue* runtimeCasesArray = 0;
+		ConstantValue* runtimeNameArray = 0;
+		ConstantValue* runtimeCasesArray = 0;
 
 		// static funcs
 		public:
 		static EnumType* get(const Identifier& name, Type* caseType);
-		static EnumType* getEmpty();
 	};
 
 
@@ -888,7 +889,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ArrayType() override { }
@@ -915,7 +916,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~DynamicArrayType() override { }
@@ -941,10 +942,13 @@ namespace fir
 		bool isMutable();
 		bool isVariadicType();
 
+		// simplifies the mutability checking and stuff.
+		Type* getDataPointerType();
+
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~ArraySliceType() override { }
@@ -985,7 +989,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		// protected constructor
 		virtual ~FunctionType() override { }
@@ -1015,7 +1019,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 
 		// protected constructor
@@ -1035,7 +1039,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 
 		// protected constructor
@@ -1056,7 +1060,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 
 		// protected constructor
@@ -1077,7 +1081,7 @@ namespace fir
 		virtual std::string str() override;
 		virtual std::string encodedStr() override;
 		virtual bool isTypeEqual(Type* other) override;
-		virtual fir::Type* substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst) override;
+		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
 
 		size_t getTypeSizeInBits() { return this->typeSizeInBits; }
 
@@ -1101,13 +1105,13 @@ namespace fir
 	struct LocatedType
 	{
 		LocatedType() { }
-		explicit LocatedType(fir::Type* t) : type(t) { }
-		LocatedType(fir::Type* t, const Location& l) : type(t), loc(l) { }
+		explicit LocatedType(Type* t) : type(t) { }
+		LocatedType(Type* t, const Location& l) : type(t), loc(l) { }
 
-		operator fir::Type* () const { return this->type; }
-		fir::Type* operator -> () const { return this->type; }
+		operator Type* () const { return this->type; }
+		Type* operator -> () const { return this->type; }
 
-		fir::Type* type = 0;
+		Type* type = 0;
 		Location loc;
 	};
 

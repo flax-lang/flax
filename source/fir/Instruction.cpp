@@ -11,9 +11,7 @@
 
 namespace fir
 {
-	static util::MemoryPool<Value> value_pool(65536);
-
-
+	static util::MemoryPool<Value, 1 << 16> value_pool;
 	Instruction::Instruction(OpKind kind, bool sideeff, Type* out, const std::vector<Value*>& vals)
 		: Instruction(kind, sideeff, out, vals, Value::Kind::prvalue) { }
 
@@ -223,8 +221,8 @@ namespace fir
 				}
 				else if(ConstantArraySlice* cas = dcast(ConstantArraySlice, op))
 				{
-					ops += "(const slice %" + std::to_string(op->id) + ", %" + std::to_string(cas->getData()->id) + ", %"
-						+ std::to_string(cas->getLength()->id) + " :: " + op->getType()->str();
+					ops += "(const slice %" + std::to_string(op->id) + ": ptr: %" + std::to_string(cas->getData()->id) + ", len: %"
+						+ std::to_string(cas->getLength()->id) + ") :: " + op->getType()->str();
 				}
 				else if(dcast(ConstantValue, op))
 				{

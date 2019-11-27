@@ -290,7 +290,7 @@ namespace interp
 			auto ptr = fir::ConstantBitcast::get(fir::ConstantInt::getUNative(reinterpret_cast<uintptr_t>(str)), fir::Type::getInt8Ptr());
 			auto len = fir::ConstantInt::getNative(cs->getValue().size());
 
-			auto bytecount = getSizeOfType(ptr->getType()) + getSizeOfType(len->getType());
+			auto bytecount = getSizeOfType(cs->getType());
 
 			auto ret = constructStructThingy(cs, bytecount, { ptr, len });
 
@@ -305,23 +305,21 @@ namespace interp
 		}
 		else if(auto ca = dcast(fir::ConstantArray, c))
 		{
-			auto bytecount = ca->getValues().size() * getSizeOfType(ca->getType()->getArrayElementType());
+			auto bytecount = getSizeOfType(ca->getType());
 
 			auto ret = constructStructThingy(ca, bytecount, ca->getValues());
 			return (cachedConstants[c] = ret);
 		}
 		else if(auto ct = dcast(fir::ConstantTuple, c))
 		{
-			size_t bytecount = 0;
-			for(auto t : ct->getValues())
-				bytecount += getSizeOfType(t->getType());
+			size_t bytecount = getSizeOfType(ct->getType());
 
 			auto ret = constructStructThingy(ct, bytecount, ct->getValues());
 			return (cachedConstants[c] = ret);
 		}
 		else if(auto cec = dcast(fir::ConstantEnumCase, c))
 		{
-			auto bytecount = getSizeOfType(cec->getIndex()->getType()) + getSizeOfType(cec->getValue()->getType());
+			auto bytecount = getSizeOfType(cec->getType());
 
 			auto ret = constructStructThingy(cec, bytecount, { cec->getIndex(), cec->getValue() });
 			return (cachedConstants[c] = ret);
@@ -331,8 +329,22 @@ namespace interp
 			auto ptr = cas->getData();
 			auto len = cas->getLength();
 
-			auto bytecount = getSizeOfType(ptr->getType()) + getSizeOfType(len->getType());
+			auto bytecount = getSizeOfType(cas->getType());
 			auto ret = constructStructThingy(cas, bytecount, { ptr, len });
+
+			return (cachedConstants[c] = ret);
+		}
+		else if(auto cds = dcast(fir::ConstantDynamicString, c))
+		{
+			auto str = makeGlobalString(is, cds->getValue());
+			auto ptr = fir::ConstantBitcast::get(fir::ConstantInt::getUNative(reinterpret_cast<uintptr_t>(str)), fir::Type::getInt8Ptr());
+			auto len = fir::ConstantInt::getNative(cds->getValue().size());
+
+			auto bytecount = getSizeOfType(cds->getType());
+
+			// add -1 for capacity and 0 for refcountptr.
+			auto ret = constructStructThingy(cds, bytecount, { ptr, len,
+				fir::ConstantInt::getNative(-1), fir::ConstantInt::getNative(0) });
 
 			return (cachedConstants[c] = ret);
 		}
@@ -427,12 +439,11 @@ namespace interp
 
 	InterpState::~InterpState()
 	{
-		for(void* p : this->globalAllocs)
-			delete[] p;
 	}
 
-	void InterpState::initialise()
+	void InterpState::initialise(bool runGlobalInit)
 	{
+		iceAssert(this->module);
 		for(const auto& [ str, glob ] : this->module->_getGlobalStrings())
 		{
 			auto val = makeValue(glob);
@@ -505,6 +516,16 @@ namespace interp
 			}
 		}
 		#endif
+
+		// printf("module:\n%s\n", this->module->print().c_str());
+
+		// truth be told it'll be more efficient to only get the function after checking runGlobalInit, but... meh.
+		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
+			runGlobalInit && gif)
+		{
+			auto cgif = this->compileFunction(gif);
+			this->runFunction(cgif, { });
+		}
 	}
 
 
@@ -515,18 +536,32 @@ namespace interp
 	{
 		for(const auto [ id, glob ] : this->module->_getGlobals())
 		{
+			// printf("global: %s\n", id.str().c_str());
+
 			// by right we are not supposed to add (or even change the FIR module at all) between calling
 			// initialise() and finalise(), but be defensive a bit.
 			if(auto it = this->globals.find(glob); it != this->globals.end())
 			{
+				// printf("found: %s\n", id.str().c_str());
+
 				// only write-back if we modified the global.
 				if(it->second.second)
 				{
 					auto val = loadFromPtr(it->second.first, it->first->getType());
-					glob->setInitialValue(this->unwrapInterpValueIntoConstant(val));
+					auto x = this->unwrapInterpValueIntoConstant(val);
+
+					// printf("write-back: %s = %s\n", id.name.c_str(), x->str().c_str());
+					glob->setInitialValue(x);
+
+					it->second.second = false;
 				}
 			}
 		}
+
+		for(void* p : this->globalAllocs)
+			delete[] p;
+
+		this->globalAllocs.clear();
 	}
 
 
@@ -573,7 +608,20 @@ namespace interp
 
 
 
+	static size_t getOffsetOfTypeInTypeList(const std::vector<fir::Type*>& elms, size_t idx)
+	{
+		size_t ofs = 0;
+		for(uint64_t i = 0; i < idx; i++)
+		{
+			auto aln = getAlignmentOfType(elms[i]);
+			if(ofs % aln > 0)
+				ofs += (aln - (ofs % aln));
 
+			ofs += getSizeOfType(elms[i]);
+		}
+
+		return ofs;
+	}
 
 	static std::vector<fir::Type*> getTypeListOfType(fir::Type* ty)
 	{
@@ -662,11 +710,9 @@ namespace interp
 		else
 		{
 			auto typelist = getTypeListOfType(str.type);
-
 			iceAssert(idx < typelist.size());
 
-			for(size_t i = 0; i < idx; i++)
-				ofs += getSizeOfType(typelist[i]);
+			ofs = getOffsetOfTypeInTypeList(typelist, idx);
 		}
 
 		uintptr_t dst = 0;
@@ -706,12 +752,9 @@ namespace interp
 		else
 		{
 			auto typelist = getTypeListOfType(str.type);
-
 			iceAssert(idx < typelist.size());
 
-			for(size_t i = 0; i < idx; i++)
-				ofs += getSizeOfType(typelist[i]);
-
+			ofs = getOffsetOfTypeInTypeList(typelist, idx);
 			elm = typelist[idx];
 		}
 
@@ -1198,7 +1241,7 @@ namespace interp
 			}
 		}
 
-		error("interp: invaild state");
+		error("interp: invalid state");
 	}
 
 
@@ -1292,10 +1335,7 @@ namespace interp
 
 		std::vector<fir::Type*> elms = getTypeListOfType(strty);
 
-		size_t ofs = 0;
-		for(uint64_t i = 0; i < idx; i++)
-			ofs += getSizeOfType(elms[i]);
-
+		size_t ofs = getOffsetOfTypeInTypeList(elms, idx);
 		uintptr_t src = getActualValue<uintptr_t>(str);
 		src += ofs;
 
@@ -2534,6 +2574,28 @@ namespace interp
 
 		#define gav getActualValue
 
+		auto extractOneValue = [this](const interp::Value& v, size_t idx, fir::Type* ty) -> interp::Value {
+			auto tmp = fir::ConstantValue::getZeroValue(ty);
+			auto x = doExtractValue(this, tmp, v, idx);
+			delete tmp;
+
+			return x;
+		};
+
+		auto extractValueList = [this, extractOneValue](const interp::Value& v, const std::vector<fir::Type*>& tys)
+			-> std::vector<fir::ConstantValue*>
+		{
+			std::vector<fir::ConstantValue*> elms;
+
+			for(size_t i = 0; i < tys.size(); i++)
+			{
+				auto x = extractOneValue(v, i, tys[i]);
+				elms.push_back(this->unwrapInterpValueIntoConstant(x));
+			}
+
+			return elms;
+		};
+
 		if(ty->isPrimitiveType() || ty->isBoolType())
 		{
 			if(ty == fir::Type::getBool())          return fir::ConstantBool::get(gav<bool>(val));
@@ -2548,10 +2610,62 @@ namespace interp
 			else if(ty == fir::Type::getFloat32())  return fir::ConstantFP::get(ty, gav<float>(val));
 			else if(ty == fir::Type::getFloat64())  return fir::ConstantFP::get(ty, gav<double>(val));
 		}
+		else if(ty->isTupleType())
+		{
+			return fir::ConstantTuple::get(extractValueList(val, ty->toTupleType()->getElements()));
+		}
+		else if(ty->isArrayType())
+		{
+			return fir::ConstantArray::get(ty, extractValueList(val,
+				std::vector<fir::Type*>(ty->toArrayType()->getArraySize(), ty->getArrayElementType())));
+		}
+		else if(ty->isCharSliceType())
+		{
+			// do a bit of stuff -- extract the pointer, then the length.
+			char* ptr = gav<char*>(extractOneValue(val, SLICE_DATA_INDEX, ty->toArraySliceType()->getDataPointerType()));
+			int64_t len = gav<int64_t>(extractOneValue(val, SLICE_LENGTH_INDEX, fir::Type::getInt64()));
+
+			return fir::ConstantCharSlice::get(std::string(ptr, len));
+		}
+		else if(ty->isStringType())
+		{
+			char* ptr = gav<char*>(extractOneValue(val, SAA_DATA_INDEX, fir::Type::getMutInt8Ptr()));
+			int64_t len = gav<int64_t>(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
+
+			return fir::ConstantDynamicString::get(std::string(ptr, len));
+		}
+		else if(ty->isArraySliceType())
+		{
+			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SLICE_DATA_INDEX,
+				ty->toArraySliceType()->getDataPointerType()));
+
+			auto len = this->unwrapInterpValueIntoConstant(extractOneValue(val, SLICE_LENGTH_INDEX,
+				fir::Type::getInt64()));
+
+			return fir::ConstantArraySlice::get(ty->toArraySliceType(), ptr, len);
+		}
+		else if(ty->isDynamicArrayType())
+		{
+			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_DATA_INDEX,
+				ty->getArrayElementType()->getMutablePointerTo()));
+
+			auto len = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
+			auto cap = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_CAPACITY_INDEX, fir::Type::getInt64()));
+
+			return fir::ConstantDynamicArray::get(ty->toDynamicArrayType(), ptr, len, cap);
+		}
+		else if(ty->isStructType())
+		{
+			auto sty = ty->toStructType();
+			std::vector<fir::ConstantValue*> vals = extractValueList(val, sty->getElements());
+
+			return fir::ConstantStruct::get(sty, vals);
+		}
 
 		#undef gav
 
-		error("interp: cannot unwrap type '%s'", ty);
+		warn("interp: cannot unwrap type '%s'", ty);
+		return fir::ConstantValue::getZeroValue(ty);
 	}
 }
 }

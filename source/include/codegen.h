@@ -57,6 +57,7 @@ namespace cgn
 		std::vector<fir::Value*> raiiValues;
 	};
 
+
 	struct CodegenState
 	{
 		enum class OperatorFn
@@ -80,8 +81,6 @@ namespace cgn
 		util::hash_map<sst::Defn*, CGResult> valueMap;
 		std::vector<fir::Value*> methodSelfStack;
 
-		fir::Function* globalInitFunc = 0;
-		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
 		util::hash_map<fir::Function*, fir::Type*> methodList;
 
@@ -150,11 +149,25 @@ namespace cgn
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);
 
-		void addGlobalInitialiser(fir::Value* storage, fir::Value* value);
 
-		fir::IRBlock* enterGlobalInitFunction();
+		bool isInsideGlobalInitFunc = false;
+
+		// this one holds the finalised global initialiser function -- this one is supposed to
+		// call all the pieces; we always regenerate this function when we call finishGlobalInitFunction().
+		fir::Function* finalisedGlobalInitFunction = 0;
+
+		// this is getting a bit complicated. this holds each "piece" of the global init function,
+		// where each piece probably corresponds to the initialisation of a single global value.
+		std::vector<std::pair<fir::GlobalValue*, fir::Function*>> globalInitPieces;
+
+		bool isWithinGlobalInitFunction();
+		fir::IRBlock* enterGlobalInitFunction(fir::GlobalValue* val);
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();
+
+
+
+
 
 		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 

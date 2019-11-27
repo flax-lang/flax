@@ -102,6 +102,7 @@ namespace ast
 		// the real, original scope of the type.
 		//? we set this in typecheck/toplevel.cpp when generating the declarations.
 		//? for methods & nested types, we set them in structs.cpp/classes.cpp
+		//? in repl mode, we set this manually.
 		std::vector<std::string> realScope;
 	};
 

@@ -10,9 +10,11 @@
 namespace parser
 {
 	using TT = lexer::TokenType;
-	ast::Stmt* parseIfStmt(State& st)
+	using namespace ast;
+
+	PResult<Stmt> parseIfStmt(State& st)
 	{
-		using Case = ast::IfStmt::Case;
+		using Case = IfStmt::Case;
 
 		auto tok_if = st.eat();
 		iceAssert(tok_if == TT::If || tok_if == TT::Directive_If);
@@ -24,18 +26,13 @@ namespace parser
 		// braces are compulsory
 		// parentheses around the condition are not
 
-		ast::Block* elseCase = 0;
+		Block* elseCase = 0;
 		std::vector<Case> cases;
 		cases.push_back(Case());
 
 
 		// first one
 		{
-			bool hadParen = false;
-
-			if(st.front() == TT::LParen)
-				hadParen = true, st.eat();
-
 			// ok -- the first one we must do manually.
 			// probably not, but i'm lazy.
 			while(st.front() == TT::Val || st.front() == TT::Var)
@@ -51,15 +48,12 @@ namespace parser
 
 			// ok, we finished doing the variables.
 			cases.back().cond = parseExpr(st);
-			if(hadParen)
-			{
-				if(st.front() != TT::RParen)
-					expected(st, "closing parenthesis ')'", st.front().str());
 
-				st.eat();
-			}
+			if(auto x = parseBracedBlock(st); x.isError())
+				return PResult<Stmt>::copyError(x);
 
-			cases.back().body = parseBracedBlock(st);
+			else
+				cases.back().body = x.val();
 		}
 
 
@@ -67,7 +61,6 @@ namespace parser
 		while(st.frontAfterWS() == TT::Else)
 		{
 			st.eat();
-			bool paren = false;
 
 			if(st.front() == TT::If)
 			{
@@ -75,8 +68,6 @@ namespace parser
 
 				// ok, it's an else-if.
 				st.eat();
-				if(st.front() == TT::LParen)
-					paren = true, st.eat();
 
 				while(st.front() == TT::Val || st.front() == TT::Var)
 				{
@@ -90,21 +81,19 @@ namespace parser
 				}
 
 				c.cond = parseExpr(st);
-				if(paren)
-				{
-					if(st.front() != TT::RParen)
-						expected(st, "closing parenthesis ')'", st.front().str());
 
-					st.eat();
-				}
+				if(auto x = parseBracedBlock(st); x.isError())
+					return PResult<Stmt>::copyError(x);
 
-				c.body = parseBracedBlock(st);
+				else
+					c.body = x.val();
+
 				cases.push_back(c);
 			}
 			else if(st.frontAfterWS() == TT::LBrace || st.frontAfterWS() == TT::FatRightArrow)
 			{
 				// ok, parse an else
-				elseCase = parseBracedBlock(st);
+				elseCase = parseBracedBlock(st).val();
 				break;
 			}
 			else
@@ -117,7 +106,7 @@ namespace parser
 		if(isStaticIf)
 		{
 			// compile-time if
-			auto ret = util::pool<ast::IfDirective>(tok_if.loc);
+			auto ret = util::pool<IfDirective>(tok_if.loc);
 			ret->cases = cases;
 			ret->elseCase = elseCase;
 
@@ -132,7 +121,7 @@ namespace parser
 		else
 		{
 			// normal runtime if
-			auto ret = util::pool<ast::IfStmt>(tok_if.loc);
+			auto ret = util::pool<IfStmt>(tok_if.loc);
 			ret->cases = cases;
 			ret->elseCase = elseCase;
 
@@ -140,11 +129,11 @@ namespace parser
 		}
 	}
 
-	ast::ReturnStmt* parseReturn(State& st)
+	ReturnStmt* parseReturn(State& st)
 	{
 		iceAssert(st.front() == TT::Return);
 
-		auto ret = util::pool<ast::ReturnStmt>(st.loc());
+		auto ret = util::pool<ReturnStmt>(st.loc());
 		st.eat();
 
 		// check what's the next thing. problem: return has an *optional* value
@@ -166,7 +155,7 @@ namespace parser
 
 
 
-	ast::Stmt* parseForLoop(State& st)
+	Stmt* parseForLoop(State& st)
 	{
 		iceAssert(st.front() == TT::For);
 		st.eat();
@@ -174,7 +163,7 @@ namespace parser
 		if(!util::match(st.front(), TT::Identifier, TT::LParen))
 			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
-		auto ret = util::pool<ast::ForeachLoop>(st.ploc());
+		auto ret = util::pool<ForeachLoop>(st.ploc());
 
 		if(st.front() == TT::LParen)
 		{
@@ -215,13 +204,13 @@ namespace parser
 		ret->array = parseExpr(st);
 
 		st.skipWS();
-		ret->body = parseBracedBlock(st);
+		ret->body = parseBracedBlock(st).val();
 		return ret;
 	}
 
 
 
-	ast::WhileLoop* parseWhileLoop(State& st)
+	PResult<WhileLoop> parseWhileLoop(State& st)
 	{
 		// 1. do { }			-- body = block, cond = 0, doVariant = true
 		// 2. while x { }		-- body = block, cond = x, doVariant = false
@@ -229,8 +218,8 @@ namespace parser
 
 		auto loc = st.loc();
 
-		ast::Expr* cond = 0;
-		ast::Block* body = 0;
+		Expr* cond = 0;
+		Block* body = 0;
 		bool isdo = false;
 
 		iceAssert(st.front() == TT::While || st.front() == TT::Do);
@@ -241,7 +230,11 @@ namespace parser
 			cond = parseExpr(st);
 			st.skipWS();
 
-			body = parseBracedBlock(st);
+			auto res = parseBracedBlock(st);
+			if(res.isError())
+				return PResult<WhileLoop>::copyError(res);
+
+			body = res.val();
 		}
 		else
 		{
@@ -249,7 +242,11 @@ namespace parser
 
 			st.eat();
 
-			body = parseBracedBlock(st);
+			auto res = parseBracedBlock(st);
+			if(res.isError())
+				return PResult<WhileLoop>::copyError(res);
+
+			body = res.val();
 
 			if(st.front() == TT::While)
 			{
@@ -263,7 +260,7 @@ namespace parser
 			}
 		}
 
-		auto ret = util::pool<ast::WhileLoop>(loc);
+		auto ret = util::pool<WhileLoop>(loc);
 		ret->isDoVariant = isdo;
 		ret->body = body;
 		ret->cond = cond;
@@ -272,16 +269,16 @@ namespace parser
 	}
 
 
-	ast::Stmt* parseBreak(State& st)
+	Stmt* parseBreak(State& st)
 	{
 		iceAssert(st.front() == TT::Break);
-		return util::pool<ast::BreakStmt>(st.eat().loc);
+		return util::pool<BreakStmt>(st.eat().loc);
 	}
 
-	ast::Stmt* parseContinue(State& st)
+	Stmt* parseContinue(State& st)
 	{
 		iceAssert(st.front() == TT::Continue);
-		return util::pool<ast::ContinueStmt>(st.eat().loc);
+		return util::pool<ContinueStmt>(st.eat().loc);
 	}
 }
 

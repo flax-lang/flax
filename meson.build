@@ -1,3 +1,5 @@
+# meson.build
+
 project('flax', version: '0.41.7-pre', default_options: [ 'warning_level=3' ])
 
 add_languages(['c', 'cpp'])
@@ -39,7 +41,7 @@ if the_compiler.get_id() == 'msvc'
 	add_project_link_arguments('/machine:X64', language:  ['c', 'cpp'])
 
 	add_project_link_arguments('/opt:noref', language:  ['c', 'cpp'])
-	add_project_link_arguments('/incremental', language:  ['c', 'cpp'])
+	# add_project_link_arguments('/incremental', language:  ['c', 'cpp'])
 
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language:  ['c', 'cpp'])
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language:  ['c', 'cpp'])
@@ -186,6 +188,11 @@ source_files = files([
 	'source/misc/identifier.cpp',
 	'source/misc/destructors.cpp',
 
+	'source/repl/driver.cpp',
+	'source/repl/execute.cpp',
+	'source/repl/history.cpp',
+	'source/repl/commands.cpp',
+
 	'source/frontend/pts.cpp',
 	'source/frontend/file.cpp',
 	'source/frontend/lexer.cpp',
@@ -197,6 +204,7 @@ source_files = files([
 
 	'source/platform/compiler.cpp',
 	'source/platform/platform.cpp',
+	'source/platform/backtrace.cpp',
 	'source/platform/msvcfinder.cpp',
 
 	'source/frontend/parser/misc.cpp',

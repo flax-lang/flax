@@ -75,7 +75,7 @@ namespace frontend
 			}
 
 
-			state->parsed[file] = parser::parseFile(file, *state);
+			state->parsed[file] = parser::parseFile(file, frontend::getFileState(file), *state);
 		}
 	}
 

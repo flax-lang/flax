@@ -78,8 +78,11 @@ namespace parser
 
 		void skipWS()
 		{
-			while(this->tokens[this->index] == lexer::TokenType::NewLine || this->tokens[this->index] == lexer::TokenType::Comment)
+			while(this->index < this->tokens.size() && (this->tokens[this->index] == lexer::TokenType::NewLine
+				|| this->tokens[this->index] == lexer::TokenType::Comment))
+			{
 				this->index++;
+			}
 		}
 
 		const lexer::Token& front() const
@@ -138,7 +141,7 @@ namespace parser
 
 		bool hasTokens() const
 		{
-			return this->index < this->tokens.size();
+			return this->index < this->tokens.size() && this->tokens[this->index] != lexer::TokenType::EndOfFile;
 		}
 
 		const lexer::TokenList& getTokenList()
@@ -250,13 +253,185 @@ namespace parser
 			const lexer::TokenList& tokens;
 	};
 
+
+	// like TCResult i guess.
+	template <typename T>
+	struct PResult
+	{
+		PResult(T* val)
+		{
+			this->state = 0;
+			this->value = val;
+		}
+
+		explicit PResult(ErrorMsg* err, bool needsmore = false)
+		{
+			this->error = err;
+			this->state = (needsmore ? 2 : 1);
+		}
+
+	private:
+		explicit PResult(ErrorMsg* err, int stt)
+		{
+			this->error = err;
+			this->state = stt;
+		}
+	public:
+
+
+		PResult(const PResult& r)
+		{
+			this->state = r.state;
+			if(this->state == 0)    this->value = r.value;
+			else                    this->error = r.error;
+		}
+
+		PResult(PResult&& r) noexcept
+		{
+			this->state = r.state;
+			r.state = -1;
+
+			if(this->state == 0)    this->value = std::move(r.value);
+			else                    this->error = std::move(r.error);
+		}
+
+		PResult& operator = (const PResult& r)
+		{
+			PResult tmp(r);
+			*this = std::move(tmp);
+			return *this;
+		}
+
+		PResult& operator = (PResult&& r) noexcept
+		{
+			if(&r != this)
+			{
+				this->state = r.state;
+				r.state = -1;
+
+				if(this->state == 0)    this->value = std::move(r.value);
+				else                    this->error = std::move(r.error);
+			}
+
+			return *this;
+		}
+
+		// implicit conversion operator.
+		template <typename A, typename X = std::enable_if_t<std::is_base_of_v<typename A::value_t, T>>>
+		operator A() const
+		{
+			if(this->state == 0)    return PResult<typename A::value_t>(this->value);
+			else                    return PResult<typename A::value_t>(this->error, this->state);
+		}
+
+
+
+
+		template <typename F>
+		PResult<T> mutate(const F& fn)
+		{
+			if(this->state == 0) fn(this->value);
+			return *this;
+		}
+
+		template <typename F, typename U = typename std::remove_pointer_t<std::result_of_t<F(T*)>>>
+		PResult<U> map(const F& fn) const
+		{
+			if(this->state > 0) return PResult<U>(this->error, this->state);
+			else                return PResult<U>(fn(this->value));
+		}
+
+		template <typename F, typename U = typename std::result_of_t<F(T*)>::value_t>
+		PResult<U> flatmap(const F& fn) const
+		{
+			if(this->state > 0) return PResult<U>(this->error, this->state);
+			else                return fn(this->value);
+		}
+
+		ErrorMsg* err() const
+		{
+			if(this->state < 1) compiler_crash("not error");
+			else                return this->error;
+		}
+
+		T* val() const
+		{
+			if(this->state != 0)    this->error->postAndQuit();
+			else                    return this->value;
+		}
+
+		bool isError() const
+		{
+			return this->state > 0;
+		}
+
+		bool hasValue() const
+		{
+			return this->state == 0;
+		}
+
+		bool needsMoreTokens() const
+		{
+			return this->state == 2;
+		}
+
+		static PResult<T> insufficientTokensError()
+		{
+			return PResult<T>(BareError::make("unexpected end of input"), /* needmore: */ true);
+		}
+
+		template <typename U>
+		static PResult<T> copyError(const PResult<U>& other)
+		{
+			// only for error.
+			if(other.state < 1)
+				compiler_crash("not error");
+
+			return PResult<T>(other.err(), other.state);
+		}
+
+		template <typename U>
+		friend struct PResult;
+
+		using value_t = T;
+
+	private:
+		// 0 = result, 1 = error, 2 = needsmoretokens
+		int state;
+
+		union {
+			T* value;
+			ErrorMsg* error;
+		};
+	};
+
+	// Expected $, found '$' instead
+	[[noreturn]] inline void expected(const Location& loc, std::string a, std::string b)
+	{
+		error(loc, "expected %s, found '%s' instead", a, b);
+	}
+
+	// Expected $ after $, found '$' instead
+	[[noreturn]] inline void expectedAfter(const Location& loc, std::string a, std::string b, std::string c)
+	{
+		error(loc, "expected %s after %s, found '%s' instead", a, b, c);
+	}
+
+	// Unexpected $
+	[[noreturn]] inline void unexpected(const Location& loc, std::string a)
+	{
+		error(loc, "unexpected %s", a);
+	}
+
+
+
 	std::string parseStringEscapes(const Location& loc, const std::string& str);
 
 	std::string parseOperatorTokens(State& st);
 
 	pts::Type* parseType(State& st);
 	ast::Expr* parseExpr(State& st);
-	ast::Stmt* parseStmt(State& st, bool allowExprs = true);
+	PResult<ast::Stmt> parseStmt(State& st, bool allowExprs = true);
 
 
 	ast::DeferredStmt* parseDefer(State& st);
@@ -264,8 +439,8 @@ namespace parser
 	ast::Stmt* parseVariable(State& st);
 	ast::ReturnStmt* parseReturn(State& st);
 	ast::ImportStmt* parseImport(State& st);
-	ast::FuncDefn* parseFunction(State& st);
-	ast::Stmt* parseStmtWithAccessSpec(State& st);
+	PResult<ast::FuncDefn> parseFunction(State& st);
+	PResult<ast::Stmt> parseStmtWithAccessSpec(State& st);
 	ast::ForeignFuncDefn* parseForeignFunction(State& st);
 	ast::OperatorOverloadDefn* parseOperatorOverload(State& st);
 
@@ -286,7 +461,7 @@ namespace parser
 	ast::ClassDefn* parseClass(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
 
-	ast::StructDefn* parseStruct(State& st, bool nameless);
+	PResult<ast::StructDefn> parseStruct(State& st, bool nameless);
 	ast::UnionDefn* parseUnion(State& st, bool israw, bool nameless);
 
 	ast::Expr* parseDollarExpr(State& st);
@@ -298,15 +473,15 @@ namespace parser
 	ast::DeallocOp* parseDealloc(State& st);
 	ast::SizeofOp* parseSizeof(State& st);
 
-	ast::Block* parseBracedBlock(State& st);
+	PResult<ast::Block> parseBracedBlock(State& st);
 
 	ast::LitNumber* parseNumber(State& st);
 	ast::LitString* parseString(State& st, bool israw);
 	ast::LitArray* parseArray(State& st, bool israw);
 
 	ast::Stmt* parseForLoop(State& st);
-	ast::Stmt* parseIfStmt(State& st);
-	ast::WhileLoop* parseWhileLoop(State& st);
+	PResult<ast::Stmt> parseIfStmt(State& st);
+	PResult<ast::WhileLoop> parseWhileLoop(State& st);
 
 	ast::TopLevelBlock* parseTopLevel(State& st, const std::string& name);
 

@@ -43,9 +43,12 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
-	defn->type = fir::EnumType::getEmpty();
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	// set it to void first, because we want to defer typechecking the member type.
+	defn->type = fir::EnumType::get(defn->id, fir::Type::getVoid());
+
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 
@@ -73,7 +76,9 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
 	else					defn->memberType = fir::Type::getNativeWord();
 
-	auto ety = fir::EnumType::get(defn->id, defn->memberType);
+	auto ety = defn->type->toEnumType();
+	iceAssert(ety);
+	ety->setCaseType(defn->memberType);
 
 	size_t index = 0;
 	for(auto cs : this->cases)

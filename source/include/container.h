@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include <vector>
 #include <utility>
@@ -16,19 +17,16 @@ namespace util
 {
 	// only allows for insertions.
 	// hopefully faster than FastVector.
-	template <typename ValueType>
+	template <typename ValueType, size_t ChunkSize = 256>
 	struct FastInsertVector
 	{
-		FastInsertVector(size_t cs = 256)
+		FastInsertVector()
 		{
 			this->length = 0;
-			this->ChunkSize = cs;
 		}
 
 		FastInsertVector(const FastInsertVector& other)
 		{
-			this->ChunkSize = other.ChunkSize;
-
 			for(auto c : other.chunks)
 			{
 				auto nc = static_cast<ValueType*>(mem::allocate_memory(sizeof(ValueType) * ChunkSize));
@@ -50,7 +48,6 @@ namespace util
 		{
 			// move.
 			this->chunks = std::move(other.chunks);
-			this->ChunkSize = other.ChunkSize;
 			this->length = other.length;
 
 			other.length = 0;
@@ -65,7 +62,6 @@ namespace util
 
 				// move.
 				this->chunks = std::move(other.chunks);
-				this->ChunkSize = other.ChunkSize;
 				this->length = other.length;
 
 				other.length = 0;
@@ -85,7 +81,7 @@ namespace util
 			size_t cind = index / ChunkSize;
 			size_t offs = index % ChunkSize;
 
-			iceAssert(cind < this->chunks.size());
+			assert(cind < this->chunks.size());
 			return *(static_cast<ValueType*>(this->chunks[cind] + offs));
 		}
 
@@ -130,8 +126,6 @@ namespace util
 		// possibly use a faster implementation?? since we're just storing pointers idk if there's a point.
 		size_t length;
 		std::vector<ValueType*> chunks;
-
-		size_t ChunkSize;
 	};
 
 	struct MemoryPool_base
@@ -140,10 +134,10 @@ namespace util
 		virtual ~MemoryPool_base() { }
 	};
 
-	template <typename ValueType>
+	template <typename ValueType, size_t ChunkSize = 256>
 	struct MemoryPool : MemoryPool_base
 	{
-		MemoryPool(size_t chunkSize) : storage(chunkSize) { }
+		MemoryPool() { }
 		~MemoryPool() { this->storage.clear(); }
 
 		MemoryPool(const MemoryPool& other)
@@ -187,7 +181,7 @@ namespace util
 		}
 
 		private:
-		FastInsertVector<ValueType> storage;
+		FastInsertVector<ValueType, ChunkSize> storage;
 	};
 }
 

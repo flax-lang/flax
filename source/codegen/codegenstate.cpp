@@ -333,56 +333,77 @@ namespace cgn
 
 
 
-	void CodegenState::addGlobalInitialiser(fir::Value* storage, fir::Value* value)
-	{
-		if(!storage->getType()->isPointerType())
-		{
-			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType());
-		}
-		else if(storage->getType()->getPointerElementType() != value->getType())
-		{
-			error(this->loc(), "cannot store value of type '%s' into storage of type '%s'", value->getType(),
-				storage->getType());
-		}
 
-		// ok, then
-		this->globalInits.push_back({ value, storage });
+	bool CodegenState::isWithinGlobalInitFunction()
+	{
+		return this->isInsideGlobalInitFunc;
 	}
 
-
-	fir::IRBlock* CodegenState::enterGlobalInitFunction()
+	fir::IRBlock* CodegenState::enterGlobalInitFunction(fir::GlobalValue* val)
 	{
+		if(this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (entering when already inside)");
+
 		auto ret = this->irb.getCurrentBlock();
 
-		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
+			fir::Function* func = this->module->getOrCreateFunction(
+				util::obfuscateIdentifier(zpr::sprint("%s_piece_%d", strs::names::GLOBAL_INIT_FUNCTION, this->globalInitPieces.size())),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
-			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
-			this->irb.setCurrentBlock(entry);
+			auto b = this->irb.addNewBlockInFunction("b", func);
+			this->irb.setCurrentBlock(b);
 
-			this->globalInitFunc = func;
+			this->globalInitPieces.push_back(std::make_pair(val, func));
 		}
 
-		iceAssert(this->globalInitFunc);
-		this->irb.setCurrentBlock(this->globalInitFunc->getBlockList().back());
-
+		this->isInsideGlobalInitFunc = true;
 		return ret;
 	}
 
 	void CodegenState::leaveGlobalInitFunction(fir::IRBlock* restore)
 	{
+		if(!this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (leaving when not inside)");
+
+		// terminate the current function.
+		this->irb.ReturnVoid();
+
 		this->irb.setCurrentBlock(restore);
+		this->isInsideGlobalInitFunc = false;
 	}
 
 	void CodegenState::finishGlobalInitFunction()
 	{
-		auto r = this->enterGlobalInitFunction();
+		if(this->finalisedGlobalInitFunction != 0)
+		{
+			// clear all the blocks from it.
+			for(auto b : this->finalisedGlobalInitFunction->getBlockList())
+				delete b;
 
+			this->finalisedGlobalInitFunction->getBlockList().clear();
+		}
+		else
+		{
+			this->finalisedGlobalInitFunction = this->module->getOrCreateFunction(
+				util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
+		}
+
+		auto restore = this->irb.getCurrentBlock();
+
+		// ok, now we can do some stuff.
+		// what we wanna do is just call all the "piece" global init functions that we made with enter/leave.
+		// but, this function has no blocks (either cos it's new, or we deleted them all). so, make one.
+		auto blk = this->irb.addNewBlockInFunction("entry", this->finalisedGlobalInitFunction);
+		this->irb.setCurrentBlock(blk);
+
+		for(auto piece : this->globalInitPieces)
+			this->irb.Call(piece.second);
+
+		// ok now return
 		this->irb.ReturnVoid();
-
-		this->leaveGlobalInitFunction(r);
+		this->irb.setCurrentBlock(restore);
 	}
 }
 

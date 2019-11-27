@@ -130,7 +130,7 @@ namespace sst
 							{
 								// probably a class or something
 								conflict:
-								SimpleError::make(def->loc, "duplicate definition of '%s'", def->id.name)
+								SimpleError::make(def->loc, "duplicate definition of %s '%s'", def->readableName, def->id.name)
 									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
 									->postAndQuit();
 							}
@@ -374,12 +374,20 @@ namespace sst
 		if(addPreludeDefinitions)
 			generatePreludeDefinitions(fs);
 
-		auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
-		iceAssert(tns);
+		// handle exception here:
+		try {
+			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
+			iceAssert(tns);
 
-		tns->name = file.moduleName;
+			tns->name = file.moduleName;
 
-		fs->dtree->topLevel = tns;
+			fs->dtree->topLevel = tns;
+		}
+		catch (ErrorException& ee)
+		{
+			ee.err->postAndQuit();
+		}
+
 		return fs->dtree;
 	}
 }
@@ -463,7 +471,8 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		td->visibility = this->visibility;
 
-		fs->checkForShadowingOrConflictingDefinition(td, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; }, tree->parent);
+		if(auto err = fs->checkForShadowingOrConflictingDefinition(td, [](auto, auto) -> bool { return true; }, tree->parent))
+			return TCResult(err);
 
 		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
 	}

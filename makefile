@@ -23,7 +23,7 @@ CXX				?= "clang++"
 LLVM_CONFIG		?= "llvm-config"
 
 
-CXXSRC			:= $(shell find source external -iname "*.cpp")
+CXXSRC			:= $(shell find source external/tinyprocesslib -iname "*.cpp")
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
 CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
@@ -39,7 +39,7 @@ NUMFILES		:= $$(($(words $(CXXSRC))))
 DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++17 -fvisibility=hidden -O0 -g -c -Wall -frtti -fno-exceptions -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
+CXXFLAGS		+= -std=c++17 -fvisibility=hidden -O0 -g -c -Wall -frtti -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE) -fvisibility=hidden
 
@@ -121,6 +121,9 @@ compile: build
 test: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
 
+repl: build
+	@$(OUTPUT) $(FLXFLAGS) -repl
+
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
 
@@ -158,8 +161,7 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 
 
 $(UTF8REWIND_AR):
-	@make -C external/utf8rewind all
-
+	@$(MAKE) -C external/utf8rewind all
 
 # haha
 clena: clean

@@ -23,13 +23,14 @@ extern "C" {
 
 namespace platform
 {
-	constexpr size_t MAX_FRAMES = 128;
+	constexpr size_t MAX_FRAMES     = 128;
+	constexpr size_t SKIP_FRAMES    = 1;
 
 	struct piece_t
 	{
 		size_t num;
 		uintptr_t address;
-		ssize_t offset;
+		size_t offset;
 
 		std::string modName;
 		std::string mangledName;
@@ -49,7 +50,7 @@ namespace platform
 
 		std::vector<piece_t> pieces;
 
-		for(size_t i = 5; i < num; i++)
+		for(size_t i = SKIP_FRAMES; i < num; i++)
 		{
 			// platform-specific output!
 			if constexpr (OS_DARWIN)
@@ -60,7 +61,7 @@ namespace platform
 				char modname[1024] { };
 				char funcname[1024] { };
 
-				sscanf(strs[i], "%*s %s %zx %s %*s %zd", &modname[0], &piece.address, &funcname[0], &piece.offset);
+				sscanf(strs[i], "%*s %s %zx %s %*s %zu", &modname[0], &piece.address, &funcname[0], &piece.offset);
 
 				piece.mangledName = funcname;
 				piece.modName = modname;
@@ -102,7 +103,7 @@ namespace platform
 					piece.demangledName = piece.mangledName;
 				}
 
-				debuglogln("    %2d: %12p   |   %s + %#x", piece.num, piece.address, piece.demangledName, piece.offset);
+				debuglogln("    %2d: %12x   |   %s + %#x", piece.num, piece.address, piece.demangledName, piece.offset);
 			}
 			else
 			{

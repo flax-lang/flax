@@ -92,7 +92,7 @@ namespace parser
 		st.enterFunctionBody();
 		defer(st.leaveFunctionBody());
 
-		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st);
+		if(st.front() == TT::LBrace)    ret->block = parseBracedBlock(st).val();
 		else                            ret->insideExpr = parseExpr(st);
 
 		return ret;
@@ -289,21 +289,6 @@ namespace parser
 
 		return pd;
 	}
-}
-
-void expected(const Location& loc, std::string a, std::string b)
-{
-	error(loc, "expected %s, found '%s' instead", a, b);
-}
-
-void expectedAfter(const Location& loc, std::string a, std::string b, std::string c)
-{
-	error(loc, "expected %s after %s, found '%s' instead", a, b, c);
-}
-
-void unexpected(const Location& loc, std::string a)
-{
-	error(loc, "unexpected %s", a);
 }
 
 

@@ -24,17 +24,6 @@ inline void debuglogln(const char* s, Ts&&... ts)
 }
 
 
-// error shortcuts
-
-// Expected $, found '$' instead
-[[noreturn]] void expected(const Location& loc, std::string, std::string);
-
-// Expected $ after $, found '$' instead
-[[noreturn]] void expectedAfter(const Location& loc, std::string, std::string, std::string);
-
-// Unexpected $
-[[noreturn]] void unexpected(const Location& loc, std::string);
-
 
 #define INTUNSPEC_TYPE_STRING			"int"
 #define UINTUNSPEC_TYPE_STRING			"uint"

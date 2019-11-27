@@ -84,7 +84,7 @@ namespace parser
 		for(size_t i = 0; i < tokens.size(); i++)
 		{
 			const Token& tok = tokens[i];
-			if(tok == TT::Import || ((tok == TT::Public || tok == TT::Private) && tokens[i + 1] == TT::Import))
+			if(tok == TT::Import || ((tok == TT::Public || tok == TT::Private) && i + 1 < tokens.size() && tokens[i + 1] == TT::Import))
 			{
 				bool pub = false;
 				if(tok == TT::Public)       i++, pub = true;

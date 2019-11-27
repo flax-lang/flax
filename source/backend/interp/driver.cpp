@@ -51,7 +51,7 @@ namespace backend
 	void FIRInterpBackend::performCompilation()
 	{
 		this->is = new InterpState(this->compiledData.module);
-		this->is->initialise();
+		this->is->initialise(/* runGlobalInit:*/ true);
 
 		// it suffices to compile just the entry function.
 		this->is->compileFunction(this->compiledData.module->getEntryFunction());

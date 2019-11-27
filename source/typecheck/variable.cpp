@@ -148,7 +148,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	if(this->name == "_")
-		error(this, "'_' is a discarding binding; it does not yield a value and cannot be referred to");
+		return TCResult(
+			SimpleError::make(this->loc, "'_' is a discarding binding; it does not yield a value and cannot be referred to")
+		);
 
 	// else if(this->name == "::" || this->name == "^")
 	// 	error(this, "invalid use of scope-path-specifier '%s' in a non-scope-path context", this->name);
@@ -227,7 +229,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 				if(succs.empty())
 				{
-					auto errs = SimpleError::make(this->loc, "no definition of '%s'%s", this->name, infer ? strprintf(" matching type '%s'", infer) : "");
+					auto errs = SimpleError::make(this->loc, "no definition of '%s'%s", this->name,
+						infer ? strprintf(" matching type '%s'", infer) : "");
+
 					for(const auto& v : succs)
 						errs->append(v.second.error());
 
@@ -238,7 +242,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					auto errs = SimpleError::make(this->loc, "ambiguous reference to '%s'", this->name);
 
 					for(const auto& v : succs)
-						errs->append(SimpleError::make(MsgType::Note, v.first->loc, "potential target here:"));
+						errs->append(SimpleError::make(MsgType::Note, v.first->loc, "potential target here:", v.first));
 
 					return TCResult(errs);
 				}
@@ -285,7 +289,9 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	error(this, "reference to unknown entity '%s'", this->name);
+	return TCResult(
+		SimpleError::make(this->loc, "reference to unknown entity '%s'", this->name)
+	);
 }
 
 
@@ -338,7 +344,8 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 	//* for variables, as long as the name matches, we conflict.
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	// check the defn
 	if(this->initialiser)

@@ -400,7 +400,9 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 
 			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
-			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
+			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer()
+				? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
+
 			slc = cs->irb.SetArraySliceLength(slc, len);
 
 			return cloneTheSlice(slc);

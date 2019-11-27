@@ -10,6 +10,10 @@ namespace cgn
 {
 	void CodegenState::addRAIIValue(fir::Value* val)
 	{
+		// TODO: we need global destructors eventually.
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		if(!this->isRAIIType(val->getType()))
 			error("val is not a class type! '%s'", val->getType());
 
@@ -26,6 +30,10 @@ namespace cgn
 
 	void CodegenState::removeRAIIValue(fir::Value* val)
 	{
+		// TODO: we need global destructors eventually.
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		if(!this->isRAIIType(val->getType()))
 			error("val is not a class type! '%s'", val->getType());
 

@@ -77,7 +77,7 @@ namespace parser
 
 		st.enterStructBody();
 
-		auto blk = parseBracedBlock(st);
+		auto blk = parseBracedBlock(st).val();
 		for(auto s : blk->statements)
 		{
 			if(auto v = dcast(VarDefn, s))
@@ -165,7 +165,7 @@ namespace parser
 
 
 
-	StructDefn* parseStruct(State& st, bool nameless)
+	PResult<StructDefn> parseStruct(State& st, bool nameless)
 	{
 		static size_t anon_counter = 0;
 
@@ -233,6 +233,8 @@ namespace parser
 		while(st.front() != TT::RBrace)
 		{
 			st.skipWS();
+			if(!st.hasTokens())
+				return PResult<StructDefn>::insufficientTokensError();
 
 			if(st.front() == TT::Identifier)
 			{
@@ -265,7 +267,7 @@ namespace parser
 			else if(st.front() == TT::Func)
 			{
 				// ok parse a func as usual
-				auto method = parseFunction(st);
+				auto method = parseFunction(st).val();
 				addSelfToMethod(method, method->isMutating);
 
 				defn->methods.push_back(method);
@@ -288,7 +290,7 @@ namespace parser
 			}
 			else
 			{
-				error(st.loc(), "unexpected token '%s' inside struct body", st.front().str());
+				error(st.loc(), "unexpected token '%s' (%d) inside struct body", st.front().str(), st.front().type);
 			}
 
 			index++;
@@ -459,6 +461,9 @@ namespace parser
 		{
 			st.skipWS();
 
+			if(st.front() == TT::RBrace)
+				break;
+
 			if(st.eat() != TT::Case)
 				expected(st.ploc(), "'case' inside enum body", st.prev().str());
 
@@ -613,7 +618,7 @@ namespace parser
 		iceAssert(st.front() == TT::Static);
 		st.eat();
 
-		auto stmt = parseStmt(st);
+		auto stmt = parseStmt(st).val();
 		if(dcast(FuncDefn, stmt) || dcast(VarDefn, stmt))
 			return util::pool<StaticDecl>(stmt);
 
@@ -836,7 +841,7 @@ namespace parser
 		}
 		else if(st.front() == TT::Struct)
 		{
-			auto str = parseStruct(st, /* nameless: */ true);
+			auto str = parseStruct(st, /* nameless: */ true).val();
 			st.anonymousTypeDefns.push_back(str);
 
 			return pts::NamedType::create(str->loc, str->name);

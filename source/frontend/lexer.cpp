@@ -146,7 +146,8 @@ namespace lexer
 		}
 
 		string_view stream = lines[*line].substr(*offset);
-		if(stream.empty())
+		skipWhitespace(stream, pos, offset);
+		if(stream.empty() || stream[0] == 0)
 		{
 			out->loc = pos;
 			out->type = TokenType::EndOfFile;
@@ -154,17 +155,13 @@ namespace lexer
 		}
 
 
-
 		size_t read = 0;
 		size_t unicodeLength = 0;
 
-		// first eat all whitespace
-		skipWhitespace(stream, pos, offset);
 
 		Token& tok = *out;
 		tok.loc = pos;
 		tok.type = TokenType::Invalid;
-
 
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
@@ -383,7 +380,7 @@ namespace lexer
 		}
 		else if(hasPrefix(stream, "*/"))
 		{
-			unexpected(tok.loc, "'*/'");
+			error(tok.loc, "unexpected '*/'");
 		}
 
 
@@ -654,7 +651,7 @@ namespace lexer
 				{
 					if(i + 1 == stream.size())
 					{
-						unexpected(pos, "end of input");
+						error(pos, "unexpected end of input");
 					}
 					else if(stream[i + 1] == '"')
 					{
@@ -672,7 +669,7 @@ namespace lexer
 						(*line)++;
 
 						if(*line == lines.size())
-							unexpected(pos, "end of input");
+							error(pos, "unexpected end of input");
 
 						i = 0;
 

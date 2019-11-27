@@ -71,7 +71,8 @@ namespace fir
 		return this->currentBlock;
 	}
 
-	static util::MemoryPool<Instruction> instr_pool(65536);
+	static util::MemoryPool<Instruction, 1 << 16> instr_pool;
+
 	static Instruction* make_instr(OpKind kind, bool sideEffects, Type* out, const std::vector<Value*>& vals,
 		Value::Kind k = Value::Kind::prvalue)
 	{

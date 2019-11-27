@@ -44,7 +44,9 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id);
 	else        defn->type = fir::UnionType::createWithoutBody(defn->id);
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 

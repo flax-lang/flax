@@ -53,21 +53,22 @@ namespace platform
 
 	std::string getEnvironmentVar(const std::string& name)
 	{
+	#if OS_WINDOWS
 		char buffer[256] = { 0 };
 		size_t len = 0;
 
-	#if OS_WINDOWS
 		if(getenv_s(&len, buffer, name.c_str()) != 0)
-	#else
-		if(getenv(name.c_str()) == 0)
-	#endif
-		{
 			return "";
-		}
+
 		else
-		{
 			return std::string(buffer, len);
-		}
+	#else
+		if(char* val = getenv(name.c_str()); val)
+			return std::string(val);
+
+		else
+			return "";
+	#endif
 	}
 
 	void pushEnvironmentVar(const std::string& name, const std::string& value)
@@ -183,8 +184,22 @@ namespace platform
 		#endif
 	}
 
+
+	static util::hash_map<std::string, std::string> cachedFileContents;
+
+	void cachePreExistingFile(const std::string& path, const std::string& contents)
+	{
+		cachedFileContents[path] = contents;
+
+		// this will give cache a new id for us. (over there)
+		frontend::cachePreExistingFilename(path);
+	}
+
 	std::string_view readEntireFile(const std::string& path)
 	{
+		if(auto it = cachedFileContents.find(path); it != cachedFileContents.end())
+			return it->second;
+
 		// first, get the size of the file
 		size_t fileLength = getFileSize(path);
 
@@ -235,12 +250,14 @@ namespace platform
 				perror("there was an error reading the file");
 				error("expected %d bytes, but read only %d", fileLength, didRead);
 			}
+
+			cachedFileContents[path] = std::string(contents, fileLength);
 		}
 
 		iceAssert(contents);
 		closeFile(fd);
 
-		return std::string_view(contents, fileLength);
+		return cachedFileContents[path];
 	}
 
 	filehandle_t openFile(const char* name, int mode, int flags)
@@ -407,7 +424,7 @@ namespace platform
 			}
 
 			// then, change the codepage to utf-8:
-			SetConsoleOutputCP(CP_UTF8);
+			SetConsoleCP(CP_UTF8);
 
 		#else
 
