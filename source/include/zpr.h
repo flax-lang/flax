@@ -407,7 +407,7 @@ namespace zpr
 				const char* fmt_str = 0;
 				auto spec = args.specifier;
 
-				static std::map<int, std::string> len_specs = {
+				static std::map<int64_t, std::string> len_specs = {
 					{ format_args::LENGTH_SHORT_SHORT,  "hh"   },
 					{ format_args::LENGTH_SHORT,        "h"    },
 					{ format_args::LENGTH_LONG,         "l"    },
