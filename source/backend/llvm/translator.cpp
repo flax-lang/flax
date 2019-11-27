@@ -489,7 +489,7 @@ namespace backend
 				ty = fir::Type::getString();
 
 				// add -1 for the capacity and 0 for the refcountptr.
-				mems.push_back(llvm::ConstantInt::get(getNativeWordTy(), -1));
+				mems.push_back(llvm::ConstantInt::get(getNativeWordTy(), static_cast<uint64_t>(-1)));
 				mems.push_back(zconst);
 			}
 

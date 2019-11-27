@@ -211,7 +211,9 @@ namespace backend
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
-			const char* argv = ("llvm-jit-" + this->linkedModule->getModuleIdentifier()).c_str();
+			std::string modname = ("llvm-jit-" + this->linkedModule->getModuleIdentifier());
+			const char* argv = modname.c_str();
+
 			auto entry = this->getEntryFunctionFromJIT();
 
 			_printTiming(ts, "llvm jit");

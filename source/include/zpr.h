@@ -9,6 +9,7 @@
 
 #include <map>
 #include <string>
+#include <algorithm>
 #include <type_traits>
 #include <string_view>
 
@@ -404,7 +405,6 @@ namespace zpr
 				char buf[65] = {0};
 
 				size_t digits_len = 0;
-				const char* fmt_str = 0;
 				auto spec = args.specifier;
 
 				static std::map<int64_t, std::string> len_specs = {
@@ -417,8 +417,9 @@ namespace zpr
 					{ format_args::LENGTH_PTRDIFF_T,    "t"    }
 				};
 
-				fmt_str = ("%" + len_specs[args.length] + spec).c_str();
-				digits_len = snprintf(&buf[0], 64, fmt_str, x);
+				auto fmt_str = ("%" + len_specs[args.length] + spec);
+
+				digits_len = snprintf(&buf[0], 64, fmt_str.c_str(), x);
 
 				// sadly, we must cheat here as well, because osx doesn't bloody have charconv (STILL)?
 
