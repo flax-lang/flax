@@ -346,6 +346,34 @@ namespace sst
 		this->addDefinition(this->topLevelFilename, _name, def, gmaps);
 	}
 
+	std::vector<std::string> Scope::getStrings() const
+	{
+		std::vector<std::string> ret;
+		const Scope* s = this;
+		while(s)
+		{
+			ret.push_back(s->stree->name);
+			s = s->prev;
+		}
+
+		std::reverse(ret.begin(), ret.end());
+		return ret;
+	}
+
+	const Scope& StateTree::getScope2()
+	{
+		if(!this->cachedScope.stree)
+		{
+			this->cachedScope.stree = this;
+
+			// all hail recursion.
+			if(this->parent)
+				this->cachedScope.prev = &this->parent->getScope2();
+		}
+
+		return this->cachedScope;
+	}
+
 	// TODO: maybe cache this someday?
 	std::vector<std::string> StateTree::getScope()
 	{
@@ -523,6 +551,15 @@ namespace sst
 	{
 		static size_t _anonId = 0;
 		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
+	}
+
+
+	Scope::Scope(StateTree* st)
+	{
+		this->next = 0;
+		this->prev = 0;
+
+		this->stree = st;
 	}
 }
 

@@ -46,6 +46,19 @@ namespace sst
 		struct Solution_t;
 	}
 
+	struct Scope
+	{
+		Scope() { }
+		Scope(StateTree* st);
+
+		StateTree* stree = 0;
+
+		const Scope* prev = 0;
+		const Scope* next = 0;
+
+		std::vector<std::string> getStrings() const;
+	};
+
 	struct StateTree
 	{
 		StateTree(const std::string& nm, const std::string& filename, StateTree* p, bool anon = false)
@@ -83,6 +96,9 @@ namespace sst
 		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> infixOperatorOverloads;
 		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> prefixOperatorOverloads;
 		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
+
+		Scope cachedScope;
+		const Scope& getScope2();
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
@@ -178,9 +194,16 @@ namespace sst
 		void pushAnonymousTree();
 
 		std::string serialiseCurrentScope();
+
+		[[deprecated]]
 		std::vector<std::string> getCurrentScope();
+
+		[[deprecated]]
 		void teleportToScope(const std::vector<std::string>& scope);
+
+		[[deprecated]]
 		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
+
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name, StateTree* tree = 0);
 		ErrorMsg* checkForShadowingOrConflictingDefinition(Defn* def,
