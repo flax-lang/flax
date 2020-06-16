@@ -244,14 +244,13 @@ namespace backend
 
 			llvm::SmallVector<char, 0> buffer;
 			{
-				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(buffer);
+				auto bufferStream = std::make_unique<llvm::raw_svector_ostream>(buffer);
 				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
 				{
 					llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-
-					using CodeGenFileType = llvm::TargetMachine::CodeGenFileType;
-					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr, CodeGenFileType::CGFT_ObjectFile);
+					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr,
+						llvm::CodeGenFileType::CGFT_ObjectFile);
 
 					pm.run(*this->linkedModule);
 				}
