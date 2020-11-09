@@ -415,7 +415,7 @@ namespace backend
 		platform::compiler::addLibrarySearchPaths();
 
 		// default libraries come with the correct prefix/extension for the platform already, but user ones do not.
-		auto tolink = util::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
+		auto tolink = zfu::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
 			return platform::compiler::getSharedLibraryName(lib);
 		}) + platform::compiler::getDefaultSharedLibraries();
 

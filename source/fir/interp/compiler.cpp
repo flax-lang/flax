@@ -33,7 +33,7 @@ namespace interp
 
 		interp::Block ret;
 		ret.blk = fib;
-		ret.instructions = util::map(fib->getInstructions(), [is, parent](fir::Instruction* i) -> interp::Instruction {
+		ret.instructions = zfu::map(fib->getInstructions(), [is, parent](fir::Instruction* i) -> interp::Instruction {
 			return compileInstruction(is, parent, i);
 		});
 
@@ -47,7 +47,7 @@ namespace interp
 		interp::Function ret;
 		ret.func = fn;
 
-		ret.blocks = util::map(fn->getBlockList(), [fn, this](fir::IRBlock* b) -> interp::Block {
+		ret.blocks = zfu::map(fn->getBlockList(), [fn, this](fir::IRBlock* b) -> interp::Block {
 			return compileBlock(this, fn, b);
 		});
 

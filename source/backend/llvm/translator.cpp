@@ -139,7 +139,7 @@ namespace backend
 			// to allow recursion, declare the type first.
 			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
-			std::vector<llvm::Type*> lmems = util::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
+			std::vector<llvm::Type*> lmems = zfu::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
 				return typeToLlvm(t, mod);
 			});
 

@@ -106,7 +106,7 @@ static std::vector<search_result_t> searchTransparentFields(sst::TypecheckState*
 				flds = str->fields;
 
 			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
-				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+				flds = zfu::map(unn->fields, zfu::pair_second()) + unn->transparentFields;
 
 			else
 				error(loc, "what kind of type is this? '%s'", ty);
@@ -244,7 +244,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(util::match(vr->name, names::saa::FIELD_LENGTH, names::saa::FIELD_CAPACITY,
+			if(zfu::match(vr->name, names::saa::FIELD_LENGTH, names::saa::FIELD_CAPACITY,
 				names::saa::FIELD_REFCOUNT, names::string::FIELD_COUNT))
 			{
 				res = fir::Type::getNativeWord();
@@ -312,7 +312,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			fir::Type* res = 0;
 			if(vr->name == names::saa::FIELD_LENGTH || (type->isDynamicArrayType()
-				&& util::match(vr->name, names::saa::FIELD_CAPACITY, names::saa::FIELD_REFCOUNT)))
+				&& zfu::match(vr->name, names::saa::FIELD_CAPACITY, names::saa::FIELD_REFCOUNT)))
 			{
 				res = fir::Type::getNativeWord();
 			}
@@ -491,7 +491,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 			// check methods first
-			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
+			std::vector<FnCallArgument> arguments = zfu::map(fc->args, [fs](auto arg) -> FnCallArgument {
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
@@ -559,7 +559,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			else
 			{
 				auto c = util::pool<sst::ExprCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
-				c->arguments = util::map(arguments, [](const FnCallArgument& e) -> sst::Expr* { return e.value; });
+				c->arguments = zfu::map(arguments, [](const FnCallArgument& e) -> sst::Expr* { return e.value; });
 
 				auto tmp = util::pool<sst::FieldDotOp>(fc->loc, resolved->type);
 				tmp->lhs = lhs;
@@ -677,7 +677,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	{
 		if(auto fld = dcast(ast::Ident, dotop->right))
 		{
-			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; }) + rnn->transparentFields;
+			auto flds = zfu::map(rnn->fields, zfu::pair_second()) + rnn->transparentFields;
 			auto hmm = resolveFieldNameDotOp(fs, lhs, flds, dotop->loc, fld->name);
 			if(hmm)
 			{
@@ -727,7 +727,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		sst::Expr* ret = 0;
 		if(auto fc = dcast(ast::FunctionCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
 				e.second->typecheck(fs).expr(), e.second);
 			});
 
@@ -736,7 +736,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		}
 		else if(auto ec = dcast(ast::ExprCall, dot->right))
 		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
 				e.second->typecheck(fs).expr(), e.second);
 			});
 
@@ -760,7 +760,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		else
 		{
 			error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
-				util::serialiseScope(news));
+				zfu::join(news, "::"));
 		}
 
 

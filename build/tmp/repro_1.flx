@@ -3,11 +3,14 @@
 // Licensed under the Apache License Version 2.0.
 
 import libc as _
-import repro_2 as _
+import repro_2
+
+using repro_2 as _
 
 @entry fn main()
 {
 	// printf("four = %d\n", repro_2::Foo::FOUR.value);
 	printf("%d\n", Bar::bla(3));
+	// printf("lmao\n");
 }
 

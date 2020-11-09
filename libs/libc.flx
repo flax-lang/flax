@@ -8,64 +8,74 @@ export libc
 public ffi fn puts(fmt: &i8) -> i32
 public ffi fn printf(fmt: &i8, ...) -> i32
 public ffi fn sprintf(fmt: &i8, y: &i8, ...) -> i32
-public ffi fn snprintf(fmt: &i8, l: u64, y: &i8, ...) -> i32
+// public ffi fn snprintf(fmt: &i8, l: u64, y: &i8, ...) -> i32
 
-public ffi fn fprintf(stream: &void, y: &i8, ...) -> i32
+// public ffi fn fprintf(stream: &void, y: &i8, ...) -> i32
 
-public ffi fn putchar(x: i32) -> i32
+// public ffi fn putchar(x: i32) -> i32
 
 
-// memcpy/set/move
-public ffi fn memcpy(dest: &i8, source: &i8, length: u64) -> &i8
-public ffi fn memmove(dest: &i8, source: &i8, length: u64) -> &i8
-public ffi fn memset(dest: &i8, value: i32, length: u64) -> &i8
+// // memcpy/set/move
+// public ffi fn memcpy(dest: &i8, source: &i8, length: u64) -> &i8
+// public ffi fn memmove(dest: &i8, source: &i8, length: u64) -> &i8
+// public ffi fn memset(dest: &i8, value: i32, length: u64) -> &i8
 
-// heap
-// public ffi fn malloc(size: i64) -> &i8
-// public ffi fn free(pointer: &i8)
+// // heap
+// // public ffi fn malloc(size: i64) -> &i8
+// // public ffi fn free(pointer: &i8)
 
-// strings
-public ffi fn strlen(s: &i8) -> i64
-public ffi fn strcmp(s1: &i8, s2: &i8) -> i32
-public ffi fn strncmp(s1: &i8, s2: &i8, length: i64) -> i32
+// // strings
+// public ffi fn strlen(s: &i8) -> i64
+// public ffi fn strcmp(s1: &i8, s2: &i8) -> i32
+// public ffi fn strncmp(s1: &i8, s2: &i8, length: i64) -> i32
 
-// random things
-public ffi fn usleep(usec: u32) -> i32
-public ffi fn sleep(sec: u32) -> u32
+// // random things
+// public ffi fn usleep(usec: u32) -> i32
+// public ffi fn sleep(sec: u32) -> u32
 public ffi fn abort()
-public ffi fn exit(status: i32)
+// public ffi fn exit(status: i32)
 
-// file stuff
-public ffi fn fsync(fd: i32) -> i32
-public ffi fn fflush(fd: &void) -> i32
-public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
+// // file stuff
+// public ffi fn fsync(fd: i32) -> i32
+// public ffi fn fflush(fd: &void) -> i32
+// public ffi fn ioctl(fd: i32, cmd: u64, ...) -> i32
 
-public ffi fn fopen(path: &i8, mode: &i8) -> &void
-public ffi fn fread(buf: &i8, sz: u64, cnt: u64, file: &void) -> u64
-public ffi fn fclose(file: &void) -> i32
+// public ffi fn fopen(path: &i8, mode: &i8) -> &void
+// public ffi fn fread(buf: &i8, sz: u64, cnt: u64, file: &void) -> u64
+// public ffi fn fclose(file: &void) -> i32
 
-// unistd.h
+// // unistd.h
 
 
-// posix stuff, that windows likes to rename for some reason!!!!!
-#if os::name == "windows"
-{
-	// unistd.h
-	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64 as "_read"
-	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64 as "_write"
+// // posix stuff, that windows likes to rename for some reason!!!!!
+// #if os::name == "windows"
+// {
+// 	// unistd.h
+// 	public ffi fn open(path: &i8, flags: i32, mode: i32) -> i32     as "_open"
+// 	public ffi fn close(fd: i32) -> i32                             as "_close"
 
-	// stdio.h
-	public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"
-}
-else
-{
-	// unistd.h
-	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64
+// 	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64        as "_read"
+// 	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64       as "_write"
+
+// 	public ffi fn lseek(fd: i32, ofs: i64, whence: i32) -> i64      as "_lseek"
+
+// 	// stdio.h
+// 	public ffi fn fdopen(fd: i32, mode: &i8) -> &void               as "_fdopen"
+// }
+// else
+// {
+// 	// unistd.h
+// 	public ffi fn open(path: &i8, flags: i32, mode: i32) -> i32
+// 	public ffi fn close(fd: i32) -> i32
+
+// 	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64
 	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64
 
-	// stdio.h
-	public ffi fn fdopen(fd: i32, mode: &i8) -> &void
-}
+// 	public ffi fn lseek(fd: i32, ofs: i64, whence: i32) -> i64
+
+// 	// stdio.h
+// 	public ffi fn fdopen(fd: i32, mode: &i8) -> &void
+// }
 
 
 

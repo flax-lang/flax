@@ -279,7 +279,7 @@ namespace fir
 
 	void ClassType::addTraitImpl(TraitType* trt)
 	{
-		if(util::contains(this->implTraits, trt))
+		if(zfu::contains(this->implTraits, trt))
 			error("'%s' already implements trait '%s'", this, trt);
 
 		this->implTraits.push_back(trt);
@@ -287,7 +287,7 @@ namespace fir
 
 	bool ClassType::implementsTrait(TraitType* trt)
 	{
-		return util::contains(this->implTraits, trt);
+		return zfu::contains(this->implTraits, trt);
 	}
 
 	std::vector<TraitType*> ClassType::getImplementedTraits()
@@ -323,7 +323,7 @@ namespace fir
 		//* but if we do override something, we just set the method in our 'reverse' map, which is what we'll use to build
 		//* the vtable. simple?
 
-		auto list = util::drop(method->getType()->toFunctionType()->getArgumentTypes(), 1);
+		auto list = zfu::drop(method->getType()->toFunctionType()->getArgumentTypes(), 1);
 
 		// check every member of the current mapping -- not the fastest method i admit.
 		bool found = false;

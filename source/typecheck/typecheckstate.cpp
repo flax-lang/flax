@@ -212,7 +212,7 @@ namespace sst
 			tree = tree->parent;
 		}
 
-		return util::serialiseScope(std::vector<std::string>(scope.begin(), scope.end()));
+		return zfu::join(std::vector<std::string>(scope.begin(), scope.end()), "::");
 	}
 
 	std::vector<std::string> TypecheckState::getCurrentScope()
@@ -263,7 +263,7 @@ namespace sst
 
 		// 	if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
 		// 	{
-		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, zfu::join(scope, "::"));
 		// 	}
 		// 	else
 		// 	{
@@ -284,7 +284,8 @@ namespace sst
 
 			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
 			{
-				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
+				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name,
+					zfu::join(scope, "::"));
 			}
 			else
 			{
@@ -471,7 +472,7 @@ namespace sst
 			for(const auto& [ l, kind ] : conflicts)
 			{
 				err->append(SimpleError::make(MsgType::Note, l->loc, "%shere%s:", first ? strprintf("conflicting %s ",
-					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
+					zfu::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;
 			}
@@ -494,8 +495,8 @@ namespace sst
 				{
 					auto a = dcast(sst::FunctionDecl, defn);
 					auto b = dcast(sst::FunctionDecl, otherdef);
-					if(fir::Type::areTypeListsEqual(util::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
-						util::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
+					if(fir::Type::areTypeListsEqual(zfu::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
+						zfu::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
 					{
 						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded over argument names or"
 							" return types alone"));
@@ -520,7 +521,7 @@ namespace sst
 				// honestly we can't know if we will conflict with other functions.
 				// filter out by kind.
 
-				auto newgds = util::filterMap(gdefs,
+				auto newgds = zfu::filterMap(gdefs,
 					[](ast::Parameterisable* d) -> bool {
 						return dcast(ast::FuncDefn, d) == nullptr;
 					},
@@ -536,7 +537,7 @@ namespace sst
 			{
 				// assume everything conflicts, since functions are the only thing that can overload.
 				return makeTheError(defn, defn->id.name, defn->getKind(),
-					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
+					zfu::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());
 					})
 				);
@@ -552,6 +553,43 @@ namespace sst
 		static size_t _anonId = 0;
 		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
 	}
+
+
+	// UWU
+	static int indent = 0;
+	void StateTree::dump()
+	{
+		zpr::println("%*s* TREE: %s - %s", indent * 2, "", this->name, frontend::getFilenameFromPath(this->topLevelFilename));
+		for(const auto& [ filename, dm ] : this->definitions)
+		{
+			zpr::println("%*s* FROM %s (%s)", (indent + 1) * 2, "", frontend::getFilenameFromPath(filename),
+				dm.wasPublicImport ? "public" : "private");
+
+			for(const auto& [ name, defs ] : dm.defns)
+			{
+				zpr::println("%*s* %s", (indent + 2) * 2, "", name);
+				for(auto d : defs)
+					zpr::println("%*s> %s: %s", (indent + 3) * 2, "", d->id.str(), d->type ? d->type->str() : "??");
+			}
+		}
+
+		if(!this->subtrees.empty())
+		{
+			zpr::println("\n%*s* SUBTREES:", (indent + 1) * 2, "");
+			indent += 2;
+			for(auto& [ name, sub ] : this->subtrees)
+			{
+				if('0' <= name[0] && name[0] <= '9')
+					continue;
+
+				sub->dump();
+			}
+
+			zpr::println("\n");
+			indent -= 2;
+		}
+	}
+
 
 
 	Scope::Scope(StateTree* st)

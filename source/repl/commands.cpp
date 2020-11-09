@@ -107,96 +107,15 @@ namespace repl
 
 	static void print_help()
 	{
-		auto split_words = [](std::string& s) -> std::vector<std::string_view> {
-			std::vector<std::string_view> ret;
-
-			size_t word_start = 0;
-			for(size_t i = 0; i < s.size(); i++)
-			{
-				if(s[i] == ' ')
-				{
-					ret.push_back(std::string_view(s.c_str() + word_start, i - word_start));
-					word_start = i + 1;
-				}
-				else if(s[i] == '-')
-				{
-					ret.push_back(std::string_view(s.c_str() + word_start, i - word_start + 1));
-					word_start = i + 1;
-				}
-			}
-
-			ret.push_back(std::string_view(s.c_str() + word_start));
-			return ret;
-		};
-
-		constexpr const char* LEFT_MARGIN = " ";
-		constexpr const char* RIGHT_MARGIN = " ";
-
-		auto tw = ztmu::getTerminalWidth();
-		tw = std::min(tw, tw - strlen(LEFT_MARGIN) - strlen(RIGHT_MARGIN));
-
-		auto disp_len = ztmu::displayedTextLength;
-
-		for(auto& l : helpLines)
-		{
-			size_t remaining = tw;
-
-			// sighs.
-			auto ss = std::stringstream();
-			ss << LEFT_MARGIN;
-
-			// each "line" is actually a paragraph. we want to be nice, so pad on the right by a few spaces
-			// and hyphenate split words.
-
-			// first split into words
-			auto words = split_words(l);
-			for(const auto& word : words)
-			{
-				// printf("w: '%s' -- ", std::string(word).c_str());
-
-				auto len = disp_len(word);
-				if(remaining >= len)
-				{
-					ss << word << (word.back() != '-' ? " " : "");
-
-					// printf("norm (%zu)", remaining);
-					remaining -= len;
-
-					if(remaining > 0)
-					{
-						remaining -= 1;
-					}
-					else
-					{
-						ss << "\n" << LEFT_MARGIN;
-						remaining = tw;
-					}
-
-					// printf("(%zu)\n", remaining);
-				}
-				else if(remaining < 3 || len < 5)
-				{
-					// for anything less than 5 chars, put it on the next line -- don't hyphenate.
-					ss << "\n" << LEFT_MARGIN << word << (word.back() != '-' ? " " : "");
-
-					// printf("next (%zu)", remaining);
-					remaining = tw - (len + 1);
-					// printf("(%zu)\n", remaining);
-				}
-				else
-				{
-					// split it.
-					ss << word.substr(0, remaining - 2) << "-" << "\n";
-					ss << LEFT_MARGIN << word.substr(remaining - 2) << " ";
-
-					// printf("split (%zu)", remaining);
-					remaining = tw - word.substr(remaining - 2).size();
-					// printf("(%zu)\n", remaining);
-				}
-			}
-
-			zpr::println(ss.str());
-		}
+		auto xs = ztmu::prettyFormatTextBlock(helpLines, " ", " ");
+		for(const auto& x : xs)
+			zpr::println(x);
 	}
 
 }
+
+
+
+
+
+

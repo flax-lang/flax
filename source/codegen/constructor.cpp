@@ -89,7 +89,7 @@ fir::Value* cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, 
 	{
 		auto restore = this->irb.getCurrentBlock();
 
-		auto arglist = util::map(vargs, [](fir::Value* v) -> auto {
+		auto arglist = zfu::map(vargs, [](fir::Value* v) -> auto {
 			return v->getType();
 		});
 
@@ -101,7 +101,7 @@ fir::Value* cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, 
 		// make the self:
 		auto selfptr = this->irb.StackAlloc(cls, "self");
 
-		std::vector<fir::Value*> argvals = util::map(wrapper_func->getArguments(), [](auto a) -> fir::Value* {
+		std::vector<fir::Value*> argvals = zfu::map(wrapper_func->getArguments(), [](auto a) -> fir::Value* {
 			return a;
 		});
 

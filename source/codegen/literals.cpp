@@ -215,7 +215,7 @@ CGResult sst::LiteralTuple::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(allConst)
 	{
-		std::vector<fir::ConstantValue*> consts = util::map(vals, [](auto e) -> auto { return dcast(fir::ConstantValue, e); });
+		std::vector<fir::ConstantValue*> consts = zfu::map(vals, [](auto e) -> auto { return dcast(fir::ConstantValue, e); });
 		return CGResult(fir::ConstantTuple::get(consts));
 	}
 	else

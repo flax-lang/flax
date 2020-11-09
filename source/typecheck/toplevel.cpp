@@ -38,19 +38,27 @@ namespace sst
 		return clone;
 	}
 
-	static StateTree* _addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
-		StateTree* commonParent, bool pubImport, bool ignoreVis, const std::string& importer)
+	static StateTree* _addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing,
+		StateTree* tree, StateTree* commonParent, bool pubImport, bool ignoreVis, const std::string& importer)
 	{
-		// StateTree* tree = cloneTree(_tree, commonParent);
-		StateTree* tree = _tree;
+		// if it was compiler-generated, just skip it.
+		if(tree->isCompilerGenerated)
+			return existing;
 
 		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
 		for(auto sub : tree->subtrees)
 		{
+			if(sub.second->isCompilerGenerated)
+				continue;
+
 			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
 			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
 			{
-				_addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing, pubImport, ignoreVis, importer);
+				if(sub.second->treeDefn->visibility != VisibilityLevel::Public)
+					continue;
+
+				_addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing,
+					pubImport, ignoreVis, importer);
 			}
 			else
 			{
@@ -89,9 +97,11 @@ namespace sst
 								}
 								else if(auto f = dcast(FunctionDecl, ot))
 								{
-									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](const auto& p) -> fir::Type* { return p.type; }),
-										util::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
+									if(fir::Type::areTypeListsEqual(zfu::map(fn->params, [](const auto& p) -> fir::Type* { return p.type; }),
+										zfu::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
 									{
+										debuglogln("from: %s", tree->topLevelFilename);
+										debuglogln("to: %s", existing->topLevelFilename);
 										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
 											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)",
 												reinterpret_cast<void*>(f), reinterpret_cast<void*>(fn)))
@@ -105,7 +115,7 @@ namespace sst
 							}
 							else if(auto vr = dcast(VarDefn, def))
 							{
-								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'");
+								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'", name);
 
 								for(auto ot : others)
 									err->append(SimpleError::make(MsgType::Note, ot->loc, "previously defined here:"));
@@ -129,18 +139,19 @@ namespace sst
 							else
 							{
 								// probably a class or something
-								conflict:
+							conflict:
 								SimpleError::make(def->loc, "duplicate definition of %s '%s'", def->readableName, def->id.name)
 									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
 									->postAndQuit();
 							}
 						}
 
+						warn(def, "add to %s", existing->topLevelFilename);
 						existing->addDefinition(tree->topLevelFilename, name, def);
 					}
 					else
 					{
-						// warn(def, "skipping def %s because it is not public", def->id.name);
+						warn(def, "skipping def %s because it is not public", def->id.name);
 					}
 				}
 			}
@@ -182,9 +193,9 @@ namespace sst
 		return existing;
 	}
 
-	StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent, bool pubImport, bool ignoreVis)
+	StateTree* addTreeToExistingTree(StateTree* existing, StateTree* tree, StateTree* commonParent, bool pubImport, bool ignoreVis)
 	{
-		return _addTreeToExistingTree({ }, existing, _tree, commonParent, pubImport, ignoreVis, existing->topLevelFilename);
+		return _addTreeToExistingTree({ }, existing, tree, commonParent, pubImport, ignoreVis, existing->topLevelFilename);
 	}
 
 
@@ -250,9 +261,13 @@ namespace sst
 	static void generatePreludeDefinitions(TypecheckState* fs)
 	{
 		auto loc = Location();
+		loc.fileID = frontend::getFileIDFromFilename(fs->stree->topLevelFilename);
+
 		auto strings = getOsStrings();
 
 		fs->pushTree("os");
+		fs->stree->isCompilerGenerated = true;
+
 		defer(fs->popTree());
 
 		// manually add the definition, because we didn't typecheck a namespace or anything.
@@ -267,6 +282,7 @@ namespace sst
 			name_def->type = strty;
 			name_def->global = true;
 			name_def->immutable = true;
+			name_def->visibility = VisibilityLevel::Private;
 
 			auto s = util::pool<sst::LiteralString>(loc, strty);
 			s->str = strings.name;
@@ -281,6 +297,7 @@ namespace sst
 			vendor_def->type = strty;
 			vendor_def->global = true;
 			vendor_def->immutable = true;
+			vendor_def->visibility = VisibilityLevel::Private;
 
 			auto s = util::pool<sst::LiteralString>(loc, strty);
 			s->str = strings.vendor;
@@ -309,6 +326,8 @@ namespace sst
 
 		for(auto [ ithing, import ] : imports)
 		{
+			info(ithing.loc, "import: %s", ithing.name);
+
 			auto ias = ithing.importAs;
 			if(ias.empty())
 				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
@@ -346,7 +365,9 @@ namespace sst
 						treedef->id = Identifier(impas, IdKind::Name);
 						treedef->tree = newinspt;
 						treedef->tree->treeDefn = treedef;
-						treedef->visibility = VisibilityLevel::Public;
+						treedef->visibility = ithing.pubImport
+							? VisibilityLevel::Public
+							: VisibilityLevel::Private;
 
 						curinspt->addDefinition(file.name, impas, treedef);
 

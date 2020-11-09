@@ -100,7 +100,7 @@ TESTSRC			:= build/tester.flx
 
 .DEFAULT_GOAL = jit
 -include $(CXXDEPS)
-
+-include source/include/precompile.h.d
 
 .PHONY: copylibs jit compile clean build linux ci satest tiny
 
@@ -157,7 +157,7 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 
 %.h.gch: %.h
 	@printf "# precompiling header $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $< -MMD -MP
 
 
 $(UTF8REWIND_AR):

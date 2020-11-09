@@ -218,7 +218,8 @@ namespace sst
 
 											extraHelp = SimpleError::make(MsgType::Note, d->loc,
 												"'%s' was defined as a type in the parent scope, here:", name)
-												->append(BareError::make(MsgType::Note, "to refer to it, use '%s'", util::serialiseScope(ss)));
+												->append(BareError::make(MsgType::Note, "to refer to it, use '%s'",
+													zfu::join(ss, "::")));
 										}
 									}
 								}

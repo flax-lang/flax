@@ -370,7 +370,7 @@ namespace fir
 
 	std::string ConstantTuple::str()
 	{
-		return "(" + util::join(util::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + ")";
+		return "(" + zfu::join(zfu::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + ")";
 	}
 
 
@@ -445,7 +445,7 @@ namespace fir
 
 	std::string ConstantArray::str()
 	{
-		return "[ " + util::join(util::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + " ]";
+		return "[ " + zfu::join(zfu::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + " ]";
 	}
 
 

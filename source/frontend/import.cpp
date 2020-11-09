@@ -107,7 +107,7 @@ namespace parser
 					std::vector<std::string> bits = parseIdentPath(tokens, &i);
 
 					//* we concatanate the thing, using '/' as the path separator, and appending '.flx' to the end.
-					name = util::join(bits, "/") + ".flx";
+					name = zfu::join(bits, "/") + ".flx";
 				}
 				else
 				{

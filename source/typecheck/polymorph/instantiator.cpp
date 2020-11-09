@@ -18,12 +18,12 @@ namespace poly
 		static SimpleError* complainAboutMissingSolutions(const Location& l, ast::Parameterisable* thing,
 			const std::vector<fir::PolyPlaceholderType*>& missing)
 		{
-			auto strs = util::map(missing, [](fir::PolyPlaceholderType* p) -> std::string {
+			auto strs = zfu::map(missing, [](fir::PolyPlaceholderType* p) -> std::string {
 				return p->str().substr(1);
 			});
 
 			auto mstr = util::listToEnglish(strs);
-			return SimpleError::make(l, "type %s %s could not be inferred", util::plural("parameter", strs.size()), mstr);
+			return SimpleError::make(l, "type %s %s could not be inferred", zfu::plural("parameter", strs.size()), mstr);
 		}
 
 		std::vector<std::string> getMissingSolutions(const ProblemSpace_t& needed, const TypeParamMap_t& solution,
@@ -92,7 +92,7 @@ namespace poly
 
 					return std::make_pair(
 						TCResult(err->append(se)->append(SimpleError::make(fs->loc(), "partial solution: %s",
-							util::listToString(util::map(util::pairs(soln.solutions), [](const std::pair<std::string, fir::Type*>& p) -> std::string {
+							zfu::listToString(zfu::map(soln.solutions, [](const std::pair<std::string, fir::Type*>& p) -> std::string {
 								return strprintf("%s = %s", p.first, p.second);
 							}), [](const std::string& s) -> std::string {
 								return s;
@@ -204,7 +204,8 @@ namespace poly
 		if(auto missing = internal::getMissingSolutions(thing->generics, mappings, true); missing.size() > 0)
 		{
 			auto mstr = util::listToEnglish(missing);
-			return TCResult(SimpleError::make(fs->loc(), "type %s %s could not be inferred", util::plural("parameter", missing.size()), mstr));
+			return TCResult(SimpleError::make(fs->loc(), "type %s %s could not be inferred",
+				zfu::plural("parameter", missing.size()), mstr));
 		}
 
 		return thing->typecheck(fs, self_infer, mappings);

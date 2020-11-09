@@ -5,6 +5,7 @@
 
 export supertiny
 
+import std::io
 import libc as _
 
 // import std::io

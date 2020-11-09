@@ -11,6 +11,7 @@
 # Makefile dependencies
 *.cpp.d
 *.c.d
+*.h.d
 
 # Compiled Dynamic libraries
 *.so

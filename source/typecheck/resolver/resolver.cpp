@@ -17,14 +17,14 @@ namespace resolver
 		const std::vector<fir::LocatedType>& _args, bool cvararg, const Location& callLoc)
 	{
 		std::vector<fir::LocatedType> _input;
-		if(cvararg) _input = util::take(_args, _target.size());
+		if(cvararg) _input = zfu::take(_args, _target.size());
 		else        _input = _args;
 
-		auto input = util::map(_input, [](auto t) -> poly::ArgType {
+		auto input = zfu::map(_input, [](auto t) -> poly::ArgType {
 			return poly::ArgType("", t.type, t.loc);
 		});
 
-		auto target = util::map(_target, [](auto t) -> poly::ArgType {
+		auto target = zfu::map(_target, [](auto t) -> poly::ArgType {
 			return poly::ArgType("", t.type, t.loc);
 		});
 
@@ -40,10 +40,10 @@ namespace resolver
 		const std::vector<FnCallArgument>& _args, bool cvararg, const Location& callLoc)
 	{
 		std::vector<FnCallArgument> input;
-		if(cvararg) input = util::take(_args, target.size());
+		if(cvararg) input = zfu::take(_args, target.size());
 		else        input = _args;
 
-		auto arguments = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
+		auto arguments = zfu::map(input, [](const FnCallArgument& a) -> poly::ArgType {
 			return poly::ArgType(a.name, a.value->type, a.loc, /* opt: */ false, /* ignoreName: */ a.ignoreName);
 		});
 
@@ -51,7 +51,7 @@ namespace resolver
 		// the type-list solver. it doesn't need to know what the actual value is --- when we typechecked the function, we should
 		// have already verified the default value fits the type, and it doesn't actually change the type of the receiver.
 
-		auto [ soln, err1 ] = poly::solveTypeList(callLoc, util::map(target, [](const FnParam& p) -> poly::ArgType {
+		auto [ soln, err1 ] = poly::solveTypeList(callLoc, zfu::map(target, [](const FnParam& p) -> poly::ArgType {
 			return poly::ArgType(p.name, p.type, p.loc, p.defaultVal != 0);
 		}), arguments, poly::Solution_t(), /* isFnCall: */ true);
 
@@ -87,10 +87,10 @@ namespace resolver
 		}
 		else
 		{
-			std::vector<fir::Type*> tmp = util::map(args, [](const FnCallArgument& p) -> auto { return p.value->type; });
+			std::vector<fir::Type*> tmp = zfu::map(args, [](const FnCallArgument& p) -> auto { return p.value->type; });
 
 			auto errs = OverloadError::make(SimpleError::make(callLoc, "no overload in call to '%s' with arguments (%s) amongst %d %s",
-				name, fir::Type::typeListToString(tmp), fails.size(), util::plural("candidate", fails.size())));
+				name, fir::Type::typeListToString(tmp), fails.size(), zfu::plural("candidate", fails.size())));
 
 			for(auto f : fails)
 			{
@@ -244,9 +244,9 @@ namespace resolver
 					}
 
 					auto prms = ft->getArgumentTypes();
-					std::tie(dist, fails[vr]) = computeOverloadDistance(curcandidate->loc, util::map(prms, [](fir::Type* t) -> fir::LocatedType {
+					std::tie(dist, fails[vr]) = computeOverloadDistance(curcandidate->loc, zfu::map(prms, [](fir::Type* t) -> fir::LocatedType {
 						return fir::LocatedType(t, Location());
-					}), util::map(replacementArgs, [](const FnCallArgument& p) -> fir::LocatedType {
+					}), zfu::map(replacementArgs, [](const FnCallArgument& p) -> fir::LocatedType {
 						return fir::LocatedType(p.value->type, Location());
 					}), /* isCVarArg: */ false, callLoc);
 				}
@@ -302,7 +302,7 @@ namespace resolver
 			if(finals.empty())
 			{
 				auto err = createErrorFromFailedCandidates(fs, callLoc, cands[0].first->id.name, cands[0].second,
-					util::map(util::pairs(fails), [](auto p) -> std::pair<Locatable*, ErrorMsg*> {
+					zfu::map(zfu::pairs(fails), [](auto p) -> std::pair<Locatable*, ErrorMsg*> {
 						return std::make_pair(p.first, p.second);
 					}));
 

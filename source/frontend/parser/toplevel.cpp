@@ -91,7 +91,7 @@ namespace parser
 		if(path.empty())
 			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullname)) };
 
-		return { path.back(), util::take(path, path.size() - 1) };
+		return { path.back(), zfu::take(path, path.size() - 1) };
 	}
 
 

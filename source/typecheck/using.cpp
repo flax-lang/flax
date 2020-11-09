@@ -16,8 +16,10 @@ static void importScopeContentsIntoNewScope(sst::TypecheckState* fs, const std::
 
 	if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
 	{
-		auto err = SimpleError::make(fs->loc(), "cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
-			util::serialiseScope(sfrom), util::serialiseScope(stoParent), name);
+		auto err = SimpleError::make(fs->loc(),
+			"cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
+			zfu::join(sfrom, "::"), zfu::join(stoParent, "::"),
+			name);
 
 		for(const auto& d : defs)
 			err->append(SimpleError::make(MsgType::Note, d->loc, "conflicting definition here:"));

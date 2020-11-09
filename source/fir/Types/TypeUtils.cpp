@@ -79,7 +79,7 @@ namespace fir
 			return false;
 
 		// drop the first argument.
-		for(auto [ b, d ] : util::zip(base, derv))
+		for(auto [ b, d ] : zfu::zip(base, derv))
 		{
 			if(!areTypesContravariant(b, d, traitChecking))
 				return false;
@@ -90,8 +90,8 @@ namespace fir
 
 	bool areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn, bool traitChecking)
 	{
-		bool ret = areTypeListsContravariant(util::drop(base->getArgumentTypes(), 1),
-			util::drop(fn->getArgumentTypes(), 1), traitChecking);
+		bool ret = areTypeListsContravariant(zfu::drop(base->getArgumentTypes(), 1),
+			zfu::drop(fn->getArgumentTypes(), 1), traitChecking);
 
 		if(!ret)
 			return false;

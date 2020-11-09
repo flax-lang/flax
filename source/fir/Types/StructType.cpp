@@ -105,7 +105,7 @@ namespace fir
 
 	void StructType::addTraitImpl(TraitType* trt)
 	{
-		if(util::contains(this->implTraits, trt))
+		if(zfu::contains(this->implTraits, trt))
 			error("'%s' already implements trait '%s'", this, trt);
 
 		this->implTraits.push_back(trt);
@@ -113,7 +113,7 @@ namespace fir
 
 	bool StructType::implementsTrait(TraitType* trt)
 	{
-		return util::contains(this->implTraits, trt);
+		return zfu::contains(this->implTraits, trt);
 	}
 
 	std::vector<TraitType*> StructType::getImplementedTraits()

@@ -203,7 +203,7 @@ namespace poly
 					target.push_back(ArgType("", vty, uvloc));
 				}
 
-				auto given = util::map(input, [](const FnCallArgument& fca) -> ArgType {
+				auto given = zfu::map(input, [](const FnCallArgument& fca) -> ArgType {
 					return ArgType(fca.name, fca.value->type, fca.loc);
 				});
 
@@ -262,7 +262,7 @@ namespace poly
 			{
 				auto ift = problem_infer->toFunctionType();
 
-				util::foreachIdx(ift->getArgumentTypes(), [&target, &params](fir::Type* ty, size_t i) {
+				zfu::foreachIdx(ift->getArgumentTypes(), [&target, &params](fir::Type* ty, size_t i) {
 					target.push_back(ArgType(params[i].name, ty, params[i].loc));
 				});
 
@@ -273,7 +273,7 @@ namespace poly
 
 			if(isFnCall)
 			{
-				given = util::map(input, [](const FnCallArgument& a) -> poly::ArgType {
+				given = zfu::map(input, [](const FnCallArgument& a) -> poly::ArgType {
 					return ArgType(a.name, a.value->type, a.loc, /* opt: */ false, /* ignoreName: */ a.ignoreName);
 				});
 
@@ -292,7 +292,7 @@ namespace poly
 
 				// ok, we should have it.
 				iceAssert(type_infer->isFunctionType());
-				given = util::mapidx(type_infer->toFunctionType()->getArgumentTypes(), [&params](fir::Type* t, size_t i) -> ArgType {
+				given = zfu::mapIdx(type_infer->toFunctionType()->getArgumentTypes(), [&params](fir::Type* t, size_t i) -> ArgType {
 					return ArgType(params[i].name, t, params[i].loc);
 				}) + ArgType("<return_type>", type_infer->toFunctionType()->getReturnType(), thing->loc);
 			}

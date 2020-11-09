@@ -33,6 +33,9 @@
 #include <stdexcept>
 #include <algorithm>
 
+#include "zpr.h"
+#include "zfu.h"
+
 #endif
 
 

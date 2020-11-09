@@ -68,7 +68,7 @@ static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::Typ
 				flds = str->fields;
 
 			else if(auto unn = dcast(sst::RawUnionDefn, innerdef); unn)
-				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+				flds = zfu::map(unn->fields, zfu::pair_second()) + unn->transparentFields;
 
 			else
 				error(fs->loc(), "what kind of type is this? '%s'", ty);

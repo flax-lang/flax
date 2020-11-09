@@ -86,7 +86,7 @@ namespace sst
 				int polysession)
 			{
 				// mm, smells functional.
-				return util::map(input, [fs, problems, polysession](pts::Type* pt) -> fir::Type* {
+				return zfu::map(input, [fs, problems, polysession](pts::Type* pt) -> fir::Type* {
 					return convertPtsType(fs, problems, pt, polysession);
 				});
 			}
@@ -96,7 +96,7 @@ namespace sst
 			std::vector<ArgType> unwrapFunctionParameters(TypecheckState* fs, const ProblemSpace_t& problems,
 				const std::vector<ast::FuncDefn::Param>& args, int polysession)
 			{
-				return util::mapidx(convertPtsTypeList(fs, problems, util::map(args,
+				return zfu::mapIdx(convertPtsTypeList(fs, problems, zfu::map(args,
 					[](const ast::FuncDefn::Param& a) -> pts::Type* {
 						return a.type;
 					}

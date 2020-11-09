@@ -53,7 +53,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// why do we do this when generating the declaration instead of only when we typecheck?
 	// as it currently stands, this means that our base class + any traits must appear before
 	// this class definition in the source code, which is kinda dumb.
-	for(auto base : util::map(this->bases, [fs](auto t) -> auto { return fs->convertParserTypeToFIR(t); }))
+	for(auto base : zfu::map(this->bases, [fs](auto t) -> auto { return fs->convertParserTypeToFIR(t); }))
 	{
 		if(base->isClassType())
 		{

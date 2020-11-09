@@ -310,7 +310,7 @@ namespace cgn
 		auto def = dcast(sst::StructDefn, cs->typeDefnMap[str]);
 		iceAssert(def);
 
-		return util::matchAny(def->traits, [name](sst::TraitDefn* trt) -> bool {
+		return zfu::matchAny(def->traits, [name](sst::TraitDefn* trt) -> bool {
 			// if we do not have such an attribute, then ::get returns an empty UA,
 			// with an empty string as a name.
 			return trt->attrs.get(strs::attrs::COMPILER_SUPPORT).name == strs::attrs::COMPILER_SUPPORT;

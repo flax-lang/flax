@@ -14,6 +14,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <sstream>
 #include <optional>
 #include <functional>
 #include <string_view>
@@ -122,6 +123,11 @@ namespace ztmu
 
 	size_t getTerminalWidth();
 	size_t displayedTextLength(const std::string_view& str);
+
+	inline std::vector<std::string> prettyFormatTextBlock(const std::vector<std::string>& paragraphs,
+		const char* leftMargin, const char* rightMargin, size_t maxLines = 0);
+	std::vector<std::string> prettyFormatTextBlock(const std::string& block, const char* leftMargin,
+		const char* rightMargin, size_t maxLines = 0);
 }
 
 
@@ -167,6 +173,8 @@ namespace detail
 	void delete_right(State* st);
 	size_t convertCursorToByteCursor(const char* bytes, size_t cursor);
 
+	std::vector<std::string> pretty_print_text_block(const std::vector<std::string>& paragraphs, const char* leftMargin,
+		const char* rightMargin, size_t maxLines);
 
 
 
@@ -184,7 +192,7 @@ namespace detail
 
 
 
-#if ZTMU_CREATE_IMPL // || true
+#if ZTMU_CREATE_IMPL
 
 // comes as a pair yo
 #include "zpr.h"
@@ -1700,7 +1708,7 @@ namespace detail
 					}
 					else
 					{
-						delete_left(st);
+						delete_right(st);
 					}
 				} break;
 
@@ -1940,6 +1948,125 @@ namespace detail
 		return eof;
 	}
 
+	std::vector<std::string> pretty_print_text_block(const std::vector<std::string>& paragraphs, const char* leftMargin,
+		const char* rightMargin, size_t maxLines)
+	{
+		auto split_words = [](const std::string& s) -> std::vector<std::string_view> {
+			std::vector<std::string_view> ret;
+
+			size_t word_start = 0;
+			for(size_t i = 0; i < s.size(); i++)
+			{
+				if(s[i] == ' ')
+				{
+					ret.push_back(std::string_view(s.c_str() + word_start, i - word_start));
+					word_start = i + 1;
+				}
+				else if(s[i] == '-')
+				{
+					ret.push_back(std::string_view(s.c_str() + word_start, i - word_start + 1));
+					word_start = i + 1;
+				}
+			}
+
+			ret.push_back(std::string_view(s.c_str() + word_start));
+			return ret;
+		};
+
+		auto tw = ztmu::getTerminalWidth();
+		tw = std::min(tw, tw - strlen(leftMargin) - strlen(rightMargin));
+
+		auto disp_len = ztmu::displayedTextLength;
+
+		std::vector<std::string> output;
+
+		size_t lines = 1;
+		size_t paras = 0;
+		for(auto& l : paragraphs)
+		{
+			size_t remaining = tw;
+
+			// sighs.
+			auto ss = std::stringstream();
+			ss << leftMargin;
+
+			// each "line" is actually a paragraph. we want to be nice, so pad on the right by a few spaces
+			// and hyphenate split words.
+
+			// first split into words
+			auto words = split_words(l);
+			for(const auto& word : words)
+			{
+				if(maxLines > 0 && lines == maxLines && remaining <= word.size() + 4)
+				{
+					// don't. just quit.
+					ss << "...";
+					break;
+				}
+
+				auto len = disp_len(word);
+				if(remaining >= len)
+				{
+					ss << word << (word.back() != '-' ? " " : "");
+
+					remaining -= len;
+
+					if(remaining > 0)
+					{
+						remaining -= 1;
+					}
+					else
+					{
+						ss << "\n" << leftMargin;
+						lines++;
+
+						remaining = tw;
+					}
+				}
+				else if(remaining < 3 || len < 5)
+				{
+					// for anything less than 5 chars, put it on the next line -- don't hyphenate.
+					ss << "\n" << leftMargin << word << (word.back() != '-' ? " " : "");
+
+					remaining = tw - (len + 1);
+					lines++;
+				}
+				else
+				{
+					auto thisline = remaining - 2;
+
+					// if we end up making a fragment 3 letters or shorter,
+					// push it to the next line instead.
+					if(std::min(word.size(), thisline ) <= 3)
+					{
+						thisline = 0;
+						ss << "\n" << leftMargin << word << (word.back() != '-' ? " " : "");
+					}
+					else
+					{
+						// split it.
+						ss << word.substr(0, thisline) << "-" << "\n";
+						ss << leftMargin << word.substr(thisline) << " ";
+					}
+
+					remaining = tw - word.substr(thisline).size();
+
+					lines++;
+				}
+			}
+
+			output.push_back(ss.str());
+
+			// if the paragraph has some space remaining at the end, then
+			// don't print the next one, just stop here.
+			if(maxLines > 0 && lines == maxLines && paras < paragraphs.size())
+				break;
+
+			paras++;
+		}
+
+		return output;
+	}
 }
 }
 #endif
@@ -1948,6 +2075,55 @@ namespace detail
 
 namespace ztmu
 {
+	inline std::vector<std::string> prettyFormatTextBlock(const std::vector<std::string>& paragraphs, const char* leftMargin,
+		const char* rightMargin, size_t maxLines)
+	{
+		return detail::pretty_print_text_block(paragraphs, leftMargin, rightMargin, maxLines);
+	}
+
+	inline std::vector<std::string> prettyFormatTextBlock(const std::string& block, const char* leftMargin,
+		const char* rightMargin, size_t maxLines)
+	{
+		auto splitString = [](std::string_view view, char delim = '\n') -> std::vector<std::string_view> {
+
+			std::vector<std::string_view> ret;
+
+			while(true)
+			{
+				size_t ln = view.find(delim);
+
+				if(ln != std::string_view::npos)
+				{
+					ret.emplace_back(view.data(), ln);
+					view.remove_prefix(ln + 1);
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
+			if(!view.empty())
+				ret.emplace_back(view.data(), view.length());
+
+			return ret;
+		};
+
+		std::vector<std::string> paragraphs;
+		auto splits = splitString(block);
+		for(auto sv : splits)
+		{
+			auto s = std::string(sv);
+			s.erase(std::remove(s.begin(), s.end(), '\r'));
+
+			if(!s.empty())
+				paragraphs.push_back(s);
+		}
+
+		return detail::pretty_print_text_block(paragraphs, leftMargin, rightMargin, maxLines);
+	}
+
 	inline size_t displayedTextLength(const std::string_view& str)
 	{
 		return detail::displayedTextLength(str);

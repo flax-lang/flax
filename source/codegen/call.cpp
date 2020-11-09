@@ -228,7 +228,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	{
 		idxmap = this->getNameIndexMap(fd);
 
-		util::foreachIdx(fd->params, [&defaultArgs](const FnParam& arg, size_t idx) {
+		zfu::foreachIdx(fd->params, [&defaultArgs](const FnParam& arg, size_t idx) {
 			if(arg.defaultVal)
 				defaultArgs[idx] = arg.defaultVal;
 		});
@@ -437,7 +437,7 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 	}
 
-	std::vector<FnCallArgument> fcas = util::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
+	std::vector<FnCallArgument> fcas = zfu::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
 		return FnCallArgument(arg->loc, "", arg, /* orig: */ nullptr);
 	});
 

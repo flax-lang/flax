@@ -47,7 +47,7 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(this->isFunctionCall)
 	{
-		std::vector<fir::Value*> arguments = util::map(this->args, [cs](sst::Expr* e) -> fir::Value* { return e->codegen(cs).value; });
+		std::vector<fir::Value*> arguments = zfu::map(this->args, [cs](sst::Expr* e) -> fir::Value* { return e->codegen(cs).value; });
 		if(this->name == names::saa::FN_CLONE)
 		{
 			iceAssert(arguments.empty());

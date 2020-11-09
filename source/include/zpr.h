@@ -2,16 +2,20 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+// updated 12/07/2020
+// origins:
+// flax         -- 12/07/2020
+// ikurabot     -- 10/06/2020
+
 #pragma once
 
+#include <math.h>
 #include <stdint.h>
 #include <stddef.h>
 
-#include <map>
 #include <string>
-#include <algorithm>
-#include <type_traits>
 #include <string_view>
+#include <type_traits>
 
 #ifndef ENABLE_FIELD_SIZES
 	#define ENABLE_FIELD_SIZES          1
@@ -175,7 +179,11 @@ namespace zpr
 
 		inline std::string sprint(const char* &fmt)
 		{
-			return std::string(fmt);
+			if(!fmt || !*fmt)
+				return "";
+
+			auto tmp = skip(fmt, &fmt);
+			return tmp + sprint(fmt);
 		}
 
 		// we need to forward declare this.
@@ -388,6 +396,7 @@ namespace zpr
 			// else if(args.specifier == 'o')                          base = 8;
 			// else if(args.specifier == 'b')                          base = 2;
 
+		#if 0
 			// handle negative values ourselves btw, due to padding
 			bool is_neg = false;
 
@@ -398,6 +407,7 @@ namespace zpr
 				if(is_neg)
 					x = -x;
 			}
+		#endif
 
 			std::string digits;
 			{
@@ -407,17 +417,30 @@ namespace zpr
 				size_t digits_len = 0;
 				auto spec = args.specifier;
 
-				static std::map<int64_t, std::string> len_specs = {
-					{ format_args::LENGTH_SHORT_SHORT,  "hh"   },
-					{ format_args::LENGTH_SHORT,        "h"    },
-					{ format_args::LENGTH_LONG,         "l"    },
-					{ format_args::LENGTH_LONG_LONG,    "ll"   },
-					{ format_args::LENGTH_INTMAX_T,     "j"    },
-					{ format_args::LENGTH_SIZE_T,       "z"    },
-					{ format_args::LENGTH_PTRDIFF_T,    "t"    }
+				static const char* len_specs[] = {
+					/* LENGTH_DEFAULT */        "",
+					/* LENGTH_SHORT_SHORT */    "hh",
+					/* LENGTH_SHORT */          "h",
+					/* LENGTH_LONG */           "l",
+					/* LENGTH_LONG_LONG */      "ll",
+					/* LENGTH_LONG_DOUBLE */    "L",
+					/* LENGTH_INTMAX_T */       "j",
+					/* LENGTH_SIZE_T */         "z",
+					/* LENGTH_PTRDIFF_T */      "t",
 				};
 
-				auto fmt_str = ("%" + len_specs[args.length] + spec);
+				auto len_spec = len_specs[args.length];
+				if(std::is_same_v<int64_t, std::remove_cv_t<std::decay_t<T>>>)
+					len_spec = "ll";
+
+				if(std::is_same_v<size_t, std::remove_cv_t<std::decay_t<T>>>)
+					len_spec = "z";
+
+				if(std::is_same_v<uint64_t, std::remove_cv_t<std::decay_t<T>>>)
+					len_spec = "ll";
+
+
+				auto fmt_str = ("%" + std::string(len_spec) + spec);
 
 				digits_len = snprintf(&buf[0], 64, fmt_str.c_str(), x);
 
@@ -442,8 +465,12 @@ namespace zpr
 			}
 
 			std::string prefix;
+			#if 0
 			if(is_neg)                              prefix += "-";
-			else if(args.prepend_plus_if_positive)  prefix += "+";
+			else
+			#endif
+
+			if(args.prepend_plus_if_positive)       prefix += "+";
 			else if(args.prepend_blank_if_positive) prefix += " ";
 
 			// prepend 0x or 0b or 0o for alternate.
@@ -574,7 +601,7 @@ namespace zpr
 			int64_t string_length = 0;
 			int64_t abs_field_width = std::abs(args.width);
 
-			if constexpr (std::is_pointer_v<std::decay_t<T>>)
+			if constexpr (std::is_pointer_v<std::remove_reference_t<std::decay_t<T>>>)
 			{
 				for(int64_t i = 0; (args.precision != -1 ? (i < args.precision && x && x[i]) : (x && x[i])); i++)
 					string_length++;
