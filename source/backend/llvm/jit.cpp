@@ -47,7 +47,7 @@ namespace backend
         OptimiseLayer(ES, CompileLayer, optimiseModule),
         DL(std::move(DL)), Mangle(ES, this->DL),
         Ctx(std::make_unique<llvm::LLVMContext>()),
-        dylib(ES.createJITDylib("<jit>"))
+        dylib(ES.createJITDylib("<jit>").get())
 	{
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 		dylib.addGenerator(llvm::cantFail(
