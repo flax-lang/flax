@@ -429,6 +429,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* top)
 		if(auto decl = dcast(ast::Parameterisable, stmt))
 		{
 			decl->realScope = fs->getCurrentScope();
+			decl->enclosingScope = fs->getCurrentScope2();
 			decl->generateDeclaration(fs, 0, { });
 		}
 

@@ -57,6 +57,7 @@ namespace sst
 		~TypeDefn() { }
 
 		ast::TypeDefn* original = 0;
+		Scope innerScope;
 	};
 
 

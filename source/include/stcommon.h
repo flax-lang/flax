@@ -8,6 +8,19 @@
 namespace sst
 {
 	struct VarDefn;
+	struct StateTree;
+
+	struct Scope
+	{
+		Scope() { }
+		Scope(StateTree* st);
+
+		StateTree* stree = 0;
+		const Scope* prev = 0;
+
+		std::vector<std::string> getStrings() const;
+		const Scope& appending(const std::string& name) const;
+	};
 }
 
 namespace ast

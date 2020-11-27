@@ -706,6 +706,63 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 
+static sst::Expr* checkRhs2(sst::TypecheckState* fs, ast::DotOperator* dot, const sst::Scope& olds, const sst::Scope& news,
+	fir::Type* rhs_infer, sst::StructDefn* possibleStructDefn = 0)
+{
+	if(auto id = dcast(ast::Ident, dot->right))
+		id->traverseUpwards = false;
+
+	else if(auto fc = dcast(ast::FunctionCall, dot->right))
+		fc->traverseUpwards = false;
+
+	// note: for function/expr calls, we typecheck the arguments *before* we teleport to the scope, so that we don't conflate
+	// the scope of the argument (which is the current scope) with the scope of the call target (which is in whatever namespace)
+
+	sst::Expr* ret = 0;
+	if(auto fc = dcast(ast::FunctionCall, dot->right))
+	{
+		auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			e.second->typecheck(fs).expr(), e.second);
+		});
+
+		fs->teleportInto(news);
+		ret = fc->typecheckWithArguments(fs, args, rhs_infer);
+	}
+	else if(auto ec = dcast(ast::ExprCall, dot->right))
+	{
+		auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			e.second->typecheck(fs).expr(), e.second);
+		});
+
+		fs->teleportInto(news);
+		ret = ec->typecheckWithArguments(fs, args, rhs_infer);
+	}
+	else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
+	{
+		fs->teleportInto(news);
+		auto res = dot->right->typecheck(fs, rhs_infer);
+		if(res.isError() && possibleStructDefn && dcast(ast::Ident, dot->right))
+		{
+			wrongDotOpError(res.error(), possibleStructDefn, dot->right->loc, dcast(ast::Ident, dot->right)->name, true)->postAndQuit();
+		}
+		else
+		{
+			// will post if res is an error, even if we didn't give the fancy error.
+			ret = res.expr();
+		}
+	}
+	else
+	{
+		error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
+			zfu::join(news.getStrings(), "::"));
+	}
+
+	iceAssert(ret);
+
+	// fs->teleportToScope(olds);
+	fs->teleportOut();
+	return ret;
+}
 
 
 
@@ -816,7 +873,6 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
 			{
 				fs->pushSelfContext(def->type);
-				defer(fs->popSelfContext());
 
 				auto oldscope = fs->getCurrentScope();
 				auto newscope = typdef->id.scope;
@@ -832,7 +888,10 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}
 
-				return checkRhs(fs, dot, oldscope, newscope, infer);
+				auto ret = checkRhs(fs, dot, oldscope, newscope, infer);
+				fs->popSelfContext();
+
+				return ret;
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))
 			{
@@ -885,11 +944,12 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = enm->id.scope;
-				newscope.push_back(enm->id.name);
+				auto oldscope = fs->getCurrentScope2();
+				auto newscope = enm->innerScope;
+				// auto newscope = enm->id.scope;
+				// newscope.push_back(enm->id.name);
 
-				auto rhs = checkRhs(fs, dot, oldscope, newscope, infer);
+				auto rhs = checkRhs2(fs, dot, oldscope, newscope, infer);
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{

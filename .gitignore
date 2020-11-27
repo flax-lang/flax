@@ -101,4 +101,5 @@ flax.includes
 build/__pycache__
 *.vspx
 
+.cache
 compile_flags.txt

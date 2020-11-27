@@ -43,6 +43,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	// set it to void first, because we want to defer typechecking the member type.
 	defn->type = fir::EnumType::get(defn->id, fir::Type::getVoid());
@@ -50,7 +52,8 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
 		return TCResult(err);
 
-	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+	// fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+	this->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
@@ -69,9 +72,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	auto defn = dcast(sst::EnumDefn, tcr.defn());
 	iceAssert(defn);
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
+	fs->teleportInto(defn->innerScope);
 
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
 	else					defn->memberType = fir::Type::getNativeWord();
@@ -107,9 +108,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 	defn->type = ety;
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
-
+	fs->teleportOut();
 	return TCResult(defn);
 }
 

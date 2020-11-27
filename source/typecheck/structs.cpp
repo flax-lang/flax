@@ -11,87 +11,9 @@
 #include <set>
 #include "memorypool.h"
 
-static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing)
-{
-	seeing.insert(strty);
-
-	if(field == strty)
-	{
-		SimpleError::make(floc, "composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
-			->postAndQuit();
-	}
-	else if(seeing.find(field) != seeing.end())
-	{
-		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
-			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
-			->postAndQuit();
-	}
-	else if(field->isClassType())
-	{
-		for(auto f : field->toClassType()->getElements())
-			_checkFieldRecursion(fs, field, f, floc, seeing);
-	}
-	else if(field->isStructType())
-	{
-		for(auto f : field->toStructType()->getElements())
-			_checkFieldRecursion(fs, field, f, floc, seeing);
-	}
-	else if(field->isRawUnionType())
-	{
-		for(auto f : field->toRawUnionType()->getVariants())
-			_checkFieldRecursion(fs, field, f.second, floc, seeing);
-	}
-
-	// ok, we should be fine...?
-}
-
+static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing);
 static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
-	util::hash_map<std::string, Location>& seen)
-{
-	for(auto fld : fields)
-	{
-		if(fld->isTransparentField)
-		{
-			auto ty = fld->type;
-			if(!ty->isRawUnionType() && !ty->isStructType())
-			{
-				// you can't have a transparentl field if it's not an aggregate type, lmao
-				error(fld, "transparent fields must have either a struct or raw-union type.");
-			}
-
-			auto innerdef = fs->typeDefnMap[ty];
-			iceAssert(innerdef);
-
-			std::vector<sst::StructFieldDefn*> flds;
-			if(auto str = dcast(sst::StructDefn, innerdef); str)
-				flds = str->fields;
-
-			else if(auto unn = dcast(sst::RawUnionDefn, innerdef); unn)
-				flds = zfu::map(unn->fields, zfu::pair_second()) + unn->transparentFields;
-
-			else
-				error(fs->loc(), "what kind of type is this? '%s'", ty);
-
-			_checkTransparentFieldRedefinition(fs, innerdef, flds, seen);
-		}
-		else
-		{
-			if(auto it = seen.find(fld->id.name); it != seen.end())
-			{
-				SimpleError::make(fld->loc, "redefinition of transparently accessible field '%s'", fld->id.name)
-					->append(SimpleError::make(MsgType::Note, it->second, "previous definition was here:"))
-					->postAndQuit();
-			}
-			else
-			{
-				seen[fld->id.name] = fld->loc;
-			}
-		}
-	}
-}
-
-
+	util::hash_map<std::string, Location>& seen);
 
 // used in typecheck/unions.cpp and typecheck/classes.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
@@ -105,8 +27,6 @@ void checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* d
 	util::hash_map<std::string, Location> seen;
 	_checkTransparentFieldRedefinition(fs, defn, fields, seen);
 }
-
-
 
 // defined in typecheck/traits.cpp
 void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn);
@@ -268,6 +188,85 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 
 
+static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc, std::set<fir::Type*>& seeing)
+{
+	seeing.insert(strty);
+
+	if(field == strty)
+	{
+		SimpleError::make(floc, "composite type '%s' cannot contain a field of its own type; use a pointer.", strty)
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
+			->postAndQuit();
+	}
+	else if(seeing.find(field) != seeing.end())
+	{
+		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
+			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
+			->postAndQuit();
+	}
+	else if(field->isClassType())
+	{
+		for(auto f : field->toClassType()->getElements())
+			_checkFieldRecursion(fs, field, f, floc, seeing);
+	}
+	else if(field->isStructType())
+	{
+		for(auto f : field->toStructType()->getElements())
+			_checkFieldRecursion(fs, field, f, floc, seeing);
+	}
+	else if(field->isRawUnionType())
+	{
+		for(auto f : field->toRawUnionType()->getVariants())
+			_checkFieldRecursion(fs, field, f.second, floc, seeing);
+	}
+
+	// ok, we should be fine...?
+}
+
+static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
+	util::hash_map<std::string, Location>& seen)
+{
+	for(auto fld : fields)
+	{
+		if(fld->isTransparentField)
+		{
+			auto ty = fld->type;
+			if(!ty->isRawUnionType() && !ty->isStructType())
+			{
+				// you can't have a transparentl field if it's not an aggregate type, lmao
+				error(fld, "transparent fields must have either a struct or raw-union type.");
+			}
+
+			auto innerdef = fs->typeDefnMap[ty];
+			iceAssert(innerdef);
+
+			std::vector<sst::StructFieldDefn*> flds;
+			if(auto str = dcast(sst::StructDefn, innerdef); str)
+				flds = str->fields;
+
+			else if(auto unn = dcast(sst::RawUnionDefn, innerdef); unn)
+				flds = zfu::map(unn->fields, zfu::pair_second()) + unn->transparentFields;
+
+			else
+				error(fs->loc(), "what kind of type is this? '%s'", ty);
+
+			_checkTransparentFieldRedefinition(fs, innerdef, flds, seen);
+		}
+		else
+		{
+			if(auto it = seen.find(fld->id.name); it != seen.end())
+			{
+				SimpleError::make(fld->loc, "redefinition of transparently accessible field '%s'", fld->id.name)
+					->append(SimpleError::make(MsgType::Note, it->second, "previous definition was here:"))
+					->postAndQuit();
+			}
+			else
+			{
+				seen[fld->id.name] = fld->loc;
+			}
+		}
+	}
+}
 
 
 

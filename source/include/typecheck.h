@@ -46,17 +46,6 @@ namespace sst
 		struct Solution_t;
 	}
 
-	struct Scope
-	{
-		Scope() { }
-		Scope(StateTree* st);
-
-		StateTree* stree = 0;
-		const Scope* prev = 0;
-
-		std::vector<std::string> getStrings() const;
-	};
-
 	struct StateTree
 	{
 		StateTree(const std::string& nm, const std::string& filename, StateTree* p, bool anon = false)
@@ -111,6 +100,7 @@ namespace sst
 
 		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
+		StateTree* findOrCreateSubtree(const std::string& name, bool anonymous = false);
 
 		util::hash_map<std::string, std::vector<Defn*>> getAllDefinitions();
 
@@ -217,6 +207,13 @@ namespace sst
 
 		[[deprecated]]
 		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
+
+		Scope getCurrentScope2();
+
+		std::vector<StateTree*> teleportationStack;
+		void teleportInto(const Scope& scope);
+		void teleportOut();
+
 
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name, StateTree* tree = 0);

@@ -104,6 +104,8 @@ namespace ast
 		//? for methods & nested types, we set them in structs.cpp/classes.cpp
 		//? in repl mode, we set this manually.
 		std::vector<std::string> realScope;
+
+		sst::Scope enclosingScope;
 	};
 
 

@@ -124,7 +124,10 @@ namespace repl
 				// note: usually, visitDeclarables in the top-level typecheck will set the realScope.
 				// BUT, since we're not doing that, we must set it manually!
 				if(auto def = dcast(ast::Parameterisable, stmt); def)
+				{
 					def->realScope = state->fs->getCurrentScope();
+					def->enclosingScope = state->fs->getCurrentScope2();
+				}
 
 				tcr = stmt->typecheck(state->fs);
 			}

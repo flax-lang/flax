@@ -32,7 +32,12 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	// make all our methods be methods
 	for(auto m : this->methods)
-		m->parentType = this, m->realScope = this->realScope + defn->id.name;
+	{
+		m->parentType = this;
+		m->realScope = this->realScope + defn->id.name;
+		// m->enclosingScope =
+	}
+
 
 	auto str = fir::TraitType::create(defn->id);
 	defn->type = str;

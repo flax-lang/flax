@@ -138,26 +138,10 @@ namespace sst
 
 
 
-
 	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
-
-		if(auto it = this->stree->subtrees.find(name); it != this->stree->subtrees.end())
-		{
-			this->stree = it->second;
-		}
-		else
-		{
-			auto newtree = util::pool<StateTree>(name, this->stree->topLevelFilename, this->stree, createAnonymously);
-			this->stree->subtrees[name] = newtree;
-
-			// make a treedef.
-			newtree->treeDefn = util::pool<TreeDefn>(Location());
-			newtree->treeDefn->tree = newtree;
-
-			this->stree = newtree;
-		}
+		this->stree = this->stree->findOrCreateSubtree(name, createAnonymously);
 	}
 
 	StateTree* TypecheckState::popTree()
@@ -199,6 +183,11 @@ namespace sst
 	bool TypecheckState::isInDeferBlock()
 	{
 		return this->deferBlockNest > 0;
+	}
+
+	Scope TypecheckState::getCurrentScope2()
+	{
+		return this->stree->getScope2();
 	}
 
 	std::string TypecheckState::serialiseCurrentScope()
@@ -364,6 +353,14 @@ namespace sst
 		this->addDefinition(this->topLevelFilename, _name, def, gmaps);
 	}
 
+
+
+
+
+
+
+
+
 	std::vector<std::string> Scope::getStrings() const
 	{
 		std::vector<std::string> ret;
@@ -391,6 +388,31 @@ namespace sst
 
 		return this->cachedScope;
 	}
+
+	const Scope& Scope::appending(const std::string& name) const
+	{
+		return this->stree->findOrCreateSubtree(name)->getScope2();
+	}
+
+	void TypecheckState::teleportInto(const Scope& scope)
+	{
+		this->teleportationStack.push_back(this->stree);
+		this->stree = scope.stree;
+	}
+
+	void TypecheckState::teleportOut()
+	{
+		this->stree = this->teleportationStack.back();
+		this->teleportationStack.pop_back();
+	}
+
+
+
+
+
+
+
+
 
 	// TODO: maybe cache this someday?
 	std::vector<std::string> StateTree::getScope()
@@ -422,7 +444,24 @@ namespace sst
 		return 0;
 	}
 
+	StateTree* StateTree::findOrCreateSubtree(const std::string& name, bool anonymous)
+	{
+		if(auto it = this->subtrees.find(name); it != this->subtrees.end())
+		{
+			return it->second;
+		}
+		else
+		{
+			auto newtree = util::pool<StateTree>(name, this->topLevelFilename, this, anonymous);
+			this->subtrees[name] = newtree;
 
+			// make a treedef.
+			newtree->treeDefn = util::pool<TreeDefn>(Location());
+			newtree->treeDefn->tree = newtree;
+
+			return newtree;
+		}
+	}
 
 
 

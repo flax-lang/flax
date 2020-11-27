@@ -1,0 +1,12 @@
+// c.flx
+// Copyright (c) 2020, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+export c
+
+ffi fn printf(fmt: &i8, ...) -> int
+
+public fn foozle(x: int)
+{
+	printf("hello, world! (%d)\n", x)
+}
