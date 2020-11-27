@@ -52,9 +52,7 @@ namespace sst
 		Scope(StateTree* st);
 
 		StateTree* stree = 0;
-
 		const Scope* prev = 0;
-		const Scope* next = 0;
 
 		std::vector<std::string> getStrings() const;
 	};
@@ -94,6 +92,12 @@ namespace sst
 		// maps from filename to defnmap -- allows tracking definitions by where they came from
 		// so we can resolve the import duplication bullshit
 		util::hash_map<std::string, DefnMap> definitions;
+
+
+		std::vector<Defn*> exports;
+		std::vector<StateTree*> imports;
+		std::vector<StateTree*> reexports;
+
 
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are

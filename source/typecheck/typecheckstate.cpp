@@ -311,18 +311,35 @@ namespace sst
 		return ret;
 	}
 
-	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
+	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, std::vector<Defn*>& out)
 	{
-		std::vector<Defn*> ret;
-		for(const auto& [ filename, defnMap ] : this->definitions)
+		for(const auto& [ filename, defnMap ] : tree->definitions)
 		{
 			(void) filename;
 			if(auto it = defnMap.defns.find(name); it != defnMap.defns.end())
 			{
 				const auto& defs = it->second;
-				if(defs.size() > 0) ret.insert(ret.end(), defs.begin(), defs.end());
+				if(defs.size() > 0)
+					out.insert(out.end(), defs.begin(), defs.end());
 			}
 		}
+
+		if(!recursively)
+			return;
+
+		for(auto import : tree->imports)
+		{
+			fetchDefinitionsFrom(name, import, false, out);
+
+			for(auto reexp : import->reexports)
+				fetchDefinitionsFrom(name, reexp, false, out);
+		}
+	}
+
+	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
+	{
+		std::vector<Defn*> ret;
+		fetchDefinitionsFrom(name, this, true, ret);
 
 		return ret;
 	}
@@ -594,7 +611,6 @@ namespace sst
 
 	Scope::Scope(StateTree* st)
 	{
-		this->next = 0;
 		this->prev = 0;
 
 		this->stree = st;

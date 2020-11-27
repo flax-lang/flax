@@ -534,7 +534,7 @@ namespace interp
 	// propagate to the backend code generation.
 	void InterpState::finalise()
 	{
-		for(const auto [ id, glob ] : this->module->_getGlobals())
+		for(const auto& [ id, glob ] : this->module->_getGlobals())
 		{
 			// printf("global: %s\n", id.str().c_str());
 

@@ -97,13 +97,15 @@ namespace sst
 								}
 								else if(auto f = dcast(FunctionDecl, ot))
 								{
-									if(fir::Type::areTypeListsEqual(zfu::map(fn->params, [](const auto& p) -> fir::Type* { return p.type; }),
+									if(fir::Type::areTypeListsEqual(zfu::map(fn->params, [](const auto& p) -> auto { return p.type; }),
 										zfu::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
 									{
 										debuglogln("from: %s", tree->topLevelFilename);
 										debuglogln("to: %s", existing->topLevelFilename);
-										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
-											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)",
+										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature",
+											fn->id.name)
+											->append(SimpleError::make(MsgType::Note, f->loc,
+												"conflicting definition was here: (%p vs %p)",
 												reinterpret_cast<void*>(f), reinterpret_cast<void*>(fn)))
 											->postAndQuit();
 									}
@@ -205,6 +207,117 @@ namespace sst
 		std::string name;
 		std::string vendor;
 	};
+	static OsStrings getOsStrings();
+	static void generatePreludeDefinitions(TypecheckState* fs);
+
+
+
+
+
+
+
+	using frontend::CollectorState;
+	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file,
+		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
+	{
+		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
+		tree->treeDefn = util::pool<TreeDefn>(Location());
+		tree->treeDefn->tree = tree;
+
+		auto fs = new TypecheckState(tree);
+
+		for(auto [ ithing, import ] : imports)
+		{
+			info(ithing.loc, "import: %s", ithing.name);
+
+			auto ias = ithing.importAs;
+			if(ias.empty())
+				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
+
+			StateTree* insertPoint = tree;
+			if(ias.size() == 1 && ias[0] == "_")
+			{
+				// do nothing.
+				// insertPoint = tree;
+			}
+			else
+			{
+				StateTree* curinspt = insertPoint;
+
+				// iterate through the import-as list, which is a list of nested scopes to import into
+				// eg we can `import foo as some::nested::namespace`, which means we need to create
+				// the intermediate trees.
+
+				for(const auto& impas : ias)
+				{
+					if(impas == curinspt->name)
+					{
+						// skip it.
+					}
+					else if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
+					{
+						curinspt = it->second;
+					}
+					else
+					{
+						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
+						curinspt->subtrees[impas] = newinspt;
+
+						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
+						treedef->id = Identifier(impas, IdKind::Name);
+						treedef->tree = newinspt;
+						treedef->tree->treeDefn = treedef;
+						treedef->visibility = ithing.pubImport
+							? VisibilityLevel::Public
+							: VisibilityLevel::Private;
+
+						curinspt->addDefinition(file.name, impas, treedef);
+
+						curinspt = newinspt;
+					}
+				}
+
+				insertPoint = curinspt;
+			}
+
+			iceAssert(insertPoint);
+
+			insertPoint->imports.push_back(import->base);
+			if(ithing.pubImport)
+				insertPoint->reexports.push_back(import->base);
+
+			// _addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import->base,
+			// 	/* commonParent: */ nullptr, ithing.pubImport,
+			// 	/* ignoreVis: */ false, file.name);
+
+			fs->dtree->thingsImported.insert(ithing.name);
+			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
+
+			// merge the things. hopefully there are no conflicts????
+			// TODO: check for conflicts!
+			fs->dtree->compilerSupportDefinitions.insert(import->compilerSupportDefinitions.begin(),
+				import->compilerSupportDefinitions.end());
+		}
+
+		if(addPreludeDefinitions)
+			generatePreludeDefinitions(fs);
+
+		// handle exception here:
+		try {
+			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
+			iceAssert(tns);
+
+			tns->name = file.moduleName;
+
+			fs->dtree->topLevel = tns;
+		}
+		catch(ErrorException& ee)
+		{
+			ee.err->postAndQuit();
+		}
+
+		return fs->dtree;
+	}
 
 	static OsStrings getOsStrings()
 	{
@@ -306,111 +419,6 @@ namespace sst
 			fs->stree->addDefinition("vendor", vendor_def);
 		}
 	}
-
-
-
-
-
-
-
-
-	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file,
-		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
-	{
-		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
-		tree->treeDefn = util::pool<TreeDefn>(Location());
-		tree->treeDefn->tree = tree;
-
-		auto fs = new TypecheckState(tree);
-
-		for(auto [ ithing, import ] : imports)
-		{
-			info(ithing.loc, "import: %s", ithing.name);
-
-			auto ias = ithing.importAs;
-			if(ias.empty())
-				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
-
-			StateTree* insertPoint = tree;
-			if(ias.size() == 1 && ias[0] == "_")
-			{
-				// do nothing.
-				// insertPoint = tree;
-			}
-			else
-			{
-				StateTree* curinspt = insertPoint;
-
-				// iterate through the import-as list, which is a list of nested scopes to import into
-				// eg we can `import foo as some::nested::namespace`, which means we need to create
-				// the intermediate trees.
-
-				for(const auto& impas : ias)
-				{
-					if(impas == curinspt->name)
-					{
-						// skip it.
-					}
-					else if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
-					{
-						curinspt = it->second;
-					}
-					else
-					{
-						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
-						curinspt->subtrees[impas] = newinspt;
-
-						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
-						treedef->id = Identifier(impas, IdKind::Name);
-						treedef->tree = newinspt;
-						treedef->tree->treeDefn = treedef;
-						treedef->visibility = ithing.pubImport
-							? VisibilityLevel::Public
-							: VisibilityLevel::Private;
-
-						curinspt->addDefinition(file.name, impas, treedef);
-
-						curinspt = newinspt;
-					}
-				}
-
-				insertPoint = curinspt;
-			}
-
-			iceAssert(insertPoint);
-
-			_addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import->base, /* commonParent: */ nullptr, ithing.pubImport,
-				/* ignoreVis: */ false, file.name);
-
-			fs->dtree->thingsImported.insert(ithing.name);
-			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
-
-			// merge the things. hopefully there are no conflicts????
-			// TODO: check for conflicts!
-			fs->dtree->compilerSupportDefinitions.insert(import->compilerSupportDefinitions.begin(),
-				import->compilerSupportDefinitions.end());
-		}
-
-		if(addPreludeDefinitions)
-			generatePreludeDefinitions(fs);
-
-		// handle exception here:
-		try {
-			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
-			iceAssert(tns);
-
-			tns->name = file.moduleName;
-
-			fs->dtree->topLevel = tns;
-		}
-		catch (ErrorException& ee)
-		{
-			ee.err->postAndQuit();
-		}
-
-		return fs->dtree;
-	}
 }
 
 
@@ -467,6 +475,9 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 		else if(!tcr.isParametric() && !tcr.isDummy())
 			ret->statements.push_back(tcr.stmt());
+
+		if(tcr.isDefn() && tcr.defn()->visibility == VisibilityLevel::Public)
+			tree->exports.push_back(tcr.defn());
 
 		// check for compiler support so we can add it to the big list of things.
 		if((tcr.isStmt() || tcr.isDefn()) && tcr.stmt()->attrs.has(strs::attrs::COMPILER_SUPPORT))
