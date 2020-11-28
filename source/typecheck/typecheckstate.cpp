@@ -293,25 +293,13 @@ namespace sst
 
 	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
 	{
-		util::hash_map<std::string, std::vector<Defn*>> ret;
-		for(auto srcs : this->definitions)
-			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
-
-		return ret;
+		return this->definitions2;
 	}
 
 	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, std::vector<Defn*>& out)
 	{
-		for(const auto& [ filename, defnMap ] : tree->definitions)
-		{
-			(void) filename;
-			if(auto it = defnMap.defns.find(name); it != defnMap.defns.end())
-			{
-				const auto& defs = it->second;
-				if(defs.size() > 0)
-					out.insert(out.end(), defs.begin(), defs.end());
-			}
-		}
+		if(auto it = tree->definitions2.find(name); it != tree->definitions2.end())
+			out.insert(out.end(), it->second.begin(), it->second.end());
 
 		if(!recursively)
 			return;
@@ -345,7 +333,8 @@ namespace sst
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
 		// this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
-		this->definitions[sourceFile].defns[name].push_back(def);
+		// this->definitions[sourceFile].defns[name].push_back(def);
+		this->definitions2[name].push_back(def);
 	}
 
 	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)
@@ -620,17 +609,11 @@ namespace sst
 	void StateTree::dump()
 	{
 		zpr::println("%*s* TREE: %s - %s", indent * 2, "", this->name, frontend::getFilenameFromPath(this->topLevelFilename));
-		for(const auto& [ filename, dm ] : this->definitions)
+		for(const auto& [ name, defs ] : this->definitions2)
 		{
-			zpr::println("%*s* FROM %s (%s)", (indent + 1) * 2, "", frontend::getFilenameFromPath(filename),
-				dm.wasPublicImport ? "public" : "private");
-
-			for(const auto& [ name, defs ] : dm.defns)
-			{
-				zpr::println("%*s* %s", (indent + 2) * 2, "", name);
-				for(auto d : defs)
-					zpr::println("%*s> %s: %s", (indent + 3) * 2, "", d->id.str(), d->type ? d->type->str() : "??");
-			}
+			zpr::println("%*s* %s", (indent + 1) * 2, "", name);
+			for(auto d : defs)
+				zpr::println("%*s> %s: %s", (indent + 2) * 2, "", d->id.str(), d->type ? d->type->str() : "??");
 		}
 
 		if(!this->subtrees.empty())

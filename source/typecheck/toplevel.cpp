@@ -19,190 +19,6 @@ using namespace ast;
 
 namespace sst
 {
-	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, const std::string& filename)
-	{
-		auto clone = util::pool<StateTree>(clonee->name, filename, surrogateParent);
-		clone->treeDefn = util::pool<TreeDefn>(Location());
-		clone->treeDefn->tree = clone;
-
-		for(auto sub : clonee->subtrees)
-			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
-
-		clone->definitions = clonee->definitions;
-		clone->unresolvedGenericDefs = clonee->unresolvedGenericDefs;
-
-
-		clone->infixOperatorOverloads = clonee->infixOperatorOverloads;
-		clone->prefixOperatorOverloads = clonee->prefixOperatorOverloads;
-		clone->postfixOperatorOverloads = clonee->postfixOperatorOverloads;
-
-		return clone;
-	}
-
-	static StateTree* _addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing,
-		StateTree* tree, StateTree* commonParent, bool pubImport, bool ignoreVis, const std::string& importer)
-	{
-		// if it was compiler-generated, just skip it.
-		if(tree->isCompilerGenerated)
-			return existing;
-
-		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
-		for(auto sub : tree->subtrees)
-		{
-			if(sub.second->isCompilerGenerated)
-				continue;
-
-			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
-			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
-			{
-				if(sub.second->treeDefn->visibility != VisibilityLevel::Public)
-					continue;
-
-				_addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing,
-					pubImport, ignoreVis, importer);
-			}
-			else
-			{
-				existing->subtrees[sub.first] = cloneTree(sub.second, existing, tree->topLevelFilename);
-			}
-		}
-
-		// then, add all functions and shit
-		for(auto& defs_with_src : tree->definitions)
-		{
-			auto filename = defs_with_src.first;
-
-			// if we've already seen it, don't waste time re-importing it (and checking for dupes and stuff)
-			if(thingsImported.find(filename) != thingsImported.end())
-				continue;
-
-			for(auto defs : defs_with_src.second.defns)
-			{
-				auto name = defs.first;
-				for(auto def : defs.second)
-				{
-					// info(def, "hello there (%s)", def->visibility);
-					if(ignoreVis || ((pubImport || existing->topLevelFilename == importer) && def->visibility == VisibilityLevel::Public))
-					{
-						auto others = existing->getDefinitionsWithName(name);
-
-						for(auto ot : others)
-						{
-							if(auto fn = dcast(FunctionDecl, def))
-							{
-								if(auto v = dcast(VarDefn, ot))
-								{
-									SimpleError::make(fn->loc, "conflicting definition for function '%s'; was previously defined as a variable")
-										->append(SimpleError::make(MsgType::Note, v->loc, "conflicting definition was here:"))
-										->postAndQuit();
-								}
-								else if(auto f = dcast(FunctionDecl, ot))
-								{
-									if(fir::Type::areTypeListsEqual(zfu::map(fn->params, [](const auto& p) -> auto { return p.type; }),
-										zfu::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
-									{
-										debuglogln("from: %s", tree->topLevelFilename);
-										debuglogln("to: %s", existing->topLevelFilename);
-										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature",
-											fn->id.name)
-											->append(SimpleError::make(MsgType::Note, f->loc,
-												"conflicting definition was here: (%p vs %p)",
-												reinterpret_cast<void*>(f), reinterpret_cast<void*>(fn)))
-											->postAndQuit();
-									}
-								}
-								else
-								{
-									error(def, "??");
-								}
-							}
-							else if(auto vr = dcast(VarDefn, def))
-							{
-								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'", name);
-
-								for(auto ot : others)
-									err->append(SimpleError::make(MsgType::Note, ot->loc, "previously defined here:"));
-
-								err->postAndQuit();
-							}
-							else if(auto uvd = dcast(UnionVariantDefn, def))
-							{
-								// these just... don't conflict.
-								if(auto ovd = dcast(UnionVariantDefn, ot); ovd)
-								{
-									if(ovd->parentUnion->original != uvd->parentUnion->original)
-										goto conflict;
-								}
-								else
-								{
-									// ! GOTO !
-									goto conflict;
-								}
-							}
-							else
-							{
-								// probably a class or something
-							conflict:
-								SimpleError::make(def->loc, "duplicate definition of %s '%s'", def->readableName, def->id.name)
-									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
-									->postAndQuit();
-							}
-						}
-
-						warn(def, "add to %s", existing->topLevelFilename);
-						existing->addDefinition(tree->topLevelFilename, name, def);
-					}
-					else
-					{
-						warn(def, "skipping def %s because it is not public", def->id.name);
-					}
-				}
-			}
-		}
-
-
-		for(auto f : tree->unresolvedGenericDefs)
-		{
-			// do a proper thing!
-			auto& ex = existing->unresolvedGenericDefs[f.first];
-			for(auto x : f.second)
-			{
-				if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
-					ex.push_back(x);
-			}
-		}
-
-		for(auto& pair : {
-			std::make_pair(&existing->infixOperatorOverloads, tree->infixOperatorOverloads),
-			std::make_pair(&existing->prefixOperatorOverloads, tree->prefixOperatorOverloads),
-			std::make_pair(&existing->postfixOperatorOverloads, tree->postfixOperatorOverloads)
-		})
-		{
-			auto& exst = *pair.first;
-			auto& add = pair.second;
-
-			for(const auto& f : add)
-			{
-				// do a proper thing!
-				auto& ex = exst[f.first];
-				for(auto x : f.second)
-				{
-					if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
-						ex.push_back(x);
-				}
-			}
-		}
-
-		return existing;
-	}
-
-	StateTree* addTreeToExistingTree(StateTree* existing, StateTree* tree, StateTree* commonParent, bool pubImport, bool ignoreVis)
-	{
-		return _addTreeToExistingTree({ }, existing, tree, commonParent, pubImport, ignoreVis, existing->topLevelFilename);
-	}
-
-
-
 	struct OsStrings
 	{
 		std::string name;
@@ -210,6 +26,32 @@ namespace sst
 	};
 	static OsStrings getOsStrings();
 	static void generatePreludeDefinitions(TypecheckState* fs);
+
+	static void mergeTrees(StateTree* base, StateTree* branch)
+	{
+	}
+
+	static void checkConflictingDefinitions(sst::StateTree* base, sst::StateTree* branch)
+	{
+		// for(const auto& [ _, defns ] : base->definitions)
+		// {
+		// 	for(const auto& [ name, def ] : defns.defns)
+		// 	{
+
+		// 	}
+		// }
+	}
+
+	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch)
+	{
+
+	}
+
+
+
+
+
+
 
 
 

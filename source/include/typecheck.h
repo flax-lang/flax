@@ -72,16 +72,7 @@ namespace sst
 		util::hash_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
 		util::hash_map<std::pair<ast::Parameterisable*, util::hash_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
-		struct DefnMap
-		{
-			bool wasPublicImport = false;
-			util::hash_map<std::string, std::vector<Defn*>> defns;
-		};
-
-		// maps from filename to defnmap -- allows tracking definitions by where they came from
-		// so we can resolve the import duplication bullshit
-		util::hash_map<std::string, DefnMap> definitions;
-
+		util::hash_map<std::string, std::vector<Defn*>> definitions2;
 
 		std::vector<Defn*> exports;
 		std::vector<StateTree*> imports;

@@ -847,6 +847,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 		iceAssert(def);
 
+		// anti-TreeDefn gang: delete this entire if branch; it looks like a duplicate of
+		// the one for ScopeExpr below.
 		if(auto td = dcast(sst::TreeDefn, def))
 		{
 			auto newscope = td->tree->getScope();
