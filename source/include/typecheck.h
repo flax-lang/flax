@@ -55,7 +55,6 @@ namespace sst
 		std::string topLevelFilename;
 
 		StateTree* parent = 0;
-		TreeDefn* treeDefn = 0;
 
 		// for those anonymous scopes (with numbers) that we create.
 		// currently we only keep track of this for scope-path resolution, so we can skip them
@@ -237,8 +236,7 @@ namespace sst
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions);
 
 
-	StateTree* addTreeToExistingTree(StateTree* to, StateTree* from, StateTree* commonParent, bool pubImport, bool ignoreVis);
-
+	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch);
 	std::vector<TypeParamMap_t> collateGenericArgStacks();
 }
 

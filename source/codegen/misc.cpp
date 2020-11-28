@@ -15,11 +15,6 @@ CGResult sst::ScopeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	error(this, "failed to resolve scope '%s'", this->scope2.string());
 }
 
-CGResult sst::TreeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
-{
-	error(this, "cannot codegen tree definition -- something fucked up somewhere");
-}
-
 CGResult sst::BareTypeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	// there's nothing to do here...

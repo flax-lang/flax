@@ -64,13 +64,7 @@ static TCResult checkPotentialCandidate(sst::TypecheckState* fs, ast::Ident* ide
 	}
 
 
-
-	// anti-treedefn gang: get rid of this.
-	if(auto treedef = dcast(sst::TreeDefn, def))
-	{
-		return getResult(ident, treedef, false);
-	}
-	else if(def->type->isUnionVariantType())
+	if(def->type->isUnionVariantType())
 	{
 		auto uvd = dcast(sst::UnionVariantDefn, def);
 		iceAssert(uvd);
@@ -160,8 +154,6 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		return util::pool<sst::ScopeExpr>(this->loc, fir::Type::getVoid(), scope);
 	};
 
-
-	// anti-treedefn gang: if we contain any of these we should return a ScopeExpr instead.
 	if(this->name == "::")
 	{
 		// find the root.
@@ -169,10 +161,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		while(t->parent)
 			t = t->parent;
 
-		iceAssert(t->treeDefn);
 		return TCResult(makeScopeExpr(t->getScope2()));
-
-		// return getResult(this, t->treeDefn);
 	}
 	else if(this->name == "^")
 	{
@@ -188,19 +177,12 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			while(t->isAnonymous && t->parent)
 				t = t->parent;
 
-			iceAssert(t->treeDefn);
 			return TCResult(makeScopeExpr(t->getScope2()));
-			// return getResult(this, t->treeDefn);
 		}
 	}
 
 	if(auto builtin = fir::Type::fromBuiltin(this->name))
 		return TCResult(util::pool<sst::TypeExpr>(this->loc, builtin));
-
-	// check if there is a subtree with this name.
-	if(auto sub = fs->stree->subtrees[this->name]; sub != nullptr)
-		return TCResult(makeScopeExpr(sub->getScope2()));
-
 
 	if(infer && infer->containsPlaceholders())
 		infer = 0;
@@ -208,16 +190,15 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->name == "this" && fs->isInFunctionBody() && fs->getCurrentFunction()->parentTypeForMethod)
 		return TCResult(util::pool<sst::SelfVarRef>(this->loc, fs->getCurrentFunction()->parentTypeForMethod));
 
-
 	// hm.
 	sst::StateTree* tree = fs->stree;
 	while(tree)
 	{
-		std::vector<sst::Defn*> vs = tree->getDefinitionsWithName(this->name);
+		// check if there is a subtree with this name.
+		if(auto it = tree->subtrees.find(this->name); it != tree->subtrees.end())
+			return TCResult(makeScopeExpr(it->second->getScope2()));
 
-		// anti-treedefn gang: we need to check for subtrees as well here, and return ScopeExpr
-		// for matching ones.
-		if(vs.size() > 1)
+		if(auto vs = tree->getDefinitionsWithName(this->name); vs.size() > 1)
 		{
 			std::vector<std::pair<sst::Defn*, TCResult>> ambigs;
 
@@ -305,7 +286,6 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
-	fs->stree->dump();
 	return TCResult(
 		SimpleError::make(this->loc, "reference to unknown entity '%s'", this->name)
 	);

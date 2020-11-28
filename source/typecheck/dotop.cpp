@@ -193,7 +193,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	auto type = lhs->type;
 	if(!type)
 	{
-		if(dcast(sst::ScopeExpr, lhs) || (dcast(sst::VarRef, lhs) && dcast(sst::TreeDefn, dcast(sst::VarRef, lhs)->def)))
+		if(dcast(sst::ScopeExpr, lhs))
 		{
 			error(dotop, "invalid use of '.' for static scope access; use '::' instead");
 		}
@@ -847,28 +847,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 		iceAssert(def);
 
-		// anti-TreeDefn gang: delete this entire if branch; it looks like a duplicate of
-		// the one for ScopeExpr below.
-		if(auto td = dcast(sst::TreeDefn, def))
-		{
-			auto newscope = td->tree->getScope();
-			auto oldscope = fs->getCurrentScope();
-
-			auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
-
-			// check the thing
-			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
-			{
-				newscope.push_back(vr->name);
-				return util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid(),
-					td->tree->getScope2().appending(vr->name));
-			}
-			else
-			{
-				return expr;
-			}
-		}
-		else if(auto typdef = dcast(sst::TypeDefn, def))
+		if(auto typdef = dcast(sst::TypeDefn, def))
 		{
 			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
 			{
@@ -980,17 +959,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 		auto oldscope = fs->getCurrentScope2();
 		auto newscope = scp->scope2;
 
-		auto expr = checkRhs2(fs, dot, oldscope, newscope, infer);
-
-		// anti-treedefn gang: just remove this entire thing, return expr.
-		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
-		{
-			return util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid(), scp->scope2.appending(vr->name));
-		}
-		else
-		{
-			return expr;
-		}
+		return checkRhs2(fs, dot, oldscope, newscope, infer);
 	}
 
 	error("????!!!!");

@@ -29,36 +29,31 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	// and only getting ScopeExpr if it's really a namespace reference.
 
 
-	sst::Scope scopes2;
+	sst::Scope scopes;
 	auto vr = dcast(sst::VarRef, used);
 
 	if(vr && dcast(sst::EnumDefn, vr->def))
 	{
 		auto enrd = dcast(sst::EnumDefn, vr->def);
-		scopes2 = enrd->innerScope;
+		scopes = enrd->innerScope;
 	}
 	// uses the same 'vr' from the branch above
 	else if(vr && dcast(sst::UnionDefn, vr->def))
 	{
 		auto unn = dcast(sst::UnionDefn, vr->def);
-		scopes2 = unn->innerScope;
+		scopes = unn->innerScope;
 	}
 	else
 	{
 		sst::TypeDefn* td = nullptr;
-		sst::TreeDefn* tr = nullptr;
 
 		// this happens in cases like `foo::bar`
 		if(auto se = dcast(sst::ScopeExpr, used))
-			scopes2 = se->scope2;
+			scopes = se->scope2;
 
 		// and this happens in cases like `foo`
 		else if(vr && (td = dcast(sst::TypeDefn, vr->def)))
-			scopes2 = td->innerScope;
-
-		// anti-treedefn gang: yeet this branch
-		else if(vr && (tr = dcast(sst::TreeDefn, vr->def)))
-			scopes2 = sst::Scope(tr->tree);
+			scopes = td->innerScope;
 
 		else
 			error("unsupported LHS of using: '%s'", used->readableName);
@@ -67,7 +62,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->useAs == "_")
 	{
 		// TODO: check scope merge conflicts
-		fs->stree->imports.push_back(scopes2.stree);
+		sst::mergeExternalTree(fs->stree, scopes.stree);
 	}
 	else
 	{
@@ -75,16 +70,14 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		if(auto existing = fs->getDefinitionsWithName(this->useAs); existing.size() > 0)
 		{
 			auto err = SimpleError::make(this->loc, "cannot use scope '%s' as '%s'; one or more conflicting definitions exist",
-				scopes2.string(), this->useAs);
+				scopes.string(), this->useAs);
 
 			err->append(SimpleError::make(MsgType::Note, existing[0]->loc, "first conflicting definition here:"));
 			err->postAndQuit();
 		}
 
 		auto tree = fs->stree->findOrCreateSubtree(this->useAs);
-
-		tree->imports.push_back(scopes2.stree);
-		fs->stree->addDefinition(this->useAs, tree->treeDefn);
+		sst::mergeExternalTree(tree, scopes.stree);
 	}
 
 	return TCResult::getDummy();

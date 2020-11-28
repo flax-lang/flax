@@ -572,19 +572,6 @@ namespace sst
 	};
 
 
-
-
-	struct TreeDefn : Defn
-	{
-		TreeDefn(const Location& l) : Defn(l) { this->readableName = "<TREE DEFINITION>"; }
-		~TreeDefn() { }
-
-		virtual std::string getKind() override { return "namespace"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		StateTree* tree = 0;
-	};
-
 	struct NamespaceDefn : Stmt
 	{
 		NamespaceDefn(const Location& l) : Stmt(l) { this->readableName = "namespace"; }

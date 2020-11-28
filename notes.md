@@ -31,12 +31,6 @@ the imports list of the current scope.
 
 ## to refactor
 
-1. we should probably get rid of TreeDefn
-	- a lot of places are "forced" to setup a TreeDefn when they setup a new StateTree scope
-	- from a cursory inspection, it's only used for "concretising" the interim parts of `a::b::c`, so we
-		can parse it as `(a::b)::c` and then perform resolution *as-if* it is a normal scope definition
-	- i'm sure there's a way to refactor this... hopefully.
-
 2. a lot of places probably still have the concept of `scope == std::vector<std::string>`.
 	- after the first scope refactor, i think these instances will be reduced
 	- undoubtedly there will be more. for instance, Identifier holds the scope as exactly that.
@@ -60,10 +54,6 @@ the imports list of the current scope.
 	a sort of `sst::ParametricDefn` that simply contains a pointer to the original `ast::Parameterisable` as its only
 	field; then, we should be able to simplify the typechecking code substantially by moving those the polymorph
 	instantiation into that definition's typecheck method instead.
-
-5. the definitions map should probably just get rid of extra level of mapping from file source to list, since i think
-	that it's only used for the scuffed addTreeToExistingTree thing.
-
 
 
 ## to investigate

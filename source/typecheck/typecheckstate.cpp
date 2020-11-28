@@ -374,7 +374,6 @@ namespace sst
 		{
 			this->cachedScope.stree = this;
 
-			// all hail recursion.
 			if(this->parent)
 				this->cachedScope.prev = &this->parent->getScope2();
 		}
@@ -447,15 +446,6 @@ namespace sst
 		{
 			auto newtree = util::pool<StateTree>(name, this->topLevelFilename, this, anonymous);
 			this->subtrees[name] = newtree;
-
-			// make a treedef.
-			newtree->treeDefn = util::pool<TreeDefn>(Location());
-
-			// this is the parent!
-			newtree->treeDefn->enclosingScope = Scope(this);
-
-			newtree->treeDefn->tree = newtree;
-
 			return newtree;
 		}
 	}
@@ -539,7 +529,7 @@ namespace sst
 
 		for(auto otherdef : defs)
 		{
-			if(!dcast(TreeDefn, otherdef) && !otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
+			if(!otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
 			{
 				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
@@ -637,12 +627,9 @@ namespace sst
 		}
 	}
 
-
-
 	Scope::Scope(StateTree* st)
 	{
 		this->prev = 0;
-
 		this->stree = st;
 	}
 }

@@ -2,17 +2,17 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-import libc as _
-import repro_2
+import libc
+// import repro_2
 
-using repro_2 as r
+// using repro_2 as r
 
-namespace omega
-{
-	let foo: int = 30
-}
+// namespace omega
+// {
+// 	let foo: int = 30
+// }
 
-let omega: str = "owo"
+// let omega: str = "owo"
 
 @entry fn main()
 {
@@ -34,7 +34,7 @@ let omega: str = "owo"
 
 	// printf("four = %d\n", r::Foo::FOUR.value);
 
-	printf("hello\n");
+	libc::printf("hello\n");
 
 	// using Foozle::Flub as Flubzle
 	// Flubzle::omega();

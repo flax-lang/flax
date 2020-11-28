@@ -27,10 +27,6 @@ namespace sst
 	static OsStrings getOsStrings();
 	static void generatePreludeDefinitions(TypecheckState* fs);
 
-	static void mergeTrees(StateTree* base, StateTree* branch)
-	{
-	}
-
 	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
 	{
 		return false;
@@ -69,8 +65,8 @@ namespace sst
 		// on the one with more subtrees.
 		for(const auto& [ name, sub ] : base->subtrees)
 		{
-			if(auto st = branch->subtrees[name])
-				mergeExternalTree(sub, st);
+			if(auto it = branch->subtrees.find(name); it != branch->subtrees.end())
+				mergeExternalTree(sub, it->second);
 		}
 	}
 
@@ -89,11 +85,7 @@ namespace sst
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
 	{
-		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
-		tree->treeDefn = util::pool<TreeDefn>(Location());
-		tree->treeDefn->enclosingScope = Scope();
-		tree->treeDefn->tree = tree;
-
+		auto tree = new StateTree(file.moduleName, file.name, 0);
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ ithing, import ] : imports)
@@ -133,20 +125,6 @@ namespace sst
 						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
 						curinspt->subtrees[impas] = newinspt;
 
-						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
-						treedef->id = Identifier(impas, IdKind::Name);
-						treedef->tree = newinspt;
-
-						// this is the parent scope!
-						treedef->enclosingScope = Scope(curinspt);
-
-						treedef->tree->treeDefn = treedef;
-						treedef->visibility = ithing.pubImport
-							? VisibilityLevel::Public
-							: VisibilityLevel::Private;
-
-						curinspt->addDefinition(file.name, impas, treedef);
-
 						curinspt = newinspt;
 					}
 				}
@@ -156,19 +134,8 @@ namespace sst
 
 			iceAssert(insertPoint);
 
-			insertPoint->imports.push_back(import->base);
-			{
-				// make a new treedef referring to the newly-imported tree.
-				auto treedef = util::pool<sst::TreeDefn>(ithing.loc);
-				treedef->tree = import->base;
-				treedef->enclosingScope = sst::Scope(insertPoint);
-
-				insertPoint->addDefinition(import->base->name, treedef);
-
-
-				zpr::println("import: using tree %p, defn = %p", import->base, treedef);
-			}
-
+			// insertPoint->imports.push_back(import->base);
+			mergeExternalTree(insertPoint, import->base);
 
 			if(ithing.pubImport)
 				insertPoint->reexports.push_back(import->base);
@@ -269,9 +236,6 @@ namespace sst
 		fs->stree->isCompilerGenerated = true;
 
 		defer(fs->popTree());
-
-		// manually add the definition, because we didn't typecheck a namespace or anything.
-		fs->stree->parent->addDefinition(fs->stree->name, fs->stree->treeDefn);
 
 		auto strty = fir::Type::getCharSlice(false);
 
@@ -379,20 +343,6 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 			fs->dtree->compilerSupportDefinitions[ua.args[0]] = tcr.defn();
 		}
 	}
-
-	if(tree->parent)
-	{
-		auto td = tree->treeDefn;
-		iceAssert(td);
-
-		td->visibility = this->visibility;
-
-		if(auto err = fs->checkForShadowingOrConflictingDefinition(td, [](auto, auto) -> bool { return true; }, tree->parent))
-			return TCResult(err);
-
-		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
-	}
-
 
 	if(this->name != "")
 		fs->popTree();
