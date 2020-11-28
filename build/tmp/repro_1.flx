@@ -3,35 +3,35 @@
 // Licensed under the Apache License Version 2.0.
 
 import libc as _
-import repro_2 as _
+import repro_2
 
-// using repro_2 as _
+using repro_2 as r
 
 @entry fn main()
 {
-	class Foozle
-	{
-		init() { }
+	// class Foozle
+	// {
+	// 	init() { }
 
-		static fn alpha() { }
+	// 	static fn alpha() { }
 
-		class Flub
-		{
-			init() { }
+	// 	class Flub
+	// 	{
+	// 		init() { }
 
-			static fn beta() { }
+	// 		static fn beta() { }
 
-			static fn omega() { printf("owo\n") }
-		};
-	}
+	// 		static fn omega() { printf("owo\n") }
+	// 	};
+	// }
 
-	printf("four = %d\n", Foo::FOUR.value);
+	printf("four = %d\n", r::Foo::FOUR.value);
 
-	using Foozle::Flub as Flubzle
-	Flubzle::omega();
+	// using Foozle::Flub as Flubzle
+	// Flubzle::omega();
 
-	printf("%d\n", Bar::bla(3));
-	printf("lmao\n");
+	// printf("%d\n", Bar::bla(3));
+	// printf("lmao\n");
 
 	// let c = "a" + "b"
 }

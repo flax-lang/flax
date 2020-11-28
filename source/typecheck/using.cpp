@@ -11,59 +11,6 @@
 #include "ir/type.h"
 #include "memorypool.h"
 
-static void importScopeContentsIntoNewScope(sst::TypecheckState* fs, const std::vector<std::string>& sfrom,
-	const std::vector<std::string>& stoParent, const std::string& name)
-{
-	auto parent = fs->getTreeOfScope(stoParent);
-
-	if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
-	{
-		auto err = SimpleError::make(fs->loc(),
-			"cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
-			zfu::join(sfrom, "::"), zfu::join(stoParent, "::"),
-			name);
-
-		for(const auto& d : defs)
-			err->append(SimpleError::make(MsgType::Note, d->loc, "conflicting definition here:"));
-
-		err->postAndQuit();
-	}
-
-	// add a thing in the current scope
-	auto treedef = util::pool<sst::TreeDefn>(fs->loc());
-	treedef->tree = fs->getTreeOfScope(sfrom);
-	treedef->tree->treeDefn = treedef;
-
-	parent->addDefinition(name, treedef);
-}
-
-
-static void importScopeContentsIntoNewScope2(sst::TypecheckState* fs, const std::vector<std::string>& sfrom,
-	const std::vector<std::string>& stoParent, const std::string& name)
-{
-	auto parent = fs->getTreeOfScope(stoParent);
-
-	if(auto defs = parent->getDefinitionsWithName(name); !defs.empty())
-	{
-		auto err = SimpleError::make(fs->loc(),
-			"cannot use import scope '%s' into scope '%s' with name '%s'; one or more conflicting definitions exist",
-			zfu::join(sfrom, "::"), zfu::join(stoParent, "::"),
-			name);
-
-		for(const auto& d : defs)
-			err->append(SimpleError::make(MsgType::Note, d->loc, "conflicting definition here:"));
-
-		err->postAndQuit();
-	}
-
-	// add a thing in the current scope
-	auto treedef = util::pool<sst::TreeDefn>(fs->loc());
-	treedef->tree = fs->getTreeOfScope(sfrom);
-	treedef->tree->treeDefn = treedef;
-
-	parent->addDefinition(name, treedef);
-}
-
 
 TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
@@ -108,6 +55,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	else
 	{
 		sst::TypeDefn* td = nullptr;
+		sst::TreeDefn* tr = nullptr;
 
 		// this happens in cases like `foo::bar`
 		if(auto se = dcast(sst::ScopeExpr, used))
@@ -117,36 +65,34 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		else if(vr && (td = dcast(sst::TypeDefn, vr->def)))
 			scopes = { vr->name }, scopes2 = td->innerScope;
 
+		else if(vr && (tr = dcast(sst::TreeDefn, vr->def)))
+			scopes = { vr->name }, scopes2 = sst::Scope(tr->tree);
+
 		else
-			error("what is this?");
+			error("unsupported LHS of using: '%s'", used->readableName);
 	}
 
 	if(this->useAs == "_")
 	{
-		auto fromtree = fs->getTreeOfScope(scopes);
-		auto totree = fs->stree;
-
-		sst::addTreeToExistingTree(totree, fromtree, totree->parent, /* pubImport: */ false, /* ignoreVis: */ true);
+		// TODO: check scope merge conflicts
+		fs->stree->imports.push_back(scopes2.stree);
 	}
 	else
 	{
 		// check that the current scope doesn't contain this thing
 		if(auto existing = fs->getDefinitionsWithName(this->useAs); existing.size() > 0)
 		{
-			auto err = SimpleError::make(fs->loc(), "cannot use scope '%s' as '%s'; one or more conflicting definitions exist",
+			auto err = SimpleError::make(this->loc, "cannot use scope '%s' as '%s'; one or more conflicting definitions exist",
 				zfu::join(scopes, "::"), this->useAs);
 
 			err->append(SimpleError::make(MsgType::Note, existing[0]->loc, "first conflicting definition here:"));
 			err->postAndQuit();
 		}
 
-		auto treedef = util::pool<sst::TreeDefn>(fs->loc());
 		auto tree = fs->stree->findOrCreateSubtree(this->useAs);
-		treedef->tree = tree;
-		treedef->tree->treeDefn = treedef;
 
 		tree->imports.push_back(scopes2.stree);
-		fs->stree->addDefinition(this->useAs, treedef);
+		fs->stree->addDefinition(this->useAs, tree->treeDefn);
 	}
 
 	return TCResult::getDummy();

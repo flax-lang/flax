@@ -289,6 +289,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	// ok, we haven't found anything
+	fs->stree->dump();
 	return TCResult(
 		SimpleError::make(this->loc, "reference to unknown entity '%s'", this->name)
 	);

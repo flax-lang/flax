@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "defs.h"
 #include "sst.h"
 #include "ast.h"
 #include "pts.h"
@@ -222,6 +223,7 @@ namespace sst
 	{
 		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
 		tree->treeDefn = util::pool<TreeDefn>(Location());
+		tree->treeDefn->enclosingScope = Scope();
 		tree->treeDefn->tree = tree;
 
 		auto fs = new TypecheckState(tree);
@@ -266,6 +268,10 @@ namespace sst
 						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
 						treedef->id = Identifier(impas, IdKind::Name);
 						treedef->tree = newinspt;
+
+						// this is the parent scope!
+						treedef->enclosingScope = Scope(curinspt);
+
 						treedef->tree->treeDefn = treedef;
 						treedef->visibility = ithing.pubImport
 							? VisibilityLevel::Public
@@ -283,6 +289,19 @@ namespace sst
 			iceAssert(insertPoint);
 
 			insertPoint->imports.push_back(import->base);
+			{
+				// make a new treedef referring to the newly-imported tree.
+				auto treedef = util::pool<sst::TreeDefn>(ithing.loc);
+				treedef->tree = import->base;
+				treedef->enclosingScope = sst::Scope(insertPoint);
+
+				insertPoint->addDefinition(import->base->name, treedef);
+
+
+				zpr::println("import: using tree %p, defn = %p", import->base, treedef);
+			}
+
+
 			if(ithing.pubImport)
 				insertPoint->reexports.push_back(import->base);
 
@@ -495,12 +514,8 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 
 	if(tree->parent)
 	{
-		auto td = util::pool<sst::TreeDefn>(this->loc);
-
-		td->tree = tree;
-		td->tree->treeDefn = td;
-		td->id = Identifier(this->name, IdKind::Name);
-		td->id.scope = tree->parent->getScope();
+		auto td = tree->treeDefn;
+		iceAssert(td);
 
 		td->visibility = this->visibility;
 

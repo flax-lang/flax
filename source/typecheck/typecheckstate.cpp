@@ -457,6 +457,10 @@ namespace sst
 
 			// make a treedef.
 			newtree->treeDefn = util::pool<TreeDefn>(Location());
+
+			// this is the parent!
+			newtree->treeDefn->enclosingScope = Scope(this);
+
 			newtree->treeDefn->tree = newtree;
 
 			return newtree;
