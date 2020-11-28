@@ -754,7 +754,7 @@ static sst::Expr* checkRhs2(sst::TypecheckState* fs, ast::DotOperator* dot, cons
 	else
 	{
 		error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
-			zfu::join(news.getStrings(), "::"));
+			news.string());
 	}
 
 	iceAssert(ret);
@@ -860,11 +860,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 			{
 				newscope.push_back(vr->name);
-				auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
-				ret->scope = newscope;
-				ret->scope2 = td->tree->getScope2().appending(vr->name);
-
-				return ret;
+				return util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid(),
+					td->tree->getScope2().appending(vr->name));
 			}
 			else
 			{
@@ -980,19 +977,15 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, left))
 	{
-		auto oldscope = fs->getCurrentScope();
-		auto newscope = scp->scope;
+		auto oldscope = fs->getCurrentScope2();
+		auto newscope = scp->scope2;
 
-		auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
+		auto expr = checkRhs2(fs, dot, oldscope, newscope, infer);
 
+		// anti-treedefn gang: just remove this entire thing, return expr.
 		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
 		{
-			newscope.push_back(vr->name);
-			auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
-			ret->scope = newscope;
-			ret->scope2 = scp->scope2.appending(vr->name);
-
-			return ret;
+			return util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid(), scp->scope2.appending(vr->name));
 		}
 		else
 		{

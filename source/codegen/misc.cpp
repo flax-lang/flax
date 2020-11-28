@@ -12,7 +12,7 @@ CGResult sst::TypeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ScopeExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	error(this, "failed to resolve scope '%s'", zfu::join(this->scope, "::"));
+	error(this, "failed to resolve scope '%s'", this->scope2.string());
 }
 
 CGResult sst::TreeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)

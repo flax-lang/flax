@@ -31,20 +31,47 @@ namespace sst
 	{
 	}
 
-	static void checkConflictingDefinitions(sst::StateTree* base, sst::StateTree* branch)
+	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
 	{
-		// for(const auto& [ _, defns ] : base->definitions)
-		// {
-		// 	for(const auto& [ name, def ] : defns.defns)
-		// 	{
+		return false;
+	}
 
-		// 	}
-		// }
+	static void checkConflictingDefinitions(const sst::StateTree* base, const sst::StateTree* branch)
+	{
+		for(const auto& [ name, defns ] : base->definitions2)
+		{
+			if(auto it = branch->definitions2.find(name); it != branch->definitions2.end())
+			{
+				for(auto d1 : defns)
+				{
+					for(auto d2 : it->second)
+					{
+						if(definitionsConflict(d1, d2))
+						{
+							error(d1->loc, "conflicting definitions");
+						}
+					}
+				}
+			}
+		}
 	}
 
 	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch)
 	{
+		// first check conflicts for this level:
+		checkConflictingDefinitions(base, branch);
 
+		// no problem -- attach the trees
+		base->imports.push_back(branch);
+
+		// check recursively
+		// TODO: optimise this by looping over the tree with less subtrees and doing hash lookup
+		// on the one with more subtrees.
+		for(const auto& [ name, sub ] : base->subtrees)
+		{
+			if(auto st = branch->subtrees[name])
+				mergeExternalTree(sub, st);
+		}
 	}
 
 
@@ -59,8 +86,7 @@ namespace sst
 
 
 
-	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file,
+	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
 	{
 		StateTree* tree = new StateTree(file.moduleName, file.name, 0);

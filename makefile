@@ -39,7 +39,7 @@ NUMFILES		:= $$(($(words $(CXXSRC))))
 DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++17 -fvisibility=hidden -O0 -g -c -Wall -frtti -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
+CXXFLAGS		+= -std=c++17 -fvisibility=hidden -O3 -g -c -Wall -frtti -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
 
 LDFLAGS			+= $(SANITISE) -fvisibility=hidden
 

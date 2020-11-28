@@ -401,12 +401,13 @@ namespace sst
 
 	struct ScopeExpr : Expr
 	{
-		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<SCOPE EXPRESSION>"; }
+		ScopeExpr(const Location& l, fir::Type* t, const Scope& scope) : Expr(l, t), scope2(scope)
+			{ this->readableName = "<SCOPE EXPRESSION>"; }
+
 		~ScopeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::vector<std::string> scope;
 		Scope scope2;
 	};
 

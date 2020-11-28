@@ -8,6 +8,7 @@
 
 #include "ir/type.h"
 #include "memorypool.h"
+#include "zfu.h"
 
 #include <deque>
 
@@ -348,7 +349,10 @@ namespace sst
 
 
 
-
+	std::string Scope::string() const
+	{
+		return zfu::join(this->getStrings(), "::");
+	}
 
 	std::vector<std::string> Scope::getStrings() const
 	{
@@ -421,7 +425,7 @@ namespace sst
 
 	StateTree* StateTree::searchForName(const std::string& name)
 	{
-		auto tree = this;
+		auto tree = this->parent;
 		while(tree)
 		{
 			if(tree->name == name)

@@ -7,6 +7,13 @@ import repro_2
 
 using repro_2 as r
 
+namespace omega
+{
+	let foo: int = 30
+}
+
+let omega: str = "owo"
+
 @entry fn main()
 {
 	// class Foozle
@@ -25,7 +32,9 @@ using repro_2 as r
 	// 	};
 	// }
 
-	printf("four = %d\n", r::Foo::FOUR.value);
+	// printf("four = %d\n", r::Foo::FOUR.value);
+
+	printf("hello\n");
 
 	// using Foozle::Flub as Flubzle
 	// Flubzle::omega();
