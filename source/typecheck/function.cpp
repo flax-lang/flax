@@ -310,7 +310,10 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		for(auto stmt : this->statements)
 		{
 			if(auto p = dcast(Parameterisable, stmt); p)
+			{
 				p->realScope = fs->getCurrentScope();
+				p->enclosingScope = fs->getCurrentScope2();
+			}
 
 			auto tcr = stmt->typecheck(fs);
 			if(tcr.isError())
@@ -323,7 +326,10 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		for(auto dstmt : this->deferredStatements)
 		{
 			if(auto p = dcast(Parameterisable, dstmt); p)
+			{
 				p->realScope = fs->getCurrentScope();
+				p->enclosingScope = fs->getCurrentScope2();
+			}
 
 			auto tcr = dstmt->typecheck(fs);
 			if(tcr.isError())

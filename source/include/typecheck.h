@@ -209,6 +209,7 @@ namespace sst
 		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
 
 		Scope getCurrentScope2();
+		// StateTree* getTree
 
 		std::vector<StateTree*> teleportationStack;
 		void teleportInto(const Scope& scope);

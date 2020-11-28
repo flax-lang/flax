@@ -39,11 +39,30 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->id.scope = this->realScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
+
 
 	// make all our methods be methods
-	for(auto m : this->methods)         { m->parentType = this; m->realScope = this->realScope + defn->id.name; }
-	for(auto m : this->initialisers)    { m->parentType = this; m->realScope = this->realScope + defn->id.name; }
-	for(auto m : this->staticMethods)   { m->realScope = this->realScope + defn->id.name; }
+	for(auto m : this->methods)
+	{
+		m->parentType = this;
+		m->realScope = this->realScope + defn->id.name;
+		m->enclosingScope = defn->innerScope;
+	}
+
+	for(auto m : this->initialisers)
+	{
+		m->parentType = this;
+		m->realScope = this->realScope + defn->id.name;
+		m->enclosingScope = defn->innerScope;
+	}
+
+	for(auto m : this->staticMethods)
+	{
+		m->realScope = this->realScope + defn->id.name;
+		m->enclosingScope = defn->innerScope;
+	}
 
 
 	auto cls = fir::ClassType::createWithoutBody(defn->id);
@@ -89,22 +108,27 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+		// fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+		defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[cls] = defn;
 	}
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
+	// auto oldscope = fs->getCurrentScope();
+	// fs->teleportToScope(defn->id.scope);
+	// fs->pushTree(defn->id.name);
+	fs->teleportInto(defn->innerScope);
 	{
 		for(auto t : this->nestedTypes)
 		{
 			t->realScope = this->realScope + defn->id.name;
+			t->enclosingScope = defn->innerScope;
 			t->generateDeclaration(fs, 0, { });
 		}
 	}
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
+
+	// fs->popTree();
+	// fs->teleportToScope(oldscope);
 
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
@@ -129,9 +153,11 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	auto cls = defn->type->toClassType();
 	iceAssert(cls);
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
+	// auto oldscope = fs->getCurrentScope();
+	// fs->teleportToScope(defn->id.scope);
+	// fs->pushTree(defn->id.name);
+
+	fs->teleportInto(defn->innerScope);
 
 	if(this->initialisers.empty())
 		error(this, "class must have at least one initialiser");
@@ -408,8 +434,10 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	fs->popSelfContext();
 
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
+
+	// fs->popTree();
+	// fs->teleportToScope(oldscope);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
@@ -506,6 +534,7 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn->returnType = pts::NamedType::create(this->loc, VOID_TYPE_STRING);
 
 	this->actualDefn->realScope = this->realScope;
+	this->actualDefn->enclosingScope = this->enclosingScope;
 
 	//* note: constructors will always mutate, definitely.
 	this->actualDefn->isMutating = true;

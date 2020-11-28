@@ -53,7 +53,7 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		return TCResult(err);
 
 	// fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
-	this->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
+	defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);

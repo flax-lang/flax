@@ -9,8 +9,30 @@ import repro_2 as _
 
 @entry fn main()
 {
+	class Foozle
+	{
+		init() { }
+
+		static fn alpha() { }
+
+		class Flub
+		{
+			init() { }
+
+			static fn beta() { }
+
+			static fn omega() { printf("owo\n") }
+		};
+	}
+
 	printf("four = %d\n", Foo::FOUR.value);
-	// printf("%d\n", Bar::bla(3));
-	// printf("lmao\n");
+
+	using Foozle::Flub as Flubzle
+	Flubzle::omega();
+
+	printf("%d\n", Bar::bla(3));
+	printf("lmao\n");
+
+	// let c = "a" + "b"
 }
 

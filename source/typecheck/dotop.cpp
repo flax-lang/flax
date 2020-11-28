@@ -860,6 +860,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				newscope.push_back(vr->name);
 				auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
 				ret->scope = newscope;
+				ret->scope2 = td->tree->getScope2().appending(vr->name);
 
 				return ret;
 			}
@@ -874,9 +875,12 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			{
 				fs->pushSelfContext(def->type);
 
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = typdef->id.scope;
-				newscope.push_back(typdef->id.name);
+				auto oldscope = fs->getCurrentScope2();
+				auto newscope = typdef->innerScope;
+
+				// auto oldscope = fs->getCurrentScope();
+				// auto newscope = typdef->id.scope;
+				// newscope.push_back(typdef->id.name);
 
 				fs->pushGenericContext();
 				defer(fs->popGenericContext());
@@ -888,7 +892,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}
 
-				auto ret = checkRhs(fs, dot, oldscope, newscope, infer);
+				// auto ret = checkRhs(fs, dot, oldscope, newscope, infer);
+				auto ret = checkRhs2(fs, dot, oldscope, newscope, infer);
 				fs->popSelfContext();
 
 				return ret;
@@ -983,6 +988,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			newscope.push_back(vr->name);
 			auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
 			ret->scope = newscope;
+			ret->scope2 = scp->scope2.appending(vr->name);
 
 			return ret;
 		}

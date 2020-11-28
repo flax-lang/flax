@@ -407,6 +407,7 @@ namespace sst
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
 		std::vector<std::string> scope;
+		Scope scope2;
 	};
 
 	struct FieldDotOp : Expr
