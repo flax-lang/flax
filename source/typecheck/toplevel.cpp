@@ -134,15 +134,10 @@ namespace sst
 
 			iceAssert(insertPoint);
 
-			// insertPoint->imports.push_back(import->base);
 			mergeExternalTree(insertPoint, import->base);
 
 			if(ithing.pubImport)
 				insertPoint->reexports.push_back(import->base);
-
-			// _addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import->base,
-			// 	/* commonParent: */ nullptr, ithing.pubImport,
-			// 	/* ignoreVis: */ false, file.name);
 
 			fs->dtree->thingsImported.insert(ithing.name);
 			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
@@ -173,10 +168,14 @@ namespace sst
 		return fs->dtree;
 	}
 
+
 	static OsStrings getOsStrings()
 	{
 		// TODO: handle cygwin/msys/mingw???
 		// like how do we want to expose these? at the end of the day the os is still windows...
+
+		// TODO: this should be set for the target we are compiling FOR, so it definitely
+		// cannot be done using ifdefs!!!!!!!!!!
 
 		OsStrings ret;
 
@@ -279,7 +278,6 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* top)
 	{
 		if(auto decl = dcast(ast::Parameterisable, stmt))
 		{
-			decl->realScope = fs->getCurrentScope();
 			decl->enclosingScope = fs->getCurrentScope2();
 			decl->generateDeclaration(fs, 0, { });
 		}

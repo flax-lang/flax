@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "defs.h"
 #include "pts.h"
 #include "errors.h"
 
@@ -36,7 +37,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
@@ -47,20 +48,17 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	for(auto m : this->methods)
 	{
 		m->parentType = this;
-		m->realScope = this->realScope + defn->id.name;
 		m->enclosingScope = defn->innerScope;
 	}
 
 	for(auto m : this->initialisers)
 	{
 		m->parentType = this;
-		m->realScope = this->realScope + defn->id.name;
 		m->enclosingScope = defn->innerScope;
 	}
 
 	for(auto m : this->staticMethods)
 	{
-		m->realScope = this->realScope + defn->id.name;
 		m->enclosingScope = defn->innerScope;
 	}
 
@@ -108,28 +106,19 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		// fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 		defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[cls] = defn;
 	}
 
-	// auto oldscope = fs->getCurrentScope();
-	// fs->teleportToScope(defn->id.scope);
-	// fs->pushTree(defn->id.name);
 	fs->teleportInto(defn->innerScope);
 	{
 		for(auto t : this->nestedTypes)
 		{
-			t->realScope = this->realScope + defn->id.name;
 			t->enclosingScope = defn->innerScope;
 			t->generateDeclaration(fs, 0, { });
 		}
 	}
 	fs->teleportOut();
-
-	// fs->popTree();
-	// fs->teleportToScope(oldscope);
-
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
@@ -152,10 +141,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 	auto cls = defn->type->toClassType();
 	iceAssert(cls);
-
-	// auto oldscope = fs->getCurrentScope();
-	// fs->teleportToScope(defn->id.scope);
-	// fs->pushTree(defn->id.name);
 
 	fs->teleportInto(defn->innerScope);
 
@@ -364,8 +349,8 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			// basically, the only things we want to import from the base class are fields and methods -- not initialisers.
 			// base-class-constructors must be called using `super(...)` syntax.
 
-			auto scp = defn->baseClass->id.scope + defn->baseClass->id.name;
-			auto tree = fs->getTreeOfScope(scp);
+			auto tree = defn->baseClass->innerScope.stree;
+			iceAssert(tree);
 
 			std::function<void (sst::StateTree*, sst::StateTree*)> recursivelyImport = [&](sst::StateTree* from, sst::StateTree* to) -> void {
 
@@ -435,9 +420,6 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 
 	fs->teleportOut();
-
-	// fs->popTree();
-	// fs->teleportToScope(oldscope);
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
@@ -533,7 +515,6 @@ TCResult ast::InitFunctionDefn::generateDeclaration(sst::TypecheckState* fs, fir
 	this->actualDefn->parentType = this->parentType;
 	this->actualDefn->returnType = pts::NamedType::create(this->loc, VOID_TYPE_STRING);
 
-	this->actualDefn->realScope = this->realScope;
 	this->actualDefn->enclosingScope = this->enclosingScope;
 
 	//* note: constructors will always mutate, definitely.

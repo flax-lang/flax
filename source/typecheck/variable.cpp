@@ -194,11 +194,11 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	sst::StateTree* tree = fs->stree;
 	while(tree)
 	{
-		// check if there is a subtree with this name.
-		if(auto it = tree->subtrees.find(this->name); it != tree->subtrees.end())
-			return TCResult(makeScopeExpr(it->second->getScope2()));
-
-		if(auto vs = tree->getDefinitionsWithName(this->name); vs.size() > 1)
+		if(auto vs = tree->getDefinitionsWithName(this->name); vs.size() == 1)
+		{
+			return checkPotentialCandidate(fs, this, vs[0], infer);
+		}
+		else if(vs.size() > 1)
 		{
 			std::vector<std::pair<sst::Defn*, TCResult>> ambigs;
 
@@ -249,10 +249,6 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 				}
 			}
 		}
-		else if(!vs.empty())
-		{
-			return checkPotentialCandidate(fs, this, vs[0], infer);
-		}
 		else if(auto gdefs = tree->getUnresolvedGenericDefnsWithName(this->name); gdefs.size() > 0)
 		{
 			std::vector<FnCallArgument> fake;
@@ -277,6 +273,11 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 					return pots[0].res;
 			}
 		}
+
+		// check if there is a subtree with this name.
+		if(auto it = tree->subtrees.find(this->name); it != tree->subtrees.end())
+			return TCResult(makeScopeExpr(it->second->getScope2()));
+
 
 		if(this->traverseUpwards)
 			tree = tree->parent;
@@ -325,7 +326,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	defn->attrs = this->attrs;
 	defn->id = Identifier(this->name, IdKind::Name);
-	defn->id.scope = fs->getCurrentScope();
+	defn->id.scope2 = fs->getCurrentScope2();
 
 	defn->immutable = this->immut;
 	defn->visibility = this->visibility;

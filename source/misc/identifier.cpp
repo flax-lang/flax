@@ -118,7 +118,7 @@ bool Identifier::operator != (const Identifier& other) const
 std::string Identifier::str() const
 {
 	std::string ret;
-	for(const auto& s : this->scope)
+	for(const auto& s : this->scope2.components())
 		ret += s + ".";
 
 	ret += this->name;
@@ -144,7 +144,7 @@ static std::string mangleScopeOnly(const Identifier& id)
 {
 	bool first = true;
 	std::string ret;
-	for(const auto& s : id.scope)
+	for(const auto& s : id.scope2.components())
 	{
 		ret += (!first ? std::to_string(s.length()) : "") + s;
 		first = false;
@@ -252,7 +252,7 @@ static std::string _doMangle(const Identifier& id, bool includeScope)
 		if(includeScope)
 			scp += mangleScopeOnly(id);
 
-		if(includeScope && id.scope.size() > 0)
+		if(includeScope && id.scope2.prev != nullptr)
 			scp += std::to_string(id.name.length());
 
 		return scp + id.name;

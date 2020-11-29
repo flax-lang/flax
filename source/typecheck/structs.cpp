@@ -33,16 +33,6 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn);
 
 
 
-
-
-
-
-
-
-
-
-
-
 TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps)
 {
 	fs->pushLoc(this);
@@ -59,13 +49,18 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	// make all our methods be methods
 	for(auto m : this->methods)
-		m->parentType = this, m->realScope = this->realScope + defn->id.name;
+	{
+		m->parentType = this;
+		m->enclosingScope = defn->innerScope;
+	}
 
 	auto str = fir::StructType::createWithoutBody(defn->id, /* isPacked: */ this->attrs.has(attr::PACKED));
 	defn->type = str;
@@ -76,7 +71,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+		this->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[str] = defn;
 	}
 
@@ -115,13 +110,9 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 		str->addTraitImpl(tdef->type->toTraitType());
 	}
 
-
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
+	fs->teleportInto(defn->innerScope);
 
 	std::vector<std::pair<std::string, fir::Type*>> tys;
-
 
 	fs->pushSelfContext(str);
 	{
@@ -169,9 +160,7 @@ TCResult ast::StructDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, c
 
 	str->setBody(tys);
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
-
+	fs->teleportOut();
 
 	checkTraitConformity(fs, defn);
 

@@ -55,6 +55,9 @@ the imports list of the current scope.
 	field; then, we should be able to simplify the typechecking code substantially by moving those the polymorph
 	instantiation into that definition's typecheck method instead.
 
+5. setting the method's containing class via the `infer` parameter feels super fucking dirty, and ngl it has felt dirty
+	for the past 5 years.
+
 
 ## to investigate
 

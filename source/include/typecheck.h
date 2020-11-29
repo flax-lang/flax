@@ -88,7 +88,6 @@ namespace sst
 		Scope cachedScope;
 		const Scope& getScope2();
 
-		std::vector<std::string> getScope();
 		StateTree* searchForName(const std::string& name);
 		StateTree* findOrCreateSubtree(const std::string& name, bool anonymous = false);
 
@@ -189,17 +188,7 @@ namespace sst
 
 		std::string serialiseCurrentScope();
 
-		[[deprecated]]
-		std::vector<std::string> getCurrentScope();
-
-		[[deprecated]]
-		void teleportToScope(const std::vector<std::string>& scope);
-
-		[[deprecated]]
-		StateTree* getTreeOfScope(const std::vector<std::string>& scope);
-
 		Scope getCurrentScope2();
-		// StateTree* getTree
 
 		std::vector<StateTree*> teleportationStack;
 		void teleportInto(const Scope& scope);

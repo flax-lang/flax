@@ -40,7 +40,7 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->bareName = this->name;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
@@ -52,7 +52,6 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
 		return TCResult(err);
 
-	// fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
 	defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
@@ -96,7 +95,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 		auto ecd = util::pool<sst::EnumCaseDefn>(cs.loc);
 		ecd->id = Identifier(cs.name, IdKind::Name);
-		ecd->id.scope = fs->getCurrentScope();
+		ecd->id.scope2 = fs->getCurrentScope2();
 		ecd->type = ety;
 		ecd->parentEnum = defn;
 		ecd->val = val;

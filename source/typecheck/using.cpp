@@ -61,7 +61,6 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->useAs == "_")
 	{
-		// TODO: check scope merge conflicts
 		sst::mergeExternalTree(fs->stree, scopes.stree);
 	}
 	else

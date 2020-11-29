@@ -37,18 +37,19 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id);
 	else        defn->type = fir::UnionType::createWithoutBody(defn->id);
 
-
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
 		return TCResult(err);
 
-	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+	defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 
@@ -70,16 +71,13 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	if(this->finishedTypechecking.find(tcr.defn()) != this->finishedTypechecking.end())
 		return TCResult(tcr.defn());
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(tcr.defn()->id.scope);
-	fs->pushTree(tcr.defn()->id.name);
-
-
 	sst::TypeDefn* ret = 0;
 	if(this->attrs.has(attr::RAW))
 	{
 		auto defn = dcast(sst::RawUnionDefn, tcr.defn());
 		iceAssert(defn);
+
+		fs->teleportInto(defn->innerScope);
 
 		//* in many ways raw unions resemble structs rather than tagged unions
 		//* and since we are using sst::StructFieldDefn for the variants, we will need
@@ -163,6 +161,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		auto defn = dcast(sst::UnionDefn, tcr.defn());
 		iceAssert(defn);
 
+		fs->teleportInto(defn->innerScope);
+
 		util::hash_map<std::string, std::pair<size_t, fir::Type*>> vars;
 		std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
 
@@ -179,7 +179,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			vdef->parentUnion = defn;
 			vdef->variantName = variant.first;
 			vdef->id = Identifier(defn->id.name + "::" + variant.first, IdKind::Name);
-			vdef->id.scope = fs->getCurrentScope();
+			vdef->id.scope2 = fs->getCurrentScope2();
 
 			vdefs.push_back({ vdef, std::get<0>(variant.second) });
 
@@ -201,8 +201,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	iceAssert(ret);
 	this->finishedTypechecking.insert(ret);
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
 
 	return TCResult(ret);
 }

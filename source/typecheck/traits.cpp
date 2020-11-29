@@ -26,18 +26,18 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	defn->attrs = this->attrs;
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	// make all our methods be methods
 	for(auto m : this->methods)
 	{
 		m->parentType = this;
-		m->realScope = this->realScope + defn->id.name;
-		// m->enclosingScope =
+		m->enclosingScope = defn->innerScope;
 	}
-
 
 	auto str = fir::TraitType::create(defn->id);
 	defn->type = str;
@@ -48,7 +48,7 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+		defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[str] = defn;
 	}
 
@@ -74,11 +74,7 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	auto trt = defn->type->toTraitType();
 	iceAssert(trt);
 
-
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
-
+	fs->teleportInto(defn->innerScope);
 	fs->pushSelfContext(trt);
 
 	std::vector<std::pair<std::string, fir::FunctionType*>> meths;
@@ -102,9 +98,7 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	trt->setMethods(meths);
 
 	fs->popSelfContext();
-
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);

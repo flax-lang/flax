@@ -93,7 +93,6 @@ namespace ast
 		// another hack-y thing
 		TypeDefn* parentType = 0;
 
-
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 
 		// hacky thing #3
@@ -103,8 +102,6 @@ namespace ast
 		//? we set this in typecheck/toplevel.cpp when generating the declarations.
 		//? for methods & nested types, we set them in structs.cpp/classes.cpp
 		//? in repl mode, we set this manually.
-		std::vector<std::string> realScope;
-
 		sst::Scope enclosingScope;
 	};
 

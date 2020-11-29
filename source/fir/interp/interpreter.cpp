@@ -362,7 +362,7 @@ namespace interp
 				is->globalAllocs.push_back(buffer);
 
 				uint8_t* ofs = reinterpret_cast<uint8_t*>(buffer);
-				for(const auto& x : theArray->getValues())
+				for(auto x : theArray->getValues())
 				{
 					auto v = makeConstant(is, x);
 

@@ -60,8 +60,9 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->attrs = this->attrs;
 	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
-	defn->id.scope = this->realScope;
+	defn->id.scope2 = this->enclosingScope;
 	defn->id.params = ptys;
+	defn->enclosingScope = this->enclosingScope;
 
 	defn->params = ps;
 	defn->returnType = retty;
@@ -106,10 +107,10 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		return TCResult(conflict_err);
 
 	if(!defn->type->containsPlaceholders())
-		fs->getTreeOfScope(this->realScope)->addDefinition(this->name, defn, gmaps);
+		defn->enclosingScope.stree->addDefinition(this->name, defn, gmaps);
 
-	else if(fs->stree->unresolvedGenericDefs[this->name].empty())
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+	else if(defn->enclosingScope.stree->unresolvedGenericDefs[this->name].empty())
+		defn->enclosingScope.stree->unresolvedGenericDefs[this->name].push_back(this);
 
 
 	// add to our versions.
@@ -135,8 +136,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	// if we have placeholders, don't bother generating anything.
 	if(!defn->type->containsPlaceholders())
 	{
-		auto oldscope = fs->getCurrentScope();
-		fs->teleportToScope(defn->id.scope);
+		fs->teleportInto(defn->enclosingScope);
 
 		fs->enterFunctionBody(defn);
 		fs->pushTree(defn->id.mangledName());
@@ -147,7 +147,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			{
 				auto vd = util::pool<sst::ArgumentDefn>(arg.loc);
 				vd->id = Identifier(arg.name, IdKind::Name);
-				vd->id.scope = fs->getCurrentScope();
+				vd->id.scope2 = fs->getCurrentScope2();
 
 				vd->type = arg.type;
 
@@ -167,7 +167,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 		fs->popTree();
 		fs->leaveFunctionBody();
 
-		fs->teleportToScope(oldscope);
+		fs->teleportOut();
 
 		// ok, do the check.
 		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
@@ -311,7 +311,6 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		{
 			if(auto p = dcast(Parameterisable, stmt); p)
 			{
-				p->realScope = fs->getCurrentScope();
 				p->enclosingScope = fs->getCurrentScope2();
 			}
 
@@ -327,7 +326,6 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		{
 			if(auto p = dcast(Parameterisable, dstmt); p)
 			{
-				p->realScope = fs->getCurrentScope();
 				p->enclosingScope = fs->getCurrentScope2();
 			}
 

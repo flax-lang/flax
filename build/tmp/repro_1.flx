@@ -2,8 +2,8 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-import libc
-// import repro_2
+import libc as _
+import repro_2 as _
 
 // using repro_2 as r
 
@@ -16,31 +16,31 @@ import libc
 
 @entry fn main()
 {
-	// class Foozle
-	// {
-	// 	init() { }
+	class Foozle
+	{
+		init() { }
 
-	// 	static fn alpha() { }
+		static fn alpha() { }
 
-	// 	class Flub
-	// 	{
-	// 		init() { }
+		class Flub
+		{
+			init() { }
 
-	// 		static fn beta() { }
+			static fn beta() { }
 
-	// 		static fn omega() { printf("owo\n") }
-	// 	};
-	// }
+			static fn omega() { printf("owo\n") }
+		};
+	}
 
-	// printf("four = %d\n", r::Foo::FOUR.value);
+	printf("four = %d\n", Foo::FOUR.value);
 
-	libc::printf("hello\n");
+	printf("hello\n");
 
-	// using Foozle::Flub as Flubzle
-	// Flubzle::omega();
+	using Foozle::Flub as Flubzle
+	Flubzle::omega();
 
-	// printf("%d\n", Bar::bla(3));
-	// printf("lmao\n");
+	printf("%d\n", Bar::bla(3));
+	printf("lmao\n");
 
 	// let c = "a" + "b"
 }

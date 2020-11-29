@@ -141,13 +141,34 @@ template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + strprintf(fmt, ts...) + std::string(COLOUR_RESET);
 }
 
+namespace sst
+{
+	struct StateTree;
+
+	struct Scope
+	{
+		Scope() { }
+		Scope(StateTree* st);
+
+		StateTree* stree = 0;
+		const Scope* prev = 0;
+
+		mutable std::vector<std::string> cachedComponents;
+
+		std::string string() const;
+		const std::vector<std::string>& components() const;
+		const Scope& appending(const std::string& name) const;
+	};
+}
+
 struct Identifier
 {
 	Identifier() : name(""), kind(IdKind::Invalid) { }
 	Identifier(const std::string& n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
-	std::vector<std::string> scope;
+	sst::Scope scope2;
+	std::vector<std::string> scope_;
 	std::vector<fir::Type*> params;
 
 	IdKind kind;

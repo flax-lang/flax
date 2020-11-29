@@ -205,93 +205,6 @@ namespace sst
 		return zfu::join(std::vector<std::string>(scope.begin(), scope.end()), "::");
 	}
 
-	std::vector<std::string> TypecheckState::getCurrentScope()
-	{
-		std::deque<std::string> scope;
-		StateTree* tree = this->stree;
-
-		while(tree)
-		{
-			scope.push_front(tree->name);
-			tree = tree->parent;
-		}
-
-		return std::vector<std::string>(scope.begin(), scope.end());
-	}
-
-	StateTree* TypecheckState::getTreeOfScope(const std::vector<std::string>& scope)
-	{
-		StateTree* tree = this->stree;
-		while(tree->parent)
-			tree = tree->parent;
-
-		// ok, we should be at the topmost level now
-		iceAssert(tree);
-
-		//! we're changing the behaviour subtly from how it used to function.
-		//* previously, we would always skip the first 'scope', under the assumption that it would be the name of the current module anyway.
-		//* however, the new behaviour is that, if the number of scopes passed in is 1 (one), we teleport directly to that scope, assuming an
-		//* implied module scope.
-
-		//* if the number of scopes passed is 0, we teleport to the top level scope (as we do now).
-
-		// TODO: investigate if this is the right thing to do...?
-
-		if(scope.empty())
-		{
-			return tree;
-		}
-		// else if(scope.size() == 1)
-		// {
-		// 	auto s = scope[0];
-		// 	//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
-		// 	//* things in the global scope -- which is allowed!
-
-		// 	if(s == tree->name)
-		// 		return tree;
-
-
-		// 	if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
-		// 	{
-		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, zfu::join(scope, "::"));
-		// 	}
-		// 	else
-		// 	{
-		// 		return it->second;
-		// 	}
-		// }
-
-
-		for(size_t i = 0; i < scope.size(); i++)
-		{
-			auto s = scope[i];
-
-			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
-			//* things in the global scope -- which is allowed!
-
-			if(i == 0 && s == tree->name)
-				continue;
-
-			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
-			{
-				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name,
-					zfu::join(scope, "::"));
-			}
-			else
-			{
-				tree = it->second;
-			}
-		}
-
-		return tree;
-	}
-
-	void TypecheckState::teleportToScope(const std::vector<std::string>& scope)
-	{
-		this->stree = this->getTreeOfScope(scope);
-	}
-
-
 	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
 	{
 		return this->definitions2;
@@ -351,14 +264,18 @@ namespace sst
 
 	std::string Scope::string() const
 	{
-		return zfu::join(this->getStrings(), "::");
+		return zfu::join(this->components(), "::");
 	}
 
-	std::vector<std::string> Scope::getStrings() const
+	const std::vector<std::string>& Scope::components() const
 	{
-		std::vector<std::string> ret;
+		if(!this->cachedComponents.empty())
+			return this->cachedComponents;
+
+		auto& ret = this->cachedComponents;
+
 		const Scope* s = this;
-		while(s)
+		while(s && s->stree)
 		{
 			ret.push_back(s->stree->name);
 			s = s->prev;
@@ -396,30 +313,6 @@ namespace sst
 	{
 		this->stree = this->teleportationStack.back();
 		this->teleportationStack.pop_back();
-	}
-
-
-
-
-
-
-
-
-
-	// TODO: maybe cache this someday?
-	std::vector<std::string> StateTree::getScope()
-	{
-		std::deque<std::string> ret;
-		ret.push_front(this->name);
-
-		auto tree = this->parent;
-		while(tree)
-		{
-			ret.push_front(tree->name);
-			tree = tree->parent;
-		}
-
-		return std::vector<std::string>(ret.begin(), ret.end());
 	}
 
 	StateTree* StateTree::searchForName(const std::string& name)
