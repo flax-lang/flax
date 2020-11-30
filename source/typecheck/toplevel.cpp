@@ -30,25 +30,56 @@ namespace sst
 
 	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
 	{
-		info("dupe check: %s, %s", a->loc.shortString(), b->loc.shortString());
-		return false;
+		auto fda = dcast(const sst::FunctionDecl, a);
+		auto fdb = dcast(const sst::FunctionDecl, b);
+
+		if(fda && fdb)
+		{
+			return sst::isDuplicateOverload(fda->params, fdb->params);
+		}
+		else
+		{
+			return true;
+		}
 	}
 
-	static void checkConflictingDefinitions(const sst::StateTree* base, const sst::StateTree* branch)
+	static void checkConflictingDefinitions(Location loc, const char* kind, const sst::StateTree* base, const sst::StateTree* branch,
+		const sst::StateTree* rootBase = nullptr)
 	{
 		for(const auto& [ name, defns ] : base->definitions2)
 		{
-			zpr::println("check %s", name);
 			if(auto it = branch->definitions2.find(name); it != branch->definitions2.end())
 			{
-				zpr::println("found something");
 				for(auto d1 : defns)
 				{
 					for(auto d2 : it->second)
 					{
 						if(definitionsConflict(d1, d2))
 						{
-							error(d1->loc, "conflicting definitions");
+							auto error = SimpleError::make(MsgType::Error, loc, "'%s' here introduces duplicate definitions:", kind);
+
+							if(d1 == d2 || d1->loc == d2->loc)
+							{
+								if(rootBase != nullptr)
+								{
+									if(auto it = rootBase->importMetadata.find(base); it != rootBase->importMetadata.end())
+									{
+										auto [ iloc, name ] = it->second;
+										error->append(SimpleError::make(MsgType::Note, iloc, "most likely, the module '%s' was "
+											"already brought into the current scope by this statement:", name));
+									}
+								}
+
+								error->append(SimpleError::make(MsgType::Note, d1->loc, "for reference, here is the (first) "
+									"conflicting definition:"));
+							}
+							else
+							{
+								error->append(SimpleError::make(MsgType::Note, d1->loc, "first definition here:"))
+									->append(SimpleError::make(MsgType::Note, d2->loc, "second definition here:"));
+							}
+
+							error->postAndQuit();
 						}
 					}
 				}
@@ -56,16 +87,34 @@ namespace sst
 		}
 	}
 
-	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch)
+	void mergeExternalTree(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch)
 	{
 		if(branch->isAnonymous || branch->isCompilerGenerated)
 			return;
 
 		// first check conflicts for this level:
-		checkConflictingDefinitions(base, branch);
+		checkConflictingDefinitions(loc, kind, base, branch);
+
+		// then, for every one of *our* imports:
+		for(auto import : base->imports)
+		{
+			// check that the new tree doesn't trample over it.
+			checkConflictingDefinitions(loc, kind, import, branch, base);
+
+			// then, also check that, for every one of *their* public imports:
+			for(auto rexp : branch->reexports)
+			{
+				// it doesn't trample with anything in our tree,
+				checkConflictingDefinitions(loc, kind, base, rexp);
+
+				// and it doesn't conflict with anything in our imports.
+				checkConflictingDefinitions(loc, kind, import, rexp, base);
+			}
+		}
 
 		// no problem -- attach the trees
 		base->imports.push_back(branch);
+		base->importMetadata[branch] = { loc, branch->name };
 
 		// merge the subtrees as well.
 		for(const auto& [ name, tr ] : branch->subtrees)
@@ -73,7 +122,7 @@ namespace sst
 			if(tr->isCompilerGenerated || tr->isAnonymous)
 				continue;
 
-			mergeExternalTree(base->findOrCreateSubtree(name), tr);
+			mergeExternalTree(loc, kind, base->findOrCreateSubtree(name), tr);
 		}
 	}
 
@@ -97,7 +146,7 @@ namespace sst
 
 		for(auto [ ithing, import ] : imports)
 		{
-			info(ithing.loc, "(%s) import: %s", file.name, ithing.name);
+			// info(ithing.loc, "(%s) import: %s", file.name, ithing.name);
 
 			auto ias = ithing.importAs;
 			if(ias.empty())
@@ -140,8 +189,7 @@ namespace sst
 			}
 
 			iceAssert(insertPoint);
-
-			mergeExternalTree(insertPoint, import->base);
+			mergeExternalTree(ithing.loc, "import", insertPoint, import->base);
 
 			if(ithing.pubImport)
 				insertPoint->reexports.push_back(import->base);

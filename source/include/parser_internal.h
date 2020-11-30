@@ -498,7 +498,7 @@ namespace parser
 	std::tuple<std::vector<ast::FuncDefn::Param>, std::vector<std::pair<std::string, TypeConstraints_t>>,
 		pts::Type*, bool, Location> parseFunctionLookingDecl(State& st);
 
-	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx);
+	std::pair<Location, std::vector<std::string>> parseIdentPath(const lexer::TokenList& tokens, size_t* idx);
 }
 
 

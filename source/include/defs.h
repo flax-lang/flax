@@ -199,6 +199,11 @@ struct Location
 		return !(*this == other);
 	}
 
+	Location unionWith(const Location& x) const
+	{
+		return unionOf(*this, x);
+	}
+
 	static Location unionOf(const Location& a, const Location& b)
 	{
 		if(a.fileID != b.fileID || a.line != b.line)

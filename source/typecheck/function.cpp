@@ -94,7 +94,7 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		{
 			// make sure we didn't fuck up somewhere
 			iceAssert(oth->id.name == defn->id.name);
-			return fs->isDuplicateOverload(defn->params, oth->params);
+			return sst::isDuplicateOverload(defn->params, oth->params);
 		}
 		else
 		{

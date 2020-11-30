@@ -77,6 +77,11 @@ namespace sst
 		std::vector<StateTree*> imports;
 		std::vector<StateTree*> reexports;
 
+		// this is a mapping from every StateTree in `imports` to the location of the `import` or `using` statement.
+		// it only used for error-reporting, so it is stored out-of-line so the usage of `this->imports` is not more
+		// cumbersome than it needs to be.
+		std::map<const StateTree*, std::pair<Location, std::string>> importMetadata;
+
 
 		// what's there to explain? a simple map of operators to their functions. we use
 		// function overload resolution to determine which one to call, and ambiguities are
@@ -86,7 +91,7 @@ namespace sst
 		util::hash_map<std::string, std::vector<sst::FunctionDefn*>> postfixOperatorOverloads;
 
 		Scope cachedScope;
-		const Scope& getScope2();
+		const Scope& getScope();
 
 		StateTree* findSubtree(const std::string& name);
 		StateTree* findOrCreateSubtree(const std::string& name, bool anonymous = false);
@@ -98,11 +103,6 @@ namespace sst
 
 		void addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
 		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
-
-
-
-		// TODO: remove this! for debugging only.
-		void dump();
 	};
 
 	struct DefinitionTree
@@ -206,9 +206,7 @@ namespace sst
 		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
 		fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* lit);
 
-
 		fir::Type* checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments);
-
 
 		bool checkAllPathsReturn(FunctionDefn* fn);
 
@@ -216,17 +214,17 @@ namespace sst
 			const std::set<std::string>& fieldNames, const std::vector<FnCallArgument>& params);
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
-
-		int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
-		bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
 	};
+
+
+
+	bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
+	int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions);
 
-
-	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch);
-	std::vector<TypeParamMap_t> collateGenericArgStacks();
+	void mergeExternalTree(const Location& importer, const char* kind, sst::StateTree* base, sst::StateTree* branch);
 }
 
 

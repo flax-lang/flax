@@ -218,22 +218,25 @@ namespace sst
 
 
 
-	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
+	int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
 		return resolver::computeOverloadDistance(Location(), zfu::map(a, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
 		}), zfu::map(b, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
-		}), /* isCVarArg: */ false, this->loc()).first;
+		}), /* isCVarArg: */ false, Location()).first;
 	}
 
-	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
+	bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
 	{
-		return this->getOverloadDistance(zfu::map(a, [](const auto& p) -> auto { return p.type; }),
+		return getOverloadDistance(zfu::map(a, [](const auto& p) -> auto { return p.type; }),
 			zfu::map(b, [](const auto& p) -> auto { return p.type; })) == 0;
 	}
-
 }
+
+
+
+
 
 
 

@@ -161,7 +161,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		while(t->parent)
 			t = t->parent;
 
-		return TCResult(makeScopeExpr(t->getScope2()));
+		return TCResult(makeScopeExpr(t->getScope()));
 	}
 	else if(this->name == "^")
 	{
@@ -177,7 +177,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			while(t->isAnonymous && t->parent)
 				t = t->parent;
 
-			return TCResult(makeScopeExpr(t->getScope2()));
+			return TCResult(makeScopeExpr(t->getScope()));
 		}
 	}
 
@@ -276,7 +276,7 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		// check if there is a subtree with this name.
 		if(auto it = tree->subtrees.find(this->name); it != tree->subtrees.end())
-			return TCResult(makeScopeExpr(it->second->getScope2()));
+			return TCResult(makeScopeExpr(it->second->getScope()));
 
 		if(this->traverseUpwards)
 			tree = tree->parent;

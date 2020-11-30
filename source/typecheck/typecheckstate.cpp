@@ -191,7 +191,7 @@ namespace sst
 
 	Scope TypecheckState::getCurrentScope2()
 	{
-		return this->stree->getScope2();
+		return this->stree->getScope();
 	}
 
 	std::string TypecheckState::serialiseCurrentScope()
@@ -293,14 +293,14 @@ namespace sst
 		return ret;
 	}
 
-	const Scope& StateTree::getScope2()
+	const Scope& StateTree::getScope()
 	{
 		if(!this->cachedScope.stree)
 		{
 			this->cachedScope.stree = this;
 
 			if(this->parent)
-				this->cachedScope.prev = &this->parent->getScope2();
+				this->cachedScope.prev = &this->parent->getScope();
 		}
 
 		return this->cachedScope;
@@ -308,7 +308,7 @@ namespace sst
 
 	const Scope& Scope::appending(const std::string& name) const
 	{
-		return this->stree->findOrCreateSubtree(name)->getScope2();
+		return this->stree->findOrCreateSubtree(name)->getScope();
 	}
 
 	void TypecheckState::teleportInto(const Scope& scope)
@@ -502,35 +502,6 @@ namespace sst
 		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
 	}
 
-
-	// UWU
-	static int indent = 0;
-	void StateTree::dump()
-	{
-		zpr::println("%*s* TREE: %s - %s", indent * 2, "", this->name, frontend::getFilenameFromPath(this->topLevelFilename));
-		for(const auto& [ name, defs ] : this->definitions2)
-		{
-			zpr::println("%*s* %s", (indent + 1) * 2, "", name);
-			for(auto d : defs)
-				zpr::println("%*s> %s: %s", (indent + 2) * 2, "", d->id.str(), d->type ? d->type->str() : "??");
-		}
-
-		if(!this->subtrees.empty())
-		{
-			zpr::println("\n%*s* SUBTREES:", (indent + 1) * 2, "");
-			indent += 2;
-			for(auto& [ name, sub ] : this->subtrees)
-			{
-				if('0' <= name[0] && name[0] <= '9')
-					continue;
-
-				sub->dump();
-			}
-
-			zpr::println("\n");
-			indent -= 2;
-		}
-	}
 
 	Scope::Scope(StateTree* st)
 	{

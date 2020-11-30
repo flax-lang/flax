@@ -92,22 +92,23 @@ namespace parser
 
 				i++;
 
-				Location impLoc;
 				std::string name;
+				Location impLoc = tok.loc;
 				std::vector<std::string> impAs;
 
 				if(tokens[i] == TT::StringLiteral)
 				{
 					name = tokens[i].str();
-					impLoc = tokens[i].loc;
+					impLoc = impLoc.unionWith(tokens[i].loc);
 					i++;
 				}
 				else if(tokens[i] == TT::Identifier)
 				{
-					std::vector<std::string> bits = parseIdentPath(tokens, &i);
+					auto [ loc, bits ] = parseIdentPath(tokens, &i);
 
 					//* we concatanate the thing, using '/' as the path separator, and appending '.flx' to the end.
 					name = zfu::join(bits, "/") + ".flx";
+					impLoc = impLoc.unionWith(loc);
 				}
 				else
 				{
@@ -119,7 +120,7 @@ namespace parser
 				{
 					i++;
 					if(tokens[i] == TT::Identifier)
-						impAs = parseIdentPath(tokens, &i);
+						impAs = parseIdentPath(tokens, &i).second;
 
 					else
 						expectedAfter(tokens[i - 1].loc, "identifier", "'import-as'", tokens[i - 1].str());

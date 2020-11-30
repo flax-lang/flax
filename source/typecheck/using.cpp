@@ -61,7 +61,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->useAs == "_")
 	{
-		sst::mergeExternalTree(fs->stree, scopes.stree);
+		sst::mergeExternalTree(this->loc, "using", fs->stree, scopes.stree);
 	}
 	else
 	{
@@ -76,7 +76,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 
 		auto tree = fs->stree->findOrCreateSubtree(this->useAs);
-		sst::mergeExternalTree(tree, scopes.stree);
+		sst::mergeExternalTree(this->loc, "using", tree, scopes.stree);
 	}
 
 	return TCResult::getDummy();

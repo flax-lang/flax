@@ -118,9 +118,6 @@ namespace resolver
 				while(top && top->parent)
 					top = top->parent;
 
-				// just dump this.
-				top->dump();
-
 				return TCResult(SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name));
 			}
 			else
