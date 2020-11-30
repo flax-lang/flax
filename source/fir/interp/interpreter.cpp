@@ -481,7 +481,7 @@ namespace interp
 
 		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
 		{
-			auto fname = Name::obfuscate("__interp_intrinsic_", id.str());
+			auto fname = Name::of(zpr::sprint("__interp_intrinsic_%s", id.str()));
 			auto fn = this->module->getOrCreateFunction(fname, intr->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
