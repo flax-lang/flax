@@ -73,7 +73,6 @@ namespace sst
 
 		util::hash_map<std::string, std::vector<Defn*>> definitions2;
 
-		StateTree* proxyOf = nullptr;
 		std::vector<Defn*> exports;
 		std::vector<StateTree*> imports;
 		std::vector<StateTree*> reexports;

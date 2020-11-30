@@ -2,7 +2,7 @@
 // Copyright (c) 2019, zhiayang, Apache License 2.0.
 
 export test_basic
-// import libc as _
+import libc as _
 import std::io as _
 
 // TODO: reorganise these tests if possible

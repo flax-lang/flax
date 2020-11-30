@@ -46,12 +46,18 @@ using repro_2 as _
 }
 */
 
+import libc as _
+import repro_3 as _
 
-import std::io as _
-import repro_3
+// import std::io
+// import repro_3
+
+// using std::io as owo
 
 @entry fn main2()
 {
-	println("owo")
-	uwu::owo::foozle()
+	// std::io::println("owo")
+	// owo::println("owo")
+	// uwu::owo::foozle()
+	printf("owo\n")
 }

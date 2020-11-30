@@ -2,11 +2,4 @@
 // Copyright (c) 2020, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-export uwu::owo
-
-ffi fn printf(fmt: &i8, ...) -> i32
-
-public fn foozle()
-{
-	printf("asdf\n");
-}
+public import libc as _

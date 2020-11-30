@@ -24,11 +24,13 @@ namespace sst
 		std::string name;
 		std::string vendor;
 	};
+
 	static OsStrings getOsStrings();
 	static void generatePreludeDefinitions(TypecheckState* fs);
 
 	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
 	{
+		info("dupe check: %s, %s", a->loc.shortString(), b->loc.shortString());
 		return false;
 	}
 
@@ -36,8 +38,10 @@ namespace sst
 	{
 		for(const auto& [ name, defns ] : base->definitions2)
 		{
+			zpr::println("check %s", name);
 			if(auto it = branch->definitions2.find(name); it != branch->definitions2.end())
 			{
+				zpr::println("found something");
 				for(auto d1 : defns)
 				{
 					for(auto d2 : it->second)
@@ -62,9 +66,6 @@ namespace sst
 
 		// no problem -- attach the trees
 		base->imports.push_back(branch);
-
-		if(auto proxy = branch->proxyOf)
-			base->imports.push_back(proxy);
 
 		// merge the subtrees as well.
 		for(const auto& [ name, tr ] : branch->subtrees)
@@ -136,7 +137,6 @@ namespace sst
 				}
 
 				insertPoint = curinspt;
-				insertPoint->proxyOf = import->base;
 			}
 
 			iceAssert(insertPoint);
