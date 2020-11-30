@@ -2,17 +2,14 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+/*
 import libc as _
-import repro_2 as _
+// import repro_2 as _
+import repro_2
+import std::limits as lim
 
-// using repro_2 as r
+using repro_2 as _
 
-// namespace omega
-// {
-// 	let foo: int = 30
-// }
-
-// let omega: str = "owo"
 
 @entry fn main()
 {
@@ -42,6 +39,19 @@ import repro_2 as _
 	printf("%d\n", Bar::bla(3));
 	printf("lmao\n");
 
+	let x = lim::int16::max;
+	printf("x = %x\n", x);
+
 	// let c = "a" + "b"
 }
+*/
 
+
+import std::io as _
+import repro_3
+
+@entry fn main2()
+{
+	println("owo")
+	uwu::owo::foozle()
+}

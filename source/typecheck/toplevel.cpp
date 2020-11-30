@@ -54,19 +54,25 @@ namespace sst
 
 	void mergeExternalTree(sst::StateTree* base, sst::StateTree* branch)
 	{
+		if(branch->isAnonymous || branch->isCompilerGenerated)
+			return;
+
 		// first check conflicts for this level:
 		checkConflictingDefinitions(base, branch);
 
 		// no problem -- attach the trees
 		base->imports.push_back(branch);
 
-		// check recursively
-		// TODO: optimise this by looping over the tree with less subtrees and doing hash lookup
-		// on the one with more subtrees.
-		for(const auto& [ name, sub ] : base->subtrees)
+		if(auto proxy = branch->proxyOf)
+			base->imports.push_back(proxy);
+
+		// merge the subtrees as well.
+		for(const auto& [ name, tr ] : branch->subtrees)
 		{
-			if(auto it = branch->subtrees.find(name); it != branch->subtrees.end())
-				mergeExternalTree(sub, it->second);
+			if(tr->isCompilerGenerated || tr->isAnonymous)
+				continue;
+
+			mergeExternalTree(base->findOrCreateSubtree(name), tr);
 		}
 	}
 
@@ -90,7 +96,7 @@ namespace sst
 
 		for(auto [ ithing, import ] : imports)
 		{
-			info(ithing.loc, "import: %s", ithing.name);
+			info(ithing.loc, "(%s) import: %s", file.name, ithing.name);
 
 			auto ias = ithing.importAs;
 			if(ias.empty())
@@ -130,6 +136,7 @@ namespace sst
 				}
 
 				insertPoint = curinspt;
+				insertPoint->proxyOf = import->base;
 			}
 
 			iceAssert(insertPoint);

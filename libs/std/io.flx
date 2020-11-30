@@ -4,5 +4,5 @@
 
 export std::io
 
-public import file
-public import print
+public import file as _
+public import print as _

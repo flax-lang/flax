@@ -786,7 +786,10 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			def = fs->typeDefnMap[te->type];
 		}
 
-		iceAssert(def);
+		if(!def)
+		{
+			error(left->loc, "could not resolve definition");
+		}
 
 		if(auto typdef = dcast(sst::TypeDefn, def))
 		{

@@ -3,6 +3,7 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "defs.h"
 #include "errors.h"
 #include "typecheck.h"
 
@@ -10,7 +11,9 @@
 #include "memorypool.h"
 #include "zfu.h"
 
+#include <algorithm>
 #include <deque>
+#include <iterator>
 
 namespace sst
 {
@@ -210,27 +213,34 @@ namespace sst
 		return this->definitions2;
 	}
 
-	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, std::vector<Defn*>& out)
+	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, bool includePrivate, std::vector<Defn*>& out)
 	{
 		if(auto it = tree->definitions2.find(name); it != tree->definitions2.end())
-			out.insert(out.end(), it->second.begin(), it->second.end());
-
-		if(!recursively)
-			return;
+		{
+			std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(out), [includePrivate](Defn* defn) -> bool {
+				return (includePrivate ? true : defn->visibility == VisibilityLevel::Public);
+			});
+		}
 
 		for(auto import : tree->imports)
 		{
-			fetchDefinitionsFrom(name, import, false, out);
+			if(recursively)
+			{
+				// only include private things if we're in the same file.
+				bool priv = tree->topLevelFilename == import->topLevelFilename;
+				fetchDefinitionsFrom(name, import, /* recursively: */ false, /* includePrivate: */ priv, out);
+			}
 
+			// in theory we should never include the private definitions from re-exports
 			for(auto reexp : import->reexports)
-				fetchDefinitionsFrom(name, reexp, false, out);
+				fetchDefinitionsFrom(name, reexp, /* recursively: */ false, /* includePrivate: */ false, out);
 		}
 	}
 
 	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
 	{
 		std::vector<Defn*> ret;
-		fetchDefinitionsFrom(name, this, true, ret);
+		fetchDefinitionsFrom(name, this, /* recursively: */ true, /* includePrivate: */ true, ret);
 
 		return ret;
 	}
@@ -246,8 +256,6 @@ namespace sst
 
 	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		// this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
-		// this->definitions[sourceFile].defns[name].push_back(def);
 		this->definitions2[name].push_back(def);
 	}
 
@@ -315,18 +323,23 @@ namespace sst
 		this->teleportationStack.pop_back();
 	}
 
-	StateTree* StateTree::searchForName(const std::string& name)
+	StateTree* StateTree::findSubtree(const std::string& name)
 	{
-		auto tree = this->parent;
-		while(tree)
-		{
-			if(tree->name == name)
-				return tree;
+		if(auto it = this->subtrees.find(name); it != this->subtrees.end())
+			return it->second;
 
-			tree = tree->parent;
+		// check our imports, and our imports' reexports.
+		for(const auto imp : this->imports)
+		{
+			if(imp->name == name)
+				return imp;
+
+			for(const auto exp : imp->reexports)
+				if(exp->name == name)
+					return exp;
 		}
 
-		return 0;
+		return nullptr;
 	}
 
 	StateTree* StateTree::findOrCreateSubtree(const std::string& name, bool anonymous)
@@ -363,7 +376,6 @@ namespace sst
 
 			if(fns.size() > 0)
 				return fns;
-				// ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
 		}

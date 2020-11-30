@@ -278,7 +278,6 @@ TCResult ast::Ident::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		if(auto it = tree->subtrees.find(this->name); it != tree->subtrees.end())
 			return TCResult(makeScopeExpr(it->second->getScope2()));
 
-
 		if(this->traverseUpwards)
 			tree = tree->parent;
 

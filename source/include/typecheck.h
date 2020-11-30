@@ -73,6 +73,7 @@ namespace sst
 
 		util::hash_map<std::string, std::vector<Defn*>> definitions2;
 
+		StateTree* proxyOf = nullptr;
 		std::vector<Defn*> exports;
 		std::vector<StateTree*> imports;
 		std::vector<StateTree*> reexports;
@@ -88,7 +89,7 @@ namespace sst
 		Scope cachedScope;
 		const Scope& getScope2();
 
-		StateTree* searchForName(const std::string& name);
+		StateTree* findSubtree(const std::string& name);
 		StateTree* findOrCreateSubtree(const std::string& name, bool anonymous = false);
 
 		util::hash_map<std::string, std::vector<Defn*>> getAllDefinitions();

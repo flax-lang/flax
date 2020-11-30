@@ -29,6 +29,11 @@ the imports list of the current scope.
 
 
 
+## to fix
+
+1. `public static` doesn't work, but `static public` works.
+
+
 ## to refactor
 
 2. a lot of places probably still have the concept of `scope == std::vector<std::string>`.

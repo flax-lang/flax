@@ -12,7 +12,10 @@
 sst::Stmt* TCResult::stmt() const
 {
 	if(this->_kind == RK::Error)
-		throw ErrorException(this->_pe); //this->_pe->postAndQuit();
+	{
+		this->_pe->postAndQuit();
+		// throw ErrorException(this->_pe);
+	}
 
 	switch(this->_kind)
 	{
@@ -26,7 +29,10 @@ sst::Stmt* TCResult::stmt() const
 sst::Expr* TCResult::expr() const
 {
 	if(this->_kind == RK::Error)
-		throw ErrorException(this->_pe); // this->_pe->postAndQuit();
+	{
+		this->_pe->postAndQuit();
+		// throw ErrorException(this->_pe);
+	}
 
 	if(this->_kind != RK::Expression)
 		_error_and_exit("not expr\n");
@@ -37,7 +43,10 @@ sst::Expr* TCResult::expr() const
 sst::Defn* TCResult::defn() const
 {
 	if(this->_kind == RK::Error)
-		throw ErrorException(this->_pe); //this->_pe->postAndQuit();
+	{
+		this->_pe->postAndQuit();
+		// throw ErrorException(this->_pe);
+	}
 
 	if(this->_kind != RK::Definition)
 		_error_and_exit("not defn\n");
