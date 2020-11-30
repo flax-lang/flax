@@ -103,7 +103,7 @@ namespace parser
 
 				using namespace attr;
 
-				return ret.map([&allowed, &attrs](auto ret) -> auto {
+				return ret.map([&allowed, &attrs](auto ret) -> Stmt* {
 					// there's probably a better way to do this, but bleugh
 					if((attrs.flags & RAW) && !(allowed.flags & RAW))
 						error(ret, "unsupported attribute '@raw' on %s", ret->readableName);
