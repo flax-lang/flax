@@ -325,7 +325,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	defn->attrs = this->attrs;
 	defn->id = Identifier(this->name, IdKind::Name);
-	defn->id.scope2 = fs->getCurrentScope2();
+	defn->id.scope = fs->scope();
 
 	defn->immutable = this->immut;
 	defn->visibility = this->visibility;
@@ -355,7 +355,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			auto t = defn->init->type;
 			if(t->isConstantNumberType())
-				t = fs->inferCorrectTypeForLiteral(defn->init->type->toConstantNumberType());
+				t = sst::inferCorrectTypeForLiteral(defn->init->type->toConstantNumberType());
 
 			defn->type = t;
 		}

@@ -37,7 +37,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		//* note: we declare it as not-immutable here to make it easier to set things,
 		//* but otherwise we make it immutable again below after init.
-		auto glob = cs->module->createGlobalVariable(this->id, this->type, false,
+		auto glob = cs->module->createGlobalVariable(this->id.convertToName(), this->type, false,
 			this->visibility == VisibilityLevel::Public ? fir::LinkageType::External : fir::LinkageType::Internal);
 
 		auto rest = cs->enterGlobalInitFunction(glob);

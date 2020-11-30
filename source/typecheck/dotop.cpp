@@ -797,7 +797,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			{
 				fs->pushSelfContext(def->type);
 
-				auto oldscope = fs->getCurrentScope2();
+				auto oldscope = fs->scope();
 				auto newscope = typdef->innerScope;
 
 				fs->pushGenericContext();
@@ -858,14 +858,14 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				}
 
 				// dot-op on the union to access its variants; we need constructor stuff for it.
-				auto oldscope = fs->getCurrentScope2();
+				auto oldscope = fs->scope();
 				auto newscope = unn->innerScope;
 
 				return checkRhs2(fs, dot, oldscope, newscope, infer);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
-				auto oldscope = fs->getCurrentScope2();
+				auto oldscope = fs->scope();
 				auto newscope = enm->innerScope;
 
 				auto rhs = checkRhs2(fs, dot, oldscope, newscope, infer);
@@ -892,8 +892,8 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, left))
 	{
-		auto oldscope = fs->getCurrentScope2();
-		auto newscope = scp->scope2;
+		auto oldscope = fs->scope();
+		auto newscope = scp->scope;
 
 		return checkRhs2(fs, dot, oldscope, newscope, infer);
 	}

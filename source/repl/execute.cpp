@@ -18,7 +18,7 @@
 
 // defined in codegen/directives.cpp
 fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
-	const Identifier& fname, fir::interp::InterpState* is = 0);
+	const fir::Name& fname, fir::interp::InterpState* is = 0);
 
 namespace repl
 {
@@ -121,7 +121,7 @@ namespace repl
 				// note: usually, visitDeclarables in the top-level typecheck will set the realScope.
 				// BUT, since we're not doing that, we must set it manually!
 				if(auto def = dcast(ast::Parameterisable, stmt); def)
-					def->enclosingScope = state->fs->getCurrentScope2();
+					def->enclosingScope = state->fs->scope();
 
 				tcr = stmt->typecheck(state->fs);
 			}
@@ -180,7 +180,7 @@ namespace repl
 			// (potentially) populate the globalInitPieces, before calling cs->finishGlobalInits(). basically,
 			// it's all handled.
 			auto value = magicallyRunExpressionAtCompileTime(state->cs, *stmt, nullptr,
-				Identifier(zpr::sprint("__anon_runner_%d", state->fnCounter++), IdKind::Name),
+				fir::Name::obfuscate("__anon_runner_", state->fnCounter++),
 				state->interpState);
 
 			state->interpState->finalise();

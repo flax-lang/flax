@@ -37,14 +37,14 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
 	defn->innerScope = this->enclosingScope.appending(defnname);
 
-	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id);
-	else        defn->type = fir::UnionType::createWithoutBody(defn->id);
+	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id.convertToName());
+	else        defn->type = fir::UnionType::createWithoutBody(defn->id.convertToName());
 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
 		return TCResult(err);
@@ -130,7 +130,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			size_t tfn = 0;
 			for(auto [ loc, pty ] : this->transparentFields)
 			{
-				auto sfd = make_field(util::obfuscateName("transparent_field", tfn++), loc, pty);
+				auto sfd = make_field(fir::obfuscateName("transparent_field", tfn++), loc, pty);
 				iceAssert(sfd);
 
 				sfd->isTransparentField = true;
@@ -179,7 +179,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			vdef->parentUnion = defn;
 			vdef->variantName = variant.first;
 			vdef->id = Identifier(defn->id.name + "::" + variant.first, IdKind::Name);
-			vdef->id.scope2 = fs->getCurrentScope2();
+			vdef->id.scope = fs->scope();
 
 			vdefs.push_back({ vdef, std::get<0>(variant.second) });
 

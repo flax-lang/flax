@@ -189,29 +189,15 @@ namespace sst
 		return this->deferBlockNest > 0;
 	}
 
-	Scope TypecheckState::getCurrentScope2()
+	Scope TypecheckState::scope()
 	{
 		return this->stree->getScope();
-	}
-
-	std::string TypecheckState::serialiseCurrentScope()
-	{
-		std::deque<std::string> scope;
-		StateTree* tree = this->stree;
-
-		while(tree)
-		{
-			scope.push_front(tree->name);
-			tree = tree->parent;
-		}
-
-		return zfu::join(std::vector<std::string>(scope.begin(), scope.end()), "::");
 	}
 
 	std::vector<Defn*> StateTree::getAllDefinitions()
 	{
 		std::vector<Defn*> ret;
-		for(const auto& [ n, ds ] : this->definitions2)
+		for(const auto& [ n, ds ] : this->definitions)
 			for(auto d : ds)
 				ret.push_back(d);
 
@@ -220,7 +206,7 @@ namespace sst
 
 	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, bool includePrivate, std::vector<Defn*>& out)
 	{
-		if(auto it = tree->definitions2.find(name); it != tree->definitions2.end())
+		if(auto it = tree->definitions.find(name); it != tree->definitions.end())
 		{
 			std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(out), [includePrivate](Defn* defn) -> bool {
 				return (includePrivate ? true : defn->visibility == VisibilityLevel::Public);
@@ -268,7 +254,7 @@ namespace sst
 
 	void StateTree::addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		this->definitions2[name].push_back(def);
+		this->definitions[name].push_back(def);
 	}
 
 
@@ -353,6 +339,7 @@ namespace sst
 		else
 		{
 			auto newtree = util::pool<StateTree>(name, this, anonymous);
+			newtree->moduleName = this->moduleName;
 			this->subtrees[name] = newtree;
 			return newtree;
 		}

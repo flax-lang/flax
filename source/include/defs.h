@@ -14,7 +14,7 @@
 struct Identifier;
 enum class VisibilityLevel;
 
-namespace fir { struct Type; }
+namespace fir { struct Type; struct Name; }
 namespace pts { struct Type; }
 
 
@@ -167,15 +167,15 @@ struct Identifier
 	Identifier(const std::string& n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
-	sst::Scope scope2;
-	std::vector<std::string> scope_;
+	sst::Scope scope;
 	std::vector<fir::Type*> params;
+	fir::Type* returnType = nullptr;
 
 	IdKind kind;
 
 	std::string str() const;
-	std::string mangled() const;
-	std::string mangledName() const;
+	std::string mangled___() const;
+	fir::Name convertToName() const;
 
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const;
@@ -648,13 +648,6 @@ struct PolyArgMapping_t
 namespace util
 {
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
-
-	std::string obfuscateName(const std::string& name);
-	std::string obfuscateName(const std::string& name, size_t id);
-	std::string obfuscateName(const std::string& name, const std::string& extra);
-	Identifier obfuscateIdentifier(const std::string& name, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, size_t id, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind = IdKind::Name);
 
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)

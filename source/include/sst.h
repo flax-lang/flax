@@ -401,14 +401,14 @@ namespace sst
 
 	struct ScopeExpr : Expr
 	{
-		ScopeExpr(const Location& l, fir::Type* t, const Scope& scope) : Expr(l, t), scope2(scope)
+		ScopeExpr(const Location& l, fir::Type* t, const Scope& scope) : Expr(l, t), scope(scope)
 			{ this->readableName = "<SCOPE EXPRESSION>"; }
 
 		~ScopeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		Scope scope2;
+		Scope scope;
 	};
 
 	struct FieldDotOp : Expr

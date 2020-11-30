@@ -51,6 +51,7 @@ namespace sst
 		StateTree(const std::string& nm, StateTree* p, bool anon = false) : name(nm), parent(p), isAnonymous(anon) { }
 
 		std::string name;
+		std::string moduleName;
 
 		StateTree* parent = 0;
 
@@ -67,24 +68,25 @@ namespace sst
 
 		util::hash_map<std::string, StateTree*> subtrees;
 		util::hash_map<std::string, std::vector<ast::Parameterisable*>> unresolvedGenericDefs;
-		util::hash_map<std::pair<ast::Parameterisable*, util::hash_map<std::string, TypeConstraints_t>>, sst::Defn*> resolvedGenericDefs;
 
-		util::hash_map<std::string, std::vector<Defn*>> definitions2;
+		util::hash_map<std::string, std::vector<Defn*>> definitions;
 
 		std::vector<Defn*> exports;
 		std::vector<StateTree*> imports;
 		std::vector<StateTree*> reexports;
 
+		// when importing *not* `as _`, the module goes into a new StateTree with the same name, and that new tree
+		// is the one that imports the target module. (this is because the 'imports' list does not introduce a "new layer")
+		// so, we must point the newly created module to the target module somehow.
 		StateTree* proxyOf = nullptr;
 
 		// this is a mapping from every StateTree in `imports` to the location of the `import` or `using` statement.
 		// it only used for error-reporting, so it is stored out-of-line so the usage of `this->imports` is not more
-		// cumbersome than it needs to be. the string in the pair stores the name of the module *IMPORTING* the module,
-		// not the name of the module being imported (that can be gotten from the StateTree).
-		std::map<const StateTree*, std::pair<Location, std::string>> importMetadata;
+		// cumbersome than it needs to be.
+		std::map<const StateTree*, Location> importMetadata;
 
 		// the same thing, but for reexports (ie. public imports).
-		std::map<const StateTree*, std::pair<Location, std::string>> reexportMetadata;
+		std::map<const StateTree*, Location> reexportMetadata;
 
 
 		// what's there to explain? a simple map of operators to their functions. we use
@@ -131,10 +133,6 @@ namespace sst
 
 		util::hash_map<fir::Type*, TypeDefn*>& typeDefnMap;
 
-		std::vector<Location> locationStack;
-
-		void pushLoc(const Location& l);
-		void pushLoc(ast::Stmt* stmt);
 
 		std::vector<int> bodyStack;
 		std::vector<FunctionDefn*> currentFunctionStack;
@@ -181,17 +179,19 @@ namespace sst
 		void leaveDeferBlock();
 		bool isInDeferBlock();
 
-		Location loc();
-		Location popLoc();
 
+		std::vector<Location> locationStack;
+		void pushLoc(const Location& l);
+		void pushLoc(ast::Stmt* stmt);
+		Location popLoc();
+		Location loc();
+
+		void pushAnonymousTree();
 		void pushTree(const std::string& name, bool createAnonymously = false);
 		StateTree* popTree();
 
-		void pushAnonymousTree();
 
-		std::string serialiseCurrentScope();
-
-		Scope getCurrentScope2();
+		Scope scope();
 
 		std::vector<StateTree*> teleportationStack;
 		void teleportInto(const Scope& scope);
@@ -205,9 +205,7 @@ namespace sst
 
 		fir::Type* getBinaryOpResultType(fir::Type* a, fir::Type* b, const std::string& op, sst::FunctionDefn** overloadFn = 0);
 
-		// things that i might want to make non-methods someday
 		fir::Type* convertParserTypeToFIR(pts::Type* pt, bool allowFailure = false);
-		fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* lit);
 
 		fir::Type* checkIsBuiltinConstructorCall(const std::string& name, const std::vector<FnCallArgument>& arguments);
 
@@ -219,15 +217,15 @@ namespace sst
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 	};
 
-
+	fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* lit);
 
 	bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
 	int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);
 
+	void mergeExternalTree(const Location& importer, const char* kind, sst::StateTree* base, sst::StateTree* branch);
+
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions);
-
-	void mergeExternalTree(const Location& importer, const char* kind, sst::StateTree* base, sst::StateTree* branch);
 }
 
 

@@ -29,7 +29,7 @@ TCResult ast::PlatformDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		defn->type = ty;
 		defn->id = Identifier(this->typeName, IdKind::Type);
-		defn->id.scope2 = fs->getCurrentScope2();
+		defn->id.scope = fs->scope();
 
 		fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 

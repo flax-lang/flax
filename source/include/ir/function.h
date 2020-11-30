@@ -78,12 +78,12 @@ namespace fir
 		// overridden stuff
 		virtual FunctionType* getType() override; // override because better (more specific) return type.
 
-		static Function* create(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
+		static Function* create(const Name& name, FunctionType* fnType, Module* module, LinkageType linkage);
 
 
 		// fields
 		protected:
-		Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage);
+		Function(const Name& name, FunctionType* fnType, Module* module, LinkageType linkage);
 		std::vector<Argument*> fnArguments;
 		std::vector<IRBlock*> blocks;
 		std::vector<Type*> stackAllocs;

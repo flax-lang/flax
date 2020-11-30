@@ -8,7 +8,7 @@
 namespace fir
 {
 	static size_t vnames = 0;
-	Value::Value(Type* t, Kind k) : ident(), valueType(t), kind(k)
+	Value::Value(Type* t, Kind k) : ident(Name::of("")), valueType(t), kind(k)
 	{
 		this->id = vnames++;
 	}
@@ -25,17 +25,17 @@ namespace fir
 		return this->ident.str() != "";
 	}
 
-	void Value::setName(const Identifier& name)
+	void Value::setName(const Name& name)
 	{
 		this->ident = name;
 	}
 
 	void Value::setName(const std::string& name)
 	{
-		this->ident = Identifier(name, IdKind::Name);
+		this->ident = Name::of(name);
 	}
 
-	const Identifier& Value::getName()
+	const Name& Value::getName()
 	{
 		return this->ident;
 	}

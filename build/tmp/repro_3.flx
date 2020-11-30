@@ -2,4 +2,16 @@
 // Copyright (c) 2020, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-public import libc as _
+// public import libc as _
+import libc
+
+fn foozle(x: int, y: int) -> int
+{
+	return x * y
+}
+
+public fn foozle(x: int)
+{
+	foozle(x, x + 2)
+	// libc::printf("asdf %d\n", foozle(x, x + 2));
+}

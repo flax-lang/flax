@@ -122,37 +122,37 @@ namespace cgn
 			fir::Function* getMallocWrapperFunction(CodegenState* cs);
 			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
 
-			Identifier getCompare_FName(fir::Type* t);
-			Identifier getSetElements_FName(fir::Type* t);
-			Identifier getSetElementsDefault_FName(fir::Type* t);
-			Identifier getCallClassConstructor_FName(fir::Type* t);
+			fir::Name getCompare_FName(fir::Type* t);
+			fir::Name getSetElements_FName(fir::Type* t);
+			fir::Name getSetElementsDefault_FName(fir::Type* t);
+			fir::Name getCallClassConstructor_FName(fir::Type* t);
 
-			Identifier getClone_FName(fir::Type* t);
-			Identifier getAppend_FName(fir::Type* t);
-			Identifier getPopBack_FName(fir::Type* t);
-			Identifier getMakeFromTwo_FName(fir::Type* t);
-			Identifier getMakeFromOne_FName(fir::Type* t);
-			Identifier getReserveExtra_FName(fir::Type* t);
-			Identifier getAppendElement_FName(fir::Type* t);
-			Identifier getReserveEnough_FName(fir::Type* t);
-			Identifier getRecursiveRefcount_FName(fir::Type* t, bool incr);
+			fir::Name getClone_FName(fir::Type* t);
+			fir::Name getAppend_FName(fir::Type* t);
+			fir::Name getPopBack_FName(fir::Type* t);
+			fir::Name getMakeFromTwo_FName(fir::Type* t);
+			fir::Name getMakeFromOne_FName(fir::Type* t);
+			fir::Name getReserveExtra_FName(fir::Type* t);
+			fir::Name getAppendElement_FName(fir::Type* t);
+			fir::Name getReserveEnough_FName(fir::Type* t);
+			fir::Name getRecursiveRefcount_FName(fir::Type* t, bool incr);
 
-			Identifier getIncrRefcount_FName(fir::Type* t);
-			Identifier getDecrRefcount_FName(fir::Type* t);
+			fir::Name getIncrRefcount_FName(fir::Type* t);
+			fir::Name getDecrRefcount_FName(fir::Type* t);
 
-			Identifier getLoopIncrRefcount_FName(fir::Type* t);
-			Identifier getLoopDecrRefcount_FName(fir::Type* t);
+			fir::Name getLoopIncrRefcount_FName(fir::Type* t);
+			fir::Name getLoopDecrRefcount_FName(fir::Type* t);
 
-			Identifier getCreateAnyOf_FName(fir::Type* t);
-			Identifier getGetValueFromAny_FName(fir::Type* t);
+			fir::Name getCreateAnyOf_FName(fir::Type* t);
+			fir::Name getGetValueFromAny_FName(fir::Type* t);
 
-			Identifier getBoundsCheck_FName();
-			Identifier getDecompBoundsCheck_FName();
+			fir::Name getBoundsCheck_FName();
+			fir::Name getDecompBoundsCheck_FName();
 
-			Identifier getMallocWrapper_FName();
-			Identifier getRangeSanityCheck_FName();
+			fir::Name getMallocWrapper_FName();
+			fir::Name getRangeSanityCheck_FName();
 
-			Identifier getUtf8Length_FName();
+			fir::Name getUtf8Length_FName();
 		}
 	}
 }

@@ -26,7 +26,7 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	defn->attrs = this->attrs;
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
@@ -39,7 +39,7 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 		m->enclosingScope = defn->innerScope;
 	}
 
-	auto str = fir::TraitType::create(defn->id);
+	auto str = fir::TraitType::create(defn->id.convertToName());
 	defn->type = str;
 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))

@@ -481,7 +481,7 @@ namespace interp
 
 		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
 		{
-			auto fname = Identifier("__interp_intrinsic_" + id.str(), IdKind::Name);
+			auto fname = Name::obfuscate("__interp_intrinsic_", id.str());
 			auto fn = this->module->getOrCreateFunction(fname, intr->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
@@ -520,7 +520,7 @@ namespace interp
 		// printf("module:\n%s\n", this->module->print().c_str());
 
 		// truth be told it'll be more efficient to only get the function after checking runGlobalInit, but... meh.
-		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
+		if(auto gif = this->module->getFunction(Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION));
 			runGlobalInit && gif)
 		{
 			auto cgif = this->compileFunction(gif);

@@ -15,7 +15,7 @@
 
 namespace sst
 {
-	fir::Type* TypecheckState::inferCorrectTypeForLiteral(fir::ConstantNumberType* type)
+	fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* type)
 	{
 		auto ty = type->toConstantNumberType();
 		{
@@ -47,8 +47,7 @@ namespace sst
 
 	static ErrorMsg* _complainNoParentScope(TypecheckState* fs, const std::string& top)
 	{
-		return SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", top)
-		->append(BareError::make(MsgType::Note, "current scope is '%s'", fs->serialiseCurrentScope()));
+		return SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", top);
 	}
 
 

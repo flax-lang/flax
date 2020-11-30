@@ -37,7 +37,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
@@ -63,7 +63,7 @@ TCResult ast::ClassDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	}
 
 
-	auto cls = fir::ClassType::createWithoutBody(defn->id);
+	auto cls = fir::ClassType::createWithoutBody(defn->id.convertToName());
 	defn->type = cls;
 
 
@@ -363,7 +363,7 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 				for(auto sub : from->subtrees)
 				{
 					if(to->subtrees.find(sub.first) == to->subtrees.end())
-						to->subtrees[sub.first] = util::pool<sst::StateTree>(sub.first, to);
+						to->findOrCreateSubtree(sub.first);
 
 					recursivelyImport(sub.second, to->subtrees[sub.first]);
 				}

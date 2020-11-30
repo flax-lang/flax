@@ -49,7 +49,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		// this happens in cases like `foo::bar`
 		if(auto se = dcast(sst::ScopeExpr, used))
-			scopes = se->scope2;
+			scopes = se->scope;
 
 		// and this happens in cases like `foo`
 		else if(vr && (td = dcast(sst::TypeDefn, vr->def)))

@@ -49,7 +49,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
@@ -62,7 +62,7 @@ TCResult ast::StructDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type
 		m->enclosingScope = defn->innerScope;
 	}
 
-	auto str = fir::StructType::createWithoutBody(defn->id, /* isPacked: */ this->attrs.has(attr::PACKED));
+	auto str = fir::StructType::createWithoutBody(defn->id.convertToName(), /* isPacked: */ this->attrs.has(attr::PACKED));
 	defn->type = str;
 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))

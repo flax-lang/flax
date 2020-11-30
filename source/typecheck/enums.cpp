@@ -40,14 +40,14 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->bareName = this->name;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
 	defn->enclosingScope = this->enclosingScope;
 	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	// set it to void first, because we want to defer typechecking the member type.
-	defn->type = fir::EnumType::get(defn->id, fir::Type::getVoid());
+	defn->type = fir::EnumType::get(defn->id.convertToName(), fir::Type::getVoid());
 
 	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
 		return TCResult(err);
@@ -95,7 +95,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 		auto ecd = util::pool<sst::EnumCaseDefn>(cs.loc);
 		ecd->id = Identifier(cs.name, IdKind::Name);
-		ecd->id.scope2 = fs->getCurrentScope2();
+		ecd->id.scope = fs->scope();
 		ecd->type = ety;
 		ecd->parentEnum = defn;
 		ecd->val = val;

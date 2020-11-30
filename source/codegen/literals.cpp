@@ -95,14 +95,16 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			// make a function specifically to initialise this thing
 			static size_t _id = 0;
 
+			auto theId = _id++;
+
 			auto _aty = fir::ArrayType::get(elmty, this->values.size());
-			auto array = cs->module->createGlobalVariable(Identifier("_FV_DAR_" + std::to_string(_id++), IdKind::Name),
+			auto array = cs->module->createGlobalVariable(fir::Name::obfuscate("_FV_DAR_", theId),
 				_aty, fir::ConstantArray::getZeroValue(_aty), false, fir::LinkageType::Internal);
 
 			{
 				auto restore = cs->irb.getCurrentBlock();
 
-				fir::Function* func = cs->module->getOrCreateFunction(util::obfuscateIdentifier("init_array", _id - 1),
+				fir::Function* func = cs->module->getOrCreateFunction(fir::Name::obfuscate("init_array", theId),
 					fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 				fir::IRBlock* entry = cs->irb.addNewBlockInFunction("entry", func);

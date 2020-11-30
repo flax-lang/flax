@@ -60,8 +60,9 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->attrs = this->attrs;
 	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
-	defn->id.scope2 = this->enclosingScope;
+	defn->id.scope = this->enclosingScope;
 	defn->id.params = ptys;
+	defn->id.returnType = retty;
 	defn->enclosingScope = this->enclosingScope;
 
 	defn->params = ps;
@@ -139,7 +140,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 		fs->teleportInto(defn->enclosingScope);
 
 		fs->enterFunctionBody(defn);
-		fs->pushTree(defn->id.mangledName());
+		fs->pushTree(defn->id.convertToName().mangledWithoutScope());
 		{
 			// add the arguments to the tree
 
@@ -147,7 +148,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			{
 				auto vd = util::pool<sst::ArgumentDefn>(arg.loc);
 				vd->id = Identifier(arg.name, IdKind::Name);
-				vd->id.scope2 = fs->getCurrentScope2();
+				vd->id.scope = fs->scope();
 
 				vd->type = arg.type;
 
@@ -311,7 +312,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		{
 			if(auto p = dcast(Parameterisable, stmt); p)
 			{
-				p->enclosingScope = fs->getCurrentScope2();
+				p->enclosingScope = fs->scope();
 			}
 
 			auto tcr = stmt->typecheck(fs);
@@ -326,7 +327,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		{
 			if(auto p = dcast(Parameterisable, dstmt); p)
 			{
-				p->enclosingScope = fs->getCurrentScope2();
+				p->enclosingScope = fs->scope();
 			}
 
 			auto tcr = dstmt->typecheck(fs);

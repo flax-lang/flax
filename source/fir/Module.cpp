@@ -26,7 +26,7 @@ namespace fir
 			std::vector<std::string> trymains = { "main", "_FF" + this->getModuleName() + "4main_FAv" };
 			for(const auto& m : trymains)
 			{
-				entryfunc = this->getFunction(Identifier(m, IdKind::Name));
+				entryfunc = this->getFunction(Name::of(m));
 				if(entryfunc) break;
 			}
 
@@ -51,7 +51,7 @@ namespace fir
 
 			builder.setCurrentBlock(newentry);
 
-			auto gif = this->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
+			auto gif = this->getFunction(Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION));
 			if(!gif) error("fir: failed to find global init function");
 
 			builder.Call(gif);
@@ -69,7 +69,7 @@ namespace fir
 
 
 
-	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Name& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
@@ -79,17 +79,17 @@ namespace fir
 		return gv;
 	}
 
-	GlobalVariable* Module::createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Name& id, Type* type, bool isImmut, LinkageType linkage)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, linkage);
 	}
 
-	GlobalVariable* Module::declareGlobalVariable(const Identifier& id, Type* type, bool isImmut)
+	GlobalVariable* Module::declareGlobalVariable(const Name& id, Type* type, bool isImmut)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, LinkageType::External);
 	}
 
-	GlobalVariable* Module::tryGetGlobalVariable(const Identifier& id)
+	GlobalVariable* Module::tryGetGlobalVariable(const Name& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			return 0;
@@ -97,7 +97,7 @@ namespace fir
 		return this->globals[id];
 	}
 
-	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
+	GlobalVariable* Module::getGlobalVariable(const Name& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			error("fir: no such global with name '%s'", id.str());
@@ -124,7 +124,7 @@ namespace fir
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(util::obfuscateIdentifier("vtable", cls->getTypeName().mangled()),
+			auto vtab = this->createGlobalVariable(Name::obfuscate("vtable", cls->getTypeName().mangled()),
 				table->getType(), table, true, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
@@ -161,7 +161,7 @@ namespace fir
 
 
 
-	Type* Module::getNamedType(const Identifier& id)
+	Type* Module::getNamedType(const Name& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
 			error("fir: no such type with name '%s'", id.str());
@@ -169,7 +169,7 @@ namespace fir
 		return this->namedTypes[id];
 	}
 
-	void Module::addNamedType(const Identifier& id, Type* type)
+	void Module::addNamedType(const Name& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
 			error("fir: type '%s' exists already", id.str());
@@ -204,12 +204,12 @@ namespace fir
 	}
 
 
-	Function* Module::declareFunction(const Identifier& id, FunctionType* ftype)
+	Function* Module::declareFunction(const Name& id, FunctionType* ftype)
 	{
 		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
-	Function* Module::getFunction(const Identifier& id)
+	Function* Module::getFunction(const Name& id)
 	{
 		if(this->functions.find(id) == this->functions.end())
 			return 0;
@@ -217,7 +217,7 @@ namespace fir
 		return this->functions[id];
 	}
 
-	std::vector<Function*> Module::getFunctionsWithName(const Identifier& id)
+	std::vector<Function*> Module::getFunctionsWithName(const Name& id)
 	{
 		// todo: *very* inefficient.
 
@@ -231,7 +231,7 @@ namespace fir
 		return ret;
 	}
 
-	Function* Module::getOrCreateFunction(const Identifier& id, FunctionType* ftype, LinkageType linkage)
+	Function* Module::getOrCreateFunction(const Name& id, FunctionType* ftype, LinkageType linkage)
 	{
 		if(this->functions.find(id) != this->functions.end())
 		{
@@ -282,7 +282,7 @@ namespace fir
 		if(this->globalStrings.find(str) != this->globalStrings.end())
 			return this->globalStrings[str];
 
-		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
+		GlobalVariable* gs = new GlobalVariable(Name::obfuscate("static_string", std::to_string(stringId++)), this,
 			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
 		gs->setKind(Value::Kind::prvalue);
@@ -395,25 +395,25 @@ namespace fir
 
 	Function* Module::getIntrinsicFunction(const std::string& id)
 	{
-		Identifier name;
+		auto name = Name::of("");
 		FunctionType* ft = 0;
 		if(id == "memcpy")
 		{
-			name = Identifier("memcpy", IdKind::Name);
+			name = Name::of("memcpy");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
-			name = Identifier("memmove", IdKind::Name);
+			name = Name::of("memmove");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
-			name = Identifier("memset", IdKind::Name);
+			name = Name::of("memset");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
@@ -423,7 +423,7 @@ namespace fir
 			// note: memcmp isn't an actual llvm intrinsic, but we support it anyway
 			// at llvm-translate-time, we make a function.
 
-			name = Identifier("memcmp", IdKind::Name);
+			name = Name::of("memcmp");
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getInt32());
@@ -435,7 +435,7 @@ namespace fir
 			// 1 -> 1
 			// 40 -> 64
 
-			name = Identifier("roundup_pow2", IdKind::Name);
+			name = Name::of("roundup_pow2");
 			ft = FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getNativeWord());
 		}
 

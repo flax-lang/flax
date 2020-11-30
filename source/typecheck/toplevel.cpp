@@ -50,19 +50,19 @@ namespace sst
 		}
 	}
 
-	struct ImportMetadata
+	struct ExportMetadata
 	{
 		Location loc;
-		std::string name;
+		std::string module;
 		std::string imported;
 	};
 
 	static void checkConflictingDefinitions(Location loc, const char* kind, const sst::StateTree* base, const sst::StateTree* branch,
-		std::optional<Location> importer = { }, std::optional<ImportMetadata> exporter = { })
+		std::optional<Location> importer = { }, std::optional<ExportMetadata> exporter = { })
 	{
-		for(const auto& [ name, defns ] : base->definitions2)
+		for(const auto& [ name, defns ] : base->definitions)
 		{
-			if(auto it = branch->definitions2.find(name); it != branch->definitions2.end())
+			if(auto it = branch->definitions.find(name); it != branch->definitions.end())
 			{
 				for(auto d1 : defns)
 				{
@@ -79,7 +79,7 @@ namespace sst
 							{
 								error->append(SimpleError::make(MsgType::Note, exporter->loc,
 									"this public import (from the imported module '%s') brings '%s' into scope ...",
-									exporter->name, exporter->imported));
+									exporter->module, exporter->imported));
 
 								error->append(SimpleError::make(MsgType::Note, *importer,
 									"... which conflicts with this using/import statement here:"));
@@ -92,7 +92,7 @@ namespace sst
 							else if(exporter)
 							{
 								error->append(SimpleError::make(MsgType::Note, exporter->loc,
-									"most likely caused by this public import here, in module '%s':", exporter->name));
+									"most likely caused by this public import here, in module '%s':", exporter->module));
 							}
 
 							error->append(SimpleError::make(MsgType::Note, d1->loc, "for reference, here is the (first) "
@@ -111,13 +111,13 @@ namespace sst
 		}
 	}
 
-	static std::optional<ImportMetadata> getExportInfo(const sst::StateTree* base, const sst::StateTree* branch)
+	static std::optional<ExportMetadata> getExportInfo(const sst::StateTree* base, const sst::StateTree* branch)
 	{
 		if(auto it = base->reexportMetadata.find(branch); it != base->reexportMetadata.end())
 		{
-			return ImportMetadata {
-				.loc = it->second.first,
-				.name = it->second.second,
+			return ExportMetadata {
+				.loc = it->second,
+				.module = base->moduleName,
 				.imported = branch->name
 			};
 		}
@@ -125,7 +125,7 @@ namespace sst
 	}
 
 	static void checkExportsRecursively(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch,
-		std::optional<Location> importer = { }, std::optional<ImportMetadata> exporter = { })
+		std::optional<Location> importer = { }, std::optional<ExportMetadata> exporter = { })
 	{
 		if(branch->isAnonymous || branch->isCompilerGenerated)
 			return;
@@ -149,7 +149,7 @@ namespace sst
 		{
 			std::optional<Location> importer;
 			if(auto it = base->importMetadata.find(import); it != base->importMetadata.end())
-				importer = it->second.first;
+				importer = it->second;
 
 			// check that the new tree doesn't trample over it.
 			checkConflictingDefinitions(loc, kind, import, branch, importer);
@@ -185,7 +185,7 @@ namespace sst
 
 		// no problem -- attach the trees
 		base->imports.push_back(branch);
-		base->importMetadata[branch] = { loc, base->name };
+		base->importMetadata[branch] = loc;
 
 		// merge the subtrees as well.
 		for(const auto& [ name, tr ] : branch->subtrees)
@@ -213,12 +213,12 @@ namespace sst
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
 	{
 		auto tree = new StateTree(file.moduleName, nullptr);
+		tree->moduleName = file.moduleName;
+
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ ithing, import ] : imports)
 		{
-			// info(ithing.loc, "(%s) import: %s", file.name, ithing.name);
-
 			auto ias = ithing.importAs;
 			if(ias.empty())
 				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
@@ -249,7 +249,7 @@ namespace sst
 					}
 					else
 					{
-						auto newinspt = util::pool<sst::StateTree>(impas, curinspt);
+						auto newinspt = curinspt->findOrCreateSubtree(impas);
 						curinspt->subtrees[impas] = newinspt;
 
 						curinspt = newinspt;
@@ -266,7 +266,7 @@ namespace sst
 			if(ithing.pubImport)
 			{
 				insertPoint->reexports.push_back(import->base);
-				insertPoint->reexportMetadata[import->base] = { ithing.loc, file.moduleName };
+				insertPoint->reexportMetadata[import->base] = ithing.loc;
 			}
 
 			fs->dtree->thingsImported.insert(ithing.name);
@@ -408,7 +408,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* top)
 	{
 		if(auto decl = dcast(ast::Parameterisable, stmt))
 		{
-			decl->enclosingScope = fs->getCurrentScope2();
+			decl->enclosingScope = fs->scope();
 			decl->generateDeclaration(fs, 0, { });
 		}
 

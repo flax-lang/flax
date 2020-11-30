@@ -82,7 +82,7 @@ fir::Value* cgn::CodegenState::constructClassWithArguments(fir::ClassType* cls, 
 
 
 	// make a wrapper...
-	auto fname = util::obfuscateIdentifier("init_wrapper", constr->id.str());
+	auto fname = fir::Name::obfuscate("init_wrapper", constr->id.str());
 	fir::Function* wrapper_func = this->module->getFunction(fname);
 
 	if(!wrapper_func)

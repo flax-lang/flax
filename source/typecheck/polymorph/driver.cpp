@@ -79,7 +79,7 @@ namespace poly
 				util::hash_map<std::string, size_t> paramOrder;
 
 				auto inputcopy = input;
-				auto selfty = fir::PolyPlaceholderType::get(util::obfuscateName("self_infer"), getNextSessionId());
+				auto selfty = fir::PolyPlaceholderType::get(fir::obfuscateName("self_infer"), getNextSessionId());
 				inputcopy.insert(inputcopy.begin(), FnCallArgument(fs->loc(), "", util::pool<sst::RawValueExpr>(fs->loc(),
 					selfty->getMutablePointerTo()), 0));
 

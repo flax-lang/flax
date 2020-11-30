@@ -9,18 +9,16 @@
 namespace fir
 {
 	// structs
-	ClassType::ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
-		const std::vector<Function*>& inits) : Type(TypeKind::Class)
+	ClassType::ClassType(const Name& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
+		const std::vector<Function*>& inits) : Type(TypeKind::Class), className(name)
 	{
-		this->className = name;
-
 		this->setMembers(mems);
 		this->setMethods(methods);
 		this->setInitialiserFunctions(inits);
 	}
 
-	static util::hash_map<Identifier, ClassType*> typeCache;
-	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
+	static util::hash_map<Name, ClassType*> typeCache;
+	ClassType* ClassType::create(const Name& name, const std::vector<std::pair<std::string, Type*>>& members,
 		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
@@ -30,7 +28,7 @@ namespace fir
 			return (typeCache[name] = new ClassType(name, members, methods, inits));
 	}
 
-	ClassType* ClassType::createWithoutBody(const Identifier& name)
+	ClassType* ClassType::createWithoutBody(const Name& name)
 	{
 		return ClassType::create(name, { }, { }, { });
 	}
@@ -63,7 +61,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier ClassType::getTypeName()
+	Name ClassType::getTypeName()
 	{
 		return this->className;
 	}

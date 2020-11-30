@@ -51,7 +51,7 @@
 
 namespace backend
 {
-	static util::hash_map<Identifier, llvm::StructType*> createdTypes;
+	static util::hash_map<fir::Name, llvm::StructType*> createdTypes;
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
 
@@ -208,7 +208,7 @@ namespace backend
 		{
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
 
-			auto id = util::obfuscateIdentifier("string", IdKind::Type);
+			auto id = fir::Name::obfuscate("string", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -241,7 +241,7 @@ namespace backend
 		}
 		else if(type->isRangeType())
 		{
-			auto id = util::obfuscateIdentifier("range", IdKind::Type);
+			auto id = fir::Name::obfuscate("range", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -262,7 +262,7 @@ namespace backend
 		{
 			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
 
-			auto id = util::obfuscateIdentifier("any", IdKind::Type);
+			auto id = fir::Name::obfuscate("any", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
