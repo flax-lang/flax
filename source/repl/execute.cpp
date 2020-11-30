@@ -30,7 +30,7 @@ namespace repl
 
 			this->module = new fir::Module(modname);
 
-			sst::StateTree* tree = new sst::StateTree(modname, modname, 0);
+			sst::StateTree* tree = new sst::StateTree(modname, 0);
 			this->fs = new sst::TypecheckState(tree);
 			this->cs = new cgn::CodegenState(fir::IRBuilder(this->module));
 			this->cs->module = this->module;

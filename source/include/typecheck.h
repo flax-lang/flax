@@ -48,11 +48,9 @@ namespace sst
 
 	struct StateTree
 	{
-		StateTree(const std::string& nm, const std::string& filename, StateTree* p, bool anon = false)
-			: name(nm), topLevelFilename(filename), parent(p), isAnonymous(anon) { }
+		StateTree(const std::string& nm, StateTree* p, bool anon = false) : name(nm), parent(p), isAnonymous(anon) { }
 
 		std::string name;
-		std::string topLevelFilename;
 
 		StateTree* parent = 0;
 
@@ -77,10 +75,16 @@ namespace sst
 		std::vector<StateTree*> imports;
 		std::vector<StateTree*> reexports;
 
+		StateTree* proxyOf = nullptr;
+
 		// this is a mapping from every StateTree in `imports` to the location of the `import` or `using` statement.
 		// it only used for error-reporting, so it is stored out-of-line so the usage of `this->imports` is not more
-		// cumbersome than it needs to be.
+		// cumbersome than it needs to be. the string in the pair stores the name of the module *IMPORTING* the module,
+		// not the name of the module being imported (that can be gotten from the StateTree).
 		std::map<const StateTree*, std::pair<Location, std::string>> importMetadata;
+
+		// the same thing, but for reexports (ie. public imports).
+		std::map<const StateTree*, std::pair<Location, std::string>> reexportMetadata;
 
 
 		// what's there to explain? a simple map of operators to their functions. we use
@@ -96,13 +100,12 @@ namespace sst
 		StateTree* findSubtree(const std::string& name);
 		StateTree* findOrCreateSubtree(const std::string& name, bool anonymous = false);
 
-		util::hash_map<std::string, std::vector<Defn*>> getAllDefinitions();
+		std::vector<Defn*> getAllDefinitions();
 
 		std::vector<Defn*> getDefinitionsWithName(const std::string& name);
 		std::vector<ast::Parameterisable*> getUnresolvedGenericDefnsWithName(const std::string& name);
 
 		void addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
-		void addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps = { });
 	};
 
 	struct DefinitionTree

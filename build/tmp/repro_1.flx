@@ -10,7 +10,6 @@ import std::limits as lim
 
 using repro_2 as _
 
-
 @entry fn main()
 {
 	class Foozle
@@ -46,13 +45,11 @@ using repro_2 as _
 }
 */
 
-import libc as _
+
+import libc
 import repro_3 as _
 
-// import std::io
-// import repro_3
-
-// using std::io as owo
+// using libc as _
 
 @entry fn main2()
 {
@@ -61,3 +58,4 @@ import repro_3 as _
 	// uwu::owo::foozle()
 	printf("owo\n")
 }
+

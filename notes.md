@@ -33,6 +33,8 @@ the imports list of the current scope.
 
 1. `public static` doesn't work, but `static public` works.
 
+2. underlining breaks for multi-line spans; just don't underline in that case.
+
 
 ## to refactor
 

@@ -59,9 +59,13 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 			error("unsupported LHS of using: '%s'", used->readableName);
 	}
 
+	auto target = scopes.stree;
+	while(target->proxyOf)
+		target = target->proxyOf;
+
 	if(this->useAs == "_")
 	{
-		sst::mergeExternalTree(this->loc, "using", fs->stree, scopes.stree);
+		sst::mergeExternalTree(this->loc, "using", fs->stree, target);
 	}
 	else
 	{
@@ -76,7 +80,7 @@ TCResult ast::UsingStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		}
 
 		auto tree = fs->stree->findOrCreateSubtree(this->useAs);
-		sst::mergeExternalTree(this->loc, "using", tree, scopes.stree);
+		sst::mergeExternalTree(this->loc, "using", tree, target);
 	}
 
 	return TCResult::getDummy();

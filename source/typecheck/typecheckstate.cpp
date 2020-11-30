@@ -208,9 +208,14 @@ namespace sst
 		return zfu::join(std::vector<std::string>(scope.begin(), scope.end()), "::");
 	}
 
-	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
+	std::vector<Defn*> StateTree::getAllDefinitions()
 	{
-		return this->definitions2;
+		std::vector<Defn*> ret;
+		for(const auto& [ n, ds ] : this->definitions2)
+			for(auto d : ds)
+				ret.push_back(d);
+
+		return ret;
 	}
 
 	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, bool includePrivate, std::vector<Defn*>& out)
@@ -222,12 +227,19 @@ namespace sst
 			});
 		}
 
+		auto sameOrigin = [](const StateTree* a, const StateTree* b) -> bool {
+			auto p1 = a; while(p1->parent) p1 = p1->parent;
+			auto p2 = b; while(p2->parent) p2 = p2->parent;
+
+			return p1 == p2;
+		};
+
 		for(auto import : tree->imports)
 		{
 			if(recursively)
 			{
 				// only include private things if we're in the same file.
-				bool priv = tree->topLevelFilename == import->topLevelFilename;
+				bool priv = sameOrigin(tree, import);
 				fetchDefinitionsFrom(name, import, /* recursively: */ false, /* includePrivate: */ priv, out);
 			}
 
@@ -254,20 +266,10 @@ namespace sst
 			return { };
 	}
 
-	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
+	void StateTree::addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
 		this->definitions2[name].push_back(def);
 	}
-
-	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)
-	{
-		this->addDefinition(this->topLevelFilename, _name, def, gmaps);
-	}
-
-
-
-
-
 
 
 	std::string Scope::string() const
@@ -350,7 +352,7 @@ namespace sst
 		}
 		else
 		{
-			auto newtree = util::pool<StateTree>(name, this->topLevelFilename, this, anonymous);
+			auto newtree = util::pool<StateTree>(name, this, anonymous);
 			this->subtrees[name] = newtree;
 			return newtree;
 		}

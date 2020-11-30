@@ -26,16 +26,23 @@ namespace sst
 	};
 
 	static OsStrings getOsStrings();
-	static void generatePreludeDefinitions(TypecheckState* fs);
+	static void generatePreludeDefinitions(TypecheckState* fs, const std::string& filename);
 
 	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
 	{
 		auto fda = dcast(const sst::FunctionDecl, a);
 		auto fdb = dcast(const sst::FunctionDecl, b);
 
+		auto uva = dcast(const sst::UnionVariantDefn, a);
+		auto uvb = dcast(const sst::UnionVariantDefn, b);
+
 		if(fda && fdb)
 		{
 			return sst::isDuplicateOverload(fda->params, fdb->params);
+		}
+		else if(uva && uvb)
+		{
+			return uva->parentUnion == uvb->parentUnion;
 		}
 		else
 		{
@@ -43,8 +50,15 @@ namespace sst
 		}
 	}
 
+	struct ImportMetadata
+	{
+		Location loc;
+		std::string name;
+		std::string imported;
+	};
+
 	static void checkConflictingDefinitions(Location loc, const char* kind, const sst::StateTree* base, const sst::StateTree* branch,
-		const sst::StateTree* rootBase = nullptr)
+		std::optional<Location> importer = { }, std::optional<ImportMetadata> exporter = { })
 	{
 		for(const auto& [ name, defns ] : base->definitions2)
 		{
@@ -54,37 +68,72 @@ namespace sst
 				{
 					for(auto d2 : it->second)
 					{
-						if(definitionsConflict(d1, d2))
+						if(!definitionsConflict(d1, d2))
+							continue;
+
+						auto error = SimpleError::make(MsgType::Error, loc, "'%s' here introduces duplicate definitions:", kind);
+
+						if(d1 == d2)
 						{
-							auto error = SimpleError::make(MsgType::Error, loc, "'%s' here introduces duplicate definitions:", kind);
-
-							if(d1 == d2 || d1->loc == d2->loc)
+							if(importer && exporter)
 							{
-								if(rootBase != nullptr)
-								{
-									if(auto it = rootBase->importMetadata.find(base); it != rootBase->importMetadata.end())
-									{
-										auto [ iloc, name ] = it->second;
-										error->append(SimpleError::make(MsgType::Note, iloc, "most likely, the module '%s' was "
-											"already brought into the current scope by this statement:", name));
-									}
-								}
+								error->append(SimpleError::make(MsgType::Note, exporter->loc,
+									"this public import (from the imported module '%s') brings '%s' into scope ...",
+									exporter->name, exporter->imported));
 
-								error->append(SimpleError::make(MsgType::Note, d1->loc, "for reference, here is the (first) "
-									"conflicting definition:"));
+								error->append(SimpleError::make(MsgType::Note, *importer,
+									"... which conflicts with this using/import statement here:"));
 							}
-							else
+							else if(importer)
 							{
-								error->append(SimpleError::make(MsgType::Note, d1->loc, "first definition here:"))
-									->append(SimpleError::make(MsgType::Note, d2->loc, "second definition here:"));
+								error->append(SimpleError::make(MsgType::Note, *importer,
+									"most likely caused by this import here:"));
+							}
+							else if(exporter)
+							{
+								error->append(SimpleError::make(MsgType::Note, exporter->loc,
+									"most likely caused by this public import here, in module '%s':", exporter->name));
 							}
 
-							error->postAndQuit();
+							error->append(SimpleError::make(MsgType::Note, d1->loc, "for reference, here is the (first) "
+								"conflicting definition:"));
 						}
+						else
+						{
+							error->append(SimpleError::make(MsgType::Note, d1->loc, "first definition here:"))
+								->append(SimpleError::make(MsgType::Note, d2->loc, "second definition here:"));
+						}
+
+						error->postAndQuit();
 					}
 				}
 			}
 		}
+	}
+
+	static std::optional<ImportMetadata> getExportInfo(const sst::StateTree* base, const sst::StateTree* branch)
+	{
+		if(auto it = base->reexportMetadata.find(branch); it != base->reexportMetadata.end())
+		{
+			return ImportMetadata {
+				.loc = it->second.first,
+				.name = it->second.second,
+				.imported = branch->name
+			};
+		}
+		return { };
+	}
+
+	static void checkExportsRecursively(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch,
+		std::optional<Location> importer = { }, std::optional<ImportMetadata> exporter = { })
+	{
+		if(branch->isAnonymous || branch->isCompilerGenerated)
+			return;
+
+		checkConflictingDefinitions(loc, kind, base, branch, importer, exporter);
+
+		for(auto exp : base->reexports)
+			checkExportsRecursively(loc, kind, exp, branch, importer, getExportInfo(base, exp));
 	}
 
 	void mergeExternalTree(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch)
@@ -98,23 +147,45 @@ namespace sst
 		// then, for every one of *our* imports:
 		for(auto import : base->imports)
 		{
+			std::optional<Location> importer;
+			if(auto it = base->importMetadata.find(import); it != base->importMetadata.end())
+				importer = it->second.first;
+
 			// check that the new tree doesn't trample over it.
-			checkConflictingDefinitions(loc, kind, import, branch, base);
+			checkConflictingDefinitions(loc, kind, import, branch, importer);
+
+			// then, recursively check every single re-export on *our* side for conflicts:
+			for(auto rexp : import->reexports)
+				checkExportsRecursively(loc, kind, rexp, branch, importer, getExportInfo(import, rexp));
 
 			// then, also check that, for every one of *their* public imports:
 			for(auto rexp : branch->reexports)
 			{
+				auto exportInfo = getExportInfo(import, rexp);
+
 				// it doesn't trample with anything in our tree,
-				checkConflictingDefinitions(loc, kind, base, rexp);
+				checkConflictingDefinitions(loc, kind, base, rexp, importer, exportInfo);
 
 				// and it doesn't conflict with anything in our imports.
-				checkConflictingDefinitions(loc, kind, import, rexp, base);
+				checkConflictingDefinitions(loc, kind, import, rexp, importer, exportInfo);
+
+				// finally, also check that, for every one of *our* imports' re-exports,
+				for(auto rexp2 : import->reexports)
+				{
+					auto exportInfo = getExportInfo(import, rexp2);
+
+					// check that *they* don't trample anything:
+					checkConflictingDefinitions(loc, kind, rexp2, branch, importer, exportInfo);
+
+					// and neither does their reexport:
+					checkConflictingDefinitions(loc, kind, rexp2, rexp, importer, exportInfo);
+				}
 			}
 		}
 
 		// no problem -- attach the trees
 		base->imports.push_back(branch);
-		base->importMetadata[branch] = { loc, branch->name };
+		base->importMetadata[branch] = { loc, base->name };
 
 		// merge the subtrees as well.
 		for(const auto& [ name, tr ] : branch->subtrees)
@@ -141,7 +212,7 @@ namespace sst
 	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
 		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
 	{
-		auto tree = new StateTree(file.moduleName, file.name, 0);
+		auto tree = new StateTree(file.moduleName, nullptr);
 		auto fs = new TypecheckState(tree);
 
 		for(auto [ ithing, import ] : imports)
@@ -178,7 +249,7 @@ namespace sst
 					}
 					else
 					{
-						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
+						auto newinspt = util::pool<sst::StateTree>(impas, curinspt);
 						curinspt->subtrees[impas] = newinspt;
 
 						curinspt = newinspt;
@@ -186,13 +257,17 @@ namespace sst
 				}
 
 				insertPoint = curinspt;
+				insertPoint->proxyOf = import->base;
 			}
 
 			iceAssert(insertPoint);
 			mergeExternalTree(ithing.loc, "import", insertPoint, import->base);
 
 			if(ithing.pubImport)
+			{
 				insertPoint->reexports.push_back(import->base);
+				insertPoint->reexportMetadata[import->base] = { ithing.loc, file.moduleName };
+			}
 
 			fs->dtree->thingsImported.insert(ithing.name);
 			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
@@ -204,7 +279,7 @@ namespace sst
 		}
 
 		if(addPreludeDefinitions)
-			generatePreludeDefinitions(fs);
+			generatePreludeDefinitions(fs, file.name);
 
 		// handle exception here:
 		try {
@@ -279,10 +354,10 @@ namespace sst
 		return ret;
 	}
 
-	static void generatePreludeDefinitions(TypecheckState* fs)
+	static void generatePreludeDefinitions(TypecheckState* fs, const std::string& filename)
 	{
 		auto loc = Location();
-		loc.fileID = frontend::getFileIDFromFilename(fs->stree->topLevelFilename);
+		loc.fileID = frontend::getFileIDFromFilename(filename);
 
 		auto strings = getOsStrings();
 

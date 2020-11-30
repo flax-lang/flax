@@ -354,19 +354,16 @@ TCResult ast::ClassDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 
 			std::function<void (sst::StateTree*, sst::StateTree*)> recursivelyImport = [&](sst::StateTree* from, sst::StateTree* to) -> void {
 
-				for(auto [ file, defs ] : from->getAllDefinitions())
+				for(auto def : from->getAllDefinitions())
 				{
-					for(auto def : defs)
-					{
-						if(!dcast(sst::ClassInitialiserDefn, def))
-							to->addDefinition(file, def->id.name, def);
-					}
+					if(!dcast(sst::ClassInitialiserDefn, def))
+						to->addDefinition(def->id.name, def);
 				}
 
 				for(auto sub : from->subtrees)
 				{
 					if(to->subtrees.find(sub.first) == to->subtrees.end())
-						to->subtrees[sub.first] = util::pool<sst::StateTree>(sub.first, sub.second->topLevelFilename, to);
+						to->subtrees[sub.first] = util::pool<sst::StateTree>(sub.first, to);
 
 					recursivelyImport(sub.second, to->subtrees[sub.first]);
 				}
