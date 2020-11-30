@@ -116,10 +116,10 @@ do {
 
 ### Building the Flax compiler
 
-Note: the `master` branch is still using LLVM 7, and is stable; `develop` is now on LLVM 9. Changes will be merged into `master` eventually.
+Note: the `master` branch is still using LLVM 7, and is stable; `develop` is now on LLVM 11. Changes will be merged into `master` eventually.
 
 #### Dependencies ####
-- LLVM 9, mostly due to their obsession with changing the IR interface every damn version
+- LLVM 11, mostly due to their obsession with changing the IR interface every damn version
 - GMP/MPIR
 - MPFR
 - libffi
