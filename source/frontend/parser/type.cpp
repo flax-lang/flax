@@ -483,7 +483,11 @@ namespace parser
 			if(st.frontAfterWS() == TT::Equal)
 			{
 				if(memberType == 0)
-					error(st.loc(), "enumeration member type must be specified when assigning explicit values to cases");
+				{
+					SimpleError::make(st.loc(), "enumeration member type must be specified when assigning explicit values to cases")
+						->append(SimpleError::make(MsgType::Note, idloc, "add the type here"))
+						->postAndQuit();
+				}
 
 				// ok, parse a value
 				st.eat();

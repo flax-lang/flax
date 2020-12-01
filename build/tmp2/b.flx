@@ -2,6 +2,11 @@
 // Copyright (c) 2020, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+<<<<<<< Updated upstream
 public import c as _
 
 public fn bazzle() -> int => 30
+=======
+public let INIT_TIMER: u32                      = 0x00000001
+public let INIT_AUDIO: u32                      = 0x00000010
+>>>>>>> Stashed changes

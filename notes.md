@@ -1,47 +1,56 @@
 ## notes
 
-each scope already exists as a StateTree, so, whenever a public definition is encountered, it is added to the
-`exports` list of its tree.
-
-when importing another module:
-1. if the module is imported `as _`, add the module's StateTree to the current (toplevel) scope's `imports` list
-2. if the module is imported `as foo::bar`, add the module's StateTree to the `imports` list of `foo::bar` (creating if needed)
-
-3. do a (complete) tree traversal "in-step" with the current scope, to check for duplicate (incompatbile) definitions.
-	- big oof, but if we want the current module "paradigm" to work, this has to be done.
-
-(done) when resolving a definition:
-1. follow the same resolution order (deepest-to-widest)
-2. after checking each level, additionally check the list of imports.
-3. of course, we should not traverse "down" into the imported tree -- only look at its top-level defs
-	- we need to be going up, not down!
-4. for each imported tree, we should only check definitions that are in its `exports` list
-
-to refactor using:
-we should simply treat it as a scope-level import, ie. for `using foo::bar as qux`, we just create a new scope
-`qux`, then attach `foo::bar` to `qux` by appending to its `imports` list. here, we should check that `qux` does
-not already exist.
-(this is different for imports, where two imported modules are able merge their exported namespaces. for `using`,
-i'm not too sure that's a good idea, but it's easy enough to change if needed)
-
-for `using foo::bar as _`, we do the same thing as `import as _`, and just attach the tree of `foo::bar` to
-the imports list of the current scope.
-
-
-
 ## to fix
 
 1. `public static` doesn't work, but `static public` works.
 
 2. underlining breaks for multi-line spans; just don't underline in that case.
 
+3. types don't appear before functions for some reason, for typechecking. (ie. order becomes important)
+
+4. enum values are not working correctly (seems to be right-shifted by 8?)
+	(the values are not assigned)
+
+5. defer appears to be broken:
+```
+var i = 0
+while true {
+	defer i += 1
+
+	// doesn't change
+}
+```
+
+6. "unsynchronised use of global init function!!!" -- need to figure out a way to serialise access to the global init function
+
+7. polymorphic stuff breaks when manually instantiating
+
+8. compiler crash:
+```
+import libc as _
+
+struct Cat<T> {
+     fn greet() {
+        printf("i love manga uwu\n")
+    }
+}
+
+@entry fn main() {
+    let c: Cat!<Integer> = Cat()
+
+    c.greet();
+}
+```
+
+9. ambiguous call to initialiser of class
+
+10. assignment to runtime variable in #run block
+
+11. numbers basically don't cast properly at all
+
+
 
 ## to refactor
-
-2. a lot of places probably still have the concept of `scope == std::vector<std::string>`.
-	- after the first scope refactor, i think these instances will be reduced
-	- undoubtedly there will be more. for instance, Identifier holds the scope as exactly that.
-		(but, is there actually a need for it to be anything else? it really is just an identifier, after all)
 
 3. all uses of defer() need to be audited. there are instances where an exception is thrown during typechecking
 	as a result of unwrapping a `TCResult` that contains an error; as the stack unwinds, it may encounter a
@@ -68,5 +77,5 @@ the imports list of the current scope.
 
 ## to investigate
 
-1. we rely on a lot of places to set `realScope` (and `enclosingScope`) correctly when typechecking structs etc. there should
+1. we rely on a lot of places to set `enclosingScope` correctly when typechecking structs etc. there should
 	be a better way to do this, probably automatically or something like that. basically anything except error-prone manual setting.

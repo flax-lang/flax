@@ -43,6 +43,8 @@ namespace parser
 		bool startedOptional = false;
 		while(st.front() != TT::RParen)
 		{
+			st.skipWS();
+
 			if(iscvar || isfvar)
 				error(st, "variadic parameter list must be the last function parameter");
 

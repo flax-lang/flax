@@ -115,10 +115,10 @@ public fn doBasicTest()
 		var c: any = 30
 		println("c.typeid = %, c.refcount = %", c.id, c.refcount)
 
-		enum E
+		enum E: u32
 		{
-			case ONE
-			case TWO
+			case ONE = 100
+			case TWO = 200
 		}
 
 		var e = E::TWO
