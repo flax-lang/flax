@@ -9,6 +9,7 @@
 #include "frontend.h"
 #include "platform.h"
 
+
 #if OS_WINDOWS
 	#define WIN32_LEAN_AND_MEAN 1
 
@@ -22,6 +23,7 @@
 #else
 	#include <dlfcn.h>
 	#include <unistd.h>
+	#include <signal.h>
 	#include <sys/mman.h>
 	#include <sys/ioctl.h>
 
@@ -51,21 +53,22 @@ namespace platform
 
 	std::string getEnvironmentVar(const std::string& name)
 	{
+	#if OS_WINDOWS
 		char buffer[256] = { 0 };
 		size_t len = 0;
 
-	#if OS_WINDOWS
 		if(getenv_s(&len, buffer, name.c_str()) != 0)
-	#else
-		if(getenv(name.c_str()) == 0)
-	#endif
-		{
 			return "";
-		}
+
 		else
-		{
 			return std::string(buffer, len);
-		}
+	#else
+		if(char* val = getenv(name.c_str()); val)
+			return std::string(val);
+
+		else
+			return "";
+	#endif
 	}
 
 	void pushEnvironmentVar(const std::string& name, const std::string& value)
@@ -181,8 +184,22 @@ namespace platform
 		#endif
 	}
 
-	util::string_view readEntireFile(const std::string& path)
+
+	static util::hash_map<std::string, std::string_view> cachedFileContents;
+
+	void cachePreExistingFile(const std::string& path, const std::string& contents)
 	{
+		cachedFileContents[path] = contents;
+
+		// this will give cache a new id for us. (over there)
+		frontend::cachePreExistingFilename(path);
+	}
+
+	std::string_view readEntireFile(const std::string& path)
+	{
+		if(auto it = cachedFileContents.find(path); it != cachedFileContents.end())
+			return it->second;
+
 		// first, get the size of the file
 		size_t fileLength = getFileSize(path);
 
@@ -198,13 +215,12 @@ namespace platform
 		// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
 		// if we have at least 4mb worth of file.
 		// if not, then just 2 * pagesize.
-		#define MINIMUM_MMAP_THRESHOLD ((size_t) (EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
-		#define _
+		#define MINIMUM_MMAP_THRESHOLD (static_cast<size_t>(((EXTRA_MMAP_FLAGS) != 0) ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
 
-		char* contents = 0;
+		std::string_view contents;
 
-		// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use here aren't available at all
-		// if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
+		// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use
+		// here aren't available at all if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
 
 		// Problem is, there's another scenario in which we won't want to use mmap -- when the file size is too small. so, that's why the stuff
 		// below is structured the way it is.
@@ -213,33 +229,37 @@ namespace platform
 			if(fileLength >= MINIMUM_MMAP_THRESHOLD)
 			{
 				// ok, do an mmap
-				contents = (char*) mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0);
-				if(contents == MAP_FAILED)
+				const char* buf = static_cast<const char*>(mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0));
+				if(buf == reinterpret_cast<void*>(-1))
 				{
 					perror("there was an error reading the file");
 					exit(-1);
 				}
+
+				contents = std::string_view(buf, fileLength);
 			}
 		}
 		#endif
 
-		if(contents == 0)
+		if(contents.empty())
 		{
 			// read normally
 			//! MEMORY LEAK
-			contents = new char[fileLength + 1];
-			size_t didRead = platform::readFile(fd, contents, fileLength);
+			auto buf = new char[fileLength + 1];
+			size_t didRead = platform::readFile(fd, buf, fileLength);
 			if(didRead != fileLength)
 			{
 				perror("there was an error reading the file");
 				error("expected %d bytes, but read only %d", fileLength, didRead);
 			}
+
+			contents = std::string_view(buf, fileLength);
 		}
 
-		iceAssert(contents);
 		closeFile(fd);
 
-		return util::string_view(contents, fileLength);
+		cachedFileContents[path] = contents;
+		return cachedFileContents[path];
 	}
 
 	filehandle_t openFile(const char* name, int mode, int flags)
@@ -366,6 +386,12 @@ namespace platform
 		#endif
 	}
 
+#ifdef _MSC_VER
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
 	size_t getTerminalWidth()
 	{
 		#if OS_WINDOWS
@@ -400,19 +426,39 @@ namespace platform
 			}
 
 			// then, change the codepage to utf-8:
-			SetConsoleOutputCP(CP_UTF8);
+			SetConsoleCP(CP_UTF8);
 
 		#else
 
 		#endif
 	}
+
+	void setupCrashHandlers()
+	{
+		#if OS_WINDOWS
+
+		#else
+			signal(SIGSEGV, [](int) -> void {
+				constexpr const char* msg = COLOUR_RED_BOLD "\n\ncompiler crash! " COLOUR_RESET "(segmentation fault)\n"
+											COLOUR_BLUE_BOLD "stacktrace:\n" COLOUR_RESET;
+
+				write(1, msg, strlen(msg));
+
+				// note: this does not care about being re-entrant in signal handlers.
+				// fuck that noise.
+				printStackTrace();
+
+				abort();
+			});
+		#endif
+	}
+
+#ifdef _MSC_VER
+#else
+	#pragma GCC diagnostic pop
+#endif
+
 }
-
-
-
-
-
-
 
 
 

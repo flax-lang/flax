@@ -17,17 +17,126 @@
 
 namespace frontend
 {
-	struct FileInnards
-	{
-		lexer::TokenList tokens;
-		util::string_view fileContents;
-		util::FastInsertVector<util::string_view> lines;
-		std::vector<size_t> importIndices;
-
-		bool didLex = false;
-	};
-
 	static util::hash_map<std::string, FileInnards> fileList;
+
+
+	static void getRawLines(const std::string_view& fileContents, bool* crlf, util::FastInsertVector<std::string_view>* rawlines)
+	{
+		std::string_view view = fileContents;
+
+		bool first = true;
+		while(true)
+		{
+			size_t ln = 0;
+
+			if(first || *crlf)
+			{
+				ln = view.find("\r\n");
+				if(ln != std::string_view::npos && first)
+					*crlf = true;
+			}
+
+			if((!first && !*crlf) || (first && !*crlf && ln == std::string_view::npos))
+				ln = view.find('\n');
+
+			first = false;
+
+			if(ln != std::string_view::npos)
+			{
+				new (rawlines->getNextSlotAndIncrement()) std::string_view(view.data(), ln + (*crlf ? 2 : 1));
+				view.remove_prefix(ln + (*crlf ? 2 : 1));
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
+		if(!view.empty())
+		{
+			new (rawlines->getNextSlotAndIncrement()) std::string_view(view.data(), view.length());
+		}
+	}
+
+	static void tokenise(lexer::TokenList* ts, bool crlf, const std::string_view& fileContents,
+		const util::FastInsertVector<std::string_view>& lines, Location* pos, std::vector<size_t>* importIndices)
+	{
+		size_t curLine = 0;
+		size_t curOffset = 0;
+
+		bool flag = true;
+		size_t i = 0;
+
+		do {
+			// store it here so we can fiddle with it later, if we need to.
+			auto tok_out = ts->getNextSlotAndIncrement();
+
+			auto type = lexer::getNextToken(lines, &curLine, &curOffset, fileContents, *pos,
+				tok_out, crlf);
+
+			// if we reached the end of file, do everybody a favour and insert a newline before the
+			// EOF token. the lexer itself can't do this, because it can only operate on one token
+			// at a time!
+
+			if(type == lexer::TokenType::EndOfFile)
+			{
+				// here is the aforementioned fiddling.
+				tok_out->type = lexer::TokenType::NewLine;
+				tok_out->text = "\n";
+
+				// ok, now we can make another one.
+				auto real_eof  = ts->getNextSlotAndIncrement();
+				real_eof->loc  = tok_out->loc;
+				real_eof->type = lexer::TokenType::EndOfFile;
+			}
+
+			flag = (type != lexer::TokenType::EndOfFile);
+
+			if(type == lexer::TokenType::Import)
+				importIndices->push_back(i);
+
+			else if(type == lexer::TokenType::Invalid)
+				error(*pos, "invalid token");
+
+			i++;
+
+		} while(flag);
+
+		(*ts)[ts->size() - 1].loc.len = 0;
+	}
+
+
+
+
+	static void lex(FileInnards* innards, bool crlf, Location* pos)
+	{
+		lexer::TokenList& ts = innards->tokens;
+		tokenise(&ts, crlf, innards->fileContents, innards->lines, pos, &innards->importIndices);
+
+		innards->didLex = true;
+	}
+
+	FileInnards lexTokensFromString(const std::string& fakename, const std::string_view& fileContents)
+	{
+		// split into lines
+		bool crlf = false;
+		util::FastInsertVector<std::string_view> rawlines;
+
+		getRawLines(fileContents, &crlf, &rawlines);
+
+		Location pos;
+		FileInnards innards;
+		{
+			pos.fileID = getFileIDFromFilename(fakename);
+
+			innards.fileContents = fileContents;
+			innards.lines = std::move(rawlines);
+		}
+
+		lex(&innards, crlf, &pos);
+		return innards;
+	}
 
 	static FileInnards& readFileIfNecessary(const std::string& fullPath)
 	{
@@ -38,95 +147,31 @@ namespace frontend
 				return it->second;
 		}
 
-
-		util::string_view fileContents;
-		{
-			fileContents = platform::readEntireFile(fullPath);
-		}
-
+		std::string_view fileContents = platform::readEntireFile(fullPath);
 
 
 		// split into lines
 		bool crlf = false;
-		util::FastInsertVector<util::string_view> rawlines;
-
-		{
-			util::string_view view = fileContents;
-
-			bool first = true;
-			while(true)
-			{
-				size_t ln = 0;
-
-				if(first || crlf)
-				{
-					ln = view.find("\r\n");
-					if(ln != util::string_view::npos && first)
-						crlf = true;
-				}
-
-				if((!first && !crlf) || (first && !crlf && ln == util::string_view::npos))
-					ln = view.find('\n');
-
-				first = false;
-
-				if(ln != util::string_view::npos)
-				{
-					new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), ln + (crlf ? 2 : 1));
-					view.remove_prefix(ln + (crlf ? 2 : 1));
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			// account for the case when there's no trailing newline, and we still have some stuff stuck in the view.
-			if(!view.empty())
-			{
-				new (rawlines.getNextSlotAndIncrement()) util::string_view(view.data(), view.length());
-			}
-		}
+		util::FastInsertVector<std::string_view> rawlines;
+		getRawLines(fileContents, &crlf, &rawlines);
 
 		Location pos;
 		FileInnards& innards = fileList[fullPath];
 		{
 			pos.fileID = getFileIDFromFilename(fullPath);
 
-			innards.fileContents = std::move(fileContents);
+			innards.fileContents = fileContents;
 			innards.lines = std::move(rawlines);
 		}
 
-		lexer::TokenList& ts = innards.tokens;
-		{
-			size_t curLine = 0;
-			size_t curOffset = 0;
-
-			bool flag = true;
-			size_t i = 0;
-
-			do {
-				auto type = lexer::getNextToken(innards.lines, &curLine, &curOffset, innards.fileContents, pos, ts.getNextSlotAndIncrement(), crlf);
-
-				flag = (type != lexer::TokenType::EndOfFile);
-
-				if(type == lexer::TokenType::Import)
-					innards.importIndices.push_back(i);
-
-				else if(type == lexer::TokenType::Invalid)
-					error(pos, "invalid token");
-
-				i++;
-
-			} while(flag);
-
-			ts[ts.size() - 1].loc.len = 0;
-		}
-
-		innards.didLex = true;
+		lex(&innards, crlf, &pos);
 		return innards;
 	}
 
+	FileInnards& getFileState(const std::string& name)
+	{
+		return readFileIfNecessary(name);
+	}
 
 	lexer::TokenList& getFileTokens(const std::string& fullPath)
 	{
@@ -135,12 +180,17 @@ namespace frontend
 
 	std::string getFileContents(const std::string& fullPath)
 	{
-		return util::to_string(readFileIfNecessary(fullPath).fileContents);
+		return std::string(readFileIfNecessary(fullPath).fileContents);
 	}
 
 
 	static std::vector<std::string> fileNames { "null" };
 	static util::hash_map<std::string, size_t> existingNames;
+	void cachePreExistingFilename(const std::string& name)
+	{
+		fileNames.push_back(name);
+	}
+
 	const std::string& getFilenameFromID(size_t fileID)
 	{
 		iceAssert(fileID > 0 && fileID < fileNames.size());
@@ -162,10 +212,9 @@ namespace frontend
 		}
 	}
 
-	const util::FastInsertVector<util::string_view>& getFileLines(size_t id)
+	const util::FastInsertVector<std::string_view>& getFileLines(size_t id)
 	{
-		std::string fp = getFilenameFromID(id);
-		return readFileIfNecessary(fp).lines;
+		return readFileIfNecessary(getFilenameFromID(id)).lines;
 	}
 
 	const std::vector<size_t>& getImportTokenLocationsForFile(const std::string& filename)
@@ -210,7 +259,7 @@ namespace frontend
 
 	std::string removeExtensionFromFilename(const std::string& name)
 	{
-		auto i = name.find_last_of(".");
+		auto i = name.find_last_of('.');
 		return name.substr(0, i);
 	}
 }

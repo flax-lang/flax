@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
@@ -27,6 +26,7 @@ namespace fir
 		static ConstantValue* getZeroValue(Type* type);
 		static ConstantValue* getNull();
 
+		virtual std::string str();
 
 		protected:
 		ConstantValue(Type* type);
@@ -38,17 +38,19 @@ namespace fir
 
 		static ConstantNumber* get(ConstantNumberType* cnt, const mpfr::mpreal& n);
 
-		int8_t getInt8()        { return (int8_t)  this->number.toLLong(); }
-		int16_t getInt16()      { return (int16_t) this->number.toLLong(); }
-		int32_t getInt32()      { return (int32_t) this->number.toLLong(); }
-		int64_t getInt64()      { return (int64_t) this->number.toLLong(); }
-		uint8_t getUint8()      { return (uint8_t)  this->number.toULLong(); }
-		uint16_t getUint16()    { return (uint16_t) this->number.toULLong(); }
-		uint32_t getUint32()    { return (uint32_t) this->number.toULLong(); }
-		uint64_t getUint64()    { return (uint64_t) this->number.toULLong(); }
+		int8_t getInt8()        { return static_cast<int8_t>(this->number.toLLong()); }
+		int16_t getInt16()      { return static_cast<int16_t>(this->number.toLLong()); }
+		int32_t getInt32()      { return static_cast<int32_t>(this->number.toLLong()); }
+		int64_t getInt64()      { return static_cast<int64_t>(this->number.toLLong()); }
+		uint8_t getUint8()      { return static_cast<uint8_t>(this->number.toULLong()); }
+		uint16_t getUint16()    { return static_cast<uint16_t>(this->number.toULLong()); }
+		uint32_t getUint32()    { return static_cast<uint32_t>(this->number.toULLong()); }
+		uint64_t getUint64()    { return static_cast<uint64_t>(this->number.toULLong()); }
 
 		float getFloat()        { return this->number.toFloat(); }
 		double getDouble()      { return this->number.toDouble(); }
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n);
@@ -62,6 +64,8 @@ namespace fir
 
 		static ConstantBool* get(bool value);
 		bool getValue();
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantBool(bool val);
@@ -90,6 +94,8 @@ namespace fir
 		int64_t getSignedValue();
 		uint64_t getUnsignedValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantInt(Type* type, int64_t val);
 		ConstantInt(Type* type, uint64_t val);
@@ -110,6 +116,8 @@ namespace fir
 
 		double getValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantFP(Type* type, float val);
 		ConstantFP(Type* type, double val);
@@ -121,12 +129,14 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantArray* get(Type* type, std::vector<ConstantValue*> vals);
+		static ConstantArray* get(Type* type, const std::vector<ConstantValue*>& vals);
 
 		std::vector<ConstantValue*> getValues() { return this->values; }
 
+		virtual std::string str() override;
+
 		protected:
-		ConstantArray(Type* type, std::vector<ConstantValue*> vals);
+		ConstantArray(Type* type, const std::vector<ConstantValue*>& vals);
 
 		std::vector<ConstantValue*> values;
 	};
@@ -135,10 +145,12 @@ namespace fir
 	{
 		friend struct Module;
 
-		static ConstantStruct* get(StructType* st, std::vector<ConstantValue*> members);
+		static ConstantStruct* get(StructType* st, const std::vector<ConstantValue*>& members);
+
+		virtual std::string str() override;
 
 		protected:
-		ConstantStruct(StructType* st, std::vector<ConstantValue*> members);
+		ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members);
 		std::vector<ConstantValue*> members;
 	};
 
@@ -151,6 +163,8 @@ namespace fir
 		ConstantInt* getIndex();
 		ConstantValue* getValue();
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantEnumCase(EnumType* en, ConstantInt* index, ConstantValue* value);
 
@@ -158,28 +172,32 @@ namespace fir
 		ConstantValue* value = 0;
 	};
 
-	struct ConstantString : ConstantValue
+	struct ConstantCharSlice : ConstantValue
 	{
 		friend struct Module;
 
-		static ConstantString* get(std::string value);
+		static ConstantCharSlice* get(const std::string& value);
 		std::string getValue();
 
-		protected:
-		ConstantString(std::string str);
+		virtual std::string str() override;
 
-		std::string str;
+		protected:
+		ConstantCharSlice(const std::string& str);
+
+		std::string value;
 	};
 
 	struct ConstantTuple : ConstantValue
 	{
 		friend struct Module;
 
-		static ConstantTuple* get(std::vector<ConstantValue*> mems);
+		static ConstantTuple* get(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> getValues();
 
+		virtual std::string str() override;
+
 		protected:
-		ConstantTuple(std::vector<ConstantValue*> mems);
+		ConstantTuple(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> values;
 	};
 
@@ -196,6 +214,8 @@ namespace fir
 
 		ConstantArray* getArray() { return this->arr; }
 
+		virtual std::string str() override;
+
 		protected:
 		ConstantDynamicArray(DynamicArrayType* type);
 
@@ -206,6 +226,23 @@ namespace fir
 		ConstantArray* arr = 0;
 	};
 
+	// this is the 'string' type!!
+	struct ConstantDynamicString : ConstantValue
+	{
+		friend struct Module;
+
+		static ConstantDynamicString* get(const std::string& s);
+		std::string getValue();
+
+		virtual std::string str() override;
+
+		protected:
+		ConstantDynamicString(const std::string& s);
+
+		std::string value;
+	};
+
+
 	struct ConstantArraySlice : ConstantValue
 	{
 		friend struct Module;
@@ -214,6 +251,8 @@ namespace fir
 
 		ConstantValue* getData() { return this->data; }
 		ConstantValue* getLength() { return this->length; }
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantArraySlice(ArraySliceType* type);
@@ -229,6 +268,8 @@ namespace fir
 		static ConstantBitcast* get(ConstantValue* v, Type* target);
 
 		ConstantValue* getValue() { return this->value; }
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantBitcast(ConstantValue* v, Type* target);
@@ -246,6 +287,8 @@ namespace fir
 
 		Module* getParentModule() { return this->parentModule; }
 
+		virtual std::string str() override;
+
 		protected:
 		GlobalValue(Module* mod, Type* type, LinkageType linkage, bool mut = false);
 
@@ -256,9 +299,11 @@ namespace fir
 	{
 		friend struct Module;
 
-		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
+		GlobalVariable(const Name& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 		ConstantValue* getInitialValue();
+
+		virtual std::string str() override;
 
 		protected:
 		ConstantValue* initValue = 0;

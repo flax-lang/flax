@@ -25,7 +25,7 @@ namespace fir
 	void setNativeWordSizeInBits(size_t sz)
 	{
 		if(sz < 8 || sz > 64)
-			error("native word size must be >= 8 and < 64, %zu invalid", sz);
+			error("native word size must be >= 8 and < 64, %d invalid", sz);
 
 		// we're not gonna check any further, anything becomes your problem once you change this.
 		nativeWordSize = sz;
@@ -61,7 +61,9 @@ namespace fir
 		{
 			if(from->isSignedIntType() == to->isSignedIntType())
 			{
-				auto bitdiff = abs((int) from->toPrimitiveType()->getIntegerBitWidth() - (int) to->toPrimitiveType()->getIntegerBitWidth());
+				auto bitdiff = std::abs(static_cast<int>(from->toPrimitiveType()->getIntegerBitWidth())
+					- static_cast<int>(to->toPrimitiveType()->getIntegerBitWidth()));
+
 				switch(bitdiff)
 				{
 					case 0:		return 0;	// same
@@ -434,7 +436,7 @@ namespace fir
 		else if(ty->isUnionType())
 		{
 			bool res = false;
-			for(auto t : ty->toUnionType()->getVariants())
+			for(const auto& t : ty->toUnionType()->getVariants())
 				res |= _containsPlaceholders(t.second, seen, found);
 
 			return res;
@@ -1003,25 +1005,44 @@ namespace fir
 
 
 
-	static size_t getAggregateSize(const std::vector<Type*>& tys)
+	static size_t getAggregateSize(const std::vector<Type*>& tys, bool packed = false)
 	{
 		size_t ptr = 0;
 		size_t aln = 0;
 
-		for(auto ty : tys)
+		if(packed)
 		{
-			auto a = getAlignmentOfType(ty);
-			if(ptr % a > 0)
-				ptr += (a - (ptr % a));
+			// gg
+			// return util::foldl(0, tys, [](Type* a, Type* b) -> size_t {
+			// 	return getSizeOfType(a) + getSizeOfType(b);
+			// });
 
-			ptr += getSizeOfType(ty);
-			aln = std::max(aln, a);
+			size_t ret = 0;
+			for(const auto& t : tys)
+				ret += getSizeOfType(t);
+
+			return ret;
 		}
+		else
+		{
+			for(auto ty : tys)
+			{
+				auto a = getAlignmentOfType(ty);
+				iceAssert(a > 0);
 
-		if(ptr % aln > 0)
-			ptr += (aln - (ptr % aln));
+				if(ptr % a > 0)
+					ptr += (a - (ptr % a));
 
-		return ptr;
+				ptr += getSizeOfType(ty);
+				aln = std::max(aln, a);
+			}
+
+			iceAssert(aln > 0);
+			if(ptr % aln > 0)
+				ptr += (aln - (ptr % aln));
+
+			return ptr;
+		}
 	}
 
 	size_t getSizeOfType(Type* type)
@@ -1053,6 +1074,7 @@ namespace fir
 		}
 		else if(type->isClassType() || type->isStructType() || type->isTupleType())
 		{
+			bool packed = false;
 			std::vector<Type*> tys;
 
 			if(type->isClassType())
@@ -1062,6 +1084,7 @@ namespace fir
 			}
 			else if(type->isStructType())
 			{
+				packed = type->toStructType()->isPackedStruct();
 				tys = type->toStructType()->getElements();
 			}
 			else
@@ -1069,7 +1092,7 @@ namespace fir
 				tys = type->toTupleType()->getElements();
 			}
 
-			return getAggregateSize(tys);
+			return getAggregateSize(tys, packed);
 		}
 		else if(type->isUnionType() )
 		{
@@ -1096,7 +1119,7 @@ namespace fir
 			auto ut = type->toRawUnionType();
 
 			size_t maxSz = 0;
-			for(auto v : ut->getVariants())
+			for(const auto& v : ut->getVariants())
 				maxSz = std::max(maxSz, getSizeOfType(v.second));
 
 			iceAssert(maxSz > 0);
@@ -1166,19 +1189,6 @@ namespace fir
 		}
 	}
 }
-
-
-
-
-
-namespace tinyformat
-{
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty)
-	{
-		out << (ty ? ty->str() : "(null)");
-	}
-}
-
 
 
 

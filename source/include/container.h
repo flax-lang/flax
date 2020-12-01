@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include <vector>
 #include <utility>
@@ -16,22 +17,19 @@ namespace util
 {
 	// only allows for insertions.
 	// hopefully faster than FastVector.
-	template <typename ValueType>
+	template <typename ValueType, size_t ChunkSize = 256>
 	struct FastInsertVector
 	{
-		FastInsertVector(size_t cs = 256)
+		FastInsertVector()
 		{
 			this->length = 0;
-			this->ChunkSize = cs;
 		}
 
 		FastInsertVector(const FastInsertVector& other)
 		{
-			this->ChunkSize = other.ChunkSize;
-
 			for(auto c : other.chunks)
 			{
-				auto nc = (ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize);
+				auto nc = static_cast<ValueType*>(mem::allocate_memory(sizeof(ValueType) * ChunkSize));
 				memmove(nc, c, sizeof(ValueType) * ChunkSize);
 				this->chunks.push_back(nc);
 			}
@@ -46,17 +44,16 @@ namespace util
 			return *this;
 		}
 
-		FastInsertVector(FastInsertVector&& other)
+		FastInsertVector(FastInsertVector&& other) noexcept
 		{
 			// move.
 			this->chunks = std::move(other.chunks);
-			this->ChunkSize = other.ChunkSize;
 			this->length = other.length;
 
 			other.length = 0;
 		}
 
-		FastInsertVector& operator = (FastInsertVector&& other)
+		FastInsertVector& operator = (FastInsertVector&& other) noexcept
 		{
 			if(this != &other)
 			{
@@ -65,7 +62,6 @@ namespace util
 
 				// move.
 				this->chunks = std::move(other.chunks);
-				this->ChunkSize = other.ChunkSize;
 				this->length = other.length;
 
 				other.length = 0;
@@ -85,8 +81,8 @@ namespace util
 			size_t cind = index / ChunkSize;
 			size_t offs = index % ChunkSize;
 
-			iceAssert(cind < this->chunks.size());
-			return *((ValueType*) (this->chunks[cind] + offs));
+			assert(cind < this->chunks.size());
+			return *(static_cast<ValueType*>(this->chunks[cind] + offs));
 		}
 
 		ValueType* getNextSlotAndIncrement()
@@ -124,14 +120,12 @@ namespace util
 		private:
 		void makeNewChunk()
 		{
-			this->chunks.push_back((ValueType*) mem::allocate_memory(sizeof(ValueType) * ChunkSize));
+			this->chunks.push_back(static_cast<ValueType*>(mem::allocate_memory(sizeof(ValueType) * ChunkSize)));
 		}
 
 		// possibly use a faster implementation?? since we're just storing pointers idk if there's a point.
 		size_t length;
 		std::vector<ValueType*> chunks;
-
-		size_t ChunkSize;
 	};
 
 	struct MemoryPool_base
@@ -140,10 +134,10 @@ namespace util
 		virtual ~MemoryPool_base() { }
 	};
 
-	template <typename ValueType>
+	template <typename ValueType, size_t ChunkSize = 256>
 	struct MemoryPool : MemoryPool_base
 	{
-		MemoryPool(size_t chunkSize) : storage(chunkSize) { }
+		MemoryPool() { }
 		~MemoryPool() { this->storage.clear(); }
 
 		MemoryPool(const MemoryPool& other)
@@ -158,12 +152,12 @@ namespace util
 			return *this;
 		}
 
-		MemoryPool(MemoryPool&& other)
+		MemoryPool(MemoryPool&& other) noexcept
 		{
 			this->storage = std::move(other.storage);
 		}
 
-		MemoryPool& operator = (MemoryPool&& other)
+		MemoryPool& operator = (MemoryPool&& other) noexcept
 		{
 			if(this != &other) this->storage = std::move(other.storage);
 			return *this;
@@ -187,7 +181,7 @@ namespace util
 		}
 
 		private:
-		FastInsertVector<ValueType> storage;
+		FastInsertVector<ValueType, ChunkSize> storage;
 	};
 }
 

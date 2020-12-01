@@ -53,11 +53,11 @@ static std::string fetchContextLine(Location loc, size_t* adjust)
 {
 	if(loc.fileID == 0) return "";
 
-	auto lines = frontend::getFileLines(loc.fileID);
+	const auto& lines = frontend::getFileLines(loc.fileID);
 	if(lines.size() > loc.line)
 	{
-		std::string orig = util::to_string(lines[loc.line]);
 		std::stringstream ln;
+		auto orig = std::string(lines[loc.line]);
 
 		// skip all leading whitespace.
 		bool ws = true;
@@ -123,15 +123,21 @@ static std::string getSpannedContext(const Location& loc, const std::vector<util
 		// columns actually start at 1 for some reason.
 		ret += spaces(LEFT_PADDING - 1);
 
-		for(auto span : spans)
+		for(const auto& span : spans)
 		{
-			std::string underliner = (span.loc.len < 3 ? "^" : UNDERLINE_CHARACTER);
+			std::string underliner;
+			if(span.msg.empty())
+				underliner = repeat(span.loc.len < 3 ? "^" : UNDERLINE_CHARACTER, span.loc.len);
+
+			else
+				underliner = "\u0305|" + repeat(UNDERLINE_CHARACTER, span.loc.len - 1);
+
 
 			// pad out.
 			auto tmp = strprintf("%s", spaces(1 + span.loc.col - *adjust - cursor)); cursor += tmp.length();
 			ret += tmp + strprintf("%s", span.colour.empty() ? underlineColour : span.colour);
 
-			tmp = strprintf("%s", repeat(underliner, span.loc.len)); cursor += span.loc.len;
+			tmp = strprintf("%s", underliner); cursor += span.loc.len;
 			ret += tmp + strprintf("%s", COLOUR_RESET);
 		}
 	}
@@ -221,7 +227,7 @@ static std::string typestr(MsgType t)
 template <typename... Ts>
 static size_t strprinterrf(const char* fmt, Ts... ts)
 {
-	return (size_t) fprintf(stderr, "%s", strprintf(fmt, ts...).c_str());
+	return static_cast<size_t>(fprintf(stderr, "%s", strprintf(fmt, ts...).c_str()));
 }
 
 // template <typename... Ts>
@@ -250,7 +256,7 @@ void SimpleError::post()
 {
 	if(!this->msg.empty())
 	{
-		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str(), !this->subs.empty());
+		outputWithoutContext(typestr(this->type).c_str(), this->loc, this->msg.c_str(), true);
 		strprinterrf("%s%s%s", this->wordsBeforeContext, this->wordsBeforeContext.size() > 0 ? "\n" : "",
 			this->printContext ? getSingleContext(this->loc, this->type == MsgType::Note ? COLOUR_BLUE_BOLD : COLOUR_RED_BOLD) + "\n" : "");
 	}
@@ -341,7 +347,7 @@ void SpanError::post()
 			this->spans.erase(std::find(this->spans.begin(), this->spans.end(), util::ESpan(this->top->loc, "")));
 
 		size_t cursor = 0;
-		size_t width = (size_t) (0.85 * platform::getTerminalWidth());
+		size_t width = static_cast<size_t>(0.85 * platform::getTerminalWidth());
 
 		// there's probably a more efficient way to do this, but since we're throwing an error and already going to die,
 		// it doesn't really matter.
@@ -380,7 +386,7 @@ void SpanError::post()
 					}
 					else
 					{
-						cursor += 3 + strprinterrf("%s", spaces(2 + num_width + col - adjust - cursor));
+						cursor += 3 + strprinterrf("%s", spaces((LEFT_PADDING - 1) + 1 + col - adjust - cursor));
 						strprinterrf("%s|>%s ", COLOUR_CYAN_BOLD, COLOUR_RESET);
 
 						spanscopy[i].msg = remaining.substr(segment.length());
@@ -389,7 +395,7 @@ void SpanError::post()
 				}
 				else
 				{
-					cursor += 1 + strprinterrf("%s", spaces(2 + num_width + col - adjust - cursor));
+					cursor += 1 + strprinterrf("%s", spaces((LEFT_PADDING - 1) + 1 + col - adjust - cursor));
 					strprinterrf("%s|%s", COLOUR_CYAN_BOLD, COLOUR_RESET);
 				}
 			}
@@ -477,9 +483,6 @@ void OverloadError::post()
 	if(frontend::getAbortOnError()) abort();
 	else                            exit(-1);
 }
-
-
-
 
 
 

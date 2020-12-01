@@ -1,0 +1,94 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: install dependencies
+      run: |
+        sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-11 main" | sudo tee -a /etc/apt/sources.list
+        sudo wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo apt -y update
+        sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y g++-9 llvm-11 llvm-11-dev libllvm11 libmpfr-dev libmpfr6
+    - name: build
+      env:
+        LLVM_CONFIG: llvm-config-11
+        CC: gcc-9
+        CXX: g++-9
+      run: make -j2 build
+    - name: jit/llvm
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
+    - name: jit/interp
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
+    - name: compile/llvm
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester
+
+  build-macos:
+    runs-on: macOS-10.15
+    steps:
+    - uses: actions/checkout@v1
+    - name: install dependencies
+      run: |
+        brew install mpfr llvm pkg-config
+    - name: build
+      env:
+        LLVM_CONFIG: /usr/local/opt/llvm/bin/llvm-config
+      run: PATH="$PATH:$(pwd)/llvm/11.0.0/bin" make -j2 build
+    - name: jit/llvm
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
+    - name: jit/interp
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
+    - name: compile/llvm
+      run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester
+
+  build-windows:
+    runs-on: windows-2019
+    env:
+      MPIR_ROOT_DIR:   C:/tmp/lib/mpir
+      MPFR_ROOT_DIR:   C:/tmp/lib/mpfr
+      LLVM_ROOT_DIR:   C:/tmp/lib/llvm
+      LIBFFI_ROOT_DIR: C:/tmp/lib/libffi
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    steps:
+      - uses: seanmiddleditch/gha-setup-ninja@v1
+      - uses: seanmiddleditch/gha-setup-vsdevenv@master
+      - uses: actions/checkout@v1
+      - name: cache libraries
+        uses: actions/cache@v1.0.0
+        id: cache-libs
+        with:
+          path: C:/tmp/lib
+          key: cached-libs
+      - name: download libraries
+        if: steps.cache-libs.outputs.cache-hit != 'true'
+        run: |
+          echo "root dirs:" $LLVM_ROOT_DIR
+          echo "extraction: C:\tmp\lib"
+          Invoke-WebRequest 'https://github.com/flax-lang/flax/releases/download/win-build-deps/libraries.zip' -OutFile 'libs.zip'
+          7z x -y -o"C:\tmp\lib" libs.zip
+      - name: install meson
+        run: pip install meson
+      - name: build
+        run: |
+          meson --buildtype=release build/meson-rel
+          ninja -C build/meson-rel
+      - name: copy stdlib
+        run: |
+          New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
+          Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
+      - name: jit/llvm
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm --ffi-escape build\tester.flx
+      - name: jit/interp
+        run: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp --ffi-escape build\tester.flx
+      - name: compile/llvm
+        run: |
+          build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape build\tester.flx
+          .\tester.exe
+
+
+
+
+
+

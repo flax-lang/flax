@@ -2,8 +2,10 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+
 export supertiny
 
+import std::io
 import libc as _
 
 // import std::io
@@ -36,6 +38,9 @@ struct foo
 	x: int
 }
 
+let glob = "foozle"[2:]
+let glob2 = string("lmao")
+
 @entry fn main()
 {
 	// do {
@@ -53,6 +58,10 @@ struct foo
 		(x, y) = (y, x)
 
 		printf("%d, %d\n", x, y)
+	}
+
+	do {
+		printf("%s\n", glob)
 	}
 
 	// fn foo<T>(a: T) -> T
@@ -106,16 +115,54 @@ import std::map
 
 */
 
+/*
+class X
+{
+	init(c: int)
+	{
+		this.data = c
+	}
 
+	var data: int
+}
+
+class Y : X
+{
+	init(c: int) : super(c: c + 30) { }
+}
+
+class Z : Y
+{
+	init(c: int) : super(c: c - 90) { }
+}
+
+class A
+{
+	init() { }
+	virtual fn foo(a: &Y) -> &Y
+	{
+		std::io::println("A::foo()")
+		return alloc Y(c: 471)
+	}
+}
+
+class B : A
+{
+	init() : super() { }
+
+	override fn foo(a: &X) -> &Z
+	{
+		std::io::println("B::foo()")
+		return alloc Z(c: 748)
+	}
+}
+*/
 
 /*
 	! important stuff to fix !
 	{
 		2. splatting tuples into a generic function *will not work*
 		3. pass the overall location to the polymorph solver.
-
-		4. how does named-argument calling interact with varaidic arguments/functions? also, how do
-			optional arguments fit into that picure????
 
 		5. for optional arguments on virtual functions, we need to reach a decision --- do we ban it entirely,
 			or follow what c++ does, which is to use the default values specified on the static type of the pointer?
@@ -202,6 +249,7 @@ import std::map
 
 	}
 */
+
 
 
 

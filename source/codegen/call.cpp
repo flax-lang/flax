@@ -228,7 +228,7 @@ std::vector<fir::Value*> cgn::CodegenState::codegenAndArrangeFunctionCallArgumen
 	{
 		idxmap = this->getNameIndexMap(fd);
 
-		util::foreachIdx(fd->params, [&defaultArgs](const FnParam& arg, size_t idx) {
+		zfu::foreachIdx(fd->params, [&defaultArgs](const FnParam& arg, size_t idx) {
 			if(arg.defaultVal)
 				defaultArgs[idx] = arg.defaultVal;
 		});
@@ -294,12 +294,17 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	}
 	else
 	{
-		auto vt = vf->getType();
-		iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
+		// we should have disallowed this already in the typechecker.
+		// TODO: is the usecase then to just cast to a function type?
+		// eg. let entry = (0x400000) as (fn()->int) or something
+		iceAssert(false && "somehow you got a pointer-to-function?!");
 
-		ft = vt->getPointerElementType()->toFunctionType();
+		// auto vt = vf->getType();
+		// iceAssert(vt->isPointerType() && vt->getPointerElementType()->isFunctionType());
 
-		warn(this, "prefer using functions to function pointers");
+		// ft = vt->getPointerElementType()->toFunctionType();
+
+		// warn(this, "prefer using functions to function pointers");
 	}
 
 	iceAssert(ft);
@@ -316,7 +321,7 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	size_t numArgs = ft->getArgumentCount();
 	if(ft->isCStyleVarArg() && this->arguments.size() < numArgs)
 	{
-		error(this, "need at least %zu arguments to call variadic function '%s', only have %zu",
+		error(this, "need at least %d arguments to call variadic function '%s', only have %d",
 			numArgs, this->name, this->arguments.size());
 	}
 
@@ -395,7 +400,9 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
 
 			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
-			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer() ? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
+			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer()
+				? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
+
 			slc = cs->irb.SetArraySliceLength(slc, len);
 
 			return cloneTheSlice(slc);
@@ -414,6 +421,8 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(auto te = dcast(sst::TypeExpr, this->callee))
 		return callBuiltinTypeConstructor(cs, te->type, this->arguments);
 
+	iceAssert(this->callee);
+
 	fir::Value* fn = this->callee->codegen(cs).value;
 	iceAssert(fn->getType()->isFunctionType());
 
@@ -423,12 +432,12 @@ CGResult sst::ExprCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if((!ft->isVariadicFunc() && !ft->isCStyleVarArg()) || this->arguments.size() < ft->getArgumentCount())
 		{
-			error(this, "mismatched number of arguments; expected %zu, but %zu were given",
+			error(this, "mismatched number of arguments; expected %d, but %d were given",
 				ft->getArgumentCount(), this->arguments.size());
 		}
 	}
 
-	std::vector<FnCallArgument> fcas = util::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
+	std::vector<FnCallArgument> fcas = zfu::map(this->arguments, [](sst::Expr* arg) -> FnCallArgument {
 		return FnCallArgument(arg->loc, "", arg, /* orig: */ nullptr);
 	});
 

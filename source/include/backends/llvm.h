@@ -14,7 +14,11 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
+
 
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/DataLayout.h"
@@ -33,11 +37,16 @@
 
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/LambdaResolver.h"
+#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
+#include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include "backend.h"
@@ -59,32 +68,34 @@ namespace backend
 
 	struct LLVMJit
 	{
-		// typedef llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler>::ModuleHandleT ModuleHandle_t;
+		using OptimiseFunction = std::function<std::unique_ptr<llvm::Module>(std::unique_ptr<llvm::Module>)>;
 
-		using ModuleHandle_t = llvm::orc::VModuleKey;
-
-		LLVMJit(llvm::TargetMachine* tm);
-		llvm::TargetMachine* getTargetMachine();
-
-		void removeModule(ModuleHandle_t mod);
-		ModuleHandle_t addModule(std::unique_ptr<llvm::Module> mod);
-
-		llvm::JITSymbol findSymbol(const std::string& name);
+		void addModule(std::unique_ptr<llvm::Module> mod);
+		llvm::JITEvaluatedSymbol findSymbol(const std::string& name);
 		llvm::JITTargetAddress getSymbolAddress(const std::string& name);
 
-		private:
-		llvm::orc::ExecutionSession execSession;
-		std::unique_ptr<llvm::TargetMachine> targetMachine;
-		std::shared_ptr<llvm::orc::SymbolResolver> symbolResolver;
+		static LLVMJit* create();
 
-		llvm::DataLayout dataLayout;
-		llvm::orc::RTDyldObjectLinkingLayer objectLayer;
-		llvm::orc::IRCompileLayer<llvm::orc::RTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> compileLayer;
+		private:
+		LLVMJit(llvm::orc::JITTargetMachineBuilder JTMB, llvm::DataLayout DL);
+		static llvm::Expected<llvm::orc::ThreadSafeModule> optimiseModule(llvm::orc::ThreadSafeModule TSM,
+			const llvm::orc::MaterializationResponsibility& R);
+
+		llvm::orc::ExecutionSession ES;
+		llvm::orc::RTDyldObjectLinkingLayer ObjectLayer;
+		llvm::orc::IRCompileLayer CompileLayer;
+		llvm::orc::IRTransformLayer OptimiseLayer;
+
+		llvm::DataLayout DL;
+		llvm::orc::MangleAndInterner Mangle;
+		llvm::orc::ThreadSafeContext Ctx;
+
+		llvm::orc::JITDylib& dylib;
 	};
 
 	struct LLVMBackend : Backend
 	{
-		LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
+		LLVMBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output);
 		virtual ~LLVMBackend() { }
 
 		virtual void performCompilation() override;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "defs.h"
+#include "stcommon.h"
 
 namespace cgn
 {
@@ -24,6 +25,8 @@ namespace sst
 		size_t cachedCSId = 0;
 		bool didCodegen = false;
 		CGResult cachedResult = CGResult(0);
+
+		AttribSet attrs;
 	};
 
 	struct Expr : Stmt
@@ -44,6 +47,7 @@ namespace sst
 		bool global = false;
 		std::string bareName;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+		Scope enclosingScope;
 
 		virtual std::string getKind() = 0;
 	};

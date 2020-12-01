@@ -1,4 +1,6 @@
-project('flax', version: '0.40.0-pre', default_options: [ 'warning_level=3' ])
+# meson.build
+
+project('flax', version: '0.41.7-pre', default_options: [ 'warning_level=3' ])
 
 add_languages(['c', 'cpp'])
 
@@ -8,7 +10,7 @@ the_compiler = meson.get_compiler('c')
 
 if the_compiler.get_id() == 'msvc'
 	add_project_arguments('/utf-8', language:  ['c', 'cpp'])
-	add_project_arguments('/std:c++17', language: 'cpp')
+	add_project_arguments('/std:c++latest', language: 'cpp')
 	add_project_arguments('/permissive-', language: 'cpp')
 	add_project_arguments('-D_STDC_LIMIT_MACROS', language: 'cpp')
 	add_project_arguments('-D_SCL_SECURE_NO_WARNINGS', language:  ['c', 'cpp'])
@@ -39,7 +41,7 @@ if the_compiler.get_id() == 'msvc'
 	add_project_link_arguments('/machine:X64', language:  ['c', 'cpp'])
 
 	add_project_link_arguments('/opt:noref', language:  ['c', 'cpp'])
-	add_project_link_arguments('/incremental', language:  ['c', 'cpp'])
+	# add_project_link_arguments('/incremental', language:  ['c', 'cpp'])
 
 	add_project_link_arguments('/nodefaultlib:libcmt.lib', language:  ['c', 'cpp'])
 	add_project_link_arguments('/nodefaultlib:libcmtd.lib', language:  ['c', 'cpp'])
@@ -59,7 +61,7 @@ if the_compiler.get_id() == 'msvc'
 	envname_llvm    = '%LLVM_ROOT_DIR%'
 	envname_libffi  = '%LIBFFI_ROOT_DIR%'
 
-	llvm_version   = '7.1.0'
+	llvm_version   = '11.0.0'
 
 	mpir_root_dir = run_command('cmd.exe', '/C', 'echo', envname_mpir).stdout().strip()
 	if mpir_root_dir == envname_mpir
@@ -109,42 +111,51 @@ if the_compiler.get_id() == 'msvc'
 
 	llvm_dep = declare_dependency(version: llvm_version, include_directories: include_directories(llvm_hdr_dir),
 		dependencies: [ mpfr_dep, mpir_dep,
-			the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86Utils', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMAnalysis', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMAsmPrinter', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMBinaryFormat', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMX86AsmPrinter', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBitReader', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBitstreamReader', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMBitWriter', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMCFGuard', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMCodegen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMCore', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoDWARF', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoGSYM', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoPDB', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDebugInfoMSF', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMDemangle', dirs: llvm_lib_dir),
 			the_compiler.find_library('LLVMExecutionEngine', dirs: llvm_lib_dir),
-			the_compiler.find_library('LLVMDebugInfoCodeView', dirs: llvm_lib_dir)
+			the_compiler.find_library('LLVMGlobalISel', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMInstCombine', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMipo', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMJITLink', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMLibDriver', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMLinker', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMC', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCDisassembler', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCJIT', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMMCParser', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMObject', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMOrcError', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMOrcJIT', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMPasses', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMProfileData', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMRemarks', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMRuntimeDyld', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMScalarOpts', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMSelectionDAG', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMSupport', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTablegen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTarget', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTextAPI', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMTransformUtils', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMVectorize', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86AsmParser', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86CodeGen', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86Desc', dirs: llvm_lib_dir),
+			the_compiler.find_library('LLVMX86Info', dirs: llvm_lib_dir),
 		]
 	)
 
@@ -164,7 +175,7 @@ else
 	# on unix, we use GMP instead of MPIR.
 	mpfr_dep = dependency('mpfr', version: '>= 4.0.0')
 	libffi_dep = dependency('libffi', version: '>= 3.2.1')
-	llvm_dep = dependency('llvm', static: true, version: '7.0.1', modules: [
+	llvm_dep = dependency('llvm', static: true, version: '9.0.0', modules: [
 		'core', 'engine', 'native', 'linker', 'bitwriter',
 		'lto', 'vectorize', 'all-targets', 'object', 'orcjit'
 	])
@@ -182,6 +193,11 @@ source_files = files([
 	'source/misc/identifier.cpp',
 	'source/misc/destructors.cpp',
 
+	'source/repl/driver.cpp',
+	'source/repl/execute.cpp',
+	'source/repl/history.cpp',
+	'source/repl/commands.cpp',
+
 	'source/frontend/pts.cpp',
 	'source/frontend/file.cpp',
 	'source/frontend/lexer.cpp',
@@ -193,6 +209,7 @@ source_files = files([
 
 	'source/platform/compiler.cpp',
 	'source/platform/platform.cpp',
+	'source/platform/backtrace.cpp',
 	'source/platform/msvcfinder.cpp',
 
 	'source/frontend/parser/misc.cpp',
@@ -304,6 +321,7 @@ source_files = files([
 	'source/fir/IRBlock.cpp',
 	'source/fir/Module.cpp',
 	'source/fir/Value.cpp',
+	'source/fir/Name.cpp',
 
 	'source/fir/Types/DynamicArrayType.cpp',
 	'source/fir/Types/ArraySliceType.cpp',
@@ -314,6 +332,7 @@ source_files = files([
 	'source/fir/Types/SingleTypes.cpp',
 	'source/fir/Types/OpaqueType.cpp',
 	'source/fir/Types/StructType.cpp',
+	'source/fir/Types/TypeUtils.cpp',
 	'source/fir/Types/ArrayType.cpp',
 	'source/fir/Types/TraitType.cpp',
 	'source/fir/Types/ClassType.cpp',

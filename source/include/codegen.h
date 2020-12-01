@@ -28,6 +28,7 @@ namespace sst
 	struct TypeDefn;
 	struct BinaryOp;
 	struct StateTree;
+	struct FunctionDecl;
 	struct FunctionDefn;
 	struct FunctionCall;
 	struct DefinitionTree;
@@ -42,9 +43,6 @@ namespace cgn
 
 		sst::Block* block = 0;
 
-		// std::vector<fir::Value*> refCountedValues;
-		// std::vector<fir::Value*> refCountedPointers;
-
 		fir::IRBlock* breakPoint = 0;
 		fir::IRBlock* continuePoint = 0;
 	};
@@ -58,6 +56,7 @@ namespace cgn
 		std::vector<fir::Value*> refCountedValues;
 		std::vector<fir::Value*> raiiValues;
 	};
+
 
 	struct CodegenState
 	{
@@ -82,12 +81,11 @@ namespace cgn
 		util::hash_map<sst::Defn*, CGResult> valueMap;
 		std::vector<fir::Value*> methodSelfStack;
 
-		fir::Function* globalInitFunc = 0;
-		std::vector<std::pair<fir::Value*, fir::Value*>> globalInits;
 
 		util::hash_map<fir::Function*, fir::Type*> methodList;
 
 		util::hash_map<fir::Type*, sst::TypeDefn*> typeDefnMap;
+		util::hash_map<std::string, sst::Defn*> compilerSupportDefinitions;
 
 
 		size_t _debugIRIndent = 0;
@@ -151,11 +149,25 @@ namespace cgn
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);
 
-		void addGlobalInitialiser(fir::Value* storage, fir::Value* value);
 
-		fir::IRBlock* enterGlobalInitFunction();
+		bool isInsideGlobalInitFunc = false;
+
+		// this one holds the finalised global initialiser function -- this one is supposed to
+		// call all the pieces; we always regenerate this function when we call finishGlobalInitFunction().
+		fir::Function* finalisedGlobalInitFunction = 0;
+
+		// this is getting a bit complicated. this holds each "piece" of the global init function,
+		// where each piece probably corresponds to the initialisation of a single global value.
+		std::vector<std::pair<fir::GlobalValue*, fir::Function*>> globalInitPieces;
+
+		bool isWithinGlobalInitFunction();
+		fir::IRBlock* enterGlobalInitFunction(fir::GlobalValue* val);
 		void leaveGlobalInitFunction(fir::IRBlock* restore);
 		void finishGlobalInitFunction();
+
+
+
+
 
 		void generateDecompositionBindings(const DecompMapping& bind, CGResult rhs, bool allowref);
 
@@ -188,6 +200,13 @@ namespace cgn
 		void removeRAIIValue(fir::Value* val);
 		std::vector<fir::Value*> getRAIIValues();
 
+		sst::FunctionDefn* findMatchingMethodInType(sst::TypeDefn* td, sst::FunctionDecl* fn);
+
+		bool isRAIIType(fir::Type* ty);
+		bool typeHasDestructor(fir::Type* ty);
+		bool typeHasCopyConstructor(fir::Type* ty);
+		bool typeHasMoveConstructor(fir::Type* ty);
+
 		void callDestructor(fir::Value* val);
 
 		fir::Value* copyRAIIValue(fir::Value* value);
@@ -195,7 +214,7 @@ namespace cgn
 		void moveRAIIValue(fir::Value* from, fir::Value* target);
 	};
 
-	fir::Module* codegen(sst::DefinitionTree* __std_exception_destroy);
+	fir::Module* codegen(sst::DefinitionTree* dtree);
 }
 
 

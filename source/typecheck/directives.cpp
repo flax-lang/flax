@@ -42,7 +42,8 @@ TCResult ast::RunDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 
 // defined in codegen/directives.cpp
-fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer, const Identifier& fname);
+fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
+	const fir::Name& fname, fir::interp::InterpState* is = 0);
 
 static size_t condCounter = 0;
 TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
@@ -76,7 +77,7 @@ TCResult ast::IfDirective::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		auto cond = c.cond->typecheck(fs, fir::Type::getBool()).expr();
 		auto value = magicallyRunExpressionAtCompileTime(cs, cond, fir::Type::getBool(),
-			util::obfuscateIdentifier("interp_if_cond", condCounter++));
+			fir::Name::obfuscate("interp_if_cond", condCounter++));
 
 		if(!value->getType()->isBoolType())
 			error(c.cond, "expression with non-boolean type '%s' cannot be used as a conditional in an #if", value->getType());

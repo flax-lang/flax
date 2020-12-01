@@ -51,15 +51,15 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 
 	cs->irb.setCurrentBlock(neg_begin);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(apos.toString()),
+	cgn::glue::printRuntimeError(cs, fir::ConstantCharSlice::get(apos.toString()),
 		"slice start index '%ld' is < 0\n", { beginIndex });
 
 	cs->irb.setCurrentBlock(neg_end);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()),
+	cgn::glue::printRuntimeError(cs, fir::ConstantCharSlice::get(bpos.toString()),
 		"slice end index '%ld' is < 0\n", { endIndex });
 
 	cs->irb.setCurrentBlock(neg_len);
-	cgn::glue::printRuntimeError(cs, fir::ConstantString::get(bpos.toString()),
+	cgn::glue::printRuntimeError(cs, fir::ConstantCharSlice::get(bpos.toString()),
 		"slice end index '%ld' is < start index '%ld'\n", { endIndex, beginIndex });
 
 
@@ -71,7 +71,7 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 		// of indices here.
 		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, /* isPerformingDecomposition: */ true);
 		if(checkf)
-			cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantString::get(apos.toString()));
+			cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantCharSlice::get(apos.toString()));
 	}
 }
 

@@ -57,18 +57,17 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->parentTypeForMethod = infer;
 
 
+	defn->attrs = this->attrs;
 	defn->bareName = this->name;
 	defn->id = Identifier(this->name, IdKind::Function);
-	defn->id.scope = this->realScope;
+	defn->id.scope = this->enclosingScope;
 	defn->id.params = ptys;
+	defn->id.returnType = retty;
+	defn->enclosingScope = this->enclosingScope;
 
 	defn->params = ps;
 	defn->returnType = retty;
 	defn->visibility = this->visibility;
-
-	defn->isEntry = this->isEntry;
-	defn->noMangle = this->noMangle;
-
 
 	defn->global = !fs->isInFunctionBody();
 
@@ -90,13 +89,13 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		error(defn, "only methods of a type can be marked as mutating with 'mut'");
 	}
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	auto conflict_err = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
-		if(auto decl = dcast(sst::FunctionDecl, other))
+		if(auto oth = dcast(sst::FunctionDecl, other))
 		{
 			// make sure we didn't fuck up somewhere
-			iceAssert(decl->id.name == defn->id.name);
-			return fs->isDuplicateOverload(defn->params, decl->params);
+			iceAssert(oth->id.name == defn->id.name);
+			return sst::isDuplicateOverload(defn->params, oth->params);
 		}
 		else
 		{
@@ -105,14 +104,14 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 		}
 	});
 
-	if(conflicts)
-		error(this, "conflicting");
+	if(conflict_err)
+		return TCResult(conflict_err);
 
 	if(!defn->type->containsPlaceholders())
-		fs->getTreeOfScope(this->realScope)->addDefinition(this->name, defn, gmaps);
+		defn->enclosingScope.stree->addDefinition(this->name, defn, gmaps);
 
-	else if(fs->stree->unresolvedGenericDefs[this->name].empty())
-		fs->stree->unresolvedGenericDefs[this->name].push_back(this);
+	else if(defn->enclosingScope.stree->unresolvedGenericDefs[this->name].empty())
+		defn->enclosingScope.stree->unresolvedGenericDefs[this->name].push_back(this);
 
 
 	// add to our versions.
@@ -138,11 +137,10 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	// if we have placeholders, don't bother generating anything.
 	if(!defn->type->containsPlaceholders())
 	{
-		auto oldscope = fs->getCurrentScope();
-		fs->teleportToScope(defn->id.scope);
+		fs->teleportInto(defn->enclosingScope);
 
 		fs->enterFunctionBody(defn);
-		fs->pushTree(defn->id.mangledName());
+		fs->pushTree(defn->id.convertToName().mangledWithoutScope());
 		{
 			// add the arguments to the tree
 
@@ -150,7 +148,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 			{
 				auto vd = util::pool<sst::ArgumentDefn>(arg.loc);
 				vd->id = Identifier(arg.name, IdKind::Name);
-				vd->id.scope = fs->getCurrentScope();
+				vd->id.scope = fs->scope();
 
 				vd->type = arg.type;
 
@@ -170,7 +168,7 @@ TCResult ast::FuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 		fs->popTree();
 		fs->leaveFunctionBody();
 
-		fs->teleportToScope(oldscope);
+		fs->teleportOut();
 
 		// ok, do the check.
 		defn->needReturnVoid = !fs->checkAllPathsReturn(defn);
@@ -199,6 +197,7 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 	defn->id = Identifier(this->name, IdKind::Name);
 	defn->bareName = this->name;
+	defn->attrs = this->attrs;
 
 	defn->params = ps;
 	defn->returnType = retty;
@@ -210,13 +209,13 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 	defn->isIntrinsic = this->isIntrinsic;
 
 	if(this->isVarArg)
-		defn->type = fir::FunctionType::getCVariadicFunc(util::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::getCVariadicFunc(zfu::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
 
 	else
-		defn->type = fir::FunctionType::get(util::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
+		defn->type = fir::FunctionType::get(zfu::map(ps, [](const FnParam& p) -> auto { return p.type; }), retty);
 
 
-	bool conflicts = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
+	auto conflict_err = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 
 		if(auto decl = dcast(sst::FunctionDecl, other))
 		{
@@ -225,8 +224,8 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 
 			// check the typelists, then
 			bool ret = fir::Type::areTypeListsEqual(
-				util::map(defn->params, [](const FnParam& p) -> fir::Type* { return p.type; }),
-				util::map(decl->params, [](const FnParam& p) -> fir::Type* { return p.type; })
+				zfu::map(defn->params, [](const FnParam& p) -> fir::Type* { return p.type; }),
+				zfu::map(decl->params, [](const FnParam& p) -> fir::Type* { return p.type; })
 			);
 
 			return ret;
@@ -238,8 +237,8 @@ TCResult ast::ForeignFuncDefn::typecheck(sst::TypecheckState* fs, fir::Type* inf
 		}
 	});
 
-	if(conflicts)
-		error(this, "conflicting");
+	if(conflict_err)
+		return TCResult(conflict_err);
 
 	this->generatedDecl = defn;
 
@@ -260,7 +259,7 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	if(!this->isFunctionBody && !this->doNotPushNewScope)
 		fs->pushAnonymousTree();
 
-	defer((!this->isFunctionBody && !this->doNotPushNewScope) ? fs->popTree() : (sst::StateTree*) nullptr);
+	defer((!this->isFunctionBody && !this->doNotPushNewScope) ? fs->popTree() : static_cast<sst::StateTree*>(nullptr));
 
 	auto ret = util::pool<sst::Block>(this->loc);
 
@@ -312,7 +311,9 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		for(auto stmt : this->statements)
 		{
 			if(auto p = dcast(Parameterisable, stmt); p)
-				p->realScope = fs->getCurrentScope();
+			{
+				p->enclosingScope = fs->scope();
+			}
 
 			auto tcr = stmt->typecheck(fs);
 			if(tcr.isError())
@@ -325,7 +326,9 @@ TCResult ast::Block::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 		for(auto dstmt : this->deferredStatements)
 		{
 			if(auto p = dcast(Parameterisable, dstmt); p)
-				p->realScope = fs->getCurrentScope();
+			{
+				p->enclosingScope = fs->scope();
+			}
 
 			auto tcr = dstmt->typecheck(fs);
 			if(tcr.isError())

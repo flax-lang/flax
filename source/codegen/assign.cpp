@@ -116,9 +116,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	rr = cs->oneWayAutocast(rr, lt);
 
 	if(rr == 0)
-	{
-		error(this, "invalid assignment from value of type '%s' to expected type '%s'", rr->getType(), lt);
-	}
+		error(this, "invalid assignment from value of type '%s' to expected type '%s'", rt, lt);
 
 	// ok then
 	if(lt != rr->getType())
@@ -151,6 +149,9 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		auto res = v->codegen(cs, tty->getElementN(idx));
 		if(!res->islvalue())
 			error(v, "cannot assign to non-lvalue expression in tuple assignment");
+
+		if(res->isConst())
+			error(v, "cannot assign to constant in tuple assignment");
 
 		results.push_back(res);
 		idx++;

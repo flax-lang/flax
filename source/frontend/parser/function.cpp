@@ -43,6 +43,8 @@ namespace parser
 		bool startedOptional = false;
 		while(st.front() != TT::RParen)
 		{
+			st.skipWS();
+
 			if(iscvar || isfvar)
 				error(st, "variadic parameter list must be the last function parameter");
 
@@ -139,7 +141,7 @@ namespace parser
 
 
 
-	FuncDefn* parseFunction(State& st)
+	PResult<FuncDefn> parseFunction(State& st)
 	{
 		auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
 		if(isvar)
@@ -151,7 +153,10 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			defn->body = parseBracedBlock(st);
+			auto body = parseBracedBlock(st);
+
+			if(body.hasValue()) defn->body = body.val();
+			else                return PResult<FuncDefn>::copyError(body);
 		}
 		st.leaveFunctionBody();
 
@@ -166,6 +171,7 @@ namespace parser
 	{
 		iceAssert(st.front() == TT::ForeignFunc);
 		st.pop();
+		st.skipWS();
 
 		if(st.front() != TT::Func)
 			expectedAfter(st, "'fn'", "'ffi'", st.front().str());
@@ -187,7 +193,7 @@ namespace parser
 		ffn->returnType = defn->returnType;
 
 		// make sure we don't have optional arguments here
-		util::foreach(ffn->params, [](const auto& a) {
+		zfu::foreach(ffn->params, [](const auto& a) {
 			if(a.defaultValue)
 				error(a.loc, "foreign functions cannot have optional arguments");
 		});
@@ -246,7 +252,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -276,7 +282,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -294,7 +300,7 @@ namespace parser
 
 		st.enterFunctionBody();
 		{
-			ret->body = parseBracedBlock(st);
+			ret->body = parseBracedBlock(st).val();
 		}
 		st.leaveFunctionBody();
 
@@ -379,7 +385,7 @@ namespace parser
 
 
 
-	Block* parseBracedBlock(State& st)
+	PResult<Block> parseBracedBlock(State& st)
 	{
 		st.skipWS();
 
@@ -390,24 +396,31 @@ namespace parser
 			st.skipWS();
 			while(st.front() != TT::RBrace)
 			{
-				auto stmt = parseStmt(st);
-				if(auto defer = dcast(DeferredStmt, stmt))
-					ret->deferredStatements.push_back(defer);
+				if(!st.hasTokens())
+					return PResult<Block>::insufficientTokensError();
 
-				else
-					ret->statements.push_back(stmt);
+				auto s = parseStmt(st).mutate([&](auto stmt) {
+					if(auto defer = dcast(DeferredStmt, stmt))
+						ret->deferredStatements.push_back(defer);
+
+					else
+						ret->statements.push_back(stmt);
 
 
-				if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
-					st.pop();
+					if(st.front() == TT::NewLine || st.front() == TT::Comment || st.front() == TT::Semicolon)
+						st.pop();
 
-				else if(st.frontAfterWS() == TT::RBrace)
-					break;
+					else if(st.frontAfterWS() == TT::RBrace)
+						return;
 
-				else
-					expected(st, "newline or semicolon to terminate a statement", st.front().str());
+					else
+						expected(st, "newline or semicolon to terminate a statement", st.front().str());
 
-				st.skipWS();
+					st.skipWS();
+				});
+
+				if(s.isError())
+					return PResult<Block>::copyError(s);
 			}
 
 			auto closing = st.eat();
@@ -420,7 +433,7 @@ namespace parser
 		else if(st.front() == TT::FatRightArrow)
 		{
 			Block* ret = util::pool<Block>(st.eat().loc);
-			ret->statements.push_back(parseStmt(st));
+			ret->statements.push_back(parseStmt(st).val());
 			ret->closingBrace = st.loc();
 			ret->isArrow = true;
 

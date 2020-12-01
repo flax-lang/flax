@@ -20,10 +20,10 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* elm = fs->convertParserTypeToFIR(this->allocTy);
 	iceAssert(elm);
 
-	if(this->isRaw && this->counts.size() > 1)
+	if(this->attrs.has(attr::RAW) && this->counts.size() > 1)
 		error(this, "only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
 
-	std::vector<sst::Expr*> counts = util::map(this->counts, [fs](ast::Expr* e) -> auto {
+	std::vector<sst::Expr*> counts = zfu::map(this->counts, [fs](ast::Expr* e) -> auto {
 		auto c = e->typecheck(fs, fir::Type::getNativeWord()).expr();
 		if(!c->type->isIntegerType())
 			error(c, "expected integer type ('i64') for alloc count, found '%s' instead", c->type);
@@ -36,7 +36,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		error(this, "cannot provide arguments to non-struct type '%s'", elm);
 
 
-	fir::Type* resType = (this->isRaw || counts.empty() ?
+	fir::Type* resType = (this->attrs.has(attr::RAW) || counts.empty() ?
 		(this->isMutable ? elm->getMutablePointerTo() : elm->getPointerTo()) : fir::DynamicArrayType::get(elm));
 
 	auto ret = util::pool<sst::AllocOp>(this->loc, resType);
@@ -68,7 +68,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	if(this->initBody)
 	{
-		iceAssert(!this->isRaw && this->counts.size() > 0);
+		iceAssert(!this->attrs.has(attr::RAW) && this->counts.size() > 0);
 
 		// ok, make a fake vardefn and insert it first.
 		auto fake = util::pool<ast::VarDefn>(this->initBody->loc);
@@ -94,7 +94,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	ret->elmType    = elm;
 	ret->counts     = counts;
-	ret->isRaw      = this->isRaw;
+	ret->attrs      = this->attrs;
 	ret->isMutable  = this->isMutable;
 
 	return TCResult(ret);

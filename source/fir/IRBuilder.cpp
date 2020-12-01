@@ -13,9 +13,6 @@
 
 #include "memorypool.h"
 
-#define DO_IN_SITU_CONSTANT_FOLDING		0
-
-
 
 static bool isSAAType(fir::Type* t)
 {
@@ -74,7 +71,8 @@ namespace fir
 		return this->currentBlock;
 	}
 
-	static util::MemoryPool<Instruction> instr_pool(65536);
+	static util::MemoryPool<Instruction, 1 << 16> instr_pool;
+
 	static Instruction* make_instr(OpKind kind, bool sideEffects, Type* out, const std::vector<Value*>& vals,
 		Value::Kind k = Value::Kind::prvalue)
 	{
@@ -94,7 +92,7 @@ namespace fir
 		return v;
 	}
 
-	static Instruction* getBinaryOpInstruction(IRBlock* parent, std::string ao, Value* vlhs, Value* vrhs)
+	static Instruction* getBinaryOpInstruction(const std::string& ao, Value* vlhs, Value* vrhs)
 	{
 		OpKind op = OpKind::Invalid;
 
@@ -130,13 +128,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -158,13 +156,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -186,13 +184,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -214,13 +212,13 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
@@ -242,56 +240,56 @@ namespace fir
 				// following c/c++ conventions, signed types are converted to unsigned types in mixed ops.
 				if(lpt->getIntegerBitWidth() > rpt->getIntegerBitWidth())
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = lpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = lpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 				else
 				{
-					if(lpt->isSigned() && rpt->isSigned()) out = rpt;
-					out = (lpt->isSigned() ? rpt : lpt);
+					if(lpt->isSigned() && rpt->isSigned())  out = rpt;
+					else                                    out = (lpt->isSigned() ? rpt : lpt);
 				}
 			}
 		}
 		else if(ao == "<<")
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
-			op = OpKind::Bitwise_Shl;
 
+			op = OpKind::Bitwise_Shl;
 			out = lhs;
 		}
 		else if(ao == ">>")
 		{
 			if(useFloating) iceAssert("shift operation can only be done with ints");
-			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
 
+			op = useSigned ? OpKind::Bitwise_Arithmetic_Shr : OpKind::Bitwise_Logical_Shr;
 			out = lhs;
 		}
 		else if(ao == "&")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_And;
 
+			op = OpKind::Bitwise_And;
 			out = lhs;
 		}
 		else if(ao == "|")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Or;
 
+			op = OpKind::Bitwise_Or;
 			out = lhs;
 		}
 		else if(ao == "^")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Xor;
 
+			op = OpKind::Bitwise_Xor;
 			out = lhs;
 		}
 		else if(ao == "~")
 		{
 			if(useFloating) iceAssert("bitwise ops only defined for int types (cast if needed)");
-			op = OpKind::Bitwise_Not;
 
+			op = OpKind::Bitwise_Not;
 			out = lhs;
 		}
 		else
@@ -302,9 +300,9 @@ namespace fir
 		return make_instr(op, false, out, { vlhs, vrhs });
 	}
 
-	Value* IRBuilder::BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname)
+	Value* IRBuilder::BinaryOp(const std::string& ao, Value* a, Value* b, const std::string& vname)
 	{
-		Instruction* instr = getBinaryOpInstruction(this->currentBlock, ao, a, b);
+		Instruction* instr = getBinaryOpInstruction(ao, a, b);
 		if(instr == 0) return 0;
 
 		return this->addInstruction(instr, vname);
@@ -427,7 +425,8 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = make_instr(OpKind::Floating_Truncate, false, targetType,
-			{ v, ConstantValue::getZeroValue(targetType) });
+			zfu::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType))
+		);
 
 		return this->addInstruction(instr, vname);
 	}
@@ -761,9 +760,9 @@ namespace fir
 			double _ = 0;
 
 			if(std::modf(cfp->getValue(), &_) != 0.0)
-				warn("truncating constant '%Lf' in constant cast to type '%s'", cfp->getValue(), targetType);
+				warn("truncating constant '%f' in constant cast to type '%s'", cfp->getValue(), targetType);
 
-			return ConstantInt::get(targetType, (size_t) cfp->getValue());
+			return ConstantInt::get(targetType, static_cast<size_t>(cfp->getValue()));
 		}
 
 		Instruction* instr = make_instr(OpKind::Cast_FloatToInt, false, targetType,
@@ -784,13 +783,13 @@ namespace fir
 			bool sgn = ci->getType()->isSignedIntType();
 			if(targetType == Type::getFloat32())
 			{
-				if(sgn)	ret = ConstantFP::getFloat32((float) ci->getSignedValue());
-				else	ret = ConstantFP::getFloat32((float) ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
+				else	ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
 			}
 			else if(targetType == Type::getFloat64())
 			{
-				if(sgn)	ret = ConstantFP::getFloat64((double) ci->getSignedValue());
-				else	ret = ConstantFP::getFloat64((double) ci->getUnsignedValue());
+				if(sgn)	ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
+				else	ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
 			}
 			else
 			{
@@ -867,25 +866,25 @@ namespace fir
 		auto l = v->getType();
 
 		if(l->isIntegerType() && r->isIntegerType())
-			return this->IntSizeCast(v, r);
+			return this->IntSizeCast(v, r, vname);
 
 		else if(l->isFloatingPointType() && r->isFloatingPointType())
-			return (l->getBitWidth() > r->getBitWidth() ? this->FTruncate(v, r) : this->FExtend(v, r));
+			return (l->getBitWidth() > r->getBitWidth() ? this->FTruncate(v, r, vname) : this->FExtend(v, r, vname));
 
 		else if(l->isIntegerType() && r->isFloatingPointType())
-			return this->IntToFloatCast(v, r);
+			return this->IntToFloatCast(v, r, vname);
 
 		else if(l->isFloatingPointType() && r->isIntegerType())
-			return this->FloatToIntCast(v, r);
+			return this->FloatToIntCast(v, r, vname);
 
 		else if(l->isIntegerType() && r->isPointerType())
-			return this->IntToPointerCast(v, r);
+			return this->IntToPointerCast(v, r, vname);
 
 		else if(l->isPointerType() && r->isIntegerType())
-			return this->PointerToIntCast(v, r);
+			return this->PointerToIntCast(v, r, vname);
 
 		else if(l->isPointerType() && r->isPointerType())
-			return this->PointerTypeCast(v, r);
+			return this->PointerTypeCast(v, r, vname);
 
 		// nope.
 		return 0;
@@ -921,20 +920,44 @@ namespace fir
 		return this->Call(fn, { p1, p2, p3 }, vname);
 	}
 
+	Value* IRBuilder::Call(Function* fn, Value* p1, Value* p2, Value* p3, Value* p4, const std::string& vname)
+	{
+		return this->Call(fn, { p1, p2, p3, p4 }, vname);
+	}
+
 
 	Value* IRBuilder::Call(Function* fn, const std::vector<Value*>& args, const std::string& vname)
 	{
 		if(args.size() != fn->getArgumentCount() && !fn->isVariadic() && !fn->isCStyleVarArg())
 		{
-			error("irbuilder: calling function '%s' with the wrong number of arguments (needs %zu, have %zu)", fn->getName().str(),
+			error("irbuilder: calling function '%s' with the wrong number of arguments (needs %d, have %d)", fn->getName().str(),
 				fn->getArgumentCount(), args.size());
 		}
 
 		auto autocastStuff = [this](Value* arg, Type* target) -> Value* {
 
+			auto isSlice = [](Type* ty) -> bool {
+				return ty->isArraySliceType();
+			};
+
+			auto isVariadicSlice = [&isSlice](Type* ty) -> bool {
+				return isSlice(ty) && ty->toArraySliceType()->isVariadicType();
+			};
+
+			auto getSliceElm = [](Type* ty) -> Type* {
+				return ty->getArrayElementType();
+			};
+
+			auto isSliceMut = [&isSlice](Type* ty) -> bool {
+				return isSlice(ty) && ty->toArraySliceType()->isMutable();
+			};
+
 			auto at = arg->getType();
-			if(at->isArraySliceType() && target->isArraySliceType() &&
-				target->toArraySliceType()->isVariadicType() != at->toArraySliceType()->isVariadicType())
+			if((isSlice(at) && isSlice(target) && (isVariadicSlice(at) != isVariadicSlice(target)))
+				|| (isSlice(at) && isSlice(target)
+					&& getSliceElm(at) == getSliceElm(target)
+					&& isSliceMut(at) && !isSliceMut(target)
+				))
 			{
 				// silently cast, because they're the same thing
 				// the distinction is solely for the type system's benefit
@@ -945,12 +968,6 @@ namespace fir
 			{
 				// this is ok. at the llvm level the cast should reduce to a no-op.
 				return this->PointerTypeCast(arg, target);
-			}
-			else if(at->isArraySliceType() && target->isArraySliceType()
-				&& at->getArrayElementType() == target->getArrayElementType()
-				&& at->toArraySliceType()->isMutable() && !target->toArraySliceType()->isMutable())
-			{
-				return this->Bitcast(arg, target);
 			}
 			else
 			{
@@ -976,7 +993,7 @@ namespace fir
 
 				if(out[i]->getType() != target)
 				{
-					error("irbuilder: mismatch in argument type (arg. %zu) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
+					error("irbuilder: mismatch in argument type (arg. %d) in function '%s' (need '%s', have '%s')", i, fn->getName().str(),
 						fn->getArguments()[i]->getType(), out[i]->getType());
 				}
 			}
@@ -992,7 +1009,7 @@ namespace fir
 				}
 				else if(args[i]->getType() != elm)
 				{
-					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %zu) in function '%s' (need '%s', have '%s')",
+					error("irbuilder: mismatch in argument type (in variadic portion) (arg. %d) in function '%s' (need '%s', have '%s')",
 						i, fn->getName().str(), elm, args[i]->getType());
 				}
 				else
@@ -1078,6 +1095,7 @@ namespace fir
 		return this->addInstruction(instr, vname);
 	}
 
+
 	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, const std::string& vname)
 	{
 		// args[0] must be the self, for obvious reasons.
@@ -1088,7 +1106,12 @@ namespace fir
 		iceAssert(self && self == cls);
 
 		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, ft->getReturnType(),
-			(Value*) ConstantValue::getZeroValue(cls) + ((Value*) ConstantInt::getNative(index) + ((Value*) ConstantValue::getZeroValue(ft) + args)));
+			zfu::vectorOf<Value*>(
+				ConstantValue::getZeroValue(cls),
+				ConstantInt::getNative(index),
+				ConstantValue::getZeroValue(ft)
+			) + args
+		);
 
 		return this->addInstruction(instr, vname);
 	}
@@ -1148,7 +1171,7 @@ namespace fir
 
 		// insert at the front (back = no guarantees)
 		this->currentBlock->instructions.insert(this->currentBlock->instructions.begin(), instr);
-		return (PHINode*) instr->realOutput;
+		return dcast(PHINode, instr->realOutput);
 	}
 
 	Value* IRBuilder::StackAlloc(Type* type, const std::string& vname)
@@ -1204,6 +1227,7 @@ namespace fir
 			: slcelmty->getPointerTo()));
 
 		slc = this->SetArraySliceLength(slc, this->GetSAALength(saa));
+		slc->setName(vname);
 
 		return slc;
 	}
@@ -1236,6 +1260,7 @@ namespace fir
 
 		auto ret = this->addInstruction(instr, "");
 		ret->setKind(lval->kind);
+		ret->setName(vname);
 
 		return ret;
 	}
@@ -1259,7 +1284,7 @@ namespace fir
 
 
 	template <typename T>
-	static Instruction* doGEPOnCompoundType(T* type, Value* structPtr, size_t memberIndex, Type* memberTy)
+	static Instruction* doGEPOnCompoundType(T* type, Value* structPtr, size_t memberIndex)
 	{
 		if(!structPtr->islvalue())
 			error("irbuilder: cannot do GEP on non-lvalue");
@@ -1283,12 +1308,12 @@ namespace fir
 		if(structPtr->getType()->isStructType())
 		{
 			auto st = structPtr->getType()->toStructType();
-			return this->addInstruction(doGEPOnCompoundType(st,	structPtr, memberIndex, st->getElementN(memberIndex)), vname);
+			return this->addInstruction(doGEPOnCompoundType(st,	structPtr, memberIndex), vname);
 		}
 		else if(structPtr->getType()->isTupleType())
 		{
 			auto tt = structPtr->getType()->toTupleType();
-			return this->addInstruction(doGEPOnCompoundType(tt, structPtr, memberIndex, tt->getElementN(memberIndex)), vname);
+			return this->addInstruction(doGEPOnCompoundType(tt, structPtr, memberIndex), vname);
 		}
 		else if(structPtr->getType()->isClassType())
 		{
@@ -1350,7 +1375,7 @@ namespace fir
 
 
 
-	void IRBuilder::SetVtable(Value* ptr, Value* table, const std::string& vname)
+	void IRBuilder::SetVtable(Value* ptr, Value* table)
 	{
 		if(!ptr->islvalue())
 			error("irbuilder: cannot do set vtable on non-lvalue");
@@ -1361,7 +1386,7 @@ namespace fir
 
 		Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, Type::getInt8Ptr(), { ptr, ConstantInt::getUNative(0) }, Value::Kind::lvalue);
 
-		auto gep = this->addInstruction(instr, vname);
+		auto gep = this->addInstruction(instr, "__vtable");
 		this->Store(table, gep);
 	}
 
@@ -1377,7 +1402,7 @@ namespace fir
 		auto ptri = ConstantInt::getUNative(ptrIndex);
 		auto elmi = ConstantInt::getUNative(elmIndex);
 
-		return this->GEP2(ptr, ptri, elmi);
+		return this->GEP2(ptr, ptri, elmi, vname);
 	}
 
 	// equivalent to GEP(ptr*, ptrIndex, elmIndex)
@@ -1446,7 +1471,10 @@ namespace fir
 
 	Value* IRBuilder::CreateValue(Type* t, const std::string& vname)
 	{
-		return ConstantValue::getZeroValue(t);
+		auto ret = ConstantValue::getZeroValue(t);
+		ret->setName(vname);
+
+		return ret;
 	}
 
 
@@ -1545,7 +1573,7 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::InsertValueByName(Value* val, std::string n, Value* elm, const std::string& vname)
+	Value* IRBuilder::InsertValueByName(Value* val, const std::string& n, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
@@ -1560,7 +1588,7 @@ namespace fir
 		return this->addInstruction(_insertValue(val, ind, et, elm), vname);
 	}
 
-	Value* IRBuilder::ExtractValueByName(Value* val, std::string n, const std::string& vname)
+	Value* IRBuilder::ExtractValueByName(Value* val, const std::string& n, const std::string& vname)
 	{
 		Type* t = val->getType();
 		if(!t->isStructType() && !t->isClassType())
@@ -1695,7 +1723,7 @@ namespace fir
 		return this->ReadPtr(this->GetSAARefCountPointer(arr), vname);
 	}
 
-	void IRBuilder::SetSAARefCount(Value* arr, Value* val, const std::string& vname)
+	void IRBuilder::SetSAARefCount(Value* arr, Value* val)
 	{
 		if(val->getType() != Type::getNativeWord())
 			error("irbuilder: val is not an int64");
@@ -1867,12 +1895,13 @@ namespace fir
 		return this->ReadPtr(this->GetAnyRefCountPointer(arr), vname);
 	}
 
-	void IRBuilder::SetAnyRefCount(Value* arr, Value* val, const std::string& vname)
+	void IRBuilder::SetAnyRefCount(Value* arr, Value* val)
 	{
 		if(val->getType() != Type::getNativeWord())
 			error("irbuilder: val is not an int64");
 
-		this->WritePtr(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr), Type::getNativeWordPtr()->getMutablePointerVersion()));
+		this->WritePtr(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr),
+			Type::getNativeWordPtr()->getMutablePointerVersion()));
 	}
 
 
@@ -2207,7 +2236,7 @@ namespace fir
 		this->addInstruction(make_instr(OpKind::Unreachable, true, Type::getVoid(), { }), "");
 	}
 
-	IRBlock* IRBuilder::addNewBlockInFunction(std::string name, Function* func)
+	IRBlock* IRBuilder::addNewBlockInFunction(const std::string& name, Function* func)
 	{
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
@@ -2226,14 +2255,11 @@ namespace fir
 		for(auto b : this->currentFunction->blocks)
 			if(b->getName().str() == name) cnt++;
 
-		if(cnt > 0)
-			name += "." + std::to_string(cnt);
-
-		block->setName(name);
+		block->setName(strprintf("%s%s", name, cnt > 0 ? strprintf(".%d", cnt) : ""));
 		return block;
 	}
 
-	IRBlock* IRBuilder::addNewBlockAfter(std::string name, IRBlock* block)
+	IRBlock* IRBuilder::addNewBlockAfter(const std::string& name, IRBlock* block)
 	{
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
@@ -2256,10 +2282,8 @@ namespace fir
 				for(auto bk : this->currentFunction->blocks)
 					if(bk->getName().str() == name) cnt++;
 
-				if(cnt > 0)
-					name += "." + std::to_string(cnt);
+				nb->setName(strprintf("%s%s", name, cnt > 0 ? strprintf(".%d", cnt) : ""));
 
-				nb->setName(name);
 				this->currentFunction->blocks.insert(this->currentFunction->blocks.begin() + i + 1, nb);
 				return nb;
 			}

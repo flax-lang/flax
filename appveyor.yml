@@ -9,8 +9,10 @@ environment:
     LLVM_ROOT_DIR:    c:\projects\lib\llvm
     LIBFFI_ROOT_DIR:  c:\projects\lib\libffi
 
+
 cache:
   - c:\projects\lib -> appveyor.yml
+
 
 install:
   # Set up the build environment
@@ -31,6 +33,7 @@ install:
   # Install meson
   - cmd: pip install meson
 
+
 build_script:
   - ps: meson --buildtype=release build/meson-rel
   - ps: ninja -C build/meson-rel
@@ -39,9 +42,9 @@ test_script:
   - ps: cd c:\projects\flax
   - ps: New-Item -Force -Path build\sysroot\usr\local\lib\flaxlibs -ItemType Directory
   - ps: Copy-Item -Recurse -Force libs\* build\sysroot\usr\local\lib\flaxlibs\
-  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend llvm build\tester.flx
-  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot -run -backend interp build\tester.flx
-  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape -run -backend llvm build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape -run -backend interp build\tester.flx
+  - ps: build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape build\tester.flx
   - ps: .\tester.exe
 
 after_test:

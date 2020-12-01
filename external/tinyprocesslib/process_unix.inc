@@ -223,7 +223,9 @@ namespace tinyproclib
 	bool Process::write(const char* bytes, size_t n)
 	{
 		if(!open_stdin)
-			throw std::invalid_argument("Can't write to an unopened stdin pipe. Please set open_stdin=true when constructing the process.");
+			return false;
+
+		// throw std::invalid_argument("Can't write to an unopened stdin pipe. Please set open_stdin=true when constructing the process.");
 
 		std::lock_guard<std::mutex> lock(stdin_mutex);
 		if(stdin_fd)

@@ -180,7 +180,7 @@ namespace cgn
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 
-			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantString::get("")),
+			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantCharSlice::get("")),
 				fir::Type::getMutInt8Ptr()));
 			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
 			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
@@ -276,53 +276,53 @@ namespace cgn
 	{
 		if(name == ALLOCATE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(ALLOCATE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == FREE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(FREE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(FREE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getMutInt8Ptr() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(REALLOCATE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()),
 					fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{
-			return this->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(CRT_FDOPEN),
 				fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()), fir::LinkageType::External);
 		}
 		else if(name == "printf")
 		{
-			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("printf"),
 				fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else if(name == "abort")
 		{
-			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("abort"),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == "exit")
 		{
-			return this->module->getOrCreateFunction(Identifier("exit", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("exit"),
 				fir::FunctionType::get({ fir::Type::getInt32() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == "strlen")
 		{
-			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("strlen"),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::External);
 		}
 		else if(name == "fprintf")
 		{
-			return this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("fprintf"),
 				fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else if(name == "fflush")
 		{
-			return this->module->getOrCreateFunction(Identifier("fflush", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("fflush"),
 				fir::FunctionType::get({ fir::Type::getVoidPtr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else
@@ -333,56 +333,77 @@ namespace cgn
 
 
 
-	void CodegenState::addGlobalInitialiser(fir::Value* storage, fir::Value* value)
-	{
-		if(!storage->getType()->isPointerType())
-		{
-			error(this->loc(), "'storage' must be pointer type, got '%s'", storage->getType());
-		}
-		else if(storage->getType()->getPointerElementType() != value->getType())
-		{
-			error(this->loc(), "cannot store value of type '%s' into storage of type '%s'", value->getType(),
-				storage->getType());
-		}
 
-		// ok, then
-		this->globalInits.push_back({ value, storage });
+	bool CodegenState::isWithinGlobalInitFunction()
+	{
+		return this->isInsideGlobalInitFunc;
 	}
 
-
-	fir::IRBlock* CodegenState::enterGlobalInitFunction()
+	fir::IRBlock* CodegenState::enterGlobalInitFunction(fir::GlobalValue* val)
 	{
+		if(this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (entering when already inside)");
+
 		auto ret = this->irb.getCurrentBlock();
 
-		if(!this->globalInitFunc)
 		{
-			fir::Function* func = this->module->getOrCreateFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME),
+			fir::Function* func = this->module->getOrCreateFunction(
+				fir::Name::obfuscate(zpr::sprint("%s_piece_%d", strs::names::GLOBAL_INIT_FUNCTION, this->globalInitPieces.size())),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
-			fir::IRBlock* entry = this->irb.addNewBlockInFunction("entry", func);
-			this->irb.setCurrentBlock(entry);
+			auto b = this->irb.addNewBlockInFunction("b", func);
+			this->irb.setCurrentBlock(b);
 
-			this->globalInitFunc = func;
+			this->globalInitPieces.push_back(std::make_pair(val, func));
 		}
 
-		iceAssert(this->globalInitFunc);
-		this->irb.setCurrentBlock(this->globalInitFunc->getBlockList().back());
-
+		this->isInsideGlobalInitFunc = true;
 		return ret;
 	}
 
 	void CodegenState::leaveGlobalInitFunction(fir::IRBlock* restore)
 	{
+		if(!this->isInsideGlobalInitFunc)
+			error(this->loc(), "unsynchronised use of global init function!!! (leaving when not inside)");
+
+		// terminate the current function.
+		this->irb.ReturnVoid();
+
 		this->irb.setCurrentBlock(restore);
+		this->isInsideGlobalInitFunc = false;
 	}
 
 	void CodegenState::finishGlobalInitFunction()
 	{
-		auto r = this->enterGlobalInitFunction();
+		if(this->finalisedGlobalInitFunction != 0)
+		{
+			// clear all the blocks from it.
+			for(auto b : this->finalisedGlobalInitFunction->getBlockList())
+				delete b;
 
+			this->finalisedGlobalInitFunction->getBlockList().clear();
+		}
+		else
+		{
+			this->finalisedGlobalInitFunction = this->module->getOrCreateFunction(
+				fir::Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION),
+				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
+		}
+
+		auto restore = this->irb.getCurrentBlock();
+
+		// ok, now we can do some stuff.
+		// what we wanna do is just call all the "piece" global init functions that we made with enter/leave.
+		// but, this function has no blocks (either cos it's new, or we deleted them all). so, make one.
+		auto blk = this->irb.addNewBlockInFunction("entry", this->finalisedGlobalInitFunction);
+		this->irb.setCurrentBlock(blk);
+
+		for(auto piece : this->globalInitPieces)
+			this->irb.Call(piece.second);
+
+		// ok now return
 		this->irb.ReturnVoid();
-
-		this->leaveGlobalInitFunction(r);
+		this->irb.setCurrentBlock(restore);
 	}
 }
 

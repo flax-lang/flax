@@ -67,10 +67,11 @@ namespace backend
 
 	struct Backend
 	{
-		BackendCaps::Capabilities getCapabilities() { return (BackendCaps::Capabilities) this->capabilities; }
+		BackendCaps::Capabilities getCapabilities() { return static_cast<BackendCaps::Capabilities>(this->capabilities); }
 		bool hasCapability(BackendCaps::Capabilities cap) { return this->capabilities & cap; }
 
-		static Backend* getBackendFromOption(BackendOption opt, CompiledData& cd, std::vector<std::string> in, std::string out);
+		static Backend* getBackendFromOption(BackendOption opt, CompiledData& cd, const std::vector<std::string>& in,
+			const std::string& out);
 
 		virtual ~Backend() { }
 
@@ -82,7 +83,7 @@ namespace backend
 		virtual std::string str() = 0;
 
 		protected:
-		Backend(int caps, CompiledData& dat, std::vector<std::string> inputs, std::string output)
+		Backend(int caps, CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output)
 			: capabilities(caps), compiledData(dat), inputFilenames(inputs), outputFilename(output) { }
 
 		int capabilities;
@@ -93,7 +94,7 @@ namespace backend
 
 	struct x64Backend : Backend
 	{
-		x64Backend(CompiledData& dat, std::vector<std::string> inputs, std::string output);
+		x64Backend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output);
 		virtual ~x64Backend() { }
 
 		virtual void performCompilation() override;

@@ -11,15 +11,14 @@
 namespace fir
 {
 	// structs
-	TraitType::TraitType(const Identifier& name,  const std::vector<std::pair<std::string, FunctionType*>>& meths)
-		: Type(TypeKind::Trait)
+	TraitType::TraitType(const Name& name,  const std::vector<std::pair<std::string, FunctionType*>>& meths)
+		: Type(TypeKind::Trait), traitName(name)
 	{
-		this->traitName = name;
 		this->methods = meths;
 	}
 
-	static util::hash_map<Identifier, TraitType*> typeCache;
-	TraitType* TraitType::create(const Identifier& name)
+	static util::hash_map<Name, TraitType*> typeCache;
+	TraitType* TraitType::create(const Name& name)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("trait with name '%s' already exists", name.str());
@@ -55,7 +54,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier TraitType::getTypeName()
+	Name TraitType::getTypeName()
 	{
 		return this->traitName;
 	}

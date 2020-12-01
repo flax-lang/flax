@@ -13,6 +13,9 @@
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -21,6 +24,8 @@
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include "gluecode.h"
@@ -46,7 +51,7 @@
 
 namespace backend
 {
-	static util::hash_map<Identifier, llvm::StructType*> createdTypes;
+	static util::hash_map<fir::Name, llvm::StructType*> createdTypes;
 	static std::map<fir::ConstantValue*, llvm::Constant*> cachedConstants;
 
 
@@ -71,7 +76,7 @@ namespace backend
 	static llvm::Type* getNativeWordTy()
 	{
 		auto& gc = LLVMBackend::getLLVMContext();
-		return llvm::IntegerType::getIntNTy(gc, (unsigned int) fir::getNativeWordSizeInBits());
+		return llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(fir::getNativeWordSizeInBits()));
 	}
 
 	static llvm::Type* typeToLlvm(fir::Type* type, llvm::Module* mod)
@@ -84,7 +89,7 @@ namespace backend
 			// signed/unsigned is lost.
 			if(pt->isIntegerType())
 			{
-				return llvm::IntegerType::getIntNTy(gc, (unsigned int) pt->getIntegerBitWidth());
+				return llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(pt->getIntegerBitWidth()));
 			}
 			else if(pt->isFloatingPointType())
 			{
@@ -134,7 +139,7 @@ namespace backend
 			// to allow recursion, declare the type first.
 			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
 
-			std::vector<llvm::Type*> lmems = util::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
+			std::vector<llvm::Type*> lmems = zfu::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
 				return typeToLlvm(t, mod);
 			});
 
@@ -203,7 +208,7 @@ namespace backend
 		{
 			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
 
-			auto id = util::obfuscateIdentifier("string", IdKind::Type);
+			auto id = fir::Name::obfuscate("string", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -236,7 +241,7 @@ namespace backend
 		}
 		else if(type->isRangeType())
 		{
-			auto id = util::obfuscateIdentifier("range", IdKind::Type);
+			auto id = fir::Name::obfuscate("range", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -257,7 +262,7 @@ namespace backend
 		{
 			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
 
-			auto id = util::obfuscateIdentifier("any", IdKind::Type);
+			auto id = fir::Name::obfuscate("any", fir::NameKind::Type);
 			if(createdTypes.find(id) != createdTypes.end())
 				return createdTypes[id];
 
@@ -281,7 +286,7 @@ namespace backend
 			for(auto v : ut->getVariants())
 			{
 				if(!v.second->getInteriorType()->isVoidType())
-					maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second->getInteriorType(), mod)));
+					maxSz = std::max(maxSz, static_cast<size_t>(dl.getTypeAllocSize(typeToLlvm(v.second->getInteriorType(), mod))));
 			}
 
 			if(maxSz > 0)
@@ -308,11 +313,11 @@ namespace backend
 
 			size_t maxSz = 0;
 			for(auto v : ut->getVariants())
-				maxSz = std::max(maxSz, (size_t) dl.getTypeAllocSize(typeToLlvm(v.second, mod)));
+				maxSz = std::max(maxSz, static_cast<size_t>(dl.getTypeAllocSize(typeToLlvm(v.second, mod))));
 
 			iceAssert(maxSz > 0);
 			createdTypes[ut->getTypeName()] = llvm::StructType::create(gc, {
-				llvm::IntegerType::getIntNTy(gc, (unsigned int) (maxSz * CHAR_BIT))
+				llvm::IntegerType::getIntNTy(gc, static_cast<unsigned int>(maxSz * CHAR_BIT))
 			}, ut->getTypeName().mangled());
 
 			return createdTypes[ut->getTypeName()];
@@ -452,26 +457,43 @@ namespace backend
 			return cachedConstants[fc] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(auto cs = dcast(fir::ConstantString, fc))
+		else if(dcast(fir::ConstantCharSlice, fc) || dcast(fir::ConstantDynamicString, fc))
 		{
-			size_t origLen = cs->getValue().length();
-			std::string str = cs->getValue();
+			bool wasDynStr = false;
+
+			std::string str;
+			if(auto ccs = dcast(fir::ConstantCharSlice, fc))
+				str = ccs->getValue();
+
+			else if(auto cds = dcast(fir::ConstantDynamicString, fc))
+				wasDynStr = true, str = cds->getValue();
+
 
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), str, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
-				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(cs->id));
+				llvm::GlobalValue::LinkageTypes::InternalLinkage, cstr, "_FV_STR_" + std::to_string(fc->id));
 
 			auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
 			std::vector<llvm::Constant*> indices = { zconst, zconst };
 			llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(gv->getType()->getPointerElementType(), gv, indices);
 
-			auto len = llvm::ConstantInt::get(getNativeWordTy(), origLen);
+			auto len = llvm::ConstantInt::get(getNativeWordTy(), str.size());
 
 			iceAssert(gepd->getType() == llvm::Type::getInt8PtrTy(LLVMBackend::getLLVMContext()));
 			iceAssert(len->getType() == getNativeWordTy());
 
+			fir::Type* ty = fir::Type::getCharSlice(false);
 			std::vector<llvm::Constant*> mems = { gepd, len };
-			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(fir::Type::getCharSlice(false), mod)), mems);
+			if(wasDynStr)
+			{
+				ty = fir::Type::getString();
+
+				// add -1 for the capacity and 0 for the refcountptr.
+				mems.push_back(llvm::ConstantInt::get(getNativeWordTy(), static_cast<uint64_t>(-1)));
+				mems.push_back(zconst);
+			}
+
+			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(ty, mod)), mems);
 
 			cachedConstants[fc] = ret;
 			return ret;
@@ -576,7 +598,7 @@ namespace backend
 			{
 				llvm::Value* lgv = valueMap[gv->id];
 				if(!lgv)
-					error("llvm: failed to find var %zu in mod %s\n", gv->id, firmod->getModuleName());
+					error("llvm: failed to find var %d in mod %s\n", gv->id, firmod->getModuleName());
 
 				iceAssert(lgv);
 				return lgv;
@@ -585,7 +607,7 @@ namespace backend
 			else if(dcast(fir::Function, fv))
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("llvm: !ret fn (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret fn (id = %d)", fv->id);
 				return ret;
 			}
 			else if(fir::ConstantValue* cv = dcast(fir::ConstantValue, fv))
@@ -595,7 +617,7 @@ namespace backend
 			else
 			{
 				llvm::Value* ret = valueMap[fv->id];
-				if(!ret) error("llvm: !ret (id = %zu)", fv->id);
+				if(!ret) error("llvm: !ret (id = %d)", fv->id);
 				return ret;
 			}
 		};
@@ -622,13 +644,13 @@ namespace backend
 
 			iceAssert(v);
 
-			// fprintf(stderr, "add id %zu\n", fv->id);
+			// fprintf(stderr, "add id %d\n", fv->id);
 
 			if(valueMap.find(fv->id) != valueMap.end())
-				error("llvm: already have value with id %zu", fv->id);
+				error("llvm: already have value with id %d", fv->id);
 
 			valueMap[fv->id] = v;
-			// printf("adding value %zu\n", fv->id);
+			// printf("adding value %d\n", fv->id);
 
 			if(!v->getType()->isVoidTy())
 				v->setName(fv->getName().mangled());
@@ -679,7 +701,7 @@ namespace backend
 
 		for(auto intr : firmod->_getIntrinsicFunctions())
 		{
-			llvm::Constant* fn = 0;
+			llvm::Value* fn = 0;
 
 			//* in LLVM 7, the intrinsics changed to no longer specify the alignment
 			//* so, the arugments are: [ ptr, ptr, size, is_volatile ]
@@ -687,19 +709,19 @@ namespace backend
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memcpy.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memcpy.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memmove")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8PtrTy(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memmove.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memmove.p0i8.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memset")
 			{
 				llvm::FunctionType* ft = llvm::FunctionType::get(llvm::Type::getVoidTy(gc), { llvm::Type::getInt8PtrTy(gc),
 					llvm::Type::getInt8Ty(gc), getNativeWordTy(), llvm::Type::getInt1Ty(gc) }, false);
-				fn = module->getOrInsertFunction(strprintf("llvm.memset.p0i8.i%d", fir::getNativeWordSizeInBits()), ft);
+				fn = module->getOrInsertFunction(strprintf("llvm.memset.p0i8.i%d", fir::getNativeWordSizeInBits()), ft).getCallee();
 			}
 			else if(intr.first.str() == "memcmp")
 			{
@@ -910,7 +932,7 @@ namespace backend
 				size_t i = 0;
 				for(auto arg : ffn->getArguments())
 				{
-					DUMP_INSTR("%%%zu :: %s", arg->id, arg->getType()->str().c_str());
+					DUMP_INSTR("%%%d :: %s", arg->id, arg->getType()->str().c_str());
 					i++;
 
 					(void) arg;
@@ -1526,10 +1548,14 @@ namespace backend
 							auto phi = dcast(fir::PHINode, inst->realOutput);
 							iceAssert(phi);
 
-							llvm::PHINode* ret = builder.CreatePHI(t, (unsigned int) phi->getValues().size());
+							llvm::PHINode* ret = builder.CreatePHI(t, static_cast<unsigned int>(phi->getValues().size()));
 
 							for(auto v : phi->getValues())
-								ret->addIncoming(decay(v.second, getValue(v.second)), llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first))));
+							{
+								ret->addIncoming(decay(v.second, getValue(v.second)),
+									llvm::cast<llvm::BasicBlock>(decay(v.first, getValue(v.first)))
+								);
+							}
 
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -1604,7 +1630,7 @@ namespace backend
 								clsty->getVirtualMethodCount())->getPointerTo());
 
 							auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-								0, (unsigned int) dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue());
+								0, static_cast<unsigned int>(dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue()));
 
 							auto ffty = inst->operands[2]->getType()->toFunctionType();
 
@@ -1863,7 +1889,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back((unsigned int) ci->getUnsignedValue());
+								inds.push_back(static_cast<unsigned int>(ci->getUnsignedValue()));
 							}
 
 
@@ -1899,7 +1925,7 @@ namespace backend
 								fir::ConstantInt* ci = dcast(fir::ConstantInt, inst->operands[i]);
 								iceAssert(ci);
 
-								inds.push_back((unsigned int) ci->getUnsignedValue());
+								inds.push_back(static_cast<unsigned int>(ci->getUnsignedValue()));
 							}
 
 							iceAssert(str->getType()->isStructTy() || str->getType()->isArrayTy());
@@ -2282,7 +2308,7 @@ namespace backend
 							iceAssert(ci);
 
 							llvm::Value* ret = builder.CreateStructGEP(ptr->getType()->getPointerElementType(),
-								ptr, (unsigned int) ci->getUnsignedValue());
+								ptr, static_cast<unsigned int>(ci->getUnsignedValue()));
 
 							addValueToMap(ret, inst->realOutput);
 							break;
@@ -2323,7 +2349,7 @@ namespace backend
 							auto ut = inst->operands[0]->getType()->toUnionType();
 							auto vid = dcast(fir::ConstantInt, inst->operands[1])->getSignedValue();
 
-							iceAssert((size_t) vid < ut->getVariantCount());
+							iceAssert(static_cast<size_t>(vid) < ut->getVariantCount());
 							auto vt = ut->getVariant(vid)->getInteriorType();
 
 							auto lut = typeToLlvm(ut, module);

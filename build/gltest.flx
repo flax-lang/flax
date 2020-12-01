@@ -3,10 +3,10 @@
 // Licensed under the Apache License Version 2.0.
 
 // import Foundation
-import "OpenGL/GL"
-import "SDL2/SDL"
+import "OpenGL/GL.flx"
+import "SDL2/SDL.flx" as _
 
-import "LibCInterface"
+import libc as _
 
 ffi fn rand() -> i32
 
@@ -35,9 +35,9 @@ fn clamp(x: f64, lower: f64, upper: f64) -> f64
 
 
 
-public fn main(argc: i32, argv: i8**) -> int
+public fn main(argc: i32, argv: &&i8) -> int
 {
-	SDL_Init(SDL.INIT_EVERYTHING)
+	SDL_Init(INIT_EVERYTHING)
 	let mw = SDL_CreateWindow("test", 805240832, 805240832, 640, 480, 2)
 
 	if mw == null
@@ -51,29 +51,29 @@ public fn main(argc: i32, argv: i8**) -> int
 
 	let glc = SDL_GL_CreateContext(mw)
 
-	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLEBUFFERS, 1)
-	SDL_GL_SetAttribute(SDL.GL_MULTISAMPLESAMPLES, 2)
+	SDL_GL_SetAttribute(GL_MULTISAMPLEBUFFERS, 1)
+	SDL_GL_SetAttribute(GL_MULTISAMPLESAMPLES, 2)
 
-	glClearColor(0, 0, 0, 0)
+	GL::glClearColor(0, 0, 0, 0)
 
-	glMatrixMode(GL.PROJECTION)
-	glLoadIdentity()
-	gluPerspective(45.0, (640.0 / 480.0), 0.1, 100.0)
+	GL::glMatrixMode(GL::GL::PROJECTION)
+	GL::glLoadIdentity()
+	GL::gluPerspective(45.0, (640.0 / 480.0), 0.1, 100.0)
 
-	glMatrixMode(GL.MODELVIEW)
-	glLoadIdentity()
+	GL::glMatrixMode(GL::GL::MODELVIEW)
+	GL::glLoadIdentity()
 
 
-	glEnableClientState(GL.VERTEX_ARRAY)
-	glEnableClientState(GL.TEXTURE_COORD_ARRAY)
-	glEnableClientState(GL.COLOR_ARRAY)
-	glEnableClientState(GL.NORMAL_ARRAY)
+	GL::glEnableClientState(GL::GL::VERTEX_ARRAY)
+	GL::glEnableClientState(GL::GL::TEXTURE_COORD_ARRAY)
+	GL::glEnableClientState(GL::GL::COLOR_ARRAY)
+	GL::glEnableClientState(GL::GL::NORMAL_ARRAY)
 
-	glEnable(GL.MULTISAMPLE)
-	glEnable(GL.DEPTH_TEST)
-	glDepthFunc(GL.LESS)
+	GL::glEnable(GL::GL::MULTISAMPLE)
+	GL::glEnable(GL::GL::DEPTH_TEST)
+	GL::glDepthFunc(GL::GL::LESS)
 
-	glBlendColor(1.0, 1.0, 1.0, 1.0)
+	GL::glBlendColor(1.0, 1.0, 1.0, 1.0)
 
 	var rx: f64 = 0
 	var ry: f64 = 0
@@ -94,8 +94,8 @@ public fn main(argc: i32, argv: i8**) -> int
 					]
 
 	// var colours: f64[36]
-	var colours = alloc[48] f64
-	defer dealloc colours
+	var colours = alloc f64[48]
+	defer free colours
 
 	var i = 0
 	while i < 48
@@ -107,7 +107,7 @@ public fn main(argc: i32, argv: i8**) -> int
 		i += 4
 	}
 
-	let indices: u8[60] = [
+	let indices: [u8: 60] = [
 							1,  2,  6,
 							1,  7,  2,
 							3,  4,  5,
@@ -161,22 +161,22 @@ public fn main(argc: i32, argv: i8**) -> int
 	let stderr = fdopen(2, "a")
 	while run
 	{
-		glClear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT)
-		glClearColor(0.109, 0.109, 0.109, 1.0)
-		glTranslated(0.0, 0.0, -5.0)
+		GL::glClear(GL::GL::COLOR_BUFFER_BIT | GL::GL::DEPTH_BUFFER_BIT)
+		GL::glClearColor(0.109, 0.109, 0.109, 1.0)
+		GL::glTranslated(0.0, 0.0, -5.0)
 
-		glRotated(rx, frand(0, 1), 0, 0)
-		glRotated(ry, 0, frand(0, 1), 0)
-		glRotated(rz, 0, 0, frand(0, 1))
+		GL::glRotated(rx, frand(0, 1), 0, 0)
+		GL::glRotated(ry, 0, frand(0, 1), 0)
+		GL::glRotated(rz, 0, 0, frand(0, 1))
 
 
-		glVertexPointer(3, GL.DOUBLE, 0, vertices.data)
-		glColorPointer(4, GL.DOUBLE, 0, colours.data)
-		glNormalPointer(GL.DOUBLE, 0, normals.data)
+		GL::glVertexPointer(3, GL::GL::DOUBLE, 0, vertices.ptr as &void)
+		GL::glColorPointer(4, GL::GL::DOUBLE, 0, colours.ptr as &void)
+		GL::glNormalPointer(GL::GL::DOUBLE, 0, normals.ptr as &void)
 
-		glDrawElements(GL.TRIANGLES, 60, GL.UNSIGNED_BYTE, indices as void*)
+		GL::glDrawElements(GL::GL::TRIANGLES, 60, GL::GL::UNSIGNED_BYTE, indices as &void)
 
-		glLoadIdentity()
+		GL::glLoadIdentity()
 
 		SDL_GL_SwapWindow(mw)
 
@@ -186,23 +186,23 @@ public fn main(argc: i32, argv: i8**) -> int
 		ry += sry * speed
 		rz += srz * speed
 
-		var e: SDL.Event
+		var e: Event
 		while SDL_PollEvent(&e) == 1
 		{
-			if e.type == SDL.EventType.Quit
+			if e.type == EventType::Quit
 			{
 				printf("\nexiting\n")
 				run = false
 			}
-			else if e.type == SDL.EventType.KeyUp
+			else if e.type == EventType::KeyUp
 			{
-				if (&e as SDL.KeyboardEvent*).keysym.sym == SDL.Key.R
+				if (&e as &SDL.KeyboardEvent).keysym.sym == SDL.Key.R
 				{
 					srx = frand(-2.5, 2.5)
 					sry = frand(-2.5, 2.5)
 					srz = frand(-2.5, 2.5)
 				}
-				else if (&e as SDL.KeyboardEvent*).keysym.sym == SDL.Key.F
+				else if (&e as &SDL.KeyboardEvent).keysym.sym == SDL.Key.F
 				{
 					rx = 0
 					ry = 0
@@ -217,7 +217,7 @@ public fn main(argc: i32, argv: i8**) -> int
 			}
 			else if e.type == SDL.EventType.KeyDown
 			{
-				let ke = *(&e as SDL.KeyboardEvent*)
+				let ke = *(&e as &SDL.KeyboardEvent)
 
 				if ke.keysym.sym == SDL.Key.Space
 				{

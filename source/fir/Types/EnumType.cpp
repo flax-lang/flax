@@ -10,13 +10,12 @@
 
 namespace fir
 {
-	EnumType::EnumType(const Identifier& name, Type* ct) : Type(TypeKind::Enum)
+	EnumType::EnumType(const Name& name, Type* ct) : Type(TypeKind::Enum), typeName(name)
 	{
-		this->typeName = name;
 		this->caseType = ct;
 	}
 
-	Identifier EnumType::getTypeName()
+	Name EnumType::getTypeName()
 	{
 		return this->typeName;
 	}
@@ -55,38 +54,36 @@ namespace fir
 	}
 
 
-	void EnumType::setNameArray(fir::ConstantValue* arr)
+	void EnumType::setNameArray(ConstantValue* arr)
 	{
 		this->runtimeNameArray = arr;
 	}
 
-	void EnumType::setCaseArray(fir::ConstantValue* arr)
+	void EnumType::setCaseArray(ConstantValue* arr)
 	{
 		this->runtimeCasesArray = arr;
+	}
+
+	void EnumType::setCaseType(Type* t)
+	{
+		if(!this->caseType->isVoidType())
+			error("cannot modify enum type! was previously '%s'", this->caseType);
+
+		this->caseType = t;
 	}
 
 
 
 
-	static util::hash_map<Identifier, EnumType*> typeCache;
+	static util::hash_map<Name, EnumType*> typeCache;
 
-	EnumType* EnumType::get(const Identifier& name, Type* caseType)
+	EnumType* EnumType::get(const Name& name, Type* caseType)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("enum with name '%s' already exists", name.str());
 
 		else
 			return (typeCache[name] = new EnumType(name, caseType));
-	}
-
-	EnumType* EnumType::getEmpty()
-	{
-		static EnumType* empty = 0;
-
-		if(!empty)
-			empty = get(Identifier("", IdKind::Name), Type::getVoid());
-
-		return empty;
 	}
 
 	fir::Type* EnumType::substitutePlaceholders(const util::hash_map<fir::Type*, fir::Type*>& subst)

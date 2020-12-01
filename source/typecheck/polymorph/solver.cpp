@@ -42,7 +42,7 @@ namespace sst
 			else
 			{
 				// limit decomposition of the given types by the number of transforms on the target type.
-				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, (size_t) -1);
+				auto [ tt, ttrfs ] = internal::decomposeIntoTransforms(tgt, static_cast<size_t>(-1));
 				auto [ gt, gtrfs ] = internal::decomposeIntoTransforms(gvn, ttrfs.size());
 
 				// if(ttrfs != gtrfs)
@@ -110,22 +110,22 @@ namespace sst
 					std::vector<ArgType> input;
 					if(gt->isFunctionType())
 					{
-						input = util::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> ArgType {
+						input = zfu::map(gt->toFunctionType()->getArgumentTypes(), [given](fir::Type* t) -> ArgType {
 							return ArgType("", t, given.loc);
 						}) + ArgType("", gt->toFunctionType()->getReturnType(), given.loc);
 
-						problem = util::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> ArgType {
+						problem = zfu::map(tt->toFunctionType()->getArgumentTypes(), [target](fir::Type* t) -> ArgType {
 							return ArgType("", t, target.loc);
 						}) + ArgType("", tt->toFunctionType()->getReturnType(), target.loc);
 					}
 					else
 					{
 						iceAssert(gt->isTupleType());
-						input = util::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> ArgType {
+						input = zfu::map(gt->toTupleType()->getElements(), [given](fir::Type* t) -> ArgType {
 							return ArgType("", t, given.loc);
 						});
 
-						problem = util::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> ArgType {
+						problem = zfu::map(tt->toTupleType()->getElements(), [target](fir::Type* t) -> ArgType {
 							return ArgType("", t, target.loc);
 						});
 					}
@@ -155,13 +155,13 @@ namespace sst
 			// either we have all names or no names for the target!
 			if(target.size() > 0 && target[0].name != "")
 			{
-				util::foreachIdx(target, [&targetnames](const ArgType& t, size_t i) {
+				zfu::foreachIdx(target, [&targetnames](const ArgType& t, size_t i) {
 					targetnames[t.name] = i;
 				});
 			}
 
 			std::set<size_t> unsolvedtargets;
-			util::foreachIdx(target, [&unsolvedtargets, &target, fvararg](const ArgType& a, size_t i) {
+			zfu::foreachIdx(target, [&unsolvedtargets, &target, fvararg](const ArgType& a, size_t i) {
 				// if it's optional, we don't mark it as 'unsolved'.
 				if((!fvararg || i + 1 != target.size()) && !a.optional)
 					unsolvedtargets.insert(i);
@@ -308,7 +308,7 @@ namespace sst
 				if(targetnames.empty() || given.size() > target.size())
 				{
 					return SimpleError::make(callLoc, "expected %d %s, but %d %s provided",
-						target.size(), util::plural("argument", target.size()), given.size(), given.size() == 1 ? "was" : "were");
+						target.size(), zfu::plural("argument", target.size()), given.size(), given.size() == 1 ? "was" : "were");
 				}
 				else
 				{
@@ -317,8 +317,8 @@ namespace sst
 						missings.push_back(target[us].name);
 
 					auto s = util::listToEnglish(missings, /* quote: */ true);
-					return SimpleError::make(callLoc, "missing %s for %s %s", util::plural("argument", missings.size()),
-						util::plural("parameter", missings.size()), s);
+					return SimpleError::make(callLoc, "missing %s for %s %s", zfu::plural("argument", missings.size()),
+						zfu::plural("parameter", missings.size()), s);
 				}
 			}
 

@@ -6,23 +6,19 @@
 #include "ir/type.h"
 #include "ir/function.h"
 
-#include "pts.h"
-
 namespace fir
 {
 	// structs
-	ClassType::ClassType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
-		const std::vector<Function*>& inits) : Type(TypeKind::Class)
+	ClassType::ClassType(const Name& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
+		const std::vector<Function*>& inits) : Type(TypeKind::Class), className(name)
 	{
-		this->className = name;
-
 		this->setMembers(mems);
 		this->setMethods(methods);
 		this->setInitialiserFunctions(inits);
 	}
 
-	static util::hash_map<Identifier, ClassType*> typeCache;
-	ClassType* ClassType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members,
+	static util::hash_map<Name, ClassType*> typeCache;
+	ClassType* ClassType::create(const Name& name, const std::vector<std::pair<std::string, Type*>>& members,
 		const std::vector<Function*>& methods, const std::vector<Function*>& inits)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
@@ -32,7 +28,7 @@ namespace fir
 			return (typeCache[name] = new ClassType(name, members, methods, inits));
 	}
 
-	ClassType* ClassType::createWithoutBody(const Identifier& name)
+	ClassType* ClassType::createWithoutBody(const Name& name)
 	{
 		return ClassType::create(name, { }, { }, { });
 	}
@@ -65,7 +61,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier ClassType::getTypeName()
+	Name ClassType::getTypeName()
 	{
 		return this->className;
 	}
@@ -108,13 +104,13 @@ namespace fir
 			}
 		}
 
-		for(auto p : members)
+		for(const auto& [ name, ty ] : members)
 		{
-			this->classMembers[p.first] = p.second;
-			this->indexMap[p.first] = i;
+			this->classMembers[name] = ty;
+			this->indexMap[name] = i;
 
-			this->nameList.push_back(p.first);
-			this->typeList.push_back(p.second);
+			this->nameList.push_back(name);
+			this->typeList.push_back(ty);
 
 			i++;
 		}
@@ -217,10 +213,12 @@ namespace fir
 		return this->methodList;
 	}
 
-	std::vector<Function*> ClassType::getMethodsWithName(std::string id)
+	std::vector<Function*> ClassType::getMethodsWithName(const std::string& id)
 	{
-		std::vector<Function*> ret;
 		auto l = this->classMethodMap[id];
+
+		std::vector<Function*> ret;
+		ret.reserve(l.size());
 
 		for(auto f : l)
 			ret.push_back(f);
@@ -277,6 +275,25 @@ namespace fir
 	}
 
 
+	void ClassType::addTraitImpl(TraitType* trt)
+	{
+		if(zfu::contains(this->implTraits, trt))
+			error("'%s' already implements trait '%s'", this, trt);
+
+		this->implTraits.push_back(trt);
+	}
+
+	bool ClassType::implementsTrait(TraitType* trt)
+	{
+		return zfu::contains(this->implTraits, trt);
+	}
+
+	std::vector<TraitType*> ClassType::getImplementedTraits()
+	{
+		return this->implTraits;
+	}
+
+
 	ClassType* ClassType::getBaseClass()
 	{
 		return this->baseClass;
@@ -295,71 +312,6 @@ namespace fir
 	}
 
 
-	// expects the self param to be removed already!!!
-	// note: this one doesn't check if the return types are compatible; we expect typechecking to have already
-	// verified that, and we don't store the return type in the class virtual method map anyway.
-	static bool _areTypeListsVirtuallyCompatible(const std::vector<Type*>& base, const std::vector<Type*>& fn)
-	{
-		// parameters must be contravariant, ie. fn must take more general types than base
-		// return type must be covariant, ie. fn must return a more specific type than base.
-
-		// duh
-		if(base.size() != fn.size())
-			return false;
-
-		// drop the first argument.
-		for(auto [ base, derv ] : util::zip(base, fn))
-		{
-			if(base == derv)
-				continue;
-
-			if(!derv->isPointerType() || !derv->getPointerElementType()->isClassType()
-				|| !base->isPointerType() || !base->getPointerElementType()->isClassType())
-			{
-				return false;
-			}
-
-			auto bc = base->getPointerElementType()->toClassType();
-			auto dc = derv->getPointerElementType()->toClassType();
-
-			if(!bc->hasParent(dc))
-			{
-				debuglogln("%s is not a parent of %s", dc->str(), bc->str());
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	bool ClassType::areMethodsVirtuallyCompatible(FunctionType* base, FunctionType* fn)
-	{
-		bool ret = _areTypeListsVirtuallyCompatible(util::drop(base->getArgumentTypes(), 1), util::drop(fn->getArgumentTypes(), 1));
-
-		if(!ret)
-			return false;
-
-		auto baseRet = base->getReturnType();
-		auto fnRet = fn->getReturnType();
-
-		// ok now check the return type.
-		if(baseRet == fnRet)
-			return true;
-
-		if(baseRet->isPointerType() && baseRet->getPointerElementType()->isClassType()
-			&& fnRet->isPointerType() && fnRet->getPointerElementType()->isClassType())
-		{
-			auto br = baseRet->getPointerElementType()->toClassType();
-			auto dr = fnRet->getPointerElementType()->toClassType();
-
-			return dr->hasParent(br);
-		}
-		else
-		{
-			return false;
-		}
-	}
-
 	void ClassType::addVirtualMethod(Function* method)
 	{
 		//* note: the 'reverse' virtual method map is to allow us, at translation time, to easily create the vtable without
@@ -369,14 +321,13 @@ namespace fir
 		//* but if we do override something, we just set the method in our 'reverse' map, which is what we'll use to build
 		//* the vtable. simple?
 
-		auto list = util::drop(method->getType()->toFunctionType()->getArgumentTypes(), 1);
+		auto list = zfu::drop(method->getType()->toFunctionType()->getArgumentTypes(), 1);
 
 		// check every member of the current mapping -- not the fastest method i admit.
 		bool found = false;
-		for(auto vm : this->virtualMethodMap)
+		for(const auto& vm : this->virtualMethodMap)
 		{
-			if(vm.first.first == method->getName().name
-				&& _areTypeListsVirtuallyCompatible(vm.first.second, list))
+			if(vm.first.first == method->getName().name && areTypeListsContravariant(vm.first.second, list, /* trait checking: */ false))
 			{
 				found = true;
 				this->virtualMethodMap[{ method->getName().name, list }] = vm.second;
@@ -410,7 +361,7 @@ namespace fir
 		else
 		{
 			error("no method named '%s' matching signature '%s' in virtual method table of class '%s'",
-				name, (Type*) ft, this->getTypeName().name);
+				name, ft, this->getTypeName().name);
 		}
 	}
 

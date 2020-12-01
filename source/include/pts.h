@@ -7,11 +7,6 @@
 #include "defs.h"
 #include "precompile.h"
 
-namespace ast
-{
-	struct Expr;
-}
-
 // Parser Type System
 // why in the ever-living fuck does this even exist?
 // type system upon type system...

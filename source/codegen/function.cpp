@@ -17,19 +17,17 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		return CGResult(0);
 
 	std::vector<fir::Type*> ptypes;
-	// if(this->parentTypeForMethod)
-	// 	ptypes.push_back(this->isMutating ? this->parentTypeForMethod->getMutablePointerTo() : this->parentTypeForMethod->getPointerTo());
 
-	for(auto p : this->params)
+	for(const auto& p : this->params)
 		ptypes.push_back(p.type);
 
 	auto ft = fir::FunctionType::get(ptypes, this->returnType);
 
 	auto ident = this->id;
-	if(this->isEntry || this->noMangle)
+	if(this->attrs.hasAny(attr::FN_ENTRYPOINT, attr::NO_MANGLE))
 		ident = Identifier(this->id.name, IdKind::Name);
 
-	auto fn = cs->module->getOrCreateFunction(ident, ft,
+	auto fn = cs->module->getOrCreateFunction(ident.convertToName(), ft,
 		this->visibility == VisibilityLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
 	// manually set the names, I guess
@@ -84,7 +82,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->parentTypeForMethod)
 		cs->leaveMethodBody();
 
-	if(this->isEntry)
+	if(this->attrs.has(attr::FN_ENTRYPOINT))
 	{
 		if(cs->entryFunction.first != 0)
 		{
@@ -108,7 +106,7 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	fir::FunctionType* ft = 0;
 	std::vector<fir::Type*> ptypes;
-	for(auto p : this->params)
+	for(const auto& p : this->params)
 		ptypes.push_back(p.type);
 
 	if(this->isVarArg)
@@ -119,14 +117,14 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto realId = Identifier(this->realName, IdKind::Name);
 
-	auto ef = cs->module->getFunction(realId);
+	auto ef = cs->module->getFunction(realId.convertToName());
 	if(ef && ef->getType() != ft)
 	{
 		error(this, "foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
 			this->id.str(), ef->getType());
 	}
 
-	auto fn = cs->module->getOrCreateFunction(realId, ft, fir::LinkageType::External);
+	auto fn = cs->module->getOrCreateFunction(realId.convertToName(), ft, fir::LinkageType::External);
 
 	if(this->isIntrinsic)
 		fn->setIsIntrinsic();

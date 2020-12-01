@@ -2,12 +2,14 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <math.h>
+#include <float.h>
+#include <inttypes.h>
+
+#include <functional>
+
 #include "ir/value.h"
 #include "ir/constant.h"
-
-#include <cmath>
-#include <cfloat>
-#include <functional>
 
 namespace fir
 {
@@ -29,6 +31,11 @@ namespace fir
 		return ret;
 	}
 
+	std::string ConstantValue::str()
+	{
+		return "<unknown>";
+	}
+
 
 	ConstantBool* ConstantBool::get(bool val)
 	{
@@ -44,6 +51,15 @@ namespace fir
 		return this->value;
 	}
 
+	std::string ConstantBool::str()
+	{
+		return this->value ? "true" : "false";
+	}
+
+
+
+
+
 
 	ConstantBitcast* ConstantBitcast::get(ConstantValue* v, Type* t)
 	{
@@ -52,6 +68,11 @@ namespace fir
 
 	ConstantBitcast::ConstantBitcast(ConstantValue* v, Type* t) : ConstantValue(t), value(v)
 	{
+	}
+
+	std::string ConstantBitcast::str()
+	{
+		return this->value->str();
 	}
 
 
@@ -66,6 +87,13 @@ namespace fir
 	{
 		this->number = n;
 	}
+
+	std::string ConstantNumber::str()
+	{
+		// 6 decimal places, like default printf.
+		return this->number.toString("%.6R");
+	}
+
 
 
 	// todo: unique these values.
@@ -87,7 +115,7 @@ namespace fir
 
 	int64_t ConstantInt::getSignedValue()
 	{
-		return (int64_t) this->value;
+		return static_cast<int64_t>(this->value);
 	}
 
 	uint64_t ConstantInt::getUnsignedValue()
@@ -145,6 +173,21 @@ namespace fir
 		return ConstantInt::get(Type::getNativeUWord(), value);
 	}
 
+	std::string ConstantInt::str()
+	{
+		char buf[64] = {0};
+		if(this->getType() == Type::getInt8())          snprintf(buf, 63, "%" PRIi8,  static_cast<int8_t>(this->value));
+		else if(this->getType() == Type::getInt16())    snprintf(buf, 63, "%" PRIi16, static_cast<int16_t>(this->value));
+		else if(this->getType() == Type::getInt32())    snprintf(buf, 63, "%" PRIi32, static_cast<int32_t>(this->value));
+		else if(this->getType() == Type::getInt64())    snprintf(buf, 63, "%" PRIi64, static_cast<int64_t>(this->value));
+		else if(this->getType() == Type::getUint8())    snprintf(buf, 63, "%" PRIu8,  static_cast<uint8_t>(this->value));
+		else if(this->getType() == Type::getUint16())   snprintf(buf, 63, "%" PRIu16, static_cast<uint16_t>(this->value));
+		else if(this->getType() == Type::getUint32())   snprintf(buf, 63, "%" PRIu32, static_cast<uint32_t>(this->value));
+		else if(this->getType() == Type::getUint64())   snprintf(buf, 63, "%" PRIu64, static_cast<uint64_t>(this->value));
+		else                                            snprintf(buf, 63, "<unknown int>");
+
+		return std::string(buf);
+	}
 
 
 
@@ -187,7 +230,7 @@ namespace fir
 
 	ConstantFP::ConstantFP(Type* type, float val) : fir::ConstantValue(type)
 	{
-		this->value = (double) val;
+		this->value = static_cast<double>(val);
 	}
 
 	ConstantFP::ConstantFP(Type* type, double val) : fir::ConstantValue(type)
@@ -210,26 +253,37 @@ namespace fir
 		return ConstantFP::get(Type::getFloat64(), value);
 	}
 
+	std::string ConstantFP::str()
+	{
+		char buf[64] = {0};
+		if(this->getType() == Type::getFloat32())       snprintf(buf, 63, "%.6f", static_cast<float>(this->value));
+		else if(this->getType() == Type::getFloat64())  snprintf(buf, 63, "%.6f", static_cast<double>(this->value));
+		else                                            snprintf(buf, 63, "<unknown float>");
+
+		return std::string(buf);
+	}
 
 
 
 
 
-	ConstantStruct* ConstantStruct::get(StructType* st, std::vector<ConstantValue*> members)
+
+
+	ConstantStruct* ConstantStruct::get(StructType* st, const std::vector<ConstantValue*>& members)
 	{
 		return new ConstantStruct(st, members);
 	}
 
-	ConstantStruct::ConstantStruct(StructType* st, std::vector<ConstantValue*> members) : ConstantValue(st)
+	ConstantStruct::ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members) : ConstantValue(st)
 	{
 		if(st->getElementCount() != members.size())
-			error("mismatched structs: expected %zu fields, got %zu", st->getElementCount(), members.size());
+			error("mismatched structs: expected %d fields, got %d", st->getElementCount(), members.size());
 
 		for(size_t i = 0; i < st->getElementCount(); i++)
 		{
 			if(st->getElementN(i) != members[i]->getType())
 			{
-				error("mismatched types in field %zu: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
+				error("mismatched types in field %d: expected '%s', got '%s'", i, st->getElementN(i), members[i]->getType());
 			}
 		}
 
@@ -237,30 +291,57 @@ namespace fir
 		this->members = members;
 	}
 
-
-
-
-
-
-
-	ConstantString* ConstantString::get(std::string s)
+	std::string ConstantStruct::str()
 	{
-		return new ConstantString(s);
+		auto sty = this->getType()->toStructType();
+		util::hash_map<size_t, std::string> names;
+		for(const auto& p : sty->getIndexMap())
+			names[p.second] = p.first;
+
+		std::string ret = this->getType()->str() + " {\n";
+
+		for(size_t i = 0; i < sty->getElementCount(); i++)
+		{
+			auto v = this->members[i]->str();
+			auto t = sty->getElementN(i);
+			auto n = names[i];
+
+			ret += zpr::sprint("  %s: %s = %s\n", n, t, v);
+		}
+
+		return ret + "}";
 	}
 
-	ConstantString::ConstantString(std::string s) : ConstantValue(fir::Type::getCharSlice(false))
+
+
+
+
+
+	ConstantCharSlice* ConstantCharSlice::get(const std::string& s)
 	{
-		this->str = s;
+		return new ConstantCharSlice(s);
 	}
 
-	std::string ConstantString::getValue()
+	ConstantCharSlice::ConstantCharSlice(const std::string& s) : ConstantValue(fir::Type::getCharSlice(false))
 	{
-		return this->str;
+		this->value = s;
+	}
+
+	std::string ConstantCharSlice::getValue()
+	{
+		return this->value;
+	}
+
+	std::string ConstantCharSlice::str()
+	{
+		return zpr::sprint("\"%s\"", this->value);
 	}
 
 
 
-	ConstantTuple* ConstantTuple::get(std::vector<ConstantValue*> mems)
+
+
+	ConstantTuple* ConstantTuple::get(const std::vector<ConstantValue*>& mems)
 	{
 		return new ConstantTuple(mems);
 	}
@@ -270,9 +351,11 @@ namespace fir
 		return this->values;
 	}
 
-	static std::vector<Type*> mapTypes(std::vector<ConstantValue*> vs)
+	static std::vector<Type*> mapTypes(const std::vector<ConstantValue*>& vs)
 	{
 		std::vector<Type*> ret;
+		ret.reserve(vs.size());
+
 		for(auto v : vs)
 			ret.push_back(v->getType());
 
@@ -280,10 +363,16 @@ namespace fir
 	}
 
 	// well this is stupid.
-	ConstantTuple::ConstantTuple(std::vector<ConstantValue*> mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
+	ConstantTuple::ConstantTuple(const std::vector<ConstantValue*>& mems) : fir::ConstantValue(fir::TupleType::get(mapTypes(mems)))
 	{
 		this->values = mems;
 	}
+
+	std::string ConstantTuple::str()
+	{
+		return "(" + zfu::join(zfu::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + ")";
+	}
+
 
 
 
@@ -315,6 +404,11 @@ namespace fir
 		this->value = value;
 	}
 
+	std::string ConstantEnumCase::str()
+	{
+		// TODO: why the fuck did i design enums this way?!
+		return this->value->str();
+	}
 
 
 
@@ -338,14 +432,20 @@ namespace fir
 
 
 
-	ConstantArray* ConstantArray::get(Type* type, std::vector<ConstantValue*> vals)
+
+	ConstantArray* ConstantArray::get(Type* type, const std::vector<ConstantValue*>& vals)
 	{
 		return new ConstantArray(type, vals);
 	}
 
-	ConstantArray::ConstantArray(Type* type, std::vector<ConstantValue*> vals) : fir::ConstantValue(type)
+	ConstantArray::ConstantArray(Type* type, const std::vector<ConstantValue*>& vals) : fir::ConstantValue(type)
 	{
 		this->values = vals;
+	}
+
+	std::string ConstantArray::str()
+	{
+		return "[ " + zfu::join(zfu::map(this->values, [](auto x) -> auto { return x->str(); }), ", ") + " ]";
 	}
 
 
@@ -375,6 +475,34 @@ namespace fir
 	{
 	}
 
+	std::string ConstantDynamicArray::str()
+	{
+		return "<dyn array>";
+	}
+
+
+
+	ConstantDynamicString* ConstantDynamicString::get(const std::string& s)
+	{
+		return new ConstantDynamicString(s);
+	}
+
+	ConstantDynamicString::ConstantDynamicString(const std::string& s) : ConstantValue(fir::Type::getString())
+	{
+		this->value = s;
+	}
+
+	std::string ConstantDynamicString::getValue()
+	{
+		return this->value;
+	}
+
+	std::string ConstantDynamicString::str()
+	{
+		return zpr::sprint("\"%s\"", this->value);
+	}
+
+
 
 
 
@@ -390,6 +518,11 @@ namespace fir
 
 	ConstantArraySlice::ConstantArraySlice(ArraySliceType* t) : ConstantValue(t)
 	{
+	}
+
+	std::string ConstantArraySlice::str()
+	{
+		return "<slice>";
 	}
 }
 

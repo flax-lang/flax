@@ -19,6 +19,9 @@
 	#pragma warning(push, 0)
 	#pragma warning(disable: 4267)
 	#pragma warning(disable: 4244)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 
 #include "llvm/IR/Verifier.h"
@@ -40,11 +43,14 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/DynamicLibrary.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar/Scalarizer.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 
 #ifdef _MSC_VER
 	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
 #endif
 
 #include <stdio.h>
@@ -72,7 +78,7 @@ static void _printTiming(T ts, const std::string& thing)
 	if(frontend::getPrintProfileStats())
 	{
 		auto dur = std::chrono::high_resolution_clock::now() - ts;
-		auto ms = (double) dur.count() / 1000.0 / 1000.0;
+		auto ms = static_cast<double>(dur.count()) / 1000000.0;
 		printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
 	}
 }
@@ -84,7 +90,8 @@ namespace backend
 		return globalContext;
 	}
 
-	LLVMBackend::LLVMBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output) : Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
+	LLVMBackend::LLVMBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output)
+		: Backend(BackendCaps::EmitAssembly | BackendCaps::EmitObject | BackendCaps::EmitProgram | BackendCaps::JIT, dat, inputs, output)
 	{
 	}
 
@@ -204,7 +211,9 @@ namespace backend
 
 		if(frontend::getOutputMode() == ProgOutputMode::RunJit)
 		{
-			const char* argv = ("llvm-jit-" + this->linkedModule->getModuleIdentifier()).c_str();
+			std::string modname = ("llvm-jit-" + this->linkedModule->getModuleIdentifier());
+			const char* argv = modname.c_str();
+
 			auto entry = this->getEntryFunctionFromJIT();
 
 			_printTiming(ts, "llvm jit");
@@ -218,7 +227,7 @@ namespace backend
 		else if(frontend::getOutputMode() == ProgOutputMode::LLVMBitcode)
 		{
 			std::error_code e;
-			llvm::sys::fs::OpenFlags of = (llvm::sys::fs::OpenFlags) 0;
+			llvm::sys::fs::OpenFlags of = static_cast<llvm::sys::fs::OpenFlags>(0);
 			llvm::raw_fd_ostream rso(oname.c_str(), e, of);
 
 			llvm::WriteBitcodeToFile(*this->linkedModule.get(), rso);
@@ -235,14 +244,13 @@ namespace backend
 
 			llvm::SmallVector<char, 0> buffer;
 			{
-				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(buffer);
+				auto bufferStream = std::make_unique<llvm::raw_svector_ostream>(buffer);
 				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
 				{
 					llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-
-					using CodeGenFileType = llvm::TargetMachine::CodeGenFileType;
-					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr, CodeGenFileType::CGFT_ObjectFile);
+					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr,
+						llvm::CodeGenFileType::CGFT_ObjectFile);
 
 					pm.run(*this->linkedModule);
 				}
@@ -407,7 +415,7 @@ namespace backend
 		platform::compiler::addLibrarySearchPaths();
 
 		// default libraries come with the correct prefix/extension for the platform already, but user ones do not.
-		auto tolink = util::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
+		auto tolink = zfu::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
 			return platform::compiler::getSharedLibraryName(lib);
 		}) + platform::compiler::getDefaultSharedLibraries();
 
@@ -435,12 +443,11 @@ namespace backend
 		{
 			auto name = this->entryFunction->getName().str();
 
-			this->jitInstance = new LLVMJit(this->targetMachine);
+			this->jitInstance = LLVMJit::create();
 			this->jitInstance->addModule(std::move(this->linkedModule));
 
-			// this->jitInstance->
 			auto entryaddr = this->jitInstance->getSymbolAddress(name);
-			ret = (EntryPoint_t) entryaddr;
+			ret = reinterpret_cast<EntryPoint_t>(entryaddr);
 
 			iceAssert(ret && "failed to resolve entry function address");
 		}

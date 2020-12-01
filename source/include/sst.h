@@ -5,7 +5,6 @@
 #pragma once
 #include "defs.h"
 #include "sst_expr.h"
-#include "stcommon.h"
 
 
 #include "mpreal/mpreal.h"
@@ -58,6 +57,7 @@ namespace sst
 		~TypeDefn() { }
 
 		ast::TypeDefn* original = 0;
+		Scope innerScope;
 	};
 
 
@@ -77,7 +77,7 @@ namespace sst
 		RawValueExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<RAW VALUE EXPRESSION>"; }
 		~RawValueExpr() { }
 
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return this->rawValue; }
+		virtual CGResult _codegen(cgn::CodegenState*, fir::Type* = 0) override { return this->rawValue; }
 
 		CGResult rawValue;
 	};
@@ -219,7 +219,6 @@ namespace sst
 		VarDefn* initBlockIdx = 0;
 		Block* initBlock = 0;
 
-		bool isRaw = false;
 		bool isMutable = false;
 	};
 
@@ -402,12 +401,14 @@ namespace sst
 
 	struct ScopeExpr : Expr
 	{
-		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<SCOPE EXPRESSION>"; }
+		ScopeExpr(const Location& l, fir::Type* t, const Scope& scope) : Expr(l, t), scope(scope)
+			{ this->readableName = "<SCOPE EXPRESSION>"; }
+
 		~ScopeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::vector<std::string> scope;
+		Scope scope;
 	};
 
 	struct FieldDotOp : Expr
@@ -571,19 +572,6 @@ namespace sst
 	};
 
 
-
-
-	struct TreeDefn : Defn
-	{
-		TreeDefn(const Location& l) : Defn(l) { this->readableName = "<TREE DEFINITION>"; }
-		~TreeDefn() { }
-
-		virtual std::string getKind() override { return "namespace"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		StateTree* tree = 0;
-	};
-
 	struct NamespaceDefn : Stmt
 	{
 		NamespaceDefn(const Location& l) : Stmt(l) { this->readableName = "namespace"; }
@@ -624,8 +612,6 @@ namespace sst
 		fir::Type* returnType = 0;
 		fir::Type* parentTypeForMethod = 0;
 
-		bool isEntry = false;
-		bool noMangle = false;
 		bool isVarArg = false;
 
 		virtual std::string getKind() override { return "function"; }
@@ -696,7 +682,7 @@ namespace sst
 		~StructFieldDefn() { }
 
 		virtual std::string getKind() override { return "field"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override { return CGResult(0); }
+		virtual CGResult _codegen(cgn::CodegenState*, fir::Type* = 0) override { return CGResult(0); }
 
 		TypeDefn* parentType = 0;
 		bool isTransparentField = false;

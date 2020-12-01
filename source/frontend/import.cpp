@@ -84,7 +84,7 @@ namespace parser
 		for(size_t i = 0; i < tokens.size(); i++)
 		{
 			const Token& tok = tokens[i];
-			if(tok == TT::Import || ((tok == TT::Public || tok == TT::Private) && tokens[i + 1] == TT::Import))
+			if(tok == TT::Import || ((tok == TT::Public || tok == TT::Private) && i + 1 < tokens.size() && tokens[i + 1] == TT::Import))
 			{
 				bool pub = false;
 				if(tok == TT::Public)       i++, pub = true;
@@ -92,22 +92,23 @@ namespace parser
 
 				i++;
 
-				Location impLoc;
 				std::string name;
+				Location impLoc = tok.loc;
 				std::vector<std::string> impAs;
 
 				if(tokens[i] == TT::StringLiteral)
 				{
 					name = tokens[i].str();
-					impLoc = tokens[i].loc;
+					impLoc = impLoc.unionWith(tokens[i].loc);
 					i++;
 				}
 				else if(tokens[i] == TT::Identifier)
 				{
-					std::vector<std::string> bits = parseIdentPath(tokens, &i);
+					auto [ loc, bits ] = parseIdentPath(tokens, &i);
 
 					//* we concatanate the thing, using '/' as the path separator, and appending '.flx' to the end.
-					name = util::join(bits, "/") + ".flx";
+					name = zfu::join(bits, "/") + ".flx";
+					impLoc = impLoc.unionWith(loc);
 				}
 				else
 				{
@@ -119,7 +120,7 @@ namespace parser
 				{
 					i++;
 					if(tokens[i] == TT::Identifier)
-						impAs = parseIdentPath(tokens, &i);
+						impAs = parseIdentPath(tokens, &i).second;
 
 					else
 						expectedAfter(tokens[i - 1].loc, "identifier", "'import-as'", tokens[i - 1].str());

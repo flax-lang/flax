@@ -11,6 +11,7 @@
 # Makefile dependencies
 *.cpp.d
 *.c.d
+*.h.d
 
 # Compiled Dynamic libraries
 *.so
@@ -32,6 +33,9 @@
 *.app
 *.pdb
 
+# profile data
+*.profdata
+*.profraw
 
 
 # overrides:
@@ -41,9 +45,6 @@ run
 build/sysroot
 build/meson-*
 .modifydates
-
-# this is a generated file, so we ignore it.
-source/unity.cpp
 
 build/test
 build/gltest
@@ -71,6 +72,7 @@ bug-repro
 *.vcxproj.user
 
 countloc.bat
+builddir
 
 prof.svg
 prof_with_square.svg
@@ -78,6 +80,7 @@ build/cmake-output
 .idea
 # CMakeLists.txt
 
+.flax-repl-history
 
 docs/.antlr
 
@@ -99,4 +102,5 @@ flax.includes
 build/__pycache__
 *.vspx
 
+.cache
 compile_flags.txt

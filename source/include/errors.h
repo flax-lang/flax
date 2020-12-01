@@ -11,28 +11,18 @@
 template <typename... Ts>
 inline void debuglog(const char* s, Ts&&... ts)
 {
-	auto out = tinyformat::format(s, ts...);
+	// auto out = tinyformat::format(s, ts...);
+	auto out = strprintf(s, ts...);
 	fprintf(stderr, "%s", out.c_str());
 }
 
 template <typename... Ts>
 inline void debuglogln(const char* s, Ts&&... ts)
 {
-	auto out = tinyformat::format(s, ts...);
+	auto out = strprintf(s, ts...);
 	fprintf(stderr, "%s\n", out.c_str());
 }
 
-
-// error shortcuts
-
-// Expected $, found '$' instead
-[[noreturn]] void expected(const Location& loc, std::string, std::string);
-
-// Expected $ after $, found '$' instead
-[[noreturn]] void expectedAfter(const Location& loc, std::string, std::string, std::string);
-
-// Unexpected $
-[[noreturn]] void unexpected(const Location& loc, std::string);
 
 
 #define INTUNSPEC_TYPE_STRING			"int"
@@ -76,9 +66,6 @@ inline void debuglogln(const char* s, Ts&&... ts)
 
 
 
-namespace ast { struct Expr; }
-namespace sst { struct Expr; }
-
 namespace frontend
 {
 	const std::string& getFilenameFromID(size_t fileID);
@@ -91,7 +78,7 @@ std::string __error_gen_internal(const Location& loc, const std::string& msg, co
 template <typename... Ts>
 std::string __error_gen(const Location& loc, const char* msg, const char* type, bool, Ts&&... ts)
 {
-	return __error_gen_internal(loc, tinyformat::format(msg, ts...), type, true, false);
+	return __error_gen_internal(loc, strprintf(msg, ts...), type, true, false);
 }
 
 

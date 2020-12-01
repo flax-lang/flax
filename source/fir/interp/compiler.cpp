@@ -19,7 +19,7 @@ namespace interp
 		interp::Instruction ret;
 
 		ret.result = finstr->realOutput;
-		ret.opcode = (uint64_t) finstr->opKind;
+		ret.opcode = static_cast<uint64_t>(finstr->opKind);
 
 		for(auto a : finstr->operands)
 			ret.args.push_back(a);
@@ -33,7 +33,7 @@ namespace interp
 
 		interp::Block ret;
 		ret.blk = fib;
-		ret.instructions = util::map(fib->getInstructions(), [is, parent](fir::Instruction* i) -> interp::Instruction {
+		ret.instructions = zfu::map(fib->getInstructions(), [is, parent](fir::Instruction* i) -> interp::Instruction {
 			return compileInstruction(is, parent, i);
 		});
 
@@ -47,7 +47,7 @@ namespace interp
 		interp::Function ret;
 		ret.func = fn;
 
-		ret.blocks = util::map(fn->getBlockList(), [fn, this](fir::IRBlock* b) -> interp::Block {
+		ret.blocks = zfu::map(fn->getBlockList(), [fn, this](fir::IRBlock* b) -> interp::Block {
 			return compileBlock(this, fn, b);
 		});
 

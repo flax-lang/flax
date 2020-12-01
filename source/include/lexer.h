@@ -118,11 +118,16 @@ namespace lexer
 		Comment,
 		EndOfFile,
 
+		Attr_ATTRS_BEGIN,
+
 		Attr_Raw,
+		Attr_Packed,
 		Attr_EntryFn,
 		Attr_NoMangle,
 		Attr_Operator,
 		Attr_Platform,
+
+		Attr_ATTRS_END,
 
 		Directive_Run,
 		Directive_If,
@@ -132,23 +137,17 @@ namespace lexer
 	{
 		Location loc;
 		TokenType type = TokenType::Invalid;
-		util::string_view text;
+		std::string_view text;
 
 		operator TokenType() const { return this->type; }
 		bool operator == (const std::string& s) { return this->str() == s; }
-		std::string str() const { return util::to_string(this->text); }
+		std::string str() const { return std::string(this->text); }
 	};
 
-	inline void operator << (std::ostream& os, const TokenType& tt)
-	{
-		os << (int) tt;
-	}
-
-	// using TokenList = util::FastVector<Token>;
 	using TokenList = util::FastInsertVector<Token>;
 
-	lexer::TokenType getNextToken(const util::FastInsertVector<util::string_view>& lines, size_t* line, size_t* offset,
-		const util::string_view& whole, Location& pos, Token* out, bool crlf);
+	lexer::TokenType getNextToken(const util::FastInsertVector<std::string_view>& lines, size_t* line, size_t* offset,
+		const std::string_view& whole, Location& pos, Token* out, bool crlf);
 }
 
 

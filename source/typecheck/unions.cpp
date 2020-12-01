@@ -27,23 +27,29 @@ TCResult ast::UnionDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 
 	auto defnname = util::typeParamMapToString(this->name, gmaps);
 
+	bool israw = this->attrs.has(attr::RAW);
+
 	sst::TypeDefn* defn = 0;
-	if(this->israw) defn = util::pool<sst::RawUnionDefn>(this->loc);
-	else            defn = util::pool<sst::UnionDefn>(this->loc);
+	if(israw)   defn = util::pool<sst::RawUnionDefn>(this->loc);
+	else        defn = util::pool<sst::UnionDefn>(this->loc);
 
 	defn->bareName = this->name;
+	defn->attrs = this->attrs;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
-	if(this->israw) defn->type = fir::RawUnionType::createWithoutBody(defn->id);
-	else            defn->type = fir::UnionType::createWithoutBody(defn->id);
+	if(israw)   defn->type = fir::RawUnionType::createWithoutBody(defn->id.convertToName());
+	else        defn->type = fir::UnionType::createWithoutBody(defn->id.convertToName());
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
-	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+	defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 
@@ -65,16 +71,13 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	if(this->finishedTypechecking.find(tcr.defn()) != this->finishedTypechecking.end())
 		return TCResult(tcr.defn());
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(tcr.defn()->id.scope);
-	fs->pushTree(tcr.defn()->id.name);
-
-
 	sst::TypeDefn* ret = 0;
-	if(this->israw)
+	if(this->attrs.has(attr::RAW))
 	{
 		auto defn = dcast(sst::RawUnionDefn, tcr.defn());
 		iceAssert(defn);
+
+		fs->teleportInto(defn->innerScope);
 
 		//* in many ways raw unions resemble structs rather than tagged unions
 		//* and since we are using sst::StructFieldDefn for the variants, we will need
@@ -127,7 +130,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			size_t tfn = 0;
 			for(auto [ loc, pty ] : this->transparentFields)
 			{
-				auto sfd = make_field(util::obfuscateName("transparent_field", tfn++), loc, pty);
+				auto sfd = make_field(fir::obfuscateName("transparent_field", tfn++), loc, pty);
 				iceAssert(sfd);
 
 				sfd->isTransparentField = true;
@@ -158,6 +161,8 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 		auto defn = dcast(sst::UnionDefn, tcr.defn());
 		iceAssert(defn);
 
+		fs->teleportInto(defn->innerScope);
+
 		util::hash_map<std::string, std::pair<size_t, fir::Type*>> vars;
 		std::vector<std::pair<sst::UnionVariantDefn*, size_t>> vdefs;
 
@@ -174,7 +179,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 			vdef->parentUnion = defn;
 			vdef->variantName = variant.first;
 			vdef->id = Identifier(defn->id.name + "::" + variant.first, IdKind::Name);
-			vdef->id.scope = fs->getCurrentScope();
+			vdef->id.scope = fs->scope();
 
 			vdefs.push_back({ vdef, std::get<0>(variant.second) });
 
@@ -196,8 +201,7 @@ TCResult ast::UnionDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	iceAssert(ret);
 	this->finishedTypechecking.insert(ret);
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
 
 	return TCResult(ret);
 }

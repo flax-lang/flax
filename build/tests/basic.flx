@@ -1,0 +1,157 @@
+// basic.flx
+// Copyright (c) 2019, zhiayang, Apache License 2.0.
+
+export test_basic
+import libc as _
+import std::io as _
+
+// TODO: reorganise these tests if possible
+//       eg. move them to a more appropriate file? I think some of these might fit.
+public fn doBasicTest()
+{
+	// put a default argument here so we can test that.
+	fn print_array<T>(xs: [T:])
+	{
+		for x in xs => print("% ", x)
+		println()
+	}
+
+
+	// test logical operators
+	do {
+		fn t() -> bool { print("T "); return true }
+		fn f() -> bool { print("F "); return false }
+
+		if t() || f() => println("yes")
+		if t() && f() => println("no")
+
+		printf("\n\n")
+	}
+
+	// test tuple assignment
+	do {
+		var (a, b) = (10, 20)
+		println("a = %, b = %", a, b)
+
+		(b, a) = (a, b)
+		println("swapped: a = %, b = %\n", a, b)
+	}
+
+	// test assignment & appending
+	do {
+		do {
+			var xs: [str] = [ "foo", "bar" ]
+			xs += "qux"
+
+			var ys: [i64] = [ 1, 2, 3, 4 ]
+			ys += 5 as i64
+
+			print_array(xs)
+			print_array(ys)
+		}
+
+		println()
+
+		do {
+			var xs: [str] = [ "foo", "bar" ]
+			xs += [ "pepega", "kekw" ]
+
+			var ys: [i64] = [ 1, 2, 3, 4 ]
+			ys += [ 5, 6, 7, 8 ]
+
+			print_array(xs)
+			print_array(ys)
+		}
+
+		println()
+
+		do {
+			var s = string("some string")
+			s += "_appendage"
+
+			var t = string("an underscore: ")
+			t += '_'
+
+			println("s = %", s)
+			println("t = %", t)
+		}
+	}
+
+	println()
+
+	// test + on non-arithmetics
+	do {
+		let a = string("hello ") + "world"
+		println("a = %", a)
+
+		let b = string("an asterisk: ") + '*'
+		println("b = %\n", b)
+
+		let c: [int] = [ 2, 3, 5, 7 ]
+		let d: [int] = [ 11, 13, 17, 19 ]
+
+		print_array(c + d)
+	}
+
+	println()
+
+	// test builtin functions on aggregate data types
+	do {
+		var a: [int] = [ 2, 3, 5, 7 ]
+		print("% : ", a.pop())
+		print_array(a)
+
+		var b: [int: 3] = [ 1, 4, 9 ]
+		// drop to printf for %p support
+		printf("b.ptr = %p, b.length = %d\n\n", b.ptr, b.length)
+
+		var s = string("thank you ございました")
+		println("\"%\".count = % (expect 16)\n", s, s.count)
+
+		var r = 0...10 step 2
+		for i in r => print("% ", i)
+		println("\nstart: %, end: %, step: %", r.begin, r.end, r.step)
+
+		var c: any = 30
+		println("c.typeid = %, c.refcount = %", c.id, c.refcount)
+
+		enum E: u32
+		{
+			case ONE = 100
+			case TWO = 200
+		}
+
+		var e = E::TWO
+		println("e.index = %, e.value = %, e.name = %", e.index, e.value, e.name)
+	}
+
+
+	println()
+
+	// other strange things
+	do {
+		struct Foozle
+		{
+			x: fn(int) -> int
+
+			fn foo() -> int
+			{
+				return x(30)
+			}
+		}
+
+		fn triple(x: int) -> int => x * 3
+
+		let f = Foozle(x: triple)
+		println("f = %", f.foo())
+
+		let g = triple
+		println("g(76) = %", g(76))
+	}
+
+
+	println()
+}
+
+// well just a test.
+#run println("** hello, world!")

@@ -4,10 +4,12 @@
 
 
 
-WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wno-deprecated-declarations
+WARNINGS		:= -Wno-unused-parameter -Wno-sign-conversion -Wno-padded -Wno-conversion -Wno-shadow -Wno-missing-noreturn -Wno-unused-macros -Wno-switch-enum -Wno-deprecated -Wno-format-nonliteral -Wno-trigraphs -Wno-unused-const-variable -Wdeprecated-declarations -Werror=return-type
+
+GCCWARNINGS     := -Wno-init-list-lifetime
 
 
-CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat
+CLANGWARNINGS	:= -Wno-undefined-func-template -Wno-comma -Wno-nullability-completeness -Wno-redundant-move -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-reserved-id-macro -Wno-extra-semi -Wno-gnu-zero-variadic-macro-arguments -Wno-shift-sign-overflow -Wno-exit-time-destructors -Wno-global-constructors -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-c++98-compat -Wold-style-cast
 
 
 SYSROOT			:= build/sysroot
@@ -21,11 +23,9 @@ CXX				?= "clang++"
 LLVM_CONFIG		?= "llvm-config"
 
 
-CXXSRC			:= $(shell find source external -iname "*.cpp")
-CSRC			:= $(shell find source external -iname "*.c")
-
+CXXSRC			:= $(shell find source external/tinyprocesslib -iname "*.cpp")
 CXXOBJ			:= $(CXXSRC:.cpp=.cpp.o)
-COBJ			:= $(CSRC:.c=.c.o)
+CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
 PRECOMP_HDRS	:= source/include/precompile.h
 PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
@@ -33,29 +33,17 @@ PRECOMP_GCH		:= $(PRECOMP_HDRS:.h=.h.gch)
 FLXLIBLOCATION	:= $(SYSROOT)/$(PREFIX)/lib
 FLXSRC			:= $(shell find libs -iname "*.flx")
 
-CXXDEPS			:= $(CXXSRC:.cpp=.cpp.d)
 
-
-NUMFILES		:= $$(($(words $(CXXSRC)) + $(words $(CSRC))))
+NUMFILES		:= $$(($(words $(CXXSRC))))
 
 DEFINES         := -D__USE_MINGW_ANSI_STDIO=1
 SANITISE		:=
 
-CXXFLAGS		+= -std=c++17 -O0 -g -c -Wall -frtti -fexceptions -fno-omit-frame-pointer -Wno-old-style-cast $(SANITISE) $(DEFINES)
-CFLAGS			+= -std=c11 -O0 -g -c -Wall -fno-omit-frame-pointer -Wno-overlength-strings $(SANITISE) $(DEFINES)
+CXXFLAGS		+= -std=c++17 -fvisibility=hidden -O0 -g -c -Wall -frtti -fno-omit-frame-pointer $(SANITISE) $(DEFINES)
 
-LDFLAGS			+= $(SANITISE)
-
-FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
+LDFLAGS			+= $(SANITISE) -fvisibility=hidden
 
 
-SUPERTINYBIN	:= build/supertiny
-GLTESTBIN		:= build/gltest
-TESTBIN			:= build/tester
-
-SUPERTINYSRC	:= build/supertiny.flx
-GLTESTSRC		:= build/gltest.flx
-TESTSRC			:= build/tester.flx
 
 UNAME_IDENT		:= $(shell uname)
 COMPILER_IDENT	:= $(shell $(CC) --version | head -n 1)
@@ -76,19 +64,43 @@ endif
 MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)
 MPFR_LDFLAGS    := $(shell pkg-config --libs mpfr)
 
-CFLAGS   += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
 CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
 LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
 
+ENABLE_CODE_COVERAGE ?= "yes"
+
 ifneq (,$(findstring clang,$(COMPILER_IDENT)))
-	CXXFLAGS += -Wall -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
-	CFLAGS   += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	CXXFLAGS += -Xclang -fcolor-diagnostics $(SANITISE) $(CLANGWARNINGS)
+	ifeq ("$(ENABLE_CODE_COVERAGE)","yes")
+		CXXFLAGS += -fprofile-instr-generate -fcoverage-mapping
+		LDFLAGS  += -fprofile-instr-generate -fcoverage-mapping
+	endif
+else
+	CXXFLAGS += $(GCCWARNINGS)
+	ifeq ("$(ENABLE_CODE_COVERAGE)","yes")
+		CXXFLAGS += -fprofile-arcs -ftest-coverage
+		LDFLAGS  += -lgcov
+	endif
 endif
+
+
+UTF8REWIND_AR   := external/libutf8rewind.a
+
+
+FLXFLAGS		+= -sysroot $(SYSROOT) --ffi-escape
+
+SUPERTINYBIN	:= build/supertiny
+GLTESTBIN		:= build/gltest
+TESTBIN			:= build/tester
+
+SUPERTINYSRC	:= build/supertiny.flx
+GLTESTSRC		:= build/gltest.flx
+TESTSRC			:= build/tester.flx
 
 
 .DEFAULT_GOAL = jit
 -include $(CXXDEPS)
-
+-include source/include/precompile.h.d
 
 .PHONY: copylibs jit compile clean build linux ci satest tiny
 
@@ -108,6 +120,9 @@ compile: build
 
 test: build
 	@$(OUTPUT) $(FLXFLAGS) -run -o $(TESTBIN) $(TESTSRC)
+
+repl: build
+	@$(OUTPUT) $(FLXFLAGS) -repl
 
 gltest: build
 	@$(OUTPUT) $(FLXFLAGS) -run -framework GLUT -framework OpenGL -lsdl2 -o $(GLTESTBIN) $(GLTESTSRC)
@@ -129,10 +144,10 @@ copylibs: $(FLXSRC)
 	@mv $(FLXLIBLOCATION)/libs $(FLXLIBLOCATION)/flaxlibs
 
 
-$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
+$(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(shell $(LLVM_CONFIG) --cxxflags --ldflags --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp $(LDFLAGS) -lpthread -ldl -lffi
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind
 
 
 %.cpp.o: %.cpp
@@ -140,17 +155,13 @@ $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ)
 	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
 	@$(CXX) $(CXXFLAGS) $(WARNINGS) -include source/include/precompile.h -Isource/include -Iexternal -I$(shell $(LLVM_CONFIG) --includedir) -MMD -MP -o $@ $<
 
-
-%.c.o: %.c
-	@$(eval DONEFILES += "C")
-	@printf "# compiling [$(words $(DONEFILES))/$(NUMFILES)] $<\n"
-	@$(CC) $(CFLAGS) $(WARNINGS) -Iexternal/utf8rewind/include/utf8rewind -MMD -MP -o $@ $<
-
-
 %.h.gch: %.h
 	@printf "# precompiling header $<\n"
-	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $<
+	@$(CXX) $(CXXFLAGS) $(WARNINGS) -o $@ $< -MMD -MP
 
+
+$(UTF8REWIND_AR):
+	@$(MAKE) -C external/utf8rewind all
 
 # haha
 clena: clean

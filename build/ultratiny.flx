@@ -2,133 +2,103 @@
 // Copyright (c) 2019, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-// export ultratiny
-// import libc as _
+export ultratiny
+
+import libc as _
+import std::io as _
+
 // import std::math
 
-// trait Drop { fn deinit() }
-// trait Copy { fn copy(other: &self) }
-// trait Move { fn move(other: &self) }
+@compiler_support["raii_trait::drop"] trait Drop { fn deinit() }
+@compiler_support["raii_trait::copy"] trait Copy { fn copy(other: &self) }
+@compiler_support["raii_trait::move"] trait Move { fn move(other: &mut self) }
 
-// struct Foo : Drop, Copy, Move
-// {
-// 	fn deinit()
-// 	{
-// 		printf("lmao\n")
-// 	}
-
-// 	fn copy(other: &self)
-// 	{
-// 	}
-
-// 	fn move(other: &mut self)
-// 	{
-// 	}
-// }
-
-// @entry fn main()
-// {
-// 	printf("hola amigo\n")
-// }
-
-import std::io
-import libc as _
-
-class X
-{
-	init(c: int)
-	{
-		this.data = c
-	}
-
-	var data: int
-}
-
-class Y : X
-{
-	init(c: int) : super(c: c + 30) { }
-}
-
-class Z : Y
-{
-	init(c: int) : super(c: c - 90) { }
-}
-
-// issue #2: class inheritance is source-order-dependent (ie. the definition of the base class must
-//           appear before the definition of any children)
-
-// classes are a Bad Idea (tm) ):
-
-class P
-{
-	var z: int
-
-	init(x: int = 3, y: int = 7)
-	{
-		this.z = x * y
-	}
-
-	virtual fn foo(x: &Y) => printf("P::foo(%d)\n", x.data)
-}
-
-class Q : P
-{
-	init() : super(x: 5, y: 8) { }
-
-	// override fn foo(x: int) => printf("Q::foo(%d)\n", x)
-}
-
-class R : Q
-{
-	init() : super() { }
-
-	override fn foo(x: &X) => printf("R::foo(%d)\n", x.data)
-}
-
-
-
-class A
+class Foo1
 {
 	init() { }
-	virtual fn foo(a: &Y) -> &Y
-	{
-		std::io::println("A::foo()")
-		return alloc Y(c: 471)
-	}
+	deinit { printf("killed base\n"); }
 }
 
-class B : A
+class Foo : Foo1, Drop, Copy, Move
 {
-	init() : super() { }
+	var data: int
 
-	override fn foo(a: &X) -> &Z
+	init(x: int) : super()
 	{
-		std::io::println("B::foo()")
-		return alloc Z(c: 748)
+		printf("of make (%d)\n", x)
+		this.data = x
+	}
+
+	// fn deinit()
+	// {
+	// 	printf("is kill (%d)\n", data)
+	// }
+
+	fn copy(other: &self)
+	{
+		this.data = other.data
+		printf("am copy (%d)\n", data)
+	}
+
+	fn move(other: &mut self)
+	{
+		this.data = other.data
+		other.data = 0
+
+		printf("be move (%d)\n", data)
 	}
 }
+
+class Bar
+{
+	var data: int
+	init(x: int)
+	{
+		this.data = x
+	}
+}
+
+fn one() -> Foo
+{
+	return Foo(x: 33)
+}
+
+fn two(x: Foo)
+{
+	printf("x.data = %d\n", x.data)
+}
+
 
 
 @entry fn main()
 {
-	fn foo(x: int = 3, y: int = 7) -> int => x * y
+	let q = one()
+	q.data = 17
 
-	// let a = B()
-	// let q = a.foo(Y(c: 1)).data
+	two(q)
 
-	// let y: &X = alloc Y(c: 41)
-	// std::io::println("y = %", y.data)
-
-	// let q = Tmp(k: 3, m: 7).meth()
-
-	let q = B().foo(alloc Y(c: 1)).data
 	printf("q = %d\n", q)
 }
 
 
+/*
+	raii traits checklist:
+
+	problem with deinit: in any given class implementation, the user-defined deinit *needs* to call both:
+	(a) the inline destructor for the class
+	(b) the user-defined destructor for the base class
+	(c) the inline destructor for the base class
+
+	so this is a bunch of work that isn't done? also, in the base class case, the derived class cannot properly
+	define a deinit() function, because of redefinitions. what's the solution?
+
+	(1) everything becomes virtual (ew)
+	(2) method hiding (also ew)
+	(3) ???
 
 
-
+	3. remove the copy/move/destruct stuff from FIR?
+*/
 
 
 

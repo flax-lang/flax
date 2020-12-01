@@ -28,7 +28,7 @@ CGResult sst::EnumDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(cv);
 
 		// values[c->index] = fir::ConstantStruct(cv);
-		names[c->index] = fir::ConstantString::get(n);
+		names[c->index] = fir::ConstantCharSlice::get(n);
 	}
 
 
@@ -44,7 +44,7 @@ CGResult sst::EnumDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// this is for the names... I guess?
 	{
 		auto array = fir::ConstantArray::get(fir::ArrayType::get(fir::Type::getCharSlice(false), names.size()), names);
-		et->setNameArray(cs->module->createGlobalVariable(Identifier("_FV_ENUM_NAME_ARR_" + this->id.str(), IdKind::Name),
+		et->setNameArray(cs->module->createGlobalVariable(fir::Name::obfuscate("_FV_ENUM_NAME_ARR_", this->id.str()),
 			array->getType(), array, true, fir::LinkageType::Internal));
 	}
 

@@ -27,7 +27,7 @@ namespace parser
 		return util::pool<LitNumber>(st.ploc(), t.str());
 	}
 
-	static std::string parseHexEscapes(const Location& loc, util::string_view sv, size_t* ofs)
+	static std::string parseHexEscapes(const Location& loc, std::string_view sv, size_t* ofs)
 	{
 		if(sv[0] == 'x')
 		{
@@ -39,7 +39,7 @@ namespace parser
 
 			// ok then.
 			char s[2] = { sv[1], sv[2] };
-			char val = (char) std::stol(s, /* pos: */ 0, /* base: */ 16);
+			char val = static_cast<char>(std::stol(s, /* pos: */ 0, /* base: */ 16));
 
 			*ofs = 3;
 			return std::string(&val, 1);
@@ -112,7 +112,7 @@ namespace parser
 					case 'x':   // fallthrough
 					case 'u': {
 						size_t ofs = 0;
-						ss << parseHexEscapes(loc, util::string_view(str.c_str() + i, str.size() - i), &ofs);
+						ss << parseHexEscapes(loc, std::string_view(str.c_str() + i, str.size() - i), &ofs);
 						i += ofs - 1;
 						break;
 					}

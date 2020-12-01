@@ -5,68 +5,118 @@
 #include "errors.h"
 #include "backends/llvm.h"
 
+
+#ifdef _MSC_VER
+	#pragma warning(push, 0)
+	#pragma warning(disable: 4267)
+	#pragma warning(disable: 4244)
+#else
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+
+
+#ifdef _MSC_VER
+	#pragma warning(pop)
+#else
+	#pragma GCC diagnostic pop
+#endif
+
+
+static std::string dealWithLLVMError(const llvm::Error& err)
+{
+	std::string str;
+	auto out = llvm::raw_string_ostream(str);
+
+	out << err;
+	return out.str();
+}
+
 namespace backend
 {
-	LLVMJit::LLVMJit(llvm::TargetMachine* tm) :
-		targetMachine(tm),
-		symbolResolver(llvm::orc::createLegacyLookupResolver(this->execSession, [&](const std::string& name) -> llvm::JITSymbol {
-			if(auto sym = this->compileLayer.findSymbol(name, false))   return sym;
-			else if(auto err = sym.takeError())                         return std::move(err);
-
-			if(auto symaddr = llvm::RTDyldMemoryManager::getSymbolAddressInProcess(name))
-				return llvm::JITSymbol(symaddr, llvm::JITSymbolFlags::Exported);
-			else
-				return llvm::JITSymbol(nullptr);
-		}, [](llvm::Error err) { llvm::cantFail(std::move(err), "lookupFlags failed"); })),
-		dataLayout(this->targetMachine->createDataLayout()),
-		objectLayer(this->execSession, [this](llvm::orc::VModuleKey) -> auto {
-			return llvm::orc::RTDyldObjectLinkingLayer::Resources {
-				std::make_shared<llvm::SectionMemoryManager>(), this->symbolResolver }; }),
-		compileLayer(this->objectLayer, llvm::orc::SimpleCompiler(*this->targetMachine.get()))
+	LLVMJit::LLVMJit(llvm::orc::JITTargetMachineBuilder JTMB, llvm::DataLayout DL) : ObjectLayer(ES, []() {
+			return std::make_unique<llvm::SectionMemoryManager>();
+		}),
+        CompileLayer(ES, ObjectLayer, std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB))),
+        OptimiseLayer(ES, CompileLayer, optimiseModule),
+        DL(std::move(DL)), Mangle(ES, this->DL),
+        Ctx(std::make_unique<llvm::LLVMContext>()),
+        dylib(ES.createJITDylib("<jit>").get())
 	{
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+		dylib.addGenerator(llvm::cantFail(
+			llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix())));
+
+		// dunno who's bright idea it was to match symbol flags *EXACTLY* instead of something more sane
+		ObjectLayer.setOverrideObjectFlagsWithResponsibilityFlags(true);
+		ObjectLayer.setAutoClaimResponsibilityForObjectSymbols(true);
 	}
 
-	llvm::TargetMachine* LLVMJit::getTargetMachine()
+	void LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
 	{
-		return this->targetMachine.get();
+		// store it first lest it get stolen away
+		auto modIdent = mod->getModuleIdentifier();
+
+		// llvm::Error::operator bool() returns true if there's an error.
+		if(auto err = OptimiseLayer.add(this->dylib, llvm::orc::ThreadSafeModule(std::move(mod), Ctx)); err)
+			error("llvm: failed to add module '%s': %s", modIdent, dealWithLLVMError(err));
 	}
 
-	LLVMJit::ModuleHandle_t LLVMJit::addModule(std::unique_ptr<llvm::Module> mod)
+	llvm::JITEvaluatedSymbol LLVMJit::findSymbol(const std::string& name)
 	{
-		auto vmod = this->execSession.allocateVModule();
-		llvm::cantFail(this->compileLayer.addModule(vmod, std::move(mod)));
+		if(auto ret = ES.lookup({ &this->dylib }, Mangle(name)); !ret)
+			error("llvm: failed to find symbol '%s': %s", name, dealWithLLVMError(ret.takeError()));
 
-		return vmod;
+		else
+			return ret.get();
 	}
 
-	void LLVMJit::removeModule(LLVMJit::ModuleHandle_t mod)
+
+
+	LLVMJit* LLVMJit::create()
 	{
-		llvm::cantFail(this->compileLayer.removeModule(mod));
+		auto JTMB = llvm::orc::JITTargetMachineBuilder::detectHost();
+		if(!JTMB) error("llvm: failed to detect host", dealWithLLVMError(JTMB.takeError()));
+
+		auto DL = JTMB->getDefaultDataLayoutForTarget();
+		if(!DL) error("llvm: failed to get data layout", dealWithLLVMError(DL.takeError()));
+
+		return new LLVMJit(std::move(*JTMB), std::move(*DL));
 	}
 
-	llvm::JITSymbol LLVMJit::findSymbol(const std::string& name)
-	{
-		std::string mangledName;
-		llvm::raw_string_ostream out(mangledName);
-		llvm::Mangler::getNameWithPrefix(out, name, this->dataLayout);
 
-		return this->compileLayer.findSymbol(out.str(), false);
+	llvm::Expected<llvm::orc::ThreadSafeModule> LLVMJit::optimiseModule(llvm::orc::ThreadSafeModule TSM,
+		const llvm::orc::MaterializationResponsibility& R)
+	{
+		#if 0
+		 // Create a function pass manager.
+		auto FPM = llvm::make_unique<llvm::legacy::FunctionPassManager>(TSM.getModule());
+
+		// Add some optimizations.
+		FPM->add(llvm::createInstructionCombiningPass());
+		FPM->add(llvm::createReassociatePass());
+		FPM->add(llvm::createGVNPass());
+		FPM->add(llvm::createCFGSimplificationPass());
+		FPM->doInitialization();
+
+		// Run the optimizations over all functions in the module being added to
+		// the JIT.
+		for(auto& F : *TSM.getModule())
+			FPM->run(F);
+		#endif
+
+		return TSM;
 	}
 
 	llvm::JITTargetAddress LLVMJit::getSymbolAddress(const std::string& name)
 	{
-		auto addr = this->findSymbol(name).getAddress();
-		if(!addr)
-		{
-			std::string err;
-			auto out = llvm::raw_string_ostream(err);
-
-			out << addr.takeError();
-			error("llvm: failed to find symbol '%s' (%s)", name, out.str());
-		}
-
-		return addr.get();
+		return this->findSymbol(name).getAddress();
 	}
 }
 

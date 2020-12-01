@@ -9,7 +9,7 @@
 
 static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 {
-	auto fname = util::obfuscateIdentifier("alloc_checkneg");
+	auto fname = fir::Name::obfuscate("alloc_checkneg");
 	fir::Function* checkf = cs->module->getFunction(fname);
 
 	if(!checkf)
@@ -17,7 +17,8 @@ static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 		auto restore = cs->irb.getCurrentBlock();
 
 		fir::Function* func = cs->module->getOrCreateFunction(fname,
-			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()), fir::LinkageType::Internal);
+			fir::FunctionType::get({ fir::Type::getNativeWord(), fir::Type::getCharSlice(false) }, fir::Type::getVoid()),
+			fir::LinkageType::Internal);
 
 		func->setAlwaysInline();
 
@@ -131,7 +132,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		//* if we don't have a count, then we just return a T* -- no arrays, nothing.
 
 		auto sz = cs->irb.Multiply(cs->irb.Sizeof(type), cnt);
-		auto mem = cs->irb.Call(cgn::glue::misc::getMallocWrapperFunction(cs), sz, fir::ConstantString::get(alloc->loc.shortString()));
+		auto mem = cs->irb.Call(cgn::glue::misc::getMallocWrapperFunction(cs), sz, fir::ConstantCharSlice::get(alloc->loc.shortString()));
 		mem = cs->irb.PointerTypeCast(mem, type->getMutablePointerTo());
 
 		callSetFunction(type, alloc, mem, cnt);
@@ -153,7 +154,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 		// make sure the length isn't negative
 		auto checkf = getCheckNegativeLengthFunction(cs);
 		iceAssert(checkf);
-		cs->irb.Call(checkf, count, fir::ConstantString::get(ecount->loc.toString()));
+		cs->irb.Call(checkf, count, fir::ConstantCharSlice::get(ecount->loc.toString()));
 
 		auto arr = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
 		auto expandfn = cgn::glue::saa_common::generateReserveAtLeastFunction(cs, arr->getType());
@@ -188,7 +189,7 @@ CGResult sst::AllocOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->counts.size() > 1)
 		error(this, "multi-dimensional arrays are not supported yet.");
 
-	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->isRaw));
+	return CGResult(performAllocation(cs, this, this->elmType, this->counts, this->attrs.has(attr::RAW)));
 }
 
 

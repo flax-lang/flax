@@ -23,7 +23,7 @@ namespace backend
 		if(frontend::getPrintProfileStats())
 		{
 			auto dur = std::chrono::high_resolution_clock::now() - ts;
-			auto ms = (double) dur.count() / 1000.0 / 1000.0;
+			auto ms = static_cast<double>(dur.count()) / 1000000.0;
 			printf("%s took %.1f ms%s\n", thing.c_str(), ms, ms > 3000 ? strprintf("  (aka %.2f s)", ms / 1000.0).c_str() : "");
 		}
 	}
@@ -32,7 +32,7 @@ namespace backend
 	using namespace fir;
 	using namespace fir::interp;
 
-	FIRInterpBackend::FIRInterpBackend(CompiledData& dat, std::vector<std::string> inputs, std::string output)
+	FIRInterpBackend::FIRInterpBackend(CompiledData& dat, const std::vector<std::string>& inputs, const std::string& output)
 		: Backend(BackendCaps::JIT, dat, inputs, output)
 	{
 		platform::compiler::performSelfDlOpen();
@@ -51,7 +51,7 @@ namespace backend
 	void FIRInterpBackend::performCompilation()
 	{
 		this->is = new InterpState(this->compiledData.module);
-		this->is->initialise();
+		this->is->initialise(/* runGlobalInit:*/ true);
 
 		// it suffices to compile just the entry function.
 		this->is->compileFunction(this->compiledData.module->getEntryFunction());

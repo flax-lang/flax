@@ -55,7 +55,7 @@ namespace parser
 
 		st.enterFunctionBody();
 
-		ret->body = parseBracedBlock(st);
+		ret->body = parseBracedBlock(st).val();
 		ret->name = ret->symbol;
 
 		st.leaveFunctionBody();
@@ -158,6 +158,7 @@ namespace parser
 		return "";
 	}
 
+	// TODO: move this over to the new attribute system if possible.
 	size_t parseOperatorDecl(const lexer::TokenList& tokens, size_t idx, int* _kind, CustomOperatorDecl* out)
 	{
 		iceAssert(tokens[idx] == TT::Attr_Operator);

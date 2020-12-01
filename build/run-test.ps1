@@ -26,8 +26,8 @@ if($buildType -eq "debugopt") {
 ninja -C $buildDir
 
 if($?) {
-	cls
-	& $buildDir\flaxc.exe -Ox -sysroot build\sysroot -run "build\$theProgram.flx" $extraArgs
+	# cls
+	& $buildDir\flaxc.exe -Ox -sysroot build\sysroot -run "build\$theProgram.flx" --ffi-escape $extraArgs
 }
 
 if($buildType -eq "release") {

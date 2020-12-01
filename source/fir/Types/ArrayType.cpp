@@ -19,12 +19,12 @@ namespace fir
 
 	std::string ArrayType::str()
 	{
-		return strprintf("[%s: %ld]", this->arrayElementType->str(), this->getArraySize());
+		return strprintf("[%s: %d]", this->arrayElementType->str(), this->getArraySize());
 	}
 
 	std::string ArrayType::encodedStr()
 	{
-		return strprintf("[%s: %ld]", this->arrayElementType->encodedStr(), this->getArraySize());
+		return strprintf("[%s: %d]", this->arrayElementType->encodedStr(), this->getArraySize());
 	}
 
 

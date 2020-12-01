@@ -9,48 +9,41 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils.h"
-
-#ifndef __has_include
-#error "Please switch to a compiler that supports '__has_include'"
-#endif
-
-/*
-	STRING_VIEW_TYPE documentation
-
-	0: normal, std::string_view
-	1: experimental, std::experimental::string_view
-	2: external, stx::string_view
-*/
-#if __has_include(<string_view>) && _HAS_CXX17
-	#include <string_view>
-	#define STRING_VIEW_TYPE 0
-#elif __has_include(<experimental/string_view>) && _HAS_CXX17
-	#include <experimental/string_view>
-	#define STRING_VIEW_TYPE 1
-#else
-	// #error "Please switch to a compiler that supports 'string_view', or change your c++ standard version"
-	#include "stx/string_view.hpp"
-	#define STRING_VIEW_TYPE 2
-#endif
-
-
-
+#include "container.h"
 
 struct Identifier;
 enum class VisibilityLevel;
 
-namespace fir { struct Type; }
+namespace fir { struct Type; struct Name; }
 namespace pts { struct Type; }
-namespace tinyformat
-{
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, fir::Type* ty);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const Identifier& id);
-	void formatValue(std::ostream& out, const char* /*fmtBegin*/, const char* fmtEnd, int ntrunc, const VisibilityLevel& vl);
-}
 
-#define TINYFORMAT_ERROR(x)
-#include "tinyformat/tinyformat.h"
+
+namespace zpr
+{
+	template <typename T>
+	struct print_formatter<T, typename std::enable_if<
+		(std::is_same_v<fir::Type*, T>) ||
+		(std::is_pointer_v<T> && std::is_base_of_v<fir::Type, std::remove_pointer_t<T>>)
+	>::type>
+	{
+		std::string print(const T& x, const format_args&)
+		{
+			return x->str();
+		}
+	};
+
+	template <>
+	struct print_formatter<Identifier>
+	{
+		std::string print(const Identifier& x, const format_args& args);
+	};
+
+	template <>
+	struct print_formatter<VisibilityLevel>
+	{
+		std::string print(const VisibilityLevel& x, const format_args& args);
+	};
+}
 
 
 
@@ -58,71 +51,47 @@ namespace tinyformat
 [[noreturn]] void doTheExit(bool trace = true);
 
 template <typename... Ts>
-[[noreturn]] inline void _error_and_exit(const char* s, Ts&&... ts)
+[[noreturn]] inline void _error_and_exit(const char* fmt, Ts&&... ts)
 {
-	tinyformat::format(std::cerr, s, ts...);
+	// tinyformat::format(std::cerr, fmt, ts...);
+	fprintf(stderr, "%s\n", zpr::sprint(fmt, ts...).c_str());
 	doTheExit();
 }
+namespace platform { void printStackTrace(); }
 
+template <typename... Ts>
+[[noreturn]] inline void compiler_crash(const char* fmt, Ts&&... ts)
+{
+	fprintf(stderr, "%s\n", zpr::sprint(fmt, ts...).c_str());
+
+	platform::printStackTrace();
+	abort();
+}
 
 
 template <typename... Ts>
 std::string strprintf(const char* fmt, Ts&&... ts)
 {
-	return tinyformat::format(fmt, ts...);
+	// return tinyformat::format(fmt, ts...);
+	return zpr::sprint(fmt, ts...);
 }
 
 
 #define __nothing
 
 #ifdef NDEBUG
-#define iceAssert(x)        ((void) (x))
+#define iceAssert(x)    ((void) (x))
 #else
-#define iceAssert(x)		((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
+#define iceAssert(x)    ((x) ? ((void) (0)) : _error_and_exit("compiler assertion at %s:%d, cause:\n'%s' evaluated to false\n", __FILE__, __LINE__, #x))
 #endif
 
-#define TAB_WIDTH	4
-
-
-#define dcast(t, v)		dynamic_cast<t*>(v)
-
-#define USE_SKA_HASHMAP false
-#if USE_SKA_HASHMAP
-	#include "ska/flat_hash_map.hpp"
-#endif
+#define TAB_WIDTH       4
+#define dcast(t, v)     (dynamic_cast<t*>(v))
 
 namespace util
 {
-	#ifndef STRING_VIEW_TYPE
-		#error "what?"
-	#endif
-
-	#if STRING_VIEW_TYPE == 0
-		using string_view = std::string_view;
-	#elif STRING_VIEW_TYPE == 1
-		using string_view = std::experimental::string_view;
-	#elif STRING_VIEW_TYPE == 2
-		using string_view = stx::string_view;
-	#else
-		#error "No string_view, or unknown type"
-	#endif
-
-
-
-	#if USE_SKA_HASHMAP
-		using hash_map = ska::flat_hash_map;
-
-		template <typename K, typename V>
-		std::vector<std::pair<K, V>> pairs(const util::hash_map<K, V>& map)
-		{
-			auto ret = std::vector<std::pair<K, V>>(map.begin(), map.end());
-			return ret;
-		}
-	#else
-		template<typename K, typename V>
-		using hash_map = std::unordered_map<K, V>;
-	#endif
-
+	template<typename K, typename V>
+	using hash_map = std::unordered_map<K, V>;
 }
 
 namespace fir
@@ -169,23 +138,44 @@ enum class IdKind
 
 template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 {
-	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + tinyformat::format(fmt, ts...) + std::string(COLOUR_RESET);
+	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + strprintf(fmt, ts...) + std::string(COLOUR_RESET);
+}
+
+namespace sst
+{
+	struct StateTree;
+
+	struct Scope
+	{
+		Scope() { }
+		Scope(StateTree* st);
+
+		StateTree* stree = 0;
+		const Scope* prev = 0;
+
+		mutable std::vector<std::string> cachedComponents;
+
+		std::string string() const;
+		const std::vector<std::string>& components() const;
+		const Scope& appending(const std::string& name) const;
+	};
 }
 
 struct Identifier
 {
 	Identifier() : name(""), kind(IdKind::Invalid) { }
-	Identifier(std::string n, IdKind k) : name(n), kind(k) { }
+	Identifier(const std::string& n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
-	std::vector<std::string> scope;
+	sst::Scope scope;
 	std::vector<fir::Type*> params;
+	fir::Type* returnType = nullptr;
 
 	IdKind kind;
 
 	std::string str() const;
-	std::string mangled() const;
-	std::string mangledName() const;
+	std::string mangled___() const;
+	fir::Name convertToName() const;
 
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const;
@@ -207,6 +197,11 @@ struct Location
 	bool operator != (const Location& other) const
 	{
 		return !(*this == other);
+	}
+
+	Location unionWith(const Location& x) const
+	{
+		return unionOf(*this, x);
 	}
 
 	static Location unionOf(const Location& a, const Location& b)
@@ -274,9 +269,6 @@ enum class MsgType
 
 namespace util
 {
-	template <typename T> struct MemoryPool;
-	template <typename T> struct FastInsertVector;
-
 	struct ESpan
 	{
 		ESpan() { }
@@ -292,6 +284,8 @@ namespace util
 	SimpleError* make_SimpleError(const Location& l, const std::string& m, MsgType t = MsgType::Error);
 	OverloadError* make_OverloadError(SimpleError* se, MsgType t = MsgType::Error);
 	ExampleMsg* make_ExampleMsg(const std::string& eg, MsgType t = MsgType::Note);
+
+
 }
 
 
@@ -318,8 +312,8 @@ struct ErrorMsg
 	protected:
 	ErrorMsg(ErrKind k, MsgType t) : kind(k), type(t) { }
 
-	friend struct util::MemoryPool<ErrorMsg>;
-	friend struct util::FastInsertVector<ErrorMsg>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct BareError : ErrorMsg
@@ -340,19 +334,19 @@ struct BareError : ErrorMsg
 	BareError() : ErrorMsg(ErrKind::Bare, MsgType::Error) { }
 	BareError(const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), msg(m) { }
 
-	friend struct util::MemoryPool<BareError>;
-	friend struct util::FastInsertVector<BareError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct SimpleError : ErrorMsg
 {
 	template <typename... Ts>
-	static SimpleError* make(const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...)); }
+	static SimpleError* make(const Location& l, const char* fmt, Ts&&... ts)
+	{ return util::make_SimpleError(l, strprintf(fmt, ts...)); }
 
 	template <typename... Ts>
-	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts&&... ts) { return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
-
-
+	static SimpleError* make(MsgType t, const Location& l, const char* fmt, Ts&&... ts)
+	{ return util::make_SimpleError(l, strprintf(fmt, ts...), t); }
 
 
 	virtual void post() override;
@@ -370,8 +364,8 @@ struct SimpleError : ErrorMsg
 	SimpleError() : ErrorMsg(ErrKind::Simple, MsgType::Error) { }
 	SimpleError(const Location& l, const std::string& m, MsgType t) : ErrorMsg(ErrKind::Bare, t), loc(l), msg(m) { }
 
-	friend struct util::MemoryPool<SimpleError>;
-	friend struct util::FastInsertVector<SimpleError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 struct ExampleMsg : ErrorMsg
@@ -388,8 +382,8 @@ struct ExampleMsg : ErrorMsg
 	ExampleMsg() : ErrorMsg(ErrKind::Example, MsgType::Note) { }
 	ExampleMsg(const std::string& eg, MsgType t) : ErrorMsg(ErrKind::Example, t), example(eg) { }
 
-	friend struct util::MemoryPool<ExampleMsg>;
-	friend struct util::FastInsertVector<ExampleMsg>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 
@@ -418,8 +412,8 @@ struct SpanError : ErrorMsg
 	SpanError(SimpleError* se, const std::vector<util::ESpan>& s, MsgType t) : ErrorMsg(ErrKind::Span, t), top(se), spans(s) { }
 
 
-	friend struct util::MemoryPool<SpanError>;
-	friend struct util::FastInsertVector<SpanError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 
@@ -445,12 +439,19 @@ struct OverloadError : ErrorMsg
 	OverloadError() : ErrorMsg(ErrKind::Overload, MsgType::Error) { }
 	OverloadError(SimpleError* se, MsgType t) : ErrorMsg(ErrKind::Overload, t), top(se) { }
 
-	friend struct util::MemoryPool<OverloadError>;
-	friend struct util::FastInsertVector<OverloadError>;
+	template <typename, size_t> friend struct util::MemoryPool;
+	template <typename, size_t> friend struct util::FastInsertVector;
 };
 
 
 
+
+struct ErrorException : public std::exception
+{
+	ErrorException(ErrorMsg* msg) : err(msg) { }
+
+	ErrorMsg* err;
+};
 
 
 struct TCResult
@@ -497,7 +498,7 @@ struct TCResult
 		else if(this->isDefn()) this->_df = r._df;
 	}
 
-	TCResult(TCResult&& r)
+	TCResult(TCResult&& r) noexcept
 	{
 		this->_kind = r._kind;
 
@@ -514,10 +515,12 @@ struct TCResult
 		return *this;
 	}
 
-	TCResult& operator = (TCResult&& r)
+	TCResult& operator = (TCResult&& r) noexcept
 	{
 		if(&r != this)
 		{
+			this->_kind = r._kind;
+
 			if(this->isError())     { this->_pe = r._pe; r._pe = 0; }
 			else if(this->isStmt()) { this->_st = r._st; r._st = 0; }
 			else if(this->isExpr()) { this->_ex = r._ex; r._ex = 0; }
@@ -644,19 +647,7 @@ struct PolyArgMapping_t
 
 namespace util
 {
-	inline std::string to_string(const string_view& sv)
-	{
-		return std::string(sv.data(), sv.length());
-	}
-
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
-
-	std::string obfuscateName(const std::string& name);
-	std::string obfuscateName(const std::string& name, size_t id);
-	std::string obfuscateName(const std::string& name, const std::string& extra);
-	Identifier obfuscateIdentifier(const std::string& name, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, size_t id, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind = IdKind::Name);
 
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)

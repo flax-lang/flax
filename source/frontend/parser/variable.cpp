@@ -168,7 +168,7 @@ namespace parser
 		}
 		else if(st.front() != TT::Identifier)
 		{
-			expectedAfter(st, "identifier", "'" + std::string(isImmut ? "val" : "var") + "'", st.front().str());
+			expectedAfter(st, "identifier", "'" + std::string(isImmut ? "let" : "var") + "'", st.front().str());
 		}
 
 		auto loc = st.front().loc;

@@ -94,7 +94,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, true);
 			if(checkf)
 			{
-				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				auto strloc = fir::ConstantCharSlice::get(bind.loc.toString());
 				cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
 			}
 		}
@@ -155,7 +155,7 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
 			if(checkf)
 			{
-				auto strloc = fir::ConstantString::get(bind.loc.toString());
+				auto strloc = fir::ConstantCharSlice::get(bind.loc.toString());
 				cs->irb.Call(checkf, arrlen, numbinds, strloc);
 			}
 		}

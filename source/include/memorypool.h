@@ -15,7 +15,7 @@ namespace util
 	template <typename T, typename... Args>
 	T* pool(Args&&... args)
 	{
-		static MemoryPool<T> _pool(512);
+		static MemoryPool<T, 1 << 9> _pool;
 		addPool(&_pool);
 		return _pool.construct(std::forward<Args>(args)...);
 	}

@@ -2,16 +2,14 @@
 // Copyright (c) 2014 - 2016, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-#include "gluecode.h"
+#include "string_consts.h"
 
 #include "ir/module.h"
 #include "ir/irbuilder.h"
 
-#include <sstream>
-
 namespace fir
 {
-	Module::Module(std::string nm)
+	Module::Module(const std::string& nm)
 	{
 		this->moduleName = nm;
 	}
@@ -28,7 +26,7 @@ namespace fir
 			std::vector<std::string> trymains = { "main", "_FF" + this->getModuleName() + "4main_FAv" };
 			for(const auto& m : trymains)
 			{
-				entryfunc = this->getFunction(Identifier(m, IdKind::Name));
+				entryfunc = this->getFunction(Name::of(m));
 				if(entryfunc) break;
 			}
 
@@ -53,7 +51,7 @@ namespace fir
 
 			builder.setCurrentBlock(newentry);
 
-			auto gif = this->getFunction(util::obfuscateIdentifier(BUILTIN_GLOBAL_INIT_FUNCTION_NAME));
+			auto gif = this->getFunction(Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION));
 			if(!gif) error("fir: failed to find global init function");
 
 			builder.Call(gif);
@@ -71,7 +69,7 @@ namespace fir
 
 
 
-	GlobalVariable* Module::createGlobalVariable(const Identifier& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Name& ident, Type* type, ConstantValue* initVal, bool isImmut, LinkageType linkage)
 	{
 		GlobalVariable* gv = new GlobalVariable(ident, this, type, isImmut, linkage, initVal);
 		if(this->globals.find(ident) != this->globals.end())
@@ -81,17 +79,17 @@ namespace fir
 		return gv;
 	}
 
-	GlobalVariable* Module::createGlobalVariable(const Identifier& id, Type* type, bool isImmut, LinkageType linkage)
+	GlobalVariable* Module::createGlobalVariable(const Name& id, Type* type, bool isImmut, LinkageType linkage)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, linkage);
 	}
 
-	GlobalVariable* Module::declareGlobalVariable(const Identifier& id, Type* type, bool isImmut)
+	GlobalVariable* Module::declareGlobalVariable(const Name& id, Type* type, bool isImmut)
 	{
 		return this->createGlobalVariable(id, type, 0, isImmut, LinkageType::External);
 	}
 
-	GlobalVariable* Module::tryGetGlobalVariable(const Identifier& id)
+	GlobalVariable* Module::tryGetGlobalVariable(const Name& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			return 0;
@@ -99,7 +97,7 @@ namespace fir
 		return this->globals[id];
 	}
 
-	GlobalVariable* Module::getGlobalVariable(const Identifier& id)
+	GlobalVariable* Module::getGlobalVariable(const Name& id)
 	{
 		if(this->globals.find(id) == this->globals.end())
 			error("fir: no such global with name '%s'", id.str());
@@ -126,7 +124,7 @@ namespace fir
 			// TODO: should we make the vtable immutable?
 
 			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(util::obfuscateIdentifier("vtable", cls->getTypeName().mangled()),
+			auto vtab = this->createGlobalVariable(Name::obfuscate("vtable", cls->getTypeName().mangled()),
 				table->getType(), table, true, LinkageType::External);
 
 			this->vtables[cls] = { fmethods, vtab };
@@ -163,7 +161,7 @@ namespace fir
 
 
 
-	Type* Module::getNamedType(const Identifier& id)
+	Type* Module::getNamedType(const Name& id)
 	{
 		if(this->namedTypes.find(id) == this->namedTypes.end())
 			error("fir: no such type with name '%s'", id.str());
@@ -171,7 +169,7 @@ namespace fir
 		return this->namedTypes[id];
 	}
 
-	void Module::addNamedType(const Identifier& id, Type* type)
+	void Module::addNamedType(const Name& id, Type* type)
 	{
 		if(this->namedTypes.find(id) != this->namedTypes.end())
 			error("fir: type '%s' exists already", id.str());
@@ -206,12 +204,12 @@ namespace fir
 	}
 
 
-	Function* Module::declareFunction(const Identifier& id, FunctionType* ftype)
+	Function* Module::declareFunction(const Name& id, FunctionType* ftype)
 	{
 		return this->getOrCreateFunction(id, ftype, fir::LinkageType::External);
 	}
 
-	Function* Module::getFunction(const Identifier& id)
+	Function* Module::getFunction(const Name& id)
 	{
 		if(this->functions.find(id) == this->functions.end())
 			return 0;
@@ -219,22 +217,21 @@ namespace fir
 		return this->functions[id];
 	}
 
-	std::vector<Function*> Module::getFunctionsWithName(const Identifier& id)
+	std::vector<Function*> Module::getFunctionsWithName(const Name& id)
 	{
 		// todo: *very* inefficient.
 
 		std::vector<Function*> ret;
-		for(auto fn : this->functions)
+		for(const auto& [ ident, fn ] : this->functions)
 		{
-			// if(fn.first.name == id.name && fn.first.scope == id.scope)
-			if(fn.first == id)
-				ret.push_back(fn.second);
+			if(ident == id)
+				ret.push_back(fn);
 		}
 
 		return ret;
 	}
 
-	Function* Module::getOrCreateFunction(const Identifier& id, FunctionType* ftype, LinkageType linkage)
+	Function* Module::getOrCreateFunction(const Name& id, FunctionType* ftype, LinkageType linkage)
 	{
 		if(this->functions.find(id) != this->functions.end())
 		{
@@ -278,14 +275,14 @@ namespace fir
 
 
 
-	GlobalVariable* Module::createGlobalString(std::string str)
+	GlobalVariable* Module::createGlobalString(const std::string& str)
 	{
 		static int stringId = 0;
 
 		if(this->globalStrings.find(str) != this->globalStrings.end())
 			return this->globalStrings[str];
 
-		GlobalVariable* gs = new GlobalVariable(Identifier("static_string" + std::to_string(stringId++), IdKind::Name), this,
+		GlobalVariable* gs = new GlobalVariable(Name::obfuscate("static_string", std::to_string(stringId++)), this,
 			Type::getInt8Ptr(), true, LinkageType::Internal, 0);
 
 		gs->setKind(Value::Kind::prvalue);
@@ -310,12 +307,12 @@ namespace fir
 		std::string ret;
 		ret = "# MODULE = " + this->getModuleName() + "\n";
 
-		for(auto string : this->globalStrings)
+		for(const auto& [ str, gv ] : this->globalStrings)
 		{
-			ret += "global string (%" + std::to_string(string.second->id);
+			ret += "global string (%" + std::to_string(gv->id);
 
 			std::string copy;
-			for(auto c : string.first)
+			for(auto c : str)
 			{
 				if(c == '\r') copy += "\\r";
 				else if(c == '\n') copy += "\\n";
@@ -323,7 +320,7 @@ namespace fir
 				else copy += c;
 			}
 
-			ret += ") [" + std::to_string(string.first.length()) + "] = \"" + copy + "\"\n";
+			ret += ") [" + std::to_string(str.length()) + "] = \"" + copy + "\"\n";
 		}
 
 		for(auto global : this->globals)
@@ -344,9 +341,9 @@ namespace fir
 			ret += "declare type :: " + type.second->str() + " { " + tl + " }\n";
 		}
 
-		for(auto fp : this->functions)
+		for(const auto& [ id, fp ] : this->functions)
 		{
-			Function* ffn = fp.second;
+			Function* ffn = fp;
 
 			std::string decl;
 
@@ -375,7 +372,7 @@ namespace fir
 			// do the args
 			for(auto arg : ffn->getArguments())
 			{
-				ret += strprintf("\n    arg %s (%%%zu) :: %s", arg->getName().name, arg->id, arg->getType()->str());
+				ret += strprintf("\n    arg %s (%%%d) :: %s", arg->getName().name, arg->id, arg->getType()->str());
 			}
 
 
@@ -396,27 +393,27 @@ namespace fir
 
 
 
-	Function* Module::getIntrinsicFunction(std::string id)
+	Function* Module::getIntrinsicFunction(const std::string& id)
 	{
-		Identifier name;
+		auto name = Name::of("");
 		FunctionType* ft = 0;
 		if(id == "memcpy")
 		{
-			name = Identifier("memcpy", IdKind::Name);
+			name = Name::of("memcpy");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memmove")
 		{
-			name = Identifier("memmove", IdKind::Name);
+			name = Name::of("memmove");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getMutInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
 		}
 		else if(id == "memset")
 		{
-			name = Identifier("memset", IdKind::Name);
+			name = Name::of("memset");
 			ft = FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getInt8(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getVoid());
@@ -426,7 +423,7 @@ namespace fir
 			// note: memcmp isn't an actual llvm intrinsic, but we support it anyway
 			// at llvm-translate-time, we make a function.
 
-			name = Identifier("memcmp", IdKind::Name);
+			name = Name::of("memcmp");
 			ft = FunctionType::get({ fir::Type::getInt8Ptr(), fir::Type::getInt8Ptr(),
 				fir::Type::getNativeWord(), fir::Type::getBool() },
 				fir::Type::getInt32());
@@ -438,7 +435,7 @@ namespace fir
 			// 1 -> 1
 			// 40 -> 64
 
-			name = Identifier("roundup_pow2", IdKind::Name);
+			name = Name::of("roundup_pow2");
 			ft = FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getNativeWord());
 		}
 
@@ -459,7 +456,9 @@ namespace fir
 	std::vector<GlobalVariable*> Module::getGlobalVariables()
 	{
 		std::vector<GlobalVariable*> ret;
-		for(auto g : this->globals)
+		ret.reserve(this->globals.size());
+
+		for(const auto& g : this->globals)
 			ret.push_back(g.second);
 
 		return ret;
@@ -468,7 +467,9 @@ namespace fir
 	std::vector<Type*> Module::getNamedTypes()
 	{
 		std::vector<Type*> ret;
-		for(auto g : this->namedTypes)
+		ret.reserve(this->namedTypes.size());
+
+		for(const auto& g : this->namedTypes)
 			ret.push_back(g.second);
 
 		return ret;
@@ -477,7 +478,9 @@ namespace fir
 	std::vector<Function*> Module::getAllFunctions()
 	{
 		std::vector<Function*> ret;
-		for(auto g : this->functions)
+		ret.reserve(this->functions.size());
+
+		for(const auto& g : this->functions)
 			ret.push_back(g.second);
 
 		return ret;
@@ -488,7 +491,7 @@ namespace fir
 		return this->moduleName;
 	}
 
-	void Module::setModuleName(std::string name)
+	void Module::setModuleName(const std::string& name)
 	{
 		this->moduleName = name;
 	}

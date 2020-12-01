@@ -77,6 +77,7 @@ namespace fir
 		Value* Call(Function* fn, Value* p1, const std::string& vname = "");
 		Value* Call(Function* fn, Value* p1, Value* p2, const std::string& vname = "");
 		Value* Call(Function* fn, Value* p1, Value* p2, Value* p3, const std::string& vname = "");
+		Value* Call(Function* fn, Value* p1, Value* p2, Value* p3, Value* p4, const std::string& vname = "");
 
 		Value* Call(Function* fn, const std::vector<Value*>& args, const std::string& vname = "");
 		Value* Call(Function* fn, const std::initializer_list<Value*>& args, const std::string& vname = "");
@@ -112,7 +113,7 @@ namespace fir
 		Value* GEP2(Value* ptr, Value* ptrIndex, Value* elmIndex, const std::string& vname = "");
 		Value* ConstGEP2(Value* ptr, size_t ptrIndex, size_t elmIndex, const std::string& vname = "");
 
-		void SetVtable(Value* ptr, Value* table, const std::string& vname = "");
+		void SetVtable(Value* ptr, Value* table);
 
 		void CondBranch(Value* condition, IRBlock* trueBlock, IRBlock* falseBlock);
 		void UnCondBranch(IRBlock* target);
@@ -122,14 +123,14 @@ namespace fir
 
 		Value* Select(Value* cond, Value* one, Value* two, const std::string& vname = "");
 
-		Value* BinaryOp(std::string ao, Value* a, Value* b, const std::string& vname = "");
+		Value* BinaryOp(const std::string& ao, Value* a, Value* b, const std::string& vname = "");
 
 		Value* CreateValue(Type* t, const std::string& vname = "");
 
 		Value* ExtractValue(Value* val, const std::vector<size_t>& inds, const std::string& vname = "");
-		Value* ExtractValueByName(Value* val, std::string mem, const std::string& vname = "");
+		Value* ExtractValueByName(Value* val, const std::string& mem, const std::string& vname = "");
 
-		[[nodiscard]] Value* InsertValueByName(Value* val, std::string mem, Value* elm, const std::string& vname = "");
+		[[nodiscard]] Value* InsertValueByName(Value* val, const std::string& mem, Value* elm, const std::string& vname = "");
 		[[nodiscard]] Value* InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname = "");
 
 
@@ -147,7 +148,7 @@ namespace fir
 		[[nodiscard]] Value* SetSAACapacity(Value* str, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetSAALength(Value* str, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetSAAData(Value* str, Value* val, const std::string& vname = "");
-		void SetSAARefCount(Value* str, Value* val, const std::string& vname = "");
+		void SetSAARefCount(Value* str, Value* val);
 
 
 		Value* CreateSliceFromSAA(Value* str, bool mut, const std::string& vname = "");
@@ -167,7 +168,7 @@ namespace fir
 		Value* GetAnyRefCount(Value* str, const std::string& vname = "");
 		Value* GetAnyRefCountPointer(Value* any, const std::string& vname = "");
 
-		void SetAnyRefCount(Value* str, Value* val, const std::string& vname = "");
+		void SetAnyRefCount(Value* str, Value* val);
 		[[nodiscard]] Value* SetAnyData(Value* any, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetAnyTypeID(Value* any, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetAnyRefCountPointer(Value* str, Value* val, const std::string& vname = "");
@@ -216,8 +217,8 @@ namespace fir
 		void Unreachable();
 
 
-		IRBlock* addNewBlockInFunction(std::string name, Function* func);
-		IRBlock* addNewBlockAfter(std::string name, IRBlock* block);
+		IRBlock* addNewBlockInFunction(const std::string& name, Function* func);
+		IRBlock* addNewBlockAfter(const std::string& name, IRBlock* block);
 
 
 		void setCurrentBlock(IRBlock* block);

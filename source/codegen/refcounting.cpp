@@ -10,22 +10,38 @@ namespace cgn
 {
 	void CodegenState::addRefCountedValue(fir::Value* val)
 	{
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		auto list = &this->blockPointStack.back().refCountedValues;
 
 		if(auto it = std::find(list->begin(), list->end(), val); it == list->end())
+		{
 			list->push_back(val);
+		}
 		else
-			error(this->loc(), "adding duplicate refcounted value (ptr = %p, type = '%s')", val, val->getType());
+		{
+			error(this->loc(), "adding duplicate refcounted value (ptr = %p, type = '%s')",
+				reinterpret_cast<void*>(val), val->getType());
+		}
 	}
 
 	void CodegenState::removeRefCountedValue(fir::Value* val)
 	{
+		if(this->isWithinGlobalInitFunction())
+			return;
+
 		auto list = &this->blockPointStack.back().refCountedValues;
 
 		if(auto it = std::find(list->begin(), list->end(), val); it != list->end())
+		{
 			list->erase(it);
+		}
 		else
-			error(this->loc(), "removing non-existent refcounted value (ptr = %p, type = '%s')", val, val->getType());
+		{
+			error(this->loc(), "removing non-existent refcounted value (ptr = %p, type = '%s')",
+				reinterpret_cast<void*>(val), val->getType());
+		}
 	}
 
 	std::vector<fir::Value*> CodegenState::getRefCountedValues()

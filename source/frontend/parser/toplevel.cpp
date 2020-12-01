@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "defs.h"
 #include "pts.h"
 #include "errors.h"
 #include "parser.h"
@@ -16,14 +17,17 @@ using namespace ast;
 
 namespace parser
 {
-	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx)
+	std::pair<Location, std::vector<std::string>> parseIdentPath(const lexer::TokenList& tokens, size_t* idx)
 	{
 		using TT = lexer::TokenType;
 		std::vector<std::string> path;
 
 		size_t i = *idx;
+		Location loc = tokens[i].loc;
 		while(tokens[i] == TT::Identifier)
 		{
+			loc = loc.unionWith(tokens[i].loc);
+
 			path.push_back(tokens[i].str());
 			i++;
 
@@ -40,14 +44,15 @@ namespace parser
 		}
 
 		*idx = i;
-		return path;
+		return { loc, path };
 	}
 
 
-	static std::pair<std::string, std::vector<std::string>> parseModuleName(const std::string& fullpath)
+	static std::pair<std::string, std::vector<std::string>> parseModuleName(const std::string& fullname,
+		const frontend::FileInnards& fileinnards)
 	{
 		using TT = lexer::TokenType;
-		auto tokens = frontend::getFileTokens(fullpath);
+		const auto& tokens = fileinnards.tokens;
 
 		std::vector<std::string> path;
 
@@ -62,7 +67,7 @@ namespace parser
 
 				if(tokens[i].type == TT::Identifier)
 				{
-					path = parseIdentPath(tokens, &i);
+					path = parseIdentPath(tokens, &i).second;
 				}
 				else
 				{
@@ -88,9 +93,9 @@ namespace parser
 		}
 
 		if(path.empty())
-			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullpath)) };
+			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullname)) };
 
-		return { path.back(), util::take(path, path.size() - 1) };
+		return { path.back(), zfu::take(path, path.size() - 1) };
 	}
 
 
@@ -116,7 +121,7 @@ namespace parser
 
 		bool isFirst = true;
 		auto priv = VisibilityLevel::Invalid;
-		size_t tix = (size_t) -1;
+		size_t tix = static_cast<size_t>(-1);
 
 
 		while(st.hasTokens() && st.front() != TT::EndOfFile)
@@ -160,7 +165,11 @@ namespace parser
 
 					auto ns = parseTopLevel(st, tok.str());
 					if(priv != VisibilityLevel::Invalid)
-						ns->visibility = priv, priv = VisibilityLevel::Invalid, tix = (size_t) -1;
+					{
+						ns->visibility = priv;
+						priv = VisibilityLevel::Invalid;
+						tix = static_cast<size_t>(-1);
+					}
 
 					root->statements.push_back(ns);
 
@@ -172,7 +181,7 @@ namespace parser
 
 				case TT::Attr_NoMangle: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(!dcast(FuncDefn, stmt) && !dcast(VarDefn, stmt))
 						error(st, "attribute '@nomangle' can only be applied on function and variable declarations");
 
@@ -180,10 +189,10 @@ namespace parser
 						warn(st, "attribute '@nomangle' is redundant on 'ffi' functions");
 
 					else if(auto fd = dcast(FuncDefn, stmt))
-						fd->noMangle = true;
+						fd->attrs.set(attr::NO_MANGLE);
 
 					else if(auto vd = dcast(VarDefn, stmt))
-						vd->noMangle = true;
+						vd->attrs.set(attr::NO_MANGLE);
 
 					root->statements.push_back(stmt);
 
@@ -195,9 +204,9 @@ namespace parser
 
 				case TT::Attr_EntryFn: {
 					st.pop();
-					auto stmt = parseStmt(st);
+					auto stmt = parseStmt(st).val();
 					if(auto fd = dcast(FuncDefn, stmt))
-						fd->isEntry = true;
+						fd->attrs.set(attr::FN_ENTRYPOINT);
 
 					else
 						error(st, "'@entry' attribute is only applicable to function definitions");
@@ -243,7 +252,7 @@ namespace parser
 					{
 						st.rewindTo(tix);
 
-						tix = (size_t) -1;
+						tix = static_cast<size_t>(-1);
 						priv = VisibilityLevel::Invalid;
 					}
 
@@ -269,7 +278,7 @@ namespace parser
 					st.operatorsStillValid = false;
 					st.nativeWordSizeStillValid = false;
 
-					root->statements.push_back(parseStmt(st, /* allowExprs: */ false));
+					root->statements.push_back(parseStmt(st, /* allowExprs: */ false).val());
 				} break;
 			}
 
@@ -292,12 +301,11 @@ namespace parser
 		return root;
 	}
 
-	ParsedFile parseFile(std::string filename, frontend::CollectorState& cs)
+	ParsedFile parseFile(const std::string& fullname, const frontend::FileInnards& file, frontend::CollectorState& cs)
 	{
-		auto full = frontend::getFullPathOfFile(filename);
-		const TokenList& tokens = frontend::getFileTokens(full);
+		const TokenList& tokens = file.tokens;
 		auto state = State(tokens);
-		state.currentFilePath = full;
+		state.currentFilePath = fullname;
 
 		// copy this stuff over.
 		state.binaryOps = cs.binaryOps;
@@ -306,12 +314,12 @@ namespace parser
 
 		state.cState = &cs;
 
-		auto [ modname, modpath ] = parseModuleName(full);
+		auto [ modname, modpath ] = parseModuleName(fullname, file);
 		auto toplevel = parseTopLevel(state, "");
 
 
 		return ParsedFile {
-			filename,
+			fullname,
 			modname,
 			modpath,
 			toplevel,

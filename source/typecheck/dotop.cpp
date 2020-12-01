@@ -14,6 +14,7 @@
 
 #include "memorypool.h"
 
+namespace names = strs::names;
 
 
 // make the nice message.
@@ -105,7 +106,7 @@ static std::vector<search_result_t> searchTransparentFields(sst::TypecheckState*
 				flds = str->fields;
 
 			else if(auto unn = dcast(sst::RawUnionDefn, defn); unn)
-				flds = util::map(util::pairs(unn->fields), [](const auto& x) -> auto { return x.second; }) + unn->transparentFields;
+				flds = zfu::map(unn->fields, zfu::pair_second()) + unn->transparentFields;
 
 			else
 				error(loc, "what kind of type is this? '%s'", ty);
@@ -162,7 +163,7 @@ static sst::FieldDotOp* resolveFieldNameDotOp(sst::TypecheckState* fs, sst::Expr
 	}
 
 	auto ret = dcast(sst::FieldDotOp, cur);
-	assert(ret);
+	iceAssert(ret);
 
 	return ret;
 }
@@ -192,7 +193,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	auto type = lhs->type;
 	if(!type)
 	{
-		if(dcast(sst::ScopeExpr, lhs) || (dcast(sst::VarRef, lhs) && dcast(sst::TreeDefn, dcast(sst::VarRef, lhs)->def)))
+		if(dcast(sst::ScopeExpr, lhs))
 		{
 			error(dotop, "invalid use of '.' for static scope access; use '::' instead");
 		}
@@ -219,7 +220,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		auto tup = type->toTupleType();
 
 		if(n >= tup->getElementCount())
-			error(dotop->right, "tuple only has %zu elements, cannot access element %zu", tup->getElementCount(), n);
+			error(dotop->right, "tuple only has %d elements, cannot access element %d", tup->getElementCount(), n);
 
 		auto ret = util::pool<sst::TupleDotOp>(dotop->loc, tup->getElementN(n));
 		ret->lhs = lhs;
@@ -243,11 +244,15 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(util::match(vr->name, BUILTIN_SAA_FIELD_LENGTH, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT, BUILTIN_STRING_FIELD_COUNT))
+			if(zfu::match(vr->name, names::saa::FIELD_LENGTH, names::saa::FIELD_CAPACITY,
+				names::saa::FIELD_REFCOUNT, names::string::FIELD_COUNT))
+			{
 				res = fir::Type::getNativeWord();
-
-			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
+			}
+			else if(vr->name == names::saa::FIELD_POINTER)
+			{
 				res = fir::Type::getInt8Ptr();
+			}
 
 
 			if(res)
@@ -264,13 +269,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			fir::Type* res = 0;
 			std::vector<sst::Expr*> args;
-			if(fc->name == BUILTIN_SAA_FN_CLONE)
+			if(fc->name == names::saa::FN_CLONE)
 			{
 				res = type;
 				if(fc->args.size() != 0)
 					error(fc, "builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
-			else if(fc->name == BUILTIN_SAA_FN_APPEND)
+			else if(fc->name == names::saa::FN_APPEND)
 			{
 				res = fir::Type::getVoid();
 				if(fc->args.size() != 1)
@@ -283,7 +288,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				if(!args[0]->type->isCharType() && !args[0]->type->isStringType() && !args[0]->type->isCharSliceType())
 				{
 					error(fc, "invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, fir::Type::getInt8(), (fir::Type*) fir::Type::getCharSlice(false), (fir::Type*) fir::Type::getString());
+						args[0]->type, fir::Type::getInt8(), fir::Type::getCharSlice(false), fir::Type::getString());
 				}
 			}
 
@@ -306,12 +311,12 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		if(auto vr = dcast(ast::Ident, rhs))
 		{
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_SAA_FIELD_LENGTH || (type->isDynamicArrayType()
-				&& util::match(vr->name, BUILTIN_SAA_FIELD_CAPACITY, BUILTIN_SAA_FIELD_REFCOUNT)))
+			if(vr->name == names::saa::FIELD_LENGTH || (type->isDynamicArrayType()
+				&& zfu::match(vr->name, names::saa::FIELD_CAPACITY, names::saa::FIELD_REFCOUNT)))
 			{
 				res = fir::Type::getNativeWord();
 			}
-			else if(vr->name == BUILTIN_SAA_FIELD_POINTER)
+			else if(vr->name == names::saa::FIELD_POINTER)
 			{
 				res = type->getArrayElementType()->getPointerTo();
 				if(type->isDynamicArrayType())
@@ -338,13 +343,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			fir::Type* res = 0;
 			std::vector<sst::Expr*> args;
 
-			if(fc->name == BUILTIN_SAA_FN_CLONE)
+			if(fc->name == names::saa::FN_CLONE)
 			{
 				res = type;
 				if(fc->args.size() != 0)
 					error(fc, "builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
 			}
-			else if(fc->name == BUILTIN_SAA_FN_APPEND)
+			else if(fc->name == names::saa::FN_APPEND)
 			{
 				if(type->isArrayType())
 					error(fc, "'append' method cannot be called on arrays");
@@ -363,8 +368,19 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					&& args[0]->type != type)
 				{
 					error(fc, "invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, type, type->getArrayElementType(), (fir::Type*) fir::ArraySliceType::get(type->getArrayElementType(), false));
+						args[0]->type, type, type->getArrayElementType(),
+						fir::ArraySliceType::get(type->getArrayElementType(), false));
 				}
+			}
+			else if(fc->name == names::array::FN_POP)
+			{
+				if(!type->isDynamicArrayType())
+					error(fc, "'pop' method can only be called on dynamic arrays");
+
+				res = type->getArrayElementType();
+
+				if(fc->args.size() != 0)
+					error(fc, "builtin array method 'pop' expects no arguments, found %d instead", fc->args.size());
 			}
 
 			// fallthrough
@@ -389,13 +405,13 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: Extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_ENUM_FIELD_NAME)
-				res = fir::Type::getString();
+			if(vr->name == names::enumeration::FIELD_NAME)
+				res = fir::Type::getCharSlice(false);
 
-			else if(vr->name == BUILTIN_ENUM_FIELD_INDEX)
+			else if(vr->name == names::enumeration::FIELD_INDEX)
 				res = fir::Type::getNativeWord();
 
-			else if(vr->name == BUILTIN_ENUM_FIELD_VALUE)
+			else if(vr->name == names::enumeration::FIELD_VALUE)
 				res = type->toEnumType()->getCaseType();
 
 
@@ -417,7 +433,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_RANGE_FIELD_BEGIN || vr->name == BUILTIN_RANGE_FIELD_END || vr->name == BUILTIN_RANGE_FIELD_STEP)
+			if(vr->name == names::range::FIELD_BEGIN || vr->name == names::range::FIELD_END || vr->name == names::range::FIELD_STEP)
 				res = fir::Type::getNativeWord();
 
 			if(res)
@@ -439,10 +455,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		{
 			// TODO: extension support here
 			fir::Type* res = 0;
-			if(vr->name == BUILTIN_ANY_FIELD_TYPEID)
+			if(vr->name == names::any::FIELD_TYPEID)
 				res = fir::Type::getNativeUWord();
 
-			else if(vr->name == BUILTIN_ANY_FIELD_REFCOUNT)
+			else if(vr->name == names::any::FIELD_REFCOUNT)
 				res = fir::Type::getNativeWord();
 
 			if(res)
@@ -475,7 +491,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 			// check methods first
-			std::vector<FnCallArgument> arguments = util::map(fc->args, [fs](auto arg) -> FnCallArgument {
+			std::vector<FnCallArgument> arguments = zfu::map(fc->args, [fs](auto arg) -> FnCallArgument {
 				return FnCallArgument(arg.second->loc, arg.first, arg.second->typecheck(fs).expr(), arg.second);
 			});
 
@@ -485,9 +501,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			arguments.insert(arguments.begin(), FnCallArgument::make(fc->loc, "this", str->type->getMutablePointerTo(),
 				/* ignoreName: */ true));
 
-			auto restore = fs->getCurrentScope();
-			fs->teleportToScope(str->id.scope + str->id.name);
-			defer(fs->teleportToScope(restore));
+			fs->teleportInto(str->innerScope);
 
 			ErrorMsg* err = 0;
 			sst::Defn* resolved = 0;
@@ -507,7 +521,10 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 				if(auto cls = dcast(sst::ClassDefn, curstr); cls && cls->baseClass)
 				{
-					fs->teleportToScope(cls->baseClass->id.scope + cls->baseClass->id.name);
+					// teleport out, then back in.
+					fs->teleportOut();
+					fs->teleportInto(cls->baseClass->innerScope);
+
 					curstr = cls->baseClass;
 					continue;
 				}
@@ -543,7 +560,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			else
 			{
 				auto c = util::pool<sst::ExprCall>(fc->loc, resolved->type->toFunctionType()->getReturnType());
-				c->arguments = util::map(arguments, [](const FnCallArgument& e) -> sst::Expr* { return e.value; });
+				c->arguments = zfu::map(arguments, [](const FnCallArgument& e) -> sst::Expr* { return e.value; });
 
 				auto tmp = util::pool<sst::FieldDotOp>(fc->loc, resolved->type);
 				tmp->lhs = lhs;
@@ -561,6 +578,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 			ret->lhs = lhs;
 			ret->call = finalCall;
 
+			fs->teleportOut();
 			return ret;
 		}
 		else if(auto fld = dcast(ast::Ident, dotop->right))
@@ -661,7 +679,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 	{
 		if(auto fld = dcast(ast::Ident, dotop->right))
 		{
-			auto flds = util::map(util::pairs(rnn->fields), [](const auto& x) -> auto { return x.second; }) + rnn->transparentFields;
+			auto flds = zfu::map(rnn->fields, zfu::pair_second()) + rnn->transparentFields;
 			auto hmm = resolveFieldNameDotOp(fs, lhs, flds, dotop->loc, fld->name);
 			if(hmm)
 			{
@@ -690,72 +708,68 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 
 
+static sst::Expr* checkRhs2(sst::TypecheckState* fs, ast::DotOperator* dot, const sst::Scope& olds, const sst::Scope& news,
+	fir::Type* rhs_infer, sst::StructDefn* possibleStructDefn = 0)
+{
+	if(auto id = dcast(ast::Ident, dot->right))
+		id->traverseUpwards = false;
+
+	else if(auto fc = dcast(ast::FunctionCall, dot->right))
+		fc->traverseUpwards = false;
+
+	// note: for function/expr calls, we typecheck the arguments *before* we teleport to the scope, so that we don't conflate
+	// the scope of the argument (which is the current scope) with the scope of the call target (which is in whatever namespace)
+
+	sst::Expr* ret = 0;
+	if(auto fc = dcast(ast::FunctionCall, dot->right))
+	{
+		auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			e.second->typecheck(fs).expr(), e.second);
+		});
+
+		fs->teleportInto(news);
+		ret = fc->typecheckWithArguments(fs, args, rhs_infer);
+	}
+	else if(auto ec = dcast(ast::ExprCall, dot->right))
+	{
+		auto args = zfu::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
+			e.second->typecheck(fs).expr(), e.second);
+		});
+
+		fs->teleportInto(news);
+		ret = ec->typecheckWithArguments(fs, args, rhs_infer);
+	}
+	else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
+	{
+		fs->teleportInto(news);
+		auto res = dot->right->typecheck(fs, rhs_infer);
+		if(res.isError() && possibleStructDefn && dcast(ast::Ident, dot->right))
+		{
+			wrongDotOpError(res.error(), possibleStructDefn, dot->right->loc, dcast(ast::Ident, dot->right)->name, true)->postAndQuit();
+		}
+		else
+		{
+			// will post if res is an error, even if we didn't give the fancy error.
+			ret = res.expr();
+		}
+	}
+	else
+	{
+		error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
+			news.string());
+	}
+
+	iceAssert(ret);
+
+	fs->teleportOut();
+	return ret;
+}
 
 
 
 
 static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, sst::Expr* left, fir::Type* infer)
 {
-	auto checkRhs = [](sst::TypecheckState* fs, ast::DotOperator* dot, const std::vector<std::string>& olds, const std::vector<std::string>& news,
-		fir::Type* rhs_infer, sst::StructDefn* possibleStructDefn = 0) -> sst::Expr* {
-
-		if(auto id = dcast(ast::Ident, dot->right))
-			id->traverseUpwards = false;
-
-		else if(auto fc = dcast(ast::FunctionCall, dot->right))
-			fc->traverseUpwards = false;
-
-		// note: for function/expr calls, we typecheck the arguments *before* we teleport to the scope, so that we don't conflate
-		// the scope of the argument (which is the current scope) with the scope of the call target (which is in whatever namespace)
-
-		sst::Expr* ret = 0;
-		if(auto fc = dcast(ast::FunctionCall, dot->right))
-		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
-				e.second->typecheck(fs).expr(), e.second);
-			});
-
-			fs->teleportToScope(news);
-			ret = fc->typecheckWithArguments(fs, args, rhs_infer);
-		}
-		else if(auto ec = dcast(ast::ExprCall, dot->right))
-		{
-			auto args = util::map(fc->args, [fs](auto e) -> FnCallArgument { return FnCallArgument(e.second->loc, e.first,
-				e.second->typecheck(fs).expr(), e.second);
-			});
-
-			fs->teleportToScope(news);
-			ret = ec->typecheckWithArguments(fs, args, rhs_infer);
-		}
-		else if(dcast(ast::Ident, dot->right) || dcast(ast::DotOperator, dot->right))
-		{
-			fs->teleportToScope(news);
-			auto res = dot->right->typecheck(fs, rhs_infer);
-			if(res.isError() && possibleStructDefn && dcast(ast::Ident, dot->right))
-			{
-				wrongDotOpError(res.error(), possibleStructDefn, dot->right->loc, dcast(ast::Ident, dot->right)->name, true)->postAndQuit();
-			}
-			else
-			{
-				// will post if res is an error, even if we didn't give the fancy error.
-				ret = res.expr();
-			}
-		}
-		else
-		{
-			error(dot->right, "unexpected %s on right-side of dot-operator following static scope '%s' on the left", dot->right->readableName,
-				util::serialiseScope(news));
-		}
-
-
-		iceAssert(ret);
-
-		fs->teleportToScope(olds);
-		return ret;
-	};
-
-
-
 	// if we get a type expression, then we want to dig up the definition from the type.
 	if(auto ident = dcast(sst::VarRef, left); ident || dcast(sst::TypeExpr, left))
 	{
@@ -772,39 +786,19 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 			def = fs->typeDefnMap[te->type];
 		}
 
-		iceAssert(def);
-
-		if(auto td = dcast(sst::TreeDefn, def))
+		if(!def)
 		{
-			auto newscope = td->tree->getScope();
-			auto oldscope = fs->getCurrentScope();
-
-			auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
-
-			// check the thing
-			if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
-			{
-				newscope.push_back(vr->name);
-				auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
-				ret->scope = newscope;
-
-				return ret;
-			}
-			else
-			{
-				return expr;
-			}
+			error(left->loc, "could not resolve definition");
 		}
-		else if(auto typdef = dcast(sst::TypeDefn, def))
+
+		if(auto typdef = dcast(sst::TypeDefn, def))
 		{
 			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
 			{
 				fs->pushSelfContext(def->type);
-				defer(fs->popSelfContext());
 
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = typdef->id.scope;
-				newscope.push_back(typdef->id.name);
+				auto oldscope = fs->scope();
+				auto newscope = typdef->innerScope;
 
 				fs->pushGenericContext();
 				defer(fs->popGenericContext());
@@ -816,7 +810,10 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 						fs->addGenericMapping(g.first, fir::PolyPlaceholderType::get(g.first, pses));
 				}
 
-				return checkRhs(fs, dot, oldscope, newscope, infer);
+				auto ret = checkRhs2(fs, dot, oldscope, newscope, infer);
+				fs->popSelfContext();
+
+				return ret;
 			}
 			else if(auto unn = dcast(sst::UnionDefn, def))
 			{
@@ -861,19 +858,17 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 				}
 
 				// dot-op on the union to access its variants; we need constructor stuff for it.
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = unn->id.scope;
-				newscope.push_back(unn->id.name);
+				auto oldscope = fs->scope();
+				auto newscope = unn->innerScope;
 
-				return checkRhs(fs, dot, oldscope, newscope, infer);
+				return checkRhs2(fs, dot, oldscope, newscope, infer);
 			}
 			else if(auto enm = dcast(sst::EnumDefn, def))
 			{
-				auto oldscope = fs->getCurrentScope();
-				auto newscope = enm->id.scope;
-				newscope.push_back(enm->id.name);
+				auto oldscope = fs->scope();
+				auto newscope = enm->innerScope;
 
-				auto rhs = checkRhs(fs, dot, oldscope, newscope, infer);
+				auto rhs = checkRhs2(fs, dot, oldscope, newscope, infer);
 
 				if(auto vr = dcast(sst::VarRef, rhs))
 				{
@@ -897,23 +892,10 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 	}
 	else if(auto scp = dcast(sst::ScopeExpr, left))
 	{
-		auto oldscope = fs->getCurrentScope();
+		auto oldscope = fs->scope();
 		auto newscope = scp->scope;
 
-		auto expr = checkRhs(fs, dot, oldscope, newscope, infer);
-
-		if(auto vr = dcast(sst::VarRef, expr); vr && dcast(sst::TreeDefn, vr->def))
-		{
-			newscope.push_back(vr->name);
-			auto ret = util::pool<sst::ScopeExpr>(dot->loc, fir::Type::getVoid());
-			ret->scope = newscope;
-
-			return ret;
-		}
-		else
-		{
-			return expr;
-		}
+		return checkRhs2(fs, dot, oldscope, newscope, infer);
 	}
 
 	error("????!!!!");

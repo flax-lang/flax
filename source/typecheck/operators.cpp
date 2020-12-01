@@ -162,7 +162,7 @@ TCResult ast::OperatorOverloadDefn::generateDeclaration(sst::TypecheckState* fs,
 
 	for(auto it : (*thelist)[this->symbol])
 	{
-		if(fs->isDuplicateOverload(it->params, defn->params))
+		if(sst::isDuplicateOverload(it->params, defn->params))
 		{
 			SimpleError::make(this->loc, "duplicate operator overload for '%s' taking identical arguments", this->symbol)
 				->append(SimpleError::make(MsgType::Note, it->loc, "previous definition was here:"))

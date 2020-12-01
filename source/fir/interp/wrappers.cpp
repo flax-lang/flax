@@ -92,7 +92,7 @@ PLATFORM_EXPORT_FUNCTION int __interp_wrapper_fprintf(void* stream, char* fmt, .
 	va_list ap;
 	va_start(ap, fmt);
 
-	int ret = vfprintf((FILE*) stream, fmt, ap);
+	int ret = vfprintf(static_cast<FILE*>(stream), fmt, ap);
 
 	va_end(ap);
 	return ret;

@@ -62,7 +62,7 @@ namespace sst
 
 			std::vector<FnCallArgument> typecheckCallArguments(TypecheckState* fs, const std::vector<std::pair<std::string, ast::Expr*>>& args)
 			{
-				return util::map(args, [fs](const auto& a) -> FnCallArgument {
+				return zfu::map(args, [fs](const auto& a) -> FnCallArgument {
 					return FnCallArgument(a.second->loc, a.first, a.second->typecheck(fs).expr(), a.second);
 				});
 			}
@@ -131,7 +131,7 @@ namespace sst
 					target.push_back(fir::LocatedType(vty, uvd->loc));
 				}
 
-				auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, util::map(*arguments, [](const FnCallArgument& fca) -> auto {
+				auto [ dist, errs ] = resolver::computeOverloadDistance(unn->loc, target, zfu::map(*arguments, [](const FnCallArgument& fca) -> auto {
 					return fir::LocatedType(fca.value->type, fca.loc);
 				}), /* isCVarArg: */ false, fs->loc());
 
@@ -218,22 +218,25 @@ namespace sst
 
 
 
-	int TypecheckState::getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
+	int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b)
 	{
-		return resolver::computeOverloadDistance(Location(), util::map(a, [](fir::Type* t) -> fir::LocatedType {
+		return resolver::computeOverloadDistance(Location(), zfu::map(a, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
-		}), util::map(b, [](fir::Type* t) -> fir::LocatedType {
+		}), zfu::map(b, [](fir::Type* t) -> fir::LocatedType {
 			return fir::LocatedType(t, Location());
-		}), /* isCVarArg: */ false, this->loc()).first;
+		}), /* isCVarArg: */ false, Location()).first;
 	}
 
-	bool TypecheckState::isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
+	bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b)
 	{
-		return this->getOverloadDistance(util::map(a, [](const auto& p) -> auto { return p.type; }),
-			util::map(b, [](const auto& p) -> auto { return p.type; })) == 0;
+		return getOverloadDistance(zfu::map(a, [](const auto& p) -> auto { return p.type; }),
+			zfu::map(b, [](const auto& p) -> auto { return p.type; })) == 0;
 	}
-
 }
+
+
+
+
 
 
 

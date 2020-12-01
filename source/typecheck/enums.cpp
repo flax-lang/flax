@@ -40,14 +40,19 @@ TCResult ast::EnumDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	defn->bareName = this->name;
 
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
-	defn->type = fir::EnumType::getEmpty();
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	// set it to void first, because we want to defer typechecking the member type.
+	defn->type = fir::EnumType::get(defn->id.convertToName(), fir::Type::getVoid());
 
-	fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
+
+	defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 
 	this->genericVersions.push_back({ defn, fs->getGenericContextStack() });
 	return TCResult(defn);
@@ -66,14 +71,14 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 	auto defn = dcast(sst::EnumDefn, tcr.defn());
 	iceAssert(defn);
 
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
+	fs->teleportInto(defn->innerScope);
 
 	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
 	else					defn->memberType = fir::Type::getNativeWord();
 
-	auto ety = fir::EnumType::get(defn->id, defn->memberType);
+	auto ety = defn->type->toEnumType();
+	iceAssert(ety);
+	ety->setCaseType(defn->memberType);
 
 	size_t index = 0;
 	for(auto cs : this->cases)
@@ -90,7 +95,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 		auto ecd = util::pool<sst::EnumCaseDefn>(cs.loc);
 		ecd->id = Identifier(cs.name, IdKind::Name);
-		ecd->id.scope = fs->getCurrentScope();
+		ecd->id.scope = fs->scope();
 		ecd->type = ety;
 		ecd->parentEnum = defn;
 		ecd->val = val;
@@ -102,9 +107,7 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 	defn->type = ety;
 
-	fs->popTree();
-	fs->teleportToScope(oldscope);
-
+	fs->teleportOut();
 	return TCResult(defn);
 }
 

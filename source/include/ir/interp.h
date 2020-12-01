@@ -70,7 +70,7 @@ namespace fir
 			InterpState(fir::Module* mod);
 			~InterpState();
 
-			void initialise();
+			void initialise(bool runGlobalInit);
 			void finalise();
 
 			interp::Function& compileFunction(fir::Function* fn);

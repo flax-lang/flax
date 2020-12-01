@@ -16,7 +16,7 @@ public fn printIntegerLimits()
 
 	libc::printf("\n")
 
-	libc::printf(" u8::min  = %hhu\t\t\t\t u8::max  = %hhu\n", std::limits::uint8::min,std::limits:: uint8::max);
+	libc::printf(" u8::min  = %hhu\t\t\t\t u8::max  = %hhu\n", std::limits::uint8::min, std::limits::uint8::max);
 	libc::printf("u16::min  = %hu\t\t\t\tu16::max  = %hu\n", std::limits::uint16::min, std::limits::uint16::max);
 	libc::printf("u32::min  = %u\t\t\t\tu32::max  = %u\n", std::limits::uint32::min, std::limits::uint32::max);
 	libc::printf("u64::min  = %llu\t\t\t\tu64::max  = %llu\n", std::limits::uint64::min, std::limits::uint64::max);

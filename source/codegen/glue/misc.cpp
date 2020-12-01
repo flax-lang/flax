@@ -7,11 +7,10 @@
 #include "gluecode.h"
 #include "frontend.h"
 
-
 namespace cgn {
 namespace glue {
 
-void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, std::string message, std::vector<fir::Value*> args)
+void printRuntimeError(cgn::CodegenState* cs, fir::Value* pos, const std::string& message, const std::vector<fir::Value*>& args)
 {
 	//! on windows, apparently fprintf doesn't like to work.
 	//! so we just use normal printf.
@@ -191,11 +190,11 @@ namespace misc
 
 
 
-	using Idt = Identifier;
+	using Idt = fir::Name;
 	Idt getOI(const std::string& name, fir::Type* t = 0)
 	{
-		if(t) return util::obfuscateIdentifier(name, t->encodedStr());
-		else  return util::obfuscateIdentifier(name);
+		if(t) return fir::Name::obfuscate(name, t->encodedStr());
+		else  return fir::Name::obfuscate(name);
 	}
 
 	Idt getCompare_FName(fir::Type* t)              { return getOI("compare", t); }

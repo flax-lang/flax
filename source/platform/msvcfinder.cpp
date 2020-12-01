@@ -21,7 +21,7 @@ namespace platform {
 namespace compiler
 {
 	// the techniques used here are with reference to Jon Blow's "microsoft_craziness.h" file.
-	// it was released under the MIT license.
+	// it was released under the MIT license. see: https://gist.github.com/machinamentum/a2b587a68a49094257da0c39a6c4405f
 
 	struct DECLSPEC_UUID("B41463C3-8866-43B5-BC33-2B0676F7F42E") DECLSPEC_NOVTABLE ISetupInstance : public IUnknown
 	{

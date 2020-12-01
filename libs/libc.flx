@@ -51,17 +51,27 @@ public ffi fn fclose(file: &void) -> i32
 #if os::name == "windows"
 {
 	// unistd.h
-	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64 as "_read"
-	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64 as "_write"
+	public ffi fn open(path: &i8, flags: i32, mode: i32) -> i32     as "_open"
+	public ffi fn close(fd: i32) -> i32                             as "_close"
+
+	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64        as "_read"
+	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64       as "_write"
+
+	public ffi fn lseek(fd: i32, ofs: i64, whence: i32) -> i64      as "_lseek"
 
 	// stdio.h
-	public ffi fn fdopen(fd: i32, mode: &i8) -> &void as "_fdopen"
+	public ffi fn fdopen(fd: i32, mode: &i8) -> &void               as "_fdopen"
 }
 else
 {
 	// unistd.h
+	public ffi fn open(path: &i8, flags: i32, mode: i32) -> i32
+	public ffi fn close(fd: i32) -> i32
+
 	public ffi fn read(fd: i32, buf: &i8, count: i64) -> i64
 	public ffi fn write(fd: i32, buf: &i8, count: i64) -> i64
+
+	public ffi fn lseek(fd: i32, ofs: i64, whence: i32) -> i64
 
 	// stdio.h
 	public ffi fn fdopen(fd: i32, mode: &i8) -> &void

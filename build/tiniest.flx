@@ -1,0 +1,24 @@
+// tiniest.flx
+// Copyright (c) 2020, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+import libc
+
+class wrapper<T>
+{
+	init()
+	{
+	}
+
+	static fn method<U>(a: T, b: U)
+	{
+		libc::printf("t = %d, u = %d\n", typeid(a), typeid(b));
+	}
+}
+
+
+@entry fn main()
+{
+	wrapper::method(1, "asdf")
+	libc::printf("hello, world\n")
+}

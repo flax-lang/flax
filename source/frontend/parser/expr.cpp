@@ -17,7 +17,7 @@ namespace parser
 {
 	using TT = lexer::TokenType;
 
-	Stmt* parseStmtWithAccessSpec(State& st)
+	PResult<Stmt> parseStmtWithAccessSpec(State& st)
 	{
 		iceAssert(st.front() == TT::Public || st.front() == TT::Private || st.front() == TT::Internal);
 		auto vis = VisibilityLevel::Invalid;
@@ -30,33 +30,34 @@ namespace parser
 		}
 
 		st.pop();
-		auto stmt = parseStmt(st, /* allowExprs: */ false);
-		if(auto fd = dcast(FuncDefn, stmt))
-			fd->visibility = vis;
+		return parseStmt(st, /* allowExprs: */ false).mutate([&](auto stmt) -> void {
+			if(auto fd = dcast(FuncDefn, stmt))
+				fd->visibility = vis;
 
-		else if(auto ffd = dcast(ForeignFuncDefn, stmt))
-			ffd->visibility = vis;
+			else if(auto ffd = dcast(ForeignFuncDefn, stmt))
+				ffd->visibility = vis;
 
-		else if(auto vd = dcast(VarDefn, stmt))
-			vd->visibility = vis;
+			else if(auto vd = dcast(VarDefn, stmt))
+				vd->visibility = vis;
 
-		else if(auto td = dcast(TypeDefn, stmt))
-			td->visibility = vis;
+			else if(auto td = dcast(TypeDefn, stmt))
+				td->visibility = vis;
 
-		else
-			error(st, "access specifier cannot be applied to this statement");
-
-		return stmt;
+			else
+				error(st, "access specifier cannot be applied to this statement");
+		});
 	}
 
-	Stmt* parseStmt(State& st, bool allowExprs)
+	PResult<Stmt> parseStmt(State& st, bool allowExprs)
 	{
 		if(!st.hasTokens())
-			unexpected(st, "end of file");
+			return PResult<Stmt>::insufficientTokensError();
 
 		st.skipWS();
 
-		std::function<Stmt* (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers](bool mut, bool virt, bool ovrd) -> Stmt* {
+		std::function<PResult<Stmt> (bool, bool, bool)> checkMethodModifiers = [&st, &checkMethodModifiers]
+			(bool mut, bool virt, bool ovrd) -> PResult<Stmt>
+		{
 			if(st.front() == TT::Mutable)
 			{
 				if(mut) error(st.loc(), "duplicate 'mut' modifier");
@@ -86,79 +87,105 @@ namespace parser
 			}
 			else
 			{
-				auto ret = parseFunction(st);
-				ret->isVirtual = virt;
-				ret->isOverride = ovrd;
-				ret->isMutating = mut;
-
-				return ret;
+				return PResult(parseFunction(st)).mutate([&](auto ret) -> void {
+					ret->isVirtual = virt;
+					ret->isOverride = ovrd;
+					ret->isMutating = mut;
+				});
 			}
 		};
 
 		auto tok = st.front();
 		if(tok != TT::EndOfFile)
 		{
+			auto attrs = parseAttributes(st);
+			auto enforceAttrs = [&attrs](const PResult<Stmt>& ret, const AttribSet& allowed = AttribSet::of(attr::NONE)) -> PResult<Stmt> {
+
+				using namespace attr;
+
+				return ret.map([&allowed, &attrs](auto ret) -> Stmt* {
+					// there's probably a better way to do this, but bleugh
+					if((attrs.flags & RAW) && !(allowed.flags & RAW))
+						error(ret, "unsupported attribute '@raw' on %s", ret->readableName);
+
+					if((attrs.flags & NO_MANGLE) && !(allowed.flags & NO_MANGLE))
+						error(ret, "unsupported attribute '@nomangle' on %s", ret->readableName);
+
+					if((attrs.flags & FN_ENTRYPOINT) && !(allowed.flags & FN_ENTRYPOINT))
+						error(ret, "unsupported attribute '@entry' on %s", ret->readableName);
+
+					if((attrs.flags & PACKED) && !(allowed.flags & PACKED))
+						error(ret, "unsupported attribute '@packed' on %s", ret->readableName);
+
+
+					// here let's check the arguments and stuff for default attributes.
+					// note: due to poor API design on my part, if there is no attribute with that name then ::get()
+					// returns an empty UA, which has a blank name -- so we check that instead.
+
+					if(auto ua = attrs.get("compiler_support"); !ua.name.empty() && ua.args.size() != 1)
+						error(ret, "@compiler_support requires exactly one argument");
+
+					// actually that's it
+					ret->attrs = attrs;
+					return ret;
+				});
+			};
+
 			// handle the things that are OK to appear anywhere first:
+			tok = st.front();
 			switch(tok.type)
 			{
-				case TT::Var:
+				case TT::Var:   [[fallthrough]];
 				case TT::Val:
-					return parseVariable(st);
+					return enforceAttrs(parseVariable(st), AttribSet::of(attr::NO_MANGLE));
 
 				case TT::Func:
-					return parseFunction(st);
+					return enforceAttrs(parseFunction(st), AttribSet::of(attr::NO_MANGLE | attr::FN_ENTRYPOINT));
 
 				case TT::ForeignFunc:
-					return parseForeignFunction(st);
+					return enforceAttrs(parseForeignFunction(st));
 
-				case TT::Public:
-				case TT::Private:
+				case TT::Public:    [[fallthrough]];
+				case TT::Private:   [[fallthrough]];
 				case TT::Internal:
-					return parseStmtWithAccessSpec(st);
+					return enforceAttrs(parseStmtWithAccessSpec(st));
 
 				case TT::Directive_If:
-					return parseIfStmt(st);
+					return enforceAttrs(parseIfStmt(st));
 
 				case TT::Directive_Run:
-					return parseRunDirective(st);
-
-				case TT::Attr_Raw:
-					st.eat();
-					if(st.front() != TT::Union)
-						expectedAfter(st.loc(), "'union'", "'@raw' while parsing statement", st.front().str());
-
-					return parseUnion(st, /* isRaw: */ true, /* nameless: */ false);
+					return enforceAttrs(parseRunDirective(st));
 
 				case TT::Union:
-					return parseUnion(st, /* isRaw: */ false, /* nameless: */ false);
+					return enforceAttrs(parseUnion(st, attrs.has(attr::RAW), /* nameless: */ false), AttribSet::of(attr::RAW));
 
 				case TT::Struct:
-					return parseStruct(st, /* nameless: */ false);
+					return enforceAttrs(parseStruct(st, /* nameless: */ false), AttribSet::of(attr::PACKED));
 
 				case TT::Class:
-					return parseClass(st);
+					return enforceAttrs(parseClass(st));
 
 				case TT::Enum:
-					return parseEnum(st);
+					return enforceAttrs(parseEnum(st));
 
 				case TT::Trait:
-					return parseTrait(st);
+					return enforceAttrs(parseTrait(st));
 
 				case TT::Static:
-					return parseStaticDecl(st);
+					return enforceAttrs(parseStaticDecl(st));
 
 				case TT::Operator:
-					return parseOperatorOverload(st);
+					return enforceAttrs(parseOperatorOverload(st));
 
 				case TT::Using:
-					return parseUsingStmt(st);
+					return enforceAttrs(parseUsingStmt(st));
 
-				case TT::Mutable:
-				case TT::Virtual:
+				case TT::Mutable:   [[fallthrough]];
+				case TT::Virtual:   [[fallthrough]];
 				case TT::Override:
-					return checkMethodModifiers(false, false, false);
+					return enforceAttrs(checkMethodModifiers(false, false, false), AttribSet::of(attr::NO_MANGLE));
 
-				case TT::Extension:
+				case TT::Extension: [[fallthrough]];
 				case TT::TypeAlias:
 					error(st, "notsup");
 
@@ -187,88 +214,72 @@ namespace parser
 			// we store it first, so we can give better error messages (after knowing what it is)
 			// in the event that it wasn't allowed at top-level.
 
-			Stmt* ret = 0;
-			switch(tok.type)
-			{
-				case TT::If:
-					ret = parseIfStmt(st);
-					break;
 
-				case TT::Else:
-					error(st, "cannot have 'else' without preceeding 'if'");
+			auto ret = [&st, &tok, &allowExprs]() -> PResult<Stmt> {
+				switch(tok.type)
+				{
+					case TT::Return:
+						return parseReturn(st);
 
-				case TT::Return:
-					ret = parseReturn(st);
-					break;
+					case TT::If:
+						return parseIfStmt(st);
 
-				case TT::Do:
-				case TT::While:
-					ret = parseWhileLoop(st);
-					break;
+					case TT::Else:
+						error(st, "cannot have 'else' without preceeding 'if'");
 
-				case TT::For:
-					ret = parseForLoop(st);
-					break;
+					case TT::Do:    [[fallthrough]];
+					case TT::While:
+						return parseWhileLoop(st);
 
-				case TT::Break:
-					ret = parseBreak(st);
-					break;
+					case TT::For:
+						return parseForLoop(st);
 
-				case TT::Continue:
-					ret = parseContinue(st);
-					break;
+					case TT::Break:
+						return parseBreak(st);
 
-				case TT::Dealloc:
-					ret = parseDealloc(st);
-					break;
+					case TT::Continue:
+						return parseContinue(st);
 
-				case TT::Defer:
-					ret = parseDefer(st);
-					break;
+					case TT::Dealloc:
+						return parseDealloc(st);
 
-				default: {
-					if(st.isInStructBody() && tok.type == TT::Identifier)
-					{
-						if(tok.str() == "init")
+					case TT::Defer:
+						return parseDefer(st);
+
+					default: {
+						if(st.isInStructBody() && tok.type == TT::Identifier)
 						{
-							ret = parseInitFunction(st);
-							break;
+							if(tok.str() == "init")
+							{
+								return parseInitFunction(st);
+							}
+							else if(tok.str() == "deinit")
+							{
+								return parseDeinitFunction(st);
+							}
+							else if(tok.str() == "copy" || tok.str() == "move")
+							{
+								return parseCopyOrMoveInitFunction(st, tok.str());
+							}
 						}
-						else if(tok.str() == "deinit")
-						{
-							ret = parseDeinitFunction(st);
-							break;
-						}
-						else if(tok.str() == "copy" || tok.str() == "move")
-						{
-							ret = parseCopyOrMoveInitFunction(st, tok.str());
-							break;
-						}
+
+						// we want to error on invalid tokens first. so, we parse the expression regardless,
+						// then if they're not allowed we error.
+						return PResult(parseExpr(st)).mutate([&](auto expr) -> void {
+							if(!allowExprs)
+								error(expr, "expressions are not allowed at the top-level");
+						});
 					}
-
-					// we want to error on invalid tokens first. so, we parse the expression regardless,
-					// then if they're not allowed we error.
-					auto expr = parseExpr(st);
-
-					if(!allowExprs) error(expr, "expressions are not allowed at the top-level");
-					else            ret = expr;
-
-					break;
 				}
-			}
+			}();
 
-			iceAssert(ret);
-			if(!st.isInFunctionBody() && !st.isInStructBody())
-			{
-				error(ret, "%s is not allowed at the top-level", ret->readableName);
-			}
-			else
-			{
-				return ret;
-			}
+			return ret.mutate([&](auto ret) {
+				if(!allowExprs && !st.isInFunctionBody() && !st.isInStructBody())
+					error(ret, "%s is not allowed at the top-level", ret->readableName);
+			});
 		}
 
-		unexpected(st.loc(), "end of file");
+		return PResult<Stmt>::insufficientTokensError();
 	}
 
 
@@ -383,20 +394,20 @@ namespace parser
 			// unary ... (splat)
 			// ^^ all have 950.
 
-			case TT::As:
+			case TT::As:            [[fallthrough]];
 			case TT::Is:
 				return 900;
 
-			case TT::DoublePlus:
+			case TT::DoublePlus:    [[fallthrough]];
 			case TT::DoubleMinus:
 				return 850;
 
-			case TT::Asterisk:
-			case TT::Divide:
+			case TT::Asterisk:      [[fallthrough]];
+			case TT::Divide:        [[fallthrough]];
 			case TT::Percent:
 				return 800;
 
-			case TT::Plus:
+			case TT::Plus:          [[fallthrough]];
 			case TT::Minus:
 				return 750;
 
@@ -413,15 +424,15 @@ namespace parser
 			case TT::Pipe:
 				return 550;
 
-			case TT::LAngle:
-			case TT::RAngle:
-			case TT::LessThanEquals:
-			case TT::GreaterEquals:
-			case TT::EqualsTo:
+			case TT::LAngle:        [[fallthrough]];
+			case TT::RAngle:        [[fallthrough]];
+			case TT::LessThanEquals:[[fallthrough]];
+			case TT::GreaterEquals: [[fallthrough]];
+			case TT::EqualsTo:      [[fallthrough]];
 			case TT::NotEquals:
 				return 500;
 
-			case TT::Ellipsis:
+			case TT::Ellipsis:      [[fallthrough]];
 			case TT::HalfOpenEllipsis:
 				return 475;
 
@@ -431,14 +442,14 @@ namespace parser
 			case TT::LogicalOr:
 				return 350;
 
-			case TT::Equal:
-			case TT::PlusEq:
-			case TT::MinusEq:
-			case TT::MultiplyEq:
-			case TT::DivideEq:
-			case TT::ModEq:
-			case TT::AmpersandEq:
-			case TT::PipeEq:
+			case TT::Equal:         [[fallthrough]];
+			case TT::PlusEq:        [[fallthrough]];
+			case TT::MinusEq:       [[fallthrough]];
+			case TT::MultiplyEq:    [[fallthrough]];
+			case TT::DivideEq:      [[fallthrough]];
+			case TT::ModEq:         [[fallthrough]];
+			case TT::AmpersandEq:   [[fallthrough]];
+			case TT::PipeEq:        [[fallthrough]];
 			case TT::CaretEq:
 				return 100;
 
@@ -619,7 +630,7 @@ namespace parser
 
 	Expr* parseCaretOrColonScopeExpr(State& st)
 	{
-		iceAssert(util::match(st.front(), TT::DoubleColon, TT::Caret));
+		iceAssert(zfu::match(st.front(), TT::DoubleColon, TT::Caret));
 
 		auto str = st.front().str();
 		auto loc = st.loc();
@@ -676,6 +687,7 @@ namespace parser
 		else
 		{
 			unexpected(st.loc(), "'$' in non-subscript context");
+			return nullptr; // PRESULT FIXUP
 		}
 	}
 
@@ -823,7 +835,7 @@ namespace parser
 		return ret;
 	}
 
-	static FunctionCall* parseFunctionCall(State& st, const Location& loc, std::string name)
+	static FunctionCall* parseFunctionCall(State& st, const Location& loc, const std::string& name)
 	{
 		auto ret = util::pool<FunctionCall>(loc, name);
 
@@ -856,7 +868,7 @@ namespace parser
 
 	static Expr* parseIdentifier(State& st)
 	{
-		iceAssert(util::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
+		iceAssert(zfu::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
 		std::string name = st.pop().str();
 
 		auto ident = util::pool<Ident>(st.ploc(), name);
@@ -1001,6 +1013,8 @@ namespace parser
 			// todo: ++ and --.
 			error("enotsup");
 		}
+
+		return nullptr; // PRESULT FIXUP
 	}
 
 
@@ -1014,7 +1028,9 @@ namespace parser
 		if(st.front() == TT::Mutable)
 			ret->isMutable = true, st.pop();
 
-		ret->isRaw = raw;
+		if(raw)
+			ret->attrs.set(attr::RAW);
+
 		ret->allocTy = parseType(st);
 
 		if(st.front() == TT::LParen)
@@ -1058,7 +1074,7 @@ namespace parser
 			if(raw) error(st.loc(), "initialisation body cannot be used with raw array allocations");
 
 			// ok, get it
-			ret->initBody = parseBracedBlock(st);
+			ret->initBody = parseBracedBlock(st).val();
 		}
 
 
@@ -1082,10 +1098,10 @@ namespace parser
 		auto ret = util::pool<DeferredStmt>(st.eat().loc);
 
 		if(st.front() == TT::LBrace)
-			ret->actual = parseBracedBlock(st);
+			ret->actual = parseBracedBlock(st).val();
 
 		else
-			ret->actual = parseStmt(st);
+			ret->actual = parseStmt(st).val();
 
 		return ret;
 	}
@@ -1250,7 +1266,7 @@ namespace parser
 
 				case TT::CharacterLiteral:
 					st.pop();
-					return util::pool<LitChar>(tok.loc, (uint32_t) tok.text[0]);
+					return util::pool<LitChar>(tok.loc, static_cast<uint32_t>(tok.text[0]));
 
 				// no point creating separate functions for these
 				case TT::True:

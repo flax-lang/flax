@@ -157,7 +157,7 @@ namespace frontend
 	std::vector<std::string> checkForCycles(const std::string& topmod, frontend::DependencyGraph* graph)
 	{
 		auto groups = graph->findCyclicDependencies();
-		for(auto grp : groups)
+		for(const auto& grp : groups)
 		{
 			if(grp.size() > 1)
 			{
@@ -216,7 +216,7 @@ namespace frontend
 
 		// get the proper import of each 'import'
 		std::vector<std::string> fullpaths;
-		for(auto imp : imports)
+		for(const auto& imp : imports)
 		{
 			auto tovisit = resolveImport(imp.name, imp.loc, full);
 			graph->addModuleDependency(full, tovisit, imp);

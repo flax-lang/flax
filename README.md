@@ -6,14 +6,11 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
 
+[![build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
+&nbsp;&nbsp;&nbsp;&nbsp;
+[![build status](https://github.com/flax-lang/flax/workflows/CI/badge.svg)](https://github.com/flax-lang/flax/actions)
+&nbsp;&nbsp;&nbsp;&nbsp;
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[![Build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[![Build Status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
-
 
 
 -----------------------------------------------
@@ -28,8 +25,6 @@ A low level, general-purpose language with high level syntax and expressibility.
 
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development.
 I'm no famous artist but this is my magnum opus, so it'll not be abandoned anytime soon.
-
-Development is currently on hiatus. Regular work will resume NET 2019-12-09.
 
 ### Language Goals
 
@@ -113,7 +108,7 @@ do {
 ### Building the Flax compiler
 
 #### Dependencies ####
-- LLVM 7, mostly due to their obsession with changing the IR interface every damn version
+- LLVM 11, mostly due to their obsession with changing the IR interface every damn version
 - GMP/MPIR
 - MPFR
 - libffi
@@ -122,7 +117,7 @@ do {
 #### macOS / Linux
 
 - The `makefile` is the preferred way to build on UNIX systems.
-- LLVM needs to be installed. On macOS, `brew install llvm@7` should work, and you might need to do some PPA fiddling for Debian-based distros.
+- LLVM needs to be installed. On macOS, `brew install llvm` should work, and you might need to do some PPA fiddling for Debian-based distros.
 - A C++17-compatible compiler should be used.
 - Find the `flaxc` executable in `build/sysroot/usr/local/bin`.
 - Additionally, the (admittedly limited) standard library will be copied from `./libs` to `./build/sysroot/usr/local/lib/flaxlibs/`.
@@ -169,6 +164,16 @@ Feel free to open an issue if you feel that there's any missing feature, or if y
 welcome.
 
 
+
+### Licensing
+
+The Flax compiler itself (this repository) is licensed under the Apache 2.0 license (see `LICENSE` file). For ease of building, some dependencies
+are included in the repository itself (under the `external` folder) and compiled together, instead of as a separate library (shared or otherwise).
+These are:
+
+1. [mpreal](https://bitbucket.org/advanpix/mpreal), GPL
+2. [utf8rewind](https://bitbucket.org/knight666/utf8rewind), MIT
+3. [tinyprocesslib](https://gitlab.com/eidheim/tiny-process-library), MIT
 
 
 

@@ -66,7 +66,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// make the inline initialiser
 	{
-		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_init", IdKind::Name),
+		fir::Function* func = cs->module->getOrCreateFunction(fir::Name::obfuscate(clsty->encodedStr(), "_inline_init"),
 			fir::FunctionType::get({ this->type->getMutablePointerTo() }, fir::Type::getVoid()),
 			fir::LinkageType::Internal);
 
@@ -114,7 +114,7 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	// this is the inline destructor
 	{
-		fir::Function* func = cs->module->getOrCreateFunction(Identifier(this->id.mangled() + "_inline_deinit", IdKind::Name),
+		fir::Function* func = cs->module->getOrCreateFunction(fir::Name::obfuscate(clsty->encodedStr(), "_inline_deinit"),
 			fir::FunctionType::get({ this->type->getMutablePointerTo() }, fir::Type::getVoid()),
 			fir::LinkageType::Internal);
 

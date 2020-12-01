@@ -24,24 +24,31 @@ TCResult ast::TraitDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type*
 	auto defn = util::pool<sst::TraitDefn>(this->loc);
 	defn->bareName = this->name;
 
+	defn->attrs = this->attrs;
 	defn->id = Identifier(defnname, IdKind::Type);
-	defn->id.scope = this->realScope;
+	defn->id.scope = this->enclosingScope;
 	defn->visibility = this->visibility;
 	defn->original = this;
+	defn->enclosingScope = this->enclosingScope;
+	defn->innerScope = this->enclosingScope.appending(defnname);
 
 	// make all our methods be methods
 	for(auto m : this->methods)
-		m->parentType = this, m->realScope = this->realScope + defn->id.name;
+	{
+		m->parentType = this;
+		m->enclosingScope = defn->innerScope;
+	}
 
-	auto str = fir::TraitType::create(defn->id);
+	auto str = fir::TraitType::create(defn->id.convertToName());
 	defn->type = str;
 
-	fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
+	if(auto err = fs->checkForShadowingOrConflictingDefinition(defn, [](auto, auto) -> bool { return true; }))
+		return TCResult(err);
 
 	// add it first so we can use it in the method bodies,
 	// and make pointers to it
 	{
-		fs->getTreeOfScope(this->realScope)->addDefinition(defnname, defn, gmaps);
+		defn->enclosingScope.stree->addDefinition(defnname, defn, gmaps);
 		fs->typeDefnMap[str] = defn;
 	}
 
@@ -67,11 +74,7 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	auto trt = defn->type->toTraitType();
 	iceAssert(trt);
 
-
-	auto oldscope = fs->getCurrentScope();
-	fs->teleportToScope(defn->id.scope);
-	fs->pushTree(defn->id.name);
-
+	fs->teleportInto(defn->innerScope);
 	fs->pushSelfContext(trt);
 
 	std::vector<std::pair<std::string, fir::FunctionType*>> meths;
@@ -95,9 +98,7 @@ TCResult ast::TraitDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, co
 	trt->setMethods(meths);
 
 	fs->popSelfContext();
-
-	fs->popTree();
-	fs->teleportToScope(oldscope);
+	fs->teleportOut();
 
 	this->finishedTypechecking.insert(defn);
 	return TCResult(defn);
@@ -126,6 +127,7 @@ static bool _checkFunctionTypesMatch(fir::Type* trait, fir::Type* type, fir::Fun
 		auto ax = as[i];
 		auto bx = bs[i];
 
+		// TODO: wtf is this doing?!
 		if(ax != bx)
 		{
 			auto [ abase, atrfs ] = sst::poly::internal::decomposeIntoTransforms(ax, SIZE_MAX);
@@ -202,7 +204,7 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
 			for(const auto& m : missings)
 			{
 				err->append(SimpleError::make(MsgType::Note, std::get<0>(m), "missing implementation for method '%s': %s:",
-					std::get<1>(m), (fir::Type*) std::get<2>(m)));
+					std::get<1>(m), std::get<2>(m)));
 			}
 
 			err->append(

@@ -8,14 +8,9 @@
 #include <stddef.h>
 #include <limits.h>
 
-#include "errors.h"
 #include "type.h"
-
-namespace util
-{
-	template <typename T> struct MemoryPool;
-	template <typename T> struct FastInsertVector;
-}
+#include "errors.h"
+#include "container.h"
 
 namespace fir
 {
@@ -41,8 +36,8 @@ namespace fir
 		friend struct Instruction;
 		friend struct ConstantValue;
 
-		friend struct util::MemoryPool<Value>;
-		friend struct util::FastInsertVector<Value>;
+		template <typename, size_t> friend struct util::MemoryPool;
+		template <typename, size_t> friend struct util::FastInsertVector;
 
 		// congratulations, i fucking played myself.
 		enum class Kind
@@ -64,9 +59,9 @@ namespace fir
 		void makeConst()    { this->isconst = true; }
 
 		// methods
-		void setName(const Identifier& idt);
-		void setName(std::string s);
-		const Identifier& getName();
+		void setName(const Name& idt);
+		void setName(const std::string& s);
+		const Name& getName();
 		bool hasName();
 
 		static size_t getCurrentValueId();
@@ -74,11 +69,13 @@ namespace fir
 		// protected shit
 		size_t id;
 		protected:
-		Value(Type* type, Kind k = Kind::prvalue);
+
 		virtual ~Value() { }
+		Value(Type* type, Kind k = Kind::prvalue);
+
 
 		// fields
-		Identifier ident;
+		Name ident;
 		Type* valueType;
 		Kind kind;
 		bool isconst = false;

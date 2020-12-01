@@ -3,13 +3,17 @@
 // Licensed under the Apache License Version 2.0.
 
 #include "ast.h"
+#include "defs.h"
 #include "errors.h"
 #include "typecheck.h"
 
 #include "ir/type.h"
 #include "memorypool.h"
+#include "zfu.h"
 
+#include <algorithm>
 #include <deque>
+#include <iterator>
 
 namespace sst
 {
@@ -138,26 +142,10 @@ namespace sst
 
 
 
-
 	void TypecheckState::pushTree(const std::string& name, bool createAnonymously)
 	{
 		iceAssert(this->stree);
-
-		if(auto it = this->stree->subtrees.find(name); it != this->stree->subtrees.end())
-		{
-			this->stree = it->second;
-		}
-		else
-		{
-			auto newtree = util::pool<StateTree>(name, this->stree->topLevelFilename, this->stree, createAnonymously);
-			this->stree->subtrees[name] = newtree;
-
-			// make a treedef.
-			newtree->treeDefn = util::pool<TreeDefn>(Location());
-			newtree->treeDefn->tree = newtree;
-
-			this->stree = newtree;
-		}
+		this->stree = this->stree->findOrCreateSubtree(name, createAnonymously);
 	}
 
 	StateTree* TypecheckState::popTree()
@@ -201,127 +189,56 @@ namespace sst
 		return this->deferBlockNest > 0;
 	}
 
-	std::string TypecheckState::serialiseCurrentScope()
+	Scope TypecheckState::scope()
 	{
-		std::deque<std::string> scope;
-		StateTree* tree = this->stree;
-
-		while(tree)
-		{
-			scope.push_front(tree->name);
-			tree = tree->parent;
-		}
-
-		return util::serialiseScope(std::vector<std::string>(scope.begin(), scope.end()));
+		return this->stree->getScope();
 	}
 
-	std::vector<std::string> TypecheckState::getCurrentScope()
+	std::vector<Defn*> StateTree::getAllDefinitions()
 	{
-		std::deque<std::string> scope;
-		StateTree* tree = this->stree;
-
-		while(tree)
-		{
-			scope.push_front(tree->name);
-			tree = tree->parent;
-		}
-
-		return std::vector<std::string>(scope.begin(), scope.end());
-	}
-
-	StateTree* TypecheckState::getTreeOfScope(const std::vector<std::string>& scope)
-	{
-		StateTree* tree = this->stree;
-		while(tree->parent)
-			tree = tree->parent;
-
-		// ok, we should be at the topmost level now
-		iceAssert(tree);
-
-		//! we're changing the behaviour subtly from how it used to function.
-		//* previously, we would always skip the first 'scope', under the assumption that it would be the name of the current module anyway.
-		//* however, the new behaviour is that, if the number of scopes passed in is 1 (one), we teleport directly to that scope, assuming an
-		//* implied module scope.
-
-		//* if the number of scopes passed is 0, we teleport to the top level scope (as we do now).
-
-		// TODO: investigate if this is the right thing to do...?
-
-		if(scope.empty())
-		{
-			return tree;
-		}
-		// else if(scope.size() == 1)
-		// {
-		// 	auto s = scope[0];
-		// 	//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
-		// 	//* things in the global scope -- which is allowed!
-
-		// 	if(s == tree->name)
-		// 		return tree;
-
-
-		// 	if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
-		// 	{
-		// 		error(this->loc(), "no such tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
-		// 	}
-		// 	else
-		// 	{
-		// 		return it->second;
-		// 	}
-		// }
-
-
-		for(size_t i = 0; i < scope.size(); i++)
-		{
-			auto s = scope[i];
-
-			//* note: if our size is 1, we should check if s == toplevel_name -- if so, then we're declaring
-			//* things in the global scope -- which is allowed!
-
-			if(s == tree->name)
-				continue;
-
-			if(auto it = tree->subtrees.find(s); it == tree->subtrees.end())
-			{
-				error(this->loc(), "nonexistent tree '%s' in scope '%s' (in teleportation to '%s')", s, tree->name, util::serialiseScope(scope));
-			}
-			else
-			{
-				tree = it->second;
-			}
-		}
-
-		return tree;
-	}
-
-	void TypecheckState::teleportToScope(const std::vector<std::string>& scope)
-	{
-		this->stree = this->getTreeOfScope(scope);
-	}
-
-
-	util::hash_map<std::string, std::vector<Defn*>> StateTree::getAllDefinitions()
-	{
-		util::hash_map<std::string, std::vector<Defn*>> ret;
-		for(auto srcs : this->definitions)
-			ret.insert(srcs.second.defns.begin(), srcs.second.defns.end());
+		std::vector<Defn*> ret;
+		for(const auto& [ n, ds ] : this->definitions)
+			for(auto d : ds)
+				ret.push_back(d);
 
 		return ret;
+	}
+
+	static void fetchDefinitionsFrom(const std::string& name, StateTree* tree, bool recursively, bool includePrivate, std::vector<Defn*>& out)
+	{
+		if(auto it = tree->definitions.find(name); it != tree->definitions.end())
+		{
+			std::copy_if(it->second.begin(), it->second.end(), std::back_inserter(out), [includePrivate](Defn* defn) -> bool {
+				return (includePrivate ? true : defn->visibility == VisibilityLevel::Public);
+			});
+		}
+
+		auto sameOrigin = [](const StateTree* a, const StateTree* b) -> bool {
+			auto p1 = a; while(p1->parent) p1 = p1->parent;
+			auto p2 = b; while(p2->parent) p2 = p2->parent;
+
+			return p1 == p2;
+		};
+
+		for(auto import : tree->imports)
+		{
+			if(recursively)
+			{
+				// only include private things if we're in the same file.
+				bool priv = sameOrigin(tree, import);
+				fetchDefinitionsFrom(name, import, /* recursively: */ false, /* includePrivate: */ priv, out);
+			}
+
+			// in theory we should never include the private definitions from re-exports
+			for(auto reexp : import->reexports)
+				fetchDefinitionsFrom(name, reexp, /* recursively: */ false, /* includePrivate: */ false, out);
+		}
 	}
 
 	std::vector<Defn*> StateTree::getDefinitionsWithName(const std::string& name)
 	{
 		std::vector<Defn*> ret;
-		for(const auto& [ filename, defnMap ] : this->definitions)
-		{
-			(void) filename;
-			if(auto it = defnMap.defns.find(name); it != defnMap.defns.end())
-			{
-				const auto& defs = it->second;
-				if(defs.size() > 0) ret.insert(ret.end(), defs.begin(), defs.end());
-			}
-		}
+		fetchDefinitionsFrom(name, this, /* recursively: */ true, /* includePrivate: */ true, ret);
 
 		return ret;
 	}
@@ -335,48 +252,98 @@ namespace sst
 			return { };
 	}
 
-	void StateTree::addDefinition(const std::string& sourceFile, const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
+	void StateTree::addDefinition(const std::string& name, Defn* def, const TypeParamMap_t& gmaps)
 	{
-		// this->definitions[sourceFile][util::typeParamMapToString(name, gmaps)].push_back(def);
-		this->definitions[sourceFile].defns[name].push_back(def);
+		this->definitions[name].push_back(def);
 	}
 
-	void StateTree::addDefinition(const std::string& _name, Defn* def, const TypeParamMap_t& gmaps)
+
+	std::string Scope::string() const
 	{
-		this->addDefinition(this->topLevelFilename, _name, def, gmaps);
+		return zfu::join(this->components(), "::");
 	}
 
-	// TODO: maybe cache this someday?
-	std::vector<std::string> StateTree::getScope()
+	const std::vector<std::string>& Scope::components() const
 	{
-		std::deque<std::string> ret;
-		ret.push_front(this->name);
+		if(!this->cachedComponents.empty())
+			return this->cachedComponents;
 
-		auto tree = this->parent;
-		while(tree)
+		auto& ret = this->cachedComponents;
+
+		const Scope* s = this;
+		while(s && s->stree)
 		{
-			ret.push_front(tree->name);
-			tree = tree->parent;
+			ret.push_back(s->stree->name);
+			s = s->prev;
 		}
 
-		return std::vector<std::string>(ret.begin(), ret.end());
+		std::reverse(ret.begin(), ret.end());
+		return ret;
 	}
 
-	StateTree* StateTree::searchForName(const std::string& name)
+	const Scope& StateTree::getScope()
 	{
-		auto tree = this;
-		while(tree)
+		if(!this->cachedScope.stree)
 		{
-			if(tree->name == name)
-				return tree;
+			this->cachedScope.stree = this;
 
-			tree = tree->parent;
+			if(this->parent)
+				this->cachedScope.prev = &this->parent->getScope();
 		}
 
-		return 0;
+		return this->cachedScope;
 	}
 
+	const Scope& Scope::appending(const std::string& name) const
+	{
+		return this->stree->findOrCreateSubtree(name)->getScope();
+	}
 
+	void TypecheckState::teleportInto(const Scope& scope)
+	{
+		this->teleportationStack.push_back(this->stree);
+		this->stree = scope.stree;
+	}
+
+	void TypecheckState::teleportOut()
+	{
+		this->stree = this->teleportationStack.back();
+		this->teleportationStack.pop_back();
+	}
+
+	StateTree* StateTree::findSubtree(const std::string& name)
+	{
+		if(auto it = this->subtrees.find(name); it != this->subtrees.end())
+			return it->second;
+
+		// check our imports, and our imports' reexports.
+		for(const auto imp : this->imports)
+		{
+			if(imp->name == name)
+				return imp;
+
+			for(const auto exp : imp->reexports)
+				if(exp->name == name)
+					return exp;
+		}
+
+		return nullptr;
+	}
+
+	StateTree* StateTree::findOrCreateSubtree(const std::string& name, bool anonymous)
+	{
+		if(auto it = this->subtrees.find(name); it != this->subtrees.end())
+		{
+			return it->second;
+		}
+		else
+		{
+			auto newtree = util::pool<StateTree>(name, this, anonymous);
+			newtree->moduleName = this->moduleName;
+			this->subtrees[name] = newtree;
+			return newtree;
+		}
+	}
 
 
 
@@ -398,7 +365,6 @@ namespace sst
 
 			if(fns.size() > 0)
 				return fns;
-				// ret.insert(ret.end(), fns.begin(), fns.end());
 
 			tree = tree->parent;
 		}
@@ -406,8 +372,8 @@ namespace sst
 		return ret;
 	}
 
-	bool TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn, std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback,
-		StateTree* tree)
+	ErrorMsg* TypecheckState::checkForShadowingOrConflictingDefinition(Defn* defn,
+		std::function<bool (TypecheckState* fs, Defn* other)> conflictCheckCallback, StateTree* tree)
 	{
 		if(tree == 0)
 			tree = this->stree;
@@ -443,7 +409,7 @@ namespace sst
 			for(const auto& [ l, kind ] : conflicts)
 			{
 				err->append(SimpleError::make(MsgType::Note, l->loc, "%shere%s:", first ? strprintf("conflicting %s ",
-					util::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
+					zfu::plural("definition", conflicts.size())) : "and ", ak == kind ? "" : strprintf(" (as a %s)", kind)));
 
 				first = false;
 			}
@@ -451,12 +417,13 @@ namespace sst
 			return err;
 		};
 
+
 		// ok, now check only the current scope
 		auto defs = tree->getDefinitionsWithName(defn->id.name);
 
 		for(auto otherdef : defs)
 		{
-			if(!dcast(TreeDefn, otherdef) && !otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
+			if(!otherdef->type->containsPlaceholders() && conflictCheckCallback(this, otherdef))
 			{
 				auto errs = makeTheError(defn, defn->id.name, defn->getKind(), { std::make_pair(otherdef, otherdef->getKind()) });
 
@@ -465,15 +432,15 @@ namespace sst
 				{
 					auto a = dcast(sst::FunctionDecl, defn);
 					auto b = dcast(sst::FunctionDecl, otherdef);
-					if(fir::Type::areTypeListsEqual(util::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
-						util::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
+					if(fir::Type::areTypeListsEqual(zfu::map(a->params, [](const auto& p) -> fir::Type* { return p.type; }),
+						zfu::map(b->params, [](const auto& p) -> fir::Type* { return p.type; })))
 					{
 						errs->append(BareError::make(MsgType::Note, "functions cannot be overloaded over argument names or"
 							" return types alone"));
 					}
 				}
 
-				errs->postAndQuit();
+				return errs;
 			}
 		}
 
@@ -491,7 +458,7 @@ namespace sst
 				// honestly we can't know if we will conflict with other functions.
 				// filter out by kind.
 
-				auto newgds = util::filterMap(gdefs,
+				auto newgds = zfu::filterMap(gdefs,
 					[](ast::Parameterisable* d) -> bool {
 						return dcast(ast::FuncDefn, d) == nullptr;
 					},
@@ -501,26 +468,34 @@ namespace sst
 				);
 
 				if(newgds.size() > 0)
-					makeTheError(fn, fn->id.name, fn->getKind(), newgds)->postAndQuit();
+					return makeTheError(fn, fn->id.name, fn->getKind(), newgds);
 			}
 			else
 			{
 				// assume everything conflicts, since functions are the only thing that can overload.
-				makeTheError(defn, defn->id.name, defn->getKind(),
-					util::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
+				return makeTheError(defn, defn->id.name, defn->getKind(),
+					zfu::map(gdefs, [](ast::Parameterisable* d) -> std::pair<Locatable*, std::string> {
 						return std::make_pair(d, d->getKind());
 					})
-				)->postAndQuit();
+				);
 			}
 		}
 
-		return false;
+		// no error.
+		return nullptr;
 	}
 
 	void TypecheckState::pushAnonymousTree()
 	{
 		static size_t _anonId = 0;
 		this->pushTree(std::to_string(_anonId++), /* createAnonymously: */ true);
+	}
+
+
+	Scope::Scope(StateTree* st)
+	{
+		this->prev = 0;
+		this->stree = st;
 	}
 }
 

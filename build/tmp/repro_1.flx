@@ -1,0 +1,62 @@
+// repro_1.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+/*
+import libc as _
+// import repro_2 as _
+import repro_2
+import std::limits as lim
+
+using repro_2 as _
+
+@entry fn main()
+{
+	class Foozle
+	{
+		init() { }
+
+		static fn alpha() { }
+
+		class Flub
+		{
+			init() { }
+
+			static fn beta() { }
+
+			static fn omega() { printf("owo\n") }
+		};
+	}
+
+	printf("four = %d\n", Foo::FOUR.value);
+
+	printf("hello\n");
+
+	using Foozle::Flub as Flubzle
+	Flubzle::omega();
+
+	printf("%d\n", Bar::bla(3));
+	printf("lmao\n");
+
+	let x = lim::int16::max;
+	printf("x = %x\n", x);
+
+	// let c = "a" + "b"
+}
+*/
+
+
+import libc
+import repro_3
+
+// using libc as _
+
+@entry fn main2()
+{
+	// std::io::println("owo")
+	// owo::println("owo")
+	// uwu::owo::foozle()
+	// printf("owo\n")
+	repro_3::foozle(10)
+}
+

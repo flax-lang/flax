@@ -49,7 +49,7 @@ namespace sst
 				if(auto parent = target->toUnionVariantType()->getParentUnion(); parent != vt)
 				{
 					error(this, "unwrapping union of type '%s' to variant ('%s') of unrelated union '%s'",
-						vt, target->toUnionVariantType()->getName(), (fir::Type*) parent);
+						vt, target->toUnionVariantType()->getName(), parent);
 				}
 				else
 				{
@@ -66,7 +66,7 @@ namespace sst
 					{
 						// TODO: actually say what the variant was -- requires creating a runtime array of the names of the variants,
 						// TODO: probably. might be easier once we have type info at runtime!
-						cgn::glue::printRuntimeError(cs, fir::ConstantString::get(cs->loc().toString()),
+						cgn::glue::printRuntimeError(cs, fir::ConstantCharSlice::get(cs->loc().toString()),
 							"invalid unwrap of value of union '%s' into variant '%s'", {
 								cs->module->createGlobalString(vt->str()),
 								cs->module->createGlobalString(target->toUnionVariantType()->getName())
@@ -431,13 +431,13 @@ namespace cgn
 				#if 0
 				// ok.
 				// if we're both string literals, then fuck it, do it compile-time
-				if(dcast(fir::ConstantString, lv) && dcast(fir::ConstantString, rv))
+				if(dcast(fir::ConstantCharSlice, lv) && dcast(fir::ConstantCharSlice, rv))
 				{
-					std::string cls = dcast(fir::ConstantString, lv)->getValue();
-					std::string crs = dcast(fir::ConstantString, rv)->getValue();
+					std::string cls = dcast(fir::ConstantCharSlice, lv)->getValue();
+					std::string crs = dcast(fir::ConstantCharSlice, rv)->getValue();
 
 					info(loc, "const strings");
-					return CGResult(fir::ConstantString::get(cls + crs));
+					return CGResult(fir::ConstantCharSlice::get(cls + crs));
 				}
 				#endif
 
@@ -480,13 +480,13 @@ namespace cgn
 
 
 				#if 0
-				if(dcast(fir::ConstantString, lv) && dcast(fir::ConstantChar, rv))
+				if(dcast(fir::ConstantCharSlice, lv) && dcast(fir::ConstantChar, rv))
 				{
-					std::string cls = dcast(fir::ConstantString, lv)->getValue();
+					std::string cls = dcast(fir::ConstantCharSlice, lv)->getValue();
 					char crs = dcast(fir::ConstantChar, rv)->getValue();
 
 					info(loc, "const strings");
-					return CGResult(fir::ConstantString::get(cls + crs));
+					return CGResult(fir::ConstantCharSlice::get(cls + crs));
 				}
 				#endif
 

@@ -24,7 +24,7 @@ static sst::FunctionDefn* getOverloadedOperator(sst::TypecheckState* fs, const L
 
 		for(auto ovp : (*thelist)[op])
 		{
-			int dist = fs->getOverloadDistance(util::map(ovp->params, [](const auto& p) { return p.type; }), args);
+			int dist = sst::getOverloadDistance(zfu::map(ovp->params, [](const auto& p) { return p.type; }), args);
 			if(dist == -1) continue;
 
 			if(dist == best)
@@ -113,10 +113,13 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
 
-		else if(left->isStringType() && right->isStringType())
+		else if(left->isStringType() && (right->isStringType() || right->isCharSliceType() || right->isCharType()))
 			return fir::Type::getString();
 
 		else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
+			return left;
+
+		else if(left->isDynamicArrayType() && left->getArrayElementType() == right)
 			return left;
 
 		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
@@ -190,6 +193,11 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		{
 			return left;
 		}
+	}
+	else if(zfu::match(op, Operator::BitwiseOr, Operator::BitwiseAnd, Operator::BitwiseXor))
+	{
+		if(left == right)
+			return left;
 	}
 
 
