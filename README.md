@@ -6,20 +6,14 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
 
-[![build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
+[![build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/master?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/master)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![build status](https://github.com/flax-lang/flax/workflows/CI/badge.svg)](https://github.com/flax-lang/flax/actions)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
+[![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/master/badge.svg)](https://semaphoreci.com/zhiayang/flax)
 
 
 -----------------------------------------------
-
-
-<!-- <p align="center">
-  <img src="https://raw.githubusercontent.com/flax-lang/flax/develop/build/d20.gif" />
-</p>
------------------------------------------------ -->
 
 #### Disclaimer ####
 
