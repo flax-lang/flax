@@ -1,0 +1,70 @@
+// file.flx
+// Copyright (c) 2019, zhiayang
+// Licensed under the Apache License Version 2.0.
+
+export std::io
+import libc
+
+// // rudimentary file handling
+// public struct File
+// {
+// 	fd: int
+// 	buf: [i8]
+// }
+
+// public enum Mode
+// {
+// 	case Read
+// 	case Write
+// 	case ReadWrite
+// 	case Append
+// }
+
+// let O_RDONLY: i32   = 0x0000    // open for reading only
+// let O_WRONLY: i32   = 0x0001    // open for writing only
+// let O_RDWR: i32     = 0x0002    // open for reading and writing
+// let O_ACCMODE: i32  = 0x0003    // mask for above modes
+// let O_NONBLOCK: i32 = 0x0004    // no delay
+// let O_APPEND: i32   = 0x0008    // set append mode
+// let O_CREAT: i32    = 0x0200    // create if nonexistant
+// let O_TRUNC: i32    = 0x0400    // truncate to zero length
+// let O_EXCL: i32     = 0x0800    // error if already exists
+
+// let SEEK_SET: i32   = 0         // set file offset to offset
+// let SEEK_CUR: i32   = 1         // set file offset to current plus offset
+// let SEEK_END: i32   = 2         // set file offset to EOF plus offset
+
+// public fn open(path: str, mode: Mode) -> File
+// {
+// 	var flags: i32
+// 	if mode == Mode::Read       => flags = O_RDONLY
+// 	if mode == Mode::Write      => flags = O_WRONLY
+// 	if mode == Mode::ReadWrite  => flags = O_RDWR
+// 	if mode == Mode::Append     => flags = O_RDWR | O_APPEND
+
+// 	return File(fd: libc::open(path, flags, 0), buf: [ ])
+// }
+
+// public fn read(f: File) -> [i8]
+// {
+// 	if f.buf.length != 0 => return f.buf
+
+
+// 	return [ ]
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -244,14 +244,13 @@ namespace backend
 
 			llvm::SmallVector<char, 0> buffer;
 			{
-				auto bufferStream = llvm::make_unique<llvm::raw_svector_ostream>(buffer);
+				auto bufferStream = std::make_unique<llvm::raw_svector_ostream>(buffer);
 				llvm::raw_pwrite_stream* rawStream = bufferStream.get();
 
 				{
 					llvm::legacy::PassManager pm = llvm::legacy::PassManager();
-
-					using CodeGenFileType = llvm::TargetMachine::CodeGenFileType;
-					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr, CodeGenFileType::CGFT_ObjectFile);
+					targetMachine->addPassesToEmitFile(pm, *rawStream, nullptr,
+						llvm::CodeGenFileType::CGFT_ObjectFile);
 
 					pm.run(*this->linkedModule);
 				}
@@ -416,7 +415,7 @@ namespace backend
 		platform::compiler::addLibrarySearchPaths();
 
 		// default libraries come with the correct prefix/extension for the platform already, but user ones do not.
-		auto tolink = util::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
+		auto tolink = zfu::map(frontend::getLibrariesToLink(), [](auto lib) -> auto {
 			return platform::compiler::getSharedLibraryName(lib);
 		}) + platform::compiler::getDefaultSharedLibraries();
 

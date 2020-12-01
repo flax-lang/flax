@@ -47,6 +47,7 @@ namespace sst
 		bool global = false;
 		std::string bareName;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
+		Scope enclosingScope;
 
 		virtual std::string getKind() = 0;
 	};

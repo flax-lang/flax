@@ -29,14 +29,14 @@ TCResult ast::PlatformDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		defn->type = ty;
 		defn->id = Identifier(this->typeName, IdKind::Type);
-		defn->id.scope = fs->getCurrentScope();
+		defn->id.scope = fs->scope();
 
 		fs->checkForShadowingOrConflictingDefinition(defn, [](sst::TypecheckState* fs, sst::Defn* other) -> bool { return true; });
 
 		// add it first so we can use it in the method bodies,
 		// and make pointers to it
 		{
-			fs->getTreeOfScope(defn->id.scope)->addDefinition(this->typeName, defn, { });
+			fs->stree->addDefinition(this->typeName, defn);
 			fs->typeDefnMap[ty] = defn;
 		}
 

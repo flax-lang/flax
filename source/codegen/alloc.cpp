@@ -9,7 +9,7 @@
 
 static fir::Function* getCheckNegativeLengthFunction(cgn::CodegenState* cs)
 {
-	auto fname = util::obfuscateIdentifier("alloc_checkneg");
+	auto fname = fir::Name::obfuscate("alloc_checkneg");
 	fir::Function* checkf = cs->module->getFunction(fname);
 
 	if(!checkf)

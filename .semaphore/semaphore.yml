@@ -15,11 +15,11 @@ blocks:
       - name: build
         commands:
           - checkout
-          - sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main" | sudo tee -a /etc/apt/sources.list
+          - sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-11 main" | sudo tee -a /etc/apt/sources.list
           - sudo wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           - sudo apt -y update
-          - sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y llvm-9 llvm-9-dev libllvm9 libmpfr-dev libmpfr6
-          - CXX=g++-8 CC=gcc-8 LLVM_CONFIG=llvm-config-9 make -j2 build
+          - sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y llvm-11 llvm-11-dev libllvm11 libmpfr-dev libmpfr6
+          - CXX=g++-8 CC=gcc-8 LLVM_CONFIG=llvm-config-11 make -j2 build
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
           - build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester

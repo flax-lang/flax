@@ -57,7 +57,7 @@ namespace fir
 
 
 	// function stuff
-	Function::Function(const Identifier& name, FunctionType* fnType, Module* module, LinkageType linkage)
+	Function::Function(const Name& name, FunctionType* fnType, Module* module, LinkageType linkage)
 		: GlobalValue(module, fnType, linkage)
 	{
 		this->ident = name;
@@ -176,7 +176,7 @@ namespace fir
 
 
 
-	Function* Function::create(const Identifier& name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
+	Function* Function::create(const Name& name, fir::FunctionType* fnType, fir::Module* module, fir::LinkageType linkage)
 	{
 		return new Function(name, fnType, module, linkage);
 	}

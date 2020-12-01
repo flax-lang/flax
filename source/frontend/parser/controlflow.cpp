@@ -160,7 +160,7 @@ namespace parser
 		iceAssert(st.front() == TT::For);
 		st.eat();
 
-		if(!util::match(st.front(), TT::Identifier, TT::LParen))
+		if(!zfu::match(st.front(), TT::Identifier, TT::LParen))
 			expectedAfter(st.loc(), "'(' or identifier", "'for'", st.front().str());
 
 		auto ret = util::pool<ForeachLoop>(st.ploc());

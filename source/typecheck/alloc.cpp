@@ -23,7 +23,7 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->attrs.has(attr::RAW) && this->counts.size() > 1)
 		error(this, "only one length dimension is supported for raw memory allocation (have %d)", this->counts.size());
 
-	std::vector<sst::Expr*> counts = util::map(this->counts, [fs](ast::Expr* e) -> auto {
+	std::vector<sst::Expr*> counts = zfu::map(this->counts, [fs](ast::Expr* e) -> auto {
 		auto c = e->typecheck(fs, fir::Type::getNativeWord()).expr();
 		if(!c->type->isIntegerType())
 			error(c, "expected integer type ('i64') for alloc count, found '%s' instead", c->type);

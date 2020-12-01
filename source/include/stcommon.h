@@ -8,6 +8,7 @@
 namespace sst
 {
 	struct VarDefn;
+	struct StateTree;
 }
 
 namespace ast

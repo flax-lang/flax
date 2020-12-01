@@ -59,9 +59,9 @@ namespace fir
 		void makeConst()    { this->isconst = true; }
 
 		// methods
-		void setName(const Identifier& idt);
+		void setName(const Name& idt);
 		void setName(const std::string& s);
-		const Identifier& getName();
+		const Name& getName();
 		bool hasName();
 
 		static size_t getCurrentValueId();
@@ -75,7 +75,7 @@ namespace fir
 
 
 		// fields
-		Identifier ident;
+		Name ident;
 		Type* valueType;
 		Kind kind;
 		bool isconst = false;

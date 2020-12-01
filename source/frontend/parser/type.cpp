@@ -10,6 +10,13 @@
 using namespace ast;
 using namespace lexer;
 
+// defined in fir/name.cpp
+namespace fir
+{
+	std::string obfuscateName(const std::string& name, size_t id);
+}
+
+
 namespace parser
 {
 	using TT = lexer::TokenType;
@@ -175,7 +182,7 @@ namespace parser
 		StructDefn* defn = util::pool<StructDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = util::obfuscateName("anon_struct", anon_counter++);
+			defn->name = fir::obfuscateName("anon_struct", anon_counter++);
 		}
 		else
 		{
@@ -313,7 +320,7 @@ namespace parser
 		UnionDefn* defn = util::pool<UnionDefn>(st.loc());
 		if(nameless)
 		{
-			defn->name = util::obfuscateName("anon_union", anon_counter++);
+			defn->name = fir::obfuscateName("anon_union", anon_counter++);
 		}
 		else
 		{

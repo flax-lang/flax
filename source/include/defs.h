@@ -9,14 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "zpr.h"
-#include "utils.h"
 #include "container.h"
 
 struct Identifier;
 enum class VisibilityLevel;
 
-namespace fir { struct Type; }
+namespace fir { struct Type; struct Name; }
 namespace pts { struct Type; }
 
 
@@ -143,20 +141,41 @@ template <typename... Ts> std::string strbold(const char* fmt, Ts&&... ts)
 	return std::string(COLOUR_RESET) + std::string(COLOUR_BLACK_BOLD) + strprintf(fmt, ts...) + std::string(COLOUR_RESET);
 }
 
+namespace sst
+{
+	struct StateTree;
+
+	struct Scope
+	{
+		Scope() { }
+		Scope(StateTree* st);
+
+		StateTree* stree = 0;
+		const Scope* prev = 0;
+
+		mutable std::vector<std::string> cachedComponents;
+
+		std::string string() const;
+		const std::vector<std::string>& components() const;
+		const Scope& appending(const std::string& name) const;
+	};
+}
+
 struct Identifier
 {
 	Identifier() : name(""), kind(IdKind::Invalid) { }
 	Identifier(const std::string& n, IdKind k) : name(n), kind(k) { }
 
 	std::string name;
-	std::vector<std::string> scope;
+	sst::Scope scope;
 	std::vector<fir::Type*> params;
+	fir::Type* returnType = nullptr;
 
 	IdKind kind;
 
 	std::string str() const;
-	std::string mangled() const;
-	std::string mangledName() const;
+	std::string mangled___() const;
+	fir::Name convertToName() const;
 
 	bool operator == (const Identifier& other) const;
 	bool operator != (const Identifier& other) const;
@@ -178,6 +197,11 @@ struct Location
 	bool operator != (const Location& other) const
 	{
 		return !(*this == other);
+	}
+
+	Location unionWith(const Location& x) const
+	{
+		return unionOf(*this, x);
 	}
 
 	static Location unionOf(const Location& a, const Location& b)
@@ -624,13 +648,6 @@ struct PolyArgMapping_t
 namespace util
 {
 	std::string typeParamMapToString(const std::string& name, const TypeParamMap_t& map);
-
-	std::string obfuscateName(const std::string& name);
-	std::string obfuscateName(const std::string& name, size_t id);
-	std::string obfuscateName(const std::string& name, const std::string& extra);
-	Identifier obfuscateIdentifier(const std::string& name, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, size_t id, IdKind kind = IdKind::Name);
-	Identifier obfuscateIdentifier(const std::string& name, const std::string& extra, IdKind kind = IdKind::Name);
 
 	template <typename T>
 	std::string listToEnglish(const std::vector<T>& list, bool quote = true)

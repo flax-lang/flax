@@ -10,17 +10,15 @@
 namespace fir
 {
 	// structs
-	StructType::StructType(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked)
-		: Type(TypeKind::Struct)
+	StructType::StructType(const Name& name, const std::vector<std::pair<std::string, Type*>>& mems, bool ispacked)
+		: Type(TypeKind::Struct), structName(name)
 	{
-		this->structName = name;
 		this->isTypePacked = ispacked;
-
 		this->setBody(mems);
 	}
 
-	static util::hash_map<Identifier, StructType*> typeCache;
-	StructType* StructType::create(const Identifier& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
+	static util::hash_map<Name, StructType*> typeCache;
+	StructType* StructType::create(const Name& name, const std::vector<std::pair<std::string, Type*>>& members, bool packed)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("struct with name '%s' already exists", name.str());
@@ -29,7 +27,7 @@ namespace fir
 			return (typeCache[name] = new StructType(name, members, packed));
 	}
 
-	StructType* StructType::createWithoutBody(const Identifier& name, bool isPacked)
+	StructType* StructType::createWithoutBody(const Name& name, bool isPacked)
 	{
 		return StructType::create(name, { }, isPacked);
 	}
@@ -62,7 +60,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier StructType::getTypeName()
+	Name StructType::getTypeName()
 	{
 		return this->structName;
 	}
@@ -105,7 +103,7 @@ namespace fir
 
 	void StructType::addTraitImpl(TraitType* trt)
 	{
-		if(util::contains(this->implTraits, trt))
+		if(zfu::contains(this->implTraits, trt))
 			error("'%s' already implements trait '%s'", this, trt);
 
 		this->implTraits.push_back(trt);
@@ -113,7 +111,7 @@ namespace fir
 
 	bool StructType::implementsTrait(TraitType* trt)
 	{
-		return util::contains(this->implTraits, trt);
+		return zfu::contains(this->implTraits, trt);
 	}
 
 	std::vector<TraitType*> StructType::getImplementedTraits()

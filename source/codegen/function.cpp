@@ -27,7 +27,7 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->attrs.hasAny(attr::FN_ENTRYPOINT, attr::NO_MANGLE))
 		ident = Identifier(this->id.name, IdKind::Name);
 
-	auto fn = cs->module->getOrCreateFunction(ident, ft,
+	auto fn = cs->module->getOrCreateFunction(ident.convertToName(), ft,
 		this->visibility == VisibilityLevel::Private ? fir::LinkageType::Internal : fir::LinkageType::External);
 
 	// manually set the names, I guess
@@ -117,14 +117,14 @@ CGResult sst::ForeignFuncDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	auto realId = Identifier(this->realName, IdKind::Name);
 
-	auto ef = cs->module->getFunction(realId);
+	auto ef = cs->module->getFunction(realId.convertToName());
 	if(ef && ef->getType() != ft)
 	{
 		error(this, "foreign function '%s' already defined elsewhere (with signature %s); overloading not possible",
 			this->id.str(), ef->getType());
 	}
 
-	auto fn = cs->module->getOrCreateFunction(realId, ft, fir::LinkageType::External);
+	auto fn = cs->module->getOrCreateFunction(realId.convertToName(), ft, fir::LinkageType::External);
 
 	if(this->isIntrinsic)
 		fn->setIsIntrinsic();

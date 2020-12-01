@@ -299,7 +299,7 @@ namespace fir
 	{
 		friend struct Module;
 
-		GlobalVariable(const Identifier& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
+		GlobalVariable(const Name& idt, Module* module, Type* type, bool immutable, LinkageType linkage, ConstantValue* initValue);
 		void setInitialValue(ConstantValue* constVal);
 		ConstantValue* getInitialValue();
 

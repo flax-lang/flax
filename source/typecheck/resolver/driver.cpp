@@ -20,7 +20,7 @@ namespace resolver
 	TCResult resolveFunctionCallFromCandidates(TypecheckState* fs, const Location& callLoc, const std::vector<Defn*>& cands,
 		std::vector<FnCallArgument>* args, const PolyArgMapping_t& gmaps, bool allowImplicitSelf)
 	{
-		auto cds = util::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
+		auto cds = zfu::map(cands, [&args](auto c) -> std::pair<Defn*, std::vector<FnCallArgument>> { return { c, *args }; });
 		auto [ ret, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cds, gmaps, allowImplicitSelf, nullptr);
 
 		*args = new_args;
@@ -114,6 +114,10 @@ namespace resolver
 		{
 			if(!didGeneric)
 			{
+				auto top = fs->stree;
+				while(top && top->parent)
+					top = top->parent;
+
 				return TCResult(SimpleError::make(fs->loc(), "no function named '%s' in the current scope", name));
 			}
 			else
@@ -182,7 +186,7 @@ namespace resolver
 
 			auto copy1 = copy;
 
-			auto cand = resolveFunctionCallFromCandidates(fs, callLoc, util::map(cls->initialisers, [](auto e) -> auto {
+			auto cand = resolveFunctionCallFromCandidates(fs, callLoc, zfu::map(cls->initialisers, [](auto e) -> auto {
 				return dcast(sst::Defn, e);
 			}), &copy, pams, true);
 
@@ -217,17 +221,17 @@ namespace resolver
 			else
 			{
 				auto seencopy = seen;
-				std::vector<FnParam> target = util::filterMap(str->fields, [&seencopy](sst::StructFieldDefn* f) -> bool {
+				std::vector<FnParam> target = zfu::filterMap(str->fields, [&seencopy](sst::StructFieldDefn* f) -> bool {
 					return seencopy.find(f->id.name) != seencopy.end();
 				}, [](sst::StructFieldDefn* f) -> FnParam {
 					return FnParam(f->loc, f->id.name, f->type);
 				});
 
-				auto args = util::map(arguments, [](const FnCallArgument& a) -> poly::ArgType {
+				auto args = zfu::map(arguments, [](const FnCallArgument& a) -> poly::ArgType {
 					return poly::ArgType(a.name, a.value->type, a.loc);
 				});
 
-				auto [ soln, err ] = poly::solveTypeList(fs->loc(), util::map(target, [](const FnParam& f) -> poly::ArgType {
+				auto [ soln, err ] = poly::solveTypeList(fs->loc(), zfu::map(target, [](const FnParam& f) -> poly::ArgType {
 					return poly::ArgType(f.name, f.type, f.loc, f.defaultVal != 0);
 				}), args, poly::Solution_t(), /* isFnCall: */ true);
 

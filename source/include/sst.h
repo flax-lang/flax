@@ -57,6 +57,7 @@ namespace sst
 		~TypeDefn() { }
 
 		ast::TypeDefn* original = 0;
+		Scope innerScope;
 	};
 
 
@@ -400,12 +401,14 @@ namespace sst
 
 	struct ScopeExpr : Expr
 	{
-		ScopeExpr(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "<SCOPE EXPRESSION>"; }
+		ScopeExpr(const Location& l, fir::Type* t, const Scope& scope) : Expr(l, t), scope(scope)
+			{ this->readableName = "<SCOPE EXPRESSION>"; }
+
 		~ScopeExpr() { }
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		std::vector<std::string> scope;
+		Scope scope;
 	};
 
 	struct FieldDotOp : Expr
@@ -568,19 +571,6 @@ namespace sst
 		Expr* inside = 0;
 	};
 
-
-
-
-	struct TreeDefn : Defn
-	{
-		TreeDefn(const Location& l) : Defn(l) { this->readableName = "<TREE DEFINITION>"; }
-		~TreeDefn() { }
-
-		virtual std::string getKind() override { return "namespace"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		StateTree* tree = 0;
-	};
 
 	struct NamespaceDefn : Stmt
 	{

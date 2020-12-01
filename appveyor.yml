@@ -9,8 +9,10 @@ environment:
     LLVM_ROOT_DIR:    c:\projects\lib\llvm
     LIBFFI_ROOT_DIR:  c:\projects\lib\libffi
 
+
 cache:
   - c:\projects\lib -> appveyor.yml
+
 
 install:
   # Set up the build environment

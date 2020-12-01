@@ -276,53 +276,53 @@ namespace cgn
 	{
 		if(name == ALLOCATE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(ALLOCATE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(ALLOCATE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()), fir::LinkageType::External);
 		}
 		else if(name == FREE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(FREE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(FREE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getMutInt8Ptr() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == REALLOCATE_MEMORY_FUNC)
 		{
-			return this->module->getOrCreateFunction(Identifier(REALLOCATE_MEMORY_FUNC, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(REALLOCATE_MEMORY_FUNC),
 				fir::FunctionType::get({ fir::Type::getMutInt8Ptr(), fir::Type::getNativeWord() }, fir::Type::getMutInt8Ptr()),
 					fir::LinkageType::External);
 		}
 		else if(name == CRT_FDOPEN)
 		{
-			return this->module->getOrCreateFunction(Identifier(CRT_FDOPEN, IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of(CRT_FDOPEN),
 				fir::FunctionType::get({ fir::Type::getInt32(), fir::Type::getInt8Ptr() }, fir::Type::getVoidPtr()), fir::LinkageType::External);
 		}
 		else if(name == "printf")
 		{
-			return this->module->getOrCreateFunction(Identifier("printf", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("printf"),
 				fir::FunctionType::getCVariadicFunc({ fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else if(name == "abort")
 		{
-			return this->module->getOrCreateFunction(Identifier("abort", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("abort"),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == "exit")
 		{
-			return this->module->getOrCreateFunction(Identifier("exit", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("exit"),
 				fir::FunctionType::get({ fir::Type::getInt32() }, fir::Type::getVoid()), fir::LinkageType::External);
 		}
 		else if(name == "strlen")
 		{
-			return this->module->getOrCreateFunction(Identifier("strlen", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("strlen"),
 				fir::FunctionType::get({ fir::Type::getInt8Ptr() }, fir::Type::getNativeWord()), fir::LinkageType::External);
 		}
 		else if(name == "fprintf")
 		{
-			return this->module->getOrCreateFunction(Identifier("fprintf", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("fprintf"),
 				fir::FunctionType::getCVariadicFunc({ fir::Type::getVoidPtr(), fir::Type::getInt8Ptr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else if(name == "fflush")
 		{
-			return this->module->getOrCreateFunction(Identifier("fflush", IdKind::Name),
+			return this->module->getOrCreateFunction(fir::Name::of("fflush"),
 				fir::FunctionType::get({ fir::Type::getVoidPtr() }, fir::Type::getInt32()), fir::LinkageType::External);
 		}
 		else
@@ -348,7 +348,7 @@ namespace cgn
 
 		{
 			fir::Function* func = this->module->getOrCreateFunction(
-				util::obfuscateIdentifier(zpr::sprint("%s_piece_%d", strs::names::GLOBAL_INIT_FUNCTION, this->globalInitPieces.size())),
+				fir::Name::obfuscate(zpr::sprint("%s_piece_%d", strs::names::GLOBAL_INIT_FUNCTION, this->globalInitPieces.size())),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 
 			auto b = this->irb.addNewBlockInFunction("b", func);
@@ -386,7 +386,7 @@ namespace cgn
 		else
 		{
 			this->finalisedGlobalInitFunction = this->module->getOrCreateFunction(
-				util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION),
+				fir::Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION),
 				fir::FunctionType::get({ }, fir::Type::getVoid()), fir::LinkageType::Internal);
 		}
 

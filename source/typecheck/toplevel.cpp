@@ -2,6 +2,9 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include <optional>
+
+#include "defs.h"
 #include "sst.h"
 #include "ast.h"
 #include "pts.h"
@@ -18,187 +21,293 @@ using namespace ast;
 
 namespace sst
 {
-	static StateTree* cloneTree(StateTree* clonee, StateTree* surrogateParent, const std::string& filename)
-	{
-		auto clone = util::pool<StateTree>(clonee->name, filename, surrogateParent);
-		clone->treeDefn = util::pool<TreeDefn>(Location());
-		clone->treeDefn->tree = clone;
-
-		for(auto sub : clonee->subtrees)
-			clone->subtrees[sub.first] = cloneTree(sub.second, clone, filename);
-
-		clone->definitions = clonee->definitions;
-		clone->unresolvedGenericDefs = clonee->unresolvedGenericDefs;
-
-
-		clone->infixOperatorOverloads = clonee->infixOperatorOverloads;
-		clone->prefixOperatorOverloads = clonee->prefixOperatorOverloads;
-		clone->postfixOperatorOverloads = clonee->postfixOperatorOverloads;
-
-		return clone;
-	}
-
-	static StateTree* _addTreeToExistingTree(const std::unordered_set<std::string>& thingsImported, StateTree* existing, StateTree* _tree,
-		StateTree* commonParent, bool pubImport, bool ignoreVis, const std::string& importer)
-	{
-		// StateTree* tree = cloneTree(_tree, commonParent);
-		StateTree* tree = _tree;
-
-		// first merge all children -- copy whatever 1 has, plus what 1 and 2 have in common
-		for(auto sub : tree->subtrees)
-		{
-			// debuglog("add subtree '%s' (%p) to tree '%s' (%p)\n", sub.first, sub.second, existing->name, existing);
-			if(auto it = existing->subtrees.find(sub.first); it != existing->subtrees.end())
-			{
-				_addTreeToExistingTree(thingsImported, existing->subtrees[sub.first], sub.second, existing, pubImport, ignoreVis, importer);
-			}
-			else
-			{
-				existing->subtrees[sub.first] = cloneTree(sub.second, existing, tree->topLevelFilename);
-			}
-		}
-
-		// then, add all functions and shit
-		for(auto& defs_with_src : tree->definitions)
-		{
-			auto filename = defs_with_src.first;
-
-			// if we've already seen it, don't waste time re-importing it (and checking for dupes and stuff)
-			if(thingsImported.find(filename) != thingsImported.end())
-				continue;
-
-			for(auto defs : defs_with_src.second.defns)
-			{
-				auto name = defs.first;
-				for(auto def : defs.second)
-				{
-					// info(def, "hello there (%s)", def->visibility);
-					if(ignoreVis || ((pubImport || existing->topLevelFilename == importer) && def->visibility == VisibilityLevel::Public))
-					{
-						auto others = existing->getDefinitionsWithName(name);
-
-						for(auto ot : others)
-						{
-							if(auto fn = dcast(FunctionDecl, def))
-							{
-								if(auto v = dcast(VarDefn, ot))
-								{
-									SimpleError::make(fn->loc, "conflicting definition for function '%s'; was previously defined as a variable")
-										->append(SimpleError::make(MsgType::Note, v->loc, "conflicting definition was here:"))
-										->postAndQuit();
-								}
-								else if(auto f = dcast(FunctionDecl, ot))
-								{
-									if(fir::Type::areTypeListsEqual(util::map(fn->params, [](const auto& p) -> fir::Type* { return p.type; }),
-										util::map(f->params, [](const auto& p) -> fir::Type* { return p.type; })))
-									{
-										SimpleError::make(fn->loc, "duplicate definition of function '%s' with identical signature", fn->id.name)
-											->append(SimpleError::make(MsgType::Note, f->loc, "conflicting definition was here: (%p vs %p)",
-												reinterpret_cast<void*>(f), reinterpret_cast<void*>(fn)))
-											->postAndQuit();
-									}
-								}
-								else
-								{
-									error(def, "??");
-								}
-							}
-							else if(auto vr = dcast(VarDefn, def))
-							{
-								auto err = SimpleError::make(vr->loc, "duplicate definition for variable '%s'");
-
-								for(auto ot : others)
-									err->append(SimpleError::make(MsgType::Note, ot->loc, "previously defined here:"));
-
-								err->postAndQuit();
-							}
-							else if(auto uvd = dcast(UnionVariantDefn, def))
-							{
-								// these just... don't conflict.
-								if(auto ovd = dcast(UnionVariantDefn, ot); ovd)
-								{
-									if(ovd->parentUnion->original != uvd->parentUnion->original)
-										goto conflict;
-								}
-								else
-								{
-									// ! GOTO !
-									goto conflict;
-								}
-							}
-							else
-							{
-								// probably a class or something
-								conflict:
-								SimpleError::make(def->loc, "duplicate definition of %s '%s'", def->readableName, def->id.name)
-									->append(SimpleError::make(MsgType::Note, ot->loc, "conflicting definition was here:"))
-									->postAndQuit();
-							}
-						}
-
-						existing->addDefinition(tree->topLevelFilename, name, def);
-					}
-					else
-					{
-						// warn(def, "skipping def %s because it is not public", def->id.name);
-					}
-				}
-			}
-		}
-
-
-		for(auto f : tree->unresolvedGenericDefs)
-		{
-			// do a proper thing!
-			auto& ex = existing->unresolvedGenericDefs[f.first];
-			for(auto x : f.second)
-			{
-				if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
-					ex.push_back(x);
-			}
-		}
-
-		for(auto& pair : {
-			std::make_pair(&existing->infixOperatorOverloads, tree->infixOperatorOverloads),
-			std::make_pair(&existing->prefixOperatorOverloads, tree->prefixOperatorOverloads),
-			std::make_pair(&existing->postfixOperatorOverloads, tree->postfixOperatorOverloads)
-		})
-		{
-			auto& exst = *pair.first;
-			auto& add = pair.second;
-
-			for(const auto& f : add)
-			{
-				// do a proper thing!
-				auto& ex = exst[f.first];
-				for(auto x : f.second)
-				{
-					if(x->visibility == VisibilityLevel::Public && std::find(ex.begin(), ex.end(), x) == ex.end())
-						ex.push_back(x);
-				}
-			}
-		}
-
-		return existing;
-	}
-
-	StateTree* addTreeToExistingTree(StateTree* existing, StateTree* _tree, StateTree* commonParent, bool pubImport, bool ignoreVis)
-	{
-		return _addTreeToExistingTree({ }, existing, _tree, commonParent, pubImport, ignoreVis, existing->topLevelFilename);
-	}
-
-
-
 	struct OsStrings
 	{
 		std::string name;
 		std::string vendor;
 	};
 
+	static OsStrings getOsStrings();
+	static void generatePreludeDefinitions(TypecheckState* fs, const std::string& filename);
+
+	static bool definitionsConflict(const sst::Defn* a, const sst::Defn* b)
+	{
+		auto fda = dcast(const sst::FunctionDecl, a);
+		auto fdb = dcast(const sst::FunctionDecl, b);
+
+		auto uva = dcast(const sst::UnionVariantDefn, a);
+		auto uvb = dcast(const sst::UnionVariantDefn, b);
+
+		if(fda && fdb)
+		{
+			return sst::isDuplicateOverload(fda->params, fdb->params);
+		}
+		else if(uva && uvb)
+		{
+			return uva->parentUnion == uvb->parentUnion;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
+	struct ExportMetadata
+	{
+		Location loc;
+		std::string module;
+		std::string imported;
+	};
+
+	static void checkConflictingDefinitions(Location loc, const char* kind, const sst::StateTree* base, const sst::StateTree* branch,
+		std::optional<Location> importer = { }, std::optional<ExportMetadata> exporter = { })
+	{
+		for(const auto& [ name, defns ] : base->definitions)
+		{
+			if(auto it = branch->definitions.find(name); it != branch->definitions.end())
+			{
+				for(auto d1 : defns)
+				{
+					for(auto d2 : it->second)
+					{
+						if(!definitionsConflict(d1, d2))
+							continue;
+
+						auto error = SimpleError::make(MsgType::Error, loc, "'%s' here introduces duplicate definitions:", kind);
+
+						if(d1 == d2)
+						{
+							if(importer && exporter)
+							{
+								error->append(SimpleError::make(MsgType::Note, exporter->loc,
+									"this public import (from the imported module '%s') brings '%s' into scope ...",
+									exporter->module, exporter->imported));
+
+								error->append(SimpleError::make(MsgType::Note, *importer,
+									"... which conflicts with this using/import statement here:"));
+							}
+							else if(importer)
+							{
+								error->append(SimpleError::make(MsgType::Note, *importer,
+									"most likely caused by this import here:"));
+							}
+							else if(exporter)
+							{
+								error->append(SimpleError::make(MsgType::Note, exporter->loc,
+									"most likely caused by this public import here, in module '%s':", exporter->module));
+							}
+
+							error->append(SimpleError::make(MsgType::Note, d1->loc, "for reference, here is the (first) "
+								"conflicting definition:"));
+						}
+						else
+						{
+							error->append(SimpleError::make(MsgType::Note, d1->loc, "first definition here:"))
+								->append(SimpleError::make(MsgType::Note, d2->loc, "second definition here:"));
+						}
+
+						error->postAndQuit();
+					}
+				}
+			}
+		}
+	}
+
+	static std::optional<ExportMetadata> getExportInfo(const sst::StateTree* base, const sst::StateTree* branch)
+	{
+		if(auto it = base->reexportMetadata.find(branch); it != base->reexportMetadata.end())
+		{
+			return ExportMetadata {
+				.loc = it->second,
+				.module = base->moduleName,
+				.imported = branch->name
+			};
+		}
+		return { };
+	}
+
+	static void checkExportsRecursively(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch,
+		std::optional<Location> importer = { }, std::optional<ExportMetadata> exporter = { })
+	{
+		if(branch->isAnonymous || branch->isCompilerGenerated)
+			return;
+
+		checkConflictingDefinitions(loc, kind, base, branch, importer, exporter);
+
+		for(auto exp : base->reexports)
+			checkExportsRecursively(loc, kind, exp, branch, importer, getExportInfo(base, exp));
+	}
+
+	void mergeExternalTree(const Location& loc, const char* kind, sst::StateTree* base, sst::StateTree* branch)
+	{
+		if(branch->isAnonymous || branch->isCompilerGenerated)
+			return;
+
+		// first check conflicts for this level:
+		checkConflictingDefinitions(loc, kind, base, branch);
+
+		// then, for every one of *our* imports:
+		for(auto import : base->imports)
+		{
+			std::optional<Location> importer;
+			if(auto it = base->importMetadata.find(import); it != base->importMetadata.end())
+				importer = it->second;
+
+			// check that the new tree doesn't trample over it.
+			checkConflictingDefinitions(loc, kind, import, branch, importer);
+
+			// then, recursively check every single re-export on *our* side for conflicts:
+			for(auto rexp : import->reexports)
+				checkExportsRecursively(loc, kind, rexp, branch, importer, getExportInfo(import, rexp));
+
+			// then, also check that, for every one of *their* public imports:
+			for(auto rexp : branch->reexports)
+			{
+				auto exportInfo = getExportInfo(import, rexp);
+
+				// it doesn't trample with anything in our tree,
+				checkConflictingDefinitions(loc, kind, base, rexp, importer, exportInfo);
+
+				// and it doesn't conflict with anything in our imports.
+				checkConflictingDefinitions(loc, kind, import, rexp, importer, exportInfo);
+
+				// finally, also check that, for every one of *our* imports' re-exports,
+				for(auto rexp2 : import->reexports)
+				{
+					auto exportInfo = getExportInfo(import, rexp2);
+
+					// check that *they* don't trample anything:
+					checkConflictingDefinitions(loc, kind, rexp2, branch, importer, exportInfo);
+
+					// and neither does their reexport:
+					checkConflictingDefinitions(loc, kind, rexp2, rexp, importer, exportInfo);
+				}
+			}
+		}
+
+		// no problem -- attach the trees
+		base->imports.push_back(branch);
+		base->importMetadata[branch] = loc;
+
+		// merge the subtrees as well.
+		for(const auto& [ name, tr ] : branch->subtrees)
+		{
+			if(tr->isCompilerGenerated || tr->isAnonymous)
+				continue;
+
+			mergeExternalTree(loc, kind, base->findOrCreateSubtree(name), tr);
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+	DefinitionTree* typecheck(frontend::CollectorState* cs, const parser::ParsedFile& file,
+		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
+	{
+		auto tree = new StateTree(file.moduleName, nullptr);
+		tree->moduleName = file.moduleName;
+
+		auto fs = new TypecheckState(tree);
+
+		for(auto [ ithing, import ] : imports)
+		{
+			auto ias = ithing.importAs;
+			if(ias.empty())
+				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
+
+			StateTree* insertPoint = tree;
+			if(ias.size() == 1 && ias[0] == "_")
+			{
+				// do nothing.
+				// insertPoint = tree;
+			}
+			else
+			{
+				StateTree* curinspt = insertPoint;
+
+				// iterate through the import-as list, which is a list of nested scopes to import into
+				// eg we can `import foo as some::nested::namespace`, which means we need to create
+				// the intermediate trees.
+
+				for(const auto& impas : ias)
+				{
+					if(impas == curinspt->name)
+					{
+						// skip it.
+					}
+					else if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
+					{
+						curinspt = it->second;
+					}
+					else
+					{
+						auto newinspt = curinspt->findOrCreateSubtree(impas);
+						curinspt->subtrees[impas] = newinspt;
+
+						curinspt = newinspt;
+					}
+				}
+
+				insertPoint = curinspt;
+				insertPoint->proxyOf = import->base;
+			}
+
+			iceAssert(insertPoint);
+			mergeExternalTree(ithing.loc, "import", insertPoint, import->base);
+
+			if(ithing.pubImport)
+			{
+				insertPoint->reexports.push_back(import->base);
+				insertPoint->reexportMetadata[import->base] = ithing.loc;
+			}
+
+			fs->dtree->thingsImported.insert(ithing.name);
+			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
+
+			// merge the things. hopefully there are no conflicts????
+			// TODO: check for conflicts!
+			fs->dtree->compilerSupportDefinitions.insert(import->compilerSupportDefinitions.begin(),
+				import->compilerSupportDefinitions.end());
+		}
+
+		if(addPreludeDefinitions)
+			generatePreludeDefinitions(fs, file.name);
+
+		// handle exception here:
+		try {
+			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
+			iceAssert(tns);
+
+			tns->name = file.moduleName;
+
+			fs->dtree->topLevel = tns;
+		}
+		catch(ErrorException& ee)
+		{
+			ee.err->postAndQuit();
+		}
+
+		return fs->dtree;
+	}
+
+
 	static OsStrings getOsStrings()
 	{
 		// TODO: handle cygwin/msys/mingw???
 		// like how do we want to expose these? at the end of the day the os is still windows...
+
+		// TODO: this should be set for the target we are compiling FOR, so it definitely
+		// cannot be done using ifdefs!!!!!!!!!!
 
 		OsStrings ret;
 
@@ -247,16 +356,17 @@ namespace sst
 		return ret;
 	}
 
-	static void generatePreludeDefinitions(TypecheckState* fs)
+	static void generatePreludeDefinitions(TypecheckState* fs, const std::string& filename)
 	{
 		auto loc = Location();
+		loc.fileID = frontend::getFileIDFromFilename(filename);
+
 		auto strings = getOsStrings();
 
 		fs->pushTree("os");
-		defer(fs->popTree());
+		fs->stree->isCompilerGenerated = true;
 
-		// manually add the definition, because we didn't typecheck a namespace or anything.
-		fs->stree->parent->addDefinition(fs->stree->name, fs->stree->treeDefn);
+		defer(fs->popTree());
 
 		auto strty = fir::Type::getCharSlice(false);
 
@@ -267,6 +377,7 @@ namespace sst
 			name_def->type = strty;
 			name_def->global = true;
 			name_def->immutable = true;
+			name_def->visibility = VisibilityLevel::Private;
 
 			auto s = util::pool<sst::LiteralString>(loc, strty);
 			s->str = strings.name;
@@ -281,6 +392,7 @@ namespace sst
 			vendor_def->type = strty;
 			vendor_def->global = true;
 			vendor_def->immutable = true;
+			vendor_def->visibility = VisibilityLevel::Private;
 
 			auto s = util::pool<sst::LiteralString>(loc, strty);
 			s->str = strings.vendor;
@@ -288,107 +400,6 @@ namespace sst
 			vendor_def->init = s;
 			fs->stree->addDefinition("vendor", vendor_def);
 		}
-	}
-
-
-
-
-
-
-
-
-	using frontend::CollectorState;
-	DefinitionTree* typecheck(CollectorState* cs, const parser::ParsedFile& file,
-		const std::vector<std::pair<frontend::ImportThing, DefinitionTree*>>& imports, bool addPreludeDefinitions)
-	{
-		StateTree* tree = new StateTree(file.moduleName, file.name, 0);
-		tree->treeDefn = util::pool<TreeDefn>(Location());
-		tree->treeDefn->tree = tree;
-
-		auto fs = new TypecheckState(tree);
-
-		for(auto [ ithing, import ] : imports)
-		{
-			auto ias = ithing.importAs;
-			if(ias.empty())
-				ias = cs->parsed[ithing.name].modulePath + cs->parsed[ithing.name].moduleName;
-
-			StateTree* insertPoint = tree;
-			if(ias.size() == 1 && ias[0] == "_")
-			{
-				// do nothing.
-				// insertPoint = tree;
-			}
-			else
-			{
-				StateTree* curinspt = insertPoint;
-
-				// iterate through the import-as list, which is a list of nested scopes to import into
-				// eg we can `import foo as some::nested::namespace`, which means we need to create
-				// the intermediate trees.
-
-				for(const auto& impas : ias)
-				{
-					if(impas == curinspt->name)
-					{
-						// skip it.
-					}
-					else if(auto it = curinspt->subtrees.find(impas); it != curinspt->subtrees.end())
-					{
-						curinspt = it->second;
-					}
-					else
-					{
-						auto newinspt = util::pool<sst::StateTree>(impas, file.name, curinspt);
-						curinspt->subtrees[impas] = newinspt;
-
-						auto treedef = util::pool<sst::TreeDefn>(cs->dtrees[ithing.name]->topLevel->loc);
-						treedef->id = Identifier(impas, IdKind::Name);
-						treedef->tree = newinspt;
-						treedef->tree->treeDefn = treedef;
-						treedef->visibility = VisibilityLevel::Public;
-
-						curinspt->addDefinition(file.name, impas, treedef);
-
-						curinspt = newinspt;
-					}
-				}
-
-				insertPoint = curinspt;
-			}
-
-			iceAssert(insertPoint);
-
-			_addTreeToExistingTree(fs->dtree->thingsImported, insertPoint, import->base, /* commonParent: */ nullptr, ithing.pubImport,
-				/* ignoreVis: */ false, file.name);
-
-			fs->dtree->thingsImported.insert(ithing.name);
-			fs->dtree->typeDefnMap.insert(import->typeDefnMap.begin(), import->typeDefnMap.end());
-
-			// merge the things. hopefully there are no conflicts????
-			// TODO: check for conflicts!
-			fs->dtree->compilerSupportDefinitions.insert(import->compilerSupportDefinitions.begin(),
-				import->compilerSupportDefinitions.end());
-		}
-
-		if(addPreludeDefinitions)
-			generatePreludeDefinitions(fs);
-
-		// handle exception here:
-		try {
-			auto tns = dcast(NamespaceDefn, file.root->typecheck(fs).stmt());
-			iceAssert(tns);
-
-			tns->name = file.moduleName;
-
-			fs->dtree->topLevel = tns;
-		}
-		catch (ErrorException& ee)
-		{
-			ee.err->postAndQuit();
-		}
-
-		return fs->dtree;
 	}
 }
 
@@ -399,7 +410,7 @@ static void visitDeclarables(sst::TypecheckState* fs, ast::TopLevelBlock* top)
 	{
 		if(auto decl = dcast(ast::Parameterisable, stmt))
 		{
-			decl->realScope = fs->getCurrentScope();
+			decl->enclosingScope = fs->scope();
 			decl->generateDeclaration(fs, 0, { });
 		}
 
@@ -447,6 +458,9 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 		else if(!tcr.isParametric() && !tcr.isDummy())
 			ret->statements.push_back(tcr.stmt());
 
+		if(tcr.isDefn() && tcr.defn()->visibility == VisibilityLevel::Public)
+			tree->exports.push_back(tcr.defn());
+
 		// check for compiler support so we can add it to the big list of things.
 		if((tcr.isStmt() || tcr.isDefn()) && tcr.stmt()->attrs.has(strs::attrs::COMPILER_SUPPORT))
 		{
@@ -459,24 +473,6 @@ TCResult ast::TopLevelBlock::typecheck(sst::TypecheckState* fs, fir::Type* infer
 			fs->dtree->compilerSupportDefinitions[ua.args[0]] = tcr.defn();
 		}
 	}
-
-	if(tree->parent)
-	{
-		auto td = util::pool<sst::TreeDefn>(this->loc);
-
-		td->tree = tree;
-		td->tree->treeDefn = td;
-		td->id = Identifier(this->name, IdKind::Name);
-		td->id.scope = tree->parent->getScope();
-
-		td->visibility = this->visibility;
-
-		if(auto err = fs->checkForShadowingOrConflictingDefinition(td, [](auto, auto) -> bool { return true; }, tree->parent))
-			return TCResult(err);
-
-		tree->parent->addDefinition(tree->topLevelFilename, td->id.name, td);
-	}
-
 
 	if(this->name != "")
 		fs->popTree();

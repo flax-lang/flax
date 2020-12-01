@@ -335,7 +335,7 @@ namespace saa_common
 		if(appendee == getSAAElm(saa))
 			return generateElementAppendFunction(cs, saa);
 
-		else if(util::match(appendee, getSAASlice(saa), getSAASlice(saa, false), saa))
+		else if(zfu::match(appendee, getSAASlice(saa), getSAASlice(saa, false), saa))
 			return generateAppendFunction(cs, saa);
 
 		else

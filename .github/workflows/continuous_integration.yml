@@ -8,13 +8,13 @@ jobs:
     - uses: actions/checkout@v1
     - name: install dependencies
       run: |
-        sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main" | sudo tee -a /etc/apt/sources.list
+        sudo echo "deb https://apt.llvm.org/bionic/ llvm-toolchain-bionic-11 main" | sudo tee -a /etc/apt/sources.list
         sudo wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
         sudo apt -y update
-        sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y g++-9 llvm-9 llvm-9-dev libllvm9 libmpfr-dev libmpfr6
+        sudo apt-get -o Dpkg::Options::="--force-overwrite" --allow-unauthenticated -y install -y g++-9 llvm-11 llvm-11-dev libllvm11 libmpfr-dev libmpfr6
     - name: build
       env:
-        LLVM_CONFIG: llvm-config-9
+        LLVM_CONFIG: llvm-config-11
         CC: gcc-9
         CXX: g++-9
       run: make -j2 build
@@ -24,9 +24,9 @@ jobs:
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
     - name: compile/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester
-      
+
   build-macos:
-    runs-on: macOS-10.14
+    runs-on: macOS-10.15
     steps:
     - uses: actions/checkout@v1
     - name: install dependencies
@@ -35,14 +35,14 @@ jobs:
     - name: build
       env:
         LLVM_CONFIG: /usr/local/opt/llvm/bin/llvm-config
-      run: PATH="$PATH:$(pwd)/llvm/9.0.0/bin" make -j2 build
+      run: PATH="$PATH:$(pwd)/llvm/11.0.0/bin" make -j2 build
     - name: jit/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend llvm build/tester.flx
     - name: jit/interp
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape -run -backend interp build/tester.flx
     - name: compile/llvm
       run: build/sysroot/usr/local/bin/flaxc -sysroot build/sysroot -profile --ffi-escape build/tester.flx && ./tester
-      
+
   build-windows:
     runs-on: windows-2019
     env:
@@ -50,6 +50,7 @@ jobs:
       MPFR_ROOT_DIR:   C:/tmp/lib/mpfr
       LLVM_ROOT_DIR:   C:/tmp/lib/llvm
       LIBFFI_ROOT_DIR: C:/tmp/lib/libffi
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - uses: seanmiddleditch/gha-setup-ninja@v1
       - uses: seanmiddleditch/gha-setup-vsdevenv@master
@@ -85,7 +86,7 @@ jobs:
         run: |
           build\meson-rel\flaxc.exe -sysroot build\sysroot --ffi-escape build\tester.flx
           .\tester.exe
-          
+
 
 
 

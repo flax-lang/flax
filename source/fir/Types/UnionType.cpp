@@ -10,15 +10,14 @@
 namespace fir
 {
 	// structs
-	UnionType::UnionType(const Identifier& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
-		: Type(TypeKind::Union)
+	UnionType::UnionType(const Name& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
+		: Type(TypeKind::Union), unionName(name)
 	{
-		this->unionName = name;
 		this->setBody(mems);
 	}
 
-	static util::hash_map<Identifier, UnionType*> typeCache;
-	UnionType* UnionType::create(const Identifier& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
+	static util::hash_map<Name, UnionType*> typeCache;
+	UnionType* UnionType::create(const Name& name, const util::hash_map<std::string, std::pair<size_t, Type*>>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("union with name '%s' already exists", name.str());
@@ -27,7 +26,7 @@ namespace fir
 			return (typeCache[name] = new UnionType(name, mems));
 	}
 
-	UnionType* UnionType::createWithoutBody(const Identifier& name)
+	UnionType* UnionType::createWithoutBody(const Name& name)
 	{
 		return UnionType::create(name, { });
 	}
@@ -60,7 +59,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier UnionType::getTypeName()
+	Name UnionType::getTypeName()
 	{
 		return this->unionName;
 	}

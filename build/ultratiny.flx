@@ -23,16 +23,16 @@ class Foo : Foo1, Drop, Copy, Move
 {
 	var data: int
 
-	init(x: int)
+	init(x: int) : super()
 	{
 		printf("of make (%d)\n", x)
 		this.data = x
 	}
 
-	fn deinit()
-	{
-		printf("is kill (%d)\n", data)
-	}
+	// fn deinit()
+	// {
+	// 	printf("is kill (%d)\n", data)
+	// }
 
 	fn copy(other: &self)
 	{

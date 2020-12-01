@@ -11,15 +11,14 @@
 namespace fir
 {
 	// structs
-	RawUnionType::RawUnionType(const Identifier& name, const util::hash_map<std::string, Type*>& mems)
-		: Type(TypeKind::RawUnion)
+	RawUnionType::RawUnionType(const Name& name, const util::hash_map<std::string, Type*>& mems)
+		: Type(TypeKind::RawUnion), unionName(name)
 	{
-		this->unionName = name;
 		this->setBody(mems);
 	}
 
-	static util::hash_map<Identifier, RawUnionType*> typeCache;
-	RawUnionType* RawUnionType::create(const Identifier& name, const util::hash_map<std::string, Type*>& mems)
+	static util::hash_map<Name, RawUnionType*> typeCache;
+	RawUnionType* RawUnionType::create(const Name& name, const util::hash_map<std::string, Type*>& mems)
 	{
 		if(auto it = typeCache.find(name); it != typeCache.end())
 			error("union with name '%s' already exists", name.str());
@@ -28,7 +27,7 @@ namespace fir
 			return (typeCache[name] = new RawUnionType(name, mems));
 	}
 
-	RawUnionType* RawUnionType::createWithoutBody(const Identifier& name)
+	RawUnionType* RawUnionType::createWithoutBody(const Name& name)
 	{
 		return RawUnionType::create(name, { });
 	}
@@ -61,7 +60,7 @@ namespace fir
 
 
 	// struct stuff
-	Identifier RawUnionType::getTypeName()
+	Name RawUnionType::getTypeName()
 	{
 		return this->unionName;
 	}

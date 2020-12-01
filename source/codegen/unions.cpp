@@ -48,7 +48,7 @@ CGResult sst::UnionVariantConstructor::_codegen(cgn::CodegenState* cs, fir::Type
 		}
 		else
 		{
-			auto tupt = fir::TupleType::get(util::map(this->args, [](const FnCallArgument& fca) -> fir::Type* {
+			auto tupt = fir::TupleType::get(zfu::map(this->args, [](const FnCallArgument& fca) -> fir::Type* {
 				return fca.value->type;
 			}));
 

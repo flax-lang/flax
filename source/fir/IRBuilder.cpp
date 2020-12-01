@@ -425,7 +425,7 @@ namespace fir
 	{
 		iceAssert(v->getType()->isFloatingPointType() && targetType->isFloatingPointType() && "not floating point type");
 		Instruction* instr = make_instr(OpKind::Floating_Truncate, false, targetType,
-			util::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType))
+			zfu::vectorOf<Value*>(v, ConstantValue::getZeroValue(targetType))
 		);
 
 		return this->addInstruction(instr, vname);
@@ -1106,7 +1106,7 @@ namespace fir
 		iceAssert(self && self == cls);
 
 		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, ft->getReturnType(),
-			util::vectorOf<Value*>(
+			zfu::vectorOf<Value*>(
 				ConstantValue::getZeroValue(cls),
 				ConstantInt::getNative(index),
 				ConstantValue::getZeroValue(ft)

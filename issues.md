@@ -112,7 +112,7 @@ Note: this is just a personal log of outstanding issues, shorter rants/ramblings
 	`fn foo(a: T) -> T => a * a`
 
 	The type inference would require some re-working though, because to generate the declaration of the function we need the return type, but to
-	get the return type in this situation we need to typecheck the function body. Albeit it's a single function, there might still be
+	get the return type in this situation we need to typecheck the function body. Albeit it's a single expression, there might still be
 	unresolved or unresolvable things inside the body.
 
 	Possibly investigate whether we can do the typechecking in the generateDecl function?? But it's highly likely we separated those for a reason,

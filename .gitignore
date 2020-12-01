@@ -11,6 +11,7 @@
 # Makefile dependencies
 *.cpp.d
 *.c.d
+*.h.d
 
 # Compiled Dynamic libraries
 *.so
@@ -71,6 +72,7 @@ bug-repro
 *.vcxproj.user
 
 countloc.bat
+builddir
 
 prof.svg
 prof_with_square.svg
@@ -100,4 +102,5 @@ flax.includes
 build/__pycache__
 *.vspx
 
+.cache
 compile_flags.txt

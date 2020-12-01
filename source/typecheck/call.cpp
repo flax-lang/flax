@@ -22,7 +22,7 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	{
 		auto ret = util::pool<sst::ExprCall>(this->loc, ty);
 		ret->callee = sst::TypeExpr::make(this->loc, ty);
-		ret->arguments = util::map(_arguments, [](const auto& e) -> sst::Expr* { return e.value; });
+		ret->arguments = zfu::map(_arguments, [](const auto& e) -> sst::Expr* { return e.value; });
 
 		return ret;
 	}
@@ -122,9 +122,9 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 		error(this->callee, "expression with non-function-type '%s' cannot be called", target->type);
 
 	auto ft = target->type->toFunctionType();
-	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, util::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
+	auto [ dist, errs ] = sst::resolver::computeOverloadDistance(this->loc, zfu::map(ft->getArgumentTypes(), [](fir::Type* t) -> auto {
 		return fir::LocatedType(t, Location());
-	}), util::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
+	}), zfu::map(arguments, [](const FnCallArgument& fca) -> fir::LocatedType {
 		return fir::LocatedType(fca.value->type, fca.loc);
 	}), target->type->toFunctionType()->isCStyleVarArg(), this->loc);
 
@@ -139,7 +139,7 @@ sst::Expr* ast::ExprCall::typecheckWithArguments(sst::TypecheckState* fs, const 
 
 	auto ret = util::pool<sst::ExprCall>(this->loc, target->type->toFunctionType()->getReturnType());
 	ret->callee = target;
-	ret->arguments = util::map(arguments, [](const auto& e) -> sst::Expr* { return e.value; });
+	ret->arguments = zfu::map(arguments, [](const auto& e) -> sst::Expr* { return e.value; });
 
 	return ret;
 }

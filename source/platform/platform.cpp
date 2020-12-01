@@ -185,7 +185,7 @@ namespace platform
 	}
 
 
-	static util::hash_map<std::string, std::string> cachedFileContents;
+	static util::hash_map<std::string, std::string_view> cachedFileContents;
 
 	void cachePreExistingFile(const std::string& path, const std::string& contents)
 	{
@@ -215,12 +215,12 @@ namespace platform
 		// explanation: if we have EXTRA_MMAP_FLAGS, then we're getting 2MB pages -- in which case we should probably only do it
 		// if we have at least 4mb worth of file.
 		// if not, then just 2 * pagesize.
-		#define MINIMUM_MMAP_THRESHOLD (static_cast<size_t>(EXTRA_MMAP_FLAGS ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
+		#define MINIMUM_MMAP_THRESHOLD (static_cast<size_t>(((EXTRA_MMAP_FLAGS) != 0) ? (2 * 2 * 1024 * 1024) : 2 * getpagesize()))
 
-		char* contents = 0;
+		std::string_view contents;
 
-		// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use here aren't available at all
-		// if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
+		// here's the thing -- we use USE_MMAP at *compile-time*, because on windows some of the constants we're going to use
+		// here aren't available at all if we include it, then it'll be parsed and everything and error out. So, we #ifdef it away.
 
 		// Problem is, there's another scenario in which we won't want to use mmap -- when the file size is too small. so, that's why the stuff
 		// below is structured the way it is.
@@ -229,34 +229,36 @@ namespace platform
 			if(fileLength >= MINIMUM_MMAP_THRESHOLD)
 			{
 				// ok, do an mmap
-				contents = static_cast<char*>(mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0));
-				if(contents == reinterpret_cast<void*>(-1))
+				const char* buf = static_cast<const char*>(mmap(0, fileLength, PROT_READ, MAP_PRIVATE | EXTRA_MMAP_FLAGS, fd, 0));
+				if(buf == reinterpret_cast<void*>(-1))
 				{
 					perror("there was an error reading the file");
 					exit(-1);
 				}
+
+				contents = std::string_view(buf, fileLength);
 			}
 		}
 		#endif
 
-		if(contents == 0)
+		if(contents.empty())
 		{
 			// read normally
 			//! MEMORY LEAK
-			contents = new char[fileLength + 1];
-			size_t didRead = platform::readFile(fd, contents, fileLength);
+			auto buf = new char[fileLength + 1];
+			size_t didRead = platform::readFile(fd, buf, fileLength);
 			if(didRead != fileLength)
 			{
 				perror("there was an error reading the file");
 				error("expected %d bytes, but read only %d", fileLength, didRead);
 			}
 
-			cachedFileContents[path] = std::string(contents, fileLength);
+			contents = std::string_view(buf, fileLength);
 		}
 
-		iceAssert(contents);
 		closeFile(fd);
 
+		cachedFileContents[path] = contents;
 		return cachedFileContents[path];
 	}
 

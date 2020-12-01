@@ -89,6 +89,8 @@ namespace backend
 		llvm::DataLayout DL;
 		llvm::orc::MangleAndInterner Mangle;
 		llvm::orc::ThreadSafeContext Ctx;
+
+		llvm::orc::JITDylib& dylib;
 	};
 
 	struct LLVMBackend : Backend

@@ -13,7 +13,7 @@
 #include "memorypool.h"
 
 fir::ConstantValue* magicallyRunExpressionAtCompileTime(cgn::CodegenState* cs, sst::Stmt* stmt, fir::Type* infer,
-	const Identifier& fname, fir::interp::InterpState* is = 0)
+	const fir::Name& fname, fir::interp::InterpState* is = 0)
 {
 	// what we do is to make a new function in IR, set the insertpoint to that,
 	// then run codegen on the expression (so it generates inside), restore the insertpoint,
@@ -116,7 +116,8 @@ CGResult sst::RunDirective::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->insideExpr)    toExec = this->insideExpr;
 	else                    toExec = this->block;
 
-	auto ret = magicallyRunExpressionAtCompileTime(cs, toExec, infer, util::obfuscateIdentifier("run_directive", runDirectiveId++));
+	auto ret = magicallyRunExpressionAtCompileTime(cs, toExec, infer, fir::Name::obfuscate("run_directive", runDirectiveId++));
+
 	return CGResult(ret);
 }
 

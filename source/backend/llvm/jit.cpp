@@ -41,15 +41,16 @@ static std::string dealWithLLVMError(const llvm::Error& err)
 namespace backend
 {
 	LLVMJit::LLVMJit(llvm::orc::JITTargetMachineBuilder JTMB, llvm::DataLayout DL) : ObjectLayer(ES, []() {
-			return llvm::make_unique<llvm::SectionMemoryManager>();
+			return std::make_unique<llvm::SectionMemoryManager>();
 		}),
-        CompileLayer(ES, ObjectLayer, llvm::orc::ConcurrentIRCompiler(std::move(JTMB))),
+        CompileLayer(ES, ObjectLayer, std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB))),
         OptimiseLayer(ES, CompileLayer, optimiseModule),
         DL(std::move(DL)), Mangle(ES, this->DL),
-        Ctx(llvm::make_unique<llvm::LLVMContext>())
+        Ctx(std::make_unique<llvm::LLVMContext>()),
+        dylib(ES.createJITDylib("<jit>").get())
 	{
 		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-		ES.getMainJITDylib().setGenerator(llvm::cantFail(
+		dylib.addGenerator(llvm::cantFail(
 			llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix())));
 
 		// dunno who's bright idea it was to match symbol flags *EXACTLY* instead of something more sane
@@ -63,13 +64,13 @@ namespace backend
 		auto modIdent = mod->getModuleIdentifier();
 
 		// llvm::Error::operator bool() returns true if there's an error.
-		if(auto err = OptimiseLayer.add(ES.getMainJITDylib(), llvm::orc::ThreadSafeModule(std::move(mod), Ctx)); err)
+		if(auto err = OptimiseLayer.add(this->dylib, llvm::orc::ThreadSafeModule(std::move(mod), Ctx)); err)
 			error("llvm: failed to add module '%s': %s", modIdent, dealWithLLVMError(err));
 	}
 
 	llvm::JITEvaluatedSymbol LLVMJit::findSymbol(const std::string& name)
 	{
-		if(auto ret = ES.lookup({ &ES.getMainJITDylib() }, Mangle(name)); !ret)
+		if(auto ret = ES.lookup({ &this->dylib }, Mangle(name)); !ret)
 			error("llvm: failed to find symbol '%s': %s", name, dealWithLLVMError(ret.takeError()));
 
 		else

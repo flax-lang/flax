@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "defs.h"
 #include "pts.h"
 #include "errors.h"
 #include "parser.h"
@@ -16,14 +17,17 @@ using namespace ast;
 
 namespace parser
 {
-	std::vector<std::string> parseIdentPath(const lexer::TokenList& tokens, size_t* idx)
+	std::pair<Location, std::vector<std::string>> parseIdentPath(const lexer::TokenList& tokens, size_t* idx)
 	{
 		using TT = lexer::TokenType;
 		std::vector<std::string> path;
 
 		size_t i = *idx;
+		Location loc = tokens[i].loc;
 		while(tokens[i] == TT::Identifier)
 		{
+			loc = loc.unionWith(tokens[i].loc);
+
 			path.push_back(tokens[i].str());
 			i++;
 
@@ -40,7 +44,7 @@ namespace parser
 		}
 
 		*idx = i;
-		return path;
+		return { loc, path };
 	}
 
 
@@ -63,7 +67,7 @@ namespace parser
 
 				if(tokens[i].type == TT::Identifier)
 				{
-					path = parseIdentPath(tokens, &i);
+					path = parseIdentPath(tokens, &i).second;
 				}
 				else
 				{
@@ -91,7 +95,7 @@ namespace parser
 		if(path.empty())
 			path = { frontend::removeExtensionFromFilename(frontend::getFilenameFromPath(fullname)) };
 
-		return { path.back(), util::take(path, path.size() - 1) };
+		return { path.back(), zfu::take(path, path.size() - 1) };
 	}
 
 

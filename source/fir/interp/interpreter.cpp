@@ -362,7 +362,7 @@ namespace interp
 				is->globalAllocs.push_back(buffer);
 
 				uint8_t* ofs = reinterpret_cast<uint8_t*>(buffer);
-				for(const auto& x : theArray->getValues())
+				for(auto x : theArray->getValues())
 				{
 					auto v = makeConstant(is, x);
 
@@ -481,7 +481,7 @@ namespace interp
 
 		for(const auto& [ id, intr ] : this->module->_getIntrinsicFunctions())
 		{
-			auto fname = Identifier("__interp_intrinsic_" + id.str(), IdKind::Name);
+			auto fname = Name::of(zpr::sprint("__interp_intrinsic_%s", id.str()));
 			auto fn = this->module->getOrCreateFunction(fname, intr->getType(), fir::LinkageType::ExternalWeak);
 
 			// interp::compileFunction already maps the newly compiled interp::Function, but since we created a
@@ -505,10 +505,10 @@ namespace interp
 
 			for(const auto& name : names)
 			{
-				auto fn = this->module->getFunction(Identifier(name, IdKind::Name));
+				auto fn = this->module->getFunction(Name::of(name));
 				if(fn)
 				{
-					auto wrapper = this->module->getOrCreateFunction(Identifier("__interp_wrapper_" + name, IdKind::Name),
+					auto wrapper = this->module->getOrCreateFunction(Name::of(zpr::sprint("__interp_wrapper_%s", name)),
 						fn->getType()->toFunctionType(), fir::LinkageType::ExternalWeak);
 
 					this->compiledFunctions[fn] = this->compileFunction(wrapper);
@@ -520,7 +520,7 @@ namespace interp
 		// printf("module:\n%s\n", this->module->print().c_str());
 
 		// truth be told it'll be more efficient to only get the function after checking runGlobalInit, but... meh.
-		if(auto gif = this->module->getFunction(util::obfuscateIdentifier(strs::names::GLOBAL_INIT_FUNCTION));
+		if(auto gif = this->module->getFunction(Name::obfuscate(strs::names::GLOBAL_INIT_FUNCTION));
 			runGlobalInit && gif)
 		{
 			auto cgif = this->compileFunction(gif);
@@ -534,7 +534,7 @@ namespace interp
 	// propagate to the backend code generation.
 	void InterpState::finalise()
 	{
-		for(const auto [ id, glob ] : this->module->_getGlobals())
+		for(const auto& [ id, glob ] : this->module->_getGlobals())
 		{
 			// printf("global: %s\n", id.str().c_str());
 

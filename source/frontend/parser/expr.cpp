@@ -103,7 +103,7 @@ namespace parser
 
 				using namespace attr;
 
-				return ret.map([&allowed, &attrs](auto ret) -> auto {
+				return ret.map([&allowed, &attrs](auto ret) -> Stmt* {
 					// there's probably a better way to do this, but bleugh
 					if((attrs.flags & RAW) && !(allowed.flags & RAW))
 						error(ret, "unsupported attribute '@raw' on %s", ret->readableName);
@@ -630,7 +630,7 @@ namespace parser
 
 	Expr* parseCaretOrColonScopeExpr(State& st)
 	{
-		iceAssert(util::match(st.front(), TT::DoubleColon, TT::Caret));
+		iceAssert(zfu::match(st.front(), TT::DoubleColon, TT::Caret));
 
 		auto str = st.front().str();
 		auto loc = st.loc();
@@ -868,7 +868,7 @@ namespace parser
 
 	static Expr* parseIdentifier(State& st)
 	{
-		iceAssert(util::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
+		iceAssert(zfu::match(st.front(), TT::Identifier, TT::UnicodeSymbol));
 		std::string name = st.pop().str();
 
 		auto ident = util::pool<Ident>(st.ploc(), name);

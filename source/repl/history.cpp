@@ -17,7 +17,7 @@ namespace repl
 		auto home = platform::getEnvironmentVar("HOME");
 
 		// do some checks so we don't try to write stuff into the root directory.
-		return (home + (home.empty() || home.back() == '/' ? "" : "/")) + ".flax-repl-history";
+		return (home + ((home.empty() || home.back() == '/') ? "" : "/")) + ".flax-repl-history";
 	}
 
 

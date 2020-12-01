@@ -26,7 +26,7 @@ TCResult ast::IfStmt::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		//* here, it is implicit that all the inits of every case live in the same scope.
 		//? we might want to change this eventually? i'm not sure.
 
-		auto inits = util::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs).stmt(); });
+		auto inits = zfu::map(c.inits, [fs](Stmt* s) -> auto { return s->typecheck(fs).stmt(); });
 		auto cs = Case(c.cond->typecheck(fs).expr(), dcast(sst::Block, c.body->typecheck(fs).stmt()), inits);
 
 		if(!cs.cond->type->isBoolType() && !cs.cond->type->isPointerType())
