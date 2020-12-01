@@ -6,17 +6,10 @@ A low level, general-purpose language with high level syntax and expressibility.
 [![forthebadge](https://forthebadge.com/images/badges/made-with-crayons.svg)](http://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/built-with-resentment.svg)](http://forthebadge.com)
 
-[![build status](https://travis-ci.org/flax-lang/flax.svg?branch=develop)](https://travis-ci.org/flax-lang/flax)
-&nbsp;&nbsp;&nbsp;&nbsp;
 [![build status](https://ci.appveyor.com/api/projects/status/c9cmm08t27ef1hji/branch/develop?svg=true)](https://ci.appveyor.com/project/zhiayang/flax/branch/develop)
 &nbsp;&nbsp;&nbsp;&nbsp;
 [![build status](https://github.com/flax-lang/flax/workflows/CI/badge.svg)](https://github.com/flax-lang/flax/actions)
 &nbsp;&nbsp;&nbsp;&nbsp;
-[![codecov](https://codecov.io/gh/flax-lang/flax/branch/develop/graph/badge.svg)](https://codecov.io/gh/flax-lang/flax)
-&nbsp;&nbsp;&nbsp;&nbsp;
-[![language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/flax-lang/flax.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/flax-lang/flax/context:cpp)
-
-Currently not expected to pass (for a while): <br />
 [![Build Status](https://semaphoreci.com/api/v1/zhiayang/flax/branches/develop/badge.svg)](https://semaphoreci.com/zhiayang/flax)
 
 
@@ -32,8 +25,6 @@ Currently not expected to pass (for a while): <br />
 
 I work on Flax in my spare time, and as the lone developer I cannot guarantee continuous development.
 I'm no famous artist but this is my magnum opus, so it'll not be abandoned anytime soon.
-
-Development is currently on hiatus. Regular work will resume NET 2019-12-09.
 
 ### Language Goals
 
@@ -115,8 +106,6 @@ do {
 
 
 ### Building the Flax compiler
-
-Note: the `master` branch is still using LLVM 7, and is stable; `develop` is now on LLVM 11. Changes will be merged into `master` eventually.
 
 #### Dependencies ####
 - LLVM 11, mostly due to their obsession with changing the IR interface every damn version
