@@ -505,10 +505,10 @@ namespace interp
 
 			for(const auto& name : names)
 			{
-				auto fn = this->module->getFunction(Identifier(name, IdKind::Name));
+				auto fn = this->module->getFunction(Name::of(name));
 				if(fn)
 				{
-					auto wrapper = this->module->getOrCreateFunction(Identifier("__interp_wrapper_" + name, IdKind::Name),
+					auto wrapper = this->module->getOrCreateFunction(Name::of(zpr::sprint("__interp_wrapper_%s", name)),
 						fn->getType()->toFunctionType(), fir::LinkageType::ExternalWeak);
 
 					this->compiledFunctions[fn] = this->compileFunction(wrapper);
