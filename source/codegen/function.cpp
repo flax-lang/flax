@@ -2,6 +2,7 @@
 // Copyright (c) 2014 - 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "defs.h"
 #include "sst.h"
 #include "codegen.h"
 #include "memorypool.h"
@@ -41,7 +42,6 @@ CGResult sst::FunctionDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// set our cached result *before* we generate our body, in case we contain either
 	// a: a call to ourselves, or
 	// b: a call to someone that call us eventually
-
 	this->cachedResult = CGResult(fn);
 
 	auto restore = cs->irb.getCurrentBlock();

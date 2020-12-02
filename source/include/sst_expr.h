@@ -22,10 +22,6 @@ namespace sst
 		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0);
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) = 0;
 
-		size_t cachedCSId = 0;
-		bool didCodegen = false;
-		CGResult cachedResult = CGResult(0);
-
 		AttribSet attrs;
 	};
 
@@ -42,12 +38,18 @@ namespace sst
 		Defn(const Location& l) : Stmt(l) { this->readableName = "definition"; }
 		~Defn() { }
 
+		virtual CGResult codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
+
 		Identifier id;
 		fir::Type* type = 0;
 		bool global = false;
 		std::string bareName;
 		VisibilityLevel visibility = VisibilityLevel::Internal;
 		Scope enclosingScope;
+
+		size_t cachedCSId = 0;
+		bool didCodegen = false;
+		CGResult cachedResult = CGResult(0);
 
 		virtual std::string getKind() = 0;
 	};
