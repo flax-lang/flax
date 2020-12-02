@@ -109,6 +109,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 			cs->irb.setCurrentBlock(falseblkr);
 			{
+				// TODO: why tf is this commented out??
+
 				// ok, do the next thing.
 				// if we're the last block, then gtfo and branch to merge
 				// if()
@@ -179,9 +181,11 @@ static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint&
 	}
 	#endif
 
+	info(cfp.block->loc, "ending for this block");
+
 	// then do the defers
 	for(auto stmt : cfp.block->deferred)
-		stmt->codegen(cs);
+		stmt->_codegen(cs);
 
 	for(auto c : bp.raiiValues)
 		cs->callDestructor(c);
@@ -293,6 +297,8 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->postBodyCode)
 		this->postBodyCode();
 
+	// the reason we check for !broke here before doing the block cleanup is because BreakStmt
+	// and ContinueStmt will do it too.
 	if(!broke)
 	{
 		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
@@ -304,7 +310,7 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		//* this duplicates stuff from doBlockEndThings!!
 		for(auto it = this->deferred.rbegin(); it != this->deferred.rend(); it++)
-			(*it)->codegen(cs);
+			(*it)->_codegen(cs);
 
 		for(auto c : cs->getCurrentBlockPoint().raiiValues)
 			cs->callDestructor(c);

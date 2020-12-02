@@ -2,11 +2,19 @@
 // Copyright (c) 2020, zhiayang
 // Licensed under the Apache License Version 2.0.
 
-import b as _
-
+import libc as _
 
 @entry fn main()
 {
-	let x = bazzle() * 2
-	foozle(x)
+	// let x = bazzle() * 2
+	// foozle(3)
+	var i = 0
+	while true
+	{
+		defer { i += 1 }
+		if i < -30 => break
+		else if i > 10 => break
+
+		printf("i = %d\n", i)
+	}
 }

@@ -27,16 +27,17 @@ CGResult sst::BareTypeDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::Stmt::codegen(cgn::CodegenState* cs, fir::Type* inferred)
 {
-	if(didCodegen && this->cachedCSId == cs->id)
-	{
-		return cachedResult;
-	}
-	else
-	{
-		this->didCodegen = true;
-		this->cachedCSId = cs->id;
-		return (this->cachedResult = this->_codegen(cs, inferred));
-	}
+	return this->_codegen(cs, inferred);
+}
+
+CGResult sst::Defn::codegen(cgn::CodegenState* cs, fir::Type* inferred)
+{
+	if(this->didCodegen && cs->id == this->cachedCSId)
+		return this->cachedResult;
+
+	this->didCodegen = true;
+	this->cachedCSId = cs->id;
+	return (this->cachedResult = this->_codegen(cs, inferred));
 }
 
 // TODO: move this impl somewhere else?
