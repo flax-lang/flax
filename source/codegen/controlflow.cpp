@@ -181,8 +181,6 @@ static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint&
 	}
 	#endif
 
-	info(cfp.block->loc, "ending for this block");
-
 	// then do the defers
 	for(auto stmt : cfp.block->deferred)
 		stmt->_codegen(cs);
