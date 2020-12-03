@@ -63,7 +63,7 @@ namespace sst
 						fty = fir::PolyPlaceholderType::get(ty->toNamedType()->name, polysession);
 					}
 
-					if(!fty) error("failed to find type '%s'", input->str());
+					if(!fty) error(fs->loc(), "failed to find type '%s'", input->str());
 				}
 				else if(ty->isTupleType())
 				{

@@ -8,18 +8,7 @@
 
 3. types don't appear before functions for some reason, for typechecking. (ie. order becomes important)
 
-4. enum values are not working correctly (seems to be right-shifted by 8?)
-	(the values are not assigned)
-
-5. defer appears to be broken:
-```
-var i = 0
-while true {
-	defer i += 1
-
-	// doesn't change
-}
-```
+4. enums need to be fixed, for real.
 
 6. "unsynchronised use of global init function!!!" -- need to figure out a way to serialise access to the global init function
 

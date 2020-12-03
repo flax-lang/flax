@@ -32,21 +32,11 @@ namespace resolver
 	{
 		StateTree* tree = fs->stree;
 
-		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
-		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
-		//! ACHTUNG !
-		// TODO: do we even need this didVar nonsense? variables don't overload yes, but we can't even define more than one
-		// TODO: variable in a scope with the same name. if we find something with a matching name we quit immediately, so there
-		// TODO: shouldn't be a point in having 'didVar'!!
-		// TODO: - zhiayang, 28/10/18
-
-
 		//? I can't find any information about this behaviour in languages other than C++, because we need to have a certain set of
 		//? features for it to manifest -- 1. user-defined, explicit namespaces; 2. function overloading.
 
 		//* how it works in C++, and for now also in Flax, is that once we match *any* names in the current scope, we stop searching upwards
 		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
-		// bool didVar = false;
 
 		bool didGeneric = false;
 
@@ -137,10 +127,9 @@ namespace resolver
 			{
 				cands.push_back({ def, ts });
 			}
-			else if(dcast(VarDefn, def) && def->type->isFunctionType() /* && !didVar */)
+			else if(dcast(VarDefn, def) && def->type->isFunctionType())
 			{
 				cands.push_back({ def, ts });
-				// didVar = true;
 			}
 			else
 			{
@@ -151,7 +140,9 @@ namespace resolver
 			}
 		}
 
-		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
+		// auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
+		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, { }, travUp, return_infer);
+
 		if(res.isDefn())
 			*arguments = new_args;
 

@@ -76,7 +76,8 @@ namespace sst
 								}
 								else
 								{
-									return SimpleError::make(given.loc, "conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
+									return SimpleError::make(given.loc,
+										"conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
 										ptt->getName(), ltt->str(), gvn);
 								}
 							}

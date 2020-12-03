@@ -4,17 +4,38 @@
 
 import libc as _
 
+
+// class Foo<T>
+struct Foo<T>
+{
+	x: T
+
+	fn a<U>(x: U) -> U
+	{
+		return x
+	}
+}
+
+// class Bar<T>
+// {
+// 	init(x: T) { }
+// }
+
+fn bar() -> int
+{
+	return 3
+}
+
+fn b<X>(x: X) -> str
+{
+	return "nein"
+}
+
 @entry fn main()
 {
-	// let x = bazzle() * 2
-	// foozle(3)
-	var i = 0
-	while true
-	{
-		defer { i += 1 }
-		if i < -30 => break
-		else if i > 10 => break
+	// let f: Foo!<int> = Foo()
+	// let b = bar!<int>()
+	// let b1 = Bar(x: 3)
 
-		printf("i = %d\n", i)
-	}
+	let f = Foo(x: 3).a(b(9))
 }

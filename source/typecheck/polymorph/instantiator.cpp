@@ -119,7 +119,7 @@ namespace poly
 								using the newly-gained arg_infer information, we can re-typecheck the argument with concrete types.
 
 								- zhiayang
-								- 06/10/18/2318
+								- 06/10/18
 							*/
 
 							auto arg_infer = d.defn()->type->toFunctionType()->getArgumentN(arg.name.empty() ? counter : origParamOrder[arg.name]);
