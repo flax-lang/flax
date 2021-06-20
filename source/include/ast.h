@@ -263,33 +263,6 @@ namespace ast
 	};
 
 
-	struct PlatformDefn : Stmt
-	{
-		PlatformDefn(const Location& l) : Stmt(l) { this->readableName = "platform-specific definition"; }
-		~PlatformDefn() { }
-
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
-
-		enum class Type
-		{
-			Invalid,
-			Intrinsic,
-			IntegerType
-		};
-
-		Type defnType = Type::Invalid;
-
-		// only valid if defnType == Intrinsic
-		ForeignFuncDefn* intrinsicDefn = 0;
-
-		// only valid if defnType == IntegerType
-		std::string typeName;
-		size_t typeSizeInBits = 0;
-	};
-
-
-
-
 
 
 
@@ -747,12 +720,14 @@ namespace ast
 
 	struct LitNumber : Expr
 	{
-		LitNumber(const Location& l, const std::string& n) : Expr(l), num(n) { this->readableName = "number literal"; }
+		LitNumber(const Location& l, const std::string& n, bool flt)
+			: Expr(l), num(n), is_floating(flt) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string num;
+		bool is_floating;
 	};
 
 	struct LitChar : Expr

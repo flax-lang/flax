@@ -710,9 +710,9 @@ namespace parser
 
 					return util::pool<pts::VariadicArrayType>(loc, elm);
 				}
-				else if(st.front() != TT::Number)
+				else if(st.front() != TT::IntegerNumber)
 				{
-					expected(st, "positive, non-zero size for fixed array", st.front().str());
+					expected(st, "positive, non-zero integer size for fixed array", st.front().str());
 				}
 				else
 				{
@@ -730,16 +730,6 @@ namespace parser
 					// TODO: support mutable arrays??
 					return util::pool<pts::FixedArrayType>(loc, elm, sz);
 				}
-			}
-			else if(st.front() == TT::RSquare)
-			{
-				// dynamic array.
-				if(mut) error(st.loc(), "dynamic arrays are always mutable, specifying 'mut' is unnecessary");
-
-				loc.len = st.loc().col - loc.col + st.loc().len;
-
-				st.pop();
-				return util::pool<pts::DynamicArrayType>(loc, elm);
 			}
 			else
 			{

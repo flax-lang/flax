@@ -447,7 +447,6 @@ namespace parser
 	DecompMapping parseTupleDecomp(State& st);
 
 	std::tuple<ast::FuncDefn*, bool, Location> parseFunctionDecl(State& st);
-	ast::PlatformDefn* parsePlatformDefn(State& st);
 
 	ast::RunDirective* parseRunDirective(State& st);
 

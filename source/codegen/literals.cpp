@@ -10,22 +10,14 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	if(this->is_floating != this->type->isFloatingPointType())
+		error(this, "TODO cannot do this");
 
-	if(this->type->isConstantNumberType())
-	{
-		if(infer && !infer->isPrimitiveType())
-			infer = 0;
+	if(this->type->isFloatingPointType())
+		return CGResult(fir::ConstantFP::get(this->type, this->floating));
 
-		return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->num), infer));
-	}
 	else
-	{
-		if(this->type->isFloatingPointType())
-			return CGResult(fir::ConstantFP::get(this->type, this->num.toDouble()));
-
-		else
-			return CGResult(fir::ConstantInt::get(this->type, this->type->isSignedIntType() ? this->num.toLLong() : this->num.toULLong()));
-	}
+		return CGResult(fir::ConstantInt::get(this->type, this->integer));
 }
 
 CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -36,9 +28,6 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->type->isArrayType())
 	{
 		auto elmty = this->type->toArrayType()->getElementType();
-		if(fir::isRefCountedType(elmty))
-			error(this, "cannot have refcounted type in array literal");
-
 		std::vector<fir::ConstantValue*> vals;
 		for(auto v : this->values)
 		{
@@ -55,7 +44,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok
 		return CGResult(fir::ConstantArray::get(this->type, vals));
 	}
-	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
+	else if(this->type->isArraySliceType())
 	{
 		// ok, this can basically be anything.
 		// no restrictions.
@@ -70,14 +59,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(this, "failed to infer type for empty array literal");
 
 			auto z = fir::ConstantInt::getNative(0);
-			if(infer->isDynamicArrayType())
-			{
-				// ok.
-				elmty = infer->getArrayElementType();
-				returnValue = fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
-					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z);
-			}
-			else if(infer->isArraySliceType())
+			if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
 
@@ -146,20 +128,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			// return it
-			if(this->type->isDynamicArrayType())
-			{
-				auto arrptr = cs->irb.AddressOf(array, true);
-
-				auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
-
-				aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
-				aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
-				aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
-				aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
-
-				returnValue = aa;
-			}
-			else if(this->type->isArraySliceType())
+			if(this->type->isArraySliceType())
 			{
 				auto arrptr = cs->irb.AddressOf(array, true);
 

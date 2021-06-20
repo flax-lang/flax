@@ -51,11 +51,6 @@ namespace pts
 		return dcast(FixedArrayType, this);
 	}
 
-	DynamicArrayType* Type::toDynamicArrayType()
-	{
-		return dcast(DynamicArrayType, this);
-	}
-
 	VariadicArrayType* Type::toVariadicArrayType()
 	{
 		return dcast(VariadicArrayType, this);
@@ -90,11 +85,6 @@ namespace pts
 	bool Type::isFixedArrayType()
 	{
 		return dcast(FixedArrayType, this) != 0;
-	}
-
-	bool Type::isDynamicArrayType()
-	{
-		return dcast(DynamicArrayType, this) != 0;
 	}
 
 	bool Type::isVariadicArrayType()
@@ -187,15 +177,6 @@ namespace pts
 			b = "(" + b + ")";
 
 		return strprintf("[%s: %d]", b, std::to_string(this->size));
-	}
-
-	std::string DynamicArrayType::str()
-	{
-		std::string b = this->base->str();
-		if(this->base->isFunctionType())
-			b = "(" + b + ")";
-
-		return strprintf("[%s]", b);
 	}
 
 	std::string VariadicArrayType::str()

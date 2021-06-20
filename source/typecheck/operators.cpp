@@ -10,13 +10,10 @@
 
 static bool isBuiltinType(fir::Type* ty)
 {
-	return (ty->isConstantNumberType()
-		|| ty->isDynamicArrayType()
-		|| ty->isArraySliceType()
+	return (ty->isArraySliceType()
 		|| ty->isPrimitiveType()
 		|| ty->isFunctionType()
 		|| ty->isPointerType()
-		|| ty->isStringType()
 		|| ty->isRangeType()
 		|| ty->isArrayType()
 		|| ty->isVoidType()

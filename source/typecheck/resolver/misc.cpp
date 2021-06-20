@@ -18,7 +18,10 @@ namespace sst
 			std::pair<TypeParamMap_t, ErrorMsg*> canonicalisePolyArguments(TypecheckState* fs, ast::Parameterisable* thing, const PolyArgMapping_t& pams)
 			{
 				if(thing->generics.empty())
-					return { { }, SimpleError::make(fs->loc(), "cannot canonicalise poly arguments for non-generic (or nested) entity '%s'", thing->name) };
+				{
+					return { { }, SimpleError::make(fs->loc(), "cannot canonicalise poly arguments for non-generic (or nested) entity '%s'",
+						thing->name) };
+				}
 
 				TypeParamMap_t ret;
 
@@ -26,7 +29,8 @@ namespace sst
 				//? to infer stuff.
 				if(thing->generics.size() < pams.maps.size())
 				{
-					return { { }, SimpleError::make(fs->loc(), "mismatched number of type arguments to polymorph '%s'; expected %d, found %d instead",
+					return { { }, SimpleError::make(fs->loc(),
+						"mismatched number of type arguments to polymorph '%s'; expected %d, found %d instead",
 						thing->name, thing->generics.size(), pams.maps.size()) };
 				}
 

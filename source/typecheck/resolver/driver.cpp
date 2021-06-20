@@ -32,21 +32,11 @@ namespace resolver
 	{
 		StateTree* tree = fs->stree;
 
-		//* the purpose of this 'didVar' flag (because I was fucking confused reading this)
-		//* is so we only consider the innermost (ie. most local) variable, because variables don't participate in overloading.
-		//! ACHTUNG !
-		// TODO: do we even need this didVar nonsense? variables don't overload yes, but we can't even define more than one
-		// TODO: variable in a scope with the same name. if we find something with a matching name we quit immediately, so there
-		// TODO: shouldn't be a point in having 'didVar'!!
-		// TODO: - zhiayang, 28/10/18
-
-
 		//? I can't find any information about this behaviour in languages other than C++, because we need to have a certain set of
 		//? features for it to manifest -- 1. user-defined, explicit namespaces; 2. function overloading.
 
 		//* how it works in C++, and for now also in Flax, is that once we match *any* names in the current scope, we stop searching upwards
 		//* -- even if it means we will throw an error because of mismatched arguments or whatever.
-		// bool didVar = false;
 
 		bool didGeneric = false;
 
@@ -137,10 +127,9 @@ namespace resolver
 			{
 				cands.push_back({ def, ts });
 			}
-			else if(dcast(VarDefn, def) && def->type->isFunctionType() /* && !didVar */)
+			else if(dcast(VarDefn, def) && def->type->isFunctionType())
 			{
 				cands.push_back({ def, ts });
-				// didVar = true;
 			}
 			else
 			{
@@ -151,7 +140,9 @@ namespace resolver
 			}
 		}
 
-		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
+		// auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, gmaps, travUp, return_infer);
+		auto [ res, new_args ] = resolver::internal::resolveFunctionCallFromCandidates(fs, fs->loc(), cands, { }, travUp, return_infer);
+
 		if(res.isDefn())
 			*arguments = new_args;
 
@@ -289,7 +280,7 @@ namespace resolver
 			}
 			else if(arguments.size() == 1)
 			{
-				if(int d = getCastDistance(arguments[0].value->type, type); d >= 0 || (type->isStringType() && arguments[0].value->type->isCharSliceType()))
+				if(int d = getCastDistance(arguments[0].value->type, type); d >= 0)
 				{
 					return type;
 				}
@@ -301,46 +292,7 @@ namespace resolver
 			}
 			else
 			{
-				if(type->isStringType())
-				{
-					// either from a slice, or from a ptr + len
-					if(arguments.size() == 1)
-					{
-						if(!arguments[0].value->type->isCharSliceType())
-						{
-							error(arguments[0].loc, "single argument to string initialiser must be a slice of char, aka '%s', found '%s' instead",
-								fir::Type::getCharSlice(false), arguments[0].value->type);
-						}
-
-						return type;
-					}
-					else if(arguments.size() == 2)
-					{
-						if(auto t1 = arguments[0].value->type; (t1 != fir::Type::getInt8Ptr() && t1 != fir::Type::getMutInt8Ptr()))
-						{
-							error(arguments[0].loc, "first argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
-								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
-						}
-						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getNativeWord()) < 0)
-						{
-							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								fir::Type::getNativeWord(), t2);
-						}
-						else
-						{
-							return type;
-						}
-					}
-					else
-					{
-						error(arguments[2].loc, "string initialiser only takes 1 (from slice) or 2 (from pointer+length)"
-							" arguments, found '%d' instead", arguments.size());
-					}
-				}
-				else
-				{
-					error(arguments[1].loc, "builtin type '%s' cannot be initialised with more than 1 value", type);
-				}
+				error(arguments[1].loc, "builtin type '%s' cannot be initialised with more than 1 value", type);
 			}
 		}
 

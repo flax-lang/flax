@@ -154,7 +154,6 @@ namespace parser
 				case TT::Attr_Packed:   ret.set(attr::PACKED); st.pop(); break;
 				case TT::Attr_NoMangle: ret.set(attr::NO_MANGLE); st.pop(); break;
 				case TT::Attr_EntryFn:  ret.set(attr::FN_ENTRYPOINT); st.pop(); break;
-				case TT::Attr_Platform: unexpected(st.loc(), "@platform definition");
 				case TT::Attr_Operator: unexpected(st.loc(), "@operator declaration");
 
 				case TT::At:
@@ -167,127 +166,8 @@ namespace parser
 		}
 
 		// sue me
-		out:
+	out:
 		return ret;
-	}
-
-
-	// TODO: switch this to the new attribute system. after the whole cddc19 shitshow @platform functionality
-	// TODO: remains unused.
-	PlatformDefn* parsePlatformDefn(State& st)
-	{
-		iceAssert(st.front() == TT::Attr_Platform);
-		auto l = st.loc();
-
-		st.eat();
-
-		if(st.eat() != TT::LSquare)
-			expectedAfter(st.ploc(), "'['", "@platform definition", st.prev().str());
-
-		PlatformDefn* pd = util::pool<PlatformDefn>(l);
-
-		// see what the thing is.
-		if(st.front() == TT::Identifier && st.front().str() == "intrinsic")
-		{
-			st.eat();
-			pd->defnType = PlatformDefn::Type::Intrinsic;
-
-			if(st.eat() != TT::Comma)
-				expected(st.ploc(), "',' in argument list to @platform", st.prev().str());
-
-			if(st.front() != TT::StringLiteral)
-				expected(st.loc(), "string literal to specify intrinsic name", st.front().str());
-
-			auto realname = st.eat().str();
-
-			if(st.eat() != TT::RSquare)
-				expectedAfter(st.ploc(), "']'", "@platform definition", st.prev().str());
-
-			if(st.front() != TT::Func)
-				expectedAfter(st.loc(), "function declaration", "@platform", st.front().str());
-
-			auto [ defn, isvar, varloc ] = parseFunctionDecl(st);
-			(void) varloc;
-
-			if(!defn->generics.empty())
-				error(defn->loc, "platform intrinsics cannot be generic");
-
-			auto ffn = util::pool<ForeignFuncDefn>(st.loc());
-			ffn->realName = realname;
-
-			ffn->loc = defn->loc;
-			ffn->isVarArg = isvar;
-			ffn->name = defn->name;
-			ffn->params = defn->params;
-			ffn->visibility = defn->visibility;
-			ffn->returnType = defn->returnType;
-
-
-			pd->intrinsicDefn = ffn;
-		}
-		else if(st.front() == TT::Identifier && st.front().str() == "integer_type")
-		{
-			st.eat();
-			pd->defnType = PlatformDefn::Type::IntegerType;
-
-			if(st.eat() != TT::Comma)
-				expected(st.ploc(), "',' in argument list to @platform", st.prev().str());
-
-			auto num = st.front().str();
-			if(st.front() != TT::Number || num.find('.') != std::string::npos)
-				expected(st.ploc(), "integer value to specify type size (in bits)", st.front().str());
-
-			st.eat();
-
-			int sz = std::stoi(num);
-			if(sz <= 0)     expected(st.ploc(), "non-zero and non-negative size", num);
-			else if(sz < 8) error(st.ploc(), "types less than 8-bits wide are currently not supported");
-
-			pd->typeSizeInBits = sz;
-
-			if(st.eat() != TT::RSquare)
-				expectedAfter(st.ploc(), "']'", "@platform definition", st.prev().str());
-
-			if(st.front() != TT::Identifier)
-				expectedAfter(st.loc(), "identifier as type name", "@platform definition", st.front().str());
-
-			pd->typeName = st.eat().str();
-		}
-		else if(st.front() == TT::Identifier && st.front().str() == "native_word_size")
-		{
-			if(!st.nativeWordSizeStillValid)
-			{
-				SimpleError::make(st.loc(), "setting the native word size is no longer possible at this point")->append(
-					BareError::make(MsgType::Note, "@platform[native_word_size] must appear before any code declarations, "
-						"and be the first '@platform' declaration"))->postAndQuit();
-			}
-
-			st.eat();
-
-			if(st.eat() != TT::RSquare)
-				expectedAfter(st.ploc(), "']'", "@platform definition", st.prev().str());
-
-			auto num = st.front().str();
-			if(st.front() != TT::Number || num.find('.') != std::string::npos)
-				expected(st.ploc(), "integer value to specify word size (in bits)", st.front().str());
-
-			st.eat();
-
-			int sz = std::stoi(num);
-			if(sz <= 0)     expected(st.ploc(), "non-zero and non-negative size", num);
-			else if(sz < 8) error(st.ploc(), "types less than 8-bits wide are currently not supported");
-
-			//? should we warn if it was already set?
-			st.cState->nativeWordSize = sz;
-
-			return 0;
-		}
-		else
-		{
-			error(st.loc(), "invalid platform declaration of type '%s'", st.front().str());
-		}
-
-		return pd;
 	}
 }
 

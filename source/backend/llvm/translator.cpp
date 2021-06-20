@@ -40,15 +40,6 @@
 #define SLICE_DATA_INDEX            0
 #define SLICE_LENGTH_INDEX          1
 
-#define SAA_DATA_INDEX              0
-#define SAA_LENGTH_INDEX            1
-#define SAA_CAPACITY_INDEX          2
-#define SAA_REFCOUNTPTR_INDEX       3
-
-#define ANY_TYPEID_INDEX            0
-#define ANY_REFCOUNTPTR_INDEX       1
-#define ANY_DATA_ARRAY_INDEX        2
-
 namespace backend
 {
 	static util::hash_map<fir::Name, llvm::StructType*> createdTypes;
@@ -192,39 +183,6 @@ namespace backend
 		{
 			return llvm::Type::getVoidTy(gc);
 		}
-		else if(type->isDynamicArrayType())
-		{
-			fir::DynamicArrayType* llat = type->toDynamicArrayType();
-			std::vector<llvm::Type*> mems(4);
-
-			mems[SAA_DATA_INDEX]        = typeToLlvm(llat->getElementType()->getPointerTo(), mod);
-			mems[SAA_LENGTH_INDEX]      = getNativeWordTy();
-			mems[SAA_CAPACITY_INDEX]    = getNativeWordTy();
-			mems[SAA_REFCOUNTPTR_INDEX] = getNativeWordTy()->getPointerTo();
-
-			return llvm::StructType::get(gc, mems, false);
-		}
-		else if(type->isStringType())
-		{
-			llvm::Type* i8ptrtype = llvm::Type::getInt8PtrTy(gc);
-
-			auto id = fir::Name::obfuscate("string", fir::NameKind::Type);
-			if(createdTypes.find(id) != createdTypes.end())
-				return createdTypes[id];
-
-
-			std::vector<llvm::Type*> mems(4);
-
-			mems[SAA_DATA_INDEX]        = i8ptrtype;
-			mems[SAA_LENGTH_INDEX]      = getNativeWordTy();
-			mems[SAA_CAPACITY_INDEX]    = getNativeWordTy();
-			mems[SAA_REFCOUNTPTR_INDEX] = getNativeWordTy()->getPointerTo();
-
-			auto str = llvm::StructType::create(gc, id.mangled());
-			str->setBody(mems);
-
-			return createdTypes[id] = str;
-		}
 		else if(type->isArraySliceType())
 		{
 			fir::ArraySliceType* slct = type->toArraySliceType();
@@ -257,21 +215,6 @@ namespace backend
 			mems.push_back(typeToLlvm(type->toEnumType()->getCaseType(), mod));
 
 			return llvm::StructType::get(gc, mems, false);
-		}
-		else if(type->isAnyType())
-		{
-			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
-
-			auto id = fir::Name::obfuscate("any", fir::NameKind::Type);
-			if(createdTypes.find(id) != createdTypes.end())
-				return createdTypes[id];
-
-			auto str = llvm::StructType::create(gc, id.mangled());
-
-			// typeid (+ highest-bit-mask), refcount, data.
-			str->setBody({ getNativeWordTy(), getNativeWordTy()->getPointerTo(), arrtype });
-
-			return createdTypes[id] = str;
 		}
 		else if(type->isUnionType())
 		{
@@ -403,10 +346,6 @@ namespace backend
 			llvm::Type* it = typeToLlvm(fc->getType(), mod);
 			return cachedConstants[fc] = llvm::ConstantFP::get(it, cf->getValue());
 		}
-		else if(dcast(fir::ConstantNumber, fc))
-		{
-			error("cannot");
-		}
 		else if(auto cc = dcast(fir::ConstantBool, fc))
 		{
 			llvm::Type* ct = typeToLlvm(fc->getType(), mod);
@@ -457,17 +396,11 @@ namespace backend
 			return cachedConstants[fc] = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(ty),
 				constToLlvm(cec->getIndex(), valueMap, mod), constToLlvm(cec->getValue(), valueMap, mod));
 		}
-		else if(dcast(fir::ConstantCharSlice, fc) || dcast(fir::ConstantDynamicString, fc))
+		else if(dcast(fir::ConstantCharSlice, fc))
 		{
-			bool wasDynStr = false;
-
 			std::string str;
 			if(auto ccs = dcast(fir::ConstantCharSlice, fc))
 				str = ccs->getValue();
-
-			else if(auto cds = dcast(fir::ConstantDynamicString, fc))
-				wasDynStr = true, str = cds->getValue();
-
 
 			llvm::Constant* cstr = llvm::ConstantDataArray::getString(LLVMBackend::getLLVMContext(), str, true);
 			llvm::GlobalVariable* gv = new llvm::GlobalVariable(*mod, cstr->getType(), true,
@@ -484,14 +417,6 @@ namespace backend
 
 			fir::Type* ty = fir::Type::getCharSlice(false);
 			std::vector<llvm::Constant*> mems = { gepd, len };
-			if(wasDynStr)
-			{
-				ty = fir::Type::getString();
-
-				// add -1 for the capacity and 0 for the refcountptr.
-				mems.push_back(llvm::ConstantInt::get(getNativeWordTy(), static_cast<uint64_t>(-1)));
-				mems.push_back(zconst);
-			}
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(ty, mod)), mems);
 
@@ -504,46 +429,6 @@ namespace backend
 
 			auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cas->getType(), mod)), mems);
 			return cachedConstants[fc] = ret;
-		}
-		else if(auto cda = dcast(fir::ConstantDynamicArray, fc))
-		{
-			if(cda->getArray())
-			{
-				llvm::Constant* constArray = constToLlvm(cda->getArray(), valueMap, mod);
-				iceAssert(constArray);
-
-				// don't make it immutable. this probably puts the global variable in the .data segment, instead of the
-				// .rodata/.rdata segment.
-
-				// this allows us to modify it, eg.
-				// var foo = [ 1, 2, 3 ]
-				// foo[0] = 4
-
-				// of course, since capacity == -1, the moment we try to like append or something,
-				// we get back new heap memory
-
-				llvm::GlobalVariable* tmpglob = new llvm::GlobalVariable(*mod, constArray->getType(), false,
-					llvm::GlobalValue::LinkageTypes::InternalLinkage, constArray, "_FV_ARR_" + std::to_string(cda->id));
-
-				auto zconst = llvm::ConstantInt::get(getNativeWordTy(), 0);
-				std::vector<llvm::Constant*> indices = { zconst, zconst };
-				llvm::Constant* gepd = llvm::ConstantExpr::getGetElementPtr(tmpglob->getType()->getPointerElementType(), tmpglob, indices);
-
-				auto flen = fir::ConstantInt::getNative(cda->getArray()->getType()->toArrayType()->getArraySize());
-				auto fcap = fir::ConstantInt::getNative(-1);
-				std::vector<llvm::Constant*> mems = { gepd, constToLlvm(flen, valueMap, mod), constToLlvm(fcap, valueMap, mod), zconst };
-
-				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
-				return cachedConstants[fc] = ret;
-			}
-			else
-			{
-				std::vector<llvm::Constant*> mems = { constToLlvm(cda->getData(), valueMap, mod), constToLlvm(cda->getLength(), valueMap, mod),
-					constToLlvm(cda->getCapacity(), valueMap, mod), llvm::ConstantInt::get(getNativeWordTy(), 0) };
-
-				auto ret = llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(typeToLlvm(cda->getType(), mod)), mems);
-				return cachedConstants[fc] = ret;
-			}
 		}
 		else if(auto fn = dcast(fir::Function, fc))
 		{
@@ -905,7 +790,7 @@ namespace backend
 		#define DO_DUMP 0
 
 		#if DO_DUMP
-		#define DUMP_INSTR(fmt, ...)		(fprintf(stderr, fmt, ##__VA_ARGS__))
+		#define DUMP_INSTR(fmt, ...)    (fprintf(stderr, fmt, ##__VA_ARGS__))
 		#else
 		#define DUMP_INSTR(...)
 		#endif
@@ -914,9 +799,6 @@ namespace backend
 		for(auto fp : firmod->_getFunctions())
 		{
 			fir::Function* ffn = fp.second;
-
-			// if(isGenericInAnyWay(ffn->getType()))
-				// continue;
 
 			llvm::Function* func = module->getFunction(fp.second->getName().mangled());
 			iceAssert(func);
@@ -1391,12 +1273,12 @@ namespace backend
 							bool sgn = inst->operands[0]->getType()->isSignedIntType() || inst->operands[1]->getType()->isSignedIntType();
 
 							llvm::Value* r1 = 0;
-							if(sgn)	r1 = builder.CreateICmpSGE(a, b);
-							else	r1 = builder.CreateICmpUGE(a, b);
+							if(sgn) r1 = builder.CreateICmpSGE(a, b);
+							else    r1 = builder.CreateICmpUGE(a, b);
 
 							llvm::Value* r2 = 0;
-							if(sgn)	r2 = builder.CreateICmpSLE(a, b);
-							else	r2 = builder.CreateICmpULE(a, b);
+							if(sgn) r2 = builder.CreateICmpSLE(a, b);
+							else    r2 = builder.CreateICmpULE(a, b);
 
 							r1 = builder.CreateIntCast(r1, getNativeWordTy(), false);
 							r2 = builder.CreateIntCast(r2, getNativeWordTy(), false);
@@ -1939,92 +1821,6 @@ namespace backend
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-						case fir::OpKind::SAA_GetData:
-						case fir::OpKind::SAA_GetLength:
-						case fir::OpKind::SAA_GetCapacity:
-						case fir::OpKind::SAA_GetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::SAA_GetData)
-								ind = SAA_DATA_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetLength)
-								ind = SAA_LENGTH_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetCapacity)
-								ind = SAA_CAPACITY_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetRefCountPtr)
-								ind = SAA_REFCOUNTPTR_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::SAA_SetData:
-						case fir::OpKind::SAA_SetLength:
-						case fir::OpKind::SAA_SetCapacity:
-						case fir::OpKind::SAA_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::SAA_SetData)
-								ind = SAA_DATA_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetLength)
-								ind = SAA_LENGTH_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetCapacity)
-								ind = SAA_CAPACITY_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetRefCountPtr)
-								ind = SAA_REFCOUNTPTR_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-
-
-
-
-
-
-
 						case fir::OpKind::ArraySlice_GetData:
 						case fir::OpKind::ArraySlice_GetLength:
 						{
@@ -2073,61 +1869,6 @@ namespace backend
 
 
 
-						case fir::OpKind::Any_GetData:
-						case fir::OpKind::Any_GetTypeID:
-						case fir::OpKind::Any_GetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::Any_GetTypeID)
-								ind = ANY_TYPEID_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_GetRefCountPtr)
-								ind = ANY_REFCOUNTPTR_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_GetData)
-								ind = ANY_DATA_ARRAY_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::Any_SetData:
-						case fir::OpKind::Any_SetTypeID:
-						case fir::OpKind::Any_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::Any_SetTypeID)
-								ind = ANY_TYPEID_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_SetRefCountPtr)
-								ind = ANY_REFCOUNTPTR_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_SetData)
-								ind = ANY_DATA_ARRAY_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 
 
@@ -2205,7 +1946,8 @@ namespace backend
 							llvm::Value* b = getOperand(inst, 1);
 
 							iceAssert(a->getType()->isStructTy());
-							if(pos == 0)	iceAssert(b->getType()->isIntegerTy());
+							if(pos == 0)
+								iceAssert(b->getType()->isIntegerTy());
 
 							llvm::Value* ret = builder.CreateInsertValue(a, b, { pos });
 							addValueToMap(ret, inst->realOutput);

@@ -2,6 +2,7 @@
 // Copyright (c) 2017, zhiayang
 // Licensed under the Apache License Version 2.0.
 
+#include "defs.h"
 #include "sst.h"
 #include "errors.h"
 #include "ir/type.h"
@@ -166,6 +167,8 @@ namespace resolver
 
 					if(fn->type->containsPlaceholders())
 					{
+						iceAssert(false && "INVESTIGATE ME: what is this???");
+
 						if(auto fd = dcast(FunctionDefn, fn); !fd)
 						{
 							error(fd, "invalid non-definition of a function with placeholder types");
@@ -209,7 +212,7 @@ namespace resolver
 
 						if(!pams.empty())
 						{
-							fails[fn] = complainAboutExtraneousPAMs("non-polymorphic function", fn, "called", /* printdef: */ true);
+							fails[fn] = complainAboutExtraneousPAMs("non-polymorphic function", fn, "called", /* printdef: */ false);
 						}
 						else
 						{

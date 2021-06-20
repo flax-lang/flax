@@ -62,13 +62,7 @@ namespace sst
 						// check for conflict.
 						if(!ltt->isPolyPlaceholderType() && !gt->isPolyPlaceholderType())
 						{
-							if(ltt->isConstantNumberType() || gt->isConstantNumberType())
-							{
-								gt = internal::mergeNumberTypes(ltt, gt);
-								if(gt != ltt)
-									soln->addSolution(ptt->getName(), fir::LocatedType(gt, given.loc));
-							}
-							else if(ltt != gt)
+							if(ltt != gt)
 							{
 								if(int d = fir::getCastDistance(gt, ltt); d >= 0)
 								{
@@ -76,7 +70,8 @@ namespace sst
 								}
 								else
 								{
-									return SimpleError::make(given.loc, "conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
+									return SimpleError::make(given.loc,
+										"conflicting solutions for type parameter '%s': previous: '%s', current: '%s'",
 										ptt->getName(), ltt->str(), gvn);
 								}
 							}
@@ -404,12 +399,6 @@ namespace sst
 				else                            { prevSoln = soln; }
 			}
 
-
-			for(auto& pair : prevSoln.solutions)
-			{
-				if(pair.second->isConstantNumberType())
-					pair.second = fir::getBestFitTypeForConstant(pair.second->toConstantNumberType());
-			}
 
 			return { prevSoln, nullptr };
 		}

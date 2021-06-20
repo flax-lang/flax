@@ -6,11 +6,6 @@
 #include "defs.h"
 #include "sst_expr.h"
 
-
-#include "mpreal/mpreal.h"
-
-
-
 namespace fir
 {
 	struct Type;
@@ -483,7 +478,11 @@ namespace sst
 
 		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 
-		mpfr::mpreal num;
+		bool is_floating = false;
+		union {
+			uint64_t integer;
+			double floating;
+		};
 	};
 
 	struct LiteralString : Expr

@@ -9,6 +9,17 @@ import libc as _
 public fn doDeferTest()
 {
 	bar()
+
+	var i = 0
+	while true
+	{
+		defer i += 1
+
+		if i > 15 => break
+
+		printf("%d ", i)
+	}
+	printf("\n")
 }
 
 

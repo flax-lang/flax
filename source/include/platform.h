@@ -66,8 +66,6 @@
 		#define PLATFORM_EXPORT_FUNCTION    extern "C" __attribute__((visibility("default")))
 	#endif
 
-	#define REFCOUNT_SIZE		8
-
 namespace platform
 {
 	extern filehandle_t InvalidFileHandle;

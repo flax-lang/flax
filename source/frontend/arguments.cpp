@@ -635,10 +635,10 @@ namespace frontend
 					{
 						switch(argv[i][2])
 						{
-							case '0':	frontend::_optLevel = OptimisationLevel::None;			break;
-							case '1':	frontend::_optLevel = OptimisationLevel::Minimal;		break;
-							case '2':	frontend::_optLevel = OptimisationLevel::Normal;		break;
-							case '3':	frontend::_optLevel = OptimisationLevel::Aggressive;	break;
+							case '0':   frontend::_optLevel = OptimisationLevel::None;          break;
+							case '1':   frontend::_optLevel = OptimisationLevel::Minimal;       break;
+							case '2':   frontend::_optLevel = OptimisationLevel::Normal;        break;
+							case '3':   frontend::_optLevel = OptimisationLevel::Aggressive;    break;
 
 							default:
 								_error_and_exit("error: '%c' is not a valid optimisation level (must be between 0 and 3)\n", argv[i][2]);

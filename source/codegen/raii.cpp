@@ -8,6 +8,17 @@
 
 namespace cgn
 {
+	void CodegenState::performAssignment(fir::Value* lhs, fir::Value* rhs, bool isinit)
+	{
+		iceAssert(lhs && rhs);
+
+		if(!lhs->islvalue())
+			error(this->loc(), "assignment (move) to non-lvalue and non-pointer (type '%s')", lhs->getType());
+
+		// copy will do the right thing in all cases (handle non-RAII, and call move if possible)
+		this->copyRAIIValue(rhs, lhs);
+	}
+
 	void CodegenState::addRAIIValue(fir::Value* val)
 	{
 		// TODO: we need global destructors eventually.
@@ -57,9 +68,6 @@ namespace cgn
 	{
 		if(!ty)
 			ty = val->getType();
-
-		if(fir::isRefCountedType(ty))
-			this->addRefCountedValue(val);
 
 		if(this->isRAIIType(ty))
 			this->addRAIIValue(val);

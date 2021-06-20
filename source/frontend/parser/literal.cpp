@@ -21,10 +21,10 @@ namespace parser
 {
 	LitNumber* parseNumber(State& st)
 	{
-		iceAssert(st.front() == TT::Number);
+		iceAssert(st.front() == TT::IntegerNumber || st.front() == TT::FloatingNumber);
 		auto t = st.eat();
 
-		return util::pool<LitNumber>(st.ploc(), t.str());
+		return util::pool<LitNumber>(st.ploc(), t.str(), /* floating: */ t == TT::FloatingNumber);
 	}
 
 	static std::string parseHexEscapes(const Location& loc, std::string_view sv, size_t* ofs)

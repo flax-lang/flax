@@ -15,41 +15,10 @@
 
 namespace sst
 {
-	fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* type)
-	{
-		auto ty = type->toConstantNumberType();
-		{
-			if(ty->isFloating())
-			{
-				if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
-					return fir::Type::getFloat64();
-
-				else if(ty->getMinBits() <= fir::Type::getFloat128()->getBitWidth())
-					return fir::Type::getFloat128();
-
-				else
-					error("float overflow");
-			}
-			else
-			{
-				if(ty->getMinBits() <= fir::Type::getNativeWord()->getBitWidth() - 1)
-					return fir::Type::getNativeWord();
-
-				else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
-					return fir::Type::getNativeUWord();
-
-				else
-					error("int overflow");
-			}
-		}
-	}
-
-
 	static ErrorMsg* _complainNoParentScope(TypecheckState* fs, const std::string& top)
 	{
 		return SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", top);
 	}
-
 
 	static StateTree* recursivelyFindTreeUpwards(TypecheckState* fs, const std::string& name)
 	{
@@ -374,10 +343,6 @@ namespace sst
 		else if(pt->isArraySliceType())
 		{
 			return fir::ArraySliceType::get(this->convertParserTypeToFIR(pt->toArraySliceType()->base), pt->toArraySliceType()->mut);
-		}
-		else if(pt->isDynamicArrayType())
-		{
-			return fir::DynamicArrayType::get(this->convertParserTypeToFIR(pt->toDynamicArrayType()->base));
 		}
 		else if(pt->isVariadicArrayType())
 		{

@@ -109,7 +109,6 @@ namespace sst
 				Slice,
 				Pointer,
 				FixedArray,
-				DynamicArray,
 				VariadicArray,
 			};
 

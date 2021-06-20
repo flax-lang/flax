@@ -14,6 +14,8 @@
 
 TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 {
+	iceAssert("no" && false);
+
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
@@ -35,12 +37,8 @@ TCResult ast::AllocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(!elm->isClassType() && !elm->isStructType() && this->args.size() > 0)
 		error(this, "cannot provide arguments to non-struct type '%s'", elm);
 
-
-	fir::Type* resType = (this->attrs.has(attr::RAW) || counts.empty() ?
-		(this->isMutable ? elm->getMutablePointerTo() : elm->getPointerTo()) : fir::DynamicArrayType::get(elm));
-
+	fir::Type* resType = this->isMutable ? elm->getMutablePointerTo() : elm->getPointerTo();
 	auto ret = util::pool<sst::AllocOp>(this->loc, resType);
-
 
 	// ok, check if we're a struct.
 	if((elm->isStructType() || elm->isClassType()))
@@ -106,10 +104,8 @@ TCResult ast::DeallocOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	defer(fs->popLoc());
 
 	auto ex = this->expr->typecheck(fs).expr();
-	if(ex->type->isDynamicArrayType())
-		error(ex, "dynamic arrays are reference-counted, and cannot be manually freed");
 
-	else if(!ex->type->isPointerType())
+	if(!ex->type->isPointerType())
 		error(ex, "expected pointer or dynamic array type to deallocate; found '%s' instead", ex->type);
 
 	auto ret = util::pool<sst::DeallocOp>(this->loc);
