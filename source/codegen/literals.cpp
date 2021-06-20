@@ -28,9 +28,6 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(this->type->isArrayType())
 	{
 		auto elmty = this->type->toArrayType()->getElementType();
-		if(fir::isRefCountedType(elmty))
-			error(this, "cannot have refcounted type in array literal");
-
 		std::vector<fir::ConstantValue*> vals;
 		for(auto v : this->values)
 		{

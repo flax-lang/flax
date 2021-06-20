@@ -222,9 +222,6 @@ namespace cgn
 			ret = fir::ConstantValue::getZeroValue(type);
 		}
 
-		if(fir::isRefCountedType(type))
-			this->addRefCountedValue(ret);
-
 		ret->setKind(fir::Value::Kind::prvalue);
 		return ret;
 	}

@@ -52,8 +52,6 @@ namespace cgn
 		BlockPoint(sst::Block* b) : block(b) { }
 
 		sst::Block* block = 0;
-
-		std::vector<fir::Value*> refCountedValues;
 		std::vector<fir::Value*> raiiValues;
 	};
 
@@ -179,16 +177,7 @@ namespace cgn
 
 		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op);
 
-		bool isRefCountedType(fir::Type* type);
-		void incrementRefCount(fir::Value* val);
-		void decrementRefCount(fir::Value* val);
-
-		void addRefCountedValue(fir::Value* val);
-		void removeRefCountedValue(fir::Value* val);
-
-		std::vector<fir::Value*> getRefCountedValues();
-
-		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
+		void performAssignment(fir::Value* lhs, fir::Value* rhs, bool isInitial);
 
 		void addRAIIOrRCValueIfNecessary(fir::Value* val, fir::Type* typeOverride = 0);
 

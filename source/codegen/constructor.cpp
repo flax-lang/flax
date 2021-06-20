@@ -38,9 +38,6 @@ fir::Value* cgn::CodegenState::getConstructedStructValue(fir::StructType* str, c
 		}
 	}
 
-	if(fir::isRefCountedType(str))
-		this->addRefCountedValue(value);
-
 	return value;
 }
 
@@ -168,9 +165,6 @@ CGResult sst::ClassConstructorCall::_codegen(cgn::CodegenState* cs, fir::Type* i
 
 	auto cls = this->classty->type->toClassType();
 	auto ret = cs->constructClassWithArguments(cls, this->target, this->arguments);
-
-	if(fir::isRefCountedType(cls))
-		cs->addRefCountedValue(ret);
 
 	return CGResult(ret);
 }

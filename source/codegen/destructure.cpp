@@ -23,21 +23,6 @@ CGResult sst::DecompDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 static void handleDefn(cgn::CodegenState* cs, sst::VarDefn* defn, CGResult res)
 {
-	// do a quick check for refcounting.
-	//* note: due to the way vardefn codegen works, if we're assigning from an rvalue and the type is refcounted,
-	//* we simply remove the rhs from the refcounting stack instead of changing refcounts around.
-	//* so, since everything that we generate from destructuring is an rvalue, we always need to remove it.
-
-	//* thus in order to remove it, we must first insert it.
-
-	//* also, since the vardefn adds itself to the counting stack, when it dies we will get decremented.
-	//* however, this cannot be allowed to happen, because we want a copy and not a move.
-	if(fir::isRefCountedType(res->getType()))
-	{
-		cs->addRefCountedValue(res.value);
-		cs->incrementRefCount(res.value);
-	}
-
 	if(defn)
 	{
 		auto v = util::pool<sst::RawValueExpr>(defn->loc, res.value->getType());

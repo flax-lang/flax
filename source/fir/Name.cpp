@@ -140,10 +140,6 @@ namespace fir
 		{
 			return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeName(t->toEnumType()->getTypeName()));
 		}
-		else if(t->isAnyType())
-		{
-			return "AY";
-		}
 		else
 		{
 			_error_and_exit("unsupported ir type??? ('%s')\n", t);

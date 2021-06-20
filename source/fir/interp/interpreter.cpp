@@ -21,15 +21,6 @@
 #define SLICE_DATA_INDEX            0
 #define SLICE_LENGTH_INDEX          1
 
-#define SAA_DATA_INDEX              0
-#define SAA_LENGTH_INDEX            1
-#define SAA_CAPACITY_INDEX          2
-#define SAA_REFCOUNTPTR_INDEX       3
-
-#define ANY_TYPEID_INDEX            0
-#define ANY_REFCOUNTPTR_INDEX       1
-#define ANY_DATA_ARRAY_INDEX        2
-
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
@@ -587,13 +578,6 @@ namespace interp
 
 			else
 				return { ty->getArrayElementType()->getPointerTo(), fir::Type::getNativeWord() };
-		}
-		else if(ty->isAnyType())
-		{
-			return {
-				fir::Type::getNativeUWord(), fir::Type::getNativeWordPtr(),
-				fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT)
-			};
 		}
 		else if(ty->isRangeType())
 		{
@@ -2138,59 +2122,6 @@ namespace interp
 			}
 
 
-			case OpKind::SAA_GetData:
-			case OpKind::SAA_GetLength:
-			case OpKind::SAA_GetCapacity:
-			case OpKind::SAA_GetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 1);
-				auto str = getArg(is, inst, 0);
-
-				interp::Value ret;
-
-				if(ok == OpKind::SAA_GetData)
-					ret = doExtractValue(is, inst.result, str, SAA_DATA_INDEX);
-
-				else if(ok == OpKind::SAA_GetLength)
-					ret = doExtractValue(is, inst.result, str, SAA_LENGTH_INDEX);
-
-				else if(ok == OpKind::SAA_GetCapacity)
-					ret = doExtractValue(is, inst.result, str, SAA_CAPACITY_INDEX);
-
-				else if(ok == OpKind::SAA_GetRefCountPtr)
-					ret = doExtractValue(is, inst.result, str, SAA_REFCOUNTPTR_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-			case OpKind::SAA_SetData:
-			case OpKind::SAA_SetLength:
-			case OpKind::SAA_SetCapacity:
-			case OpKind::SAA_SetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 2);
-				auto str = getArg(is, inst, 0);
-				auto elm = getArg(is, inst, 1);
-
-				interp::Value ret;
-
-				if(ok == OpKind::SAA_SetData)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_DATA_INDEX);
-
-				else if(ok == OpKind::SAA_SetLength)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_LENGTH_INDEX);
-
-				else if(ok == OpKind::SAA_SetCapacity)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_CAPACITY_INDEX);
-
-				else if(ok == OpKind::SAA_SetRefCountPtr)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_REFCOUNTPTR_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
 			case OpKind::ArraySlice_GetData:
 			case OpKind::ArraySlice_GetLength:
 			{
@@ -2229,52 +2160,6 @@ namespace interp
 				setRet(is, inst, ret);
 				break;
 			}
-
-			case OpKind::Any_GetData:
-			case OpKind::Any_GetTypeID:
-			case OpKind::Any_GetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 1);
-				auto str = getArg(is, inst, 0);
-
-				interp::Value ret;
-
-				if(ok == OpKind::Any_GetTypeID)
-					ret = doExtractValue(is, inst.result, str, ANY_TYPEID_INDEX);
-
-				else if(ok == OpKind::Any_GetRefCountPtr)
-					ret = doExtractValue(is, inst.result, str, ANY_REFCOUNTPTR_INDEX);
-
-				else if(ok == OpKind::Any_GetData)
-					ret = doExtractValue(is, inst.result, str, ANY_DATA_ARRAY_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-			case OpKind::Any_SetData:
-			case OpKind::Any_SetTypeID:
-			case OpKind::Any_SetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 2);
-				auto str = getArg(is, inst, 0);
-				auto elm = getArg(is, inst, 1);
-
-				interp::Value ret;
-
-				if(ok == OpKind::Any_SetTypeID)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_TYPEID_INDEX);
-
-				else if(ok == OpKind::Any_SetRefCountPtr)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_REFCOUNTPTR_INDEX);
-
-				else if(ok == OpKind::Any_SetData)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_DATA_ARRAY_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
 
 
 			case OpKind::Range_GetLower:

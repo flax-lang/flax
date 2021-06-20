@@ -91,14 +91,6 @@ namespace cgn
 			if(!failed)
 				result = tuple;
 		}
-		else if(target->isAnyType())
-		{
-			// great.
-			auto fn = glue::any::generateCreateAnyWithValueFunction(this, from->getType());
-			iceAssert(fn);
-
-			result = this->irb.Call(fn, from);
-		}
 
 
 		if(!result)
@@ -107,9 +99,6 @@ namespace cgn
 		}
 		else
 		{
-			if(fir::isRefCountedType(result->getType()))
-				this->addRefCountedValue(result);
-
 			return result;
 		}
 	}

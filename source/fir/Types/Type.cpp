@@ -125,11 +125,6 @@ namespace fir
 
 			return sum;
 		}
-		else if(to->isAnyType())
-		{
-			// lol. completely arbitrary.
-			return 15;
-		}
 
 		return -1;
 	}
@@ -311,8 +306,6 @@ namespace fir
 
 		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32();
 		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64();
-
-		else if(copy == ANY_TYPE_STRING)                real = Type::getAny();
 
 		else return 0;
 
@@ -513,12 +506,6 @@ namespace fir
 		return static_cast<RawUnionType*>(this);
 	}
 
-	AnyType* Type::toAnyType()
-	{
-		if(this->kind != TypeKind::Any) error("not any type");
-		return static_cast<AnyType*>(this);
-	}
-
 	NullType* Type::toNullType()
 	{
 		if(this->kind != TypeKind::Null) error("not null type");
@@ -654,11 +641,6 @@ namespace fir
 	bool Type::isRawUnionType()
 	{
 		return this->kind == TypeKind::RawUnion;
-	}
-
-	bool Type::isAnyType()
-	{
-		return this->kind == TypeKind::Any;
 	}
 
 	bool Type::isNullType()
@@ -911,12 +893,6 @@ namespace fir
 		return RangeType::get();
 	}
 
-	AnyType* Type::getAny()
-	{
-		return AnyType::get();
-	}
-
-
 
 
 
@@ -989,10 +965,6 @@ namespace fir
 		{
 			return getAggregateSize({ wordty, type->toEnumType()->getCaseType() });
 		}
-		else if(type->isAnyType())
-		{
-			return getAggregateSize({ wordty, ptrt, fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT) });
-		}
 		else if(type->isClassType() || type->isStructType() || type->isTupleType())
 		{
 			bool packed = false;
@@ -1064,50 +1036,6 @@ namespace fir
 	{
 		if(type->isArrayType())     return getAlignmentOfType(type->getArrayElementType());
 		else                        return getSizeOfType(type);
-	}
-
-
-	bool isRefCountedType(Type* type)
-	{
-		// strings, and structs with rc inside
-		if(type->isStructType())
-		{
-			for(auto m : type->toStructType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isClassType())
-		{
-			for(auto m : type->toClassType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isTupleType())
-		{
-			for(auto m : type->toTupleType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isArrayType())    // note: no slices, because slices don't own memory
-		{
-			return isRefCountedType(type->getArrayElementType());
-		}
-		else
-		{
-			return type->isAnyType();
-		}
 	}
 }
 

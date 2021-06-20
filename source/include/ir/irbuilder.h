@@ -140,18 +140,6 @@ namespace fir
 		[[nodiscard]] Value* SetArraySliceData(Value* arr, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetArraySliceLength(Value* arr, Value* val, const std::string& vname = "");
 
-
-		Value* GetAnyData(Value* any, const std::string& vname = "");
-		Value* GetAnyTypeID(Value* any, const std::string& vname = "");
-		Value* GetAnyRefCount(Value* str, const std::string& vname = "");
-		Value* GetAnyRefCountPointer(Value* any, const std::string& vname = "");
-
-		void SetAnyRefCount(Value* str, Value* val);
-		[[nodiscard]] Value* SetAnyData(Value* any, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetAnyTypeID(Value* any, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetAnyRefCountPointer(Value* str, Value* val, const std::string& vname = "");
-
-
 		Value* GetRangeLower(Value* range, const std::string& vname = "");
 		Value* GetRangeUpper(Value* range, const std::string& vname = "");
 		Value* GetRangeStep(Value* range, const std::string& vname = "");

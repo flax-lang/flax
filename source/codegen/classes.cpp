@@ -99,12 +99,12 @@ CGResult sst::ClassDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				auto res = fd->init->codegen(cs, fd->type).value;
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
 
-				cs->autoAssignRefCountedValue(elmptr, res, true);
+				cs->performAssignment(elmptr, res, true);
 			}
 			else
 			{
 				auto elmptr = cs->irb.GetStructMember(self, fd->id.name);
-				cs->autoAssignRefCountedValue(elmptr, cs->getDefaultValue(fd->type), true);
+				cs->performAssignment(elmptr, cs->getDefaultValue(fd->type), true);
 			}
 		}
 

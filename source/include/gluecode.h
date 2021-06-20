@@ -57,40 +57,12 @@ namespace cgn
 			fir::Function* getCompareFunction(CodegenState* cs, fir::Type* arrtype, fir::Function* opf);
 		}
 
-		namespace any
-		{
-			fir::Function* getRefCountIncrementFunction(CodegenState* cs);
-			fir::Function* getRefCountDecrementFunction(CodegenState* cs);
-
-			fir::Function* generateCreateAnyWithValueFunction(CodegenState* cs, fir::Type* type);
-			fir::Function* generateGetValueFromAnyFunction(CodegenState* cs, fir::Type* type);
-		}
-
 		namespace misc
 		{
 			fir::Function* getMallocWrapperFunction(CodegenState* cs);
 			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
 
 			fir::Name getCompare_FName(fir::Type* t);
-			fir::Name getSetElements_FName(fir::Type* t);
-			fir::Name getSetElementsDefault_FName(fir::Type* t);
-			fir::Name getCallClassConstructor_FName(fir::Type* t);
-
-			fir::Name getClone_FName(fir::Type* t);
-			fir::Name getAppend_FName(fir::Type* t);
-			fir::Name getPopBack_FName(fir::Type* t);
-			fir::Name getMakeFromTwo_FName(fir::Type* t);
-			fir::Name getMakeFromOne_FName(fir::Type* t);
-			fir::Name getReserveExtra_FName(fir::Type* t);
-			fir::Name getAppendElement_FName(fir::Type* t);
-			fir::Name getReserveEnough_FName(fir::Type* t);
-			fir::Name getRecursiveRefcount_FName(fir::Type* t, bool incr);
-
-			fir::Name getIncrRefcount_FName(fir::Type* t);
-			fir::Name getDecrRefcount_FName(fir::Type* t);
-
-			fir::Name getLoopIncrRefcount_FName(fir::Type* t);
-			fir::Name getLoopDecrRefcount_FName(fir::Type* t);
 
 			fir::Name getCreateAnyOf_FName(fir::Type* t);
 			fir::Name getGetValueFromAny_FName(fir::Type* t);

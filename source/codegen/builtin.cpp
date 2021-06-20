@@ -90,14 +90,6 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				return CGResult(cs->irb.GetRangeStep(res.value));
 
 		}
-		else if(ty->isAnyType())
-		{
-			if(this->name == names::any::FIELD_TYPEID)
-				return CGResult(cs->irb.GetAnyTypeID(res.value));
-
-			else if(this->name == names::any::FIELD_REFCOUNT)
-				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetAnyRefCountPointer(res.value)));
-		}
 		else if(ty->isEnumType())
 		{
 			if(this->name == names::enumeration::FIELD_INDEX)

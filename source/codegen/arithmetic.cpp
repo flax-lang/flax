@@ -30,13 +30,6 @@ namespace sst
 
 				return CGResult(res);
 			}
-			else if(vt->isAnyType())
-			{
-				auto fn = cgn::glue::any::generateGetValueFromAnyFunction(cs, target);
-				iceAssert(fn);
-
-				return CGResult(cs->irb.Call(fn, value));
-			}
 			else if(vt->isUnionType() && target->isUnionVariantType())
 			{
 				if(auto parent = target->toUnionVariantType()->getParentUnion(); parent != vt)
@@ -89,15 +82,7 @@ namespace sst
 			auto value = this->left->codegen(cs).value;
 			auto target = this->right->codegen(cs).value->getType();
 
-			if(value->getType()->isAnyType())
-			{
-				// get the type out.
-				auto res = cs->irb.BitwiseAND(cs->irb.GetAnyTypeID(value),
-					cs->irb.BitwiseNOT(fir::ConstantInt::getUNative(BUILTIN_ANY_FLAG_MASK)));
-
-				return CGResult(res = cs->irb.ICmpEQ(res, fir::ConstantInt::getUNative(target->getID())));
-			}
-			else if(value->getType()->isUnionType() && target->isUnionVariantType())
+			if(value->getType()->isUnionType() && target->isUnionVariantType())
 			{
 				// it's slightly more complicated.
 				auto vid1 = cs->irb.GetUnionVariantID(value);

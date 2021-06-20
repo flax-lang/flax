@@ -61,7 +61,7 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	if(lt != rr->getType())
 		error(this, "what? left = %s, right = %s", lt, rr->getType());
 
-	cs->autoAssignRefCountedValue(lr, rr, /* isInitial: */ false);
+	cs->performAssignment(lr, rr, /* isInitial: */ false);
 	return CGResult(0);
 }
 
@@ -108,7 +108,7 @@ CGResult sst::TupleAssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				val->getType(), lr.value->getType());
 		}
 
-		cs->autoAssignRefCountedValue(lr.value, rr, /* isInitial: */ false);
+		cs->performAssignment(lr.value, rr, /* isInitial: */ false);
 	}
 
 	return CGResult(0);

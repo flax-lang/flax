@@ -9,15 +9,6 @@ namespace fir
 {
 	using PolySubst = util::hash_map<fir::Type*, fir::Type*>;
 
-	static AnyType* singleAny = 0;
-	AnyType::AnyType() : Type(TypeKind::Any)            { }
-	std::string AnyType::str()                          { return "any"; }
-	std::string AnyType::encodedStr()                   { return "any"; }
-	bool AnyType::isTypeEqual(Type* other)              { return other && other->isAnyType(); }
-	AnyType* AnyType::get()                             { return singleAny = (singleAny ? singleAny : new AnyType()); }
-	fir::Type* AnyType::substitutePlaceholders(const PolySubst&)    { return this; }
-
-
 	static BoolType* singleBool = 0;
 	BoolType::BoolType() : Type(TypeKind::Bool)         { }
 	std::string BoolType::str()                         { return "bool"; }

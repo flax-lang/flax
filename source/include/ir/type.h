@@ -93,7 +93,6 @@ namespace fir
 
 	struct Type;
 	struct Module;
-	struct AnyType;
 	struct BoolType;
 	struct EnumType;
 	struct NullType;
@@ -119,7 +118,6 @@ namespace fir
 	struct Function;
 
 	int getCastDistance(Type* from, Type* to);
-	bool isRefCountedType(Type* ty);
 
 	void setNativeWordSizeInBits(size_t sz);
 	size_t getNativeWordSizeInBits();
@@ -138,7 +136,6 @@ namespace fir
 	{
 		Invalid,
 
-		Any,
 		Null,
 		Void,
 		Enum,
@@ -206,7 +203,6 @@ namespace fir
 		BoolType* toBoolType();
 		EnumType* toEnumType();
 		NullType* toNullType();
-		AnyType* toAnyType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -226,7 +222,6 @@ namespace fir
 
 		bool isOpaqueType();
 
-		bool isAnyType();
 		bool isEnumType();
 		bool isArrayType();
 		bool isIntegerType();
@@ -310,8 +305,6 @@ namespace fir
 
 		static ArraySliceType* getCharSlice(bool mut);
 		static RangeType* getRange();
-
-		static AnyType* getAny();
 
 		static PrimitiveType* getNativeWord();
 		static PrimitiveType* getNativeUWord();
@@ -1041,24 +1034,6 @@ namespace fir
 
 
 
-	struct AnyType : Type
-	{
-		friend struct Type;
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~AnyType() override { }
-		protected:
-		AnyType();
-
-		public:
-		static AnyType* get();
-	};
 
 
 	struct OpaqueType : Type

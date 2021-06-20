@@ -128,13 +128,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			//* copyRAIIValue will just return 'val' if it is not a class type, so we don't check it here!
 			val = cs->copyRAIIValue(val);
 
-
-			//* arguments are added to the refcounting list in the function,
-			//* so we need to "pre-increment" the refcount here, so it does not
-			//* get freed when the function returns.
-			if(fir::isRefCountedType(val->getType()))
-				cs->incrementRefCount(val);
-
 			val = doCastIfNecessary(arg->loc, val, infer);
 			values[k] = val;
 		}
@@ -166,9 +159,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		}
 
 		auto val = arg->codegen(cs, infer).value;
-		if(fir::isRefCountedType(val->getType()))
-			cs->incrementRefCount(val);
-
 		val = doCastIfNecessary(arg->loc, val, infer);
 
 

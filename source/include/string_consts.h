@@ -14,17 +14,6 @@ namespace strs
 
 	namespace names
 	{
-		namespace saa
-		{
-			inline constexpr auto FN_APPEND         = "append";
-			inline constexpr auto FN_CLONE          = "clone";
-
-			inline constexpr auto FIELD_LENGTH      = "length";
-			inline constexpr auto FIELD_POINTER     = "ptr";
-			inline constexpr auto FIELD_REFCOUNT    = "refcount";
-			inline constexpr auto FIELD_CAPACITY    = "capacity";
-		}
-
 		namespace range
 		{
 			inline constexpr auto FIELD_BEGIN       = "begin";
@@ -38,22 +27,6 @@ namespace strs
 			inline constexpr auto FIELD_VALUE       = "value";
 			inline constexpr auto FIELD_INDEX       = "index";
 			inline constexpr auto FIELD_NAME        = "name";
-		}
-
-		namespace string
-		{
-			inline constexpr auto FIELD_COUNT       = "count";
-		}
-
-		namespace array
-		{
-			inline constexpr auto FN_POP            = "pop";
-		}
-
-		namespace any
-		{
-			inline constexpr auto FIELD_TYPEID      = "id";
-			inline constexpr auto FIELD_REFCOUNT    = "refcount";
 		}
 
 		namespace support

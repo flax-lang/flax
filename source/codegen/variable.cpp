@@ -56,7 +56,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		else
 		{
 			res = checkStore(res);
-			cs->autoAssignRefCountedValue(glob, res, true);
+			cs->performAssignment(glob, res, true);
 		}
 
 		// go and fix the thing.
@@ -84,7 +84,7 @@ CGResult sst::VarDefn::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		}
 
 		auto alloc = cs->irb.CreateLValue(this->type, this->id.name);
-		cs->autoAssignRefCountedValue(alloc, val, /* isInitial: */ true);
+		cs->performAssignment(alloc, val, /* isInitial: */ true);
 
 		if(this->immutable)
 			alloc->makeConst();

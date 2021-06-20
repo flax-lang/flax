@@ -188,8 +188,6 @@ namespace misc
 		return fn;
 	}
 
-
-
 	using Idt = fir::Name;
 	Idt getOI(const std::string& name, fir::Type* t = 0)
 	{
@@ -198,37 +196,8 @@ namespace misc
 	}
 
 	Idt getCompare_FName(fir::Type* t)              { return getOI("compare", t); }
-	Idt getSetElements_FName(fir::Type* t)          { return getOI("setelements", t); }
-	Idt getCallClassConstructor_FName(fir::Type* t) { return getOI("callclassinit", t); }
-	Idt getSetElementsDefault_FName(fir::Type* t)   { return getOI("setelementsdefault", t); }
-
-	Idt getClone_FName(fir::Type* t)         { return getOI("clone", t); }
-	Idt getAppend_FName(fir::Type* t)        { return getOI("append", t); }
-	Idt getPopBack_FName(fir::Type* t)       { return getOI("popback", t); }
-	Idt getMakeFromOne_FName(fir::Type* t)   { return getOI("makefromone", t); }
-	Idt getMakeFromTwo_FName(fir::Type* t)   { return getOI("makefromtwo", t); }
-	Idt getReserveExtra_FName(fir::Type* t)  { return getOI("reserveextra", t); }
-	Idt getAppendElement_FName(fir::Type* t) { return getOI("appendelement", t); }
-	Idt getReserveEnough_FName(fir::Type* t) { return getOI("reservesufficient", t); }
-	Idt getRecursiveRefcount_FName(fir::Type* t, bool incr)
-	{
-		return getOI(strprintf("rrc_%s", incr ? "incr" : "decr"), t);
-	}
-
-	Idt getIncrRefcount_FName(fir::Type* t)         { return getOI("incr_rc", t); }
-	Idt getDecrRefcount_FName(fir::Type* t)         { return getOI("decr_rc", t); }
-	Idt getLoopIncrRefcount_FName(fir::Type* t)     { return getOI("loop_incr_rc", t); }
-	Idt getLoopDecrRefcount_FName(fir::Type* t)     { return getOI("loop_decr_rc", t); }
-
-	Idt getCreateAnyOf_FName(fir::Type* t)          { return getOI("create_any_of", t); }
-	Idt getGetValueFromAny_FName(fir::Type* t)      { return getOI("get_value_from_any", t); }
-
-	Idt getUtf8Length_FName()           { return getOI("utf8_length"); }
 	Idt getRangeSanityCheck_FName()     { return getOI("range_sanity"); }
-	Idt getMallocWrapper_FName()        { return getOI("malloc_wrapper"); }
-	Idt getBoundsCheck_FName()          { return getOI("boundscheck"); }
 	Idt getDecompBoundsCheck_FName()    { return getOI("boundscheck_decomp"); }
-
 }
 }
 }

@@ -317,31 +317,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough;
 	}
-	else if(type->isAnyType())
-	{
-		auto rhs = dotop->right;
-		if(auto vr = dcast(ast::Ident, rhs))
-		{
-			// TODO: extension support here
-			fir::Type* res = 0;
-			if(vr->name == names::any::FIELD_TYPEID)
-				res = fir::Type::getNativeUWord();
-
-			else if(vr->name == names::any::FIELD_REFCOUNT)
-				res = fir::Type::getNativeWord();
-
-			if(res)
-			{
-				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
-				tmp->lhs = lhs;
-				tmp->name = vr->name;
-
-				return tmp;
-			}
-		}
-
-		// else: fallthrough
-	}
 
 
 

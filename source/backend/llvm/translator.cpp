@@ -40,15 +40,6 @@
 #define SLICE_DATA_INDEX            0
 #define SLICE_LENGTH_INDEX          1
 
-#define SAA_DATA_INDEX              0
-#define SAA_LENGTH_INDEX            1
-#define SAA_CAPACITY_INDEX          2
-#define SAA_REFCOUNTPTR_INDEX       3
-
-#define ANY_TYPEID_INDEX            0
-#define ANY_REFCOUNTPTR_INDEX       1
-#define ANY_DATA_ARRAY_INDEX        2
-
 namespace backend
 {
 	static util::hash_map<fir::Name, llvm::StructType*> createdTypes;
@@ -224,21 +215,6 @@ namespace backend
 			mems.push_back(typeToLlvm(type->toEnumType()->getCaseType(), mod));
 
 			return llvm::StructType::get(gc, mems, false);
-		}
-		else if(type->isAnyType())
-		{
-			llvm::Type* arrtype = llvm::ArrayType::get(llvm::Type::getInt8Ty(gc), BUILTIN_ANY_DATA_BYTECOUNT);
-
-			auto id = fir::Name::obfuscate("any", fir::NameKind::Type);
-			if(createdTypes.find(id) != createdTypes.end())
-				return createdTypes[id];
-
-			auto str = llvm::StructType::create(gc, id.mangled());
-
-			// typeid (+ highest-bit-mask), refcount, data.
-			str->setBody({ getNativeWordTy(), getNativeWordTy()->getPointerTo(), arrtype });
-
-			return createdTypes[id] = str;
 		}
 		else if(type->isUnionType())
 		{
@@ -823,9 +799,6 @@ namespace backend
 		for(auto fp : firmod->_getFunctions())
 		{
 			fir::Function* ffn = fp.second;
-
-			// if(isGenericInAnyWay(ffn->getType()))
-				// continue;
 
 			llvm::Function* func = module->getFunction(fp.second->getName().mangled());
 			iceAssert(func);
@@ -1848,92 +1821,6 @@ namespace backend
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-						case fir::OpKind::SAA_GetData:
-						case fir::OpKind::SAA_GetLength:
-						case fir::OpKind::SAA_GetCapacity:
-						case fir::OpKind::SAA_GetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::SAA_GetData)
-								ind = SAA_DATA_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetLength)
-								ind = SAA_LENGTH_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetCapacity)
-								ind = SAA_CAPACITY_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_GetRefCountPtr)
-								ind = SAA_REFCOUNTPTR_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::SAA_SetData:
-						case fir::OpKind::SAA_SetLength:
-						case fir::OpKind::SAA_SetCapacity:
-						case fir::OpKind::SAA_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::SAA_SetData)
-								ind = SAA_DATA_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetLength)
-								ind = SAA_LENGTH_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetCapacity)
-								ind = SAA_CAPACITY_INDEX;
-
-							else if(inst->opKind == fir::OpKind::SAA_SetRefCountPtr)
-								ind = SAA_REFCOUNTPTR_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-
-
-
-
-
-
-
-
 						case fir::OpKind::ArraySlice_GetData:
 						case fir::OpKind::ArraySlice_GetLength:
 						{
@@ -1982,61 +1869,6 @@ namespace backend
 
 
 
-						case fir::OpKind::Any_GetData:
-						case fir::OpKind::Any_GetTypeID:
-						case fir::OpKind::Any_GetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 1);
-
-							llvm::Value* a = getOperand(inst, 0);
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::Any_GetTypeID)
-								ind = ANY_TYPEID_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_GetRefCountPtr)
-								ind = ANY_REFCOUNTPTR_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_GetData)
-								ind = ANY_DATA_ARRAY_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateExtractValue(a, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
-
-						case fir::OpKind::Any_SetData:
-						case fir::OpKind::Any_SetTypeID:
-						case fir::OpKind::Any_SetRefCountPtr:
-						{
-							iceAssert(inst->operands.size() == 2);
-
-							llvm::Value* a = getOperand(inst, 0);
-							llvm::Value* b = getOperand(inst, 1);
-
-							iceAssert(a->getType()->isStructTy());
-
-							int ind = 0;
-							if(inst->opKind == fir::OpKind::Any_SetTypeID)
-								ind = ANY_TYPEID_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_SetRefCountPtr)
-								ind = ANY_REFCOUNTPTR_INDEX;
-
-							else if(inst->opKind == fir::OpKind::Any_SetData)
-								ind = ANY_DATA_ARRAY_INDEX;
-
-							else
-								iceAssert(0 && "invalid");
-
-							llvm::Value* ret = builder.CreateInsertValue(a, b, ind);
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 
 
