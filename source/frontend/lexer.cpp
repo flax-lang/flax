@@ -79,7 +79,6 @@ namespace lexer
 		keywordMap["false"]     = TokenType::False;
 		keywordMap["while"]     = TokenType::While;
 		keywordMap["break"]     = TokenType::Break;
-		keywordMap["class"]     = TokenType::Class;
 		keywordMap["using"]     = TokenType::Using;
 		keywordMap["union"]     = TokenType::Union;
 		keywordMap["struct"]    = TokenType::Struct;

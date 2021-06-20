@@ -15,7 +15,7 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 static void _checkTransparentFieldRedefinition(sst::TypecheckState* fs, sst::TypeDefn* defn, const std::vector<sst::StructFieldDefn*>& fields,
 	util::hash_map<std::string, Location>& seen);
 
-// used in typecheck/unions.cpp and typecheck/classes.cpp
+// used in typecheck/unions.cpp
 void checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir::Type* field, const Location& floc)
 {
 	std::set<fir::Type*> seeing;
@@ -192,11 +192,6 @@ static void _checkFieldRecursion(sst::TypecheckState* fs, fir::Type* strty, fir:
 		SimpleError::make(floc, "recursive definition of field with a non-pointer type; mutual recursion between types '%s' and '%s'", field, strty)
 			->append(SimpleError::make(MsgType::Note, fs->typeDefnMap[strty]->loc, "type '%s' was defined here:", strty))
 			->postAndQuit();
-	}
-	else if(field->isClassType())
-	{
-		for(auto f : field->toClassType()->getElements())
-			_checkFieldRecursion(fs, field, f, floc, seeing);
 	}
 	else if(field->isStructType())
 	{

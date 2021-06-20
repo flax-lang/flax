@@ -74,42 +74,6 @@ namespace poly
 					return { soln, nullptr };
 				}
 			}
-			else if(auto cls = dcast(ast::ClassDefn, td))
-			{
-				util::hash_map<std::string, size_t> paramOrder;
-
-				auto inputcopy = input;
-				auto selfty = fir::PolyPlaceholderType::get(fir::obfuscateName("self_infer"), getNextSessionId());
-				inputcopy.insert(inputcopy.begin(), FnCallArgument(fs->loc(), "", util::pool<sst::RawValueExpr>(fs->loc(),
-					selfty->getMutablePointerTo()), 0));
-
-				fs->pushSelfContext(selfty);
-				defer(fs->popSelfContext());
-
-
-
-				std::vector<std::pair<Solution_t, ErrorMsg*>> rets;
-				for(auto init : cls->initialisers)
-				{
-					rets.push_back(inferTypesForPolymorph(fs, init, name, cls->generics, inputcopy, partial, return_infer, type_infer, isFnCall,
-						problem_infer, &paramOrder));
-				}
-
-				// check the distance of all the solutions... i guess?
-				std::pair<Solution_t, ErrorMsg*> best;
-				best.first = soln;
-				best.first.distance = INT_MAX;
-				best.second = SimpleError::make(fs->loc(), "ambiguous reference to constructor of class '%s'", cls->name);
-
-				for(const auto& r : rets)
-				{
-					if(r.first.distance < best.first.distance && r.second == nullptr)
-						best = r;
-				}
-
-				*origParamOrder = paramOrder;
-				return best;
-			}
 			else if(auto str = dcast(ast::StructDefn, td))
 			{
 				//* for constructors, we look like a function call, so type_infer is actually return_infer.
@@ -218,33 +182,19 @@ namespace poly
 
 
 
-		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::Parameterisable* thing, const std::string& name,
+		static std::pair<Solution_t, ErrorMsg*> inferPolymorphicFunction(TypecheckState* fs, ast::FuncDefn* func,
+			const std::string& name,
 			const ProblemSpace_t& problems, const std::vector<FnCallArgument>& input,
 			const TypeParamMap_t& partial, fir::Type* return_infer, fir::Type* type_infer, bool isFnCall, fir::Type* problem_infer,
 			util::hash_map<std::string, size_t>* origParamOrder)
 		{
 			auto soln = Solution_t(partial);
 
-			bool isinit = dcast(ast::InitFunctionDefn, thing) != nullptr;
-			iceAssert(dcast(ast::FuncDefn, thing) || isinit);
-
 			std::vector<ArgType> given;
 			std::vector<ArgType> target;
 
-			pts::Type* retty = 0;
-			std::vector<ast::FuncDefn::Param> params;
-
-			if(isinit)
-			{
-				auto i = dcast(ast::InitFunctionDefn, thing);
-				params = i->params;
-			}
-			else
-			{
-				auto i = dcast(ast::FuncDefn, thing);
-				retty = i->returnType;
-				params = i->params;
-			}
+			auto retty = func->returnType;
+			auto params =func->params;
 
 			int session = getNextSessionId();
 
@@ -252,10 +202,10 @@ namespace poly
 			{
 				target = internal::unwrapFunctionParameters(fs, problems, params, session);
 
-				if(!isinit && (!isFnCall || return_infer))
+				if(!isFnCall || return_infer)
 				{
 					// add the return type to the fray. it doesn't have a name tho
-					target.push_back(ArgType("<return_type>", convertPtsType(fs, thing->generics, retty, session), thing->loc));
+					target.push_back(ArgType("<return_type>", convertPtsType(fs, func->generics, retty, session), func->loc));
 				}
 			}
 			else
@@ -288,13 +238,13 @@ namespace poly
 					return { soln, nullptr };
 
 				else if(!type_infer->isFunctionType())
-					return { soln, SimpleError::make(fs->loc(), "invalid type '%s' inferred for '%s'", type_infer, thing->name) };
+					return { soln, SimpleError::make(fs->loc(), "invalid type '%s' inferred for '%s'", type_infer, func->name) };
 
 				// ok, we should have it.
 				iceAssert(type_infer->isFunctionType());
 				given = zfu::mapIdx(type_infer->toFunctionType()->getArgumentTypes(), [&params](fir::Type* t, size_t i) -> ArgType {
 					return ArgType(params[i].name, t, params[i].loc);
-				}) + ArgType("<return_type>", type_infer->toFunctionType()->getReturnType(), thing->loc);
+				}) + ArgType("<return_type>", type_infer->toFunctionType()->getReturnType(), func->loc);
 			}
 
 			return solveTypeList(fs->loc(), target, given, soln, isFnCall);
@@ -314,9 +264,10 @@ namespace poly
 			{
 				return inferPolymorphicType(fs, td, name, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
 			}
-			else if(dcast(ast::FuncDefn, thing) || dcast(ast::InitFunctionDefn, thing))
+			else if(auto fd = dcast(ast::FuncDefn, thing))
 			{
-				return inferPolymorphicFunction(fs, thing, name, problems, input, partial, return_infer, type_infer, isFnCall, problem_infer, origParamOrder);
+				return inferPolymorphicFunction(fs, fd, name, problems, input, partial, return_infer, type_infer,
+					isFnCall, problem_infer, origParamOrder);
 			}
 			else
 			{

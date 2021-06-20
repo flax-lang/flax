@@ -98,7 +98,6 @@ namespace fir
 	struct NullType;
 	struct VoidType;
 	struct ArrayType;
-	struct ClassType;
 	struct RangeType;
 	struct TraitType;
 	struct TupleType;
@@ -142,7 +141,6 @@ namespace fir
 		Bool,
 		Array,
 		Tuple,
-		Class,
 		Range,
 		Union,
 		Trait,
@@ -196,7 +194,6 @@ namespace fir
 		StructType* toStructType();
 		TraitType* toTraitType();
 		RangeType* toRangeType();
-		ClassType* toClassType();
 		UnionType* toUnionType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
@@ -210,7 +207,6 @@ namespace fir
 		bool isTraitType();
 		bool isUnionType();
 		bool isTupleType();
-		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
 		bool isRawUnionType();
@@ -754,114 +750,6 @@ namespace fir
 
 
 
-	struct ClassType : Type
-	{
-		friend struct Type;
-		friend struct Module;
-
-		// methods
-		Name getTypeName();
-		size_t getElementCount();
-		// Type* getElementN(size_t n);
-		Type* getElement(const std::string& name);
-		bool hasElementWithName(const std::string& name);
-		size_t getAbsoluteElementIndex(const std::string& name);
-		const std::vector<Type*>& getElements();
-		std::vector<Type*> getAllElementsIncludingBase();
-		const std::vector<std::string>& getNameList();
-
-		const util::hash_map<std::string, size_t>& getElementNameMap();
-
-		const std::vector<Function*>& getMethods();
-		std::vector<Function*> getMethodsWithName(const std::string& id);
-		Function* getMethodWithType(FunctionType* ftype);
-
-		const std::vector<Function*>& getInitialiserFunctions();
-		void setInitialiserFunctions(const std::vector<Function*>& list);
-
-		Function* getInlineInitialiser();
-		void setInlineInitialiser(Function* fn);
-
-		Function* getInlineDestructor();
-		void setInlineDestructor(Function* fn);
-
-		void setMembers(const std::vector<std::pair<std::string, Type*>>& members);
-		void setMethods(const std::vector<Function*>& methods);
-
-		ClassType* getBaseClass();
-		void setBaseClass(ClassType* ty);
-
-		void setDestructor(Function* f);
-		void setCopyConstructor(Function* f);
-		void setMoveConstructor(Function* f);
-
-		Function* getDestructor();
-		Function* getCopyConstructor();
-		Function* getMoveConstructor();
-
-		void addTraitImpl(TraitType* trt);
-		bool implementsTrait(TraitType* trt);
-		std::vector<TraitType*> getImplementedTraits();
-
-		bool hasParent(Type* base);
-
-		void addVirtualMethod(Function* method);
-		size_t getVirtualMethodIndex(const std::string& name, FunctionType* ft);
-
-		size_t getVirtualMethodCount();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		// protected constructor
-		virtual ~ClassType() override { }
-		protected:
-		ClassType(const Name& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
-			const std::vector<Function*>& inits);
-
-
-		// fields (protected)
-		Name className;
-		std::vector<Type*> typeList;
-		std::vector<std::string> nameList;
-		std::vector<Function*> methodList;
-		std::vector<Function*> initialiserList;
-
-		std::vector<TraitType*> implTraits;
-
-		util::hash_map<std::string, size_t> indexMap;
-		util::hash_map<std::string, Type*> classMembers;
-		util::hash_map<std::string, std::vector<Function*>> classMethodMap;
-
-		//* how it works is that we will add in the mappings from the base class,
-		//* and for our own matching virtual methods, we'll map to the same index.
-
-
-		size_t virtualMethodCount = 0;
-		// util::hash_map<Function*, size_t> virtualMethodMap;
-		util::hash_map<size_t, Function*> reverseVirtualMethodMap;
-
-		//* note: we do it this way (where we *EXCLUDE THE SELF POINTER*), because it's just easier -- to compare, and everything.
-		//* we really don't have a use for mapping a Function to an index, only the other way.
-		std::map<std::pair<std::string, std::vector<Type*>>, size_t> virtualMethodMap;
-
-		ClassType* baseClass = 0;
-
-		Function* inlineInitialiser = 0;
-		Function* inlineDestructor = 0;
-
-		Function* destructor = 0;
-		Function* copyConstructor = 0;
-		Function* moveConstructor = 0;
-
-		// static funcs
-		public:
-		static ClassType* createWithoutBody(const Name& name);
-		static ClassType* create(const Name& name, const std::vector<std::pair<std::string, Type*>>& members,
-			const std::vector<Function*>& methods, const std::vector<Function*>& inits);
-	};
 
 
 	struct EnumType : Type

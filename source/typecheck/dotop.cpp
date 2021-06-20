@@ -39,23 +39,6 @@ static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Locati
 	}
 	else
 	{
-		if(auto cls = dcast(sst::ClassDefn, str))
-		{
-			// check static ones for a better error message.
-			sst::Defn* found = 0;
-			for(auto sm : cls->staticMethods)
-				if(sm->id.name == name) { found = sm; break; }
-
-			if(!found)
-			{
-				for(auto sf : cls->staticFields)
-					if(sf->id.name == name) { found = sf; break; }
-			}
-
-
-			if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '::' to refer to the static member '%s'", name));
-		}
-
 		return e;
 	}
 };
@@ -228,7 +211,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		return ret;
 	}
-	else if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
+	else if(type->isPointerType() && type->getPointerElementType()->isStructType())
 	{
 		type = type->getPointerElementType();
 
@@ -363,16 +346,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					break;
 				}
 
-				if(auto cls = dcast(sst::ClassDefn, curstr); cls && cls->baseClass)
-				{
-					// teleport out, then back in.
-					fs->teleportOut();
-					fs->teleportInto(cls->baseClass->innerScope);
-
-					curstr = cls->baseClass;
-					continue;
-				}
-
 				// sighs
 				err = res.error();
 				break;
@@ -437,11 +410,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					if(hmm) return hmm;
 
 					// ok, we didn't find it.
-					if(auto cls = dcast(sst::ClassDefn, copy); cls)
-						copy = cls->baseClass;
-
-					else
-						copy = nullptr;
+					copy = nullptr;
 				}
 			}
 
@@ -637,7 +606,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 		if(auto typdef = dcast(sst::TypeDefn, def))
 		{
-			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
+			if(dcast(sst::StructDefn, def))
 			{
 				fs->pushSelfContext(def->type);
 

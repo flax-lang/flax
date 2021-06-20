@@ -96,13 +96,6 @@ namespace fir
 			// same with slices -- cast from mutable slice to immut slice can be implicit.
 			return 1;
 		}
-		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
-		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
-			&& from->getPointerElementType()->toClassType()->hasParent(to->getPointerElementType()))
-		{
-			// cast from a derived class pointer to a base class pointer
-			return 2;
-		}
 		else if(from->isNullType() && to->isPointerType())
 		{
 			return 1;
@@ -367,14 +360,6 @@ namespace fir
 
 			return res;
 		}
-		else if(ty->isClassType())
-		{
-			bool res = false;
-			for(auto t : ty->toClassType()->getElements())
-				res |= _containsPlaceholders(t, seen, found);
-
-			return res;
-		}
 		else if(ty->isStructType())
 		{
 			bool res = false;
@@ -456,12 +441,6 @@ namespace fir
 	{
 		if(this->kind != TypeKind::Struct) error("not struct type");
 		return static_cast<StructType*>(this);
-	}
-
-	ClassType* Type::toClassType()
-	{
-		if(this->kind != TypeKind::Class) error("not class type");
-		return static_cast<ClassType*>(this);
 	}
 
 	TupleType* Type::toTupleType()
@@ -551,11 +530,6 @@ namespace fir
 	bool Type::isTupleType()
 	{
 		return this->kind == TypeKind::Tuple;
-	}
-
-	bool Type::isClassType()
-	{
-		return this->kind == TypeKind::Class;
 	}
 
 	bool Type::isPackedStruct()
@@ -965,17 +939,12 @@ namespace fir
 		{
 			return getAggregateSize({ wordty, type->toEnumType()->getCaseType() });
 		}
-		else if(type->isClassType() || type->isStructType() || type->isTupleType())
+		else if(type->isStructType() || type->isTupleType())
 		{
 			bool packed = false;
 			std::vector<Type*> tys;
 
-			if(type->isClassType())
-			{
-				tys = type->toClassType()->getAllElementsIncludingBase();
-				tys.insert(tys.begin(), fir::Type::getInt8Ptr());
-			}
-			else if(type->isStructType())
+			if(type->isStructType())
 			{
 				packed = type->toStructType()->isPackedStruct();
 				tys = type->toStructType()->getElements();

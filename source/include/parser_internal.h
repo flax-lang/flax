@@ -452,17 +452,12 @@ namespace parser
 
 	ast::TraitDefn* parseTrait(State& st);
 	ast::EnumDefn* parseEnum(State& st);
-	ast::ClassDefn* parseClass(State& st);
 	ast::StaticDecl* parseStaticDecl(State& st);
 
 	PResult<ast::StructDefn> parseStruct(State& st, bool nameless);
 	ast::UnionDefn* parseUnion(State& st, bool israw, bool nameless);
 
 	ast::Expr* parseDollarExpr(State& st);
-
-	ast::InitFunctionDefn* parseInitFunction(State& st);
-	ast::InitFunctionDefn* parseDeinitFunction(State& st);
-	ast::InitFunctionDefn* parseCopyOrMoveInitFunction(State& st, const std::string& name);
 
 	ast::DeallocOp* parseDealloc(State& st);
 	ast::SizeofOp* parseSizeof(State& st);

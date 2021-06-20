@@ -315,60 +315,16 @@ namespace resolver
 			{
 				// check if all of the targets we found are virtual, and that they belong to the same class.
 
-				bool virt = true;
-				fir::ClassType* self = 0;
+				auto err = SimpleError::make(callLoc, "ambiguous call to function '%s', have %d candidates:",
+					cands[0].first->id.name, finals.size());
 
-				Defn* ret = std::get<0>(finals[0]);
-
-				for(auto def : finals)
+				for(auto f : finals)
 				{
-					if(auto fd = dcast(sst::FunctionDefn, std::get<0>(def)); fd && fd->isVirtual)
-					{
-						iceAssert(fd->parentTypeForMethod);
-						iceAssert(fd->parentTypeForMethod->isClassType());
-
-						if(!self)
-						{
-							self = fd->parentTypeForMethod->toClassType();
-						}
-						else
-						{
-							// check if they're co/contra variant
-							auto ty = fd->parentTypeForMethod->toClassType();
-
-							//* here we're just checking that 'ty' and 'self' are part of the same class hierarchy -- we don't really care about the method
-							//* that we resolve being at the lowest or highest level of that hierarchy.
-
-							if(!ty->hasParent(self) && !self->hasParent(ty))
-							{
-								virt = false;
-								break;
-							}
-						}
-					}
-					else
-					{
-						virt = false;
-						break;
-					}
+					err->append(SimpleError::make(MsgType::Note, std::get<0>(f)->loc,
+						"possible target (overload distance %d):", std::get<2>(f)));
 				}
 
-				if(virt)
-				{
-					return { TCResult(ret), std::get<1>(finals[0]) };
-				}
-				else
-				{
-					auto err = SimpleError::make(callLoc, "ambiguous call to function '%s', have %d candidates:",
-						cands[0].first->id.name, finals.size());
-
-					for(auto f : finals)
-					{
-						err->append(SimpleError::make(MsgType::Note, std::get<0>(f)->loc, "possible target (overload distance %d):", std::get<2>(f)));
-					}
-
-					return { TCResult(err), { } };
-				}
+				return { TCResult(err), { } };
 			}
 			else
 			{

@@ -245,14 +245,6 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(defn.value);
 		vf = defn.value;
 	}
-	else if(auto fd = dcast(FunctionDefn, this->target); fd && fd->isVirtual)
-	{
-		// ok then.
-		auto ret = cs->callVirtualMethod(this);
-		cs->addRAIIOrRCValueIfNecessary(ret);
-
-		return CGResult(ret);
-	}
 	else
 	{
 		vf = this->target->codegen(cs).value;

@@ -88,7 +88,6 @@ namespace parser
 			else
 			{
 				return PResult(parseFunction(st)).mutate([&](auto ret) -> void {
-					ret->isVirtual = virt;
 					ret->isOverride = ovrd;
 					ret->isMutating = mut;
 				});
@@ -161,9 +160,6 @@ namespace parser
 
 				case TT::Struct:
 					return enforceAttrs(parseStruct(st, /* nameless: */ false), AttribSet::of(attr::PACKED));
-
-				case TT::Class:
-					return enforceAttrs(parseClass(st));
 
 				case TT::Enum:
 					return enforceAttrs(parseEnum(st));
@@ -247,22 +243,6 @@ namespace parser
 						return parseDefer(st);
 
 					default: {
-						if(st.isInStructBody() && tok.type == TT::Identifier)
-						{
-							if(tok.str() == "init")
-							{
-								return parseInitFunction(st);
-							}
-							else if(tok.str() == "deinit")
-							{
-								return parseDeinitFunction(st);
-							}
-							else if(tok.str() == "copy" || tok.str() == "move")
-							{
-								return parseCopyOrMoveInitFunction(st, tok.str());
-							}
-						}
-
 						// we want to error on invalid tokens first. so, we parse the expression regardless,
 						// then if they're not allowed we error.
 						return PResult(parseExpr(st)).mutate([&](auto expr) -> void {
@@ -1171,7 +1151,6 @@ namespace parser
 				case TT::Val:
 				case TT::Func:
 				case TT::Enum:
-				case TT::Class:
 				case TT::Using:
 				case TT::Union:
 				case TT::Static:

@@ -15,7 +15,7 @@ namespace cgn
 		this->methodSelfStack.push_back(self);
 
 		auto ty = self->getType();
-		iceAssert(ty->isClassType() || ty->isStructType());
+		iceAssert(ty->isStructType());
 
 		this->methodList[method] = ty;
 	}
@@ -183,39 +183,6 @@ namespace cgn
 			arr = this->irb.SetArraySliceLength(arr, fir::ConstantInt::getNative(0));
 
 			ret = arr;
-		}
-		else if(type->isClassType())
-		{
-			// TODO
-			//! use constructClassWithArguments!!!
-
-			auto clsdef = dcast(sst::ClassDefn, this->typeDefnMap[type]);
-			iceAssert(clsdef);
-
-			clsdef->codegen(this);
-
-			// first need to check if we have any initialisers with 0 parameters.
-			auto cls = type->toClassType();
-
-			sst::FunctionDefn* ifn = 0;
-			for(auto init : clsdef->initialisers)
-			{
-				//* note: count == 1 because of 'self'
-				if(init->arguments.size() == 1)
-				{
-					ifn = init;
-					break;
-				}
-			}
-
-			if(ifn == 0)
-			{
-				SimpleError::make(this->loc(), "class '%s' cannot be automatically initialised as it does not have a constructor taking 0 arguments",
-					cls->getTypeName())->append(SimpleError::make(MsgType::Note, clsdef->loc, "class '%s' was defined here:", clsdef->id.name))
-					->postAndQuit();
-			}
-
-			ret = this->constructClassWithArguments(cls, ifn, { });
 		}
 		else
 		{

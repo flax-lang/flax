@@ -559,14 +559,6 @@ namespace interp
 		{
 			return ty->toStructType()->getElements();
 		}
-		else if(ty->isClassType())
-		{
-			auto ret = ty->toClassType()->getAllElementsIncludingBase();
-			if(ty->toClassType()->getVirtualMethodCount() > 0)
-				ret.insert(ret.begin(), fir::Type::getInt8Ptr());
-
-			return ret;
-		}
 		else if(ty->isTupleType())
 		{
 			return ty->toTupleType()->getElements();
@@ -1240,7 +1232,7 @@ namespace interp
 		iceAssert(str.type->isPointerType());
 		auto strty = str.type->getPointerElementType();
 
-		if(!strty->isStructType() && !strty->isClassType() && !strty->isTupleType())
+		if(!strty->isStructType() && !strty->isTupleType())
 			error("interp: unsupported type '%s' for struct gep", strty);
 
 		std::vector<fir::Type*> elms = getTypeListOfType(strty);
@@ -1826,35 +1818,6 @@ namespace interp
 
 				return FLOW_DYCALL;
 			}
-
-
-			case OpKind::Value_CallVirtualMethod:
-			{
-				// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
-				auto clsty = inst.args[0]->getType()->toClassType();
-				auto fnty = inst.args[2]->getType()->toFunctionType();
-				iceAssert(clsty);
-
-				std::vector<interp::Value> args;
-				for(size_t i = 3; i < inst.args.size(); i++)
-					args.push_back(getArg(is, inst, i));
-
-				//* this is very hacky! we rely on these things not using ::val, because it's null!!
-				auto vtable = loadFromPtr(performStructGEP(is, fir::Type::getInt8Ptr(), args[0], 0), fir::Type::getInt8Ptr());
-				auto vtablety = fir::ArrayType::get(fir::FunctionType::get({ }, fir::Type::getVoid())->getPointerTo(), clsty->getVirtualMethodCount());
-				vtable.type = vtablety->getPointerTo();
-
-				vtable = performGEP2(is, vtablety->getPointerTo(), vtable, makeConstant(is, fir::ConstantInt::getNative(0)), getArg(is, inst, 1));
-
-				auto fnptr = loadFromPtr(vtable, fnty->getPointerTo());
-
-				instrRes->callArguments = args;
-				instrRes->virtualCallTarget = fnptr;
-				instrRes->callResultValue = inst.result;
-
-				return FLOW_DYCALL;
-			}
-
 
 
 

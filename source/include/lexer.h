@@ -12,7 +12,6 @@ namespace lexer
 	{
 		Invalid,
 		Func,
-		Class,
 		Import,
 		Var,
 		Val,

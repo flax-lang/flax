@@ -136,9 +136,6 @@ namespace cgn
 		fir::Value* getDefaultValue(fir::Type* type);
 
 		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
-		fir::Value* constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, const std::vector<FnCallArgument>& args);
-
-		fir::Value* callVirtualMethod(sst::FunctionCall* call);
 		CGResult getStructFieldImplicitly(std::string name);
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);

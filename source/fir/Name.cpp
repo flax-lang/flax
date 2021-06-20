@@ -116,10 +116,6 @@ namespace fir
 		{
 			return lentypestr(mangleScopeName(t->toStructType()->getTypeName()));
 		}
-		else if(t->isClassType())
-		{
-			return lentypestr(mangleScopeName(t->toClassType()->getTypeName()));
-		}
 		else if(t->isTupleType())
 		{
 			std::string ret = "ST" + std::to_string(t->toTupleType()->getElementCount()) + "SM";

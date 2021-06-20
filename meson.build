@@ -226,7 +226,6 @@ source_files = files([
 
 	'source/backend/interp/driver.cpp',
 
-	'source/typecheck/misc.cpp',
 	'source/typecheck/call.cpp',
 	'source/typecheck/type.cpp',
 	'source/typecheck/using.cpp',

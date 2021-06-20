@@ -107,35 +107,6 @@ namespace fir
 
 
 
-	GlobalVariable* Module::getOrCreateVirtualTableForClass(ClassType* cls)
-	{
-		if(this->vtables.find(cls) == this->vtables.end())
-		{
-			auto fmethods = std::vector<fir::Function*>(cls->virtualMethodCount);
-			auto methods = std::vector<fir::ConstantValue*>(cls->virtualMethodCount);
-
-			for(auto meth : cls->reverseVirtualMethodMap)
-			{
-				methods[meth.first] = ConstantBitcast::get(meth.second, FunctionType::get({ }, Type::getVoid()));
-				fmethods[meth.first] = meth.second;
-			}
-
-			//! ACHTUNG !
-			// TODO: should we make the vtable immutable?
-
-			auto table = ConstantArray::get(ArrayType::get(FunctionType::get({ }, Type::getVoid()), cls->virtualMethodCount), methods);
-			auto vtab = this->createGlobalVariable(Name::obfuscate("vtable", cls->getTypeName().mangled()),
-				table->getType(), table, true, LinkageType::External);
-
-			this->vtables[cls] = { fmethods, vtab };
-		}
-
-		return this->vtables[cls].second;
-	}
-
-
-
-
 
 
 
@@ -334,7 +305,6 @@ namespace fir
 			// should just automatically create it.
 			std::string tl;
 			if(type.second->isStructType()) tl = fir::Type::typeListToString(type.second->toStructType()->getElements());
-			else if(type.second->isClassType()) tl = fir::Type::typeListToString(type.second->toClassType()->getElements());
 			else if(type.second->isTupleType()) tl = fir::Type::typeListToString(type.second->toTupleType()->getElements());
 
 

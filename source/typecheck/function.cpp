@@ -45,15 +45,14 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 	fir::Type* retty = sst::poly::internal::convertPtsType(fs, this->generics, this->returnType, polyses);
 	fir::Type* fnType = fir::FunctionType::get(ptys, retty);
 
-	auto defn = (infer && infer->isClassType() && this->name == "init" ? util::pool<sst::ClassInitialiserDefn>(this->loc)
-		: util::pool<sst::FunctionDefn>(this->loc));
+	auto defn = util::pool<sst::FunctionDefn>(this->loc);
 
 	defn->type = fnType;
 
 	if(this->name != "init")
 		defn->original = this;
 
-	iceAssert(!infer || (infer->isStructType() || infer->isClassType()));
+	iceAssert(!infer || infer->isStructType());
 	defn->parentTypeForMethod = infer;
 
 
@@ -71,23 +70,14 @@ TCResult ast::FuncDefn::generateDeclaration(sst::TypecheckState* fs, fir::Type* 
 
 	defn->global = !fs->isInFunctionBody();
 
-	defn->isVirtual = this->isVirtual;
 	defn->isOverride = this->isOverride;
 	defn->isMutating = this->isMutating;
 
-	if(defn->isVirtual && !defn->parentTypeForMethod)
-	{
-		error(defn, "only methods can be marked 'virtual' or 'override' at this point in time");
-	}
-	else if(defn->isVirtual && defn->parentTypeForMethod && !defn->parentTypeForMethod->isClassType())
-	{
-		error(defn, "only methods of a class (which '%s' is not) can be marked 'virtual' or 'override'",
-			defn->parentTypeForMethod->str());
-	}
-	else if(defn->isMutating && !defn->parentTypeForMethod)
-	{
+	if(defn->isOverride && !defn->parentTypeForMethod)
+		error(defn, "only methods of a type can be marked as mutating with 'override'");
+
+	if(defn->isMutating && !defn->parentTypeForMethod)
 		error(defn, "only methods of a type can be marked as mutating with 'mut'");
-	}
 
 	auto conflict_err = fs->checkForShadowingOrConflictingDefinition(defn, [defn](sst::TypecheckState* fs, sst::Stmt* other) -> bool {
 

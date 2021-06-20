@@ -43,12 +43,6 @@ namespace cgn
 		{
 			result = this->irb.GetArraySliceData(from);
 		}
-		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType()->isClassType()
-			&& fromType->getPointerElementType()->toClassType()->hasParent(target->getPointerElementType()))
-		{
-			auto ret = this->irb.PointerTypeCast(from, target);
-			result = ret;
-		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType() == target->getPointerElementType()
 			&& fromType->isMutablePointer() && target->isImmutablePointer())
 		{

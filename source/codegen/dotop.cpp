@@ -10,7 +10,7 @@
 
 static bool isAutoDereferencable(fir::Type* t)
 {
-	return (t->isStructType() || t->isClassType() || t->isRawUnionType());
+	return (t->isStructType() || t->isRawUnionType());
 }
 
 static CGResult getAppropriateValuePointer(cgn::CodegenState* cs, sst::Expr* user, sst::Expr* lhs, fir::Type** baseType)
@@ -221,9 +221,6 @@ CGResult cgn::CodegenState::getStructFieldImplicitly(std::string name)
 
 	if(ty->isStructType())
 		return dothing(ty->toStructType());
-
-	else if(ty->isClassType())
-		return dothing(ty->toClassType());
 
 	else
 		error(this->loc(), "invalid self type '%s' for field named '%s'", ty, name);

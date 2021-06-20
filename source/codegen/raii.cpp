@@ -123,66 +123,14 @@ namespace cgn
 
 		fir::Value* selfptr = getAddressOfOrMakeTemporaryLValue(this, val, /* mutable: */ true);
 
+		auto destructor = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_DROP, val->getType());
 
-		if(val->getType()->isClassType())
-		{
-			auto cls = val->getType()->toClassType();
-
-			// call the user-defined one first, if any:
-			if(auto des = cls->getDestructor(); des)
-				this->irb.Call(des, selfptr);
-
-			// call the auto one. this will handle calling base class destructors for us!
-			this->irb.Call(cls->getInlineDestructor(), selfptr);
-		}
-		else
-		{
-			auto destructor = getImplementationForRAIITrait(this, strs::names::support::RAII_TRAIT_DROP, val->getType());
-
-			// well if you didn't implement it then the typechecker would have already complained about you so...
-			iceAssert(destructor);
-			this->irb.Call(destructor, selfptr);
-		}
+		// well if you didn't implement it then the typechecker would have already complained about you so...
+		iceAssert(destructor);
+		this->irb.Call(destructor, selfptr);
 	}
 
 
-
-
-	static void doMemberWiseStuffIfNecessary(CodegenState* cs, fir::ClassType* clsty, fir::Value* from, fir::Value* target, bool move)
-	{
-		// check if there are even any class types inside. if not, do the simple thing!
-		bool needSpecial = false;
-
-		for(auto m : clsty->getElements())
-		{
-			if(m->isClassType())
-			{
-				needSpecial = true;
-				break;
-			}
-		}
-
-		if(needSpecial)
-		{
-			auto selfptr = getAddressOfOrMakeTemporaryLValue(cs, target, true);
-			auto otherptr = getAddressOfOrMakeTemporaryLValue(cs, from, true);
-
-			// assign `lhs = rhs`
-
-			for(const auto& name : clsty->getNameList())
-			{
-				auto lhs = cs->irb.GetStructMember(cs->irb.Dereference(selfptr), name);
-				auto rhs = cs->irb.GetStructMember(cs->irb.Dereference(otherptr), name);
-
-				if(move)    cs->moveRAIIValue(rhs, lhs);
-				else        cs->copyRAIIValue(rhs, lhs);
-			}
-		}
-		else
-		{
-			cs->irb.Store(from, target);
-		}
-	}
 
 
 
@@ -219,28 +167,6 @@ namespace cgn
 			return;
 		}
 
-		// there's probably a better way to structure this, but i can't be bothered right now
-		// or ever. it's just 2 lines of code dupe anyway. so sue me.
-
-		if(from->getType()->isClassType())
-		{
-			auto clsty = from->getType()->toClassType();
-
-			// if there is a copy-constructor, then we will call the copy constructor.
-			if(auto copycon = clsty->getCopyConstructor(); copycon)
-			{
-				// note: we make otherptr immutable, because copy() isn't supposed to pass the thing mutably!
-				auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
-				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, false);
-
-				this->irb.Call(copycon, selfptr, otherptr);
-			}
-			else
-			{
-				doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ false);
-			}
-		}
-		else
 		{
 			// note: we make otherptr immutable, because copy() isn't supposed to pass the thing mutably!
 			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
@@ -269,25 +195,6 @@ namespace cgn
 			return;
 		}
 
-		if(from->getType()->isClassType())
-		{
-			auto clsty = from->getType()->toClassType();
-
-			// if there is a copy-constructor, then we will call the copy constructor.
-			if(auto movecon = clsty->getMoveConstructor(); movecon)
-			{
-				// note: here both are mutable.
-				auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
-				auto otherptr = getAddressOfOrMakeTemporaryLValue(this, from, true);
-
-				this->irb.Call(movecon, selfptr, otherptr);
-			}
-			else
-			{
-				doMemberWiseStuffIfNecessary(this, clsty, from, target, /* move: */ true);
-			}
-		}
-		else
 		{
 			// note: here both are mutable.
 			auto selfptr = getAddressOfOrMakeTemporaryLValue(this, target, true);
@@ -308,9 +215,6 @@ namespace cgn
 	// TODO: memoise this for each type; the typeHas-blalba ones also!
 	static bool findRAIITraitImpl(CodegenState* cs, fir::Type* ty, const std::string& name)
 	{
-		if(ty->isClassType())
-			return true;
-
 		if(!ty->isStructType())
 			return false;
 

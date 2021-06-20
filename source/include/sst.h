@@ -340,7 +340,6 @@ namespace sst
 
 
 	struct StructDefn;
-	struct ClassDefn;
 	struct StructConstructorCall : Expr
 	{
 		StructConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "struct constructor call"; }
@@ -350,26 +349,6 @@ namespace sst
 
 		StructDefn* target = 0;
 		std::vector<FnCallArgument> arguments;
-	};
-
-	struct ClassConstructorCall : Expr
-	{
-		ClassConstructorCall(const Location& l, fir::Type* t) : Expr(l, t) { this->readableName = "class constructor call"; }
-		~ClassConstructorCall() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-		ClassDefn* classty = 0;
-		FunctionDefn* target = 0;
-		std::vector<FnCallArgument> arguments;
-	};
-
-	struct BaseClassConstructorCall : ClassConstructorCall
-	{
-		BaseClassConstructorCall(const Location& l, fir::Type* t) : ClassConstructorCall(l, t) { this->readableName = "base class constructor call"; }
-		~BaseClassConstructorCall() { }
-
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
 	};
 
 
@@ -635,7 +614,6 @@ namespace sst
 		Block* body = 0;
 		bool needReturnVoid = false;
 
-		bool isVirtual = false;
 		bool isOverride = false;
 		bool isMutating = false;
 
@@ -731,27 +709,6 @@ namespace sst
 		std::vector<TraitDefn*> traits;
 	};
 
-
-	struct ClassDefn : StructDefn
-	{
-		ClassDefn(const Location& l) : StructDefn(l) { this->readableName = "class definition"; }
-		~ClassDefn() { }
-
-		virtual std::string getKind() override { return "class"; }
-		virtual CGResult _codegen(cgn::CodegenState* cs, fir::Type* inferred = 0) override;
-
-
-		ClassDefn* baseClass = 0;
-
-		std::vector<TypeDefn*> nestedTypes;
-		std::vector<VarDefn*> staticFields;
-		std::vector<FunctionDefn*> staticMethods;
-		std::vector<FunctionDefn*> initialisers;
-
-		FunctionDefn* deinitialiser = 0;
-		FunctionDefn* copyInitialiser = 0;
-		FunctionDefn* moveInitialiser = 0;
-	};
 
 
 	struct EnumCaseDefn : Defn

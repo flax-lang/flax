@@ -211,7 +211,7 @@ CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 		//! RAII: COPY CONSTRUCTOR CALL
 		//? the copy constructor is called when a function returns an object by value
-		if(v->getType()->isClassType())
+		if(cs->typeHasCopyConstructor(v->getType()))
 			v = cs->copyRAIIValue(v);
 
 		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());

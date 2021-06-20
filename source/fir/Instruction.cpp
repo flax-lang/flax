@@ -112,7 +112,6 @@ namespace fir
 			case OpKind::Value_StackAlloc:                  instrname = "stackAlloc"; break;
 			case OpKind::Value_CallFunction:                instrname = "call"; break;
 			case OpKind::Value_CallFunctionPointer:         instrname = "callfp"; break;
-			case OpKind::Value_CallVirtualMethod:           instrname = "callvirtual"; break;
 			case OpKind::Value_Return:                      instrname = "ret"; break;
 			case OpKind::Value_GetPointerToStructMember:    instrname = "gep"; break;
 			case OpKind::Value_GetStructMember:             instrname = "gep"; break;

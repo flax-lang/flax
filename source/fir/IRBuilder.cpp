@@ -1078,29 +1078,6 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, const std::string& vname)
-	{
-		// args[0] must be the self, for obvious reasons.
-		auto ty = args[0]->getType();
-		iceAssert(ty->isPointerType() && ty->getPointerElementType()->isClassType());
-
-		auto self = ty->getPointerElementType()->toClassType();
-		iceAssert(self && self == cls);
-
-		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, ft->getReturnType(),
-			zfu::vectorOf<Value*>(
-				ConstantValue::getZeroValue(cls),
-				ConstantInt::getNative(index),
-				ConstantValue::getZeroValue(ft)
-			) + args
-		);
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-
 
 
 
@@ -1279,10 +1256,6 @@ namespace fir
 			auto tt = structPtr->getType()->toTupleType();
 			return this->addInstruction(doGEPOnCompoundType(tt, structPtr, memberIndex), vname);
 		}
-		else if(structPtr->getType()->isClassType())
-		{
-			error("irbuilder: classes do not support element access by index");
-		}
 		else
 		{
 			error("irbuilder: type '%s' is not a valid type to GEP into", structPtr->getType());
@@ -1306,44 +1279,10 @@ namespace fir
 
 			return this->addInstruction(instr, memberName);
 		}
-		else if(ptr->getType()->isClassType())
-		{
-			auto ct = ptr->getType()->toClassType();
-
-			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
-			auto memt = ct->getElement(memberName);
-
-			//! VTABLE HANDLING
-			size_t vTableOfs = 0;
-			if(ct->getVirtualMethodCount() > 0)
-				vTableOfs = 1;
-
-			Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, memt,
-				{ ptr, ConstantInt::getUNative(ct->getAbsoluteElementIndex(memberName) + vTableOfs) }, Value::Kind::lvalue);
-
-			return this->addInstruction(instr, memberName);
-		}
 		else
 		{
 			error("irbuilder: type '%s' is not a valid type to GEP into", ptr->getType());
 		}
-	}
-
-
-
-	void IRBuilder::SetVtable(Value* ptr, Value* table)
-	{
-		if(!ptr->islvalue())
-			error("irbuilder: cannot do set vtable on non-lvalue");
-
-		auto ty = ptr->getType();
-		if(!ty->isClassType()) error("irbuilder: '%s' is not a class type", ty);
-		if(table->getType() != Type::getInt8Ptr()) error("irbuilder: expected i8* for vtable, got '%s'", table->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, Type::getInt8Ptr(), { ptr, ConstantInt::getUNative(0) }, Value::Kind::lvalue);
-
-		auto gep = this->addInstruction(instr, "__vtable");
-		this->Store(table, gep);
 	}
 
 
@@ -1367,7 +1306,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("irbuilder: ptr is not a pointer type (got '%s')", ptr->getType());
 
-		else if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+		else if(ptr->getType()->getPointerElementType()->isStructType())
 			error("irbuilder: use the other function for struct types");
 
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
@@ -1394,7 +1333,7 @@ namespace fir
 		if(!ptrIndex->getType()->isIntegerType())
 			error("irbuilder: ptrIndex is not an integer type (got '%s')", ptrIndex->getType());
 
-		if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+		if(ptr->getType()->getPointerElementType()->isStructType())
 			error("irbuilder: use the other function for struct types");
 
 		Instruction* instr = make_instr(OpKind::Value_GetPointer, false, ptr->getType(), { ptr, ptrIndex });
@@ -1443,7 +1382,7 @@ namespace fir
 	static Instruction* _insertValue(Value* val, size_t idx, Type* et, Value* elm)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
 		if(elm->getType() != et)
@@ -1452,12 +1391,7 @@ namespace fir
 				elm->getType(), et);
 		}
 
-		int ofs = 0;
-		//! VTABLE HANDLING
-		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
-			ofs = 1;
-
-		std::vector<Value*> args = { val, elm, ConstantInt::getNative(idx + ofs) };
+		std::vector<Value*> args = { val, elm, ConstantInt::getNative(idx) };
 
 		// note: no sideeffects, since we return a new aggregate
 		return make_instr(OpKind::Value_InsertValue, false, t, args);
@@ -1466,15 +1400,10 @@ namespace fir
 	static Instruction* _extractValue(Value* val, size_t idx, Type* et)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
-		int ofs = 0;
-		//! VTABLE HANDLING
-		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
-			ofs = 1;
-
-		std::vector<Value*> args = { val, ConstantInt::getNative(idx + ofs) };
+		std::vector<Value*> args = { val, ConstantInt::getNative(idx) };
 
 		// note: no sideeffects, since we return a new aggregate
 		return make_instr(OpKind::Value_ExtractValue, false, et, args);
@@ -1488,9 +1417,6 @@ namespace fir
 	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(t->isClassType())
-			error("irbuilder: classes do not support element access by index");
-
 		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not a supported aggregate type (have '%s')", t);
 
@@ -1510,14 +1436,11 @@ namespace fir
 	Value* IRBuilder::ExtractValue(Value* val, const std::vector<size_t>& inds, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
 		if(inds.size() != 1)
 			error("irbuilder: must have exactly one index!");
-
-		if(t->isClassType())
-			error("irbuilder: classes do not support element access by index");
 
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
@@ -1532,13 +1455,12 @@ namespace fir
 	Value* IRBuilder::InsertValueByName(Value* val, const std::string& n, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType())
-			error("irbuilder: val is not an aggregate type with named members (class or struct) (have '%s')", t);
+		if(!t->isStructType())
+			error("irbuilder: val is not an aggregate type with named members (struct) (have '%s')", t);
 
 		size_t ind = 0;
 		Type* et = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n), et = t->toStructType()->getElement(n);
-		else if(t->isClassType())   ind = t->toClassType()->getAbsoluteElementIndex(n), et = t->toClassType()->getElement(n);
 		else                        iceAssert(0);
 
 		return this->addInstruction(_insertValue(val, ind, et, elm), vname);
@@ -1547,13 +1469,12 @@ namespace fir
 	Value* IRBuilder::ExtractValueByName(Value* val, const std::string& n, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType())
-			error("irbuilder: val is not an aggregate type with named members (class or struct) (have '%s')", t);
+		if(!t->isStructType())
+			error("irbuilder: val is not an aggregate type with named members (struct) (have '%s')", t);
 
 		size_t ind = 0;
 		Type* et = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n), et = t->toStructType()->getElement(n);
-		else if(t->isClassType())   ind = t->toClassType()->getAbsoluteElementIndex(n), et = t->toClassType()->getElement(n);
 		else                        iceAssert(0);
 
 		return this->addInstruction(_extractValue(val, ind, et), vname);

@@ -155,48 +155,7 @@ namespace resolver
 	TCResult resolveConstructorCall(TypecheckState* fs, const Location& callLoc, TypeDefn* typedf, const std::vector<FnCallArgument>& arguments,
 		const PolyArgMapping_t& pams)
 	{
-		//! ACHTUNG: DO NOT REARRANGE !
-		//* NOTE: ClassDefn inherits from StructDefn *
-
-		if(auto cls = dcast(ClassDefn, typedf))
-		{
-			// class initialisers must be called with named arguments only.
-			for(const auto& arg : arguments)
-			{
-				if(arg.name.empty())
-				{
-					return TCResult(SimpleError::make(arg.loc, "arguments to class initialisers (for class '%s' here) must be named", cls->id.name));
-				}
-			}
-
-			auto copy = arguments;
-
-			//! SELF HANDLING (INSERTION) (CONSTRUCTOR CALL)
-			copy.insert(copy.begin(), FnCallArgument::make(cls->loc, "this", cls->type->getMutablePointerTo(),
-				/* ignoreName: */ true));
-
-			auto copy1 = copy;
-
-			auto cand = resolveFunctionCallFromCandidates(fs, callLoc, zfu::map(cls->initialisers, [](auto e) -> auto {
-				return dcast(sst::Defn, e);
-			}), &copy, pams, true);
-
-			// TODO: support re-eval of constructor args!
-			// TODO: support re-eval of constructor args!
-			// TODO: support re-eval of constructor args!
-
-			if(cand.isError())
-			{
-				cand.error()->prepend(SimpleError::make(fs->loc(), "failed to find matching initialiser for class '%s':", cls->id.name));
-				return TCResult(cand.error());
-			}
-
-			if(copy1 != copy)
-				error(fs->loc(), "args changed for constructor call -- fixme!!!");
-
-			return TCResult(cand);
-		}
-		else if(auto str = dcast(StructDefn, typedf))
+		if(auto str = dcast(StructDefn, typedf))
 		{
 			std::vector<std::string> fieldNames;
 

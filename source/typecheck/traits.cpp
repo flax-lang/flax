@@ -150,14 +150,7 @@ void checkTraitConformity(sst::TypecheckState* fs, sst::TypeDefn* defn)
 	std::vector<sst::TraitDefn*> traits;
 	util::hash_map<std::string, std::vector<sst::FunctionDecl*>> methods;
 
-	if(auto cls = dcast(sst::ClassDefn, defn))
-	{
-		for(auto m : cls->methods)
-			methods[m->id.name].push_back(m);
-
-		error("wait a bit");
-	}
-	else if(auto str = dcast(sst::StructDefn, defn))
+	if(auto str = dcast(sst::StructDefn, defn))
 	{
 		for(auto m : str->methods)
 			methods[m->id.name].push_back(m);

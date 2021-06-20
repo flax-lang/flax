@@ -120,27 +120,6 @@ namespace backend
 			createdTypes[st->getTypeName()]->setBody(lmems, st->isPackedStruct());
 			return createdTypes[st->getTypeName()];
 		}
-		else if(type->isClassType())
-		{
-			fir::ClassType* ct = type->toClassType();
-
-			if(createdTypes.find(ct->getTypeName()) != createdTypes.end())
-				return createdTypes[ct->getTypeName()];
-
-			// to allow recursion, declare the type first.
-			createdTypes[ct->getTypeName()] = llvm::StructType::create(gc, ct->getTypeName().mangled());
-
-			std::vector<llvm::Type*> lmems = zfu::map(ct->getAllElementsIncludingBase(), [&mod](auto t) -> auto {
-				return typeToLlvm(t, mod);
-			});
-
-			// insert the vtable at the front.
-			if(ct->getVirtualMethodCount() > 0)
-				lmems.insert(lmems.begin(), llvm::Type::getInt8PtrTy(gc));
-
-			createdTypes[ct->getTypeName()]->setBody(lmems);
-			return createdTypes[ct->getTypeName()];
-		}
 		else if(type->isTupleType())
 		{
 			fir::TupleType* tt = type->toTupleType();
@@ -1494,37 +1473,6 @@ namespace backend
 							break;
 						}
 
-						case fir::OpKind::Value_CallVirtualMethod:
-						{
-							// args are: 0. classtype, 1. index, 2. functiontype, 3...N args
-							auto clsty = inst->operands[0]->getType()->toClassType();
-							iceAssert(clsty);
-							iceAssert(clsty->getVirtualMethodCount() > 0);
-
-							std::vector<llvm::Value*> args;
-							for(size_t i = 3; i < inst->operands.size(); i++)
-								args.push_back(decay(inst->operands[i], getValue(inst->operands[i])));
-
-							llvm::Value* vtable = builder.CreateLoad(builder.CreateStructGEP(typeToLlvm(clsty, module), args[0], 0));
-
-							vtable = builder.CreateBitOrPointerCast(vtable,
-								llvm::ArrayType::get(llvm::FunctionType::get(llvm::Type::getVoidTy(gc), false)->getPointerTo(),
-								clsty->getVirtualMethodCount())->getPointerTo());
-
-							auto fptr = builder.CreateConstInBoundsGEP2_32(vtable->getType()->getPointerElementType(), vtable,
-								0, static_cast<unsigned int>(dcast(fir::ConstantInt, inst->operands[1])->getUnsignedValue()));
-
-							auto ffty = inst->operands[2]->getType()->toFunctionType();
-
-							fptr = builder.CreateBitOrPointerCast(builder.CreateLoad(fptr), typeToLlvm(ffty, module));
-
-							llvm::FunctionType* ft = llvm::cast<llvm::FunctionType>(typeToLlvm(ffty, module)->getPointerElementType());
-							iceAssert(ft);
-							llvm::Value* ret = builder.CreateCall(ft, fptr, args);
-
-							addValueToMap(ret, inst->realOutput);
-							break;
-						}
 
 						case fir::OpKind::Value_Return:
 						{
@@ -1699,7 +1647,7 @@ namespace backend
 							llvm::Value* a = getOperand(inst, 0);
 							llvm::Value* b = getOperand(inst, 1);
 
-							iceAssert(!inst->operands[0]->getType()->isClassType() && !inst->operands[0]->getType()->isStructType());
+							iceAssert(!inst->operands[0]->getType()->isStructType());
 
 							llvm::Value* ret = builder.CreateGEP(a, b);
 							addValueToMap(ret, inst->realOutput);
@@ -1712,7 +1660,7 @@ namespace backend
 							iceAssert(inst->operands.size() == 3);
 							llvm::Value* a = getOperand(inst, 0);
 
-							iceAssert(!inst->operands[0]->getType()->isClassType() && !inst->operands[0]->getType()->isStructType());
+							iceAssert(!inst->operands[0]->getType()->isStructType());
 
 							std::vector<llvm::Value*> indices = { getOperand(inst, 1), getOperand(inst, 2) };
 							llvm::Value* ret = builder.CreateGEP(a, indices);
