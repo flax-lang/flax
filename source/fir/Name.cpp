@@ -91,10 +91,6 @@ namespace fir
 		{
 			return "FA" + lentypestr(mangleType(t->getArrayElementType())) + std::to_string(t->toArrayType()->getArraySize());
 		}
-		else if(t->isDynamicArrayType())
-		{
-			return "DA" + lentypestr(mangleType(t->getArrayElementType()));
-		}
 		else if(t->isArraySliceType())
 		{
 			return "SL" + lentypestr(mangleType(t->getArrayElementType()));
@@ -120,10 +116,6 @@ namespace fir
 		{
 			return lentypestr(mangleScopeName(t->toStructType()->getTypeName()));
 		}
-		else if(t->isClassType())
-		{
-			return lentypestr(mangleScopeName(t->toClassType()->getTypeName()));
-		}
 		else if(t->isTupleType())
 		{
 			std::string ret = "ST" + std::to_string(t->toTupleType()->getElementCount()) + "SM";
@@ -136,10 +128,6 @@ namespace fir
 		{
 			return "PT" + lentypestr(mangleType(t->getPointerElementType()));
 		}
-		else if(t->isStringType())
-		{
-			return "SR";
-		}
 		else if(t->isCharType())
 		{
 			return "CH";
@@ -147,10 +135,6 @@ namespace fir
 		else if(t->isEnumType())
 		{
 			return "EN" + lentypestr(mangleType(t->toEnumType()->getCaseType())) + lentypestr(mangleScopeName(t->toEnumType()->getTypeName()));
-		}
-		else if(t->isAnyType())
-		{
-			return "AY";
 		}
 		else
 		{

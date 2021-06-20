@@ -44,37 +44,15 @@ namespace lexer
 		return true;
 	}
 
+	template <size_t N>
+	static constexpr size_t constexpr_strlen(char const (&literal)[N])
+	{
+		return N - 1;
+	}
+
 
 
 	static TokenType prevType = TokenType::Invalid;
-	static size_t prevID = 0;
-	static bool shouldConsiderUnaryLiteral(string_view& stream, Location& pos)
-	{
-		// check the previous token
-		bool should = (prevType != TokenType::Invalid && prevID == pos.fileID && (
-			prevType != TokenType::RParen &&
-			prevType != TokenType::RSquare &&
-			prevType != TokenType::Identifier &&
-			prevType != TokenType::Number &&
-			prevType != TokenType::Dollar &&
-			prevType != TokenType::StringLiteral
-		));
-
-		if(!should) return false;
-
-		// check if the current char is a + or -
-		if(stream.length() == 0) return false;
-		if(stream[0] != '+' && stream[0] != '-') return false;
-
-		// check if there's only spaces between this and the number itself
-		for(size_t i = 1; i < stream.length(); i++)
-		{
-			if(isdigit(stream[i])) return true;
-			else if(stream[i] != ' ') return false;
-		}
-
-		return false;
-	}
 
 
 	static util::hash_map<std::string_view, TokenType> keywordMap;
@@ -101,7 +79,6 @@ namespace lexer
 		keywordMap["false"]     = TokenType::False;
 		keywordMap["while"]     = TokenType::While;
 		keywordMap["break"]     = TokenType::Break;
-		keywordMap["class"]     = TokenType::Class;
 		keywordMap["using"]     = TokenType::Using;
 		keywordMap["union"]     = TokenType::Union;
 		keywordMap["struct"]    = TokenType::Struct;
@@ -163,6 +140,21 @@ namespace lexer
 		tok.loc = pos;
 		tok.type = TokenType::Invalid;
 
+	#define CHECK_TOKEN(str, ty)            \
+		else if(hasPrefix(stream, str)) {   \
+			tok.type = TokenType::ty;       \
+			tok.text = str;                 \
+			read = constexpr_strlen(str);   \
+		}
+
+	#define CHECK_TOKEN_UNICODE(str, ty, ul)\
+		else if(hasPrefix(stream, str)) {   \
+			tok.type = TokenType::ty;       \
+			tok.text = str;                 \
+			read = constexpr_strlen(str);   \
+			unicodeLength = ul;             \
+		}
+
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
 		{
@@ -179,144 +171,45 @@ namespace lexer
 			flag = false;
 			tok.text = "";
 		}
-		else if(hasPrefix(stream, "=="))
-		{
-			tok.type = TokenType::EqualsTo;
-			tok.text = "==";
-			read = 2;
-		}
-		else if(hasPrefix(stream, ">="))
-		{
-			tok.type = TokenType::GreaterEquals;
-			tok.text = ">=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<="))
-		{
-			tok.type = TokenType::LessThanEquals;
-			tok.text = "<=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "!="))
-		{
-			tok.type = TokenType::NotEquals;
-			tok.text = "!=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "||"))
-		{
-			tok.type = TokenType::LogicalOr;
-			tok.text = "||";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "&&"))
-		{
-			tok.type = TokenType::LogicalAnd;
-			tok.text = "&&";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<-"))
-		{
-			tok.type = TokenType::LeftArrow;
-			tok.text = "<-";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "->"))
-		{
-			tok.type = TokenType::RightArrow;
-			tok.text = "->";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<="))
-		{
-			tok.type = TokenType::FatLeftArrow;
-			tok.text = "<=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "=>"))
-		{
-			tok.type = TokenType::FatRightArrow;
-			tok.text = "=>";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "++"))
-		{
-			tok.type = TokenType::DoublePlus;
-			tok.text = "++";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "--"))
-		{
-			tok.type = TokenType::DoubleMinus;
-			tok.text = "--";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "+="))
-		{
-			tok.type = TokenType::PlusEq;
-			tok.text = "+=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "-="))
-		{
-			tok.type = TokenType::MinusEq;
-			tok.text = "-=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "*="))
-		{
-			tok.type = TokenType::MultiplyEq;
-			tok.text = "*=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "/="))
-		{
-			tok.type = TokenType::DivideEq;
-			tok.text = "/=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "%="))
-		{
-			tok.type = TokenType::ModEq;
-			tok.text = "%=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "&="))
-		{
-			tok.type = TokenType::AmpersandEq;
-			tok.text = "&=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "|="))
-		{
-			tok.type = TokenType::PipeEq;
-			tok.text = "|=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "^="))
-		{
-			tok.type = TokenType::CaretEq;
-			tok.text = "^=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "::"))
-		{
-			tok.type = TokenType::DoubleColon;
-			tok.text = "::";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "..."))
-		{
-			tok.type = TokenType::Ellipsis;
-			tok.text = "...";
-			read = 3;
-		}
-		else if(hasPrefix(stream, "..<"))
-		{
-			tok.type = TokenType::HalfOpenEllipsis;
-			tok.text = "..<";
-			read = 3;
-		}
+		CHECK_TOKEN("==", EqualsTo)
+		CHECK_TOKEN("!=", EqualsTo)
+		CHECK_TOKEN(">=", GreaterEquals)
+		CHECK_TOKEN("<=", LessThanEquals)
+		CHECK_TOKEN("||", LogicalOr)
+		CHECK_TOKEN("&&", LogicalAnd)
+		CHECK_TOKEN("<-", LeftArrow)
+		CHECK_TOKEN("->", RightArrow)
+		CHECK_TOKEN("<=", FatLeftArrow)
+		CHECK_TOKEN("=>", FatRightArrow)
+		CHECK_TOKEN("++", DoublePlus)
+		CHECK_TOKEN("--", DoubleMinus)
+		CHECK_TOKEN("+=", PlusEq)
+		CHECK_TOKEN("-=", MinusEq)
+		CHECK_TOKEN("*=", MultiplyEq)
+		CHECK_TOKEN("/=", DivideEq)
+		CHECK_TOKEN("%=", ModEq)
+		CHECK_TOKEN("&=", AmpersandEq)
+		CHECK_TOKEN("|=", PipeEq)
+		CHECK_TOKEN("^=", CaretEq)
+		CHECK_TOKEN("::", DoubleColon)
+		CHECK_TOKEN("...", Ellipsis)
+		CHECK_TOKEN("..<", HalfOpenEllipsis)
+
+		CHECK_TOKEN("@nomangle", Attr_NoMangle)
+		CHECK_TOKEN("@entry", Attr_EntryFn)
+		CHECK_TOKEN("@packed", Attr_Packed)
+		CHECK_TOKEN("@raw", Attr_Raw)
+		CHECK_TOKEN("@operator", Attr_Operator)
+
+		CHECK_TOKEN("#if", Directive_If)
+		CHECK_TOKEN("#run", Directive_Run)
+
+		CHECK_TOKEN_UNICODE("ƒ", Func, 1)
+		CHECK_TOKEN_UNICODE("÷", Divide, 1)
+		CHECK_TOKEN_UNICODE("≠", NotEquals, 1)
+		CHECK_TOKEN_UNICODE("≤", LessThanEquals, 1)
+		CHECK_TOKEN_UNICODE("≥", GreaterEquals, 1)
+
 		else if(hasPrefix(stream, "/*"))
 		{
 			int currentNest = 1;
@@ -385,109 +278,6 @@ namespace lexer
 
 
 
-		// attrs
-		else if(hasPrefix(stream, "@nomangle"))
-		{
-			tok.type = TokenType::Attr_NoMangle;
-			tok.text = "@nomangle";
-			read = 9;
-		}
-		else if(hasPrefix(stream, "@entry"))
-		{
-			tok.type = TokenType::Attr_EntryFn;
-			tok.text = "@entry";
-			read = 6;
-		}
-		else if(hasPrefix(stream, "@packed"))
-		{
-			tok.type = TokenType::Attr_Packed;
-			tok.text = "@packed";
-			read = 7;
-		}
-		else if(hasPrefix(stream, "@raw"))
-		{
-			tok.type = TokenType::Attr_Raw;
-			tok.text = "@raw";
-			read = 4;
-		}
-		else if(hasPrefix(stream, "@operator"))
-		{
-			tok.type = TokenType::Attr_Operator;
-			tok.text = "@operator";
-			read = 9;
-		}
-		else if(hasPrefix(stream, "@platform"))
-		{
-			tok.type = TokenType::Attr_Platform;
-			tok.text = "@platform";
-			read = 9;
-		}
-
-		// directives
-		else if(hasPrefix(stream, "#if"))
-		{
-			tok.type = TokenType::Directive_If;
-			tok.text = "#if";
-			read = 3;
-		}
-		else if(hasPrefix(stream, "#run"))
-		{
-			tok.type = TokenType::Directive_Run;
-			tok.text = "#run";
-			read = 4;
-		}
-
-
-		// unicode stuff
-		else if(hasPrefix(stream, "ƒ"))
-		{
-			tok.type = TokenType::Func;
-			read = std::string("ƒ").length();
-			tok.text = "ƒ";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "ﬁ"))
-		{
-			tok.type = TokenType::ForeignFunc;
-			read = std::string("ﬁ").length();
-			tok.text = "ﬁ";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "÷"))
-		{
-			tok.type = TokenType::Divide;
-			read = std::string("÷").length();
-			tok.text = "÷";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≠"))
-		{
-			tok.type = TokenType::NotEquals;
-			read = std::string("≠").length();
-			tok.text = "≠";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≤"))
-		{
-			tok.type = TokenType::LessThanEquals;
-			read = std::string("≤").length();
-			tok.text = "≤";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≥"))
-		{
-			tok.type = TokenType::GreaterEquals;
-			read = std::string("≥").length();
-			tok.text = "≥";
-
-			unicodeLength = 1;
-		}
-
 		else if(hasPrefix(stream, "'") && stream.size() > 2)
 		{
 			tok.type = TokenType::CharacterLiteral;
@@ -526,15 +316,10 @@ namespace lexer
 		// so in every other case we want unary +/-.
 		// note: a sane implementation would just return false if isdigit() was passed something weird, like a negative number
 		// (because we tried to dissect a UTF-8 codepoint). so we just check if it's ascii first, which would solve the issue.
-		else if((!stream.empty() && ((isascii(stream[0]) && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
-			/* handle cases like '+ 3' or '- 14' (ie. space between sign and number) */
-			&& ((isascii(stream[0]) && isdigit(stream[0]) ? true : false) || (stream.size() > 1 && isascii(stream[1]) && isdigit(stream[1]))))
+		else if(!stream.empty() && isascii(stream[0]) && isdigit(stream[0]))
 		{
 			// copy it.
 			auto tmp = stream;
-
-			if(tmp.find('-') == 0 || tmp.find('+') == 0)
-				tmp.remove_prefix(1);
 
 			int base = 10;
 			if(tmp.find("0x") == 0 || tmp.find("0X") == 0)
@@ -543,12 +328,11 @@ namespace lexer
 			else if(tmp.find("0b") == 0 || tmp.find("0B") == 0)
 				base = 2, tmp.remove_prefix(2);
 
-
 			// find that shit
 			auto end = std::find_if_not(tmp.begin(), tmp.end(), [base](const char& c) -> bool {
-				if(base == 10)	return isdigit(c);
-				if(base == 16)	return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
-				else			return (c == '0' || c == '1');
+				if(base == 10)  return isdigit(c);
+				if(base == 16)  return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
+				else            return (c == '0' || c == '1');
 			});
 
 			tmp.remove_prefix((end - tmp.begin()));
@@ -569,6 +353,7 @@ namespace lexer
 				hadExp = true;
 			}
 
+			bool is_floating = false;
 			size_t didRead = stream.size() - tmp.size();
 			auto post = stream.substr(didRead);
 
@@ -595,7 +380,7 @@ namespace lexer
 					while(post.size() > 0 && isdigit(post.front()))
 						post.remove_prefix(1), didRead++;
 
-					// ok.
+					is_floating = true;
 				}
 				else
 				{
@@ -605,9 +390,10 @@ namespace lexer
 			}
 
 			tok.text = stream.substr(0, didRead);
-
-			tok.type = TokenType::Number;
 			tok.loc.len = didRead;
+
+			if(is_floating) tok.type = TokenType::FloatingNumber;
+			else            tok.type = TokenType::IntegerNumber;
 
 			read = didRead;
 		}
@@ -825,7 +611,7 @@ namespace lexer
 
 
 		prevType = tok.type;
-		prevID = tok.loc.fileID;
+
 
 		return prevType;
 	}

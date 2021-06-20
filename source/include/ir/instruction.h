@@ -99,7 +99,6 @@ namespace fir
 		Value_StackAlloc,
 		Value_CallFunction,
 		Value_CallFunctionPointer,
-		Value_CallVirtualMethod,
 		Value_Return,
 		Value_GetPointerToStructMember,		// equivalent to GEP(ptr*, ptrIndex, memberIndex) -- for structs.
 		Value_GetStructMember,				// equivalent to GEP(ptr*, 0, memberIndex)
@@ -120,28 +119,10 @@ namespace fir
 		Value_Store,
 		Value_CreateLVal,
 
-
-		// string-specific things
-		SAA_GetData,
-		SAA_SetData,
-		SAA_GetLength,
-		SAA_SetLength,
-		SAA_GetCapacity,
-		SAA_SetCapacity,
-		SAA_GetRefCountPtr,
-		SAA_SetRefCountPtr,
-
 		ArraySlice_GetData,
 		ArraySlice_SetData,
 		ArraySlice_GetLength,
 		ArraySlice_SetLength,
-
-		Any_GetData,
-		Any_SetData,
-		Any_GetTypeID,
-		Any_SetTypeID,
-		Any_GetRefCountPtr,
-		Any_SetRefCountPtr,
 
 		Range_GetLower,
 		Range_SetLower,

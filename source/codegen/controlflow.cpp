@@ -27,8 +27,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(this->elseCase);
 
 	fir::IRBlock* elseblk = 0;
-	if(this->elseCase)	elseblk = cs->irb.addNewBlockAfter("elseCase-" + this->elseCase->loc.shortString(), trueblk);
-	else				elseblk = mergeblk;
+	if(this->elseCase)  elseblk = cs->irb.addNewBlockAfter("elseCase-" + this->elseCase->loc.shortString(), trueblk);
+	else                elseblk = mergeblk;
 
 	// first we gotta do all the inits of all the cases first.
 	// we're already in our own scope, so it shouldn't matter.
@@ -108,19 +108,6 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			cs->irb.setCurrentBlock(falseblkr);
-			{
-				// TODO: why tf is this commented out??
-
-				// ok, do the next thing.
-				// if we're the last block, then gtfo and branch to merge
-				// if()
-				// {
-				// 	if(!cs->irb.getCurrentBlock()->isTerminated())
-				// 		cs->irb.UnCondBranch(elseblk);
-
-				// 	break;
-				// }
-			}
 		}
 	}
 	else
@@ -174,29 +161,12 @@ std::vector<sst::Block*> sst::IfStmt::getBlocks()
 
 static void doBlockEndThings(cgn::CodegenState* cs, const cgn::ControlFlowPoint& cfp, const cgn::BlockPoint& bp)
 {
-	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
-	{
-		cs->printIRDebugMessage("\n! CTRLFLOW: at: " + cfp.block->loc.shortString() + "\n{", { });
-		cs->pushIRDebugIndentation();
-	}
-	#endif
-
 	// then do the defers
 	for(auto stmt : cfp.block->deferred)
 		stmt->_codegen(cs);
 
 	for(auto c : bp.raiiValues)
 		cs->callDestructor(c);
-
-	for(auto v : bp.refCountedValues)
-		cs->decrementRefCount(v);
-
-	#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
-	{
-		cs->popIRDebugIndentation();
-		cs->printIRDebugMessage("}", { });
-	}
-	#endif
 }
 
 CGResult sst::BreakStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
@@ -233,21 +203,15 @@ CGResult sst::ContinueStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 CGResult sst::ReturnStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
-	// check if we have a value, and whether it's refcounted
-	// if so, inflate its refcount so it doesn't get deallocated and can survive
-
 	if(this->value)
 	{
 		auto v = this->value->codegen(cs, this->expectedType).value;
-		if(fir::isRefCountedType(v->getType()))
-			cs->incrementRefCount(v);
-
 		if(v->getType() != this->expectedType)
 			v = cs->oneWayAutocast(v, this->expectedType);
 
 		//! RAII: COPY CONSTRUCTOR CALL
 		//? the copy constructor is called when a function returns an object by value
-		if(v->getType()->isClassType())
+		if(cs->typeHasCopyConstructor(v->getType()))
 			v = cs->copyRAIIValue(v);
 
 		doBlockEndThings(cs, cs->getCurrentCFPoint(), cs->getCurrentBlockPoint());
@@ -299,29 +263,12 @@ CGResult sst::Block::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// and ContinueStmt will do it too.
 	if(!broke)
 	{
-		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
-		{
-			cs->printIRDebugMessage("\n! BLOCKEND: at: " + this->closingBrace.shortString() + "\n{", { });
-			cs->pushIRDebugIndentation();
-		}
-		#endif
-
 		//* this duplicates stuff from doBlockEndThings!!
 		for(auto it = this->deferred.rbegin(); it != this->deferred.rend(); it++)
 			(*it)->_codegen(cs);
 
 		for(auto c : cs->getCurrentBlockPoint().raiiValues)
 			cs->callDestructor(c);
-
-		for(auto v : cs->getRefCountedValues())
-			cs->decrementRefCount(v);
-
-		#if DEBUG_ARRAY_REFCOUNTING | DEBUG_STRING_REFCOUNTING
-		{
-			cs->popIRDebugIndentation();
-			cs->printIRDebugMessage("}", { });
-		}
-		#endif
 	}
 
 	return CGResult(0);

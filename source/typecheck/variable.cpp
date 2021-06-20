@@ -353,11 +353,7 @@ TCResult ast::VarDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(defn->type == 0)
 		{
-			auto t = defn->init->type;
-			if(t->isConstantNumberType())
-				t = sst::inferCorrectTypeForLiteral(defn->init->type->toConstantNumberType());
-
-			defn->type = t;
+			defn->type = defn->init->type;
 		}
 		else if(fir::getCastDistance(defn->init->type, defn->type) < 0)
 		{

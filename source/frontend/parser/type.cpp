@@ -35,135 +35,6 @@ namespace parser
 
 
 
-	ClassDefn* parseClass(State& st)
-	{
-		iceAssert(st.front() == TT::Class);
-		st.eat();
-
-		if(st.front() != TT::Identifier)
-			expectedAfter(st, "identifier", "'struct'", st.front().str());
-
-		ClassDefn* defn = util::pool<ClassDefn>(st.loc());
-		defn->name = st.eat().str();
-
-		// check for generic function
-		if(st.front() == TT::LAngle)
-		{
-			st.eat();
-			// parse generic
-			if(st.front() == TT::RAngle)
-				error(st, "empty type parameter lists are not allowed");
-
-			defn->generics = parseGenericTypeList(st);
-		}
-
-		st.skipWS();
-		if(st.front() == TT::Colon)
-		{
-			// the inheritance list.
-			st.eat();
-
-			while(true)
-			{
-				defn->bases.push_back(parseType(st));
-				if(st.front() == TT::Comma)
-				{
-					st.pop();
-					continue;
-				}
-				else
-				{
-					break;
-				}
-			}
-		}
-
-		st.skipWS();
-		if(st.front() != TT::LBrace)
-			expectedAfter(st, "'{'", "'class'", st.front().str());
-
-		st.enterStructBody();
-
-		auto blk = parseBracedBlock(st).val();
-		for(auto s : blk->statements)
-		{
-			if(auto v = dcast(VarDefn, s))
-			{
-				if(v->type == pts::InferredType::get())
-					error(v, "class fields must have types explicitly specified");
-
-				v->isField = true;
-				defn->fields.push_back(v);
-			}
-			else if(auto f = dcast(FuncDefn, s))
-			{
-				addSelfToMethod(f, f->isMutating);
-				defn->methods.push_back(f);
-			}
-			else if(auto t = dcast(TypeDefn, s))
-			{
-				defn->nestedTypes.push_back(t);
-			}
-			else if(auto sd = dcast(StaticDecl, s))
-			{
-				if(auto fn = dcast(FuncDefn, sd->actual))
-					defn->staticMethods.push_back(fn);
-
-				else if(auto vr = dcast(VarDefn, sd->actual))
-					defn->staticFields.push_back(vr);
-
-				else
-					error(st, "unsupported static statement in class body");
-			}
-			else if(auto init = dcast(InitFunctionDefn, s))
-			{
-				addSelfToMethod(init, /* mutating: */ true);
-
-				if(init->name == "init")
-				{
-					defn->initialisers.push_back(init);
-				}
-				else if(init->name == "deinit")
-				{
-					if(defn->deinitialiser)
-						error(init, "deinitialisers cannot be overloaded");
-
-					defn->deinitialiser = init;
-				}
-				else if(init->name == "copy")
-				{
-					if(defn->copyInitialiser)
-						error(init, "copy initialisers cannot be overloaded");
-
-					defn->copyInitialiser = init;
-				}
-				else if(init->name == "move")
-				{
-					if(defn->moveInitialiser)
-						error(init, "move initialisers cannot be overloaded");
-
-					defn->moveInitialiser = init;
-				}
-				else
-				{
-					error(s, "wtf? '%s'", init->name);
-				}
-			}
-			else
-			{
-				error(s, "unsupported expression or statement in class body");
-			}
-		}
-
-		if(!blk->deferredStatements.empty())
-			error(blk->deferredStatements[0], "unsupported expression or statement in class body");
-
-		st.leaveStructBody();
-		return defn;
-	}
-
-
-
 
 
 
@@ -710,9 +581,9 @@ namespace parser
 
 					return util::pool<pts::VariadicArrayType>(loc, elm);
 				}
-				else if(st.front() != TT::Number)
+				else if(st.front() != TT::IntegerNumber)
 				{
-					expected(st, "positive, non-zero size for fixed array", st.front().str());
+					expected(st, "positive, non-zero integer size for fixed array", st.front().str());
 				}
 				else
 				{
@@ -730,16 +601,6 @@ namespace parser
 					// TODO: support mutable arrays??
 					return util::pool<pts::FixedArrayType>(loc, elm, sz);
 				}
-			}
-			else if(st.front() == TT::RSquare)
-			{
-				// dynamic array.
-				if(mut) error(st.loc(), "dynamic arrays are always mutable, specifying 'mut' is unnecessary");
-
-				loc.len = st.loc().col - loc.col + st.loc().len;
-
-				st.pop();
-				return util::pool<pts::DynamicArrayType>(loc, elm);
 			}
 			else
 			{
@@ -866,10 +727,6 @@ namespace parser
 			st.anonymousTypeDefns.push_back(unn);
 
 			return pts::NamedType::create(unn->loc, unn->name);
-		}
-		else if(st.front() == TT::Class)
-		{
-			error(st, "classes cannot be defined anonymously");
 		}
 		else
 		{

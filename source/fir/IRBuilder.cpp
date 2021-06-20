@@ -13,21 +13,6 @@
 
 #include "memorypool.h"
 
-
-static bool isSAAType(fir::Type* t)
-{
-	return t->isStringType() || t->isDynamicArrayType();
-}
-
-static fir::Type* getSAAElmType(fir::Type* t)
-{
-	iceAssert(isSAAType(t));
-
-	if(t->isStringType())   return fir::Type::getInt8();
-	else                    return t->getArrayElementType();
-}
-
-
 namespace fir
 {
 	IRBuilder::IRBuilder(Module* mod)
@@ -783,13 +768,13 @@ namespace fir
 			bool sgn = ci->getType()->isSignedIntType();
 			if(targetType == Type::getFloat32())
 			{
-				if(sgn)	ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
-				else	ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
+				if(sgn) ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
+				else    ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
 			}
 			else if(targetType == Type::getFloat64())
 			{
-				if(sgn)	ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
-				else	ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
+				if(sgn) ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
+				else    ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
 			}
 			else
 			{
@@ -1021,10 +1006,7 @@ namespace fir
 			else if(fn->isCStyleVarArg())
 			{
 				// auto-convert strings and char slices into char* when passing to va_args
-				if(at->isStringType())
-					out.push_back(this->GetSAAData(args[i]));
-
-				else if(at->isCharSliceType())
+				if(at->isCharSliceType())
 					out.push_back(this->GetArraySliceData(args[i]));
 
 				else
@@ -1094,29 +1076,6 @@ namespace fir
 		Instruction* instr = make_instr(OpKind::Value_CallFunctionPointer, true, ft->getReturnType(), out);
 		return this->addInstruction(instr, vname);
 	}
-
-
-	Value* IRBuilder::CallVirtualMethod(ClassType* cls, FunctionType* ft, size_t index, const std::vector<Value*>& args, const std::string& vname)
-	{
-		// args[0] must be the self, for obvious reasons.
-		auto ty = args[0]->getType();
-		iceAssert(ty->isPointerType() && ty->getPointerElementType()->isClassType());
-
-		auto self = ty->getPointerElementType()->toClassType();
-		iceAssert(self && self == cls);
-
-		Instruction* instr = make_instr(OpKind::Value_CallVirtualMethod, true, ft->getReturnType(),
-			zfu::vectorOf<Value*>(
-				ConstantValue::getZeroValue(cls),
-				ConstantInt::getNative(index),
-				ConstantValue::getZeroValue(ft)
-			) + args
-		);
-
-		return this->addInstruction(instr, vname);
-	}
-
-
 
 
 
@@ -1213,24 +1172,6 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateSliceFromSAA(Value* saa, bool mut, const std::string& vname)
-	{
-		if(!isSAAType(saa->getType()))
-			error("irbuilder: expected string or dynamic array type, found '%s' instead", saa->getType());
-
-		auto slc = this->CreateValue(saa->getType()->isStringType() ? Type::getCharSlice(mut)
-			: ArraySliceType::get(saa->getType()->getArrayElementType(), mut));
-
-		auto slcelmty = slc->getType()->getArrayElementType();
-
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(saa), mut ? slcelmty->getMutablePointerTo()
-			: slcelmty->getPointerTo()));
-
-		slc = this->SetArraySliceLength(slc, this->GetSAALength(saa));
-		slc->setName(vname);
-
-		return slc;
-	}
 
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
@@ -1308,24 +1249,12 @@ namespace fir
 		if(structPtr->getType()->isStructType())
 		{
 			auto st = structPtr->getType()->toStructType();
-			return this->addInstruction(doGEPOnCompoundType(st,	structPtr, memberIndex), vname);
+			return this->addInstruction(doGEPOnCompoundType(st, structPtr, memberIndex), vname);
 		}
 		else if(structPtr->getType()->isTupleType())
 		{
 			auto tt = structPtr->getType()->toTupleType();
 			return this->addInstruction(doGEPOnCompoundType(tt, structPtr, memberIndex), vname);
-		}
-		else if(structPtr->getType()->isClassType())
-		{
-			error("irbuilder: classes do not support element access by index");
-
-			// auto ct = structPtr->getType()->toClassType();
-			// // to compensate for the vtable, we add one to the index if there is a vtable!
-			// if(ct->getVirtualMethodCount() > 0)
-			// 	memberIndex += 1;
-
-			// return this->addInstruction(doGEPOnCompoundType(ct,
-			// 	structPtr, memberIndex), vname);
 		}
 		else
 		{
@@ -1350,44 +1279,10 @@ namespace fir
 
 			return this->addInstruction(instr, memberName);
 		}
-		else if(ptr->getType()->isClassType())
-		{
-			auto ct = ptr->getType()->toClassType();
-
-			iceAssert(ct->hasElementWithName(memberName) && "no element with such name");
-			auto memt = ct->getElement(memberName);
-
-			//! VTABLE HANDLING
-			size_t vTableOfs = 0;
-			if(ct->getVirtualMethodCount() > 0)
-				vTableOfs = 1;
-
-			Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, memt,
-				{ ptr, ConstantInt::getUNative(ct->getAbsoluteElementIndex(memberName) + vTableOfs) }, Value::Kind::lvalue);
-
-			return this->addInstruction(instr, memberName);
-		}
 		else
 		{
 			error("irbuilder: type '%s' is not a valid type to GEP into", ptr->getType());
 		}
-	}
-
-
-
-	void IRBuilder::SetVtable(Value* ptr, Value* table)
-	{
-		if(!ptr->islvalue())
-			error("irbuilder: cannot do set vtable on non-lvalue");
-
-		auto ty = ptr->getType();
-		if(!ty->isClassType()) error("irbuilder: '%s' is not a class type", ty);
-		if(table->getType() != Type::getInt8Ptr()) error("irbuilder: expected i8* for vtable, got '%s'", table->getType());
-
-		Instruction* instr = make_instr(OpKind::Value_GetStructMember, false, Type::getInt8Ptr(), { ptr, ConstantInt::getUNative(0) }, Value::Kind::lvalue);
-
-		auto gep = this->addInstruction(instr, "__vtable");
-		this->Store(table, gep);
 	}
 
 
@@ -1411,7 +1306,7 @@ namespace fir
 		if(!ptr->getType()->isPointerType())
 			error("irbuilder: ptr is not a pointer type (got '%s')", ptr->getType());
 
-		else if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+		else if(ptr->getType()->getPointerElementType()->isStructType())
 			error("irbuilder: use the other function for struct types");
 
 		iceAssert(ptrIndex->getType()->isIntegerType() && "ptrIndex is not integer type");
@@ -1438,7 +1333,7 @@ namespace fir
 		if(!ptrIndex->getType()->isIntegerType())
 			error("irbuilder: ptrIndex is not an integer type (got '%s')", ptrIndex->getType());
 
-		if(ptr->getType()->getPointerElementType()->isClassType() || ptr->getType()->getPointerElementType()->isStructType())
+		if(ptr->getType()->getPointerElementType()->isStructType())
 			error("irbuilder: use the other function for struct types");
 
 		Instruction* instr = make_instr(OpKind::Value_GetPointer, false, ptr->getType(), { ptr, ptrIndex });
@@ -1487,7 +1382,7 @@ namespace fir
 	static Instruction* _insertValue(Value* val, size_t idx, Type* et, Value* elm)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
 		if(elm->getType() != et)
@@ -1496,12 +1391,7 @@ namespace fir
 				elm->getType(), et);
 		}
 
-		int ofs = 0;
-		//! VTABLE HANDLING
-		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
-			ofs = 1;
-
-		std::vector<Value*> args = { val, elm, ConstantInt::getNative(idx + ofs) };
+		std::vector<Value*> args = { val, elm, ConstantInt::getNative(idx) };
 
 		// note: no sideeffects, since we return a new aggregate
 		return make_instr(OpKind::Value_InsertValue, false, t, args);
@@ -1510,15 +1400,10 @@ namespace fir
 	static Instruction* _extractValue(Value* val, size_t idx, Type* et)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
-		int ofs = 0;
-		//! VTABLE HANDLING
-		if(t->isClassType() && t->toClassType()->getVirtualMethodCount() > 0)
-			ofs = 1;
-
-		std::vector<Value*> args = { val, ConstantInt::getNative(idx + ofs) };
+		std::vector<Value*> args = { val, ConstantInt::getNative(idx) };
 
 		// note: no sideeffects, since we return a new aggregate
 		return make_instr(OpKind::Value_ExtractValue, false, et, args);
@@ -1532,9 +1417,6 @@ namespace fir
 	Value* IRBuilder::InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(t->isClassType())
-			error("irbuilder: classes do not support element access by index");
-
 		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not a supported aggregate type (have '%s')", t);
 
@@ -1554,14 +1436,11 @@ namespace fir
 	Value* IRBuilder::ExtractValue(Value* val, const std::vector<size_t>& inds, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType() && !t->isTupleType() && !t->isArrayType())
+		if(!t->isStructType() && !t->isTupleType() && !t->isArrayType())
 			error("irbuilder: val is not an aggregate type (have '%s')", t);
 
 		if(inds.size() != 1)
 			error("irbuilder: must have exactly one index!");
-
-		if(t->isClassType())
-			error("irbuilder: classes do not support element access by index");
 
 		Type* et = 0;
 		if(t->isStructType())       et = t->toStructType()->getElementN(inds[0]);
@@ -1576,13 +1455,12 @@ namespace fir
 	Value* IRBuilder::InsertValueByName(Value* val, const std::string& n, Value* elm, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType())
-			error("irbuilder: val is not an aggregate type with named members (class or struct) (have '%s')", t);
+		if(!t->isStructType())
+			error("irbuilder: val is not an aggregate type with named members (struct) (have '%s')", t);
 
 		size_t ind = 0;
 		Type* et = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n), et = t->toStructType()->getElement(n);
-		else if(t->isClassType())   ind = t->toClassType()->getAbsoluteElementIndex(n), et = t->toClassType()->getElement(n);
 		else                        iceAssert(0);
 
 		return this->addInstruction(_insertValue(val, ind, et, elm), vname);
@@ -1591,145 +1469,17 @@ namespace fir
 	Value* IRBuilder::ExtractValueByName(Value* val, const std::string& n, const std::string& vname)
 	{
 		Type* t = val->getType();
-		if(!t->isStructType() && !t->isClassType())
-			error("irbuilder: val is not an aggregate type with named members (class or struct) (have '%s')", t);
+		if(!t->isStructType())
+			error("irbuilder: val is not an aggregate type with named members (struct) (have '%s')", t);
 
 		size_t ind = 0;
 		Type* et = 0;
 		if(t->isStructType())       ind = t->toStructType()->getElementIndex(n), et = t->toStructType()->getElement(n);
-		else if(t->isClassType())   ind = t->toClassType()->getAbsoluteElementIndex(n), et = t->toClassType()->getElement(n);
 		else                        iceAssert(0);
 
 		return this->addInstruction(_extractValue(val, ind, et), vname);
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-	Value* IRBuilder::GetSAAData(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetData, false, getSAAElmType(arr->getType())->getMutablePointerTo(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAAData(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		auto t = getSAAElmType(arr->getType());
-		if(val->getType() != t->getMutablePointerTo())
-		{
-			error("irbuilder: val is not a pointer to elm type (need '%s', have '%s')",
-				t->getMutablePointerTo(), val->getType());
-		}
-
-		Instruction* instr = make_instr(OpKind::SAA_SetData, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAALength(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetLength, false, Type::getNativeWord(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAALength(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetLength, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAACapacity(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetCapacity, false, Type::getNativeWord(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAACapacity(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetCapacity, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAARefCountPointer(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetRefCountPtr, false, Type::getNativeWordPtr(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAARefCountPointer(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord()->getPointerTo())
-			error("irbuilder: val is not an int64 pointer");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetRefCountPtr, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAARefCount(Value* arr, const std::string& vname)
-	{
-		return this->ReadPtr(this->GetSAARefCountPointer(arr), vname);
-	}
-
-	void IRBuilder::SetSAARefCount(Value* arr, Value* val)
-	{
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		this->WritePtr(val, this->PointerTypeCast(this->GetSAARefCountPointer(arr), Type::getNativeWordPtr()->getMutablePointerVersion()));
-	}
 
 
 
@@ -1810,99 +1560,6 @@ namespace fir
 	}
 
 
-
-
-
-
-
-
-	Value* IRBuilder::GetAnyTypeID(Value* any, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetTypeID, false, Type::getNativeUWord(), { any });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyTypeID(Value* any, Value* val, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		else if(val->getType() != Type::getNativeUWord())
-			error("irbuilder: val is not a uint64");
-
-		Instruction* instr = make_instr(OpKind::Any_SetTypeID, true, Type::getAny(), { any, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetAnyData(Value* any, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetData, false, ArrayType::get(Type::getInt8(),
-			BUILTIN_ANY_DATA_BYTECOUNT), { any });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyData(Value* any, Value* val, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		else if(val->getType() != ArrayType::get(Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT))
-			error("irbuilder: val is not array type (got '%s')", val->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_SetData, true, Type::getAny(), { any, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetAnyRefCountPointer(Value* arr, const std::string& vname)
-	{
-		if(!arr->getType()->isAnyType())
-			error("irbuilder: arr is not an any type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetRefCountPtr, false, Type::getNativeWordPtr(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyRefCountPointer(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!arr->getType()->isAnyType())
-			error("irbuilder: arr is not an any type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord()->getPointerTo())
-			error("irbuilder: val is not an int64 pointer");
-
-		Instruction* instr = make_instr(OpKind::Any_SetRefCountPtr, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetAnyRefCount(Value* arr, const std::string& vname)
-	{
-		return this->ReadPtr(this->GetAnyRefCountPointer(arr), vname);
-	}
-
-	void IRBuilder::SetAnyRefCount(Value* arr, Value* val)
-	{
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		this->WritePtr(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr),
-			Type::getNativeWordPtr()->getMutablePointerVersion()));
-	}
 
 
 
@@ -2240,14 +1897,7 @@ namespace fir
 	{
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
-		{
-			// warn("changing current function in irbuilder (from %s to %s)",
-			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
-			// 	func->getName()
-			// );
-
 			this->currentFunction = block->parentFunction;
-		}
 
 		this->currentFunction->blocks.push_back(block);
 
@@ -2263,15 +1913,7 @@ namespace fir
 	{
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
-		{
-			// warn("changing current function in irbuilder (from %s to %s)",
-			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
-			// 	nb->parentFunction->getName()
-			// );
-
-
 			this->currentFunction = nb->parentFunction;
-		}
 
 		for(size_t i = 0; i < this->currentFunction->blocks.size(); i++)
 		{

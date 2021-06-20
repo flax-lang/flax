@@ -52,8 +52,6 @@ namespace cgn
 		BlockPoint(sst::Block* b) : block(b) { }
 
 		sst::Block* block = 0;
-
-		std::vector<fir::Value*> refCountedValues;
 		std::vector<fir::Value*> raiiValues;
 	};
 
@@ -138,13 +136,6 @@ namespace cgn
 		fir::Value* getDefaultValue(fir::Type* type);
 
 		fir::Value* getConstructedStructValue(fir::StructType* str, const std::vector<FnCallArgument>& args);
-		fir::Value* constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, const std::vector<FnCallArgument>& args);
-
-		fir::Value* callVirtualMethod(sst::FunctionCall* call);
-
-		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
-		fir::ConstantValue* unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target);
-
 		CGResult getStructFieldImplicitly(std::string name);
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);
@@ -183,16 +174,7 @@ namespace cgn
 
 		std::pair<OperatorFn, fir::Function*> getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op);
 
-		bool isRefCountedType(fir::Type* type);
-		void incrementRefCount(fir::Value* val);
-		void decrementRefCount(fir::Value* val);
-
-		void addRefCountedValue(fir::Value* val);
-		void removeRefCountedValue(fir::Value* val);
-
-		std::vector<fir::Value*> getRefCountedValues();
-
-		void autoAssignRefCountedValue(fir::Value* lhs, fir::Value* rhs, bool isInitial);
+		void performAssignment(fir::Value* lhs, fir::Value* rhs, bool isInitial);
 
 		void addRAIIOrRCValueIfNecessary(fir::Value* val, fir::Type* typeOverride = 0);
 

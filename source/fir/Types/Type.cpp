@@ -42,22 +42,7 @@ namespace fir
 	{
 		if(from == to) return 0;
 
-		if(from->isConstantNumberType() && to->isPrimitiveType())
-		{
-			auto cty = from->toConstantNumberType();
-			if(!cty->isFloating() && to->isIntegerType())
-				return 0;
-
-			else if(!cty->isFloating() && to->isFloatingPointType())
-				return 1;
-
-			else if(cty->isFloating())      // not isint means isfloat, so if we're doing float -> float the cost is 0
-				return 0;
-
-			else                            // if we reach here, we're trying to do float -> int, which is a no-go.
-				return -1;
-		}
-		else if(from->isIntegerType() && to->isIntegerType())
+		if(from->isIntegerType() && to->isIntegerType())
 		{
 			if(from->isSignedIntType() == to->isSignedIntType())
 			{
@@ -66,16 +51,16 @@ namespace fir
 
 				switch(bitdiff)
 				{
-					case 0:		return 0;	// same
-					case 8:		return 1;	// i16 - i8
-					case 16:	return 1;	// i32 - i16
-					case 32:	return 1;	// i64 - i32
+					case 0:     return 0;   // same
+					case 8:     return 1;   // i16 - i8
+					case 16:    return 1;   // i32 - i16
+					case 32:    return 1;   // i64 - i32
 
-					case 24:	return 2;	// i32 - i8
-					case 48:	return 2;	// i64 - i16
+					case 24:    return 2;   // i32 - i8
+					case 48:    return 2;   // i64 - i16
 
-					case 56:	return 3;	// i64 - i8
-					default:	iceAssert(0);
+					case 56:    return 3;   // i64 - i8
+					default:    iceAssert(0);
 				}
 			}
 			else
@@ -87,25 +72,9 @@ namespace fir
 				return -1;
 			}
 		}
-		else if(from->isDynamicArrayType() && to->isArraySliceType() && from->getArrayElementType() == to->getArrayElementType())
-		{
-			return 2;
-		}
-		else if(from->isDynamicArrayType() && from->getArrayElementType()->isVoidType() && (to->isDynamicArrayType() || to->isArraySliceType() || to->isArrayType()))
-		{
-			return 2;
-		}
 		else if(from->isFloatingPointType() && to->isFloatingPointType())
 		{
 			return 1;
-		}
-		else if(from->isStringType() && to == fir::Type::getInt8Ptr())
-		{
-			return 5;
-		}
-		else if(from->isStringType() && to->isCharSliceType())
-		{
-			return 3;
 		}
 		else if(from->isCharSliceType() && to == fir::Type::getInt8Ptr())
 		{
@@ -126,13 +95,6 @@ namespace fir
 		{
 			// same with slices -- cast from mutable slice to immut slice can be implicit.
 			return 1;
-		}
-		//* note: we don't need to check that 'to' is a class type, because if it's not then the parent check will fail anyway.
-		else if(from->isPointerType() && to->isPointerType() && from->getPointerElementType()->isClassType()
-			&& from->getPointerElementType()->toClassType()->hasParent(to->getPointerElementType()))
-		{
-			// cast from a derived class pointer to a base class pointer
-			return 2;
 		}
 		else if(from->isNullType() && to->isPointerType())
 		{
@@ -155,11 +117,6 @@ namespace fir
 			}
 
 			return sum;
-		}
-		else if(to->isAnyType())
-		{
-			// lol. completely arbitrary.
-			return 15;
 		}
 
 		return -1;
@@ -331,8 +288,6 @@ namespace fir
 		else if(copy == FLOAT64_TYPE_STRING)            real = Type::getFloat64();
 		else if(copy == FLOAT128_TYPE_STRING)           real = Type::getFloat128();
 
-		else if(copy == STRING_TYPE_STRING)             real = Type::getString();
-
 		else if(copy == CHARACTER_SLICE_TYPE_STRING)    real = ArraySliceType::get(Type::getInt8(), false);
 
 		else if(copy == BOOL_TYPE_STRING)               real = Type::getBool();
@@ -344,8 +299,6 @@ namespace fir
 
 		else if(copy == FLOAT_TYPE_STRING)              real = Type::getFloat32();
 		else if(copy == DOUBLE_TYPE_STRING)             real = Type::getFloat64();
-
-		else if(copy == ANY_TYPE_STRING)                real = Type::getAny();
 
 		else return 0;
 
@@ -359,10 +312,9 @@ namespace fir
 
 	Type* Type::getArrayElementType()
 	{
-		if(this->isDynamicArrayType())		return this->toDynamicArrayType()->getElementType();
-		else if(this->isArrayType())		return this->toArrayType()->getElementType();
-		else if(this->isArraySliceType())	return this->toArraySliceType()->getElementType();
-		else								error("'%s' is not an array type", this);
+		if(this->isArrayType())             return this->toArrayType()->getElementType();
+		else if(this->isArraySliceType())   return this->toArraySliceType()->getElementType();
+		else                                error("'%s' is not an array type", this);
 	}
 
 
@@ -398,21 +350,12 @@ namespace fir
 		else if(ty->isPointerType())        return _containsPlaceholders(ty->getPointerElementType(), seen, found);
 		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isArraySliceType())     return _containsPlaceholders(ty->getArrayElementType(), seen, found);
-		else if(ty->isDynamicArrayType())   return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isArrayType())          return _containsPlaceholders(ty->getArrayElementType(), seen, found);
 		else if(ty->isUnionVariantType())   return _containsPlaceholders(ty->toUnionVariantType()->getInteriorType(), seen, found);
 		else if(ty->isTupleType())
 		{
 			bool res = false;
 			for(auto t : ty->toTupleType()->getElements())
-				res |= _containsPlaceholders(t, seen, found);
-
-			return res;
-		}
-		else if(ty->isClassType())
-		{
-			bool res = false;
-			for(auto t : ty->toClassType()->getElements())
 				res |= _containsPlaceholders(t, seen, found);
 
 			return res;
@@ -500,12 +443,6 @@ namespace fir
 		return static_cast<StructType*>(this);
 	}
 
-	ClassType* Type::toClassType()
-	{
-		if(this->kind != TypeKind::Class) error("not class type");
-		return static_cast<ClassType*>(this);
-	}
-
 	TupleType* Type::toTupleType()
 	{
 		if(this->kind != TypeKind::Tuple) error("not tuple type");
@@ -518,12 +455,6 @@ namespace fir
 		return static_cast<ArrayType*>(this);
 	}
 
-	DynamicArrayType* Type::toDynamicArrayType()
-	{
-		if(this->kind != TypeKind::DynamicArray) error("not dynamic array type");
-		return static_cast<DynamicArrayType*>(this);
-	}
-
 	ArraySliceType* Type::toArraySliceType()
 	{
 		if(this->kind != TypeKind::ArraySlice) error("not array slice type");
@@ -534,12 +465,6 @@ namespace fir
 	{
 		if(this->kind != TypeKind::Range) error("not range type");
 		return static_cast<RangeType*>(this);
-	}
-
-	StringType* Type::toStringType()
-	{
-		if(this->kind != TypeKind::String) error("not string type");
-		return static_cast<StringType*>(this);
 	}
 
 	EnumType* Type::toEnumType()
@@ -560,22 +485,10 @@ namespace fir
 		return static_cast<RawUnionType*>(this);
 	}
 
-	AnyType* Type::toAnyType()
-	{
-		if(this->kind != TypeKind::Any) error("not any type");
-		return static_cast<AnyType*>(this);
-	}
-
 	NullType* Type::toNullType()
 	{
 		if(this->kind != TypeKind::Null) error("not null type");
 		return static_cast<NullType*>(this);
-	}
-
-	ConstantNumberType* Type::toConstantNumberType()
-	{
-		if(this->kind != TypeKind::ConstantNumber) error("not constant number type");
-		return static_cast<ConstantNumberType*>(this);
 	}
 
 	PolyPlaceholderType* Type::toPolyPlaceholderType()
@@ -609,11 +522,6 @@ namespace fir
 
 
 
-	bool Type::isConstantNumberType()
-	{
-		return this->kind == TypeKind::ConstantNumber;
-	}
-
 	bool Type::isStructType()
 	{
 		return this->kind == TypeKind::Struct;
@@ -622,11 +530,6 @@ namespace fir
 	bool Type::isTupleType()
 	{
 		return this->kind == TypeKind::Tuple;
-	}
-
-	bool Type::isClassType()
-	{
-		return this->kind == TypeKind::Class;
 	}
 
 	bool Type::isPackedStruct()
@@ -679,11 +582,6 @@ namespace fir
 		return this->kind == TypeKind::Void;
 	}
 
-	bool Type::isDynamicArrayType()
-	{
-		return this->kind == TypeKind::DynamicArray;
-	}
-
 	bool Type::isVariadicArrayType()
 	{
 		return this->isArraySliceType() && this->toArraySliceType()->isVariadicType();
@@ -697,11 +595,6 @@ namespace fir
 	bool Type::isRangeType()
 	{
 		return this->kind == TypeKind::Range;
-	}
-
-	bool Type::isStringType()
-	{
-		return this->kind == TypeKind::String;
 	}
 
 	bool Type::isCharType()
@@ -722,11 +615,6 @@ namespace fir
 	bool Type::isRawUnionType()
 	{
 		return this->kind == TypeKind::RawUnion;
-	}
-
-	bool Type::isAnyType()
-	{
-		return this->kind == TypeKind::Any;
 	}
 
 	bool Type::isNullType()
@@ -979,17 +867,6 @@ namespace fir
 		return RangeType::get();
 	}
 
-	StringType* Type::getString()
-	{
-		return StringType::get();
-	}
-
-	AnyType* Type::getAny()
-	{
-		return AnyType::get();
-	}
-
-
 
 
 
@@ -1012,11 +889,6 @@ namespace fir
 
 		if(packed)
 		{
-			// gg
-			// return util::foldl(0, tys, [](Type* a, Type* b) -> size_t {
-			// 	return getSizeOfType(a) + getSizeOfType(b);
-			// });
-
 			size_t ret = 0;
 			for(const auto& t : tys)
 				ret += getSizeOfType(t);
@@ -1054,7 +926,6 @@ namespace fir
 		else if(type->isBoolType())                                 return 1;
 		else if(type->isPrimitiveType())                            return type->getBitWidth() / 8;
 		else if(type->isArraySliceType())                           return getAggregateSize({ ptrt, wordty });
-		else if(type->isStringType() || type->isDynamicArrayType()) return getAggregateSize({ ptrt, wordty, wordty, ptrt });
 		else if(type->isRangeType())                                return getAggregateSize({ wordty, wordty, wordty });
 		else if(type->isPointerType() || type->isFunctionType() || type->isNullType())
 		{
@@ -1068,21 +939,12 @@ namespace fir
 		{
 			return getAggregateSize({ wordty, type->toEnumType()->getCaseType() });
 		}
-		else if(type->isAnyType())
-		{
-			return getAggregateSize({ wordty, ptrt, fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT) });
-		}
-		else if(type->isClassType() || type->isStructType() || type->isTupleType())
+		else if(type->isStructType() || type->isTupleType())
 		{
 			bool packed = false;
 			std::vector<Type*> tys;
 
-			if(type->isClassType())
-			{
-				tys = type->toClassType()->getAllElementsIncludingBase();
-				tys.insert(tys.begin(), fir::Type::getInt8Ptr());
-			}
-			else if(type->isStructType())
+			if(type->isStructType())
 			{
 				packed = type->toStructType()->isPackedStruct();
 				tys = type->toStructType()->getElements();
@@ -1143,50 +1005,6 @@ namespace fir
 	{
 		if(type->isArrayType())     return getAlignmentOfType(type->getArrayElementType());
 		else                        return getSizeOfType(type);
-	}
-
-
-	bool isRefCountedType(Type* type)
-	{
-		// strings, and structs with rc inside
-		if(type->isStructType())
-		{
-			for(auto m : type->toStructType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isClassType())
-		{
-			for(auto m : type->toClassType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isTupleType())
-		{
-			for(auto m : type->toTupleType()->getElements())
-			{
-				if(isRefCountedType(m))
-					return true;
-			}
-
-			return false;
-		}
-		else if(type->isArrayType())	// note: no slices, because slices don't own memory
-		{
-			return isRefCountedType(type->getArrayElementType());
-		}
-		else
-		{
-			return type->isStringType() || type->isAnyType() || type->isDynamicArrayType();
-		}
 	}
 }
 

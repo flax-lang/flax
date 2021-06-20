@@ -159,31 +159,8 @@ namespace ast
 		Block* body = 0;
 
 		bool isMutating = false;
-
-		bool isVirtual = false;
 		bool isOverride = false;
 	};
-
-	struct InitFunctionDefn : Parameterisable
-	{
-		InitFunctionDefn(const Location& l) : Parameterisable(l) { this->readableName = "class initialiser definition"; }
-		~InitFunctionDefn() { }
-
-		virtual std::string getKind() override { return "initialiser"; }
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
-		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
-
-		using Param = FuncDefn::Param;
-
-		std::vector<Param> params;
-
-		bool didCallSuper = false;
-		std::vector<std::pair<std::string, Expr*>> superArgs;
-
-		Block* body = 0;
-		FuncDefn* actualDefn = 0;
-	};
-
 
 	struct ForeignFuncDefn : Stmt
 	{
@@ -261,33 +238,6 @@ namespace ast
 		Expr* initialiser = 0;
 		DecompMapping bindings;
 	};
-
-
-	struct PlatformDefn : Stmt
-	{
-		PlatformDefn(const Location& l) : Stmt(l) { this->readableName = "platform-specific definition"; }
-		~PlatformDefn() { }
-
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
-
-		enum class Type
-		{
-			Invalid,
-			Intrinsic,
-			IntegerType
-		};
-
-		Type defnType = Type::Invalid;
-
-		// only valid if defnType == Intrinsic
-		ForeignFuncDefn* intrinsicDefn = 0;
-
-		// only valid if defnType == IntegerType
-		std::string typeName;
-		size_t typeSizeInBits = 0;
-	};
-
-
 
 
 
@@ -434,31 +384,6 @@ namespace ast
 
 		std::vector<std::tuple<std::string, Location, pts::Type*>> fields;
 		std::vector<FuncDefn*> methods;
-	};
-
-	struct ClassDefn : TypeDefn
-	{
-		ClassDefn(const Location& l) : TypeDefn(l) { this->readableName = "class definition"; }
-		~ClassDefn() { }
-
-		virtual std::string getKind() override { return "class"; }
-		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
-		virtual TCResult generateDeclaration(sst::TypecheckState* fs, fir::Type* infer, const TypeParamMap_t& gmaps) override;
-
-		std::vector<pts::Type*> bases;
-
-		std::vector<InitFunctionDefn*> initialisers;
-		InitFunctionDefn* deinitialiser = 0;
-		InitFunctionDefn* copyInitialiser = 0;
-		InitFunctionDefn* moveInitialiser = 0;
-
-		std::vector<VarDefn*> fields;
-		std::vector<FuncDefn*> methods;
-
-		std::vector<VarDefn*> staticFields;
-		std::vector<FuncDefn*> staticMethods;
-
-		std::vector<TypeDefn*> nestedTypes;
 	};
 
 	struct EnumDefn : TypeDefn
@@ -747,12 +672,14 @@ namespace ast
 
 	struct LitNumber : Expr
 	{
-		LitNumber(const Location& l, const std::string& n) : Expr(l), num(n) { this->readableName = "number literal"; }
+		LitNumber(const Location& l, const std::string& n, bool flt)
+			: Expr(l), num(n), is_floating(flt) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string num;
+		bool is_floating;
 	};
 
 	struct LitChar : Expr

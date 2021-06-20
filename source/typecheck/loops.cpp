@@ -25,20 +25,17 @@ TCResult ast::ForeachLoop::typecheck(sst::TypecheckState* fs, fir::Type* inferre
 	ret->array = this->array->typecheck(fs).expr();
 
 	fir::Type* elmty = 0;
-	if(ret->array->type->isArrayType() || ret->array->type->isDynamicArrayType() || ret->array->type->isArraySliceType())
+	if(ret->array->type->isArrayType() || ret->array->type->isArraySliceType())
 		elmty = ret->array->type->getArrayElementType();
 
 	else if(ret->array->type->isRangeType())
 		elmty = fir::Type::getNativeWord();
 
-	else if(ret->array->type->isStringType())
-		elmty = fir::Type::getInt8();
-
 	else
 		error(this->array, "invalid type '%s' in foreach loop", ret->array->type);
 
 	iceAssert(elmty);
-	bool allowref = !(ret->array->type->isStringType() || ret->array->type->isRangeType());
+	bool allowref = !ret->array->type->isRangeType();
 
 	if(!this->indexVar.empty())
 	{

@@ -61,24 +61,6 @@ sst::Expr* ast::FunctionCall::typecheckWithArguments(sst::TypecheckState* fs, co
 	{
 		iceAssert(target->type->isFunctionType());
 
-		//* note: we check for this->name != "init" because when we explicitly call an init function, we don't want the extra stuff that
-		//* comes with that -- we'll just treat it as a normal function call.
-		if(auto fnd = dcast(sst::FunctionDefn, target); this->name != "init" && fnd && fnd->id.name == "init" && fnd->parentTypeForMethod && fnd->parentTypeForMethod->isClassType())
-		{
-			// ok, great... I guess?
-			auto ret = util::pool<sst::ClassConstructorCall>(this->loc, fnd->parentTypeForMethod);
-
-			ret->target = fnd;
-			ret->arguments = ts;
-			ret->classty = dcast(sst::ClassDefn, fs->typeDefnMap[fnd->parentTypeForMethod]);
-
-			iceAssert(ret->target);
-
-			return ret;
-		}
-
-
-
 		auto call = util::pool<sst::FunctionCall>(this->loc, target->type->toFunctionType()->getReturnType());
 		call->name = this->name;
 		call->target = target;

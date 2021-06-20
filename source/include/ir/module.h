@@ -27,8 +27,6 @@ namespace fir
 		GlobalVariable* tryGetGlobalVariable(const Name& id);
 		GlobalVariable* getGlobalVariable(const Name& id);
 
-		GlobalVariable* getOrCreateVirtualTableForClass(ClassType* cls);
-
 		GlobalVariable* createGlobalString(const std::string& str);
 
 		std::vector<GlobalVariable*> getGlobalVariables();
@@ -60,7 +58,6 @@ namespace fir
 
 		void finaliseGlobalConstructors();
 
-		const util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>>& _getVtables() { return this->vtables; }
 		const util::hash_map<Name, Function*>& _getIntrinsicFunctions() { return this->intrinsicFunctions; }
 		const util::hash_map<std::string, GlobalVariable*>& _getGlobalStrings() { return this->globalStrings; }
 		const util::hash_map<Name, GlobalVariable*>& _getGlobals() { return this->globals; }
@@ -70,7 +67,6 @@ namespace fir
 
 		private:
 		std::string moduleName;
-		util::hash_map<ClassType*, std::pair<std::vector<Function*>, GlobalVariable*>> vtables;
 		util::hash_map<std::string, GlobalVariable*> globalStrings;
 
 		util::hash_map<Name, GlobalVariable*> globals;

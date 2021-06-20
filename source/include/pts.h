@@ -21,7 +21,6 @@ namespace pts
 	struct TupleType;
 	struct ArraySliceType;
 	struct FixedArrayType;
-	struct DynamicArrayType;
 	struct VariadicArrayType;
 	struct FunctionType;
 
@@ -38,7 +37,6 @@ namespace pts
 		FunctionType* toFunctionType();
 		FixedArrayType* toFixedArrayType();
 		ArraySliceType* toArraySliceType();
-		DynamicArrayType* toDynamicArrayType();
 		VariadicArrayType* toVariadicArrayType();
 
 		bool isNamedType();
@@ -47,7 +45,6 @@ namespace pts
 		bool isFunctionType();
 		bool isArraySliceType();
 		bool isFixedArrayType();
-		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
 		Location loc;
@@ -118,16 +115,6 @@ namespace pts
 		size_t size = 0;
 	};
 
-
-	// int[x], where x is *not* a literal
-	struct DynamicArrayType : Type
-	{
-		virtual ~DynamicArrayType() { }
-		explicit DynamicArrayType(const Location& l, pts::Type* b) : Type(l), base(b) { }
-		virtual std::string str() override;
-
-		pts::Type* base = 0;
-	};
 
 
 	struct VariadicArrayType : Type

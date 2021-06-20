@@ -93,18 +93,15 @@ namespace fir
 
 	struct Type;
 	struct Module;
-	struct AnyType;
 	struct BoolType;
 	struct EnumType;
 	struct NullType;
 	struct VoidType;
 	struct ArrayType;
-	struct ClassType;
 	struct RangeType;
 	struct TraitType;
 	struct TupleType;
 	struct UnionType;
-	struct StringType;
 	struct StructType;
 	struct OpaqueType;
 	struct PointerType;
@@ -112,20 +109,14 @@ namespace fir
 	struct RawUnionType;
 	struct PrimitiveType;
 	struct ArraySliceType;
-	struct DynamicArrayType;
 	struct UnionVariantType;
-	struct ConstantNumberType;
 	struct PolyPlaceholderType;
 
 	struct ConstantValue;
 	struct ConstantArray;
 	struct Function;
 
-	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
-	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
-
 	int getCastDistance(Type* from, Type* to);
-	bool isRefCountedType(Type* ty);
 
 	void setNativeWordSizeInBits(size_t sz);
 	size_t getNativeWordSizeInBits();
@@ -144,14 +135,12 @@ namespace fir
 	{
 		Invalid,
 
-		Any,
 		Null,
 		Void,
 		Enum,
 		Bool,
 		Array,
 		Tuple,
-		Class,
 		Range,
 		Union,
 		Trait,
@@ -163,9 +152,7 @@ namespace fir
 		RawUnion,
 		Primitive,
 		ArraySlice,
-		DynamicArray,
 		UnionVariant,
-		ConstantNumber,
 		PolyPlaceholder,
 	};
 
@@ -197,8 +184,6 @@ namespace fir
 		Type* getArrayElementType();
 
 		PolyPlaceholderType* toPolyPlaceholderType();
-		ConstantNumberType* toConstantNumberType();
-		DynamicArrayType* toDynamicArrayType();
 		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
@@ -207,17 +192,14 @@ namespace fir
 		PointerType* toPointerType();
 		OpaqueType* toOpaqueType();
 		StructType* toStructType();
-		StringType* toStringType();
 		TraitType* toTraitType();
 		RangeType* toRangeType();
-		ClassType* toClassType();
 		UnionType* toUnionType();
 		TupleType* toTupleType();
 		ArrayType* toArrayType();
 		BoolType* toBoolType();
 		EnumType* toEnumType();
 		NullType* toNullType();
-		AnyType* toAnyType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -225,7 +207,6 @@ namespace fir
 		bool isTraitType();
 		bool isUnionType();
 		bool isTupleType();
-		bool isClassType();
 		bool isStructType();
 		bool isPackedStruct();
 		bool isRawUnionType();
@@ -234,11 +215,9 @@ namespace fir
 		bool isRangeType();
 
 		bool isCharType();
-		bool isStringType();
 
 		bool isOpaqueType();
 
-		bool isAnyType();
 		bool isEnumType();
 		bool isArrayType();
 		bool isIntegerType();
@@ -248,7 +227,6 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isArraySliceType();
-		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
 		bool isCharSliceType();
@@ -261,7 +239,6 @@ namespace fir
 
 		bool isMutablePointer();
 		bool isImmutablePointer();
-		bool isConstantNumberType();
 		bool isPolyPlaceholderType();
 
 		bool containsPlaceholders();
@@ -323,10 +300,7 @@ namespace fir
 		static PointerType* getMutUint128Ptr();
 
 		static ArraySliceType* getCharSlice(bool mut);
-		static StringType* getString();
 		static RangeType* getRange();
-
-		static AnyType* getAny();
 
 		static PrimitiveType* getNativeWord();
 		static PrimitiveType* getNativeUWord();
@@ -433,36 +407,6 @@ namespace fir
 		public:
 		static NullType* get();
 	};
-
-
-	// special case -- the type also needs to store the number, to know things like
-	// whether it's signed, negative, an integer, and other stuff.
-	struct ConstantNumberType : Type
-	{
-		friend struct Type;
-
-		bool isSigned();
-		bool isFloating();
-		size_t getMinBits();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		static ConstantNumberType* get(bool neg, bool flt, size_t bits);
-
-		virtual ~ConstantNumberType() override { }
-
-
-		protected:
-		ConstantNumberType(bool neg, bool floating, size_t bits);
-
-		bool _floating = false;
-		bool _signed = false;
-		size_t _bits = 0;
-	};
-
 
 	struct PolyPlaceholderType : Type
 	{
@@ -806,114 +750,6 @@ namespace fir
 
 
 
-	struct ClassType : Type
-	{
-		friend struct Type;
-		friend struct Module;
-
-		// methods
-		Name getTypeName();
-		size_t getElementCount();
-		// Type* getElementN(size_t n);
-		Type* getElement(const std::string& name);
-		bool hasElementWithName(const std::string& name);
-		size_t getAbsoluteElementIndex(const std::string& name);
-		const std::vector<Type*>& getElements();
-		std::vector<Type*> getAllElementsIncludingBase();
-		const std::vector<std::string>& getNameList();
-
-		const util::hash_map<std::string, size_t>& getElementNameMap();
-
-		const std::vector<Function*>& getMethods();
-		std::vector<Function*> getMethodsWithName(const std::string& id);
-		Function* getMethodWithType(FunctionType* ftype);
-
-		const std::vector<Function*>& getInitialiserFunctions();
-		void setInitialiserFunctions(const std::vector<Function*>& list);
-
-		Function* getInlineInitialiser();
-		void setInlineInitialiser(Function* fn);
-
-		Function* getInlineDestructor();
-		void setInlineDestructor(Function* fn);
-
-		void setMembers(const std::vector<std::pair<std::string, Type*>>& members);
-		void setMethods(const std::vector<Function*>& methods);
-
-		ClassType* getBaseClass();
-		void setBaseClass(ClassType* ty);
-
-		void setDestructor(Function* f);
-		void setCopyConstructor(Function* f);
-		void setMoveConstructor(Function* f);
-
-		Function* getDestructor();
-		Function* getCopyConstructor();
-		Function* getMoveConstructor();
-
-		void addTraitImpl(TraitType* trt);
-		bool implementsTrait(TraitType* trt);
-		std::vector<TraitType*> getImplementedTraits();
-
-		bool hasParent(Type* base);
-
-		void addVirtualMethod(Function* method);
-		size_t getVirtualMethodIndex(const std::string& name, FunctionType* ft);
-
-		size_t getVirtualMethodCount();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		// protected constructor
-		virtual ~ClassType() override { }
-		protected:
-		ClassType(const Name& name, const std::vector<std::pair<std::string, Type*>>& mems, const std::vector<Function*>& methods,
-			const std::vector<Function*>& inits);
-
-
-		// fields (protected)
-		Name className;
-		std::vector<Type*> typeList;
-		std::vector<std::string> nameList;
-		std::vector<Function*> methodList;
-		std::vector<Function*> initialiserList;
-
-		std::vector<TraitType*> implTraits;
-
-		util::hash_map<std::string, size_t> indexMap;
-		util::hash_map<std::string, Type*> classMembers;
-		util::hash_map<std::string, std::vector<Function*>> classMethodMap;
-
-		//* how it works is that we will add in the mappings from the base class,
-		//* and for our own matching virtual methods, we'll map to the same index.
-
-
-		size_t virtualMethodCount = 0;
-		// util::hash_map<Function*, size_t> virtualMethodMap;
-		util::hash_map<size_t, Function*> reverseVirtualMethodMap;
-
-		//* note: we do it this way (where we *EXCLUDE THE SELF POINTER*), because it's just easier -- to compare, and everything.
-		//* we really don't have a use for mapping a Function to an index, only the other way.
-		std::map<std::pair<std::string, std::vector<Type*>>, size_t> virtualMethodMap;
-
-		ClassType* baseClass = 0;
-
-		Function* inlineInitialiser = 0;
-		Function* inlineDestructor = 0;
-
-		Function* destructor = 0;
-		Function* copyConstructor = 0;
-		Function* moveConstructor = 0;
-
-		// static funcs
-		public:
-		static ClassType* createWithoutBody(const Name& name);
-		static ClassType* create(const Name& name, const std::vector<std::pair<std::string, Type*>>& members,
-			const std::vector<Function*>& methods, const std::vector<Function*>& inits);
-	};
 
 
 	struct EnumType : Type
@@ -983,31 +819,6 @@ namespace fir
 		static ArrayType* get(Type* elementType, size_t num);
 	};
 
-
-	struct DynamicArrayType : Type
-	{
-		friend struct Type;
-
-		// methods
-		Type* getElementType();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		// protected constructor
-		virtual ~DynamicArrayType() override { }
-		protected:
-		DynamicArrayType(Type* elmType);
-
-		// fields
-		Type* arrayElementType;
-
-		// static funcs
-		public:
-		static DynamicArrayType* get(Type* elementType);
-	};
 
 
 	struct ArraySliceType : Type
@@ -1110,45 +921,7 @@ namespace fir
 	};
 
 
-	struct StringType : Type
-	{
-		friend struct Type;
 
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~StringType() override { }
-		protected:
-		StringType();
-
-		public:
-		static StringType* get();
-	};
-
-
-
-	struct AnyType : Type
-	{
-		friend struct Type;
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~AnyType() override { }
-		protected:
-		AnyType();
-
-		public:
-		static AnyType* get();
-	};
 
 
 	struct OpaqueType : Type

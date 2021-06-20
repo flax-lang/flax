@@ -39,23 +39,6 @@ static ErrorMsg* wrongDotOpError(ErrorMsg* e, sst::StructDefn* str, const Locati
 	}
 	else
 	{
-		if(auto cls = dcast(sst::ClassDefn, str))
-		{
-			// check static ones for a better error message.
-			sst::Defn* found = 0;
-			for(auto sm : cls->staticMethods)
-				if(sm->id.name == name) { found = sm; break; }
-
-			if(!found)
-			{
-				for(auto sf : cls->staticFields)
-					if(sf->id.name == name) { found = sf; break; }
-			}
-
-
-			if(found) e->append(SimpleError::make(MsgType::Note, found->loc, "use '::' to refer to the static member '%s'", name));
-		}
-
 		return e;
 	}
 };
@@ -228,7 +211,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		return ret;
 	}
-	else if(type->isPointerType() && (type->getPointerElementType()->isStructType() || type->getPointerElementType()->isClassType()))
+	else if(type->isPointerType() && type->getPointerElementType()->isStructType())
 	{
 		type = type->getPointerElementType();
 
@@ -237,96 +220,22 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// TODO: reevaluate this decision?
 	}
-	else if(type->isStringType())
-	{
-		auto rhs = dotop->right;
-		if(auto vr = dcast(ast::Ident, rhs))
-		{
-			// TODO: Extension support here
-			fir::Type* res = 0;
-			if(zfu::match(vr->name, names::saa::FIELD_LENGTH, names::saa::FIELD_CAPACITY,
-				names::saa::FIELD_REFCOUNT, names::string::FIELD_COUNT))
-			{
-				res = fir::Type::getNativeWord();
-			}
-			else if(vr->name == names::saa::FIELD_POINTER)
-			{
-				res = fir::Type::getInt8Ptr();
-			}
-
-
-			if(res)
-			{
-				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
-				tmp->lhs = lhs;
-				tmp->name = vr->name;
-
-				return tmp;
-			}
-			// else: break out below, for extensions
-		}
-		else if(auto fc = dcast(ast::FunctionCall, rhs))
-		{
-			fir::Type* res = 0;
-			std::vector<sst::Expr*> args;
-			if(fc->name == names::saa::FN_CLONE)
-			{
-				res = type;
-				if(fc->args.size() != 0)
-					error(fc, "builtin string method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
-			}
-			else if(fc->name == names::saa::FN_APPEND)
-			{
-				res = fir::Type::getVoid();
-				if(fc->args.size() != 1)
-					error(fc, "builtin string method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
-
-				else if(!fc->args[0].first.empty())
-					error(fc, "argument to builtin method 'append' cannot be named");
-
-				args.push_back(fc->args[0].second->typecheck(fs).expr());
-				if(!args[0]->type->isCharType() && !args[0]->type->isStringType() && !args[0]->type->isCharSliceType())
-				{
-					error(fc, "invalid argument type '%s' to builtin string method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, fir::Type::getInt8(), fir::Type::getCharSlice(false), fir::Type::getString());
-				}
-			}
-
-
-			if(res)
-			{
-				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
-				tmp->lhs = lhs;
-				tmp->args = args;
-				tmp->name = fc->name;
-				tmp->isFunctionCall = true;
-
-				return tmp;
-			}
-		}
-	}
-	else if(type->isDynamicArrayType() || type->isArraySliceType() || type->isArrayType())
+	else if(type->isArraySliceType() || type->isArrayType())
 	{
 		auto rhs = dotop->right;
 		if(auto vr = dcast(ast::Ident, rhs))
 		{
 			fir::Type* res = 0;
-			if(vr->name == names::saa::FIELD_LENGTH || (type->isDynamicArrayType()
-				&& zfu::match(vr->name, names::saa::FIELD_CAPACITY, names::saa::FIELD_REFCOUNT)))
+			if(vr->name == names::array::FIELD_LENGTH)
 			{
 				res = fir::Type::getNativeWord();
 			}
-			else if(vr->name == names::saa::FIELD_POINTER)
+			else if(vr->name == names::array::FIELD_POINTER)
 			{
 				res = type->getArrayElementType()->getPointerTo();
-				if(type->isDynamicArrayType())
-					res = res->getMutablePointerVersion();
-
-				else if(type->isArraySliceType() && type->toArraySliceType()->isMutable())
+				if(type->isArraySliceType() && type->toArraySliceType()->isMutable())
 					res = res->getMutablePointerVersion();
 			}
-
-
 
 			if(res)
 			{
@@ -336,65 +245,8 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 				return tmp;
 			}
+
 			// else: break out below, for extensions
-		}
-		else if(auto fc = dcast(ast::FunctionCall, rhs))
-		{
-			fir::Type* res = 0;
-			std::vector<sst::Expr*> args;
-
-			if(fc->name == names::saa::FN_CLONE)
-			{
-				res = type;
-				if(fc->args.size() != 0)
-					error(fc, "builtin array method 'clone' expects exactly 0 arguments, found %d instead", fc->args.size());
-			}
-			else if(fc->name == names::saa::FN_APPEND)
-			{
-				if(type->isArrayType())
-					error(fc, "'append' method cannot be called on arrays");
-
-				res = fir::DynamicArrayType::get(type->getArrayElementType());
-
-				if(fc->args.size() != 1)
-					error(fc, "builtin array method 'append' expects exactly 1 argument, found %d instead", fc->args.size());
-
-				else if(!fc->args[0].first.empty())
-					error(fc, "argument to builtin method 'append' cannot be named");
-
-				args.push_back(fc->args[0].second->typecheck(fs).expr());
-				if(args[0]->type != type->getArrayElementType()     //? vv logic below looks a little sketch.
-					&& ((args[0]->type->isArraySliceType() && args[0]->type->getArrayElementType() != type->getArrayElementType()))
-					&& args[0]->type != type)
-				{
-					error(fc, "invalid argument type '%s' to builtin array method 'append'; expected one of '%s', '%s', or '%s'",
-						args[0]->type, type, type->getArrayElementType(),
-						fir::ArraySliceType::get(type->getArrayElementType(), false));
-				}
-			}
-			else if(fc->name == names::array::FN_POP)
-			{
-				if(!type->isDynamicArrayType())
-					error(fc, "'pop' method can only be called on dynamic arrays");
-
-				res = type->getArrayElementType();
-
-				if(fc->args.size() != 0)
-					error(fc, "builtin array method 'pop' expects no arguments, found %d instead", fc->args.size());
-			}
-
-			// fallthrough
-
-			if(res)
-			{
-				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
-				tmp->lhs = lhs;
-				tmp->args = args;
-				tmp->name = fc->name;
-				tmp->isFunctionCall = true;
-
-				return tmp;
-			}
 		}
 	}
 	else if(type->isEnumType())
@@ -448,31 +300,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 
 		// else: fallthrough;
 	}
-	else if(type->isAnyType())
-	{
-		auto rhs = dotop->right;
-		if(auto vr = dcast(ast::Ident, rhs))
-		{
-			// TODO: extension support here
-			fir::Type* res = 0;
-			if(vr->name == names::any::FIELD_TYPEID)
-				res = fir::Type::getNativeUWord();
-
-			else if(vr->name == names::any::FIELD_REFCOUNT)
-				res = fir::Type::getNativeWord();
-
-			if(res)
-			{
-				auto tmp = util::pool<sst::BuiltinDotOp>(dotop->right->loc, res);
-				tmp->lhs = lhs;
-				tmp->name = vr->name;
-
-				return tmp;
-			}
-		}
-
-		// else: fallthrough
-	}
 
 
 
@@ -517,16 +344,6 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 				{
 					resolved = res.defn();
 					break;
-				}
-
-				if(auto cls = dcast(sst::ClassDefn, curstr); cls && cls->baseClass)
-				{
-					// teleport out, then back in.
-					fs->teleportOut();
-					fs->teleportInto(cls->baseClass->innerScope);
-
-					curstr = cls->baseClass;
-					continue;
 				}
 
 				// sighs
@@ -593,11 +410,7 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 					if(hmm) return hmm;
 
 					// ok, we didn't find it.
-					if(auto cls = dcast(sst::ClassDefn, copy); cls)
-						copy = cls->baseClass;
-
-					else
-						copy = nullptr;
+					copy = nullptr;
 				}
 			}
 
@@ -793,7 +606,7 @@ static sst::Expr* doStaticDotOp(sst::TypecheckState* fs, ast::DotOperator* dot, 
 
 		if(auto typdef = dcast(sst::TypeDefn, def))
 		{
-			if(dcast(sst::ClassDefn, def) || dcast(sst::StructDefn, def))
+			if(dcast(sst::StructDefn, def))
 			{
 				fs->pushSelfContext(def->type);
 

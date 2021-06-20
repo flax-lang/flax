@@ -89,14 +89,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 	auto doCastIfNecessary = [cs](const Location& loc, fir::Value* val, fir::Type* infer) -> fir::Value* {
 
-		if(val->getType()->isConstantNumberType())
-		{
-			auto cv = dcast(fir::ConstantValue, val);
-			iceAssert(cv);
-
-			val = cs->unwrapConstantNumber(cv);
-		}
-
 		if(!infer)
 			return val;
 
@@ -136,21 +128,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			//* copyRAIIValue will just return 'val' if it is not a class type, so we don't check it here!
 			val = cs->copyRAIIValue(val);
 
-
-			//* arguments are added to the refcounting list in the function,
-			//* so we need to "pre-increment" the refcount here, so it does not
-			//* get freed when the function returns.
-			if(fir::isRefCountedType(val->getType()))
-				cs->incrementRefCount(val);
-
-			if(val->getType()->isConstantNumberType())
-			{
-				auto cv = dcast(fir::ConstantValue, val);
-				iceAssert(cv);
-
-				val = cs->unwrapConstantNumber(cv);
-			}
-
 			val = doCastIfNecessary(arg->loc, val, infer);
 			values[k] = val;
 		}
@@ -182,19 +159,13 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		}
 
 		auto val = arg->codegen(cs, infer).value;
-		if(fir::isRefCountedType(val->getType()))
-			cs->incrementRefCount(val);
-
 		val = doCastIfNecessary(arg->loc, val, infer);
 
 
 		if(ft->isCStyleVarArg())
 		{
 			// auto-convert strings and char slices into char* when passing to va_args
-			if(val->getType()->isStringType())
-				val = cs->irb.GetSAAData(val);
-
-			else if(val->getType()->isCharSliceType())
+			if(val->getType()->isCharSliceType())
 				val = cs->irb.GetArraySliceData(val);
 
 			// also, see if we need to promote the type!
@@ -274,14 +245,6 @@ CGResult sst::FunctionCall::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(defn.value);
 		vf = defn.value;
 	}
-	else if(auto fd = dcast(FunctionDefn, this->target); fd && fd->isVirtual)
-	{
-		// ok then.
-		auto ret = cs->callVirtualMethod(this);
-		cs->addRAIIOrRCValueIfNecessary(ret);
-
-		return CGResult(ret);
-	}
 	else
 	{
 		vf = this->target->codegen(cs).value;
@@ -360,7 +323,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 	{
 		return CGResult(cs->getDefaultValue(type));
 	}
-	else if(!type->isStringType())
+	else
 	{
 		iceAssert(args.size() == 1);
 		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type).value, type);
@@ -369,44 +332,6 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			error(args[0], "mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
 
 		return CGResult(ret);
-	}
-	else
-	{
-		auto cloneTheSlice = [cs](fir::Value* slc) -> CGResult {
-
-			iceAssert(slc->getType()->isCharSliceType());
-
-			auto clonef = cgn::glue::string::getCloneFunction(cs);
-			iceAssert(clonef);
-
-			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getNative(0));
-			cs->addRefCountedValue(ret);
-
-			return CGResult(ret);
-		};
-
-		if(args.size() == 1)
-		{
-			iceAssert(args[0]->type->isCharSliceType());
-			return cloneTheSlice(args[0]->codegen(cs, fir::Type::getCharSlice(false)).value);
-		}
-		else
-		{
-			iceAssert(args.size() == 2);
-			iceAssert(args[0]->type == fir::Type::getInt8Ptr() || args[0]->type == fir::Type::getMutInt8Ptr());
-			iceAssert(args[1]->type->isIntegerType());
-
-			auto ptr = args[0]->codegen(cs).value;
-			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
-
-			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
-			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer()
-				? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
-
-			slc = cs->irb.SetArraySliceLength(slc, len);
-
-			return cloneTheSlice(slc);
-		}
 	}
 }
 

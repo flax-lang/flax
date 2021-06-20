@@ -212,9 +212,9 @@ namespace parser
 
 	PResult<WhileLoop> parseWhileLoop(State& st)
 	{
-		// 1. do { }			-- body = block, cond = 0, doVariant = true
-		// 2. while x { }		-- body = block, cond = x, doVariant = false
-		// 3. do { } while x	-- body = block, cond = x, doVariant = true
+		// 1. do { }            -- body = block, cond = 0, doVariant = true
+		// 2. while x { }       -- body = block, cond = x, doVariant = false
+		// 3. do { } while x    -- body = block, cond = x, doVariant = true
 
 		auto loc = st.loc();
 

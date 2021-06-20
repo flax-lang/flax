@@ -112,7 +112,6 @@ namespace fir
 			case OpKind::Value_StackAlloc:                  instrname = "stackAlloc"; break;
 			case OpKind::Value_CallFunction:                instrname = "call"; break;
 			case OpKind::Value_CallFunctionPointer:         instrname = "callfp"; break;
-			case OpKind::Value_CallVirtualMethod:           instrname = "callvirtual"; break;
 			case OpKind::Value_Return:                      instrname = "ret"; break;
 			case OpKind::Value_GetPointerToStructMember:    instrname = "gep"; break;
 			case OpKind::Value_GetStructMember:             instrname = "gep"; break;
@@ -127,27 +126,10 @@ namespace fir
 
 			case OpKind::Value_CreatePHI:                   instrname = "phi"; break;
 
-			case OpKind::SAA_GetData:                       instrname = "get_saa.data"; break;
-			case OpKind::SAA_SetData:                       instrname = "set_saa.data"; break;
-			case OpKind::SAA_GetLength:                     instrname = "get_saa.len"; break;
-			case OpKind::SAA_SetLength:                     instrname = "set_saa.len"; break;
-			case OpKind::SAA_GetCapacity:                   instrname = "get_saa.cap"; break;
-			case OpKind::SAA_SetCapacity:                   instrname = "set_saa.cap"; break;
-			case OpKind::SAA_GetRefCountPtr:                instrname = "get_saa.rc_ptr"; break;
-			case OpKind::SAA_SetRefCountPtr:                instrname = "set_saa.rc_ptr"; break;
-
-
 			case OpKind::ArraySlice_GetData:                instrname = "get_slice.data"; break;
 			case OpKind::ArraySlice_SetData:                instrname = "set_slice.data"; break;
 			case OpKind::ArraySlice_GetLength:              instrname = "get_slice.len"; break;
 			case OpKind::ArraySlice_SetLength:              instrname = "set_slice.len"; break;
-
-			case OpKind::Any_GetData:                       instrname = "get_any.data"; break;
-			case OpKind::Any_SetData:                       instrname = "set_any.data"; break;
-			case OpKind::Any_GetTypeID:                     instrname = "get_any.typeid"; break;
-			case OpKind::Any_SetTypeID:                     instrname = "set_any.typeid"; break;
-			case OpKind::Any_GetRefCountPtr:                instrname = "get_any.rc_ptr"; break;
-			case OpKind::Any_SetRefCountPtr:                instrname = "set_any.rc_ptr"; break;
 
 			case OpKind::Range_GetLower:                    instrname = "get_range.lower"; break;
 			case OpKind::Range_SetLower:                    instrname = "set_range.lower"; break;

@@ -33,7 +33,7 @@ TCResult ast::SplatOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 	auto inside = this->expr->typecheck(fs, infer).expr();
 
-	if(!inside->type->isArraySliceType() && !inside->type->isArrayType() && !inside->type->isDynamicArrayType() && !inside->type->isTupleType())
+	if(!inside->type->isArraySliceType() && !inside->type->isArrayType() && !inside->type->isTupleType())
 		return TCResult(SimpleError::make(this->loc, "invalid use of splat operator on type '%s'", inside->type));
 
 	if(inside->type->isTupleType())

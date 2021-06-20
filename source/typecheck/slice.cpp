@@ -12,10 +12,7 @@
 
 bool sst::getMutabilityOfSliceOfType(fir::Type* ty)
 {
-	if(ty->isStringType() || ty->isDynamicArrayType())
-		return true;
-
-	else if(ty->isArrayType())
+	if(ty->isArrayType())
 		return false;
 
 	else if(ty->isArraySliceType())
@@ -43,11 +40,8 @@ TCResult ast::SliceOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	defer(fs->leaveSubscript());
 
 	fir::Type* elm = 0;
-	if(ty->isDynamicArrayType() || ty->isArraySliceType() || ty->isArrayType())
+	if(ty->isArraySliceType() || ty->isArrayType())
 		elm = ty->getArrayElementType();
-
-	else if(ty->isStringType())
-		elm = fir::Type::getInt8();
 
 	else if(ty->isPointerType())
 		elm = ty->getPointerElementType();

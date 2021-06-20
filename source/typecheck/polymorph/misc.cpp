@@ -24,11 +24,7 @@ namespace sst
 
 			fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 			{
-				if(a->isConstantNumberType() && b->isConstantNumberType())
-				{
-					return fir::unifyConstantTypes(a->toConstantNumberType(), b->toConstantNumberType());
-				}
-				else if(a->isFloatingPointType() && b->isIntegerType())
+				if(a->isFloatingPointType() && b->isIntegerType())
 				{
 					return a;
 				}
@@ -63,7 +59,7 @@ namespace sst
 						fty = fir::PolyPlaceholderType::get(ty->toNamedType()->name, polysession);
 					}
 
-					if(!fty) error("failed to find type '%s'", input->str());
+					if(!fty) error(fs->loc(), "failed to find type '%s'", input->str());
 				}
 				else if(ty->isTupleType())
 				{

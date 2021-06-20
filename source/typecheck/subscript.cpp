@@ -27,19 +27,17 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto lt = ls->type;
 	auto rt = rs->type;
 
-	if((rt->isConstantNumberType() && rt->toConstantNumberType()->isFloating()) && !rt->isIntegerType())
+	if(!rt->isIntegerType())
 		error(this->inside, "subscript index must be an integer type, found '%s'", rt);
 
 
 	fir::Type* res = 0;
 
 	// check what it is, then
-	if(lt->isDynamicArrayType())	res = lt->toDynamicArrayType()->getElementType();
-	else if(lt->isArraySliceType())	res = lt->toArraySliceType()->getElementType();
-	else if(lt->isPointerType())	res = lt->getPointerElementType();
-	else if(lt->isArrayType())		res = lt->toArrayType()->getElementType();
-	else if(lt->isStringType())		res = fir::Type::getInt8();
-	else							error(this->expr, "cannot subscript type '%s'", lt);
+	if(lt->isArraySliceType())      res = lt->toArraySliceType()->getElementType();
+	else if(lt->isPointerType())    res = lt->getPointerElementType();
+	else if(lt->isArrayType())      res = lt->toArrayType()->getElementType();
+	else                            error(this->expr, "cannot subscript type '%s'", lt);
 
 	iceAssert(res);
 	auto ret = util::pool<sst::SubscriptOp>(this->loc, res);
@@ -59,8 +57,7 @@ TCResult ast::SubscriptDollarOp::typecheck(sst::TypecheckState* fs, fir::Type* i
 		error(this, "invalid use of '$' in non-subscript context");
 
 	else if(auto arr = fs->getCurrentSubscriptArray();
-		arr->type->isPointerType() || !(arr->type->isArraySliceType() || arr->type->isArrayType() || arr->type->isStringType()
-			|| arr->type->isDynamicArrayType()))
+		arr->type->isPointerType() || !(arr->type->isArraySliceType() || arr->type->isArrayType()))
 	{
 		SpanError::make(SimpleError::make(this->loc, "invalid use of '$' on subscriptee with %stype '%s'",
 			arr->type->isPointerType() ? "pointer " : "", arr->type))
