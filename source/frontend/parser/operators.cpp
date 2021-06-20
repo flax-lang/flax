@@ -195,7 +195,7 @@ namespace parser
 		{
 			auto num = tokens[idx].str();
 
-			if(tokens[idx] != TT::Number || num.find('.') != std::string::npos)
+			if(tokens[idx] != TT::IntegerNumber)
 				expected(tokens[idx].loc, "integer value for precedence", num);
 
 			int prec = std::stoi(num);

@@ -391,9 +391,10 @@ namespace lexer
 			}
 
 			tok.text = stream.substr(0, didRead);
-
-			tok.type = TokenType::Number;
 			tok.loc.len = didRead;
+
+			if(is_floating) tok.type = TokenType::FloatingNumber;
+			else            tok.type = TokenType::IntegerNumber;
 
 			read = didRead;
 		}

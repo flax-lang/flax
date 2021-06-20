@@ -1258,7 +1258,8 @@ namespace parser
 				case TT::StringLiteral:
 					return parseString(st, false);
 
-				case TT::Number:
+				case TT::IntegerNumber:
+				case TT::FloatingNumber:
 					return parseNumber(st);
 
 				case TT::LSquare:

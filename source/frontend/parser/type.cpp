@@ -710,9 +710,9 @@ namespace parser
 
 					return util::pool<pts::VariadicArrayType>(loc, elm);
 				}
-				else if(st.front() != TT::Number)
+				else if(st.front() != TT::IntegerNumber)
 				{
-					expected(st, "positive, non-zero size for fixed array", st.front().str());
+					expected(st, "positive, non-zero integer size for fixed array", st.front().str());
 				}
 				else
 				{

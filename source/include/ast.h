@@ -720,12 +720,14 @@ namespace ast
 
 	struct LitNumber : Expr
 	{
-		LitNumber(const Location& l, const std::string& n) : Expr(l), num(n) { this->readableName = "number literal"; }
+		LitNumber(const Location& l, const std::string& n, bool flt)
+			: Expr(l), num(n), is_floating(flt) { this->readableName = "number literal"; }
 		~LitNumber() { }
 
 		virtual TCResult typecheck(sst::TypecheckState* fs, fir::Type* infer = 0) override;
 
 		std::string num;
+		bool is_floating;
 	};
 
 	struct LitChar : Expr

@@ -15,19 +15,19 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// i don't think mpfr auto-detects base, LMAO
 	int base = 10;
 	if(this->num.find("0x") == 0 || this->num.find("0X") == 0)
 		base = 16;
 
-	// TODO: really broken
-	bool flt = (this->num.find(".") != std::string::npos);
+	else if(this->num.find("0b") == 0 || this->num.find("0B") == 0)
+		base = 2;
 
+	// TODO: really broken
 	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType())
 		? infer : fir::Type::getNativeWord());
 
-	if(flt) ret->floating = std::stod(this->num);
-	else    ret->integer = std::stoull(this->num);
+	if(this->is_floating)   ret->floating = std::stod(this->num);
+	else                    ret->integer = std::stoull(this->num, nullptr, base);
 
 	return TCResult(ret);
 }
