@@ -47,34 +47,6 @@ namespace lexer
 
 
 	static TokenType prevType = TokenType::Invalid;
-	static size_t prevID = 0;
-	static bool shouldConsiderUnaryLiteral(string_view& stream, Location& pos)
-	{
-		// check the previous token
-		bool should = (prevType != TokenType::Invalid && prevID == pos.fileID && (
-			prevType != TokenType::RParen &&
-			prevType != TokenType::RSquare &&
-			prevType != TokenType::Identifier &&
-			prevType != TokenType::Number &&
-			prevType != TokenType::Dollar &&
-			prevType != TokenType::StringLiteral
-		));
-
-		if(!should) return false;
-
-		// check if the current char is a + or -
-		if(stream.length() == 0) return false;
-		if(stream[0] != '+' && stream[0] != '-') return false;
-
-		// check if there's only spaces between this and the number itself
-		for(size_t i = 1; i < stream.length(); i++)
-		{
-			if(isdigit(stream[i])) return true;
-			else if(stream[i] != ' ') return false;
-		}
-
-		return false;
-	}
 
 
 	static util::hash_map<std::string_view, TokenType> keywordMap;
@@ -520,15 +492,10 @@ namespace lexer
 		// so in every other case we want unary +/-.
 		// note: a sane implementation would just return false if isdigit() was passed something weird, like a negative number
 		// (because we tried to dissect a UTF-8 codepoint). so we just check if it's ascii first, which would solve the issue.
-		else if((!stream.empty() && ((isascii(stream[0]) && isdigit(stream[0])) || shouldConsiderUnaryLiteral(stream, pos)))
-			/* handle cases like '+ 3' or '- 14' (ie. space between sign and number) */
-			&& ((isascii(stream[0]) && isdigit(stream[0]) ? true : false) || (stream.size() > 1 && isascii(stream[1]) && isdigit(stream[1]))))
+		else if(!stream.empty() && isascii(stream[0]) && isdigit(stream[0]))
 		{
 			// copy it.
 			auto tmp = stream;
-
-			if(tmp.find('-') == 0 || tmp.find('+') == 0)
-				tmp.remove_prefix(1);
 
 			int base = 10;
 			if(tmp.find("0x") == 0 || tmp.find("0X") == 0)
@@ -536,7 +503,6 @@ namespace lexer
 
 			else if(tmp.find("0b") == 0 || tmp.find("0B") == 0)
 				base = 2, tmp.remove_prefix(2);
-
 
 			// find that shit
 			auto end = std::find_if_not(tmp.begin(), tmp.end(), [base](const char& c) -> bool {
@@ -820,7 +786,7 @@ namespace lexer
 
 
 		prevType = tok.type;
-		prevID = tok.loc.fileID;
+
 
 		return prevType;
 	}

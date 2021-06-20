@@ -27,7 +27,7 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		? infer : fir::Type::getNativeWord());
 
 	if(flt) ret->floating = std::stod(this->num);
-	else    ret->integer = std::stoi(this->num);
+	else    ret->integer = std::stoull(this->num);
 
 	return TCResult(ret);
 }
