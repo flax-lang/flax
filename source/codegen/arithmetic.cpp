@@ -19,14 +19,7 @@ namespace sst
 			auto value = this->left->codegen(cs).value;
 			auto vt = value->getType();
 
-			if(vt->isConstantNumberType() && (target->isFloatingPointType() || target->isIntegerType()))
-			{
-				auto cn = dcast(fir::ConstantNumber, value);
-				if(!cn) error(this->left, "what");
-
-				return CGResult(cs->unwrapConstantNumber(cn, target));
-			}
-			else if(vt->isEnumType())
+			if(vt->isEnumType())
 			{
 				auto res = cs->irb.AppropriateCast(cs->irb.GetEnumCaseValue(value), target);
 
@@ -325,31 +318,6 @@ namespace cgn
 
 				error("no");
 			}
-			else if((lt->isPrimitiveType() && rt->isConstantNumberType()) || (lt->isConstantNumberType() && rt->isPrimitiveType()))
-			{
-				if(lr->getType()->isFloatingPointType())
-				{
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.FCmpEQ_ORD(lr, rr));
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.FCmpNEQ_ORD(lr, rr));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.FCmpLT_ORD(lr, rr));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.FCmpLEQ_ORD(lr, rr));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.FCmpGT_ORD(lr, rr));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.FCmpGEQ_ORD(lr, rr));
-
-					error("no");
-				}
-				else
-				{
-					if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(lr, rr));
-					if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(lr, rr));
-					if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(lr, rr));
-					if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(lr, rr));
-					if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(lr, rr));
-					if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(lr, rr));
-
-					error("no");
-				}
-			}
 			else if(lt->isStringType() && rt->isStringType())
 			{
 				auto cmpfn = cgn::glue::string::getCompareFunction(this);
@@ -404,14 +372,13 @@ namespace cgn
 		}
 		else
 		{
-			if((lt->isPrimitiveType() || lt->isConstantNumberType()) && (rt->isPrimitiveType() || rt->isConstantNumberType()))
+			if(lt->isPrimitiveType() && rt->isPrimitiveType())
 			{
 				auto [ lr, rr ] = this->autoCastValueTypes(l, r);
 
 				return CGResult(this->irb.BinaryOp(op, lr, rr));
 			}
-			else if((lt->isPointerType() && (rt->isIntegerType() || rt->isConstantNumberType()))
-				|| ((lt->isIntegerType() || lt->isConstantNumberType()) && rt->isPointerType()))
+			else if((lt->isPointerType() && rt->isIntegerType()) || (lt->isIntegerType() && rt->isPointerType()))
 			{
 				auto ofsv = (lt->isPointerType() ? rv : lv);
 				auto ofs = this->oneWayAutocast(ofsv, fir::Type::getNativeWord());

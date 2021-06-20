@@ -10,117 +10,6 @@
 
 namespace cgn
 {
-	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantValue* cv)
-	{
-		iceAssert(cv->getType()->isConstantNumberType());
-		auto cn = dcast(fir::ConstantNumber, cv);
-		iceAssert(cn);
-
-		auto ty = cv->getType()->toConstantNumberType();
-		iceAssert(ty);
-
-		if(ty->isFloating())
-		{
-			if(ty->getMinBits() <= fir::Type::getFloat64()->getBitWidth())
-				return fir::ConstantFP::getFloat64(cn->getDouble());
-
-			else
-				error("float overflow");
-		}
-		else
-		{
-			if(ty->getMinBits() < fir::Type::getNativeWord()->getBitWidth() - 1)
-				return fir::ConstantInt::getNative(cn->getInt64());
-
-			else if(!ty->isSigned() && ty->getMinBits() <= fir::Type::getNativeUWord()->getBitWidth())
-				return fir::ConstantInt::getUNative(cn->getUint64());
-
-			else
-				error("int overflow");
-		}
-	}
-
-
-	static fir::ConstantValue* _unwrapConstantNumber(CodegenState* cs, fir::ConstantNumber* num, fir::Type* target, bool isAutocast)
-	{
-		if(!(target->isIntegerType() || target->isFloatingPointType()))
-			error(cs->loc(), "unable to cast number literal to inferred type '%s'", target);
-
-		auto ty = num->getType()->toConstantNumberType();
-
-		bool signConvert = false;
-		if(ty->isFloating() && target->isIntegerType())
-		{
-			if(isAutocast) return 0;
-			warn(cs->loc(), "casting floating-point literal to integer type '%s' will cause a truncation", target);
-		}
-		else if(target->isIntegerType() && !target->isSignedIntType() && ty->isSigned())
-		{
-			if(isAutocast) return 0;
-			warn(cs->loc(), "casting negative literal to an unsigned integer type '%s'", target);
-			signConvert = true;
-		}
-
-
-		if(target->toPrimitiveType()->getBitWidth() < ty->getMinBits())
-		{
-			// TODO: actually do what we say.
-			warn(cs->loc(), "casting literal to type '%s' will cause an overflow; value will be truncated bitwise to fit",
-				target);
-		}
-
-		if(signConvert)
-		{
-			// eg. ((size_t) -1) gives SIZET_MAX, basically.
-			// so what we do, is we get the max of the target type,
-			// then subtract (num - 1)
-
-			if(target == fir::Type::getUint8())
-				return fir::ConstantInt::get(target, num->getUint8());
-
-			else if(target == fir::Type::getUint16())
-				return fir::ConstantInt::get(target, num->getUint16());
-
-			else if(target == fir::Type::getUint32())
-				return fir::ConstantInt::get(target, num->getUint32());
-
-			else if(target == fir::Type::getUint64())
-				return fir::ConstantInt::get(target, num->getUint64());
-
-			else
-				error("what %s", target);
-		}
-
-		if(target == fir::Type::getFloat32())		return fir::ConstantFP::getFloat32(num->getFloat());
-		else if(target == fir::Type::getFloat64())	return fir::ConstantFP::getFloat64(num->getDouble());
-		else if(target == fir::Type::getInt8())		return fir::ConstantInt::get(target, num->getInt8());
-		else if(target == fir::Type::getInt16())	return fir::ConstantInt::get(target, num->getInt16());
-		else if(target == fir::Type::getInt32())	return fir::ConstantInt::get(target, num->getInt32());
-		else if(target == fir::Type::getInt64())	return fir::ConstantInt::get(target, num->getInt64());
-		else if(target == fir::Type::getUint8())	return fir::ConstantInt::get(target, num->getUint8());
-		else if(target == fir::Type::getUint16())	return fir::ConstantInt::get(target, num->getUint16());
-		else if(target == fir::Type::getUint32())	return fir::ConstantInt::get(target, num->getUint32());
-		else if(target == fir::Type::getUint64())	return fir::ConstantInt::get(target, num->getUint64());
-
-		else if(target == fir::Type::getNativeWord())   return fir::ConstantInt::get(target, num->getInt64());
-		else if(target == fir::Type::getNativeUWord())  return fir::ConstantInt::get(target, num->getUint64());
-		else										    error("unsupported type '%s'", target);
-	}
-
-
-
-	fir::ConstantValue* CodegenState::unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target)
-	{
-		if(target)  return _unwrapConstantNumber(this, cv, target, false);
-		else        return this->unwrapConstantNumber(cv);
-	}
-
-
-
-
-
-
-
 	// TODO: maybe merge/refactor this and the two-way autocast into one function,
 	// there's a bunch of duplication here
 	fir::Value* CodegenState::oneWayAutocast(fir::Value* from, fir::Type* target)
@@ -252,16 +141,6 @@ namespace cgn
 		auto rt = rhs->getType();
 		if(lt == rt)
 		{
-			// if(lt->isConstantNumberType())
-			// {
-			// 	// well. do the sensible default, i guess.
-			// 	iceAssert(rt->isConstantNumberType());
-
-			// 	auto cnt = fir::unifyConstantTypes(lt->toConstantNumberType(), rt->toConstantNumberType());
-			// 	if(cnt->isFloating())
-			// 		return { this->irb.AppropriateCast(lhs, cnt), this->irb.AppropriateCast(rhs, cnt) };
-			// }
-
 			return { lhs, rhs };
 		}
 
@@ -272,22 +151,7 @@ namespace cgn
 		else if(lt->isPointerType() && rt->isNullType())
 			return std::make_pair(lhs, this->irb.PointerTypeCast(rhs, lt));
 
-
-		/* if(lt->isConstantNumberType() && !rt->isConstantNumberType())
-		{
-			auto cn = dcast(fir::ConstantNumber, lhs);
-			iceAssert(cn);
-
-			auto res = _unwrapConstantNumber(this, cn, rt, true);
-			if(!res)	return { lhs, rhs };
-			else		return { CGResult(res), rhs };
-		}
-		else if(!lt->isConstantNumberType() && rt->isConstantNumberType())
-		{
-			auto [ l, r ] = this->autoCastValueTypes(rhs, lhs);
-			return { r, l };
-		}
-		else  */if(lt->isIntegerType() && rt->isIntegerType() && lt->isSignedIntType() == rt->isSignedIntType())
+		if(lt->isIntegerType() && rt->isIntegerType() && lt->isSignedIntType() == rt->isSignedIntType())
 		{
 			// ok, neither are constants
 			// do the normal thing

@@ -24,11 +24,7 @@ namespace sst
 
 			fir::Type* mergeNumberTypes(fir::Type* a, fir::Type* b)
 			{
-				if(a->isConstantNumberType() && b->isConstantNumberType())
-				{
-					return fir::unifyConstantTypes(a->toConstantNumberType(), b->toConstantNumberType());
-				}
-				else if(a->isFloatingPointType() && b->isIntegerType())
+				if(a->isFloatingPointType() && b->isIntegerType())
 				{
 					return a;
 				}

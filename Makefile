@@ -61,11 +61,8 @@ else
 	LDFLAGS += -Wl,--export-dynamic
 endif
 
-MPFR_CFLAGS     := $(shell pkg-config --cflags mpfr)
-MPFR_LDFLAGS    := $(shell pkg-config --libs mpfr)
-
-CXXFLAGS += $(MPFR_CFLAGS) $(LIBFFI_CFLAGS)
-LDFLAGS  += $(MPFR_LDFLAGS) $(LIBFFI_LDFLAGS)
+CXXFLAGS += $(LIBFFI_CFLAGS)
+LDFLAGS  += $(LIBFFI_LDFLAGS)
 
 ENABLE_CODE_COVERAGE ?= "yes"
 
@@ -147,7 +144,7 @@ copylibs: $(FLXSRC)
 $(OUTPUT): $(PRECOMP_GCH) $(CXXOBJ) $(COBJ) $(UTF8REWIND_AR)
 	@printf "# linking\n"
 	@mkdir -p $(dir $(OUTPUT))
-	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lmpfr -lgmp -lpthread -ldl -lffi -lutf8rewind
+	@$(CXX) -o $@ $(CXXOBJ) $(COBJ) $(LDFLAGS) -Lexternal -L$(shell $(LLVM_CONFIG) --prefix)/lib $(shell $(LLVM_CONFIG) --system-libs --libs core engine native linker bitwriter lto vectorize all-targets object orcjit) -lpthread -ldl -lffi -lutf8rewind
 
 
 %.cpp.o: %.cpp

@@ -141,10 +141,6 @@ namespace cgn
 		fir::Value* constructClassWithArguments(fir::ClassType* cls, sst::FunctionDefn* constr, const std::vector<FnCallArgument>& args);
 
 		fir::Value* callVirtualMethod(sst::FunctionCall* call);
-
-		fir::ConstantValue* unwrapConstantNumber(fir::ConstantValue* cv);
-		fir::ConstantValue* unwrapConstantNumber(fir::ConstantNumber* cv, fir::Type* target);
-
 		CGResult getStructFieldImplicitly(std::string name);
 
 		fir::Function* getOrDeclareLibCFunction(std::string name);

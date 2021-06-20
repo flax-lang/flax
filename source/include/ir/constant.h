@@ -9,7 +9,6 @@
 #include <limits.h>
 
 #include "value.h"
-#include "mpreal/mpreal.h"
 
 namespace fir
 {
@@ -28,34 +27,8 @@ namespace fir
 
 		virtual std::string str();
 
-		protected:
+	protected:
 		ConstantValue(Type* type);
-	};
-
-	struct ConstantNumber : ConstantValue
-	{
-		friend struct Module;
-
-		static ConstantNumber* get(ConstantNumberType* cnt, const mpfr::mpreal& n);
-
-		int8_t getInt8()        { return static_cast<int8_t>(this->number.toLLong()); }
-		int16_t getInt16()      { return static_cast<int16_t>(this->number.toLLong()); }
-		int32_t getInt32()      { return static_cast<int32_t>(this->number.toLLong()); }
-		int64_t getInt64()      { return static_cast<int64_t>(this->number.toLLong()); }
-		uint8_t getUint8()      { return static_cast<uint8_t>(this->number.toULLong()); }
-		uint16_t getUint16()    { return static_cast<uint16_t>(this->number.toULLong()); }
-		uint32_t getUint32()    { return static_cast<uint32_t>(this->number.toULLong()); }
-		uint64_t getUint64()    { return static_cast<uint64_t>(this->number.toULLong()); }
-
-		float getFloat()        { return this->number.toFloat(); }
-		double getDouble()      { return this->number.toDouble(); }
-
-		virtual std::string str() override;
-
-		protected:
-		ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n);
-
-		mpfr::mpreal number;
 	};
 
 	struct ConstantBool : ConstantValue
@@ -67,7 +40,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantBool(bool val);
 
 		bool value;
@@ -96,7 +69,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantInt(Type* type, int64_t val);
 		ConstantInt(Type* type, uint64_t val);
 
@@ -118,7 +91,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantFP(Type* type, float val);
 		ConstantFP(Type* type, double val);
 
@@ -135,7 +108,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantArray(Type* type, const std::vector<ConstantValue*>& vals);
 
 		std::vector<ConstantValue*> values;
@@ -149,7 +122,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantStruct(StructType* st, const std::vector<ConstantValue*>& members);
 		std::vector<ConstantValue*> members;
 	};
@@ -165,7 +138,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantEnumCase(EnumType* en, ConstantInt* index, ConstantValue* value);
 
 		ConstantInt* index = 0;
@@ -181,7 +154,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantCharSlice(const std::string& str);
 
 		std::string value;
@@ -196,7 +169,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantTuple(const std::vector<ConstantValue*>& mems);
 		std::vector<ConstantValue*> values;
 	};
@@ -216,7 +189,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantDynamicArray(DynamicArrayType* type);
 
 		ConstantValue* data = 0;
@@ -236,7 +209,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantDynamicString(const std::string& s);
 
 		std::string value;
@@ -254,7 +227,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantArraySlice(ArraySliceType* type);
 
 		ConstantValue* data = 0;
@@ -271,7 +244,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantBitcast(ConstantValue* v, Type* target);
 
 		ConstantValue* value = 0;
@@ -289,7 +262,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		GlobalValue(Module* mod, Type* type, LinkageType linkage, bool mut = false);
 
 		Module* parentModule = 0;
@@ -305,7 +278,7 @@ namespace fir
 
 		virtual std::string str() override;
 
-		protected:
+	protected:
 		ConstantValue* initValue = 0;
 	};
 }

@@ -56,14 +56,6 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	// first gen the inside
 	fir::Value* index = this->inside->codegen(cs).value;
 	{
-		if(index->getType()->isConstantNumberType())
-		{
-			auto cv = dcast(fir::ConstantValue, index);
-			iceAssert(cv);
-
-			index = cs->unwrapConstantNumber(cv);
-		}
-
 		// of course these will have to be changed eventually
 		iceAssert(index->getType()->isIntegerType());
 	}

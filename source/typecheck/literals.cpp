@@ -20,43 +20,14 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	if(this->num.find("0x") == 0 || this->num.find("0X") == 0)
 		base = 16;
 
-	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
-	bool sgn = mpfr::signbit(number);
-	bool flt = ((this->num.find(".") != std::string::npos) || !mpfr::isint(number));
+	// TODO: really broken
+	bool flt = (this->num.find(".") != std::string::npos);
 
-	size_t bits = 0;
-	if(flt)
-	{
-		// fuck it lah.
-		bits = sizeof(double) * CHAR_BIT;
-	}
-	else
-	{
-		auto m_ptr = number.mpfr_ptr();
-		auto m_rnd = MPFR_RNDN;
-		if(mpfr_fits_sshort_p(m_ptr, m_rnd))
-			bits = sizeof(short) * CHAR_BIT;
+	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType())
+		? infer : fir::Type::getNativeWord());
 
-		else if(mpfr_fits_sint_p(m_ptr, m_rnd))
-			bits = sizeof(int) * CHAR_BIT;
-
-		else if(mpfr_fits_slong_p(m_ptr, m_rnd))
-			bits = sizeof(long) * CHAR_BIT;
-
-		else if(mpfr_fits_intmax_p(m_ptr, m_rnd))
-			bits = sizeof(intmax_t) * CHAR_BIT;
-
-		else if(!sgn && mpfr_fits_uintmax_p(m_ptr, m_rnd))
-			bits = sizeof(uintmax_t) * CHAR_BIT;
-
-		else    // lmao
-			bits = sizeof(uintmax_t) * CHAR_BIT;
-	}
-
-	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer
-		: fir::ConstantNumberType::get(sgn, flt, bits));
-
-	ret->num = number;
+	if(flt) ret->floating = std::stod(this->num);
+	else    ret->integer = std::stoi(this->num);
 
 	return TCResult(ret);
 }
@@ -119,12 +90,8 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto inf = (infer ? infer->toTupleType()->getElementN(k) : 0);
 		auto expr = v->typecheck(fs, inf).expr();
 
-		auto ty = expr->type;
-		if(expr->type->isConstantNumberType() && (!inf || !inf->isPrimitiveType()))
-			ty = sst::inferCorrectTypeForLiteral(expr->type->toConstantNumberType());
-
 		vals.push_back(expr);
-		fts.push_back(ty);
+		fts.push_back(expr->type);
 
 		k++;
 	}
@@ -214,11 +181,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			if(!elmty)
 			{
-				if(e->type->isConstantNumberType() && !infer)
-					elmty = sst::inferCorrectTypeForLiteral(e->type->toConstantNumberType());
-
-				else
-					elmty = e->type;
+				elmty = e->type;
 			}
 			else if(elmty != e->type)
 			{

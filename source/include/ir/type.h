@@ -114,15 +114,11 @@ namespace fir
 	struct ArraySliceType;
 	struct DynamicArrayType;
 	struct UnionVariantType;
-	struct ConstantNumberType;
 	struct PolyPlaceholderType;
 
 	struct ConstantValue;
 	struct ConstantArray;
 	struct Function;
-
-	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
-	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
 
 	int getCastDistance(Type* from, Type* to);
 	bool isRefCountedType(Type* ty);
@@ -165,7 +161,6 @@ namespace fir
 		ArraySlice,
 		DynamicArray,
 		UnionVariant,
-		ConstantNumber,
 		PolyPlaceholder,
 	};
 
@@ -197,7 +192,6 @@ namespace fir
 		Type* getArrayElementType();
 
 		PolyPlaceholderType* toPolyPlaceholderType();
-		ConstantNumberType* toConstantNumberType();
 		DynamicArrayType* toDynamicArrayType();
 		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
@@ -261,7 +255,6 @@ namespace fir
 
 		bool isMutablePointer();
 		bool isImmutablePointer();
-		bool isConstantNumberType();
 		bool isPolyPlaceholderType();
 
 		bool containsPlaceholders();
@@ -433,36 +426,6 @@ namespace fir
 		public:
 		static NullType* get();
 	};
-
-
-	// special case -- the type also needs to store the number, to know things like
-	// whether it's signed, negative, an integer, and other stuff.
-	struct ConstantNumberType : Type
-	{
-		friend struct Type;
-
-		bool isSigned();
-		bool isFloating();
-		size_t getMinBits();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		static ConstantNumberType* get(bool neg, bool flt, size_t bits);
-
-		virtual ~ConstantNumberType() override { }
-
-
-		protected:
-		ConstantNumberType(bool neg, bool floating, size_t bits);
-
-		bool _floating = false;
-		bool _signed = false;
-		size_t _bits = 0;
-	};
-
 
 	struct PolyPlaceholderType : Type
 	{

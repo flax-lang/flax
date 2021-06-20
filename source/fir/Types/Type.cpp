@@ -42,22 +42,7 @@ namespace fir
 	{
 		if(from == to) return 0;
 
-		if(from->isConstantNumberType() && to->isPrimitiveType())
-		{
-			auto cty = from->toConstantNumberType();
-			if(!cty->isFloating() && to->isIntegerType())
-				return 0;
-
-			else if(!cty->isFloating() && to->isFloatingPointType())
-				return 1;
-
-			else if(cty->isFloating())      // not isint means isfloat, so if we're doing float -> float the cost is 0
-				return 0;
-
-			else                            // if we reach here, we're trying to do float -> int, which is a no-go.
-				return -1;
-		}
-		else if(from->isIntegerType() && to->isIntegerType())
+		if(from->isIntegerType() && to->isIntegerType())
 		{
 			if(from->isSignedIntType() == to->isSignedIntType())
 			{
@@ -572,12 +557,6 @@ namespace fir
 		return static_cast<NullType*>(this);
 	}
 
-	ConstantNumberType* Type::toConstantNumberType()
-	{
-		if(this->kind != TypeKind::ConstantNumber) error("not constant number type");
-		return static_cast<ConstantNumberType*>(this);
-	}
-
 	PolyPlaceholderType* Type::toPolyPlaceholderType()
 	{
 		if(this->kind != TypeKind::PolyPlaceholder) error("not poly placeholder type");
@@ -608,11 +587,6 @@ namespace fir
 
 
 
-
-	bool Type::isConstantNumberType()
-	{
-		return this->kind == TypeKind::ConstantNumber;
-	}
 
 	bool Type::isStructType()
 	{

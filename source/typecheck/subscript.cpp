@@ -27,7 +27,7 @@ TCResult ast::SubscriptOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto lt = ls->type;
 	auto rt = rs->type;
 
-	if((rt->isConstantNumberType() && rt->toConstantNumberType()->isFloating()) && !rt->isIntegerType())
+	if(!rt->isIntegerType())
 		error(this->inside, "subscript index must be an integer type, found '%s'", rt);
 
 

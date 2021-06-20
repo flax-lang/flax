@@ -74,8 +74,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	}
 	else if(op == Operator::CompareEQ || op == Operator::CompareNEQ)
 	{
-		if(left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0
-			|| (left->isConstantNumberType() && right->isConstantNumberType()))
+		if(left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0)
 		{
 			return fir::Type::getBool();
 		}
@@ -83,11 +82,11 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::CompareLT || op == Operator::CompareGT || op == Operator::CompareLEQ || op == Operator::CompareGEQ)
 	{
 		// we handle this separately because we only want to check for number types and string types.
-		bool ty_compat = (left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0
-			|| (left->isConstantNumberType() && right->isConstantNumberType()));
+		bool ty_compat = (left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0);
 
-		bool ty_comparable = (left->isStringType() || left->isArraySliceType() || left->isArrayType() || left->isDynamicArrayType()
-			|| left->isPrimitiveType() || left->isEnumType() || left->isConstantNumberType());
+		bool ty_comparable = (left->isStringType() || left->isArraySliceType() || left->isArrayType()
+			|| left->isDynamicArrayType()
+			|| left->isPrimitiveType() || left->isEnumType());
 
 		if(ty_compat && ty_comparable)
 		{
@@ -107,10 +106,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	}
 	else if(op == Operator::Plus)
 	{
-		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
-
-		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+		if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
 
 		else if(left->isStringType() && (right->isStringType() || right->isCharSliceType() || right->isCharType()))
@@ -122,72 +118,42 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		else if(left->isDynamicArrayType() && left->getArrayElementType() == right)
 			return left;
 
-		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
-			return (left->isConstantNumberType() ? right : left);
-
-		else if(left->isPointerType() && (right->isIntegerType() || right->isConstantNumberType()))
+		else if(left->isPointerType() && right->isIntegerType())
 			return left;
 
-		else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
+		else if(right->isPointerType() && left->isIntegerType())
 			return right;
 	}
 	else if(op == Operator::Minus)
 	{
-		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
-
-		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+		if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
 
-		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
-			return (left->isConstantNumberType() ? right : left);
-
-		else if(left->isPointerType() && (right->isIntegerType() || right->isConstantNumberType()))
+		else if(left->isPointerType() && right->isIntegerType())
 			return left;
 
-		else if(right->isPointerType() && (left->isIntegerType() || left->isConstantNumberType()))
+		else if(right->isPointerType() && left->isIntegerType())
 			return right;
 	}
 	else if(op == Operator::Multiply)
 	{
-		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
-
-		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+		if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
-
-		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
-			return (left->isConstantNumberType() ? right : left);
-
 	}
 	else if(op == Operator::Divide)
 	{
-		if(left->isConstantNumberType() && right->isConstantNumberType())
-			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
-
-		else if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
+		if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
 			return left;
-
-		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
-			return (left->isConstantNumberType() ? right : left);
 	}
 	else if(op == Operator::Modulo)
 	{
-		if(left->isConstantNumberType() && right->isConstantNumberType())
-		{
-			return fir::unifyConstantTypes(left->toConstantNumberType(), right->toConstantNumberType());
-		}
-		else if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
+		if((left->isIntegerType() && right->isIntegerType()) || (left->isFloatingPointType() && right->isFloatingPointType()))
 		{
 			return (left->getBitWidth() > right->getBitWidth()) ? left : right;
 		}
 		else if((left->isIntegerType() && right->isFloatingPointType()) || (left->isFloatingPointType() && right->isIntegerType()))
 		{
 			return (left->isFloatingPointType() ? left : right);
-		}
-		else if((left->isConstantNumberType() && right->isPrimitiveType()) || (left->isPrimitiveType() && right->isConstantNumberType()))
-		{
-			return (left->isConstantNumberType() ? right : left);
 		}
 		else
 		{
@@ -337,12 +303,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	}
 	else if(this->op == Operator::UnaryPlus || this->op == Operator::UnaryMinus)
 	{
-		if(t->isConstantNumberType())
-		{
-			out = (op == "-" ? fir::ConstantNumberType::get(t->toConstantNumberType()->isSigned(),
-				t->toConstantNumberType()->isFloating(), t->toConstantNumberType()->getMinBits()) : t);
-		}
-		else if(!t->isIntegerType() && !t->isFloatingPointType())
+		if(!t->isIntegerType() && !t->isFloatingPointType())
 		{
 			error(this, "invalid use of unary plus/minus operator '+'/'-' on non-numerical type '%s'", t);
 		}
@@ -354,10 +315,7 @@ TCResult ast::UnaryOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	}
 	else if(this->op == Operator::BitwiseNot)
 	{
-		if(t->isConstantNumberType())
-			error(this, "bitwise operations are not supported on literal numbers");
-
-		else if(!t->isIntegerType())
+		if(!t->isIntegerType())
 			error(this, "invalid use of bitwise not operator '~' on non-integer type '%s'", t);
 
 		else if(t->isSignedIntType())

@@ -78,21 +78,6 @@ namespace fir
 
 
 
-	ConstantNumber* ConstantNumber::get(ConstantNumberType* cnt, const mpfr::mpreal& n)
-	{
-		return new ConstantNumber(cnt, n);
-	}
-
-	ConstantNumber::ConstantNumber(ConstantNumberType* cnt, const mpfr::mpreal& n) : ConstantValue(cnt)
-	{
-		this->number = n;
-	}
-
-	std::string ConstantNumber::str()
-	{
-		// 6 decimal places, like default printf.
-		return this->number.toString("%.6R");
-	}
 
 
 

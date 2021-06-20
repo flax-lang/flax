@@ -10,22 +10,14 @@ CGResult sst::LiteralNumber::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	cs->pushLoc(this);
 	defer(cs->popLoc());
 
+	if(this->is_floating != this->type->isFloatingPointType())
+		error(this, "TODO cannot do this");
 
-	if(this->type->isConstantNumberType())
-	{
-		if(infer && !infer->isPrimitiveType())
-			infer = 0;
+	if(this->type->isFloatingPointType())
+		return CGResult(fir::ConstantFP::get(this->type, this->floating));
 
-		return CGResult(cs->unwrapConstantNumber(fir::ConstantNumber::get(this->type->toConstantNumberType(), this->num), infer));
-	}
 	else
-	{
-		if(this->type->isFloatingPointType())
-			return CGResult(fir::ConstantFP::get(this->type, this->num.toDouble()));
-
-		else
-			return CGResult(fir::ConstantInt::get(this->type, this->type->isSignedIntType() ? this->num.toLLong() : this->num.toULLong()));
-	}
+		return CGResult(fir::ConstantInt::get(this->type, this->integer));
 }
 
 CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)

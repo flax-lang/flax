@@ -89,14 +89,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 
 	auto doCastIfNecessary = [cs](const Location& loc, fir::Value* val, fir::Type* infer) -> fir::Value* {
 
-		if(val->getType()->isConstantNumberType())
-		{
-			auto cv = dcast(fir::ConstantValue, val);
-			iceAssert(cv);
-
-			val = cs->unwrapConstantNumber(cv);
-		}
-
 		if(!infer)
 			return val;
 
@@ -142,14 +134,6 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 			//* get freed when the function returns.
 			if(fir::isRefCountedType(val->getType()))
 				cs->incrementRefCount(val);
-
-			if(val->getType()->isConstantNumberType())
-			{
-				auto cv = dcast(fir::ConstantValue, val);
-				iceAssert(cv);
-
-				val = cs->unwrapConstantNumber(cv);
-			}
 
 			val = doCastIfNecessary(arg->loc, val, infer);
 			values[k] = val;
