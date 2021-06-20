@@ -243,11 +243,11 @@ static sst::Expr* doExpressionDotOp(sst::TypecheckState* fs, ast::DotOperator* d
 		if(auto vr = dcast(ast::Ident, rhs))
 		{
 			fir::Type* res = 0;
-			if(vr->name == names::saa::FIELD_LENGTH)
+			if(vr->name == names::array::FIELD_LENGTH)
 			{
 				res = fir::Type::getNativeWord();
 			}
-			else if(vr->name == names::saa::FIELD_POINTER)
+			else if(vr->name == names::array::FIELD_POINTER)
 			{
 				res = type->getArrayElementType()->getPointerTo();
 				if(type->isArraySliceType() && type->toArraySliceType()->isMutable())

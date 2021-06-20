@@ -11,32 +11,6 @@
 namespace names = strs::names;
 
 
-static fir::Value* checkNullPointerOrReturnZero(cgn::CodegenState* cs, fir::Value* ptr)
-{
-	iceAssert(ptr->getType() == fir::Type::getNativeWordPtr());
-
-	auto isnull = cs->irb.ICmpEQ(ptr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
-
-	auto prevb = cs->irb.getCurrentBlock();
-	auto deref = cs->irb.addNewBlockAfter("deref", prevb);
-	auto merge = cs->irb.addNewBlockAfter("merge", deref);
-
-	cs->irb.CondBranch(isnull, merge, deref);
-
-	cs->irb.setCurrentBlock(deref);
-	auto rc = cs->irb.ReadPtr(ptr);
-	cs->irb.UnCondBranch(merge);
-
-	cs->irb.setCurrentBlock(merge);
-	auto phi = cs->irb.CreatePHINode(fir::Type::getNativeWord());
-	phi->addIncoming(fir::ConstantInt::getNative(0), prevb);
-	phi->addIncoming(rc, deref);
-
-	return phi;
-}
-
-
-
 CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 {
 	cs->pushLoc(this);
@@ -52,19 +26,19 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		if(ty->isArraySliceType())
 		{
-			if(this->name == names::saa::FIELD_LENGTH)
+			if(this->name == names::array::FIELD_LENGTH)
 				return CGResult(cs->irb.GetArraySliceLength(res.value));
 
-			else if(this->name == names::saa::FIELD_POINTER)
+			else if(this->name == names::array::FIELD_POINTER)
 				return CGResult(cs->irb.GetArraySliceData(res.value));
 		}
 		else if(ty->isArrayType())
 		{
-			if(this->name == names::saa::FIELD_LENGTH)
+			if(this->name == names::array::FIELD_LENGTH)
 			{
 				return CGResult(fir::ConstantInt::getNative(ty->toArrayType()->getArraySize()));
 			}
-			else if(this->name == names::saa::FIELD_POINTER)
+			else if(this->name == names::array::FIELD_POINTER)
 			{
 				// TODO: LVALUE HOLE
 				if(res.value->islvalue())

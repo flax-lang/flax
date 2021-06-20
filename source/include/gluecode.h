@@ -59,21 +59,7 @@ namespace cgn
 
 		namespace misc
 		{
-			fir::Function* getMallocWrapperFunction(CodegenState* cs);
-			fir::Function* getRangeSanityCheckFunction(CodegenState* cs);
-
 			fir::Name getCompare_FName(fir::Type* t);
-
-			fir::Name getCreateAnyOf_FName(fir::Type* t);
-			fir::Name getGetValueFromAny_FName(fir::Type* t);
-
-			fir::Name getBoundsCheck_FName();
-			fir::Name getDecompBoundsCheck_FName();
-
-			fir::Name getMallocWrapper_FName();
-			fir::Name getRangeSanityCheck_FName();
-
-			fir::Name getUtf8Length_FName();
 		}
 	}
 }

@@ -14,6 +14,12 @@ namespace strs
 
 	namespace names
 	{
+		namespace array
+		{
+			inline constexpr auto FIELD_LENGTH      = "length";
+			inline constexpr auto FIELD_POINTER     = "data";
+		}
+
 		namespace range
 		{
 			inline constexpr auto FIELD_BEGIN       = "begin";
