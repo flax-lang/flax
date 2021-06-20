@@ -318,22 +318,6 @@ namespace cgn
 
 				error("no");
 			}
-			else if(lt->isStringType() && rt->isStringType())
-			{
-				auto cmpfn = cgn::glue::string::getCompareFunction(this);
-				fir::Value* res = this->irb.Call(cmpfn, lv, rv);
-
-				fir::Value* zero = fir::ConstantInt::getNative(0);
-
-				if(op == Operator::CompareEQ)   return CGResult(this->irb.ICmpEQ(res, zero));
-				if(op == Operator::CompareNEQ)  return CGResult(this->irb.ICmpNEQ(res, zero));
-				if(op == Operator::CompareLT)   return CGResult(this->irb.ICmpLT(res, zero));
-				if(op == Operator::CompareLEQ)  return CGResult(this->irb.ICmpLEQ(res, zero));
-				if(op == Operator::CompareGT)   return CGResult(this->irb.ICmpGT(res, zero));
-				if(op == Operator::CompareGEQ)  return CGResult(this->irb.ICmpGEQ(res, zero));
-
-				error("no");
-			}
 			else if(lt->isEnumType() && lt == rt)
 			{
 				auto li = this->irb.GetEnumCaseIndex(lv);
@@ -348,7 +332,7 @@ namespace cgn
 
 				error("no");
 			}
-			else if((lt->isDynamicArrayType() || lt->isArraySliceType()) && lt == rt)
+			else if(lt->isArraySliceType() && lt == rt)
 			{
 				//! use opf when we have operator overloads
 				auto cmpfn = cgn::glue::array::getCompareFunction(this, lt, 0);
@@ -389,98 +373,6 @@ namespace cgn
 				ptr = this->irb.GetPointer(ptr, ofs);
 
 				return CGResult(ptr);
-			}
-			else if(lt->isStringType() && rt->isStringType())
-			{
-				if(op != Operator::Plus)
-					unsupportedError(lhs.first, lt, rhs.first, rt);
-
-				#if 0
-				// ok.
-				// if we're both string literals, then fuck it, do it compile-time
-				if(dcast(fir::ConstantCharSlice, lv) && dcast(fir::ConstantCharSlice, rv))
-				{
-					std::string cls = dcast(fir::ConstantCharSlice, lv)->getValue();
-					std::string crs = dcast(fir::ConstantCharSlice, rv)->getValue();
-
-					info(loc, "const strings");
-					return CGResult(fir::ConstantCharSlice::get(cls + crs));
-				}
-				#endif
-
-
-				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, false), this->irb.CreateSliceFromSAA(rv, false));
-				this->addRefCountedValue(res);
-
-				return CGResult(res);
-			}
-			else if((lt->isStringType() && rt->isCharSliceType()) || (lt->isCharSliceType() && rt->isStringType()))
-			{
-				if(op != Operator::Plus)
-					unsupportedError(lhs.first, lt, rhs.first, rt);
-
-				// make life easier
-				if(lt->isCharSliceType())
-				{
-					std::swap(lt, rt);
-					std::swap(lv, rv);
-				}
-
-				auto appfn = cgn::glue::string::getConstructFromTwoFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, false), rv);
-				this->addRefCountedValue(res);
-
-				return CGResult(res);
-			}
-			else if((lt->isStringType() && rt->isCharType()) || (lt->isCharType() && rt->isStringType()))
-			{
-				if(op != Operator::Plus)
-					unsupportedError(lhs.first, lt, rhs.first, rt);
-
-				// make life easier
-				if(lt->isCharType())
-				{
-					std::swap(lt, rt);
-					std::swap(lv, rv);
-				}
-
-
-				#if 0
-				if(dcast(fir::ConstantCharSlice, lv) && dcast(fir::ConstantChar, rv))
-				{
-					std::string cls = dcast(fir::ConstantCharSlice, lv)->getValue();
-					char crs = dcast(fir::ConstantChar, rv)->getValue();
-
-					info(loc, "const strings");
-					return CGResult(fir::ConstantCharSlice::get(cls + crs));
-				}
-				#endif
-
-
-				auto appfn = cgn::glue::string::getConstructWithCharFunction(this);
-				auto res = this->irb.Call(appfn, this->irb.CreateSliceFromSAA(lv, true), rv);
-				this->addRefCountedValue(res);
-
-				return CGResult(res);
-			}
-			else if(lt->isDynamicArrayType() && rt->isDynamicArrayType() && lt->getArrayElementType() == rt->getArrayElementType())
-			{
-				// check what we're doing
-				if(op != Operator::Plus)
-					unsupportedError(lhs.first, lt, rhs.first, rt);
-
-				// ok, do the append
-				auto maketwof = cgn::glue::array::getConstructFromTwoFunction(this, lt->toDynamicArrayType());
-
-				fir::Value* res = this->irb.Call(maketwof, this->irb.CreateSliceFromSAA(lv, false),
-					this->irb.CreateSliceFromSAA(rv, false));
-
-				this->addRefCountedValue(res);
-
-				return CGResult(res);
-
-				// error(loc, "i'm gonna stop you right here");
 			}
 			else
 			{

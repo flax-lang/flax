@@ -342,11 +342,6 @@ namespace platform
 	{
 		#if OS_WINDOWS
 		{
-			// auto checkFileExists = [](const TCHAR* szPath) -> bool {
-			// 	DWORD dwAttrib = GetFileAttributes(szPath);
-			// 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
-			// };
-
 			std::string p = partial;
 			std::replace(p.begin(), p.end(), '/', '\\');
 

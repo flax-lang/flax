@@ -104,7 +104,6 @@ namespace fir
 	struct TraitType;
 	struct TupleType;
 	struct UnionType;
-	struct StringType;
 	struct StructType;
 	struct OpaqueType;
 	struct PointerType;
@@ -112,7 +111,6 @@ namespace fir
 	struct RawUnionType;
 	struct PrimitiveType;
 	struct ArraySliceType;
-	struct DynamicArrayType;
 	struct UnionVariantType;
 	struct PolyPlaceholderType;
 
@@ -159,7 +157,6 @@ namespace fir
 		RawUnion,
 		Primitive,
 		ArraySlice,
-		DynamicArray,
 		UnionVariant,
 		PolyPlaceholder,
 	};
@@ -192,7 +189,6 @@ namespace fir
 		Type* getArrayElementType();
 
 		PolyPlaceholderType* toPolyPlaceholderType();
-		DynamicArrayType* toDynamicArrayType();
 		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
@@ -201,7 +197,6 @@ namespace fir
 		PointerType* toPointerType();
 		OpaqueType* toOpaqueType();
 		StructType* toStructType();
-		StringType* toStringType();
 		TraitType* toTraitType();
 		RangeType* toRangeType();
 		ClassType* toClassType();
@@ -228,7 +223,6 @@ namespace fir
 		bool isRangeType();
 
 		bool isCharType();
-		bool isStringType();
 
 		bool isOpaqueType();
 
@@ -242,7 +236,6 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isArraySliceType();
-		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
 		bool isCharSliceType();
@@ -316,7 +309,6 @@ namespace fir
 		static PointerType* getMutUint128Ptr();
 
 		static ArraySliceType* getCharSlice(bool mut);
-		static StringType* getString();
 		static RangeType* getRange();
 
 		static AnyType* getAny();
@@ -947,31 +939,6 @@ namespace fir
 	};
 
 
-	struct DynamicArrayType : Type
-	{
-		friend struct Type;
-
-		// methods
-		Type* getElementType();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		// protected constructor
-		virtual ~DynamicArrayType() override { }
-		protected:
-		DynamicArrayType(Type* elmType);
-
-		// fields
-		Type* arrayElementType;
-
-		// static funcs
-		public:
-		static DynamicArrayType* get(Type* elementType);
-	};
-
 
 	struct ArraySliceType : Type
 	{
@@ -1070,26 +1037,6 @@ namespace fir
 
 		public:
 		static RangeType* get();
-	};
-
-
-	struct StringType : Type
-	{
-		friend struct Type;
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~StringType() override { }
-		protected:
-		StringType();
-
-		public:
-		static StringType* get();
 	};
 
 

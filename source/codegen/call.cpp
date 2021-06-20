@@ -175,10 +175,7 @@ static std::vector<fir::Value*> _codegenAndArrangeFunctionCallArguments(cgn::Cod
 		if(ft->isCStyleVarArg())
 		{
 			// auto-convert strings and char slices into char* when passing to va_args
-			if(val->getType()->isStringType())
-				val = cs->irb.GetSAAData(val);
-
-			else if(val->getType()->isCharSliceType())
+			if(val->getType()->isCharSliceType())
 				val = cs->irb.GetArraySliceData(val);
 
 			// also, see if we need to promote the type!
@@ -344,7 +341,7 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 	{
 		return CGResult(cs->getDefaultValue(type));
 	}
-	else if(!type->isStringType())
+	else
 	{
 		iceAssert(args.size() == 1);
 		auto ret = cs->oneWayAutocast(args[0]->codegen(cs, type).value, type);
@@ -353,44 +350,6 @@ static CGResult callBuiltinTypeConstructor(cgn::CodegenState* cs, fir::Type* typ
 			error(args[0], "mismatched type in builtin type initialiser; expected '%s', found '%s'", type, ret->getType());
 
 		return CGResult(ret);
-	}
-	else
-	{
-		auto cloneTheSlice = [cs](fir::Value* slc) -> CGResult {
-
-			iceAssert(slc->getType()->isCharSliceType());
-
-			auto clonef = cgn::glue::string::getCloneFunction(cs);
-			iceAssert(clonef);
-
-			auto ret = cs->irb.Call(clonef, slc, fir::ConstantInt::getNative(0));
-			cs->addRefCountedValue(ret);
-
-			return CGResult(ret);
-		};
-
-		if(args.size() == 1)
-		{
-			iceAssert(args[0]->type->isCharSliceType());
-			return cloneTheSlice(args[0]->codegen(cs, fir::Type::getCharSlice(false)).value);
-		}
-		else
-		{
-			iceAssert(args.size() == 2);
-			iceAssert(args[0]->type == fir::Type::getInt8Ptr() || args[0]->type == fir::Type::getMutInt8Ptr());
-			iceAssert(args[1]->type->isIntegerType());
-
-			auto ptr = args[0]->codegen(cs).value;
-			auto len = cs->oneWayAutocast(args[1]->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
-
-			auto slc = cs->irb.CreateValue(fir::Type::getCharSlice(false));
-			slc = cs->irb.SetArraySliceData(slc, (ptr->getType()->isMutablePointer()
-				? cs->irb.PointerTypeCast(ptr, fir::Type::getInt8Ptr()) : ptr));
-
-			slc = cs->irb.SetArraySliceLength(slc, len);
-
-			return cloneTheSlice(slc);
-		}
 	}
 }
 

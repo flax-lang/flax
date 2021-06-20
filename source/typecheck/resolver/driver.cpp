@@ -280,7 +280,7 @@ namespace resolver
 			}
 			else if(arguments.size() == 1)
 			{
-				if(int d = getCastDistance(arguments[0].value->type, type); d >= 0 || (type->isStringType() && arguments[0].value->type->isCharSliceType()))
+				if(int d = getCastDistance(arguments[0].value->type, type); d >= 0)
 				{
 					return type;
 				}
@@ -292,46 +292,7 @@ namespace resolver
 			}
 			else
 			{
-				if(type->isStringType())
-				{
-					// either from a slice, or from a ptr + len
-					if(arguments.size() == 1)
-					{
-						if(!arguments[0].value->type->isCharSliceType())
-						{
-							error(arguments[0].loc, "single argument to string initialiser must be a slice of char, aka '%s', found '%s' instead",
-								fir::Type::getCharSlice(false), arguments[0].value->type);
-						}
-
-						return type;
-					}
-					else if(arguments.size() == 2)
-					{
-						if(auto t1 = arguments[0].value->type; (t1 != fir::Type::getInt8Ptr() && t1 != fir::Type::getMutInt8Ptr()))
-						{
-							error(arguments[0].loc, "first argument to two-arg string initialiser (data pointer) must be '%s' or '%s', found '%s' instead",
-								fir::Type::getInt8Ptr(), fir::Type::getMutInt8Ptr(), t1);
-						}
-						else if(auto t2 = arguments[1].value->type; fir::getCastDistance(t2, fir::Type::getNativeWord()) < 0)
-						{
-							error(arguments[0].loc, "second argument to two-arg string initialiser (length) must be '%s', found '%s' instead",
-								fir::Type::getNativeWord(), t2);
-						}
-						else
-						{
-							return type;
-						}
-					}
-					else
-					{
-						error(arguments[2].loc, "string initialiser only takes 1 (from slice) or 2 (from pointer+length)"
-							" arguments, found '%d' instead", arguments.size());
-					}
-				}
-				else
-				{
-					error(arguments[1].loc, "builtin type '%s' cannot be initialised with more than 1 value", type);
-				}
+				error(arguments[1].loc, "builtin type '%s' cannot be initialised with more than 1 value", type);
 			}
 		}
 

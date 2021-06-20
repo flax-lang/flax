@@ -11,14 +11,13 @@ namespace cgn
 	std::pair<OperatorFn, fir::Function*> CodegenState::getOperatorFunctionForTypes(fir::Type* a, fir::Type* b, std::string op)
 	{
 		std::function<bool (fir::Type*)> isBuiltinType = [&](fir::Type* t) -> bool {
-			if(t->isPrimitiveType())		return true;
-			else if(t->isBoolType())		return true;
-			else if(t->isCharType())		return true;
-			else if(t->isStringType())		return true;
-			else if(t->isNullType())		return true;
-			else if(t->isVoidType())		return true;
-			else if(t->isPointerType())		return true;
-			else if(t->isArrayType() || t->isDynamicArrayType() || t->isArraySliceType())
+			if(t->isPrimitiveType())    return true;
+			else if(t->isBoolType())    return true;
+			else if(t->isCharType())    return true;
+			else if(t->isNullType())    return true;
+			else if(t->isVoidType())    return true;
+			else if(t->isPointerType()) return true;
+			else if(t->isArrayType() || t->isArraySliceType())
 			{
 				return isBuiltinType(t->getArrayElementType());
 			}

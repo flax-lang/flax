@@ -83,168 +83,81 @@ static void checkArray(cgn::CodegenState* cs, const DecompMapping& bind, CGResul
 	auto rt = rhs.value->getType();
 	bool shouldSliceBeMutable = sst::getMutabilityOfSliceOfType(rt);
 
-	if(!rt->isArrayType() && !rt->isDynamicArrayType() && !rt->isArraySliceType() && !rt->isStringType())
+	if(!rt->isArrayType() && !rt->isArraySliceType())
 		error(bind.loc, "expected array type in destructuring declaration; found type '%s' instead", rt);
 
-	if(rt->isStringType())
+	auto array = rhs.value;
+	fir::Value* arrlen = 0;
+
+	auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
 	{
-		// do a bounds check.
-		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
+		if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
+		else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
+		else                                iceAssert(0);
+	}
+
+	// # if 0
+	if(!rhs->islvalue() && rt->isArrayType())
+	{
+		//* because of the way LLVM is designed, and hence by extension how we are designed,
+		//* fixed-sized arrays are kinda dumb. If we don't have a pointer to the array (for whatever reason???),
+		//* then we can't do a GEP access, and hence can't get a pointer to use for the 'rest' binding. So,
+		//* we error on that case but allow binding the rest.
+
+		//* theoretically if the compiler is well designed we should never hit this case, but who knows?
+
+		size_t idx = 0;
+		for(auto& b : bind.inner)
 		{
-			auto checkf = cgn::glue::string::getBoundsCheckFunction(cs, true);
-			if(checkf)
-			{
-				auto strloc = fir::ConstantCharSlice::get(bind.loc.toString());
-				cs->irb.Call(checkf, cs->irb.GetSAALength(rhs.value), numbinds, strloc);
-			}
+			auto v = CGResult(cs->irb.ExtractValue(array, { idx }));
+			cs->generateDecompositionBindings(b, v, false);
+
+			idx++;
 		}
 
-		//* note: special-case this, because 1. we want to return chars
-		auto strdat = cs->irb.PointerTypeCast(cs->irb.GetSAAData(rhs.value), fir::Type::getMutInt8Ptr());
-		{
-			size_t idx = 0;
-			for(auto& b : bind.inner)
-			{
-				auto v = CGResult(cs->irb.ReadPtr(cs->irb.GetPointer(strdat, fir::ConstantInt::getNative(idx))));
-				cs->generateDecompositionBindings(b, v, false);
+		warn(bind.loc, "destructure of array without pointer (shouldn't happen!)");
+		if(!bind.restName.empty())
+			error(bind.loc, "could not get pointer to array (of type '%s') to create binding for '...'", rt);
+	}
+	else
+	// #endif
 
-				idx++;
-			}
+	{
+		fir::Value* data = 0;
+
+		if(rt->isArrayType())               data = cs->irb.ConstGEP2(rhs.value, 0, 0);
+		else if(rt->isArraySliceType())     data = cs->irb.GetArraySliceData(array);
+		else                                iceAssert(0);
+
+
+		size_t idx = 0;
+		for(auto& b : bind.inner)
+		{
+			auto ptr = cs->irb.GetPointer(data, fir::ConstantInt::getNative(idx));
+
+			auto v = CGResult(cs->irb.Dereference(ptr));
+			cs->generateDecompositionBindings(b, v, true);
+
+			idx++;
 		}
 
 		if(!bind.restName.empty())
 		{
 			if(bind.restRef)
 			{
-				// make a slice of char.
-				auto remaining = cs->irb.Subtract(cs->irb.GetSAALength(rhs.value), numbinds);
+				auto sty = fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable);
 
-				auto slice = cs->irb.CreateValue(fir::Type::getCharSlice(shouldSliceBeMutable));
-				slice = cs->irb.SetArraySliceData(slice, cs->irb.GetPointer(strdat, numbinds));
+				auto remaining = cs->irb.Subtract(arrlen, numbinds);
+
+				auto slice = cs->irb.CreateValue(sty);
+				slice = cs->irb.SetArraySliceData(slice, cs->irb.GetPointer(data, numbinds));
 				slice = cs->irb.SetArraySliceLength(slice, remaining);
 
 				handleDefn(cs, bind.restDefn, CGResult(slice));
 			}
 			else
 			{
-				// make string.
-				// auto remaining = cs->irb.Subtract(cs->irb.GetSAALength(rhs.value), numbinds);
-
-				auto clonef = cgn::glue::string::getCloneFunction(cs);
-				iceAssert(clonef);
-
-				auto string = cs->irb.Call(clonef, rhs.value, numbinds);
-
-				handleDefn(cs, bind.restDefn, CGResult(string));
-			}
-		}
-	}
-	else
-	{
-		auto array = rhs.value;
-		fir::Value* arrlen = 0;
-
-		auto numbinds = fir::ConstantInt::getNative(bind.inner.size());
-		{
-			if(rt->isArrayType())               arrlen = fir::ConstantInt::getNative(rt->toArrayType()->getArraySize());
-			else if(rt->isArraySliceType())     arrlen = cs->irb.GetArraySliceLength(array);
-			else if(rt->isDynamicArrayType())   arrlen = cs->irb.GetSAALength(array);
-			else                                iceAssert(0);
-
-			//* note: 'true' means we're performing a decomposition, so print a more appropriate error message on bounds failure.
-			auto checkf = cgn::glue::array::getBoundsCheckFunction(cs, true);
-			if(checkf)
-			{
-				auto strloc = fir::ConstantCharSlice::get(bind.loc.toString());
-				cs->irb.Call(checkf, arrlen, numbinds, strloc);
-			}
-		}
-
-		// # if 0
-		if(!rhs->islvalue() && rt->isArrayType())
-		{
-			//* because of the way LLVM is designed, and hence by extension how we are designed,
-			//* fixed-sized arrays are kinda dumb. If we don't have a pointer to the array (for whatever reason???),
-			//* then we can't do a GEP access, and hence can't get a pointer to use for the 'rest' binding. So,
-			//* we error on that case but allow binding the rest.
-
-			//* theoretically if the compiler is well designed we should never hit this case, but who knows?
-
-			size_t idx = 0;
-			for(auto& b : bind.inner)
-			{
-				auto v = CGResult(cs->irb.ExtractValue(array, { idx }));
-				cs->generateDecompositionBindings(b, v, false);
-
-				idx++;
-			}
-
-			warn(bind.loc, "destructure of array without pointer (shouldn't happen!)");
-			if(!bind.restName.empty())
-				error(bind.loc, "could not get pointer to array (of type '%s') to create binding for '...'", rt);
-		}
-		else
-		// #endif
-
-		{
-			fir::Value* data = 0;
-
-			if(rt->isArrayType())               data = cs->irb.ConstGEP2(rhs.value, 0, 0);
-			else if(rt->isArraySliceType())     data = cs->irb.GetArraySliceData(array);
-			else if(rt->isDynamicArrayType())   data = cs->irb.GetSAAData(array);
-			else                                iceAssert(0);
-
-
-			size_t idx = 0;
-			for(auto& b : bind.inner)
-			{
-				auto ptr = cs->irb.GetPointer(data, fir::ConstantInt::getNative(idx));
-
-				auto v = CGResult(cs->irb.Dereference(ptr));
-				cs->generateDecompositionBindings(b, v, true);
-
-				idx++;
-			}
-
-			if(!bind.restName.empty())
-			{
-				if(bind.restRef)
-				{
-					auto sty = fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable);
-
-					auto remaining = cs->irb.Subtract(arrlen, numbinds);
-
-					auto slice = cs->irb.CreateValue(sty);
-					slice = cs->irb.SetArraySliceData(slice, cs->irb.GetPointer(data, numbinds));
-					slice = cs->irb.SetArraySliceLength(slice, remaining);
-
-					handleDefn(cs, bind.restDefn, CGResult(slice));
-				}
-				else
-				{
-					// always return a dynamic array here.
-					//* note: in order to make our lives somewhat easier, for fixed arrays, we create a fake slice pointing to its data, then we
-					//* call clone on that instead.
-
-					fir::Value* clonee = 0;
-					if(rt->isArrayType())
-					{
-						clonee = cs->irb.CreateValue(fir::ArraySliceType::get(rt->getArrayElementType(), shouldSliceBeMutable));
-						clonee = cs->irb.SetArraySliceData(clonee, data);
-						clonee = cs->irb.SetArraySliceLength(clonee, fir::ConstantInt::getNative(rt->toArrayType()->getArraySize()));
-					}
-					else
-					{
-						clonee = array;
-					}
-
-					auto clonef = cgn::glue::array::getCloneFunction(cs, clonee->getType());
-					iceAssert(clonef);
-
-					auto ret = cs->irb.Call(clonef, clonee, numbinds);
-
-					handleDefn(cs, bind.restDefn, CGResult(ret));
-				}
+				error("gone");
 			}
 		}
 	}

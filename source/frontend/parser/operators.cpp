@@ -260,9 +260,9 @@ namespace parser
 
 				i = parseOperatorDecl(tokens, i, &kind, &oper);
 
-				if(kind == 1)		infix[oper.symbol] = oper;
-				else if(kind == 2)	prefix[oper.symbol] = oper;
-				else if(kind == 3)	postfix[oper.symbol] = oper;
+				if(kind == 1)       infix[oper.symbol] = oper;
+				else if(kind == 2)  prefix[oper.symbol] = oper;
+				else if(kind == 3)  postfix[oper.symbol] = oper;
 			}
 			else if(tok == TT::Export || tok == TT::Import)
 			{

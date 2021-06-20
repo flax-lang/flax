@@ -334,67 +334,6 @@ namespace interp
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cds = dcast(fir::ConstantDynamicString, c))
-		{
-			auto str = makeGlobalString(is, cds->getValue());
-			auto ptr = fir::ConstantBitcast::get(fir::ConstantInt::getUNative(reinterpret_cast<uintptr_t>(str)), fir::Type::getInt8Ptr());
-			auto len = fir::ConstantInt::getNative(cds->getValue().size());
-
-			auto bytecount = getSizeOfType(cds->getType());
-
-			// add -1 for capacity and 0 for refcountptr.
-			auto ret = constructStructThingy(cds, bytecount, { ptr, len,
-				fir::ConstantInt::getNative(-1), fir::ConstantInt::getNative(0) });
-
-			return (cachedConstants[c] = ret);
-		}
-		else if(auto cda = dcast(fir::ConstantDynamicArray, c))
-		{
-			std::vector<interp::Value> mems;
-			auto bytecount = getSizeOfType(cda->getType());
-
-			if(cda->getArray())
-			{
-				auto theArray = cda->getArray();
-				auto sz = getSizeOfType(theArray->getType());
-
-				void* buffer = new uint8_t[sz]; memset(buffer, 0, sz);
-				is->globalAllocs.push_back(buffer);
-
-				uint8_t* ofs = reinterpret_cast<uint8_t*>(buffer);
-				for(auto x : theArray->getValues())
-				{
-					auto v = makeConstant(is, x);
-
-					if(v.dataSize > LARGE_DATA_SIZE)    memmove(ofs, v.ptr, v.dataSize);
-					else                                memmove(ofs, &v.data[0], v.dataSize);
-
-					ofs += v.dataSize;
-				}
-
-				interp::Value fakeptr;
-				fakeptr.val = 0;
-				fakeptr.type = cda->getType()->getArrayElementType()->getMutablePointerTo();
-				fakeptr.dataSize = sizeof(void*);
-
-				setValueRaw(is, &fakeptr, &buffer, sizeof(void*));
-
-				mems = {
-					fakeptr, makeConstant(is, fir::ConstantInt::getNative(theArray->getValues().size())),
-					makeConstant(is, fir::ConstantInt::getNative(-1)), makeConstant(is, fir::ConstantInt::getNative(0))
-				};
-			}
-			else
-			{
-				mems = {
-					makeConstant(is, cda->getData()), makeConstant(is, cda->getLength()),
-					makeConstant(is, cda->getCapacity()), makeConstant(is, fir::ConstantInt::getNative(0))
-				};
-			}
-
-			auto ret = constructStructThingy2(cda, bytecount, mems);
-			return (cachedConstants[c] = ret);
-		}
 		else if(auto fn = dcast(fir::Function, c))
 		{
 			// ok -- when we get a "function" as a constant, what really happened in the source code is that we referred to a function
@@ -667,19 +606,6 @@ namespace interp
 			return {
 				fir::Type::getNativeWord(), ty->toEnumType()->getCaseType()
 			};
-		}
-		else if(ty->isStringType() || ty->isDynamicArrayType())
-		{
-			std::vector<fir::Type*> mems(4);
-
-			if(ty->isDynamicArrayType())    mems[SAA_DATA_INDEX] = ty->getArrayElementType()->getMutablePointerTo();
-			else                            mems[SAA_DATA_INDEX] = fir::Type::getMutInt8Ptr();
-
-			mems[SAA_LENGTH_INDEX]      = fir::Type::getNativeWord();
-			mems[SAA_CAPACITY_INDEX]    = fir::Type::getNativeWord();
-			mems[SAA_REFCOUNTPTR_INDEX] = fir::Type::getNativeWordPtr();
-
-			return mems;
 		}
 		else
 		{
@@ -1055,7 +981,7 @@ namespace interp
 		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, size_t(8))];
 		ffi_call(&fn_cif, reinterpret_cast<void(*)()>(fnptr), ret_buffer, arg_pointers);
 
-		interp::Value ret = { 0 };
+		interp::Value ret = { };
 		ret.type = fnty->getReturnType();
 		ret.dataSize = ffi_retty->size;
 
@@ -2627,13 +2553,6 @@ namespace interp
 
 			return fir::ConstantCharSlice::get(std::string(ptr, len));
 		}
-		else if(ty->isStringType())
-		{
-			char* ptr = gav<char*>(extractOneValue(val, SAA_DATA_INDEX, fir::Type::getMutInt8Ptr()));
-			int64_t len = gav<int64_t>(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
-
-			return fir::ConstantDynamicString::get(std::string(ptr, len));
-		}
 		else if(ty->isArraySliceType())
 		{
 			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SLICE_DATA_INDEX,
@@ -2643,16 +2562,6 @@ namespace interp
 				fir::Type::getInt64()));
 
 			return fir::ConstantArraySlice::get(ty->toArraySliceType(), ptr, len);
-		}
-		else if(ty->isDynamicArrayType())
-		{
-			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_DATA_INDEX,
-				ty->getArrayElementType()->getMutablePointerTo()));
-
-			auto len = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
-			auto cap = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_CAPACITY_INDEX, fir::Type::getInt64()));
-
-			return fir::ConstantDynamicArray::get(ty->toDynamicArrayType(), ptr, len, cap);
 		}
 		else if(ty->isStructType())
 		{

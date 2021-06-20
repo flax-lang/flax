@@ -331,9 +331,9 @@ namespace lexer
 
 			// find that shit
 			auto end = std::find_if_not(tmp.begin(), tmp.end(), [base](const char& c) -> bool {
-				if(base == 10)	return isdigit(c);
-				if(base == 16)	return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
-				else			return (c == '0' || c == '1');
+				if(base == 10)  return isdigit(c);
+				if(base == 16)  return isdigit(c) || (toupper(c) >= 'A' && toupper(c) <= 'F');
+				else            return (c == '0' || c == '1');
 			});
 
 			tmp.remove_prefix((end - tmp.begin()));

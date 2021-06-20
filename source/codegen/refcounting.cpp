@@ -106,16 +106,16 @@ namespace cgn
 			{
 				fir::Value* mem = cs->irb.ExtractValue(value, { i });
 
-				if(incr)	cs->incrementRefCount(mem);
-				else		cs->decrementRefCount(mem);
+				if(incr)    cs->incrementRefCount(mem);
+				else        cs->decrementRefCount(mem);
 			}
 			else if(isStructuredAggregate(m))
 			{
 				fir::Value* mem = cs->irb.ExtractValue(value, { i });
 
-				if(m->isStructType())		doRefCountOfAggregateType(cs, m->toStructType(), mem, incr);
-				else if(m->isClassType())	doRefCountOfAggregateType(cs, m->toClassType(), mem, incr);
-				else if(m->isTupleType())	doRefCountOfAggregateType(cs, m->toTupleType(), mem, incr);
+				if(m->isStructType())       doRefCountOfAggregateType(cs, m->toStructType(), mem, incr);
+				else if(m->isClassType())   doRefCountOfAggregateType(cs, m->toClassType(), mem, incr);
+				else if(m->isTupleType())   doRefCountOfAggregateType(cs, m->toTupleType(), mem, incr);
 			}
 
 			i++;
@@ -126,32 +126,15 @@ namespace cgn
 	{
 		auto type = val->getType();
 
-		if(type->isStringType())
-		{
-			fir::Function* rf = 0;
-			if(incr) rf = glue::string::getRefCountIncrementFunction(cs);
-			else rf = glue::string::getRefCountDecrementFunction(cs);
-
-			cs->irb.Call(rf, val);
-		}
-		else if(isStructuredAggregate(type))
+		if(isStructuredAggregate(type))
 		{
 			auto ty = type;
 
-			if(ty->isStructType())		doRefCountOfAggregateType(cs, ty->toStructType(), val, incr);
-			else if(ty->isClassType())	doRefCountOfAggregateType(cs, ty->toClassType(), val, incr);
-			else if(ty->isTupleType())	doRefCountOfAggregateType(cs, ty->toTupleType(), val, incr);
+			if(ty->isStructType())      doRefCountOfAggregateType(cs, ty->toStructType(), val, incr);
+			else if(ty->isClassType())  doRefCountOfAggregateType(cs, ty->toClassType(), val, incr);
+			else if(ty->isTupleType())  doRefCountOfAggregateType(cs, ty->toTupleType(), val, incr);
 		}
-		else if(type->isDynamicArrayType())
-		{
-			fir::Function* rf = 0;
-			if(incr) rf = glue::array::getIncrementArrayRefCountFunction(cs, type->toDynamicArrayType());
-			else rf = glue::array::getDecrementArrayRefCountFunction(cs, type->toDynamicArrayType());
-
-			iceAssert(rf);
-			cs->irb.Call(rf, val);
-		}
-		else if(type->isArrayType())
+		if(type->isArrayType())
 		{
 			error("no array");
 		}

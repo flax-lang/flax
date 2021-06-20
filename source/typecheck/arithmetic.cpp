@@ -84,8 +84,7 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 		// we handle this separately because we only want to check for number types and string types.
 		bool ty_compat = (left == right || fir::getCastDistance(left, right) >= 0 || fir::getCastDistance(right, left) >= 0);
 
-		bool ty_comparable = (left->isStringType() || left->isArraySliceType() || left->isArrayType()
-			|| left->isDynamicArrayType()
+		bool ty_comparable = (left->isArraySliceType() || left->isArrayType()
 			|| left->isPrimitiveType() || left->isEnumType());
 
 		if(ty_compat && ty_comparable)
@@ -107,15 +106,6 @@ fir::Type* sst::TypecheckState::getBinaryOpResultType(fir::Type* left, fir::Type
 	else if(op == Operator::Plus)
 	{
 		if(left->isPrimitiveType() && right->isPrimitiveType() && left == right)
-			return left;
-
-		else if(left->isStringType() && (right->isStringType() || right->isCharSliceType() || right->isCharType()))
-			return fir::Type::getString();
-
-		else if(left->isDynamicArrayType() && right->isDynamicArrayType() && left == right)
-			return left;
-
-		else if(left->isDynamicArrayType() && left->getArrayElementType() == right)
 			return left;
 
 		else if(left->isPointerType() && right->isIntegerType())

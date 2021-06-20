@@ -17,7 +17,8 @@ TCResult ast::AssignOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	auto l = this->left->typecheck(fs).expr();
 	auto r = this->right->typecheck(fs, l->type).expr();
 
-	if(r->type->isVoidType())	error(this->right, "value has void type");
+	if(r->type->isVoidType())
+		error(this->right, "value has void type");
 
 	// check if we can do it first
 	auto lt = l->type;

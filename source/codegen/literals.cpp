@@ -47,7 +47,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// ok
 		return CGResult(fir::ConstantArray::get(this->type, vals));
 	}
-	else if(this->type->isDynamicArrayType() || this->type->isArraySliceType())
+	else if(this->type->isArraySliceType())
 	{
 		// ok, this can basically be anything.
 		// no restrictions.
@@ -62,14 +62,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 				error(this, "failed to infer type for empty array literal");
 
 			auto z = fir::ConstantInt::getNative(0);
-			if(infer->isDynamicArrayType())
-			{
-				// ok.
-				elmty = infer->getArrayElementType();
-				returnValue = fir::ConstantDynamicArray::get(fir::DynamicArrayType::get(elmty),
-					fir::ConstantValue::getZeroValue(elmty->getPointerTo()), z, z);
-			}
-			else if(infer->isArraySliceType())
+			if(infer->isArraySliceType())
 			{
 				elmty = infer->getArrayElementType();
 
@@ -138,20 +131,7 @@ CGResult sst::LiteralArray::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			// return it
-			if(this->type->isDynamicArrayType())
-			{
-				auto arrptr = cs->irb.AddressOf(array, true);
-
-				auto aa = cs->irb.CreateValue(this->type->toDynamicArrayType());
-
-				aa = cs->irb.SetSAAData(aa, cs->irb.ConstGEP2(arrptr, 0, 0));
-				aa = cs->irb.SetSAALength(aa, fir::ConstantInt::getNative(this->values.size()));
-				aa = cs->irb.SetSAACapacity(aa, fir::ConstantInt::getNative(-1));
-				aa = cs->irb.SetSAARefCountPointer(aa, fir::ConstantValue::getZeroValue(fir::Type::getNativeWordPtr()));
-
-				returnValue = aa;
-			}
-			else if(this->type->isArraySliceType())
+			if(this->type->isArraySliceType())
 			{
 				auto arrptr = cs->irb.AddressOf(array, true);
 

@@ -23,7 +23,7 @@ TCResult ast::SizeofOp::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	}
 
 	this->expr->checkAsType = true;
- 	fir::Type* out = this->expr->typecheck(fs).expr()->type;
+	fir::Type* out = this->expr->typecheck(fs).expr()->type;
 
 	iceAssert(out);
 	ret->typeToSize = out;
@@ -45,7 +45,7 @@ TCResult ast::TypeidOp::typecheck(sst::TypecheckState* fs, fir::Type* inferred)
 	}
 
 	this->expr->checkAsType = true;
- 	fir::Type* out = this->expr->typecheck(fs).expr()->type;
+	fir::Type* out = this->expr->typecheck(fs).expr()->type;
 
 	iceAssert(out);
 	ret->typeToId = out;

@@ -136,29 +136,16 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* type = 0;
 	if(this->values.empty())
 	{
-		if(this->explicitType)
-		{
-			auto explty = fs->convertParserTypeToFIR(this->explicitType);
-			iceAssert(explty);
+		iceAssert(infer != nullptr);
 
-			type = fir::DynamicArrayType::get(explty);
-		}
-		else
+		if(infer->isArrayType())
 		{
-			if(infer == 0)
-			{
-				// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
-				infer = fir::DynamicArrayType::get(fir::VoidType::get());
-			}
-			else if(infer->isArrayType())
-			{
-				if(infer->toArrayType()->getArraySize() != 0)
-					error(this, "array type with non-zero length %d was inferred for empty array literal", infer->toArrayType()->getArraySize());
-			}
-			else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
-			{
-				error(this, "invalid type '%s' inferred for array literal", infer);
-			}
+			if(infer->toArrayType()->getArraySize() != 0)
+				error(this, "array type with non-zero length %d was inferred for empty array literal", infer->toArrayType()->getArraySize());
+		}
+		else if(!infer->isArraySliceType())
+		{
+			error(this, "invalid type '%s' inferred for array literal", infer);
 		}
 
 		type = infer;
@@ -169,7 +156,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(!elmty && infer)
 		{
-			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
+			if(!infer->isArraySliceType() && !infer->isArrayType())
 				error(this, "invalid type '%s' inferred for array literal", infer);
 
 			elmty = infer->getArrayElementType();
@@ -214,11 +201,6 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			// slices from a constant array generally should remain immutable.
 			type = fir::ArraySliceType::get(elmty, false);
-		}
-		else if(infer->isDynamicArrayType())
-		{
-			// do something
-			type = fir::DynamicArrayType::get(elmty);
 		}
 		else
 		{

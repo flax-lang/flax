@@ -437,58 +437,6 @@ namespace fir
 
 
 
-	ConstantDynamicArray* ConstantDynamicArray::get(DynamicArrayType* t, ConstantValue* d, ConstantValue* l, ConstantValue* c)
-	{
-		auto cda = new ConstantDynamicArray(t);
-		cda->data = d;
-		cda->length = l;
-		cda->capacity = c;
-
-		return cda;
-	}
-
-	ConstantDynamicArray* ConstantDynamicArray::get(ConstantArray* arr)
-	{
-		auto cda = new ConstantDynamicArray(DynamicArrayType::get(arr->getType()->toArrayType()->getElementType()));
-		cda->arr = arr;
-
-		return cda;
-	}
-
-
-	ConstantDynamicArray::ConstantDynamicArray(DynamicArrayType* t) : ConstantValue(t)
-	{
-	}
-
-	std::string ConstantDynamicArray::str()
-	{
-		return "<dyn array>";
-	}
-
-
-
-	ConstantDynamicString* ConstantDynamicString::get(const std::string& s)
-	{
-		return new ConstantDynamicString(s);
-	}
-
-	ConstantDynamicString::ConstantDynamicString(const std::string& s) : ConstantValue(fir::Type::getString())
-	{
-		this->value = s;
-	}
-
-	std::string ConstantDynamicString::getValue()
-	{
-		return this->value;
-	}
-
-	std::string ConstantDynamicString::str()
-	{
-		return zpr::sprint("\"%s\"", this->value);
-	}
-
-
-
 
 
 

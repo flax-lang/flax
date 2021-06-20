@@ -731,16 +731,6 @@ namespace parser
 					return util::pool<pts::FixedArrayType>(loc, elm, sz);
 				}
 			}
-			else if(st.front() == TT::RSquare)
-			{
-				// dynamic array.
-				if(mut) error(st.loc(), "dynamic arrays are always mutable, specifying 'mut' is unnecessary");
-
-				loc.len = st.loc().col - loc.col + st.loc().len;
-
-				st.pop();
-				return util::pool<pts::DynamicArrayType>(loc, elm);
-			}
 			else
 			{
 				expected(st.loc(), "']' in array type specifier", st.front().str());

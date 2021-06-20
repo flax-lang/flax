@@ -134,28 +134,6 @@ namespace fir
 		[[nodiscard]] Value* InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname = "");
 
 
-		//! ACHTUNG !
-		//* 'generic' function that works for both strings and dynamic arrays,
-		//* since they now function almost exactly the same.
-		//? SAA -- String Array Analogue
-		Value* GetSAAData(Value* str, const std::string& vname = "");
-		Value* GetSAALength(Value* str, const std::string& vname = "");
-		Value* GetSAACapacity(Value* str, const std::string& vname = "");
-		Value* GetSAARefCount(Value* str, const std::string& vname = "");
-		Value* GetSAARefCountPointer(Value* str, const std::string& vname = "");
-
-		[[nodiscard]] Value* SetSAARefCountPointer(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAACapacity(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAALength(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAAData(Value* str, Value* val, const std::string& vname = "");
-		void SetSAARefCount(Value* str, Value* val);
-
-
-		Value* CreateSliceFromSAA(Value* str, bool mut, const std::string& vname = "");
-
-
-
-
 		Value* GetArraySliceData(Value* arr, const std::string& vname = "");
 		Value* GetArraySliceLength(Value* arr, const std::string& vname = "");
 

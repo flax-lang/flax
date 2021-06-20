@@ -344,10 +344,6 @@ namespace sst
 		{
 			return fir::ArraySliceType::get(this->convertParserTypeToFIR(pt->toArraySliceType()->base), pt->toArraySliceType()->mut);
 		}
-		else if(pt->isDynamicArrayType())
-		{
-			return fir::DynamicArrayType::get(this->convertParserTypeToFIR(pt->toDynamicArrayType()->base));
-		}
 		else if(pt->isVariadicArrayType())
 		{
 			return fir::ArraySliceType::getVariadic(this->convertParserTypeToFIR(pt->toVariadicArrayType()->base));

@@ -43,27 +43,6 @@ namespace cgn
 		{
 			result = this->irb.GetArraySliceData(from);
 		}
-		else if(fromType->isStringType() && target == fir::Type::getInt8Ptr())
-		{
-			result = this->irb.PointerTypeCast(this->irb.GetSAAData(from), fir::Type::getInt8Ptr());
-		}
-		else if(fromType->isStringType() && target->isCharSliceType())
-		{
-			auto ret = this->irb.CreateValue(target);
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from));
-
-			result = ret;
-		}
-		else if(fromType->isDynamicArrayType() && target->isArraySliceType() && target->getArrayElementType() == fromType->getArrayElementType())
-		{
-			// ok, then
-			auto ret = this->irb.CreateValue(fir::ArraySliceType::get(fromType->getArrayElementType(), target->toArraySliceType()->isMutable()));
-			ret = this->irb.SetArraySliceData(ret, this->irb.GetSAAData(from));
-			ret = this->irb.SetArraySliceLength(ret, this->irb.GetSAALength(from));
-
-			result = ret;
-		}
 		else if(fromType->isPointerType() && target->isPointerType() && fromType->getPointerElementType()->isClassType()
 			&& fromType->getPointerElementType()->toClassType()->hasParent(target->getPointerElementType()))
 		{

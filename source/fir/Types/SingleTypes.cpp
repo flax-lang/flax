@@ -54,20 +54,6 @@ namespace fir
 	fir::Type* RangeType::substitutePlaceholders(const PolySubst&)  { return this; }
 
 
-	static StringType* singleString = 0;
-	StringType::StringType() : Type(TypeKind::String)   { }
-	std::string StringType::str()                       { return "string"; }
-	std::string StringType::encodedStr()                { return "string"; }
-	bool StringType::isTypeEqual(Type* other)           { return other && other->isStringType(); }
-	StringType* StringType::get()                       { return singleString = (singleString ? singleString : new StringType()); }
-	fir::Type* StringType::substitutePlaceholders(const PolySubst&) { return this; }
-
-
-
-
-
-
-
 
 	std::string PolyPlaceholderType::str()          { return strprintf("$%s/%d", this->name, this->group); }
 	std::string PolyPlaceholderType::encodedStr()   { return strprintf("$%s/%d", this->name, this->group); }
@@ -89,9 +75,6 @@ namespace fir
 
 	bool PolyPlaceholderType::isTypeEqual(Type* other)
 	{
-		// return other && other->isPolyPlaceholderType() && other->toPolyPlaceholderType()->name == this->name
-		// 	&& other->toPolyPlaceholderType()->group == this->group;
-
 		//! ACHTUNG !
 		// performance optimisation: since all polys go through ::get, and we already guarantee interning
 		// from that function, we should be able to just compare pointers.

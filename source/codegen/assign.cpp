@@ -45,67 +45,6 @@ CGResult sst::AssignOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		// some things -- if we're doing +=, and the types are supported, then just call the actual
 		// append function, instead of doing the + first then assigning it.
 
-		if(nonass == Operator::Plus)
-		{
-			if(lt->isDynamicArrayType() && lt == rt)
-			{
-				// right then.
-				if(!lr->islvalue())
-					error(this, "cannot append to an r-value array");
-
-				auto appendf = cgn::glue::array::getAppendFunction(cs, lt->toDynamicArrayType());
-
-				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr, cs->irb.CreateSliceFromSAA(rr, false));
-
-				cs->irb.Store(res, lr);
-				return CGResult(0);
-			}
-			else if(lt->isDynamicArrayType() && lt->getArrayElementType() == rt)
-			{
-				// right then.
-				if(!lr->islvalue())
-					error(this, "cannot append to an r-value array");
-
-				auto appendf = cgn::glue::array::getElementAppendFunction(cs, lt->toDynamicArrayType());
-
-				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr, rr);
-
-				cs->irb.Store(res, lr);
-				return CGResult(0);
-			}
-			else if(lt->isStringType() && lt == rt)
-			{
-				// right then.
-				if(!lr->islvalue())
-					error(this, "cannot append to an r-value array");
-
-				auto appendf = cgn::glue::string::getAppendFunction(cs);
-
-				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr, cs->irb.CreateSliceFromSAA(rr, true));
-
-				cs->irb.Store(res, lr);
-				return CGResult(0);
-			}
-			else if(lt->isStringType() && rt->isCharType())
-			{
-				// right then.
-				if(!lr->islvalue())
-					error(this, "cannot append to an r-value string");
-
-				auto appendf = cgn::glue::string::getCharAppendFunction(cs);
-
-				//? are there any ramifications for these actions for ref-counted things?
-				auto res = cs->irb.Call(appendf, lr, rr);
-
-				cs->irb.Store(res, lr);
-				return CGResult(0);
-			}
-		}
-
-
 		// do the op first
 		auto res = cs->performBinaryOperation(this->loc, { this->left->loc, lr }, { this->right->loc, rr }, nonass);
 

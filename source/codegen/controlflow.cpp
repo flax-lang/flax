@@ -27,8 +27,8 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		iceAssert(this->elseCase);
 
 	fir::IRBlock* elseblk = 0;
-	if(this->elseCase)	elseblk = cs->irb.addNewBlockAfter("elseCase-" + this->elseCase->loc.shortString(), trueblk);
-	else				elseblk = mergeblk;
+	if(this->elseCase)  elseblk = cs->irb.addNewBlockAfter("elseCase-" + this->elseCase->loc.shortString(), trueblk);
+	else                elseblk = mergeblk;
 
 	// first we gotta do all the inits of all the cases first.
 	// we're already in our own scope, so it shouldn't matter.
@@ -108,19 +108,6 @@ CGResult sst::IfStmt::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			}
 
 			cs->irb.setCurrentBlock(falseblkr);
-			{
-				// TODO: why tf is this commented out??
-
-				// ok, do the next thing.
-				// if we're the last block, then gtfo and branch to merge
-				// if()
-				// {
-				// 	if(!cs->irb.getCurrentBlock()->isTerminated())
-				// 		cs->irb.UnCondBranch(elseblk);
-
-				// 	break;
-				// }
-			}
 		}
 	}
 	else

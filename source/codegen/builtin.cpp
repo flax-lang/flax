@@ -47,95 +47,10 @@ CGResult sst::BuiltinDotOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 
 	if(this->isFunctionCall)
 	{
-		std::vector<fir::Value*> arguments = zfu::map(this->args, [cs](sst::Expr* e) -> fir::Value* { return e->codegen(cs).value; });
-		if(this->name == names::saa::FN_CLONE)
-		{
-			iceAssert(arguments.empty());
-			auto clonef = cgn::glue::saa_common::generateCloneFunction(cs, ty);
-
-			auto ret = cs->irb.Call(clonef, cs->irb.CreateSliceFromSAA(res.value, false), fir::ConstantInt::getNative(0));
-
-			iceAssert(fir::isRefCountedType(ret->getType()));
-			cs->addRefCountedValue(ret);
-
-			return CGResult(ret);
-		}
-		else if(this->name == names::array::FN_POP)
-		{
-			iceAssert(!ty->isStringType());
-
-			if(!res->islvalue())
-				error(this->lhs, "cannot call 'pop()' on an rvalue");
-
-			else if(res->isConst())
-				error(this->lhs, "cannot call 'pop()' (which mutates) on a constant value");
-
-			else if(ty->isArrayType())
-				error(this->lhs, "cannot call 'pop()' on an array type ('%s')", ty);
-
-			auto popf = cgn::glue::array::getPopElementFromBackFunction(cs, ty);
-			auto tupl = cs->irb.Call(popf, res.value, fir::ConstantCharSlice::get(this->loc.toString()));
-
-			// tupl[0] is the new array
-			// tupl[1] is the last element
-
-			auto newarr = cs->irb.ExtractValue(tupl, { 0 });
-			auto retelm = cs->irb.ExtractValue(tupl, { 1 });
-
-			cs->irb.Store(newarr, res.value);
-			return CGResult(retelm);
-		}
-		else if(this->name == names::saa::FN_APPEND)
-		{
-			iceAssert(arguments.size() == 1);
-
-			if(!res->islvalue())
-				error(this->lhs, "cannot call 'append' on an rvalue");
-
-			auto arg = arguments[0];
-			fir::Function* appendf = cgn::glue::saa_common::generateAppropriateAppendFunction(cs, ty, arg->getType());
-			iceAssert(appendf);
-
-			if(arg->getType()->isDynamicArrayType() && arg->getType() == ty)
-				arg = cs->irb.CreateSliceFromSAA(arg, true);
-
-			else if(arg->getType()->isStringType() && arg->getType() == ty)
-				arg = cs->irb.CreateSliceFromSAA(arg, true);
-
-			auto ret = cs->irb.Call(appendf, res.value, arg);
-
-			cs->irb.Store(ret, res.value);
-
-			return CGResult(res);
-		}
 	}
 	else
 	{
-		if(ty->isStringType() || ty->isDynamicArrayType())
-		{
-			if(this->name == names::saa::FIELD_POINTER)
-				return CGResult(cs->irb.GetSAAData(res.value));
-
-			else if(this->name == names::saa::FIELD_LENGTH)
-				return CGResult(cs->irb.GetSAALength(res.value));
-
-			else if(this->name == names::saa::FIELD_CAPACITY)
-				return CGResult(cs->irb.GetSAACapacity(res.value));
-
-			else if(this->name == names::saa::FIELD_REFCOUNT)
-			{
-				return CGResult(checkNullPointerOrReturnZero(cs, cs->irb.GetSAARefCountPointer(res.value)));
-			}
-			else if(ty->isStringType() && this->name == names::string::FIELD_COUNT)
-			{
-				auto fn = cgn::glue::string::getUnicodeLengthFunction(cs);
-				iceAssert(fn);
-
-				auto ret = cs->irb.Call(fn, cs->irb.GetSAAData(res.value));
-				return CGResult(ret);
-			}
-		}
-		else if(ty->isArraySliceType())
+		if(ty->isArraySliceType())
 		{
 			if(this->name == names::saa::FIELD_LENGTH)
 				return CGResult(cs->irb.GetArraySliceLength(res.value));

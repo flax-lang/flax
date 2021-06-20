@@ -145,28 +145,7 @@ static fir::Value* performAllocation(cgn::CodegenState* cs, sst::AllocOp* alloc,
 	}
 	else
 	{
-		auto ecount = counts[0];
-
-		auto count = cs->oneWayAutocast(ecount->codegen(cs, fir::Type::getNativeWord()).value, fir::Type::getNativeWord());
-		if(!count || !count->getType()->isIntegerType())
-			error(ecount, "expected integer type for length, found '%s' instead", (count ? count->getType()->str() : "null"));
-
-		// make sure the length isn't negative
-		auto checkf = getCheckNegativeLengthFunction(cs);
-		iceAssert(checkf);
-		cs->irb.Call(checkf, count, fir::ConstantCharSlice::get(ecount->loc.toString()));
-
-		auto arr = cs->irb.CreateValue(fir::DynamicArrayType::get(type));
-		auto expandfn = cgn::glue::saa_common::generateReserveAtLeastFunction(cs, arr->getType());
-		iceAssert(expandfn);
-
-		arr = cs->irb.Call(expandfn, arr, count);
-		arr = cs->irb.SetSAALength(arr, count);
-
-		callSetFunction(type, alloc, cs->irb.GetSAAData(arr), count);
-		cs->addRefCountedValue(arr);
-
-		return arr;
+		iceAssert(false);
 	}
 }
 

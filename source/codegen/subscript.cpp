@@ -19,12 +19,7 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	fir::Value* datapointer = 0;
 	fir::Value* maxlength = 0;
 
-	if(lt->isStringType() || lt->isDynamicArrayType())
-	{
-		datapointer = cs->irb.GetSAAData(lr.value);
-		maxlength = cs->irb.GetSAALength(lr.value);
-	}
-	else if(lt->isArraySliceType())
+	if(lt->isArraySliceType())
 	{
 		datapointer = cs->irb.GetArraySliceData(lr.value);
 		maxlength = cs->irb.GetArraySliceLength(lr.value);
@@ -58,13 +53,6 @@ CGResult sst::SubscriptOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	{
 		// of course these will have to be changed eventually
 		iceAssert(index->getType()->isIntegerType());
-	}
-
-	if(maxlength)
-	{
-		fir::Function* checkf = cgn::glue::saa_common::generateBoundsCheckFunction(cs, /* isString: */ lt->isStringType(), /* isDecomp: */false);
-		if(checkf)
-			cs->irb.Call(checkf, maxlength, index, fir::ConstantCharSlice::get(this->loc.shortString()));
 	}
 
 	// ok, do it
