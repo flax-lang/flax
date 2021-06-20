@@ -44,6 +44,12 @@ namespace lexer
 		return true;
 	}
 
+	template <size_t N>
+	static constexpr size_t constexpr_strlen(char const (&literal)[N])
+	{
+		return N - 1;
+	}
+
 
 
 	static TokenType prevType = TokenType::Invalid;
@@ -135,6 +141,21 @@ namespace lexer
 		tok.loc = pos;
 		tok.type = TokenType::Invalid;
 
+	#define CHECK_TOKEN(str, ty)            \
+		else if(hasPrefix(stream, str)) {   \
+			tok.type = TokenType::ty;       \
+			tok.text = str;                 \
+			read = constexpr_strlen(str);   \
+		}
+
+	#define CHECK_TOKEN_UNICODE(str, ty, ul)\
+		else if(hasPrefix(stream, str)) {   \
+			tok.type = TokenType::ty;       \
+			tok.text = str;                 \
+			read = constexpr_strlen(str);   \
+			unicodeLength = ul;             \
+		}
+
 		// check compound symbols first.
 		if(hasPrefix(stream, "//"))
 		{
@@ -151,144 +172,45 @@ namespace lexer
 			flag = false;
 			tok.text = "";
 		}
-		else if(hasPrefix(stream, "=="))
-		{
-			tok.type = TokenType::EqualsTo;
-			tok.text = "==";
-			read = 2;
-		}
-		else if(hasPrefix(stream, ">="))
-		{
-			tok.type = TokenType::GreaterEquals;
-			tok.text = ">=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<="))
-		{
-			tok.type = TokenType::LessThanEquals;
-			tok.text = "<=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "!="))
-		{
-			tok.type = TokenType::NotEquals;
-			tok.text = "!=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "||"))
-		{
-			tok.type = TokenType::LogicalOr;
-			tok.text = "||";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "&&"))
-		{
-			tok.type = TokenType::LogicalAnd;
-			tok.text = "&&";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<-"))
-		{
-			tok.type = TokenType::LeftArrow;
-			tok.text = "<-";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "->"))
-		{
-			tok.type = TokenType::RightArrow;
-			tok.text = "->";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "<="))
-		{
-			tok.type = TokenType::FatLeftArrow;
-			tok.text = "<=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "=>"))
-		{
-			tok.type = TokenType::FatRightArrow;
-			tok.text = "=>";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "++"))
-		{
-			tok.type = TokenType::DoublePlus;
-			tok.text = "++";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "--"))
-		{
-			tok.type = TokenType::DoubleMinus;
-			tok.text = "--";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "+="))
-		{
-			tok.type = TokenType::PlusEq;
-			tok.text = "+=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "-="))
-		{
-			tok.type = TokenType::MinusEq;
-			tok.text = "-=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "*="))
-		{
-			tok.type = TokenType::MultiplyEq;
-			tok.text = "*=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "/="))
-		{
-			tok.type = TokenType::DivideEq;
-			tok.text = "/=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "%="))
-		{
-			tok.type = TokenType::ModEq;
-			tok.text = "%=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "&="))
-		{
-			tok.type = TokenType::AmpersandEq;
-			tok.text = "&=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "|="))
-		{
-			tok.type = TokenType::PipeEq;
-			tok.text = "|=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "^="))
-		{
-			tok.type = TokenType::CaretEq;
-			tok.text = "^=";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "::"))
-		{
-			tok.type = TokenType::DoubleColon;
-			tok.text = "::";
-			read = 2;
-		}
-		else if(hasPrefix(stream, "..."))
-		{
-			tok.type = TokenType::Ellipsis;
-			tok.text = "...";
-			read = 3;
-		}
-		else if(hasPrefix(stream, "..<"))
-		{
-			tok.type = TokenType::HalfOpenEllipsis;
-			tok.text = "..<";
-			read = 3;
-		}
+		CHECK_TOKEN("==", EqualsTo)
+		CHECK_TOKEN("!=", EqualsTo)
+		CHECK_TOKEN(">=", GreaterEquals)
+		CHECK_TOKEN("<=", LessThanEquals)
+		CHECK_TOKEN("||", LogicalOr)
+		CHECK_TOKEN("&&", LogicalAnd)
+		CHECK_TOKEN("<-", LeftArrow)
+		CHECK_TOKEN("->", RightArrow)
+		CHECK_TOKEN("<=", FatLeftArrow)
+		CHECK_TOKEN("=>", FatRightArrow)
+		CHECK_TOKEN("++", DoublePlus)
+		CHECK_TOKEN("--", DoubleMinus)
+		CHECK_TOKEN("+=", PlusEq)
+		CHECK_TOKEN("-=", MinusEq)
+		CHECK_TOKEN("*=", MultiplyEq)
+		CHECK_TOKEN("/=", DivideEq)
+		CHECK_TOKEN("%=", ModEq)
+		CHECK_TOKEN("&=", AmpersandEq)
+		CHECK_TOKEN("|=", PipeEq)
+		CHECK_TOKEN("^=", CaretEq)
+		CHECK_TOKEN("::", DoubleColon)
+		CHECK_TOKEN("...", Ellipsis)
+		CHECK_TOKEN("..<", HalfOpenEllipsis)
+
+		CHECK_TOKEN("@nomangle", Attr_NoMangle)
+		CHECK_TOKEN("@entry", Attr_EntryFn)
+		CHECK_TOKEN("@packed", Attr_Packed)
+		CHECK_TOKEN("@raw", Attr_Raw)
+		CHECK_TOKEN("@operator", Attr_Operator)
+
+		CHECK_TOKEN("#if", Directive_If)
+		CHECK_TOKEN("#run", Directive_Run)
+
+		CHECK_TOKEN_UNICODE("ƒ", Func, 1)
+		CHECK_TOKEN_UNICODE("÷", Divide, 1)
+		CHECK_TOKEN_UNICODE("≠", NotEquals, 1)
+		CHECK_TOKEN_UNICODE("≤", LessThanEquals, 1)
+		CHECK_TOKEN_UNICODE("≥", GreaterEquals, 1)
+
 		else if(hasPrefix(stream, "/*"))
 		{
 			int currentNest = 1;
@@ -356,103 +278,6 @@ namespace lexer
 		}
 
 
-
-		// attrs
-		else if(hasPrefix(stream, "@nomangle"))
-		{
-			tok.type = TokenType::Attr_NoMangle;
-			tok.text = "@nomangle";
-			read = 9;
-		}
-		else if(hasPrefix(stream, "@entry"))
-		{
-			tok.type = TokenType::Attr_EntryFn;
-			tok.text = "@entry";
-			read = 6;
-		}
-		else if(hasPrefix(stream, "@packed"))
-		{
-			tok.type = TokenType::Attr_Packed;
-			tok.text = "@packed";
-			read = 7;
-		}
-		else if(hasPrefix(stream, "@raw"))
-		{
-			tok.type = TokenType::Attr_Raw;
-			tok.text = "@raw";
-			read = 4;
-		}
-		else if(hasPrefix(stream, "@operator"))
-		{
-			tok.type = TokenType::Attr_Operator;
-			tok.text = "@operator";
-			read = 9;
-		}
-
-		// directives
-		else if(hasPrefix(stream, "#if"))
-		{
-			tok.type = TokenType::Directive_If;
-			tok.text = "#if";
-			read = 3;
-		}
-		else if(hasPrefix(stream, "#run"))
-		{
-			tok.type = TokenType::Directive_Run;
-			tok.text = "#run";
-			read = 4;
-		}
-
-
-		// unicode stuff
-		else if(hasPrefix(stream, "ƒ"))
-		{
-			tok.type = TokenType::Func;
-			read = std::string("ƒ").length();
-			tok.text = "ƒ";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "ﬁ"))
-		{
-			tok.type = TokenType::ForeignFunc;
-			read = std::string("ﬁ").length();
-			tok.text = "ﬁ";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "÷"))
-		{
-			tok.type = TokenType::Divide;
-			read = std::string("÷").length();
-			tok.text = "÷";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≠"))
-		{
-			tok.type = TokenType::NotEquals;
-			read = std::string("≠").length();
-			tok.text = "≠";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≤"))
-		{
-			tok.type = TokenType::LessThanEquals;
-			read = std::string("≤").length();
-			tok.text = "≤";
-
-			unicodeLength = 1;
-		}
-		else if(hasPrefix(stream, "≥"))
-		{
-			tok.type = TokenType::GreaterEquals;
-			read = std::string("≥").length();
-			tok.text = "≥";
-
-			unicodeLength = 1;
-		}
 
 		else if(hasPrefix(stream, "'") && stream.size() > 2)
 		{
