@@ -193,11 +193,6 @@ source_files = files([
 	'source/misc/identifier.cpp',
 	'source/misc/destructors.cpp',
 
-	'source/repl/driver.cpp',
-	'source/repl/execute.cpp',
-	'source/repl/history.cpp',
-	'source/repl/commands.cpp',
-
 	'source/frontend/pts.cpp',
 	'source/frontend/file.cpp',
 	'source/frontend/lexer.cpp',
@@ -297,17 +292,13 @@ source_files = files([
 	'source/codegen/arithmetic.cpp',
 	'source/codegen/directives.cpp',
 	'source/codegen/destructure.cpp',
-	'source/codegen/refcounting.cpp',
 	'source/codegen/controlflow.cpp',
 	'source/codegen/constructor.cpp',
 	'source/codegen/autocasting.cpp',
 	'source/codegen/codegenstate.cpp',
 
-	'source/codegen/glue/any.cpp',
 	'source/codegen/glue/misc.cpp',
 	'source/codegen/glue/arrays.cpp',
-	'source/codegen/glue/strings.cpp',
-	'source/codegen/glue/saa_common.cpp',
 
 	'source/fir/interp/wrappers.cpp',
 	'source/fir/interp/compiler.cpp',
@@ -323,7 +314,6 @@ source_files = files([
 	'source/fir/Value.cpp',
 	'source/fir/Name.cpp',
 
-	'source/fir/Types/DynamicArrayType.cpp',
 	'source/fir/Types/ArraySliceType.cpp',
 	'source/fir/Types/PrimitiveType.cpp',
 	'source/fir/Types/FunctionType.cpp',
