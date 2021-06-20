@@ -64,15 +64,6 @@ static void checkSliceOperation(cgn::CodegenState* cs, sst::Expr* user, fir::Val
 
 
 	cs->irb.setCurrentBlock(merge);
-
-	// bounds check.
-	{
-		// endindex is non-inclusive -- if we're doing a decomposition check then it compares length instead
-		// of indices here.
-		fir::Function* checkf = cgn::glue::array::getBoundsCheckFunction(cs, /* isPerformingDecomposition: */ true);
-		if(checkf)
-			cs->irb.Call(checkf, maxlen, endIndex, fir::ConstantCharSlice::get(apos.toString()));
-	}
 }
 
 
@@ -119,12 +110,10 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	iceAssert(ty == lhs->getType());
 
 	fir::Value* length = 0;
-	if(ty->isDynamicArrayType())	length = cs->irb.GetSAALength(lhs, "orig_len");
-	else if(ty->isArraySliceType())	length = cs->irb.GetArraySliceLength(lhs, "orig_len");
-	else if(ty->isStringType())		length = cs->irb.GetSAALength(lhs, "orig_len");
-	else if(ty->isArrayType())		length = fir::ConstantInt::getNative(ty->toArrayType()->getArraySize());
+	if(ty->isArraySliceType())      length = cs->irb.GetArraySliceLength(lhs, "orig_len");
+	else if(ty->isArrayType())      length = fir::ConstantInt::getNative(ty->toArrayType()->getArraySize());
 	else if(ty->isPointerType())    length = fir::ConstantInt::getNative(0);
-	else							error(this, "unsupported type '%s'", ty);
+	else                            error(this, "unsupported type '%s'", ty);
 
 	fir::Value* beginIdx = 0;
 	fir::Value* endIdx = 0;
@@ -138,11 +127,11 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		if(ty->isPointerType() && !this->end)
 			error(this, "slicing operation on pointers requires an ending index");
 
-		if(this->begin)	beginIdx = this->begin->codegen(cs).value;
-		else			beginIdx = fir::ConstantInt::getNative(0);
+		if(this->begin) beginIdx = this->begin->codegen(cs).value;
+		else            beginIdx = fir::ConstantInt::getNative(0);
 
-		if(this->end)	endIdx = this->end->codegen(cs).value;
-		else			endIdx = length;
+		if(this->end)   endIdx = this->end->codegen(cs).value;
+		else            endIdx = length;
 
 		beginIdx = cs->oneWayAutocast(beginIdx, fir::Type::getNativeWord());
 		endIdx = cs->oneWayAutocast(endIdx, fir::Type::getNativeWord());
@@ -172,11 +161,6 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 		return performSliceOperation(cs, this, false, ty->getPointerElementType(), lhs,
 			length, beginIdx, endIdx, this->begin, this->end);
 	}
-	else if(ty->isDynamicArrayType())
-	{
-		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetSAAData(lhs),
-			length, beginIdx, endIdx, this->begin, this->end);
-	}
 	else if(ty->isArrayType())
 	{
 		// TODO: LVALUE HOLE
@@ -193,11 +177,6 @@ CGResult sst::SliceOp::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 	else if(ty->isArraySliceType())
 	{
 		return performSliceOperation(cs, this, true, ty->getArrayElementType(), cs->irb.GetArraySliceData(lhs),
-			length, beginIdx, endIdx, this->begin, this->end);
-	}
-	else if(ty->isStringType())
-	{
-		return performSliceOperation(cs, this, true, fir::Type::getInt8(), cs->irb.GetSAAData(lhs),
 			length, beginIdx, endIdx, this->begin, this->end);
 	}
 	else
@@ -237,7 +216,7 @@ CGResult sst::SplatExpr::_codegen(cgn::CodegenState* cs, fir::Type* infer)
 			return CGResult(cs->irb.Bitcast(ret.value, fir::ArraySliceType::getVariadic(ret->getType()->getArrayElementType())));
 		}
 	}
-	else if(ty->isDynamicArrayType() || ty->isArrayType())
+	else if(ty->isArrayType())
 	{
 		// just do a slice on it.
 		auto target = fir::ArraySliceType::getVariadic(ty->getArrayElementType());

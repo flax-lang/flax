@@ -154,8 +154,8 @@ namespace fir
 
 		if(this->primKind == Kind::Integer)
 		{
-			if(this->isSigned())	ret = "i";
-			else					ret = "u";
+			if(this->isSigned())    ret = "i";
+			else                    ret = "u";
 
 			ret += std::to_string(this->getIntegerBitWidth());
 		}

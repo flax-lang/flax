@@ -73,8 +73,8 @@ TCResult ast::EnumDefn::typecheck(sst::TypecheckState* fs, fir::Type* infer, con
 
 	fs->teleportInto(defn->innerScope);
 
-	if(this->memberType)	defn->memberType = fs->convertParserTypeToFIR(this->memberType);
-	else					defn->memberType = fir::Type::getNativeWord();
+	if(this->memberType)    defn->memberType = fs->convertParserTypeToFIR(this->memberType);
+	else                    defn->memberType = fir::Type::getNativeWord();
 
 	auto ety = defn->type->toEnumType();
 	iceAssert(ety);

@@ -15,48 +15,19 @@ TCResult ast::LitNumber::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fs->pushLoc(this);
 	defer(fs->popLoc());
 
-	// i don't think mpfr auto-detects base, LMAO
 	int base = 10;
 	if(this->num.find("0x") == 0 || this->num.find("0X") == 0)
 		base = 16;
 
-	auto number = mpfr::mpreal(this->num, mpfr_get_default_prec(), base);
-	bool sgn = mpfr::signbit(number);
-	bool flt = ((this->num.find(".") != std::string::npos) || !mpfr::isint(number));
+	else if(this->num.find("0b") == 0 || this->num.find("0B") == 0)
+		base = 2;
 
-	size_t bits = 0;
-	if(flt)
-	{
-		// fuck it lah.
-		bits = sizeof(double) * CHAR_BIT;
-	}
-	else
-	{
-		auto m_ptr = number.mpfr_ptr();
-		auto m_rnd = MPFR_RNDN;
-		if(mpfr_fits_sshort_p(m_ptr, m_rnd))
-			bits = sizeof(short) * CHAR_BIT;
+	// TODO: really broken
+	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType())
+		? infer : fir::Type::getNativeWord());
 
-		else if(mpfr_fits_sint_p(m_ptr, m_rnd))
-			bits = sizeof(int) * CHAR_BIT;
-
-		else if(mpfr_fits_slong_p(m_ptr, m_rnd))
-			bits = sizeof(long) * CHAR_BIT;
-
-		else if(mpfr_fits_intmax_p(m_ptr, m_rnd))
-			bits = sizeof(intmax_t) * CHAR_BIT;
-
-		else if(!sgn && mpfr_fits_uintmax_p(m_ptr, m_rnd))
-			bits = sizeof(uintmax_t) * CHAR_BIT;
-
-		else    // lmao
-			bits = sizeof(uintmax_t) * CHAR_BIT;
-	}
-
-	auto ret = util::pool<sst::LiteralNumber>(this->loc, (infer && infer->isPrimitiveType()) ? infer
-		: fir::ConstantNumberType::get(sgn, flt, bits));
-
-	ret->num = number;
+	if(this->is_floating)   ret->floating = std::stod(this->num);
+	else                    ret->integer = std::stoull(this->num, nullptr, base);
 
 	return TCResult(ret);
 }
@@ -119,12 +90,8 @@ TCResult ast::LitTuple::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		auto inf = (infer ? infer->toTupleType()->getElementN(k) : 0);
 		auto expr = v->typecheck(fs, inf).expr();
 
-		auto ty = expr->type;
-		if(expr->type->isConstantNumberType() && (!inf || !inf->isPrimitiveType()))
-			ty = sst::inferCorrectTypeForLiteral(expr->type->toConstantNumberType());
-
 		vals.push_back(expr);
-		fts.push_back(ty);
+		fts.push_back(expr->type);
 
 		k++;
 	}
@@ -169,29 +136,16 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 	fir::Type* type = 0;
 	if(this->values.empty())
 	{
-		if(this->explicitType)
-		{
-			auto explty = fs->convertParserTypeToFIR(this->explicitType);
-			iceAssert(explty);
+		iceAssert(infer != nullptr);
 
-			type = fir::DynamicArrayType::get(explty);
-		}
-		else
+		if(infer->isArrayType())
 		{
-			if(infer == 0)
-			{
-				// facilitate passing empty array literals around (that can be cast to a bunch of things like slices and such)
-				infer = fir::DynamicArrayType::get(fir::VoidType::get());
-			}
-			else if(infer->isArrayType())
-			{
-				if(infer->toArrayType()->getArraySize() != 0)
-					error(this, "array type with non-zero length %d was inferred for empty array literal", infer->toArrayType()->getArraySize());
-			}
-			else if(!(infer->isDynamicArrayType() || infer->isArraySliceType()))
-			{
-				error(this, "invalid type '%s' inferred for array literal", infer);
-			}
+			if(infer->toArrayType()->getArraySize() != 0)
+				error(this, "array type with non-zero length %d was inferred for empty array literal", infer->toArrayType()->getArraySize());
+		}
+		else if(!infer->isArraySliceType())
+		{
+			error(this, "invalid type '%s' inferred for array literal", infer);
 		}
 
 		type = infer;
@@ -202,7 +156,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 		if(!elmty && infer)
 		{
-			if(!infer->isDynamicArrayType() && !infer->isArraySliceType() && !infer->isArrayType())
+			if(!infer->isArraySliceType() && !infer->isArrayType())
 				error(this, "invalid type '%s' inferred for array literal", infer);
 
 			elmty = infer->getArrayElementType();
@@ -214,11 +168,7 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 
 			if(!elmty)
 			{
-				if(e->type->isConstantNumberType() && !infer)
-					elmty = sst::inferCorrectTypeForLiteral(e->type->toConstantNumberType());
-
-				else
-					elmty = e->type;
+				elmty = e->type;
 			}
 			else if(elmty != e->type)
 			{
@@ -251,11 +201,6 @@ TCResult ast::LitArray::typecheck(sst::TypecheckState* fs, fir::Type* infer)
 		{
 			// slices from a constant array generally should remain immutable.
 			type = fir::ArraySliceType::get(elmty, false);
-		}
-		else if(infer->isDynamicArrayType())
-		{
-			// do something
-			type = fir::DynamicArrayType::get(elmty);
 		}
 		else
 		{

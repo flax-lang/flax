@@ -176,30 +176,7 @@ namespace cgn
 	fir::Value* CodegenState::getDefaultValue(fir::Type* type)
 	{
 		fir::Value* ret = 0;
-		if(type->isStringType())
-		{
-			fir::Value* arr = this->irb.CreateValue(type);
-
-			arr = this->irb.SetSAAData(arr, this->irb.PointerTypeCast(this->irb.GetArraySliceData(fir::ConstantCharSlice::get("")),
-				fir::Type::getMutInt8Ptr()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
-
-			ret = arr;
-		}
-		else if(type->isDynamicArrayType())
-		{
-			fir::Value* arr = this->irb.CreateValue(type);
-
-			arr = this->irb.SetSAAData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getMutablePointerTo()));
-			arr = this->irb.SetSAALength(arr, fir::ConstantInt::getNative(0));
-			arr = this->irb.SetSAACapacity(arr, fir::ConstantInt::getNative(0));
-			arr = this->irb.SetSAARefCountPointer(arr, fir::ConstantValue::getZeroValue(fir::Type::getNativeWord()->getPointerTo()));
-
-			ret = arr;
-		}
-		else if(type->isArraySliceType())
+		if(type->isArraySliceType())
 		{
 			fir::Value* arr = this->irb.CreateValue(type);
 			arr = this->irb.SetArraySliceData(arr, fir::ConstantValue::getZeroValue(type->getArrayElementType()->getPointerTo()));
@@ -244,9 +221,6 @@ namespace cgn
 		{
 			ret = fir::ConstantValue::getZeroValue(type);
 		}
-
-		if(fir::isRefCountedType(type))
-			this->addRefCountedValue(ret);
 
 		ret->setKind(fir::Value::Kind::prvalue);
 		return ret;

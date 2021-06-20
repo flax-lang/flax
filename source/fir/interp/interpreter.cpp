@@ -21,15 +21,6 @@
 #define SLICE_DATA_INDEX            0
 #define SLICE_LENGTH_INDEX          1
 
-#define SAA_DATA_INDEX              0
-#define SAA_LENGTH_INDEX            1
-#define SAA_CAPACITY_INDEX          2
-#define SAA_REFCOUNTPTR_INDEX       3
-
-#define ANY_TYPEID_INDEX            0
-#define ANY_REFCOUNTPTR_INDEX       1
-#define ANY_DATA_ARRAY_INDEX        2
-
 
 #ifdef _MSC_VER
 	#pragma warning(push, 0)
@@ -334,67 +325,6 @@ namespace interp
 
 			return (cachedConstants[c] = ret);
 		}
-		else if(auto cds = dcast(fir::ConstantDynamicString, c))
-		{
-			auto str = makeGlobalString(is, cds->getValue());
-			auto ptr = fir::ConstantBitcast::get(fir::ConstantInt::getUNative(reinterpret_cast<uintptr_t>(str)), fir::Type::getInt8Ptr());
-			auto len = fir::ConstantInt::getNative(cds->getValue().size());
-
-			auto bytecount = getSizeOfType(cds->getType());
-
-			// add -1 for capacity and 0 for refcountptr.
-			auto ret = constructStructThingy(cds, bytecount, { ptr, len,
-				fir::ConstantInt::getNative(-1), fir::ConstantInt::getNative(0) });
-
-			return (cachedConstants[c] = ret);
-		}
-		else if(auto cda = dcast(fir::ConstantDynamicArray, c))
-		{
-			std::vector<interp::Value> mems;
-			auto bytecount = getSizeOfType(cda->getType());
-
-			if(cda->getArray())
-			{
-				auto theArray = cda->getArray();
-				auto sz = getSizeOfType(theArray->getType());
-
-				void* buffer = new uint8_t[sz]; memset(buffer, 0, sz);
-				is->globalAllocs.push_back(buffer);
-
-				uint8_t* ofs = reinterpret_cast<uint8_t*>(buffer);
-				for(auto x : theArray->getValues())
-				{
-					auto v = makeConstant(is, x);
-
-					if(v.dataSize > LARGE_DATA_SIZE)    memmove(ofs, v.ptr, v.dataSize);
-					else                                memmove(ofs, &v.data[0], v.dataSize);
-
-					ofs += v.dataSize;
-				}
-
-				interp::Value fakeptr;
-				fakeptr.val = 0;
-				fakeptr.type = cda->getType()->getArrayElementType()->getMutablePointerTo();
-				fakeptr.dataSize = sizeof(void*);
-
-				setValueRaw(is, &fakeptr, &buffer, sizeof(void*));
-
-				mems = {
-					fakeptr, makeConstant(is, fir::ConstantInt::getNative(theArray->getValues().size())),
-					makeConstant(is, fir::ConstantInt::getNative(-1)), makeConstant(is, fir::ConstantInt::getNative(0))
-				};
-			}
-			else
-			{
-				mems = {
-					makeConstant(is, cda->getData()), makeConstant(is, cda->getLength()),
-					makeConstant(is, cda->getCapacity()), makeConstant(is, fir::ConstantInt::getNative(0))
-				};
-			}
-
-			auto ret = constructStructThingy2(cda, bytecount, mems);
-			return (cachedConstants[c] = ret);
-		}
 		else if(auto fn = dcast(fir::Function, c))
 		{
 			// ok -- when we get a "function" as a constant, what really happened in the source code is that we referred to a function
@@ -649,13 +579,6 @@ namespace interp
 			else
 				return { ty->getArrayElementType()->getPointerTo(), fir::Type::getNativeWord() };
 		}
-		else if(ty->isAnyType())
-		{
-			return {
-				fir::Type::getNativeUWord(), fir::Type::getNativeWordPtr(),
-				fir::ArrayType::get(fir::Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT)
-			};
-		}
 		else if(ty->isRangeType())
 		{
 			return {
@@ -667,19 +590,6 @@ namespace interp
 			return {
 				fir::Type::getNativeWord(), ty->toEnumType()->getCaseType()
 			};
-		}
-		else if(ty->isStringType() || ty->isDynamicArrayType())
-		{
-			std::vector<fir::Type*> mems(4);
-
-			if(ty->isDynamicArrayType())    mems[SAA_DATA_INDEX] = ty->getArrayElementType()->getMutablePointerTo();
-			else                            mems[SAA_DATA_INDEX] = fir::Type::getMutInt8Ptr();
-
-			mems[SAA_LENGTH_INDEX]      = fir::Type::getNativeWord();
-			mems[SAA_CAPACITY_INDEX]    = fir::Type::getNativeWord();
-			mems[SAA_REFCOUNTPTR_INDEX] = fir::Type::getNativeWordPtr();
-
-			return mems;
 		}
 		else
 		{
@@ -1055,7 +965,7 @@ namespace interp
 		void* ret_buffer = new uint8_t[std::max(ffi_retty->size, size_t(8))];
 		ffi_call(&fn_cif, reinterpret_cast<void(*)()>(fnptr), ret_buffer, arg_pointers);
 
-		interp::Value ret = { 0 };
+		interp::Value ret = { };
 		ret.type = fnty->getReturnType();
 		ret.dataSize = ffi_retty->size;
 
@@ -2212,59 +2122,6 @@ namespace interp
 			}
 
 
-			case OpKind::SAA_GetData:
-			case OpKind::SAA_GetLength:
-			case OpKind::SAA_GetCapacity:
-			case OpKind::SAA_GetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 1);
-				auto str = getArg(is, inst, 0);
-
-				interp::Value ret;
-
-				if(ok == OpKind::SAA_GetData)
-					ret = doExtractValue(is, inst.result, str, SAA_DATA_INDEX);
-
-				else if(ok == OpKind::SAA_GetLength)
-					ret = doExtractValue(is, inst.result, str, SAA_LENGTH_INDEX);
-
-				else if(ok == OpKind::SAA_GetCapacity)
-					ret = doExtractValue(is, inst.result, str, SAA_CAPACITY_INDEX);
-
-				else if(ok == OpKind::SAA_GetRefCountPtr)
-					ret = doExtractValue(is, inst.result, str, SAA_REFCOUNTPTR_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-			case OpKind::SAA_SetData:
-			case OpKind::SAA_SetLength:
-			case OpKind::SAA_SetCapacity:
-			case OpKind::SAA_SetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 2);
-				auto str = getArg(is, inst, 0);
-				auto elm = getArg(is, inst, 1);
-
-				interp::Value ret;
-
-				if(ok == OpKind::SAA_SetData)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_DATA_INDEX);
-
-				else if(ok == OpKind::SAA_SetLength)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_LENGTH_INDEX);
-
-				else if(ok == OpKind::SAA_SetCapacity)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_CAPACITY_INDEX);
-
-				else if(ok == OpKind::SAA_SetRefCountPtr)
-					ret = doInsertValue(is, inst.result, str, elm, SAA_REFCOUNTPTR_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
 			case OpKind::ArraySlice_GetData:
 			case OpKind::ArraySlice_GetLength:
 			{
@@ -2303,52 +2160,6 @@ namespace interp
 				setRet(is, inst, ret);
 				break;
 			}
-
-			case OpKind::Any_GetData:
-			case OpKind::Any_GetTypeID:
-			case OpKind::Any_GetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 1);
-				auto str = getArg(is, inst, 0);
-
-				interp::Value ret;
-
-				if(ok == OpKind::Any_GetTypeID)
-					ret = doExtractValue(is, inst.result, str, ANY_TYPEID_INDEX);
-
-				else if(ok == OpKind::Any_GetRefCountPtr)
-					ret = doExtractValue(is, inst.result, str, ANY_REFCOUNTPTR_INDEX);
-
-				else if(ok == OpKind::Any_GetData)
-					ret = doExtractValue(is, inst.result, str, ANY_DATA_ARRAY_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
-			case OpKind::Any_SetData:
-			case OpKind::Any_SetTypeID:
-			case OpKind::Any_SetRefCountPtr:
-			{
-				iceAssert(inst.args.size() == 2);
-				auto str = getArg(is, inst, 0);
-				auto elm = getArg(is, inst, 1);
-
-				interp::Value ret;
-
-				if(ok == OpKind::Any_SetTypeID)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_TYPEID_INDEX);
-
-				else if(ok == OpKind::Any_SetRefCountPtr)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_REFCOUNTPTR_INDEX);
-
-				else if(ok == OpKind::Any_SetData)
-					ret = doInsertValue(is, inst.result, str, elm, ANY_DATA_ARRAY_INDEX);
-
-				setRet(is, inst, ret);
-				break;
-			}
-
 
 
 			case OpKind::Range_GetLower:
@@ -2627,13 +2438,6 @@ namespace interp
 
 			return fir::ConstantCharSlice::get(std::string(ptr, len));
 		}
-		else if(ty->isStringType())
-		{
-			char* ptr = gav<char*>(extractOneValue(val, SAA_DATA_INDEX, fir::Type::getMutInt8Ptr()));
-			int64_t len = gav<int64_t>(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
-
-			return fir::ConstantDynamicString::get(std::string(ptr, len));
-		}
 		else if(ty->isArraySliceType())
 		{
 			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SLICE_DATA_INDEX,
@@ -2643,16 +2447,6 @@ namespace interp
 				fir::Type::getInt64()));
 
 			return fir::ConstantArraySlice::get(ty->toArraySliceType(), ptr, len);
-		}
-		else if(ty->isDynamicArrayType())
-		{
-			auto ptr = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_DATA_INDEX,
-				ty->getArrayElementType()->getMutablePointerTo()));
-
-			auto len = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_LENGTH_INDEX, fir::Type::getInt64()));
-			auto cap = this->unwrapInterpValueIntoConstant(extractOneValue(val, SAA_CAPACITY_INDEX, fir::Type::getInt64()));
-
-			return fir::ConstantDynamicArray::get(ty->toDynamicArrayType(), ptr, len, cap);
 		}
 		else if(ty->isStructType())
 		{

@@ -19,10 +19,6 @@ namespace frontend
 		if(auto it = importCache.find({ imp, fullPath }); it != importCache.end())
 			return it->second;
 
-		// std::string ext = ".flx";
-		// if(imp.size() > ext.size() && imp.find(".flx") == imp.size() - ext.size())
-		// 	ext = "";
-
 		std::string curpath = getPathFromFile(fullPath);
 		std::string fullname = curpath + "/" + imp;
 

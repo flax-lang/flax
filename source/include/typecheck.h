@@ -34,11 +34,6 @@ namespace ast
 	struct Parameterisable;
 }
 
-namespace fir
-{
-	struct ConstantNumberType;
-}
-
 namespace sst
 {
 	namespace poly
@@ -216,8 +211,6 @@ namespace sst
 
 		DecompMapping typecheckDecompositions(const DecompMapping& bind, fir::Type* rhs, bool immut, bool allowref);
 	};
-
-	fir::Type* inferCorrectTypeForLiteral(fir::ConstantNumberType* lit);
 
 	bool isDuplicateOverload(const std::vector<FnParam>& a, const std::vector<FnParam>& b);
 	int getOverloadDistance(const std::vector<fir::Type*>& a, const std::vector<fir::Type*>& b);

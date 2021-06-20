@@ -23,9 +23,9 @@ namespace parser
 		auto vis = VisibilityLevel::Invalid;
 		switch(st.front())
 		{
-			case TT::Public:		vis = VisibilityLevel::Public; break;
-			case TT::Private:		vis = VisibilityLevel::Private; break;
-			case TT::Internal:		vis = VisibilityLevel::Internal; break;
+			case TT::Public:    vis = VisibilityLevel::Public; break;
+			case TT::Private:   vis = VisibilityLevel::Private; break;
+			case TT::Internal:  vis = VisibilityLevel::Internal; break;
 			default: iceAssert(0);
 		}
 
@@ -1232,9 +1232,6 @@ namespace parser
 				case TT::Alloc:
 					return parseAlloc(st, false);
 
-				// case TT::Typeof:
-				// 	return parseTypeof(ps);
-
 				case TT::Typeid:
 					return parseTypeid(st);
 
@@ -1258,7 +1255,8 @@ namespace parser
 				case TT::StringLiteral:
 					return parseString(st, false);
 
-				case TT::Number:
+				case TT::IntegerNumber:
+				case TT::FloatingNumber:
 					return parseNumber(st);
 
 				case TT::LSquare:

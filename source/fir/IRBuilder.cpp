@@ -13,21 +13,6 @@
 
 #include "memorypool.h"
 
-
-static bool isSAAType(fir::Type* t)
-{
-	return t->isStringType() || t->isDynamicArrayType();
-}
-
-static fir::Type* getSAAElmType(fir::Type* t)
-{
-	iceAssert(isSAAType(t));
-
-	if(t->isStringType())   return fir::Type::getInt8();
-	else                    return t->getArrayElementType();
-}
-
-
 namespace fir
 {
 	IRBuilder::IRBuilder(Module* mod)
@@ -783,13 +768,13 @@ namespace fir
 			bool sgn = ci->getType()->isSignedIntType();
 			if(targetType == Type::getFloat32())
 			{
-				if(sgn)	ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
-				else	ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
+				if(sgn) ret = ConstantFP::getFloat32(static_cast<float>(ci->getSignedValue()));
+				else    ret = ConstantFP::getFloat32(static_cast<float>(ci->getUnsignedValue()));
 			}
 			else if(targetType == Type::getFloat64())
 			{
-				if(sgn)	ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
-				else	ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
+				if(sgn) ret = ConstantFP::getFloat64(static_cast<double>(ci->getSignedValue()));
+				else    ret = ConstantFP::getFloat64(static_cast<double>(ci->getUnsignedValue()));
 			}
 			else
 			{
@@ -1021,10 +1006,7 @@ namespace fir
 			else if(fn->isCStyleVarArg())
 			{
 				// auto-convert strings and char slices into char* when passing to va_args
-				if(at->isStringType())
-					out.push_back(this->GetSAAData(args[i]));
-
-				else if(at->isCharSliceType())
+				if(at->isCharSliceType())
 					out.push_back(this->GetArraySliceData(args[i]));
 
 				else
@@ -1213,24 +1195,6 @@ namespace fir
 	}
 
 
-	Value* IRBuilder::CreateSliceFromSAA(Value* saa, bool mut, const std::string& vname)
-	{
-		if(!isSAAType(saa->getType()))
-			error("irbuilder: expected string or dynamic array type, found '%s' instead", saa->getType());
-
-		auto slc = this->CreateValue(saa->getType()->isStringType() ? Type::getCharSlice(mut)
-			: ArraySliceType::get(saa->getType()->getArrayElementType(), mut));
-
-		auto slcelmty = slc->getType()->getArrayElementType();
-
-		slc = this->SetArraySliceData(slc, this->PointerTypeCast(this->GetSAAData(saa), mut ? slcelmty->getMutablePointerTo()
-			: slcelmty->getPointerTo()));
-
-		slc = this->SetArraySliceLength(slc, this->GetSAALength(saa));
-		slc->setName(vname);
-
-		return slc;
-	}
 
 
 	void IRBuilder::CondBranch(Value* condition, IRBlock* trueB, IRBlock* falseB)
@@ -1308,7 +1272,7 @@ namespace fir
 		if(structPtr->getType()->isStructType())
 		{
 			auto st = structPtr->getType()->toStructType();
-			return this->addInstruction(doGEPOnCompoundType(st,	structPtr, memberIndex), vname);
+			return this->addInstruction(doGEPOnCompoundType(st, structPtr, memberIndex), vname);
 		}
 		else if(structPtr->getType()->isTupleType())
 		{
@@ -1318,14 +1282,6 @@ namespace fir
 		else if(structPtr->getType()->isClassType())
 		{
 			error("irbuilder: classes do not support element access by index");
-
-			// auto ct = structPtr->getType()->toClassType();
-			// // to compensate for the vtable, we add one to the index if there is a vtable!
-			// if(ct->getVirtualMethodCount() > 0)
-			// 	memberIndex += 1;
-
-			// return this->addInstruction(doGEPOnCompoundType(ct,
-			// 	structPtr, memberIndex), vname);
 		}
 		else
 		{
@@ -1614,133 +1570,6 @@ namespace fir
 
 
 
-	Value* IRBuilder::GetSAAData(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetData, false, getSAAElmType(arr->getType())->getMutablePointerTo(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAAData(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		auto t = getSAAElmType(arr->getType());
-		if(val->getType() != t->getMutablePointerTo())
-		{
-			error("irbuilder: val is not a pointer to elm type (need '%s', have '%s')",
-				t->getMutablePointerTo(), val->getType());
-		}
-
-		Instruction* instr = make_instr(OpKind::SAA_SetData, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAALength(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetLength, false, Type::getNativeWord(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAALength(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetLength, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAACapacity(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetCapacity, false, Type::getNativeWord(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAACapacity(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetCapacity, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAARefCountPointer(Value* arr, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::SAA_GetRefCountPtr, false, Type::getNativeWordPtr(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetSAARefCountPointer(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!isSAAType(arr->getType()))
-			error("irbuilder: thing is not an SAA type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord()->getPointerTo())
-			error("irbuilder: val is not an int64 pointer");
-
-		Instruction* instr = make_instr(OpKind::SAA_SetRefCountPtr, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetSAARefCount(Value* arr, const std::string& vname)
-	{
-		return this->ReadPtr(this->GetSAARefCountPointer(arr), vname);
-	}
-
-	void IRBuilder::SetSAARefCount(Value* arr, Value* val)
-	{
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		this->WritePtr(val, this->PointerTypeCast(this->GetSAARefCountPointer(arr), Type::getNativeWordPtr()->getMutablePointerVersion()));
-	}
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1810,99 +1639,6 @@ namespace fir
 	}
 
 
-
-
-
-
-
-
-	Value* IRBuilder::GetAnyTypeID(Value* any, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetTypeID, false, Type::getNativeUWord(), { any });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyTypeID(Value* any, Value* val, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		else if(val->getType() != Type::getNativeUWord())
-			error("irbuilder: val is not a uint64");
-
-		Instruction* instr = make_instr(OpKind::Any_SetTypeID, true, Type::getAny(), { any, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetAnyData(Value* any, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetData, false, ArrayType::get(Type::getInt8(),
-			BUILTIN_ANY_DATA_BYTECOUNT), { any });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyData(Value* any, Value* val, const std::string& vname)
-	{
-		if(!any->getType()->isAnyType())
-			error("irbuilder: not any type (got '%s')", any->getType());
-
-		else if(val->getType() != ArrayType::get(Type::getInt8(), BUILTIN_ANY_DATA_BYTECOUNT))
-			error("irbuilder: val is not array type (got '%s')", val->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_SetData, true, Type::getAny(), { any, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-	Value* IRBuilder::GetAnyRefCountPointer(Value* arr, const std::string& vname)
-	{
-		if(!arr->getType()->isAnyType())
-			error("irbuilder: arr is not an any type (got '%s')", arr->getType());
-
-		Instruction* instr = make_instr(OpKind::Any_GetRefCountPtr, false, Type::getNativeWordPtr(), { arr });
-
-		return this->addInstruction(instr, vname);
-	}
-
-	Value* IRBuilder::SetAnyRefCountPointer(Value* arr, Value* val, const std::string& vname)
-	{
-		if(!arr->getType()->isAnyType())
-			error("irbuilder: arr is not an any type (got '%s')", arr->getType());
-
-		if(val->getType() != Type::getNativeWord()->getPointerTo())
-			error("irbuilder: val is not an int64 pointer");
-
-		Instruction* instr = make_instr(OpKind::Any_SetRefCountPtr, true, arr->getType(), { arr, val });
-
-		return this->addInstruction(instr, vname);
-	}
-
-
-
-	Value* IRBuilder::GetAnyRefCount(Value* arr, const std::string& vname)
-	{
-		return this->ReadPtr(this->GetAnyRefCountPointer(arr), vname);
-	}
-
-	void IRBuilder::SetAnyRefCount(Value* arr, Value* val)
-	{
-		if(val->getType() != Type::getNativeWord())
-			error("irbuilder: val is not an int64");
-
-		this->WritePtr(val, this->PointerTypeCast(this->GetAnyRefCountPointer(arr),
-			Type::getNativeWordPtr()->getMutablePointerVersion()));
-	}
 
 
 
@@ -2240,14 +1976,7 @@ namespace fir
 	{
 		IRBlock* block = new IRBlock(func);
 		if(func != this->currentFunction)
-		{
-			// warn("changing current function in irbuilder (from %s to %s)",
-			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
-			// 	func->getName()
-			// );
-
 			this->currentFunction = block->parentFunction;
-		}
 
 		this->currentFunction->blocks.push_back(block);
 
@@ -2263,15 +1992,7 @@ namespace fir
 	{
 		IRBlock* nb = new IRBlock(block->parentFunction);
 		if(nb->parentFunction != this->currentFunction)
-		{
-			// warn("changing current function in irbuilder (from %s to %s)",
-			// 	(this->currentFunction ? this->currentFunction->getName().str() : "null"),
-			// 	nb->parentFunction->getName()
-			// );
-
-
 			this->currentFunction = nb->parentFunction;
-		}
 
 		for(size_t i = 0; i < this->currentFunction->blocks.size(); i++)
 		{

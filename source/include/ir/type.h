@@ -93,7 +93,6 @@ namespace fir
 
 	struct Type;
 	struct Module;
-	struct AnyType;
 	struct BoolType;
 	struct EnumType;
 	struct NullType;
@@ -104,7 +103,6 @@ namespace fir
 	struct TraitType;
 	struct TupleType;
 	struct UnionType;
-	struct StringType;
 	struct StructType;
 	struct OpaqueType;
 	struct PointerType;
@@ -112,20 +110,14 @@ namespace fir
 	struct RawUnionType;
 	struct PrimitiveType;
 	struct ArraySliceType;
-	struct DynamicArrayType;
 	struct UnionVariantType;
-	struct ConstantNumberType;
 	struct PolyPlaceholderType;
 
 	struct ConstantValue;
 	struct ConstantArray;
 	struct Function;
 
-	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b);
-	Type* getBestFitTypeForConstant(ConstantNumberType* cnt);
-
 	int getCastDistance(Type* from, Type* to);
-	bool isRefCountedType(Type* ty);
 
 	void setNativeWordSizeInBits(size_t sz);
 	size_t getNativeWordSizeInBits();
@@ -144,7 +136,6 @@ namespace fir
 	{
 		Invalid,
 
-		Any,
 		Null,
 		Void,
 		Enum,
@@ -163,9 +154,7 @@ namespace fir
 		RawUnion,
 		Primitive,
 		ArraySlice,
-		DynamicArray,
 		UnionVariant,
-		ConstantNumber,
 		PolyPlaceholder,
 	};
 
@@ -197,8 +186,6 @@ namespace fir
 		Type* getArrayElementType();
 
 		PolyPlaceholderType* toPolyPlaceholderType();
-		ConstantNumberType* toConstantNumberType();
-		DynamicArrayType* toDynamicArrayType();
 		UnionVariantType* toUnionVariantType();
 		ArraySliceType* toArraySliceType();
 		PrimitiveType* toPrimitiveType();
@@ -207,7 +194,6 @@ namespace fir
 		PointerType* toPointerType();
 		OpaqueType* toOpaqueType();
 		StructType* toStructType();
-		StringType* toStringType();
 		TraitType* toTraitType();
 		RangeType* toRangeType();
 		ClassType* toClassType();
@@ -217,7 +203,6 @@ namespace fir
 		BoolType* toBoolType();
 		EnumType* toEnumType();
 		NullType* toNullType();
-		AnyType* toAnyType();
 
 		bool isPointerTo(Type* other);
 		bool isPointerElementOf(Type* other);
@@ -234,11 +219,9 @@ namespace fir
 		bool isRangeType();
 
 		bool isCharType();
-		bool isStringType();
 
 		bool isOpaqueType();
 
-		bool isAnyType();
 		bool isEnumType();
 		bool isArrayType();
 		bool isIntegerType();
@@ -248,7 +231,6 @@ namespace fir
 		bool isFloatingPointType();
 
 		bool isArraySliceType();
-		bool isDynamicArrayType();
 		bool isVariadicArrayType();
 
 		bool isCharSliceType();
@@ -261,7 +243,6 @@ namespace fir
 
 		bool isMutablePointer();
 		bool isImmutablePointer();
-		bool isConstantNumberType();
 		bool isPolyPlaceholderType();
 
 		bool containsPlaceholders();
@@ -323,10 +304,7 @@ namespace fir
 		static PointerType* getMutUint128Ptr();
 
 		static ArraySliceType* getCharSlice(bool mut);
-		static StringType* getString();
 		static RangeType* getRange();
-
-		static AnyType* getAny();
 
 		static PrimitiveType* getNativeWord();
 		static PrimitiveType* getNativeUWord();
@@ -433,36 +411,6 @@ namespace fir
 		public:
 		static NullType* get();
 	};
-
-
-	// special case -- the type also needs to store the number, to know things like
-	// whether it's signed, negative, an integer, and other stuff.
-	struct ConstantNumberType : Type
-	{
-		friend struct Type;
-
-		bool isSigned();
-		bool isFloating();
-		size_t getMinBits();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		static ConstantNumberType* get(bool neg, bool flt, size_t bits);
-
-		virtual ~ConstantNumberType() override { }
-
-
-		protected:
-		ConstantNumberType(bool neg, bool floating, size_t bits);
-
-		bool _floating = false;
-		bool _signed = false;
-		size_t _bits = 0;
-	};
-
 
 	struct PolyPlaceholderType : Type
 	{
@@ -984,31 +932,6 @@ namespace fir
 	};
 
 
-	struct DynamicArrayType : Type
-	{
-		friend struct Type;
-
-		// methods
-		Type* getElementType();
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-		// protected constructor
-		virtual ~DynamicArrayType() override { }
-		protected:
-		DynamicArrayType(Type* elmType);
-
-		// fields
-		Type* arrayElementType;
-
-		// static funcs
-		public:
-		static DynamicArrayType* get(Type* elementType);
-	};
-
 
 	struct ArraySliceType : Type
 	{
@@ -1110,45 +1033,7 @@ namespace fir
 	};
 
 
-	struct StringType : Type
-	{
-		friend struct Type;
 
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~StringType() override { }
-		protected:
-		StringType();
-
-		public:
-		static StringType* get();
-	};
-
-
-
-	struct AnyType : Type
-	{
-		friend struct Type;
-
-		virtual std::string str() override;
-		virtual std::string encodedStr() override;
-		virtual bool isTypeEqual(Type* other) override;
-		virtual Type* substitutePlaceholders(const util::hash_map<Type*, Type*>& subst) override;
-
-
-		// protected constructor
-		virtual ~AnyType() override { }
-		protected:
-		AnyType();
-
-		public:
-		static AnyType* get();
-	};
 
 
 	struct OpaqueType : Type

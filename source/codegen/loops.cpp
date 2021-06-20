@@ -184,17 +184,9 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		cs->irb.WritePtr(fir::ConstantInt::getNative(0), idxptr);
 		step = fir::ConstantInt::getNative(1);
 
-		if(array->getType()->isDynamicArrayType())
-		{
-			end = cs->irb.GetSAALength(array);
-		}
-		else if(array->getType()->isArraySliceType())
+		if(array->getType()->isArraySliceType())
 		{
 			end = cs->irb.GetArraySliceLength(array);
-		}
-		else if(array->getType()->isStringType())
-		{
-			end = cs->irb.GetSAALength(array);
 		}
 		else if(array->getType()->isArrayType())
 		{
@@ -214,8 +206,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 	if(array->getType()->isRangeType())
 	{
 		cond = cs->irb.Select(cs->irb.ICmpGT(step, fir::ConstantInt::getNative(0)),
-			cs->irb.ICmpLT(cs->irb.ReadPtr(idxptr), end),		// i < end for step > 0
-			cs->irb.ICmpGT(cs->irb.ReadPtr(idxptr), end));		// i > end for step < 0
+			cs->irb.ICmpLT(cs->irb.ReadPtr(idxptr), end),       // i < end for step > 0
+			cs->irb.ICmpGT(cs->irb.ReadPtr(idxptr), end));      // i > end for step < 0
 	}
 	else
 	{
@@ -231,14 +223,8 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 		if(array->getType()->isRangeType())
 			theptr = idxptr;
 
-		else if(array->getType()->isDynamicArrayType())
-			theptr = cs->irb.GetPointer(cs->irb.GetSAAData(array), cs->irb.ReadPtr(idxptr));
-
-		else if(array->getType()->isArraySliceType())
+		if(array->getType()->isArraySliceType())
 			theptr = cs->irb.GetPointer(cs->irb.GetArraySliceData(array), cs->irb.ReadPtr(idxptr));
-
-		else if(array->getType()->isStringType())
-			theptr = cs->irb.PointerTypeCast(cs->irb.GetPointer(cs->irb.GetSAAData(array), cs->irb.ReadPtr(idxptr)), fir::Type::getInt8Ptr());
 
 		else if(array->getType()->isArrayType())
 		{
@@ -272,7 +258,7 @@ CGResult sst::ForeachLoop::_codegen(cgn::CodegenState* cs, fir::Type* inferred)
 
 				// TODO: is this correct???
 				auto res = CGResult(cs->irb.Dereference(theptr));
-				cs->generateDecompositionBindings(this->mappings, res, !(_array->getType()->isRangeType() || _array->getType()->isStringType()));
+				cs->generateDecompositionBindings(this->mappings, res, !(_array->getType()->isRangeType()));
 
 				if(this->indexVar)
 				{

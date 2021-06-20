@@ -32,53 +32,28 @@ static void checkArray(sst::TypecheckState* fs, DecompMapping* bind, fir::Type* 
 {
 	iceAssert(bind->array);
 
-	if(!rhs->isArrayType() && !rhs->isDynamicArrayType() && !rhs->isArraySliceType() && !rhs->isStringType())
+	if(!rhs->isArrayType() && !rhs->isArraySliceType())
 		error(bind->loc, "expected array type in destructuring declaration; found type '%s' instead", rhs);
 
-	if(rhs->isStringType())
+	for(auto& b : bind->inner)
+		checkAndAddBinding(fs, &b, rhs->getArrayElementType(), immut, true);
+
+	if(!bind->restName.empty())
 	{
-		//* note: special-case this, because 1. we want to return chars, but 2. strings are supposed to be immutable.
-		for(auto& b : bind->inner)
-			checkAndAddBinding(fs, &b, fir::Type::getInt8(), immut, false);
+		auto fake = util::pool<sst::VarDefn>(bind->loc);
 
-		if(!bind->restName.empty())
-		{
-			auto fake = util::pool<sst::VarDefn>(bind->loc);
+		fake->id = Identifier(bind->restName, IdKind::Name);
+		fake->immutable = immut;
 
-			fake->id = Identifier(bind->restName, IdKind::Name);
-			fake->immutable = immut;
+		//* note: see typecheck/slices.cpp for mutability rules.
+		if(bind->restRef || rhs->isArraySliceType())
+			fake->type = fir::ArraySliceType::get(rhs->getArrayElementType(), sst::getMutabilityOfSliceOfType(rhs));
 
-			//* note: see typecheck/slices.cpp for mutability rules.
-			if(bind->restRef)   fake->type = fir::Type::getCharSlice(sst::getMutabilityOfSliceOfType(rhs));
-			else                fake->type = fir::Type::getString();
+		else
+			iceAssert(false);
 
-			fs->stree->addDefinition(bind->restName, fake);
-
-			bind->restDefn = fake;
-		}
-	}
-	else
-	{
-		for(auto& b : bind->inner)
-			checkAndAddBinding(fs, &b, rhs->getArrayElementType(), immut, true);
-
-		if(!bind->restName.empty())
-		{
-			auto fake = util::pool<sst::VarDefn>(bind->loc);
-
-			fake->id = Identifier(bind->restName, IdKind::Name);
-			fake->immutable = immut;
-
-			//* note: see typecheck/slices.cpp for mutability rules.
-			if(bind->restRef || rhs->isArraySliceType())
-				fake->type = fir::ArraySliceType::get(rhs->getArrayElementType(), sst::getMutabilityOfSliceOfType(rhs));
-
-			else
-				fake->type = fir::DynamicArrayType::get(rhs->getArrayElementType());
-
-			fs->stree->addDefinition(bind->restName, fake);
-			bind->restDefn = fake;
-		}
+		fs->stree->addDefinition(bind->restName, fake);
+		bind->restDefn = fake;
 	}
 }
 

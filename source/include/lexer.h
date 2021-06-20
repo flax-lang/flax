@@ -111,7 +111,8 @@ namespace lexer
 		DoubleColon,
 		Identifier,
 		UnicodeSymbol,
-		Number,
+		IntegerNumber,
+		FloatingNumber,
 		StringLiteral,
 		CharacterLiteral,
 		NewLine,
@@ -125,7 +126,6 @@ namespace lexer
 		Attr_EntryFn,
 		Attr_NoMangle,
 		Attr_Operator,
-		Attr_Platform,
 
 		Attr_ATTRS_END,
 

@@ -134,45 +134,11 @@ namespace fir
 		[[nodiscard]] Value* InsertValue(Value* val, const std::vector<size_t>& inds, Value* elm, const std::string& vname = "");
 
 
-		//! ACHTUNG !
-		//* 'generic' function that works for both strings and dynamic arrays,
-		//* since they now function almost exactly the same.
-		//? SAA -- String Array Analogue
-		Value* GetSAAData(Value* str, const std::string& vname = "");
-		Value* GetSAALength(Value* str, const std::string& vname = "");
-		Value* GetSAACapacity(Value* str, const std::string& vname = "");
-		Value* GetSAARefCount(Value* str, const std::string& vname = "");
-		Value* GetSAARefCountPointer(Value* str, const std::string& vname = "");
-
-		[[nodiscard]] Value* SetSAARefCountPointer(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAACapacity(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAALength(Value* str, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetSAAData(Value* str, Value* val, const std::string& vname = "");
-		void SetSAARefCount(Value* str, Value* val);
-
-
-		Value* CreateSliceFromSAA(Value* str, bool mut, const std::string& vname = "");
-
-
-
-
 		Value* GetArraySliceData(Value* arr, const std::string& vname = "");
 		Value* GetArraySliceLength(Value* arr, const std::string& vname = "");
 
 		[[nodiscard]] Value* SetArraySliceData(Value* arr, Value* val, const std::string& vname = "");
 		[[nodiscard]] Value* SetArraySliceLength(Value* arr, Value* val, const std::string& vname = "");
-
-
-		Value* GetAnyData(Value* any, const std::string& vname = "");
-		Value* GetAnyTypeID(Value* any, const std::string& vname = "");
-		Value* GetAnyRefCount(Value* str, const std::string& vname = "");
-		Value* GetAnyRefCountPointer(Value* any, const std::string& vname = "");
-
-		void SetAnyRefCount(Value* str, Value* val);
-		[[nodiscard]] Value* SetAnyData(Value* any, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetAnyTypeID(Value* any, Value* val, const std::string& vname = "");
-		[[nodiscard]] Value* SetAnyRefCountPointer(Value* str, Value* val, const std::string& vname = "");
-
 
 		Value* GetRangeLower(Value* range, const std::string& vname = "");
 		Value* GetRangeUpper(Value* range, const std::string& vname = "");

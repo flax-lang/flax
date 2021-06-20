@@ -195,7 +195,7 @@ namespace parser
 		{
 			auto num = tokens[idx].str();
 
-			if(tokens[idx] != TT::Number || num.find('.') != std::string::npos)
+			if(tokens[idx] != TT::IntegerNumber)
 				expected(tokens[idx].loc, "integer value for precedence", num);
 
 			int prec = std::stoi(num);
@@ -260,9 +260,9 @@ namespace parser
 
 				i = parseOperatorDecl(tokens, i, &kind, &oper);
 
-				if(kind == 1)		infix[oper.symbol] = oper;
-				else if(kind == 2)	prefix[oper.symbol] = oper;
-				else if(kind == 3)	postfix[oper.symbol] = oper;
+				if(kind == 1)       infix[oper.symbol] = oper;
+				else if(kind == 2)  prefix[oper.symbol] = oper;
+				else if(kind == 3)  postfix[oper.symbol] = oper;
 			}
 			else if(tok == TT::Export || tok == TT::Import)
 			{

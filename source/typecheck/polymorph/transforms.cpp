@@ -79,12 +79,7 @@ namespace poly
 
 			for(size_t i = 0; i < max; i++)
 			{
-				if(t->isDynamicArrayType())
-				{
-					ret.push_back(Trf(TrfType::DynamicArray));
-					t = t->getArrayElementType();
-				}
-				else if(t->isArraySliceType())
+				if(t->isArraySliceType())
 				{
 					if(t->isVariadicArrayType())    ret.push_back(Trf(TrfType::VariadicArray));
 					else                            ret.push_back(Trf(TrfType::Slice, t->toArraySliceType()->isMutable()));
@@ -116,12 +111,7 @@ namespace poly
 
 			while(true)
 			{
-				if(t->isDynamicArrayType())
-				{
-					ret.push_back(Trf(TrfType::DynamicArray));
-					t = t->toDynamicArrayType()->base;
-				}
-				else if(t->isArraySliceType())
+				if(t->isArraySliceType())
 				{
 					ret.push_back(Trf(TrfType::Slice, t->toArraySliceType()->mut));
 					t = t->toArraySliceType()->base;
@@ -168,9 +158,6 @@ namespace poly
 						break;
 					case TrfType::FixedArray:
 						base = fir::ArrayType::get(base, it->data);
-						break;
-					case TrfType::DynamicArray:
-						base = fir::DynamicArrayType::get(base);
 						break;
 					case TrfType::VariadicArray:
 						base = fir::ArraySliceType::getVariadic(base);

@@ -4,21 +4,31 @@
 
 import libc
 
-class wrapper<T>
-{
-	init()
-	{
-	}
+// class wrapper<T>
+// {
+// 	init()
+// 	{
+// 	}
 
-	static fn method<U>(a: T, b: U)
+// 	static fn method<U>(a: T, b: U)
+// 	{
+// 		libc::printf("t = %d, u = %d\n", typeid(a), typeid(b));
+// 	}
+// }
+
+struct Cat<T>
+{
+	fn greet()
 	{
-		libc::printf("t = %d, u = %d\n", typeid(a), typeid(b));
+		libc::printf("uwu\n")
 	}
 }
 
-
 @entry fn main()
 {
-	wrapper::method(1, "asdf")
-	libc::printf("hello, world\n")
+	// wrapper::method(1, "asdf")
+	// wrapper!<int>::method("bsdf", [ 1 ])
+
+	let c: Cat!<int> = Cat()
+	c.greet()
 }

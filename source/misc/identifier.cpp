@@ -178,10 +178,10 @@ namespace zpr
 	{
 		switch(x)
 		{
-			case VisibilityLevel::Invalid:	return "invalid";
-			case VisibilityLevel::Public:	return "public";
-			case VisibilityLevel::Private:	return "private";
-			case VisibilityLevel::Internal:	return "internal";
+			case VisibilityLevel::Invalid:  return "invalid";
+			case VisibilityLevel::Public:   return "public";
+			case VisibilityLevel::Private:  return "private";
+			case VisibilityLevel::Internal: return "internal";
 			default:                        return "unknown";
 		}
 	}

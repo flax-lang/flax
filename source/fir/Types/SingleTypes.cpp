@@ -9,15 +9,6 @@ namespace fir
 {
 	using PolySubst = util::hash_map<fir::Type*, fir::Type*>;
 
-	static AnyType* singleAny = 0;
-	AnyType::AnyType() : Type(TypeKind::Any)            { }
-	std::string AnyType::str()                          { return "any"; }
-	std::string AnyType::encodedStr()                   { return "any"; }
-	bool AnyType::isTypeEqual(Type* other)              { return other && other->isAnyType(); }
-	AnyType* AnyType::get()                             { return singleAny = (singleAny ? singleAny : new AnyType()); }
-	fir::Type* AnyType::substitutePlaceholders(const PolySubst&)    { return this; }
-
-
 	static BoolType* singleBool = 0;
 	BoolType::BoolType() : Type(TypeKind::Bool)         { }
 	std::string BoolType::str()                         { return "bool"; }
@@ -54,98 +45,6 @@ namespace fir
 	fir::Type* RangeType::substitutePlaceholders(const PolySubst&)  { return this; }
 
 
-	static StringType* singleString = 0;
-	StringType::StringType() : Type(TypeKind::String)   { }
-	std::string StringType::str()                       { return "string"; }
-	std::string StringType::encodedStr()                { return "string"; }
-	bool StringType::isTypeEqual(Type* other)           { return other && other->isStringType(); }
-	StringType* StringType::get()                       { return singleString = (singleString ? singleString : new StringType()); }
-	fir::Type* StringType::substitutePlaceholders(const PolySubst&) { return this; }
-
-
-
-
-
-
-	std::string ConstantNumberType::encodedStr()                { return "number"; }
-	bool ConstantNumberType::isSigned()                         { return this->_signed; }
-	bool ConstantNumberType::isFloating()                       { return this->_floating; }
-	size_t ConstantNumberType::getMinBits()                     { return this->_bits; }
-	bool ConstantNumberType::isTypeEqual(Type* other)
-	{
-		return other && other->isConstantNumberType()
-			&& other->toConstantNumberType()->_bits == this->_bits
-			&& other->toConstantNumberType()->_signed == this->_signed
-			&& other->toConstantNumberType()->_floating == this->_floating;
-	}
-	ConstantNumberType* ConstantNumberType::get(bool neg, bool flt, size_t bits)
-	{
-		return TypeCache::get().getOrAddCachedType(new ConstantNumberType(neg, flt, bits));
-	}
-	ConstantNumberType::ConstantNumberType(bool neg, bool flt, size_t bits) : Type(TypeKind::ConstantNumber)
-	{
-		this->_bits = bits;
-		this->_signed = neg;
-		this->_floating = flt;
-	}
-	fir::Type* ConstantNumberType::substitutePlaceholders(const PolySubst& subst)
-	{
-		return this;
-	}
-	std::string ConstantNumberType::str()
-	{
-		// return strprintf("number(sgn: %s, flt: %s, bits: %d)", _signed, _floating, _bits);
-		return strprintf("number");
-	}
-
-
-
-
-	ConstantNumberType* unifyConstantTypes(ConstantNumberType* a, ConstantNumberType* b)
-	{
-		auto sgn = a->isSigned() || b->isSigned();
-		auto flt = a->isFloating() || b->isFloating();
-		auto bit = std::max(a->getMinBits(), b->getMinBits());
-
-		return ConstantNumberType::get(sgn, flt, bit);
-	}
-
-	Type* getBestFitTypeForConstant(ConstantNumberType* cnt)
-	{
-		if(cnt->isFloating())
-		{
-			if(cnt->getMinBits() > 64)
-				error("constant number type '%s' requires too many bits", cnt);
-
-			return fir::Type::getFloat64();
-		}
-		else
-		{
-			if(cnt->getMinBits() < fir::Type::getNativeWord()->getBitWidth())
-			{
-				return fir::Type::getNativeWord();
-			}
-			else if(cnt->isSigned())
-			{
-				error("constant number type '%s' requires too many bits", cnt);
-			}
-			else
-			{
-				if(cnt->getMinBits() > fir::Type::getNativeUWord()->getBitWidth())
-					error("constant number type '%s' requires too many bits", cnt);
-
-				return fir::Type::getNativeUWord();
-			}
-		}
-	}
-
-
-
-
-
-
-
-
 
 	std::string PolyPlaceholderType::str()          { return strprintf("$%s/%d", this->name, this->group); }
 	std::string PolyPlaceholderType::encodedStr()   { return strprintf("$%s/%d", this->name, this->group); }
@@ -167,9 +66,6 @@ namespace fir
 
 	bool PolyPlaceholderType::isTypeEqual(Type* other)
 	{
-		// return other && other->isPolyPlaceholderType() && other->toPolyPlaceholderType()->name == this->name
-		// 	&& other->toPolyPlaceholderType()->group == this->group;
-
 		//! ACHTUNG !
 		// performance optimisation: since all polys go through ::get, and we already guarantee interning
 		// from that function, we should be able to just compare pointers.
