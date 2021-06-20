@@ -416,12 +416,6 @@ namespace lexer
 			tok.text = "@operator";
 			read = 9;
 		}
-		else if(hasPrefix(stream, "@platform"))
-		{
-			tok.type = TokenType::Attr_Platform;
-			tok.text = "@platform";
-			read = 9;
-		}
 
 		// directives
 		else if(hasPrefix(stream, "#if"))
@@ -569,6 +563,7 @@ namespace lexer
 				hadExp = true;
 			}
 
+			bool is_floating = false;
 			size_t didRead = stream.size() - tmp.size();
 			auto post = stream.substr(didRead);
 
@@ -595,7 +590,7 @@ namespace lexer
 					while(post.size() > 0 && isdigit(post.front()))
 						post.remove_prefix(1), didRead++;
 
-					// ok.
+					is_floating = true;
 				}
 				else
 				{

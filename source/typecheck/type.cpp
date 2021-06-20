@@ -20,7 +20,6 @@ namespace sst
 		return SimpleError::make(fs->loc(), "invalid use of '^' at the topmost scope '%s'", top);
 	}
 
-
 	static StateTree* recursivelyFindTreeUpwards(TypecheckState* fs, const std::string& name)
 	{
 		auto from = fs->stree;

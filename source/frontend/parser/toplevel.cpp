@@ -146,17 +146,6 @@ namespace parser
 					st.nativeWordSizeStillValid = false;
 				} break;
 
-				case TT::Attr_Platform: {
-
-					auto ret = parsePlatformDefn(st);
-
-					if(ret) // sometimes we set a setting, but it doesn't need to have an AST node.
-						root->statements.push_back(ret);
-
-					st.importsStillValid = false;
-					st.nativeWordSizeStillValid = false;
-				} break;
-
 				case TT::Namespace: {
 					st.eat();
 					Token tok = st.front();
